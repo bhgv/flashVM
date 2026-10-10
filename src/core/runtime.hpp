@@ -18,6 +18,7 @@ struct FVM_NativeEntry {
 };
 struct FVM_ScriptFunction {
     std::vector<unsigned char> body;
+    std::vector<std::string> parameters;
 };
 struct FVM_Context {
     FVM_Runtime *runtime;

@@ -11,7 +11,7 @@ namespace {
 struct Action { unsigned char op; size_t offset, next, payload, length; };
 static unsigned int u16(const unsigned char *p) { return (unsigned int)p[0] | ((unsigned int)p[1]<<8); }
 static unsigned long u32(const unsigned char *p) { return (unsigned long)p[0] | ((unsigned long)p[1]<<8) | ((unsigned long)p[2]<<16) | ((unsigned long)p[3]<<24); }
-static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned) {
+static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, std::map<std::string, FVM_Value> *locals) {
     std::vector<Action> actions;
     std::vector<FVM_Value> stack;
     size_t pos=0, pc=0, i;
@@ -48,10 +48,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 ++p;
                 if (end-p<4) return FVM_INVALID_ARGUMENT;
                 unsigned int count=u16(data+p); p+=2;
-                unsigned int body_size=u16(data+p); p+=2;
-                if (count!=0) return FVM_UNSUPPORTED;
-                if (body_size!=end-p) return FVM_INVALID_ARGUMENT;
                 FVM_ScriptFunction fn;
+                unsigned int param;
+                for (param=0;param<count;++param) {
+                    size_t begin=p;
+                    while (p<end && data[p]) ++p;
+                    if (p==end) return FVM_INVALID_ARGUMENT;
+                    fn.parameters.push_back(std::string((const char *)(data+begin),p-begin));
+                    ++p;
+                }
+                if (end-p<2) return FVM_INVALID_ARGUMENT;
+                unsigned int body_size=u16(data+p); p+=2;
+                if (body_size!=end-p) return FVM_INVALID_ARGUMENT;
                 fn.body.assign(data+p,data+end);
                 /* A function body can omit End; append one for the decoder. */
                 if (fn.body.empty() || fn.body.back()!=0) fn.body.push_back(0);
@@ -124,14 +132,29 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             } else if (a.op==0x17) { /* Pop */
                 if (stack.empty()) return FVM_ERROR;
                 stack.pop_back();
+            } else if (a.op==0x3c || a.op==0x41) { /* DefineLocal / DeclareLocal */
+                if (!locals) return FVM_UNSUPPORTED;
+                if (stack.empty() || stack.back().type!=FVM_VALUE_STRING) return FVM_ERROR;
+                if (a.op==0x3c && stack.size()<2) return FVM_ERROR;
+                std::string name=stack[a.op==0x3c ? stack.size()-2 : stack.size()-1].string;
+                FVM_Value v; fvm_value_undefined(&v);
+                if (a.op==0x3c) v=stack.back();
+                (*locals)[name]=v;
+                stack.resize(stack.size()-(a.op==0x3c ? 2 : 1));
             } else if (a.op==0x1c) { /* GetVariable */
                 if (stack.empty() || stack.back().type!=FVM_VALUE_STRING) return FVM_ERROR;
-                FVM_Value v; FVM_Result r=fvm_get_global(c,stack.back().string,&v);
+                FVM_Value v; FVM_Result r=FVM_OK;
+                std::map<std::string,FVM_Value>::iterator local=locals ? locals->find(stack.back().string) : std::map<std::string,FVM_Value>::iterator();
+                if (locals && local!=locals->end()) v=local->second;
+                else r=fvm_get_global(c,stack.back().string,&v);
                 if (r!=FVM_OK) return r;
                 stack.back()=v;
             } else if (a.op==0x1d) { /* SetVariable: name, value */
                 if (stack.size()<2 || stack[stack.size()-2].type!=FVM_VALUE_STRING) return FVM_ERROR;
-                FVM_Result r=fvm_set_global(c,stack[stack.size()-2].string,&stack.back());
+                std::string name=stack[stack.size()-2].string;
+                FVM_Result r=FVM_OK;
+                if (locals && locals->find(name)!=locals->end()) (*locals)[name]=stack.back();
+                else r=fvm_set_global(c,name.c_str(),&stack.back());
                 if (r!=FVM_OK) return r;
                 stack.pop_back(); stack.pop_back();
             } else if (a.op==0x0a || a.op==0x0b || a.op==0x0c || a.op==0x0d) {
@@ -153,10 +176,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value result; FVM_Result r;
                 std::map<std::string, FVM_ScriptFunction>::const_iterator fn=c->script_functions.find(name);
                 if (fn!=c->script_functions.end()) {
-                    if (argc!=0) return FVM_UNSUPPORTED;
                     if (c->script_depth>=64) return FVM_ERROR;
+                    std::map<std::string,FVM_Value> frame;
+                    for (i=0;i<fn->second.parameters.size();++i) {
+                        FVM_Value v; fvm_value_undefined(&v);
+                        if (i<argc) v=args[i];
+                        frame[fn->second.parameters[i]]=v;
+                    }
                     ++c->script_depth;
-                    r=execute(c,&fn->second.body[0],fn->second.body.size(),&result);
+                    r=execute(c,&fn->second.body[0],fn->second.body.size(),&result,&frame);
                     --c->script_depth;
                 } else r=fvm_call(c,name.c_str(),argc,argc?&args[0]:0,&result);
                 if (r!=FVM_OK) return r;
@@ -191,7 +219,7 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
     info.struct_size=sizeof(info);
     FVM_Result r=fvm_avm1_inspect(data,size,&info);
     if (r!=FVM_OK) return r;
-    return execute(c,(const unsigned char *)data,size,0);
+    return execute(c,(const unsigned char *)data,size,0,0);
 }
 extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c) {
     if (!c) return FVM_INVALID_ARGUMENT;

@@ -112,3 +112,13 @@ The feature is not yet compatible with general ActionScript functions.
 ## Русский язык / Russian documentation
 
 Основная документация на русском: [README.ru.md](README.ru.md). Документация жестов и событий ввода: [INPUT_EVENTS.md](doc/INPUT_EVENTS.md). Пример на C89 и проектный пример AS2: [gesture_dispatch](examples/embedding/gesture_dispatch/README.md).
+
+### Function parameters / Параметры функций (stage 11)
+
+See `doc/AVM1_CALL_FRAMES.md` and `examples/embedding/function_parameters/`.
+Named AVM1 functions now accept arguments and local variable declarations.
+This is a partial implementation, not complete AVM1 function semantics.
+
+Описание на русском: `doc/AVM1_CALL_FRAMES.md`. Поддерживаются параметры
+именованных функций и локальные переменные; полная модель функций AVM1
+ещё не реализована.
