@@ -101,3 +101,10 @@ The interpreter supports `PushDuplicate`, `StackSwap`, `Not`, and a limited
 numeric-only implementation of `Equals`, `Less`, `And`, and `Or`. See
 [`doc/AVM1_STACK.md`](doc/AVM1_STACK.md) for exact limitations. The
 `flashvm_avm1_stack` test exercises the instructions using the public C API.
+
+## Experimental ActionScript function execution
+
+The AVM1 interpreter now supports a limited named, zero-argument
+`DefineFunction` / `CallFunction` / `Return` path. See
+`doc/AVM1_FUNCTIONS.md` and `examples/embedding/script_functions/`.
+The feature is not yet compatible with general ActionScript functions.

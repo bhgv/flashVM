@@ -32,6 +32,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->runtime = runtime;
     context->global = 0;
     context->swf_loaded = false;
+    context->script_depth = 0;
     if (fvm_object_create(context, &context->global) != FVM_OK) { delete context; return FVM_OUT_OF_MEMORY; }
     *out_context = context;
     return FVM_OK;

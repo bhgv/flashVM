@@ -11,12 +11,13 @@ namespace {
 struct Action { unsigned char op; size_t offset, next, payload, length; };
 static unsigned int u16(const unsigned char *p) { return (unsigned int)p[0] | ((unsigned int)p[1]<<8); }
 static unsigned long u32(const unsigned char *p) { return (unsigned long)p[0] | ((unsigned long)p[1]<<8) | ((unsigned long)p[2]<<16) | ((unsigned long)p[3]<<24); }
-static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size) {
+static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned) {
     std::vector<Action> actions;
     std::vector<FVM_Value> stack;
     size_t pos=0, pc=0, i;
     unsigned long steps=0;
     if (!c || (!data && size)) return FVM_INVALID_ARGUMENT;
+    if (returned) fvm_value_undefined(returned);
     try {
         while (pos<size) {
             Action a; a.offset=pos; a.op=data[pos++]; a.payload=pos; a.length=0;
@@ -34,7 +35,29 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             const Action &a=actions[pc];
             if (c->runtime->config.instruction_limit && ++steps>c->runtime->config.instruction_limit) return FVM_ERROR;
             if (a.op==0) return FVM_OK;
-            if (a.op==0x96) { /* Push: strings, null, undefined, boolean, double, integer */
+            if (a.op==0x3e) { /* Return */
+                if (!returned || stack.empty()) return FVM_ERROR;
+                *returned=stack.back();
+                return FVM_OK;
+            }
+            if (a.op==0x9b) { /* DefineFunction: named, zero parameters */
+                size_t p=a.payload, end=p+a.length, start=p;
+                while (p<end && data[p]) ++p;
+                if (p==end || p==start) return FVM_INVALID_ARGUMENT;
+                std::string name((const char *)(data+start),p-start);
+                ++p;
+                if (end-p<4) return FVM_INVALID_ARGUMENT;
+                unsigned int count=u16(data+p); p+=2;
+                unsigned int body_size=u16(data+p); p+=2;
+                if (count!=0) return FVM_UNSUPPORTED;
+                if (body_size!=end-p) return FVM_INVALID_ARGUMENT;
+                FVM_ScriptFunction fn;
+                fn.body.assign(data+p,data+end);
+                /* A function body can omit End; append one for the decoder. */
+                if (fn.body.empty() || fn.body.back()!=0) fn.body.push_back(0);
+                c->script_functions[name]=fn;
+            } else
+ if (a.op==0x96) { /* Push: strings, null, undefined, boolean, double, integer */
                 size_t p=a.payload, end=p+a.length;
                 while (p<end) {
                     FVM_Value v; fvm_value_undefined(&v);
@@ -127,7 +150,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 unsigned int argc=(unsigned int)n;
                 std::vector<FVM_Value> args(argc);
                 for (i=0;i<argc;++i) args[i]=stack[stack.size()-3-i];
-                FVM_Value result; FVM_Result r=fvm_call(c,name.c_str(),argc,argc?&args[0]:0,&result);
+                FVM_Value result; FVM_Result r;
+                std::map<std::string, FVM_ScriptFunction>::const_iterator fn=c->script_functions.find(name);
+                if (fn!=c->script_functions.end()) {
+                    if (argc!=0) return FVM_UNSUPPORTED;
+                    if (c->script_depth>=64) return FVM_ERROR;
+                    ++c->script_depth;
+                    r=execute(c,&fn->second.body[0],fn->second.body.size(),&result);
+                    --c->script_depth;
+                } else r=fvm_call(c,name.c_str(),argc,argc?&args[0]:0,&result);
                 if (r!=FVM_OK) return r;
                 stack.resize(stack.size()-argc-2); stack.push_back(result);
             } else if (a.op==0x99 || a.op==0x9d) { /* Jump / If */
@@ -160,7 +191,7 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
     info.struct_size=sizeof(info);
     FVM_Result r=fvm_avm1_inspect(data,size,&info);
     if (r!=FVM_OK) return r;
-    return execute(c,(const unsigned char *)data,size);
+    return execute(c,(const unsigned char *)data,size,0);
 }
 extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c) {
     if (!c) return FVM_INVALID_ARGUMENT;

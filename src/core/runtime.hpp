@@ -16,6 +16,9 @@ struct FVM_NativeEntry {
     FVM_NativeFunction callback;
     void *userdata;
 };
+struct FVM_ScriptFunction {
+    std::vector<unsigned char> body;
+};
 struct FVM_Context {
     FVM_Runtime *runtime;
     FVM_Object *global;
@@ -26,5 +29,7 @@ struct FVM_Context {
     FVM_SWFInfo swf_info;
     bool swf_loaded;
     std::vector<FVM_InputRule> input_rules;
+    std::map<std::string, FVM_ScriptFunction> script_functions;
+    unsigned int script_depth;
 };
 #endif
