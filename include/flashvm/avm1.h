@@ -12,6 +12,10 @@ typedef struct FVM_AVM1Info {
 } FVM_AVM1Info;
 /* Validates instruction framing, not the full AVM1 operand semantics. */
 FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
+/* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
+FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
+/* Executes top-level DoAction tags from the loaded FWS file, in file order. */
+FVM_API FVM_Result fvm_swf_execute_actions(FVM_Context *);
 #ifdef __cplusplus
 }
 #endif

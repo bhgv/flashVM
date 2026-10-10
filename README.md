@@ -52,3 +52,19 @@ Build and test:
 
 The examples are compiled and run by CTest. They demonstrate the **current**
 object/value/native callback API, not ActionScript execution or dynamic plugins.
+
+## Experimental AVM1 execution (stage 5)
+
+The public C89 header `flashvm/avm1.h` exposes `fvm_avm1_execute()`
+for an AVM1 action stream and `fvm_swf_execute_actions()` for top-level
+`DoAction` tags in an already loaded **uncompressed FWS** file.
+Register native callbacks with `fvm_register_function()` before executing.
+The implementation supports `End`, `Push` (string, integer, boolean, null,
+undefined), `Pop`, `GetVariable`, `SetVariable`, `Add`, `Subtract`,
+`Multiply`, `Divide`, `Jump`, `If`, and `CallFunction` to registered native
+functions. Unsupported instructions return `FVM_UNSUPPORTED`; malformed
+input or stack operations return errors. There is no JIT, AS-defined
+functions, display list, or general Flash Player compatibility yet.
+
+Use `ctest --test-dir build --output-on-failure` to run the C89 integration
+examples, the AVM1 interpreter test, and the SWF `DoAction` test.
