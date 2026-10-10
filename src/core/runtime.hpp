@@ -2,6 +2,7 @@
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
 #include "flashvm/swf.h"
+#include "flashvm/input.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -23,5 +24,6 @@ struct FVM_Context {
     std::vector<unsigned char> swf_bytes;
     FVM_SWFInfo swf_info;
     bool swf_loaded;
+    std::vector<FVM_InputRule> input_rules;
 };
 #endif

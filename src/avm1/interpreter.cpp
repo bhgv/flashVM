@@ -52,6 +52,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     else return FVM_UNSUPPORTED;
                     stack.push_back(v);
                 }
+            } else if (a.op==0x40) { /* NewObject: limited Object() constructor */
+                if (stack.size()<2 || stack.back().type!=FVM_VALUE_STRING || stack[stack.size()-2].type!=FVM_VALUE_NUMBER) return FVM_ERROR;
+                if (std::strcmp(stack.back().string,"Object")!=0 || stack[stack.size()-2].number!=0) return FVM_UNSUPPORTED;
+                FVM_Object *o=0; FVM_Result r=fvm_object_create(c,&o);
+                if (r!=FVM_OK) return r;
+                stack.pop_back(); stack.pop_back();
+                FVM_Value v; fvm_value_undefined(&v); v.type=FVM_VALUE_OBJECT; v.object=o; stack.push_back(v);
+            } else if (a.op==0x4e) { /* GetMember */
+                if (stack.size()<2 || stack.back().type!=FVM_VALUE_STRING || stack[stack.size()-2].type!=FVM_VALUE_OBJECT) return FVM_ERROR;
+                FVM_Value v; FVM_Result r=fvm_object_get(c,stack[stack.size()-2].object,stack.back().string,&v);
+                if (r!=FVM_OK) return r;
+                stack.pop_back(); stack.back()=v;
+            } else if (a.op==0x4f) { /* SetMember */
+                if (stack.size()<3 || stack[stack.size()-2].type!=FVM_VALUE_STRING || stack[stack.size()-3].type!=FVM_VALUE_OBJECT) return FVM_ERROR;
+                FVM_Result r=fvm_object_set(c,stack[stack.size()-3].object,stack[stack.size()-2].string,&stack.back());
+                if (r!=FVM_OK) return r;
+                stack.resize(stack.size()-3);
             } else if (a.op==0x17) { /* Pop */
                 if (stack.empty()) return FVM_ERROR;
                 stack.pop_back();

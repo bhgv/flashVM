@@ -68,3 +68,22 @@ functions, display list, or general Flash Player compatibility yet.
 
 Use `ctest --test-dir build --output-on-failure` to run the C89 integration
 examples, the AVM1 interpreter test, and the SWF `DoAction` test.
+
+## Stage 6: object operations, input mapper, optional SQLite
+
+AVM1 now supports limited `NewObject` (`Object()` with zero arguments),
+`GetMember`, and `SetMember`. Prototypes, arrays, AS-defined functions,
+and movieclips are **not** implemented.
+
+The host-configurable C89 gesture mapper converts already-recognized
+multitaps/swipes into mouse-button identifiers, including wheel up/down.
+It does not yet recognize touches or dispatch mouse events to Flash.
+
+The optional SQLite adapter provides an in-memory/on-disk database C API.
+SQLite is **not automatically exposed to ActionScript** and must be gated
+through explicit host callbacks. See [input API](doc/INPUT_API.md) and
+[SQLite API](doc/SQLITE_API.md).
+
+Categorized examples with commented C89 code and AS1/AS2 sketches:
+[embedding](examples/embedding/) and [extending](examples/extending/).
+Examples labelled **design only** require backends not yet implemented.
