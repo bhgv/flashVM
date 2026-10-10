@@ -157,3 +157,10 @@ connected to MovieClip ActionScript handlers.
 
 - [Native methods / Нативные методы AVM1](doc/AVM1_METHODS.md)
 - [C89 object method example / Пример методов C89](examples/embedding/object_methods/README.md)
+
+## AVM1 script receiver / Получатель скриптовых методов
+
+See [bilingual API notes](doc/AVM1_SCRIPT_METHODS.md) and
+[AS + C89 test example](examples/embedding/script_methods/README.md).
+`CallMethod` now supports named script functions with `this` binding, but
+first-class function properties and full Flash method lookup are pending.

@@ -56,3 +56,11 @@ ActionScript у MovieClip. Межпоточная передача событи�
 
 - [Нативные методы AVM1 / Native methods](doc/AVM1_METHODS.md)
 - [Пример методов объектов на C89](examples/embedding/object_methods/README.md)
+
+## Этап 17: вызовы скриптовых методов
+
+Добавлена начальная поддержка `CallMethod` для именованных функций AVM1 с
+параметрами и привязкой `this` к объекту-получателю. Подробности, ограничения
+и пример C89/AS: [документация RU/EN](doc/AVM1_SCRIPT_METHODS.md),
+[пример](examples/embedding/script_methods/README.md).
+Функции как свойства объектов пока не поддерживаются.
