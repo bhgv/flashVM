@@ -34,3 +34,7 @@ FlashVM — экспериментальная библиотека C++98 с п�
 [Описание API на русском и английском](doc/RENDER_THREADS.md),
 [пример на C89](examples/embedding/parallel_render/README.md).
 Пока это механизм задач хоста, а не готовый рендерер MovieClip.
+
+## Платформенные адаптеры ввода и сети
+
+Подробности: [API платформенных адаптеров](doc/OS_PORTS.ru.md) и [English](doc/OS_PORTS.md). Реализации: `ports/{windows,linux,mac,android}`, пример на C89: `examples/embedding/os_ports`. Сеть пока блокирующая и не доступна напрямую из ActionScript; события ввода ещё не вызывают обработчики Flash автоматически.

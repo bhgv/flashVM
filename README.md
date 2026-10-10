@@ -135,3 +135,7 @@ MovieClip rasterization is not yet implemented.**
 [пример C89](examples/embedding/parallel_render/README.md).
 Переходники ОС расположены в `ports/`. Полноценная параллельная отрисовка
 MovieClip ещё не реализована.
+
+## Native input and network OS ports
+
+See [OS ports API](doc/OS_PORTS.md) and [Russian translation](doc/OS_PORTS.ru.md). Native adapters live in `ports/{windows,linux,mac,android}`. C89 embedding example: `examples/embedding/os_ports`. Socket calls are blocking and not exposed to AVM1 yet; raw input is not automatically routed to Flash mouse handlers.
