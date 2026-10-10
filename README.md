@@ -139,3 +139,11 @@ MovieClip ещё не реализована.
 ## Native input and network OS ports
 
 See [OS ports API](doc/OS_PORTS.md) and [Russian translation](doc/OS_PORTS.ru.md). Native adapters live in `ports/{windows,linux,mac,android}`. C89 embedding example: `examples/embedding/os_ports`. Socket calls are blocking and not exposed to AVM1 yet; raw input is not automatically routed to Flash mouse handlers.
+
+## Stage 14: touch recognition
+
+`flashvm/gesture_recognizer.h` implements host-driven tap/multitap/swipe
+recognition, with configurable thresholds and existing mouse-button mappings.
+See `doc/GESTURE_RECOGNIZER.md` and
+`examples/embedding/gesture_recognizer/`. Events currently reach C callbacks,
+not AVM1 object handlers.

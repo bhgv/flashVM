@@ -38,3 +38,11 @@ FlashVM — экспериментальная библиотека C++98 с п�
 ## Платформенные адаптеры ввода и сети
 
 Подробности: [API платформенных адаптеров](doc/OS_PORTS.ru.md) и [English](doc/OS_PORTS.md). Реализации: `ports/{windows,linux,mac,android}`, пример на C89: `examples/embedding/os_ports`. Сеть пока блокирующая и не доступна напрямую из ActionScript; события ввода ещё не вызывают обработчики Flash автоматически.
+
+## Этап 14: распознавание касаний
+
+`flashvm/gesture_recognizer.h` распознаёт тапы, мультитапы и свайпы из
+событий приложения-хоста с настраиваемыми порогами. Подробности:
+`doc/GESTURE_RECOGNIZER.md`, пример:
+`examples/embedding/gesture_recognizer/`. Пока события поступают в C callback,
+а не в обработчики объектов AVM1.
