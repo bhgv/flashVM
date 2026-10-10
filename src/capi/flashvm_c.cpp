@@ -30,10 +30,17 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context = new (std::nothrow) FVM_Context;
     if (!context) return FVM_OUT_OF_MEMORY;
     context->runtime = runtime;
+    context->global = 0;
+    if (fvm_object_create(context, &context->global) != FVM_OK) { delete context; return FVM_OUT_OF_MEMORY; }
     *out_context = context;
     return FVM_OK;
 }
-void fvm_context_destroy(FVM_Context *context) { delete context; }
+void fvm_context_destroy(FVM_Context *context) {
+    if (!context) return;
+    for (size_t i=0;i<context->objects.size();++i) delete context->objects[i];
+    for (size_t i=0;i<context->strings.size();++i) delete [] context->strings[i];
+    delete context;
+}
 FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length) {
     if (!context || (!data && length)) return FVM_INVALID_ARGUMENT;
     return FVM_UNSUPPORTED;
