@@ -122,3 +122,16 @@ This is a partial implementation, not complete AVM1 function semantics.
 Описание на русском: `doc/AVM1_CALL_FRAMES.md`. Поддерживаются параметры
 именованных функций и локальные переменные; полная модель функций AVM1
 ещё не реализована.
+
+## Portable render jobs / Переносимые потоки отрисовки
+
+See [English and Russian render threading documentation](doc/RENDER_THREADS.md)
+and [the C89 example](examples/embedding/parallel_render/README.md).
+The native thread adapters are in `ports/windows`, `ports/linux`, `ports/mac`,
+and `ports/android`. **The current API executes host drawing jobs; full
+MovieClip rasterization is not yet implemented.**
+
+См. [двуязычное описание](doc/RENDER_THREADS.md) и
+[пример C89](examples/embedding/parallel_render/README.md).
+Переходники ОС расположены в `ports/`. Полноценная параллельная отрисовка
+MovieClip ещё не реализована.
