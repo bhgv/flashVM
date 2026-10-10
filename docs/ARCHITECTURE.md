@@ -21,3 +21,14 @@
 - media: optional FFmpeg adapters
 - platform: optional window/input integration
 - extensions: C registration, native objects and callbacks
+
+## SWF and AVM1 inspection (third milestone)
+
+`fvm_swf_inspect` parses bounded FWS (uncompressed) files with SWF versions
+1 through 8, checks declared length and tag boundaries, and reports metadata.
+`fvm_load_memory` keeps a private copy of validated bytes in the context.
+`fvm_swf_info` retrieves metadata for a loaded file. No timeline playback yet.
+`fvm_avm1_inspect` checks instruction framing and termination for a standalone
+AVM1 action block, with counts of Push and branch opcodes. It is not an
+interpreter and does not validate every action's operands. CWS/ZWS, full tag
+semantics, AVM1 execution and JIT remain unimplemented.

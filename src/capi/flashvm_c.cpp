@@ -31,6 +31,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     if (!context) return FVM_OUT_OF_MEMORY;
     context->runtime = runtime;
     context->global = 0;
+    context->swf_loaded = false;
     if (fvm_object_create(context, &context->global) != FVM_OK) { delete context; return FVM_OUT_OF_MEMORY; }
     *out_context = context;
     return FVM_OK;
@@ -43,7 +44,14 @@ void fvm_context_destroy(FVM_Context *context) {
 }
 FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length) {
     if (!context || (!data && length)) return FVM_INVALID_ARGUMENT;
-    return FVM_UNSUPPORTED;
+    FVM_SWFInfo info;
+    info.struct_size=sizeof(info);
+    if (fvm_swf_inspect(data,length,&info)!=FVM_OK) return fvm_swf_inspect(data,length,&info);
+    try { context->swf_bytes.assign((const unsigned char *)data,(const unsigned char *)data+length); }
+    catch (...) { return FVM_OUT_OF_MEMORY; }
+    context->swf_info=info;
+    context->swf_loaded=true;
+    return FVM_OK;
 }
 FVM_Result fvm_advance(FVM_Context *context, double milliseconds) {
     if (!context || milliseconds < 0.0) return FVM_INVALID_ARGUMENT;
