@@ -147,3 +147,10 @@ recognition, with configurable thresholds and existing mouse-button mappings.
 See `doc/GESTURE_RECOGNIZER.md` and
 `examples/embedding/gesture_recognizer/`. Events currently reach C callbacks,
 not AVM1 object handlers.
+
+### Deferred input events (stage 15)
+
+See [Deferred input queue (EN/RU)](doc/INPUT_QUEUE.md) and
+[`examples/embedding/input_queue`](examples/embedding/input_queue).
+This is a single-thread-owned FIFO, **not** a cross-thread queue and not yet
+connected to MovieClip ActionScript handlers.

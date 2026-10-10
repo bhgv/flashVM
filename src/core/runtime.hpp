@@ -3,6 +3,7 @@
 #include "flashvm/value.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
+#include "flashvm/input_queue.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ struct FVM_ScriptFunction {
     std::vector<unsigned char> body;
     std::vector<std::string> parameters;
 };
+struct FVM_QueuedInput { FVM_InputEvent event; FVM_InputPhase phase; };
 struct FVM_Context {
     FVM_Runtime *runtime;
     FVM_Object *global;
@@ -30,6 +32,8 @@ struct FVM_Context {
     FVM_SWFInfo swf_info;
     bool swf_loaded;
     std::vector<FVM_InputRule> input_rules;
+    std::vector<FVM_QueuedInput> queued_input;
+    bool pumping_input;
     FVM_InputCallback input_callback;
     void *input_userdata;
     std::map<std::string, FVM_ScriptFunction> script_functions;

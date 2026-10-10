@@ -46,3 +46,10 @@ FlashVM — экспериментальная библиотека C++98 с п�
 `doc/GESTURE_RECOGNIZER.md`, пример:
 `examples/embedding/gesture_recognizer/`. Пока события поступают в C callback,
 а не в обработчики объектов AVM1.
+
+### Отложенные события ввода (этап 15)
+
+См. [документацию очереди ввода (RU/EN)](doc/INPUT_QUEUE.md) и
+[`examples/embedding/input_queue`](examples/embedding/input_queue).
+Очередь предназначена для **одного потока** и пока не вызывает обработчики
+ActionScript у MovieClip. Межпоточная передача событий остаётся задачей хоста.

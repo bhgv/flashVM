@@ -33,6 +33,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->global = 0;
     context->swf_loaded = false;
     context->script_depth = 0;
+    context->pumping_input = false;
     context->input_callback = 0;
     context->input_userdata = 0;
     if (fvm_object_create(context, &context->global) != FVM_OK) { delete context; return FVM_OUT_OF_MEMORY; }
