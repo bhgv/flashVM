@@ -69,6 +69,35 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result r=fvm_object_set(c,stack[stack.size()-3].object,stack[stack.size()-2].string,&stack.back());
                 if (r!=FVM_OK) return r;
                 stack.resize(stack.size()-3);
+            } else if (a.op==0x4c) { /* PushDuplicate */
+                if (stack.empty()) return FVM_ERROR;
+                stack.push_back(stack.back());
+            } else if (a.op==0x4d) { /* StackSwap */
+                if (stack.size()<2) return FVM_ERROR;
+                FVM_Value tmp=stack.back();
+                stack.back()=stack[stack.size()-2];
+                stack[stack.size()-2]=tmp;
+            } else if (a.op==0x12) { /* Not */
+                if (stack.empty()) return FVM_ERROR;
+                FVM_Value &v=stack.back();
+                int truth=(v.type==FVM_VALUE_BOOLEAN && v.boolean) ||
+                          (v.type==FVM_VALUE_NUMBER && v.number!=0) ||
+                          (v.type==FVM_VALUE_STRING && v.string && v.string[0]) ||
+                          v.type==FVM_VALUE_OBJECT;
+                fvm_value_boolean(&v,!truth);
+            } else if (a.op==0x0e || a.op==0x0f || a.op==0x10 || a.op==0x11) {
+                /* Equals, Less, And, Or: deliberately limited primitive semantics. */
+                if (stack.size()<2) return FVM_ERROR;
+                FVM_Value rhs=stack.back(); stack.pop_back();
+                FVM_Value &lhs=stack.back();
+                if (lhs.type!=FVM_VALUE_NUMBER || rhs.type!=FVM_VALUE_NUMBER)
+                    return FVM_UNSUPPORTED;
+                int value=0;
+                if (a.op==0x0e) value=(lhs.number==rhs.number);
+                if (a.op==0x0f) value=(lhs.number<rhs.number);
+                if (a.op==0x10) value=(lhs.number!=0 && rhs.number!=0);
+                if (a.op==0x11) value=(lhs.number!=0 || rhs.number!=0);
+                fvm_value_boolean(&lhs,value);
             } else if (a.op==0x17) { /* Pop */
                 if (stack.empty()) return FVM_ERROR;
                 stack.pop_back();

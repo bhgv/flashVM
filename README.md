@@ -94,3 +94,10 @@ Examples labelled **design only** require backends not yet implemented.
 `examples/embedding/prototypes/` includes a C89 example and a separate
 ActionScript 2.0 reference example. Arbitrary ActionScript constructors and
 functions are not yet supported.
+
+### Stage 8: additional AVM1 stack instructions
+
+The interpreter supports `PushDuplicate`, `StackSwap`, `Not`, and a limited
+numeric-only implementation of `Equals`, `Less`, `And`, and `Or`. See
+[`doc/AVM1_STACK.md`](doc/AVM1_STACK.md) for exact limitations. The
+`flashvm_avm1_stack` test exercises the instructions using the public C API.
