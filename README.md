@@ -42,3 +42,13 @@ Build and test:
     cmake -S . -B build
     cmake --build build
     ctest --test-dir build --output-on-failure
+
+## Embedding and extending (implemented API)
+
+- [Embedding API reference](doc/EMBEDDING_API.md)
+- [Extending API reference](doc/EXTENDING_API.md)
+- [Embedding example (C89)](examples/embedding/README.md)
+- [Native extension example (C89)](examples/extending/README.md)
+
+The examples are compiled and run by CTest. They demonstrate the **current**
+object/value/native callback API, not ActionScript execution or dynamic plugins.
