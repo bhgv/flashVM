@@ -154,3 +154,6 @@ See [Deferred input queue (EN/RU)](doc/INPUT_QUEUE.md) and
 [`examples/embedding/input_queue`](examples/embedding/input_queue).
 This is a single-thread-owned FIFO, **not** a cross-thread queue and not yet
 connected to MovieClip ActionScript handlers.
+
+- [Native methods / Нативные методы AVM1](doc/AVM1_METHODS.md)
+- [C89 object method example / Пример методов C89](examples/embedding/object_methods/README.md)

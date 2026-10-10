@@ -28,6 +28,9 @@ FVM_API FVM_Result fvm_object_set(FVM_Context *, FVM_Object *, const char *, con
 FVM_API FVM_Result fvm_get_global(FVM_Context *, const char *, FVM_Value *);
 FVM_API FVM_Result fvm_set_global(FVM_Context *, const char *, const FVM_Value *);
 FVM_API FVM_Result fvm_register_function(FVM_Context *, const char *, FVM_NativeFunction, void *);
+/* Call a native method registered by name, binding self to receiver.
+   This is an initial bridge; AVM1 function-valued properties are not supported. */
+FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int, const FVM_Value *, FVM_Value *);
 FVM_API FVM_Result fvm_call(FVM_Context *, const char *, unsigned int, const FVM_Value *, FVM_Value *);
 /* Returned strings and object pointers are borrowed, valid until context destruction.
    Object references cannot cross contexts. Not thread-safe. */

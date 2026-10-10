@@ -53,3 +53,6 @@ FlashVM — экспериментальная библиотека C++98 с п�
 [`examples/embedding/input_queue`](examples/embedding/input_queue).
 Очередь предназначена для **одного потока** и пока не вызывает обработчики
 ActionScript у MovieClip. Межпоточная передача событий остаётся задачей хоста.
+
+- [Нативные методы AVM1 / Native methods](doc/AVM1_METHODS.md)
+- [Пример методов объектов на C89](examples/embedding/object_methods/README.md)

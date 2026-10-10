@@ -91,6 +91,16 @@ FVM_Result fvm_register_function(FVM_Context *c, const char *name, FVM_NativeFun
     catch (...) { return FVM_OUT_OF_MEMORY; }
     return FVM_OK;
 }
+FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name, unsigned int argc, const FVM_Value *argv, FVM_Value *out) {
+    unsigned int i;
+    if (!c || !self || self->owner!=c || !name || !out || (argc && !argv)) return FVM_INVALID_ARGUMENT;
+    for (i=0;i<argc;++i) if (valid_value(c,&argv[i])!=FVM_OK) return FVM_INVALID_ARGUMENT;
+    std::map<std::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
+    if (it==c->functions.end()) return FVM_UNSUPPORTED;
+    fvm_value_undefined(out);
+    try { return it->second.callback(c,self,argc,argv,out,it->second.userdata); }
+    catch (...) { return FVM_ERROR; }
+}
 FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc, const FVM_Value *argv, FVM_Value *out) {
     unsigned int i;
     if (!c || !name || !out || (argc && !argv)) return FVM_INVALID_ARGUMENT;
