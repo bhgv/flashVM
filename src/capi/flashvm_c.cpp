@@ -1,0 +1,45 @@
+#include "../core/runtime.hpp"
+#include <new>
+#include <cstring>
+extern "C" {
+unsigned long fvm_abi_version(void) { return FVM_ABI_VERSION; }
+FVM_Result fvm_config_init(FVM_Config *config) {
+    if (!config) return FVM_INVALID_ARGUMENT;
+    std::memset(config, 0, sizeof(*config));
+    config->struct_size = (unsigned long)sizeof(*config);
+    return FVM_OK;
+}
+FVM_Result fvm_runtime_create(const FVM_Config *config, FVM_Runtime **out_runtime) {
+    FVM_Runtime *runtime;
+    if (!out_runtime) return FVM_INVALID_ARGUMENT;
+    *out_runtime = 0;
+    if (!config || config->struct_size != sizeof(FVM_Config)) return FVM_INVALID_ARGUMENT;
+    if (config->features != 0) return FVM_UNSUPPORTED;
+    runtime = new (std::nothrow) FVM_Runtime;
+    if (!runtime) return FVM_OUT_OF_MEMORY;
+    runtime->config = *config;
+    *out_runtime = runtime;
+    return FVM_OK;
+}
+void fvm_runtime_destroy(FVM_Runtime *runtime) { delete runtime; }
+FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
+    FVM_Context *context;
+    if (!out_context) return FVM_INVALID_ARGUMENT;
+    *out_context = 0;
+    if (!runtime) return FVM_INVALID_ARGUMENT;
+    context = new (std::nothrow) FVM_Context;
+    if (!context) return FVM_OUT_OF_MEMORY;
+    context->runtime = runtime;
+    *out_context = context;
+    return FVM_OK;
+}
+void fvm_context_destroy(FVM_Context *context) { delete context; }
+FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length) {
+    if (!context || (!data && length)) return FVM_INVALID_ARGUMENT;
+    return FVM_UNSUPPORTED;
+}
+FVM_Result fvm_advance(FVM_Context *context, double milliseconds) {
+    if (!context || milliseconds < 0.0) return FVM_INVALID_ARGUMENT;
+    return FVM_UNSUPPORTED;
+}
+}
