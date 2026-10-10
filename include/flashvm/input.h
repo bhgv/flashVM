@@ -12,6 +12,15 @@ typedef struct FVM_InputEvent { FVM_Gesture gesture; unsigned int fingers; int d
 /* direction: -1=left, 1=right, -2=up, 2=down, 0=any. */
 FVM_API FVM_Result fvm_input_set_rule(FVM_Context *, const FVM_InputRule *);
 FVM_API FVM_Result fvm_input_map(FVM_Context *, const FVM_InputEvent *, FVM_MouseButton *);
+/* Host-driven input notifications; callback runs synchronously during dispatch.
+ * A gesture is always reported, even if no mouse mapping exists.
+ * Callback must not destroy its context; pointers are valid only during call.
+ */
+typedef enum FVM_InputPhase { FVM_INPUT_BEGIN=1, FVM_INPUT_UPDATE=2, FVM_INPUT_END=3 } FVM_InputPhase;
+typedef void (*FVM_InputCallback)(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase, FVM_MouseButton, void *);
+FVM_API FVM_Result fvm_input_set_callback(FVM_Context *, FVM_InputCallback, void *);
+FVM_API FVM_Result fvm_input_dispatch(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);
+
 #ifdef __cplusplus
 }
 #endif

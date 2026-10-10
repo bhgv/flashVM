@@ -29,6 +29,8 @@ struct FVM_Context {
     FVM_SWFInfo swf_info;
     bool swf_loaded;
     std::vector<FVM_InputRule> input_rules;
+    FVM_InputCallback input_callback;
+    void *input_userdata;
     std::map<std::string, FVM_ScriptFunction> script_functions;
     unsigned int script_depth;
 };

@@ -108,3 +108,7 @@ The AVM1 interpreter now supports a limited named, zero-argument
 `DefineFunction` / `CallFunction` / `Return` path. See
 `doc/AVM1_FUNCTIONS.md` and `examples/embedding/script_functions/`.
 The feature is not yet compatible with general ActionScript functions.
+
+## Русский язык / Russian documentation
+
+Основная документация на русском: [README.ru.md](README.ru.md). Документация жестов и событий ввода: [INPUT_EVENTS.md](doc/INPUT_EVENTS.md). Пример на C89 и проектный пример AS2: [gesture_dispatch](examples/embedding/gesture_dispatch/README.md).

@@ -26,3 +26,19 @@ FVM_Result fvm_input_map(FVM_Context *c, const FVM_InputEvent *e, FVM_MouseButto
     return FVM_OK;
 }
 }
+
+extern "C" FVM_Result fvm_input_set_callback(FVM_Context *c, FVM_InputCallback cb, void *userdata) {
+    if (!c) return FVM_INVALID_ARGUMENT;
+    c->input_callback=cb;
+    c->input_userdata=userdata;
+    return FVM_OK;
+}
+extern "C" FVM_Result fvm_input_dispatch(FVM_Context *c, const FVM_InputEvent *event, FVM_InputPhase phase) {
+    FVM_MouseButton button;
+    FVM_Result result;
+    if (!c || !event || (phase!=FVM_INPUT_BEGIN && phase!=FVM_INPUT_UPDATE && phase!=FVM_INPUT_END)) return FVM_INVALID_ARGUMENT;
+    result=fvm_input_map(c,event,&button);
+    if (result!=FVM_OK) return result;
+    if (c->input_callback) c->input_callback(c,event,phase,button,c->input_userdata);
+    return FVM_OK;
+}
