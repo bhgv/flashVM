@@ -35,16 +35,41 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     o=new (std::nothrow) FVM_Object;
     if (!o) return FVM_OUT_OF_MEMORY;
     o->owner=c;
+    o->prototype=0;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
     *out=o;
     return FVM_OK;
 }
+FVM_Result fvm_object_set_prototype(FVM_Context *c, FVM_Object *o, FVM_Object *proto) {
+    FVM_Object *cursor;
+    if (!c || !o || o->owner!=c || (proto && proto->owner!=c)) return FVM_INVALID_ARGUMENT;
+    cursor=proto;
+    while (cursor) {
+        if (cursor==o) return FVM_INVALID_ARGUMENT;
+        cursor=cursor->prototype;
+    }
+    o->prototype=proto;
+    return FVM_OK;
+}
+FVM_Result fvm_object_get_prototype(FVM_Context *c, FVM_Object *o, FVM_Object **out) {
+    if (!c || !o || o->owner!=c || !out) return FVM_INVALID_ARGUMENT;
+    *out=o->prototype;
+    return FVM_OK;
+}
+FVM_Result fvm_object_has_own(FVM_Context *c, FVM_Object *o, const char *name, int *out) {
+    if (!c || !o || o->owner!=c || !name || !out) return FVM_INVALID_ARGUMENT;
+    *out=o->properties.find(name)!=o->properties.end();
+    return FVM_OK;
+}
 FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out) {
     if (!c || !o || o->owner!=c || !name || !out) return FVM_INVALID_ARGUMENT;
-    std::map<std::string,FVM_Value>::iterator it=o->properties.find(name);
-    if (it==o->properties.end()) { fvm_value_undefined(out); return FVM_OK; }
-    *out=it->second;
+    while (o) {
+        std::map<std::string,FVM_Value>::iterator it=o->properties.find(name);
+        if (it!=o->properties.end()) { *out=it->second; return FVM_OK; }
+        o=o->prototype;
+    }
+    fvm_value_undefined(out);
     return FVM_OK;
 }
 FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const FVM_Value *v) {

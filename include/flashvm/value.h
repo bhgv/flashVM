@@ -18,6 +18,11 @@ FVM_API void fvm_value_number(FVM_Value *value, double number);
 FVM_API void fvm_value_boolean(FVM_Value *value, int boolean);
 FVM_API FVM_Result fvm_value_string(FVM_Value *value, const char *utf8);
 FVM_API FVM_Result fvm_object_create(FVM_Context *, FVM_Object **);
+/* Prototype lookup follows the chain; own properties shadow inherited ones.
+   Cycles and cross-context prototypes are rejected. */
+FVM_API FVM_Result fvm_object_set_prototype(FVM_Context *, FVM_Object *, FVM_Object *);
+FVM_API FVM_Result fvm_object_get_prototype(FVM_Context *, FVM_Object *, FVM_Object **);
+FVM_API FVM_Result fvm_object_has_own(FVM_Context *, FVM_Object *, const char *, int *);
 FVM_API FVM_Result fvm_object_get(FVM_Context *, FVM_Object *, const char *, FVM_Value *);
 FVM_API FVM_Result fvm_object_set(FVM_Context *, FVM_Object *, const char *, const FVM_Value *);
 FVM_API FVM_Result fvm_get_global(FVM_Context *, const char *, FVM_Value *);

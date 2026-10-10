@@ -9,6 +9,7 @@
 struct FVM_Object {
     std::map<std::string, FVM_Value> properties;
     FVM_Context *owner;
+    FVM_Object *prototype;
 };
 struct FVM_Runtime { FVM_Config config; };
 struct FVM_NativeEntry {

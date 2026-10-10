@@ -87,3 +87,10 @@ through explicit host callbacks. See [input API](doc/INPUT_API.md) and
 Categorized examples with commented C89 code and AS1/AS2 sketches:
 [embedding](examples/embedding/) and [extending](examples/extending/).
 Examples labelled **design only** require backends not yet implemented.
+
+## Prototype API (stage 7)
+
+`doc/PROTOTYPES.md` describes the implemented prototype-chain operations.
+`examples/embedding/prototypes/` includes a C89 example and a separate
+ActionScript 2.0 reference example. Arbitrary ActionScript constructors and
+functions are not yet supported.
