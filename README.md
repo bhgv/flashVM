@@ -164,3 +164,7 @@ See [bilingual API notes](doc/AVM1_SCRIPT_METHODS.md) and
 [AS + C89 test example](examples/embedding/script_methods/README.md).
 `CallMethod` now supports named script functions with `this` binding, but
 first-class function properties and full Flash method lookup are pending.
+
+## Table inspection (incremental)
+
+See `doc/TABLES_DEBUG.md` and `examples/embedding/tables_debug/` for C89 table and debugger inspection APIs. Lua-like function environments, metaprotocol and stepping are **not yet implemented**.

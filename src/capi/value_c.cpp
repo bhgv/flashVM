@@ -36,6 +36,7 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     if (!o) return FVM_OUT_OF_MEMORY;
     o->owner=c;
     o->prototype=0;
+    o->metatable=0;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
     *out=o;
@@ -69,6 +70,9 @@ FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_V
         if (it!=o->properties.end()) { *out=it->second; return FVM_OK; }
         o=o->prototype;
     }
+    /* Metatable fallback is separate from the AVM1 prototype chain. */
+    /* The original receiver is preserved below by a dedicated lookup helper
+       in a later iteration; for now this path remains prototype-only. */
     fvm_value_undefined(out);
     return FVM_OK;
 }

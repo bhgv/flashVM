@@ -9,6 +9,8 @@
 #include <vector>
 struct FVM_Object {
     std::map<std::string, FVM_Value> properties;
+    std::map<unsigned long, FVM_Value> indexed;
+    FVM_Object *metatable;
     FVM_Context *owner;
     FVM_Object *prototype;
 };
