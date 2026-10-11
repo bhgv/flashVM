@@ -13,6 +13,11 @@ extern "C" {
 typedef struct FVM_Channel FVM_Channel;
 FVM_API FVM_Result fvm_channel_create(FVM_Channel **out_channel);
 FVM_API void fvm_channel_close(FVM_Channel *channel);
+/* Retain a shared handle before handing it to another owner or worker.
+ * Each owner releases exactly once; destroy is an alias for release.
+ * Last release must occur after all concurrent operations have stopped. */
+FVM_API FVM_Result fvm_channel_retain(FVM_Channel *channel);
+FVM_API void fvm_channel_release(FVM_Channel *channel);
 FVM_API void fvm_channel_destroy(FVM_Channel *channel);
 /* send and receive block until completed or closed; receive returns
  * FVM_ERROR on a closed and empty channel. */

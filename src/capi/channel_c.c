@@ -15,6 +15,7 @@ struct FVM_Channel {
     int closed;
     size_t pending;
     size_t capacity;
+    size_t references;
 };
 FVM_Result fvm_channel_create(FVM_Channel **out) {
     FVM_Channel *c;
@@ -24,6 +25,7 @@ FVM_Result fvm_channel_create(FVM_Channel **out) {
     if (!c) return FVM_OUT_OF_MEMORY;
     c->sync=fvm_port_sync_create();
     if (!c->sync) { free(c); return FVM_OUT_OF_MEMORY; }
+    c->references=1;
     *out=c;
     return FVM_OK;
 }
@@ -34,16 +36,29 @@ void fvm_channel_close(FVM_Channel *c) {
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
 }
-void fvm_channel_destroy(FVM_Channel *c) {
+FVM_Result fvm_channel_retain(FVM_Channel *c) {
+    if (!c) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(c->sync);
+    ++c->references;
+    fvm_port_sync_unlock(c->sync);
+    return FVM_OK;
+}
+void fvm_channel_release(FVM_Channel *c) {
     FVM_ChannelNode *n,*next;
+    int last;
     if (!c) return;
-    fvm_channel_close(c);
+    fvm_port_sync_lock(c->sync);
+    last=(--c->references==0);
+    if (last) { c->closed=1; fvm_port_sync_signal_all(c->sync); }
+    fvm_port_sync_unlock(c->sync);
+    if (!last) return;
     n=c->head;
     while (n) { next=n->next; free(n->owned_string); free(n); n=next; }
     free(c->last_string);
     fvm_port_sync_destroy(c->sync);
     free(c);
 }
+void fvm_channel_destroy(FVM_Channel *c) { fvm_channel_release(c); }
 FVM_Result fvm_channel_send(FVM_Channel *c,const FVM_Value *v) {
     FVM_ChannelNode *n;
     size_t len;

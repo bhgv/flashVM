@@ -234,3 +234,5 @@ array of workers. See [worker cancellation](doc/WORKER_CANCELLATION.md) and
 A tested C89 example of cross-thread request/reply messaging is in [`examples/embedding/worker_channels/`](examples/embedding/worker_channels/). See [`doc/WORKER_CHANNELS.md`](doc/WORKER_CHANNELS.md) for blocking and nonblocking receives, borrowed string lifetimes, shutdown ordering and current limitations.
 
 Bounded internal channel queues and backpressure: see [doc/CHANNEL_CAPACITY.md](doc/CHANNEL_CAPACITY.md).
+
+Shared channel ownership is documented in [doc/CHANNEL_OWNERSHIP.md](doc/CHANNEL_OWNERSHIP.md).

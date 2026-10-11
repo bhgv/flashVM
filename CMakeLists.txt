@@ -449,3 +449,10 @@ if(FVM_BUILD_TESTS)
   target_link_libraries(flashvm_channel_capacity flashvm)
   add_test(NAME flashvm_channel_capacity COMMAND flashvm_channel_capacity)
 endif()
+
+# Shared channel ownership across independently managed VM contexts.
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_channel_shared tests/channel_shared.c)
+  target_link_libraries(flashvm_channel_shared flashvm)
+  add_test(NAME flashvm_channel_shared COMMAND flashvm_channel_shared)
+endif()
