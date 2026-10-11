@@ -219,3 +219,6 @@ See [channels API](doc/CHANNELS.md) and [C89 example](examples/embedding/channel
 ### Native worker threads
 
 See [worker API](doc/WORKERS.md) and [C89 example](examples/embedding/workers/). Workers create isolated interpreter contexts through OS-specific `ports/` implementations. ActionScript `thread.run` is not implemented yet.
+
+Worker lifecycle API (suspended start, state snapshots, join):
+[doc/WORKER_LIFECYCLE.md](doc/WORKER_LIFECYCLE.md).

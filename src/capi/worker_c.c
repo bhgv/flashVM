@@ -1,5 +1,6 @@
 #include "flashvm/worker.h"
 #include "../../ports/thread_port.h"
+#include "../../ports/channel_sync.h"
 #include <stdlib.h>
 #include <string.h>
 struct FVM_Worker {
@@ -11,6 +12,9 @@ struct FVM_Worker {
     FVM_Value output;
     FVM_Result result;
     int joined;
+    FVM_PortSync *sync;
+    int started;
+    int finished;
 };
 static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src) {
     size_t len;
@@ -32,6 +36,9 @@ static void free_value(FVM_Value *v) {
 }
 static void worker_entry(void *arg) {
     FVM_Worker *w = (FVM_Worker *)arg;
+    fvm_port_sync_lock(w->sync);
+    while (!w->started) fvm_port_sync_wait(w->sync);
+    fvm_port_sync_unlock(w->sync);
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
     FVM_Value result;
@@ -43,12 +50,17 @@ static void worker_entry(void *arg) {
         r = w->callback(context, &w->input, &result, w->userdata);
         if (r == FVM_OK) r = copy_value(&w->output, &result);
     }
+    fvm_port_sync_lock(w->sync);
     w->result = r;
+    w->finished = 1;
+    fvm_port_sync_signal_all(w->sync);
+    fvm_port_sync_unlock(w->sync);
     if (context) fvm_context_destroy(context);
     if (runtime) fvm_runtime_destroy(runtime);
 }
-FVM_Result fvm_worker_run(const FVM_Config *config, FVM_WorkerFunction callback,
-                          const FVM_Value *input, void *userdata, FVM_Worker **out) {
+static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction callback,
+                                const FVM_Value *input, void *userdata,
+                                FVM_Worker **out, int start_now) {
     FVM_Worker *w;
     FVM_Result r;
     if (!config || !callback || !input || !out || config->struct_size != sizeof(FVM_Config))
@@ -60,20 +72,51 @@ FVM_Result fvm_worker_run(const FVM_Config *config, FVM_WorkerFunction callback,
     w->callback = callback;
     w->userdata = userdata;
     w->result = FVM_ERROR;
+    w->started = start_now;
+    w->sync = fvm_port_sync_create();
+    if (!w->sync) { free(w); return FVM_OUT_OF_MEMORY; }
     fvm_value_undefined(&w->output);
     r = copy_value(&w->input, input);
-    if (r != FVM_OK) { free(w); return r; }
+    if (r != FVM_OK) { fvm_port_sync_destroy(w->sync); free(w); return r; }
     w->thread = fvm_port_thread_start(worker_entry, w);
-    if (!w->thread) { free_value(&w->input); free(w); return FVM_ERROR; }
+    if (!w->thread) { free_value(&w->input); fvm_port_sync_destroy(w->sync); free(w); return FVM_ERROR; }
     *out = w;
+    return FVM_OK;
+}
+FVM_Result fvm_worker_run(const FVM_Config *c, FVM_WorkerFunction f,
+                          const FVM_Value *v, void *ud, FVM_Worker **out) {
+    return worker_create(c, f, v, ud, out, 1);
+}
+FVM_Result fvm_worker_run_suspended(const FVM_Config *c, FVM_WorkerFunction f,
+                                    const FVM_Value *v, void *ud, FVM_Worker **out) {
+    return worker_create(c, f, v, ud, out, 0);
+}
+FVM_Result fvm_worker_start(FVM_Worker *w) {
+    if (!w) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(w->sync);
+    w->started = 1;
+    fvm_port_sync_signal_all(w->sync);
+    fvm_port_sync_unlock(w->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_worker_state(FVM_Worker *w, FVM_WorkerState *state) {
+    if (!w || !state) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(w->sync);
+    *state = w->joined ? FVM_WORKER_JOINED :
+             w->finished ? FVM_WORKER_FINISHED :
+             w->started ? FVM_WORKER_RUNNING : FVM_WORKER_SUSPENDED;
+    fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
 FVM_Result fvm_worker_join(FVM_Worker *w, FVM_Value *out) {
     if (!w) return FVM_INVALID_ARGUMENT;
     if (!w->joined) {
+        fvm_worker_start(w);
         fvm_port_thread_join(w->thread);
         w->thread = 0;
+        fvm_port_sync_lock(w->sync);
         w->joined = 1;
+        fvm_port_sync_unlock(w->sync);
     }
     if (out) *out = w->output;
     return w->result;
@@ -82,5 +125,6 @@ void fvm_worker_destroy(FVM_Worker *w) {
     if (!w || !w->joined) return;
     free_value(&w->input);
     free_value(&w->output);
+    fvm_port_sync_destroy(w->sync);
     free(w);
 }
