@@ -292,3 +292,13 @@ if(FVM_BUILD_TESTS)
   add_executable(flashvm_detail_string tests/detail_string.cpp)
   add_test(NAME flashvm_detail_string COMMAND flashvm_detail_string)
 endif()
+
+# Portable text helpers; bundled regex engine is compiled from extern/.
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/extern/mini_regex)
+target_sources(flashvm PRIVATE src/capi/utf8.c src/capi/regex.c extern/mini_regex/mini_regex.c)
+add_executable(flashvm_text_api tests/text_api.c)
+target_link_libraries(flashvm_text_api flashvm)
+add_test(NAME flashvm_text_api COMMAND flashvm_text_api)
+add_executable(flashvm_example_text examples/embedding/text/main.c)
+target_link_libraries(flashvm_example_text flashvm)
+add_test(NAME flashvm_example_text COMMAND flashvm_example_text)

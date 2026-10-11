@@ -177,3 +177,11 @@ C++98 hash-table/vector implementation, C89 example and current limitations.
 ### Internal container replacements
 
 The C++98 runtime uses private string/vector/hash-map implementations in `src/details/` instead of `std::string`, `std::vector` and `std::map`. See [English technical documentation](doc/INTERNAL_CONTAINERS.md) and [Russian translation](doc/INTERNAL_CONTAINERS.ru.md) for semantics, caveats, hybrid-table status and examples.
+
+## Portable text helpers (stage 21)
+
+See [Text API / Текстовый API](doc/TEXT_API.md) for the C89 UTF-8 decoder,
+encoder, validation, offsets, and a deliberately limited byte-oriented regex
+engine. A compilable example is in `examples/embedding/text/`. Source for the
+regex subset lives under `extern/`; other optional dependencies are **not**
+yet vendored (see [extern/README.md](extern/README.md)).
