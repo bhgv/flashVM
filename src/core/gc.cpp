@@ -81,6 +81,10 @@ FVM_Result fvm_gc_collect(FVM_Context *c,unsigned long *reclaimed) {
     c->gc_collecting=false;
     return FVM_OK;
 }
+FVM_Result fvm_gc_pending_allocations(FVM_Context *c,unsigned long *count) {
+    if (!c || !count) return FVM_INVALID_ARGUMENT;
+    *count=c->gc_allocations;return FVM_OK;
+}
 FVM_Result fvm_gc_threshold(FVM_Context *c,unsigned long *threshold) {
     if (!c || !threshold) return FVM_INVALID_ARGUMENT;
     if (c->gc_mode==FVM_GC_SUSPENDED) { *threshold=ULONG_MAX;return FVM_OK; }
