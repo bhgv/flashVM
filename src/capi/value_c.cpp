@@ -124,7 +124,14 @@ extern "C"
         if (!c || !out || c->destroying || c->gc_releasing)
             return FVM_INVALID_ARGUMENT;
         *out = 0;
-        o = new (std::nothrow) FVM_Object;
+        try
+        {
+            o = new (std::nothrow) FVM_Object;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
         if (!o)
             return FVM_OUT_OF_MEMORY;
         o->owner = c;
@@ -552,17 +559,19 @@ extern "C"
                 return FVM_INVALID_ARGUMENT;
         if (std::strcmp(name, "Object") == 0)
             return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
-            c->constructors.find(name);
-        if (found == c->constructors.end())
-            return FVM_UNSUPPORTED;
-        FVM_NativeEntry entry = found->second;
-        FVM_Value result;
-        fvm_value_undefined(&result);
         try
         {
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
+                c->constructors.find(name);
+            if (found == c->constructors.end())
+                return FVM_UNSUPPORTED;
+            FVM_NativeEntry entry = found->second;
+            FVM_Value result;
+            fvm_value_undefined(&result);
             FVM_NativeCallGuard guard(c);
-            FVM_Result status = entry.callback(c, c->global, argc, argv, &result, entry.userdata);
+            fvm_resource_fault_begin(c);
+            FVM_Result status = fvm_exception_complete(
+                c, c->global, entry.callback(c, c->global, argc, argv, &result, entry.userdata));
             if (status != FVM_OK)
                 return status;
             FVM_ValueType object_type = FVM_VALUE_OBJECT;
@@ -571,6 +580,10 @@ extern "C"
                 return FVM_ERROR;
             *out = result.object;
             return FVM_OK;
+        }
+        catch (const std::bad_alloc &)
+        {
+            return FVM_OUT_OF_MEMORY;
         }
         catch (...)
         {

@@ -25,3 +25,7 @@
 - Never commit generated build/test logs, validation JSON summaries, copied build
   profiles, or source-hash dumps. Keep them outside the repository or in ignored
   build output. Commit actual tests, reusable build profiles and concise reports.
+
+- If validation artifacts need preserving, deliver them in a separate versioned
+  ZIP for download. Keep generated test results, copied profiles and logs out of
+  both the source tree and committed Git history.

@@ -1,3 +1,4 @@
+#include "error_state.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
 #include <cmath>
@@ -478,57 +479,61 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
 {
     if (!c || c->destroying || c->gc_collecting)
         return FVM_INVALID_ARGUMENT;
-    const char *names[] = {"Math", "Number", "Boolean", "isNaN", "isFinite", "NaN", "Infinity"};
-    if (c->standard_library)
-    {
-        FVM_Value math;
-        FVM_Result result = fvm_get_global(c, "Math", &math);
-        if (result != FVM_OK || math.type != FVM_VALUE_OBJECT || math.object->resource_kind != 10)
-            return FVM_INVALID_ARGUMENT;
-        for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
-        {
-            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
-                math.object->methods.find(math_methods[i].name);
-            if (it == math.object->methods.end() || it->second.callback != math_methods[i].callback)
-                return FVM_INVALID_ARGUMENT;
-        }
-        for (size_t i = 0; i < 4; ++i)
-        {
-            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
-                c->functions.find(global_functions[i].name);
-            if (it == c->functions.end() || it->second.callback != global_functions[i].callback)
-                return FVM_INVALID_ARGUMENT;
-        }
-        FVM_Value boolean_class, prototype;
-        if (fvm_get_global(c, "Boolean", &boolean_class) != FVM_OK ||
-            boolean_class.type != FVM_VALUE_OBJECT ||
-            boolean_class.object->resource_kind != BOOLEAN_CLASS ||
-            fvm_object_get(c, boolean_class.object, "prototype", &prototype) != FVM_OK ||
-            prototype.type != FVM_VALUE_OBJECT || prototype.object->resource_kind != BOOLEAN_OBJECT)
-            return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
-            c->constructors.find("Boolean");
-        if (ctor == c->constructors.end() || ctor->second.callback != boolean_constructor ||
-            ctor->second.root != boolean_class.object)
-            return FVM_INVALID_ARGUMENT;
-        FVM_NativeEntry method;
-        if (fvm_lookup_native_method(prototype.object, "valueOf", &method) != FVM_OK ||
-            method.callback != boolean_value ||
-            fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
-            method.callback != boolean_string)
-            return FVM_INVALID_ARGUMENT;
-        return FVM_OK;
-    }
-    for (size_t i = 0; i < 7; ++i)
-        if (c->global->properties.find(names[i]) != c->global->properties.end() ||
-            c->global->accessors.find(names[i]) != c->global->accessors.end() ||
-            c->constructors.find(names[i]) != c->constructors.end() ||
-            c->functions.find(names[i]) != c->functions.end() ||
-            c->stack_functions.find(names[i]) != c->stack_functions.end() ||
-            c->script_functions.find(names[i]) != c->script_functions.end())
-            return FVM_INVALID_ARGUMENT;
     try
     {
+        const char *names[] = {"Math",     "Number", "Boolean",  "isNaN",
+                               "isFinite", "NaN",    "Infinity", "Error"};
+        if (c->standard_library)
+        {
+            FVM_Value math;
+            FVM_Result result = fvm_get_global(c, "Math", &math);
+            if (result != FVM_OK || math.type != FVM_VALUE_OBJECT ||
+                math.object->resource_kind != 10)
+                return FVM_INVALID_ARGUMENT;
+            for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
+            {
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                    math.object->methods.find(math_methods[i].name);
+                if (it == math.object->methods.end() ||
+                    it->second.callback != math_methods[i].callback)
+                    return FVM_INVALID_ARGUMENT;
+            }
+            for (size_t i = 0; i < 4; ++i)
+            {
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                    c->functions.find(global_functions[i].name);
+                if (it == c->functions.end() || it->second.callback != global_functions[i].callback)
+                    return FVM_INVALID_ARGUMENT;
+            }
+            FVM_Value boolean_class, prototype;
+            if (fvm_get_global(c, "Boolean", &boolean_class) != FVM_OK ||
+                boolean_class.type != FVM_VALUE_OBJECT ||
+                boolean_class.object->resource_kind != BOOLEAN_CLASS ||
+                fvm_object_get(c, boolean_class.object, "prototype", &prototype) != FVM_OK ||
+                prototype.type != FVM_VALUE_OBJECT ||
+                prototype.object->resource_kind != BOOLEAN_OBJECT)
+                return FVM_INVALID_ARGUMENT;
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+                c->constructors.find("Boolean");
+            if (ctor == c->constructors.end() || ctor->second.callback != boolean_constructor ||
+                ctor->second.root != boolean_class.object)
+                return FVM_INVALID_ARGUMENT;
+            FVM_NativeEntry method;
+            if (fvm_lookup_native_method(prototype.object, "valueOf", &method) != FVM_OK ||
+                method.callback != boolean_value ||
+                fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
+                method.callback != boolean_string)
+                return FVM_INVALID_ARGUMENT;
+            return fvm_error_validate(c);
+        }
+        for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
+            if (c->global->properties.find(names[i]) != c->global->properties.end() ||
+                c->global->accessors.find(names[i]) != c->global->accessors.end() ||
+                c->constructors.find(names[i]) != c->constructors.end() ||
+                c->functions.find(names[i]) != c->functions.end() ||
+                c->stack_functions.find(names[i]) != c->stack_functions.end() ||
+                c->script_functions.find(names[i]) != c->script_functions.end())
+                return FVM_INVALID_ARGUMENT;
         /* Build both maps before publishing, so allocation errors cannot leave
          * partially installed globals and function registrations. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
@@ -597,6 +602,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         prototype->methods["valueOf"] = method;
         method.callback = boolean_string;
         prototype->methods["toString"] = method;
+        result = fvm_error_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
         c->global->properties.swap(globals);
         c->functions.swap(functions);
         c->constructors.swap(constructors);

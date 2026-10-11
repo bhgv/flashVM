@@ -441,6 +441,7 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
                 code = FVM_RESOURCE_RECURSIVE;
         }
         fvm_resource_fault(c, code, m->identity, "mutex.set", m->remote_address);
+        fvm_resource_fault_resource(c, 8, m, m->origin);
         fvm_debug_resource_error(c, m->identity, "mutex.set", m->remote_address);
     }
     return r;
@@ -483,6 +484,7 @@ extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
             code = m->closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_NOT_OWNER;
         }
         fvm_resource_fault(c, code, m->identity, "mutex.reset", m->remote_address);
+        fvm_resource_fault_resource(c, 8, m, m->origin);
         fvm_debug_resource_error(c, m->identity, "mutex.reset", m->remote_address);
     }
     return r;

@@ -1,3 +1,4 @@
+#include "../standard/error_state.hpp"
 #include "../core/runtime.hpp"
 #include "../core/transfer_resource.hpp"
 #include "../core/capability_internal.hpp"
@@ -75,8 +76,8 @@ struct Graph
 bool known_kind(unsigned long kind)
 {
     return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
-           kind == 10 || kind == 20 || kind == 21 || kind == 1001 || kind == 1003 || kind == 1004 ||
-           kind == 1002;
+           kind == 10 || kind == 20 || kind == 21 || kind == 22 || kind == 23 || kind == 1001 ||
+           kind == 1003 || kind == 1004 || kind == 1002;
 }
 size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Object *> &seen)
 {
@@ -145,6 +146,8 @@ Callback capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata,
     dst.builtin = fvm_numeric_callback_id(fn);
     if (!dst.builtin)
         dst.builtin = fvm_text_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_error_callback_id(fn);
     if (selector)
         dst.name = selector;
     if (!dst.builtin)
@@ -751,6 +754,8 @@ FVM_NativeEntry restore_callback(FVM_Context *c, const Callback &src,
         dst.callback = fvm_numeric_callback_from_id(src.builtin);
         if (!dst.callback)
             dst.callback = fvm_text_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_error_callback_from_id(src.builtin);
         require(dst.callback != 0, FVM_UNSUPPORTED);
     }
     else if (!src.name.empty())

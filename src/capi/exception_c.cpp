@@ -1,3 +1,4 @@
+#include "../standard/error_state.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
 #include "flashvm/mutex.h"
@@ -132,56 +133,76 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
     }
     if (!c->fault_pending)
         return FVM_NOT_FOUND;
-    FVM_Object *error = 0, *context = 0;
-    FVM_Result r = fvm_object_create(c, &error);
-    if (r != FVM_OK)
-        return r;
-    /* Root the first allocation before creating/filling the context object. */
-    fvm_value_undefined(&c->exception_value);
-    c->exception_value.type = FVM_VALUE_OBJECT;
-    c->exception_value.object = error;
-    c->exception_pending = true;
-    r = fvm_object_create(c, &context);
-    FVM_Value v;
-    fvm_value_undefined(&v);
-    v.type = FVM_VALUE_OBJECT;
-    v.object = context;
-    if (r == FVM_OK)
-        r = fvm_object_set(c, error, "context", &v);
-    const FVM_ExceptionInfo &f = c->fault;
+    try
+    {
+        FVM_Object *error = 0, *context = 0;
+        FVM_Result r = fvm_object_create(c, &error);
+        if (r != FVM_OK)
+            return r;
+        /* Root the first allocation before creating/filling the context object. */
+        fvm_value_undefined(&c->exception_value);
+        c->exception_value.type = FVM_VALUE_OBJECT;
+        c->exception_value.object = error;
+        c->exception_pending = true;
+        r = fvm_object_create(c, &context);
+        FVM_Value v;
+        fvm_value_undefined(&v);
+        v.type = FVM_VALUE_OBJECT;
+        v.object = context;
+        if (r == FVM_OK)
+            r = fvm_object_set(c, error, "context", &v);
+        const FVM_ExceptionInfo &f = c->fault;
 #define PUT(call)                                                                                  \
     if (r == FVM_OK)                                                                               \
     r = (call)
-    PUT(number(c, error, "code", f.code));
-    PUT(string(c, error, "message", f.message));
-    PUT(string(c, error, "name", "ResourceException"));
-    PUT(number(c, context, "resource", f.resource));
-    PUT(number(c, context, "threadId", f.thread));
-    PUT(number(c, context, "originThreadId", f.origin_thread));
-    PUT(number(c, context, "flags", f.flags));
-    PUT(number(c, context, "line", f.line));
-    PUT(number(c, context, "offset", f.offset));
-    PUT(string(c, context, "operation", f.operation));
-    PUT(string(c, context, "resourceKind", f.kind));
-    PUT(string(c, context, "path", f.path));
-    PUT(string(c, context, "address", f.address));
-    PUT(string(c, context, "source", f.source));
-    PUT(string(c, context, "function", f.function));
-    PUT(string(c, context, "transport",
-               f.flags & FVM_EXCEPTION_FILE      ? "file"
-               : f.flags & FVM_EXCEPTION_NETWORK ? "network"
-               : f.flags & FVM_EXCEPTION_THREAD  ? "thread"
-                                                 : "local"));
+        PUT(number(c, error, "code", f.code));
+        PUT(string(c, error, "message", f.message));
+        PUT(string(c, error, "name", "ResourceException"));
+        PUT(number(c, context, "resource", f.resource));
+        PUT(number(c, context, "threadId", f.thread));
+        PUT(number(c, context, "originThreadId", f.origin_thread));
+        PUT(number(c, context, "flags", f.flags));
+        PUT(number(c, context, "line", f.line));
+        PUT(number(c, context, "offset", f.offset));
+        PUT(string(c, context, "operation", f.operation));
+        PUT(string(c, context, "resourceKind", f.kind));
+        PUT(string(c, context, "path", f.path));
+        PUT(string(c, context, "address", f.address));
+        PUT(string(c, context, "source", f.source));
+        PUT(string(c, context, "function", f.function));
+        PUT(string(c, context, "transport",
+                   f.flags & FVM_EXCEPTION_FILE      ? "file"
+                   : f.flags & FVM_EXCEPTION_NETWORK ? "network"
+                   : f.flags & FVM_EXCEPTION_THREAD  ? "thread"
+                                                     : "local"));
 #undef PUT
-    if (r != FVM_OK)
+        if (r != FVM_OK)
+        {
+            c->exception_pending = false;
+            fvm_value_undefined(&c->exception_value);
+            return r;
+        }
+        try
+        {
+            fvm_error_attach(c, error);
+        }
+        catch (...)
+        {
+            c->exception_pending = false;
+            fvm_value_undefined(&c->exception_value);
+            return FVM_OUT_OF_MEMORY;
+        }
+        record(f);
+        *out = c->exception_value;
+        return FVM_OK;
+    }
+    catch (...)
     {
+        /* Keep the raw fault available for a retry after allocation failure. */
         c->exception_pending = false;
         fvm_value_undefined(&c->exception_value);
-        return r;
+        return FVM_OUT_OF_MEMORY;
     }
-    record(f);
-    *out = c->exception_value;
-    return FVM_OK;
 }
 extern "C" FVM_Result fvm_exception_info(FVM_Context *c, FVM_ExceptionInfo *out)
 {

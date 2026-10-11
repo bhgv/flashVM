@@ -1,3 +1,4 @@
+#include "flashvm/standard.h"
 #include "try_record.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
@@ -560,6 +561,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return FVM_UNSUPPORTED;
                     stack.push_back(v);
                 }
+            }
+            else if (a.op == 0x54)
+            { /* InstanceOf: native constructor metadata and prototype identity. */
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                int matches = 0;
+                FVM_Result result =
+                    fvm_value_instance_of(c, &stack[stack.size() - 2], &stack.back(), &matches);
+                if (result != FVM_OK)
+                    return result;
+                stack.pop_back();
+                fvm_value_boolean(&stack.back(), matches);
             }
             else if (a.op == 0x40)
             { /* NewObject: separate named native constructor registry. */

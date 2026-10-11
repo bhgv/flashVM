@@ -92,3 +92,10 @@ The public change is additive: a new result enum and a separate exception header
 existing public struct layouts and FVM_ABI_VERSION remain unchanged.
 
 Validation results: [v0.8 report](EXCEPTIONS_REPORT.md).
+
+## v0.9 Error integration
+
+Materialized resource exceptions now expose native Error.toString even without
+standard-library installation. With Error installed they inherit its registered
+prototype. Their ordinary diagnostic graph can be restored from a file by another
+process, including the built-in method. See [STANDARD_ERROR.md](STANDARD_ERROR.md).

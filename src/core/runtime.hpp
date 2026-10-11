@@ -129,6 +129,7 @@ struct FVM_Context
     void *input_userdata;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> script_functions;
     unsigned int script_depth;
+    unsigned int string_depth;
     int gc_mode;
     unsigned long gc_allocations;
     bool gc_collecting;
