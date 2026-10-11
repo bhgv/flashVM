@@ -1,10 +1,10 @@
 #ifndef FVM_DETAILS_HASH_TABLE_HPP
 #define FVM_DETAILS_HASH_TABLE_HPP
-#include <string>
+#include "string.hpp"
 #include <cstddef>
 #include <new>
 namespace fvm_detail {
-inline unsigned long hash_key(const std::string &s) { unsigned long h=2166136261UL;for(size_t i=0;i<s.size();++i)h=(h^(unsigned char)s[i])*16777619UL;return h; }
+inline unsigned long hash_key(const fvm_detail::string &s) { unsigned long h=2166136261UL;for(size_t i=0;i<s.size();++i)h=(h^(unsigned char)s[i])*16777619UL;return h; }
 inline unsigned long hash_key(unsigned long k) { k ^= k>>16; k*=2654435761UL;return k; }
 /* Stable linked entries preserve deterministic enumeration order. A bucket array
    provides average O(1) lookup; resizing never invalidates entry addresses. */

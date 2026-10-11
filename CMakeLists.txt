@@ -286,3 +286,9 @@ if(FVM_BUILD_TESTS)
   target_link_libraries(flashvm_metamethod_tables flashvm)
   add_test(NAME flashvm_metamethod_tables COMMAND flashvm_metamethod_tables)
 endif()
+
+# Test the independent C++98 string and hash-key implementation.
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_detail_string tests/detail_string.cpp)
+  add_test(NAME flashvm_detail_string COMMAND flashvm_detail_string)
+endif()

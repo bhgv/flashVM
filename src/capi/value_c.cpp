@@ -70,7 +70,7 @@ FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_V
     unsigned int depth=0;
     if (!c || !o || o->owner!=c || !name || !out) return FVM_INVALID_ARGUMENT;
     while (o && depth++<1024) {
-        fvm_detail::map<std::string,FVM_Value>::iterator it=o->properties.find(name);
+        fvm_detail::map<fvm_detail::string,FVM_Value>::iterator it=o->properties.find(name);
         if (it!=o->properties.end()) { *out=it->second; return FVM_OK; }
         o=o->prototype;
     }
@@ -78,11 +78,11 @@ FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_V
     o=receiver;
     for (depth=0;o && depth<1024;++depth) {
         if (!o->metatable) break;
-        fvm_detail::map<std::string,FVM_Value>::iterator m=o->metatable->properties.find("__index");
+        fvm_detail::map<fvm_detail::string,FVM_Value>::iterator m=o->metatable->properties.find("__index");
         if (m==o->metatable->properties.end()) break;
         if (m->second.type!=FVM_VALUE_OBJECT || !m->second.object) break;
         o=m->second.object;
-        fvm_detail::map<std::string,FVM_Value>::iterator it=o->properties.find(name);
+        fvm_detail::map<fvm_detail::string,FVM_Value>::iterator it=o->properties.find(name);
         if (it!=o->properties.end()) { *out=it->second; return FVM_OK; }
     }
     if (depth==1024) return FVM_ERROR;
@@ -97,7 +97,7 @@ FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const
     /* An existing own property is always written directly. */
     if (o->properties.find(name)==o->properties.end()) {
         while (o->metatable && depth++<1024) {
-            fvm_detail::map<std::string,FVM_Value>::iterator m=o->metatable->properties.find("__newindex");
+            fvm_detail::map<fvm_detail::string,FVM_Value>::iterator m=o->metatable->properties.find("__newindex");
             if (m==o->metatable->properties.end() || m->second.type!=FVM_VALUE_OBJECT || !m->second.object) break;
             o=m->second.object;
             if (o->properties.find(name)!=o->properties.end()) break;
@@ -122,7 +122,7 @@ FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name, u
     unsigned int i;
     if (!c || !self || self->owner!=c || !name || !out || (argc && !argv)) return FVM_INVALID_ARGUMENT;
     for (i=0;i<argc;++i) if (valid_value(c,&argv[i])!=FVM_OK) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<std::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
     if (it==c->functions.end()) return FVM_UNSUPPORTED;
     fvm_value_undefined(out);
     try { return it->second.callback(c,self,argc,argv,out,it->second.userdata); }
@@ -132,7 +132,7 @@ FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc, const F
     unsigned int i;
     if (!c || !name || !out || (argc && !argv)) return FVM_INVALID_ARGUMENT;
     for (i=0;i<argc;++i) if (valid_value(c,&argv[i])!=FVM_OK) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<std::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
     if (it==c->functions.end()) return FVM_UNSUPPORTED;
     fvm_value_undefined(out);
     try { return it->second.callback(c,c->global,argc,argv,out,it->second.userdata); }

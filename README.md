@@ -173,3 +173,7 @@ See `doc/TABLES_DEBUG.md` and `examples/embedding/tables_debug/` for C89 table a
 
 See [custom containers and metatables](doc/CUSTOM_CONTAINERS.md) for the
 C++98 hash-table/vector implementation, C89 example and current limitations.
+
+### Internal container replacements
+
+The C++98 runtime uses private string/vector/hash-map implementations in `src/details/` instead of `std::string`, `std::vector` and `std::map`. See [English technical documentation](doc/INTERNAL_CONTAINERS.md) and [Russian translation](doc/INTERNAL_CONTAINERS.ru.md) for semantics, caveats, hybrid-table status and examples.

@@ -57,7 +57,7 @@ FVM_Result fvm_table_indexed_count(FVM_Context *c,FVM_Object *o,size_t *out) {
 }
 FVM_Result fvm_table_named_at(FVM_Context *c,FVM_Object *o,size_t index,const char **name,FVM_Value *out) {
     if (!valid(c,o) || !name || !out || index>=o->properties.size()) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<std::string,FVM_Value>::const_iterator it=o->properties.begin();
+    fvm_detail::map<fvm_detail::string,FVM_Value>::const_iterator it=o->properties.begin();
     while(index--) ++it;
     *name=it->first.c_str(); *out=it->second; return FVM_OK;
 }
@@ -81,7 +81,7 @@ FVM_Result fvm_debug_native_function_count(FVM_Context *c,size_t *out) {
 }
 FVM_Result fvm_debug_native_function_at(FVM_Context *c,size_t i,const char **out) {
     if (!c || !out || i>=c->functions.size()) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<std::string,FVM_NativeEntry>::const_iterator it=c->functions.begin();
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::const_iterator it=c->functions.begin();
     while(i--) ++it;
     *out=it->first.c_str(); return FVM_OK;
 }
@@ -91,7 +91,7 @@ FVM_Result fvm_debug_script_function_count(FVM_Context *c,size_t *out) {
 }
 FVM_Result fvm_debug_script_function_at(FVM_Context *c,size_t i,const char **out) {
     if (!c || !out || i>=c->script_functions.size()) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<std::string,FVM_ScriptFunction>::const_iterator it=c->script_functions.begin();
+    fvm_detail::map<fvm_detail::string,FVM_ScriptFunction>::const_iterator it=c->script_functions.begin();
     while(i--) ++it;
     *out=it->first.c_str(); return FVM_OK;
 }
