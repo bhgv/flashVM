@@ -2,6 +2,7 @@
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
 #include "flashvm/metamethod.h"
+#include "flashvm/table.h"
 #include "flashvm/worker.h"
 #include "../details/vector.hpp"
 #include "../details/string.hpp"
@@ -71,8 +72,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           const fvm_detail::vector<fvm_detail::string> *inherited);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
-static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn, unsigned int argc,
-                              const FVM_Value *args, FVM_Object *receiver, FVM_Value *result)
+static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_ScriptFunction &fn,
+                              unsigned int argc, const FVM_Value *args, FVM_Object *receiver,
+                              FVM_Value *result)
 {
     if (c->script_depth >= 64)
         return FVM_ERROR;
@@ -101,10 +103,41 @@ static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn, unsi
     {
         return FVM_OUT_OF_MEMORY;
     }
-    ++c->script_depth;
-    FVM_Result status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame,
-                                receiver, &snapshot.constants);
-    --c->script_depth;
+    struct DebugFrame
+    {
+        FVM_Context *context;
+        fvm_detail::string function, source;
+        unsigned long line, offset;
+        unsigned int depth;
+        explicit DebugFrame(FVM_Context *c)
+            : context(c), function(c->debug_function), source(c->debug_source), line(c->debug_line),
+              offset(c->debug_offset), depth(c->script_depth)
+        {
+        }
+        ~DebugFrame()
+        {
+            context->debug_function.swap(function);
+            context->debug_source.swap(source);
+            context->debug_line = line;
+            context->debug_offset = offset;
+            context->script_depth = depth;
+        }
+    };
+    FVM_Result status;
+    try
+    {
+        DebugFrame debug(c);
+        c->debug_function = name;
+        c->debug_line = 0;
+        ++c->script_depth;
+        status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame, receiver,
+                         &snapshot.constants);
+        --c->script_depth;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
     /* A returned bytecode literal must outlive the function snapshot. */
     if (status == FVM_OK && result && result->type == FVM_VALUE_STRING)
     {
@@ -202,6 +235,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         while (pc < actions.size())
         {
             const Action &a = actions[pc];
+            fvm_debug_update_location(c, (unsigned long)a.offset);
             ++steps;
             if (c->runtime->config.instruction_limit &&
                 steps > c->runtime->config.instruction_limit)
@@ -433,11 +467,20 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x4e)
             { /* GetMember */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
+                if (stack.size() < 2)
                     return FVM_ERROR;
+                const FVM_Value &owner = stack[stack.size() - 2];
+                const FVM_Value &key = stack.back();
                 FVM_Value v;
-                FVM_Result r =
-                    fvm_value_get_property(c, &stack[stack.size() - 2], stack.back().string, &v);
+                FVM_Result r;
+                if (key.type == FVM_VALUE_STRING)
+                    r = fvm_value_get_property(c, &owner, key.string, &v);
+                else if (owner.type == FVM_VALUE_OBJECT && key.type == FVM_VALUE_NUMBER &&
+                         key.number >= 0 && key.number <= 4294967295.0 &&
+                         key.number == std::floor(key.number))
+                    r = fvm_table_get_index(c, owner.object, (unsigned long)key.number, &v);
+                else
+                    return FVM_ERROR;
                 if (r != FVM_OK)
                     return r;
                 stack.pop_back();
@@ -445,10 +488,20 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x4f)
             { /* SetMember */
-                if (stack.size() < 3 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
+                if (stack.size() < 3)
                     return FVM_ERROR;
-                FVM_Result r = fvm_value_set_property(
-                    c, &stack[stack.size() - 3], stack[stack.size() - 2].string, &stack.back());
+                const FVM_Value &owner = stack[stack.size() - 3];
+                const FVM_Value &key = stack[stack.size() - 2];
+                FVM_Result r;
+                if (key.type == FVM_VALUE_STRING)
+                    r = fvm_value_set_property(c, &owner, key.string, &stack.back());
+                else if (owner.type == FVM_VALUE_OBJECT && key.type == FVM_VALUE_NUMBER &&
+                         key.number >= 0 && key.number <= 4294967295.0 &&
+                         key.number == std::floor(key.number))
+                    r = fvm_table_set_index(c, owner.object, (unsigned long)key.number,
+                                            &stack.back());
+                else
+                    return FVM_ERROR;
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - 3);
@@ -638,8 +691,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (lookup != FVM_OK && lookup != FVM_NOT_FOUND)
                     return lookup;
                 if (lookup == FVM_NOT_FOUND && script != c->script_functions.end())
-                    r = call_script(c, script->second, argc, argc ? &args[0] : 0, receiver,
-                                    &result);
+                    r = call_script(c, script->first.c_str(), script->second, argc,
+                                    argc ? &args[0] : 0, receiver, &result);
                 else
                     r = fvm_object_call(c, receiver, name.c_str(), argc, argc ? &args[0] : 0,
                                         &result);
@@ -667,7 +720,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     c->script_functions.find(name);
                 if (fn != c->script_functions.end())
                 {
-                    r = call_script(c, fn->second, argc, argc ? &args[0] : 0, c->global, &result);
+                    r = call_script(c, fn->first.c_str(), fn->second, argc, argc ? &args[0] : 0,
+                                    c->global, &result);
                 }
                 else
                     r = fvm_call(c, name.c_str(), argc, argc ? &args[0] : 0, &result);
@@ -779,5 +833,5 @@ extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object
         c->script_functions.find(name);
     if (it == c->script_functions.end())
         return FVM_NOT_FOUND;
-    return call_script(c, it->second, argc, args, self ? self : c->global, out);
+    return call_script(c, name, it->second, argc, args, self ? self : c->global, out);
 }

@@ -46,10 +46,24 @@ extern "C"
         *out_context = 0;
         if (!runtime)
             return FVM_INVALID_ARGUMENT;
-        try { context = new (std::nothrow) FVM_Context; }
-        catch (...) { return FVM_OUT_OF_MEMORY; }
+        try
+        {
+            context = new (std::nothrow) FVM_Context;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
         if (!context)
             return FVM_OUT_OF_MEMORY;
+        context->identity = fvm_sync_next_identity();
+        if (!context->identity)
+        {
+            delete context;
+            return FVM_ERROR;
+        }
+        context->debug_line = context->debug_offset = 0;
+        context->transfer_resources = 0;
         context->worker = 0;
         context->standard_library = false;
         context->standard_text_library = false;
@@ -82,6 +96,7 @@ extern "C"
             return;
         context->destroying = true;
         context->gc_collecting = true;
+        fvm_mutex_context_cleanup(context);
         for (size_t i = 0; i < context->objects.size(); ++i)
             fvm_meta_finalize(context, context->objects[i]);
         for (size_t i = 0; i < context->objects.size(); ++i)

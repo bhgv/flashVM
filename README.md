@@ -1,5 +1,5 @@
-Development version: **0.4** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.4 ` and an English description. Increase the subversion before each
+Development version: **0.5** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.5 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.4** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.4 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.5** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.5 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -341,3 +341,5 @@ Without CMake on Linux, run `python3 scripts/check.py`; add `--sanitize` for ASa
 
 File channels and value metatables: [English](doc/FILE_CHANNELS.md), [Russian](doc/FILE_CHANNELS.ru.md).
 This checkpoint uses ABI 2; rebuild native clients. Test evidence and limitations: [English](doc/FILE_CHANNELS_CHECKPOINT.md), [Russian](doc/FILE_CHANNELS_CHECKPOINT.ru.md).
+
+Shared mutexes and channel debugging: [English](doc/MUTEX_CHANNEL_DEBUG.md) / [Русский](doc/MUTEX_CHANNEL_DEBUG.ru.md).

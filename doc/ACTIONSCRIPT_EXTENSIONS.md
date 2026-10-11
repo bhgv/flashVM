@@ -2,9 +2,9 @@
 
 ## Installation and dispatch
 
-Call `fvm_extensions_install(context)` before executing AVM1. It installs four
-context-owned global namespace objects: `gc`, `thread`, `channel`, `metatable`. Installation
-is idempotent when all four remain installed; conflicting or partially replaced
+Call `fvm_extensions_install(context)` before executing AVM1. It installs five
+context-owned global namespace objects: `gc`, `thread`, `channel`, `metatable`, `mutex`. Installation
+is idempotent when all five remain installed; conflicting or partially replaced
 globals return `FVM_INVALID_ARGUMENT`, without overwriting user globals. Ordinary
 contexts remain unchanged until installation. The C89 interface is declared in
 `flashvm/extensions.h`; the implementation is C++98 and uses internal containers.
@@ -101,7 +101,7 @@ reclamation/destruction after a successful send is safe. Limits and the supporte
 [FILE_CHANNELS.md](FILE_CHANNELS.md). Since development 0.3 snapshots have a bounded,
 versioned pointer-free binary format that is also used by file channels.
 Boxed Boolean, Math, TextFormat and host-created TextField state have codecs;
-application native callbacks require stable registered identities. Live resource
+application native callbacks require stable registered identities. Mutex/channel capabilities are shared through memory queues; other live resource
 handles and arbitrary closures remain unsupported. Plain receive leaves graph
 packets in the queue; context-aware receive decodes them transactionally and
 consumes rejected records. TCP/UDP/TLS transports remain future work.
@@ -127,3 +127,5 @@ tested extension to the documented AVM1 subset, not full Flash Player or arbitra
 ActionScript compatibility. Strings retain context lifetime; LeakSanitizer,
 allocation-failure injection throughout the VM and native Windows/macOS/Android
 runtime validation remain outstanding.
+
+Shared mutex/channel transfer and debugger: [English](MUTEX_CHANNEL_DEBUG.md) / [Русский](MUTEX_CHANNEL_DEBUG.ru.md).

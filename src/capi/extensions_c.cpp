@@ -1,5 +1,6 @@
 #include "../core/runtime.hpp"
 #include "flashvm/extensions.h"
+#include "flashvm/mutex.h"
 #include "flashvm/standard.h"
 #include "flashvm/gc.h"
 #include "flashvm/avm1.h"
@@ -24,12 +25,16 @@ enum
 };
 struct ScriptTask
 {
+    unsigned long identity;
     FVM_Worker *handle;
     bool standard_library;
     fvm_detail::string name;
+    fvm_detail::vector<FVM_SourceLocation> locations;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> functions;
     FVM_Channel *shared, *input, *output;
-    ScriptTask() : handle(0), standard_library(false), shared(0), input(0), output(0)
+    ScriptTask()
+        : identity(fvm_sync_next_identity()), handle(0), standard_library(false), shared(0),
+          input(0), output(0)
     {
     }
 };
@@ -118,12 +123,30 @@ GC_WRAPPER(gc_step, 1)
 GC_WRAPPER(gc_mode, 2)
 GC_WRAPPER(gc_state, 3)
 GC_WRAPPER(gc_count, 4)
+struct ChannelWaitScope
+{
+    void *wait;
+    ChannelWaitScope() : wait(0)
+    {
+    }
+    ~ChannelWaitScope()
+    {
+        fvm_debug_channel_wait_end(wait);
+    }
+    bool record(FVM_Context *c, FVM_Channel *ch, int sending)
+    {
+        if (!wait)
+            wait = fvm_debug_channel_wait_begin(c, ch, sending);
+        return wait != 0;
+    }
+};
 static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a,
                              FVM_Value *out, int op)
 {
     if (self->resource_kind != CHANNEL || !self->resource)
         return FVM_INVALID_ARGUMENT;
     FVM_Channel *ch = (FVM_Channel *)self->resource;
+    ChannelWaitScope wait;
     FVM_Result r;
     unsigned long capacity;
     size_t pending;
@@ -137,7 +160,11 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
         {
             r = fvm_channel_send_value(c, ch, &a[0], 0);
             if (r == FVM_NOT_FOUND && op == 0 && !stopped(c))
+            {
+                if (!wait.record(c, ch, 1))
+                    return FVM_OUT_OF_MEMORY;
                 fvm_port_thread_sleep_us(1000);
+            }
             else
                 break;
         } while (true);
@@ -163,7 +190,11 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
             if (r == FVM_NOT_FOUND && op == 2 && file)
                 return FVM_ERROR;
             if (r == FVM_NOT_FOUND && op == 2 && !stopped(c))
+            {
+                if (!wait.record(c, ch, 0))
+                    return FVM_OUT_OF_MEMORY;
                 fvm_port_thread_sleep_us(1000);
+            }
             else
                 break;
         } while (true);
@@ -358,9 +389,26 @@ WORKER_WRAPPER(w_stop, 1)
 WORKER_WRAPPER(w_state, 2)
 WORKER_WRAPPER(w_join, 3)
 WORKER_WRAPPER(w_ret, 4)
+static FVM_Result worker_id(FVM_Context *, FVM_Object *self, unsigned int n, const FVM_Value *,
+                            FVM_Value *out, void *)
+{
+    if (n || self->resource_kind != WORKER || !self->resource)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_number(out, (double)((ScriptTask *)self->resource)->identity);
+    return FVM_OK;
+}
+static FVM_Result thread_id(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
+                            FVM_Value *out, void *)
+{
+    if (n)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_number(out, (double)c->identity);
+    return FVM_OK;
+}
 static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *out, void *ud)
 {
     ScriptTask *t = (ScriptTask *)ud;
+    c->identity = t->identity;
     c->worker = t->handle;
     if (t->standard_library)
     {
@@ -371,6 +419,7 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
     try
     {
         c->script_functions = t->functions;
+        c->debug_locations = t->locations;
     }
     catch (...)
     {
@@ -423,9 +472,15 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
     {
         return FVM_OUT_OF_MEMORY;
     }
+    if (!t->identity)
+    {
+        delete t;
+        return FVM_ERROR;
+    }
     try
     {
         t->name = a[0].string;
+        t->locations = c->debug_locations;
         t->functions = c->script_functions;
     }
     catch (...)
@@ -482,6 +537,9 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
         method(o, "state", w_state, 2);
         method(o, "join", w_join, 3);
         method(o, "ret", w_ret, 4);
+        r = fvm_object_define_accessor_rooted(c, o, "id", worker_id, 0, 0, 0);
+        if (r != FVM_OK)
+            return r;
     }
     catch (...)
     {
@@ -584,6 +642,12 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
     if (!c || !ch || !out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
+    for (size_t i = 0; i < c->objects.size(); ++i)
+        if (c->objects[i]->resource_kind == CHANNEL && c->objects[i]->resource == ch)
+        {
+            *out = c->objects[i];
+            return FVM_OK;
+        }
     FVM_Object *o = 0;
     FVM_Result r = fvm_object_create(c, &o);
     if (r != FVM_OK)
@@ -612,41 +676,191 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
     *out = o;
     return FVM_OK;
 }
+namespace
+{
+void release_mutex(void *p)
+{
+    fvm_mutex_release((FVM_Mutex *)p);
+}
+FVM_Result mutex_state(FVM_Context *, FVM_Object *s, unsigned int n, const FVM_Value *,
+                       FVM_Value *out, void *)
+{
+    if (n || s->resource_kind != 8 || !s->resource)
+        return FVM_INVALID_ARGUMENT;
+    int state = 0;
+    FVM_Result r = fvm_mutex_touch((FVM_Mutex *)s->resource, &state);
+    fvm_value_number(out, state);
+    return r;
+}
+FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
+                        FVM_Value *out, void *)
+{
+    if (n || s->resource_kind != 8 || !s->resource)
+        return FVM_INVALID_ARGUMENT;
+    unsigned long origin = fvm_mutex_origin((FVM_Mutex *)s->resource);
+    if (origin == c->identity)
+        return fvm_value_string(out, "this");
+    fvm_value_number(out, (double)origin);
+    return FVM_OK;
+}
+FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
+                     FVM_Value *out, void *)
+{
+    if (n || s->resource_kind != 8 || !s->resource)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result r = fvm_mutex_set(c, (FVM_Mutex *)s->resource, 1);
+    fvm_value_boolean(out, r == FVM_OK);
+    return r;
+}
+FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
+                       FVM_Value *out, void *)
+{
+    if (n || s->resource_kind != 8 || !s->resource)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result r = fvm_mutex_reset(c, (FVM_Mutex *)s->resource);
+    fvm_value_boolean(out, r == FVM_OK);
+    return r;
+}
+FVM_Result mutex_touch(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
+                       FVM_Value *out, void *u)
+{
+    FVM_Result r = mutex_state(c, s, n, a, out, u);
+    if (r == FVM_OK)
+        fvm_value_boolean(out, out->number != 0);
+    return r;
+}
+FVM_Result mutex_new(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
+                     FVM_Value *out, void *)
+{
+    if (n)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Mutex *m = 0;
+    FVM_Object *o = 0;
+    FVM_Result r = fvm_mutex_create(c, &m);
+    if (r == FVM_OK)
+        r = fvm_extensions_wrap_mutex(c, m, &o);
+    fvm_mutex_release(m);
+    if (r == FVM_OK)
+    {
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = o;
+    }
+    return r;
+}
+FVM_Result mutex_list(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *,
+                      FVM_Value *out, void *)
+{
+    if (n)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *list = 0;
+    FVM_Result r = fvm_object_create(c, &list);
+    if (r != FVM_OK)
+        return r;
+    try
+    {
+        unsigned long count = 0;
+        for (size_t i = 0; i < c->objects.size(); ++i)
+        {
+            FVM_Object *o = c->objects[i];
+            if (o->resource_kind == 8 && o->resource)
+            {
+                FVM_Value v;
+                fvm_value_undefined(&v);
+                v.type = FVM_VALUE_OBJECT;
+                v.object = o;
+                list->indexed[count++] = v;
+            }
+        }
+        FVM_Value length;
+        fvm_value_number(&length, count);
+        list->properties["length"] = length;
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = list;
+        return FVM_OK;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+} // namespace
+extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FVM_Object **out)
+{
+    if (!c || !m || !out || c->destroying)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    /* Repeated receipt in one interpreter preserves wrapper identity. */
+    for (size_t i = 0; i < c->objects.size(); ++i)
+        if (c->objects[i]->resource_kind == 8 && c->objects[i]->resource == m)
+        {
+            *out = c->objects[i];
+            return FVM_OK;
+        }
+    FVM_Object *o = 0;
+    FVM_Result r = fvm_object_create(c, &o);
+    if (r != FVM_OK)
+        return r;
+    r = fvm_mutex_retain(m);
+    if (r != FVM_OK)
+        return r;
+    o->resource_kind = 8;
+    o->resource = m;
+    o->release_resource = release_mutex;
+    try
+    {
+        method(o, "set", mutex_set, 0);
+        method(o, "reset", mutex_reset, 0);
+        method(o, "touch", mutex_touch, 0);
+        r = fvm_object_define_accessor_rooted(c, o, "state", mutex_state, 0, 0, 0);
+        if (r == FVM_OK)
+            r = fvm_object_define_accessor_rooted(c, o, "origin", mutex_origin, 0, 0, 0);
+    }
+    catch (...)
+    {
+        r = FVM_OUT_OF_MEMORY;
+    }
+    if (r == FVM_OK)
+        *out = o;
+    return r;
+}
 extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
 {
     if (!c || c->destroying)
         return FVM_INVALID_ARGUMENT;
-    const char *names[4] = {"gc", "thread", "channel", "metatable"};
-    FVM_Object *objects[4];
+    const char *names[5] = {"gc", "thread", "channel", "metatable", "mutex"};
+    FVM_Object *objects[5];
     FVM_Value v;
     int existing = 0;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         if (c->global->properties.find(names[i]) != c->global->properties.end())
         {
             v = c->global->properties.find(names[i])->second;
             if (v.type != FVM_VALUE_OBJECT ||
-                v.object->resource_kind != (i == 3 ? 7 : GC_NAMESPACE + i))
+                v.object->resource_kind != (i == 4 ? 9 : (i == 3 ? 7 : GC_NAMESPACE + i)))
                 return FVM_INVALID_ARGUMENT;
             ++existing;
         }
     }
     if (existing)
-        return existing == 4 ? FVM_OK : FVM_INVALID_ARGUMENT;
+        return existing == 5 ? FVM_OK : FVM_INVALID_ARGUMENT;
     try
     {
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 5; ++i)
         {
             FVM_Result r = fvm_object_create(c, &objects[i]);
             if (r != FVM_OK)
                 return r;
-            objects[i]->resource_kind = i == 3 ? 7 : GC_NAMESPACE + i;
+            objects[i]->resource_kind = i == 4 ? 9 : (i == 3 ? 7 : GC_NAMESPACE + i);
         }
         method(objects[0], "collect", gc_collect, 0, true);
         method(objects[0], "step", gc_step, 1, true);
         method(objects[0], "mode", gc_mode, 2, true);
         method(objects[0], "state", gc_state, 3, true);
         method(objects[0], "count", gc_count, 4, true);
+        method(objects[1], "id", thread_id, 0);
         method(objects[1], "run", run, 0);
         method(objects[1], "run_suspended", run_suspended, 1);
         method(objects[1], "join", join, 2);
@@ -657,10 +871,12 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
         method(objects[2], "create", create_channel, 0);
         method(objects[3], "attach", meta_attach, 0);
         method(objects[3], "get", meta_get, 0);
+        method(objects[4], "new", mutex_new, 0);
+        method(objects[4], "list", mutex_list, 0);
         /* Build globals transactionally so allocation failures cannot leave partial installation.
          */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 5; ++i)
         {
             fvm_value_undefined(&v);
             v.type = FVM_VALUE_OBJECT;

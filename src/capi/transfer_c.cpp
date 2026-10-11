@@ -1,28 +1,192 @@
 #include "../core/runtime.hpp"
 #include "../core/channel_packet.h"
+#include "../core/transfer_resource.hpp"
+#include "flashvm/extensions.h"
+#include "flashvm/mutex.h"
+#include "flashvm/debug.h"
+#include "../../ports/channel_sync.h"
+#include <climits>
 #include "flashvm/transfer.h"
 #include "flashvm/serialization.h"
 #include <new>
 #include <cstring>
 namespace
 {
+struct Resource
+{
+    int kind;
+    void *handle;
+};
+struct Packet;
+Packet *queued_packets = 0;
+void unregister_packet(Packet *);
 struct Packet
 {
+    Packet *next;
+    FVM_Channel *target;
+    fvm_detail::vector<Resource> resources;
+    unsigned long references;
     unsigned char *data;
     size_t size;
-    Packet() : data(0), size(0)
+    Packet() : next(0), target(0), references(1), data(0), size(0)
     {
     }
     ~Packet()
     {
+        unregister_packet(this);
         fvm_serialized_free(data);
+        for (size_t i = 0; i < resources.size(); ++i)
+            if (resources[i].kind == 8)
+                fvm_mutex_release((FVM_Mutex *)resources[i].handle);
+            else
+                fvm_channel_release((FVM_Channel *)resources[i].handle);
     }
 };
+struct RegistryScope
+{
+    RegistryScope()
+    {
+        fvm_port_registry_lock();
+    }
+    ~RegistryScope()
+    {
+        fvm_port_registry_unlock();
+    }
+};
+void unregister_packet(Packet *p)
+{
+    RegistryScope guard;
+    if (!p->target)
+        return;
+    Packet **link = &queued_packets;
+    while (*link != p)
+        link = &(*link)->next;
+    *link = p->next;
+    p->target = 0;
+    p->next = 0;
+}
+/* Queue-owned capability cycles otherwise retain channels forever. Reserve an
+   edge before publishing the packet so concurrent opposite sends cannot race.
+   Only native handles are compared; no channel locks are taken under this lock. */
+FVM_Result register_packet(Packet *packet, FVM_Channel *target)
+{
+    RegistryScope guard;
+    try
+    {
+        fvm_detail::vector<FVM_Channel *> reachable;
+        for (size_t i = 0; i < packet->resources.size(); ++i)
+            if (packet->resources[i].kind == 1)
+                reachable.push_back((FVM_Channel *)packet->resources[i].handle);
+        for (size_t i = 0; i < reachable.size(); ++i)
+        {
+            if (reachable[i] == target)
+                return FVM_UNSUPPORTED;
+            for (Packet *p = queued_packets; p; p = p->next)
+                if (p->target == reachable[i])
+                    for (size_t j = 0; j < p->resources.size(); ++j)
+                        if (p->resources[j].kind == 1)
+                        {
+                            FVM_Channel *next = (FVM_Channel *)p->resources[j].handle;
+                            bool seen = false;
+                            for (size_t k = 0; k < reachable.size(); ++k)
+                                if (reachable[k] == next)
+                                    seen = true;
+                            if (!seen)
+                            {
+                                if (reachable.size() >= 65536)
+                                    return FVM_UNSUPPORTED;
+                                reachable.push_back(next);
+                            }
+                        }
+        }
+        packet->target = target;
+        packet->next = queued_packets;
+        queued_packets = packet;
+        return FVM_OK;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
 void release(void *packet)
 {
-    delete (Packet *)packet;
+    Packet *p = (Packet *)packet;
+    fvm_port_registry_lock();
+    bool last = --p->references == 0;
+    fvm_port_registry_unlock();
+    if (last)
+        delete p;
 }
+FVM_Result retain_packet(void *packet)
+{
+    Packet *p = (Packet *)packet;
+    fvm_port_registry_lock();
+    FVM_Result r = p->references == ULONG_MAX ? FVM_ERROR : FVM_OK;
+    if (r == FVM_OK)
+        ++p->references;
+    fvm_port_registry_unlock();
+    return r;
+}
+struct ResourceScope
+{
+    FVM_Context *context;
+    void *previous;
+    ResourceScope(FVM_Context *c, Packet *p) : context(c), previous(c->transfer_resources)
+    {
+        c->transfer_resources = p;
+    }
+    ~ResourceScope()
+    {
+        context->transfer_resources = previous;
+    }
+};
 } // namespace
+FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned long *token)
+{
+    if (!c->transfer_resources || !o->resource || (o->resource_kind != 1 && o->resource_kind != 8))
+        return FVM_UNSUPPORTED;
+    Packet *p = (Packet *)c->transfer_resources;
+    for (size_t i = 0; i < p->resources.size(); ++i)
+        if (p->resources[i].kind == o->resource_kind && p->resources[i].handle == o->resource)
+        {
+            *token = (unsigned long)i;
+            return FVM_OK;
+        }
+    Resource resource;
+    resource.kind = o->resource_kind;
+    resource.handle = o->resource;
+    FVM_Result r = resource.kind == 8 ? fvm_mutex_retain((FVM_Mutex *)resource.handle)
+                                      : fvm_channel_retain((FVM_Channel *)resource.handle);
+    if (r != FVM_OK)
+        return r;
+    try
+    {
+        p->resources.push_back(resource);
+    }
+    catch (...)
+    {
+        if (resource.kind == 8)
+            fvm_mutex_release((FVM_Mutex *)resource.handle);
+        else
+            fvm_channel_release((FVM_Channel *)resource.handle);
+        return FVM_OUT_OF_MEMORY;
+    }
+    *token = (unsigned long)p->resources.size() - 1;
+    return FVM_OK;
+}
+FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, unsigned long token,
+                                         FVM_Object **out)
+{
+    if (!c->transfer_resources)
+        return FVM_UNSUPPORTED;
+    Packet *p = (Packet *)c->transfer_resources;
+    if (token >= p->resources.size() || kind != (unsigned long)p->resources[token].kind)
+        return FVM_INVALID_ARGUMENT;
+    Resource &r = p->resources[token];
+    return kind == 8 ? fvm_extensions_wrap_mutex(c, (FVM_Mutex *)r.handle, out)
+                     : fvm_extensions_wrap_channel(c, (FVM_Channel *)r.handle, out);
+}
 extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *channel,
                                              const FVM_Value *value, int blocking)
 {
@@ -37,20 +201,28 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     Packet *packet = new (std::nothrow) Packet;
     if (!packet)
         return FVM_OUT_OF_MEMORY;
-    FVM_Result result = fvm_value_serialize(context, value, &packet->data, &packet->size);
+    FVM_Result result;
+    {
+        ResourceScope scope(context, file ? 0 : packet);
+        result = fvm_value_serialize(context, value, &packet->data, &packet->size);
+    }
     if (result == FVM_OK)
     {
         if (file)
             result = fvm_channel_file_send_record(channel, packet->data, packet->size);
         else
-            result = fvm_channel_packet_send(channel, packet, release, blocking);
+        {
+            result = register_packet(packet, channel);
+            if (result == FVM_OK)
+                result = fvm_channel_packet_send(channel, packet, release, retain_packet, blocking);
+        }
     }
     if (file || result != FVM_OK)
         delete packet;
     return result;
 }
-extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *context, FVM_Channel *channel,
-                                                FVM_Value *out, int blocking)
+static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_Value *out,
+                                int blocking, bool peek, size_t index)
 {
     int file = 0;
     void *raw = 0;
@@ -62,6 +234,8 @@ extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *context, FVM_Channe
     fvm_channel_is_file(channel, &file);
     if (file)
     {
+        if (peek)
+            return FVM_UNSUPPORTED;
         unsigned char *data = 0;
         size_t size = 0;
         result = fvm_channel_file_receive_record(channel, &data, &size, blocking);
@@ -70,13 +244,19 @@ extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *context, FVM_Channe
         fvm_serialized_free(data);
         return result;
     }
-    result = fvm_channel_receive_mixed(channel, &value, &raw, blocking);
+    result = peek ? fvm_channel_peek_mixed(channel, index, &value, &raw)
+                  : fvm_channel_receive_mixed(channel, &value, &raw, blocking);
     if (result != FVM_OK)
         return result;
     if (raw)
     {
         Packet *packet = (Packet *)raw;
-        result = fvm_value_deserialize(context, packet->data, packet->size, out);
+        if (!peek)
+            unregister_packet(packet);
+        {
+            ResourceScope scope(context, packet);
+            result = fvm_value_deserialize(context, packet->data, packet->size, out);
+        }
         release(packet);
         return result;
     }
@@ -113,4 +293,15 @@ extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *context, FVM_Channe
     if (result != FVM_OK)
         fvm_value_undefined(out);
     return result;
+}
+
+extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *c, FVM_Channel *ch, FVM_Value *out,
+                                                int blocking)
+{
+    return receive_value(c, ch, out, blocking, false, 0);
+}
+extern "C" FVM_Result fvm_debug_channel_message(FVM_Context *c, FVM_Channel *ch, size_t index,
+                                                FVM_Value *out)
+{
+    return receive_value(c, ch, out, 0, true, index);
 }

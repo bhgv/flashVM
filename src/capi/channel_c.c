@@ -1,4 +1,5 @@
 #include "flashvm/channel.h"
+#include "flashvm/debug.h"
 #include "../core/channel_packet.h"
 #include "../../ports/channel_sync.h"
 #include "../../ports/file_port.h"
@@ -9,12 +10,14 @@ typedef struct FVM_ChannelNode
 {
     void *packet;
     void (*release_packet)(void *);
+    FVM_Result (*retain_packet)(void *);
     FVM_Value value;
     char *owned_string;
     struct FVM_ChannelNode *next;
 } FVM_ChannelNode;
 struct FVM_Channel
 {
+    unsigned long identity;
     FVM_PortSync *sync;
     FVM_PortFile *file;
     int file_channel;
@@ -22,6 +25,7 @@ struct FVM_Channel
     FVM_ChannelNode *tail;
     char *last_string;
     int closed;
+    int frozen;
     size_t pending;
     size_t capacity;
     size_t references;
@@ -40,6 +44,13 @@ FVM_Result fvm_channel_create(FVM_Channel **out)
     {
         free(c);
         return FVM_OUT_OF_MEMORY;
+    }
+    c->identity = fvm_sync_next_identity();
+    if (!c->identity)
+    {
+        fvm_port_sync_destroy(c->sync);
+        free(c);
+        return FVM_ERROR;
     }
     c->references = 1;
     *out = c;
@@ -267,7 +278,8 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
     size_t len;
     if (!c || !v || v->type < FVM_VALUE_UNDEFINED || v->type >= FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
-    if (v->metatable) return FVM_UNSUPPORTED;
+    if (v->metatable)
+        return FVM_UNSUPPORTED;
     if (c->file_channel)
     {
         unsigned char *data;
@@ -339,9 +351,9 @@ FVM_Result fvm_channel_receive(FVM_Channel *c, FVM_Value *out)
     if (c->file_channel)
         return file_primitive(c, out, 1, 1);
     fvm_port_sync_lock(c->sync);
-    while (!c->head && !c->closed)
+    while ((!c->head || c->frozen) && !c->closed)
         fvm_port_sync_wait(c->sync);
-    if (!c->head)
+    if (!c->head || c->frozen)
     {
         fvm_port_sync_unlock(c->sync);
         return FVM_ERROR;
@@ -375,7 +387,7 @@ FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out)
     if (c->file_channel)
         return file_primitive(c, out, 0, 1);
     fvm_port_sync_lock(c->sync);
-    if (!c->head)
+    if (!c->head || c->frozen)
     {
         result = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
         fvm_port_sync_unlock(c->sync);
@@ -459,9 +471,9 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blockin
     if (c->file_channel)
         return file_primitive(c, out, blocking, 0);
     fvm_port_sync_lock(c->sync);
-    while (!c->head && !c->closed && blocking)
+    while ((!c->head || c->frozen) && !c->closed && blocking)
         fvm_port_sync_wait(c->sync);
-    if (!c->head)
+    if (!c->head || c->frozen)
     {
         r = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
         fvm_port_sync_unlock(c->sync);
@@ -493,10 +505,10 @@ void fvm_channel_message_release(FVM_Value *v)
 }
 
 FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)(void *),
-                                   int blocking)
+                                   FVM_Result (*retain)(void *), int blocking)
 {
     FVM_ChannelNode *n;
-    if (!c || !packet || !release)
+    if (!c || !packet || !release || !retain)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
         return FVM_UNSUPPORTED;
@@ -505,6 +517,7 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
         return FVM_OUT_OF_MEMORY;
     n->packet = packet;
     n->release_packet = release;
+    n->retain_packet = retain;
     fvm_port_sync_lock(c->sync);
     while (!c->closed && c->capacity && c->pending >= c->capacity)
     {
@@ -542,9 +555,9 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
     if (c->file_channel)
         return FVM_UNSUPPORTED;
     fvm_port_sync_lock(c->sync);
-    while (!c->head && !c->closed && blocking)
+    while ((!c->head || c->frozen) && !c->closed && blocking)
         fvm_port_sync_wait(c->sync);
-    if (!c->head)
+    if (!c->head || c->frozen)
     {
         r = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
         fvm_port_sync_unlock(c->sync);
@@ -561,4 +574,90 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
     fvm_port_sync_unlock(c->sync);
     free(n);
     return FVM_OK;
+}
+
+FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
+{
+    if (!c)
+        return FVM_INVALID_ARGUMENT;
+    if (c->file_channel)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(c->sync);
+    c->frozen = frozen != 0;
+    fvm_port_sync_signal_all(c->sync);
+    fvm_port_sync_unlock(c->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
+{
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (c->file_channel)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(c->sync);
+    out->identity = c->identity;
+    out->pending = c->pending;
+    out->capacity = c->capacity;
+    out->closed = c->closed;
+    out->frozen = c->frozen;
+    fvm_port_sync_unlock(c->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, void **packet)
+{
+    FVM_ChannelNode *n;
+    FVM_Result result;
+    char *copy;
+    size_t size;
+    if (!c || !out || !packet)
+        return FVM_INVALID_ARGUMENT;
+    *packet = 0;
+    fvm_value_undefined(out);
+    if (c->file_channel)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(c->sync);
+    n = c->head;
+    while (n && index)
+    {
+        n = n->next;
+        --index;
+    }
+    if (!n)
+    {
+        fvm_port_sync_unlock(c->sync);
+        return FVM_NOT_FOUND;
+    }
+    result = FVM_OK;
+    if (n->packet)
+    {
+        result = n->retain_packet(n->packet);
+        if (result == FVM_OK)
+            *packet = n->packet;
+    }
+    else
+    {
+        *out = n->value;
+        if (out->type == FVM_VALUE_STRING)
+        {
+            size = strlen(out->string) + 1;
+            copy = (char *)malloc(size);
+            if (!copy)
+            {
+                fvm_value_undefined(out);
+                result = FVM_OUT_OF_MEMORY;
+            }
+            else
+            {
+                memcpy(copy, out->string, size);
+                out->string = copy;
+            }
+        }
+    }
+    fvm_port_sync_unlock(c->sync);
+    return result;
+}
+
+unsigned long fvm_channel_identity(FVM_Channel *c)
+{
+    return c ? c->identity : 0;
 }

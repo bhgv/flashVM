@@ -12,6 +12,7 @@ extern "C"
      * Do not destroy a channel while other threads are using it.
      */
     typedef struct FVM_Channel FVM_Channel;
+    FVM_API unsigned long fvm_channel_identity(FVM_Channel *);
     FVM_API FVM_Result fvm_channel_create(FVM_Channel **out_channel);
     /* File messages use the same versioned serialization as graph channels.
      * r opens existing files, w truncates, rw (also NULL) preserves/creates and

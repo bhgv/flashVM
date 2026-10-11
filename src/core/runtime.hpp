@@ -10,6 +10,7 @@
 struct FVM_FontSource;
 struct FVM_Stack;
 struct FVM_Worker;
+struct FVM_Channel;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
 struct FVM_StackEntry
 {
@@ -36,7 +37,9 @@ struct FVM_AccessorEntry
     FVM_NativeFunction getter, setter;
     void *userdata;
     FVM_Object *root;
-    FVM_AccessorEntry() : getter(0), setter(0), userdata(0), root(0) {}
+    FVM_AccessorEntry() : getter(0), setter(0), userdata(0), root(0)
+    {
+    }
 };
 struct FVM_Object
 {
@@ -80,8 +83,18 @@ struct FVM_GCRootFrame
     fvm_detail::map<fvm_detail::string, FVM_Value> *locals;
     FVM_Object *receiver;
 };
+struct FVM_SourceLocation
+{
+    fvm_detail::string function, source;
+    unsigned long offset, line;
+};
 struct FVM_Context
 {
+    unsigned long identity;
+    unsigned long debug_line, debug_offset;
+    fvm_detail::string debug_source, debug_function;
+    fvm_detail::vector<FVM_SourceLocation> debug_locations;
+    void *transfer_resources;
     FVM_Worker *worker;
     bool standard_library;
     bool standard_text_library;
@@ -115,6 +128,11 @@ struct FVM_Context
     FVM_GCRootFrame *gc_frames;
     unsigned int gc_native_depth;
 };
+extern "C" unsigned long fvm_sync_next_identity();
+void fvm_debug_update_location(FVM_Context *, unsigned long);
+void *fvm_debug_channel_wait_begin(FVM_Context *, FVM_Channel *, int);
+void fvm_debug_channel_wait_end(void *);
+void fvm_mutex_context_cleanup(FVM_Context *);
 void fvm_standard_text_cleanup(FVM_Context *);
 /* Shared bounded method lookup for C API and AVM1. Noncallable own properties
  * shadow inherited callbacks; NOT_FOUND permits legacy named-function fallback. */
