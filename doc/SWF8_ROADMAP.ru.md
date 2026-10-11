@@ -18,7 +18,7 @@ Number/Boolean/isNaN/isFinite проверяется тестами; см. STAND
 | Контейнер SWF | Ограниченная загрузка FWS/CWS | Все теги SWF<=8, вложенные спрайты, корпус файлов и fuzzing |
 | AVM1 | Именованные функции, параметры, базовые вызовы/ветвления, все Push-типы, пул, 4 регистра, try/throw/finally, нативный instanceof | Полная семантика opcode, преобразования и версии, Function2/closures/with, переходы между блоками, перечисление/удаление, Unicode |
 | Временная шкала | DoAction верхнего уровня по порядку | Планировщик кадров, play/stop/goto, DoInitAction, MovieClip, порядок событий |
-| Стандартные объекты | Общие объекты/прототипы/host callbacks, нативные Boolean/Error | Object/Function/Array/String/Number/Date и полные Boolean/Math/Error со всеми API AS1/AS2 |
+| Стандартные объекты | Общие объекты/прототипы/host callbacks, нативные Boolean/Number/Error | Object/Function/Array/String/Date и полные Boolean/Number/Math/Error со всеми API AS1/AS2 |
 | Системные API | Часть host input/network | Stage/Key/Mouse/Selection/System, capabilities/security, broadcaster, XML/XMLSocket, LoadVars/SharedObject, таймеры и загрузка |
 | Графика/текст | Растеризация RGBA8-полигонов | Display list, depth/transform/masks, фигуры/morph/bitmap/gradient, шрифты/текст, drawing/filters/blends/hit test |
 | Медиа | Нет SWF-декодера/проигрывателя | Звук/кодеки/микшер, video/синхронизация, BitmapData и API SWF8 |

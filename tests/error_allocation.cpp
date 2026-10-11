@@ -81,7 +81,7 @@ int main()
             installed = true;
         else
         {
-            const char *names[] = {"Math", "Boolean", "Error", "NaN", "Infinity"};
+            const char *names[] = {"Math", "Boolean", "Number", "Error", "NaN", "Infinity"};
             for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
                 assert(fvm_get_global(c, names[i], &value) == FVM_OK &&
                        value.type == FVM_VALUE_UNDEFINED);

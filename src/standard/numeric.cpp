@@ -1,3 +1,4 @@
+#include "number_state.hpp"
 #include "error_state.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
@@ -470,6 +471,12 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
             *out = value->object->resource_result.boolean ? 1 : 0;
             return FVM_OK;
         }
+        if (value->object->resource_kind == 24 && value->object->resource_result_valid &&
+            value->object->resource_result.type == FVM_VALUE_NUMBER)
+        {
+            *out = value->object->resource_result.number;
+            return FVM_OK;
+        }
         return FVM_UNSUPPORTED;
     default:
         return FVM_INVALID_ARGUMENT;
@@ -524,7 +531,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
                 method.callback != boolean_string)
                 return FVM_INVALID_ARGUMENT;
-            return fvm_error_validate(c);
+            FVM_Result error_result = fvm_error_validate(c);
+            return error_result == FVM_OK ? fvm_number_validate(c) : error_result;
         }
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             if (c->global->properties.find(names[i]) != c->global->properties.end() ||
@@ -603,6 +611,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         method.callback = boolean_string;
         prototype->methods["toString"] = method;
         result = fvm_error_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_number_stage(c, globals, constructors);
         if (result != FVM_OK)
             return result;
         c->global->properties.swap(globals);
