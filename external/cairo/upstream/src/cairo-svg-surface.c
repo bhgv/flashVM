@@ -1462,7 +1462,7 @@ _cairo_svg_surface_emit_attr_value (cairo_output_stream_t *stream,
 
 	    if (*p == '&')
 		_cairo_output_stream_printf (stream, "&amp;");
-	    else // p == '"'
+	    else /*  p == '"' */
 		_cairo_output_stream_printf (stream, "&quot;");
 	}
     }

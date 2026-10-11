@@ -1,0 +1,51 @@
+# IJG ANSI C library, compression/decompression, arithmetic coding, memory I/O.
+set(FVM_LIBJPEG_SOURCES
+  upstream/jcapimin.c
+  upstream/jcapistd.c
+  upstream/jcarith.c
+  upstream/jctrans.c
+  upstream/jcparam.c
+  upstream/jdatadst.c
+  upstream/jcinit.c
+  upstream/jcmaster.c
+  upstream/jcmarker.c
+  upstream/jcmainct.c
+  upstream/jcprepct.c
+  upstream/jccoefct.c
+  upstream/jccolor.c
+  upstream/jcsample.c
+  upstream/jchuff.c
+  upstream/jcdctmgr.c
+  upstream/jfdctfst.c
+  upstream/jfdctflt.c
+  upstream/jfdctint.c
+  upstream/jdapimin.c
+  upstream/jdapistd.c
+  upstream/jdarith.c
+  upstream/jdtrans.c
+  upstream/jdatasrc.c
+  upstream/jdmaster.c
+  upstream/jdinput.c
+  upstream/jdmarker.c
+  upstream/jdhuff.c
+  upstream/jdmainct.c
+  upstream/jdcoefct.c
+  upstream/jdpostct.c
+  upstream/jddctmgr.c
+  upstream/jidctfst.c
+  upstream/jidctflt.c
+  upstream/jidctint.c
+  upstream/jdsample.c
+  upstream/jdcolor.c
+  upstream/jquant1.c
+  upstream/jquant2.c
+  upstream/jdmerge.c
+  upstream/jaricom.c
+  upstream/jcomapi.c
+  upstream/jutils.c
+  upstream/jerror.c
+  upstream/jmemmgr.c
+  upstream/jmemnobs.c
+)
+add_library(fvm_jpeg STATIC ${FVM_LIBJPEG_SOURCES})
+target_include_directories(fvm_jpeg PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/upstream ${CMAKE_CURRENT_SOURCE_DIR})

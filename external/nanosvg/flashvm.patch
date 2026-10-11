@@ -1,0 +1,56 @@
+--- a/nanosvg.h
++++ b/nanosvg.h
+@@ -109,7 +109,7 @@
+ enum NSVGpaintOrder {
+ 	NSVG_PAINT_FILL = 0x00,
+ 	NSVG_PAINT_MARKERS = 0x01,
+-	NSVG_PAINT_STROKE = 0x02,
++	NSVG_PAINT_STROKE = 0x02
+ };
+ 
+ typedef struct NSVGgradientStop {
+@@ -1121,12 +1121,25 @@
+ }
+ 
+ // We roll our own string to float because the std library one uses locale and messes things up.
++/* FlashVM: locale-independent C89 decimal accumulation avoids long long
++ * and C99 strtoll, including on 32-bit targets. */
++static double nsvg__decimalPart(const char* s, char** end)
++{
++    double value = 0.0;
++    while (nsvg__isdigit(*s)) {
++        value = value * 10.0 + (*s - '0');
++        ++s;
++    }
++    *end = (char*)s;
++    return value;
++}
++
+ static double nsvg__atof(const char* s)
+ {
+ 	char* cur = (char*)s;
+ 	char* end = NULL;
+ 	double res = 0.0, sign = 1.0;
+-	long long intPart = 0, fracPart = 0;
++	double intPart = 0, fracPart = 0;
+ 	char hasIntPart = 0, hasFracPart = 0;
+ 
+ 	// Parse optional sign
+@@ -1140,7 +1153,7 @@
+ 	// Parse integer part
+ 	if (nsvg__isdigit(*cur)) {
+ 		// Parse digit sequence
+-		intPart = strtoll(cur, &end, 10);
++		intPart = nsvg__decimalPart(cur, &end);
+ 		if (cur != end) {
+ 			res = (double)intPart;
+ 			hasIntPart = 1;
+@@ -1153,7 +1166,7 @@
+ 		cur++; // Skip '.'
+ 		if (nsvg__isdigit(*cur)) {
+ 			// Parse digit sequence
+-			fracPart = strtoll(cur, &end, 10);
++			fracPart = nsvg__decimalPart(cur, &end);
+ 			if (cur != end) {
+ 				res += (double)fracPart / pow(10.0, (double)(end - cur));
+ 				hasFracPart = 1;

@@ -1,0 +1,11 @@
+#ifndef CAIRO_FEATURES_H
+#define CAIRO_FEATURES_H
+/* FlashVM's portable, static, image/recording profile with optional PNG and SVG. */
+#define CAIRO_HAS_IMAGE_SURFACE 1
+#define CAIRO_HAS_RECORDING_SURFACE 1
+#define CAIRO_HAS_USER_FONT 1
+#if @FVM_CAIRO_IMAGE_CODECS@
+#define CAIRO_HAS_PNG_FUNCTIONS 1
+#define CAIRO_HAS_SVG_SURFACE 1
+#endif
+#endif

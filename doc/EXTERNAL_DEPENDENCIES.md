@@ -27,7 +27,9 @@ Cairo 1.18.4's upstream C11 build was not chosen; 1.16.0's selected core is comp
 and tested with explicit compatibility patches. Pins are reproducibility choices,
 not assertions that these are the newest releases or a complete upstream audit.
 
-Cairo GUI, GL, PNG, native fonts and PDF/PS/SVG are outside this profile; Pixman
+IMAGE_CODECS adds PNG/GIF/JPEG reading and writing and restricted SVG reading
+(NanoSVG) / writing (Cairo). See [image libraries](IMAGE_CODECS.md).
+Cairo GUI, GL, native fonts and PDF/PS remain disabled; Pixman
 assembler/SIMD is disabled. SQLite dynamic extension loading is disabled. FlashVM
 system adapters stay in `ports/`; upstream library platform internals remain in
 `external/`. No third-party source was reformatted wholesale. Windows, macOS

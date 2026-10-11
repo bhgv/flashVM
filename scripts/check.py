@@ -32,9 +32,14 @@ if 'GRAPHICS_AGG' in keys:
     flags += ['-Iexternal/agg/upstream/include', '-DFVM_HAS_AGG=1']
 if 'GRAPHICS_CAIRO' in keys:
     flags += ['-DFVM_HAS_CAIRO=1']
+if 'GRAPHICS_CAIRO' in keys or 'IMAGE_CODECS' in keys:
     for dependency, subdir in [('cairo', 'src'), ('pixman', 'pixman')]:
         flags += ['-Iexternal/' + dependency + '/upstream/' + subdir,
                   '-I' + str(generated / dependency)]
+if 'IMAGE_CODECS' in keys:
+    flags += ['-DFVM_HAS_IMAGE_CODECS=1', '-Iexternal/libpng/upstream',
+              '-Iexternal/giflib/upstream', '-Iexternal/libjpeg/upstream',
+              '-Iexternal/libjpeg', '-Iexternal/nanosvg/upstream']
 if 'SQLITE' in keys:
     flags += ['-Iexternal/sqlite/upstream', '-Iexternal/sqlite', '-DFVM_HAS_SQLITE=1']
 if args.sanitize:
@@ -60,10 +65,16 @@ sources += [root / 'external/zlib/upstream' / name for name in [
     'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]
 if 'GRAPHICS_AGG' in keys:
     sources += list(root.glob('external/agg/upstream/src/*.cpp'))
-if 'GRAPHICS_CAIRO' in keys:
+if 'GRAPHICS_CAIRO' in keys or 'IMAGE_CODECS' in keys:
     for dependency in ['cairo', 'pixman']:
         sources += cmake_sources(root / 'external' / dependency / 'CMakeLists.txt',
                                  'FVM_' + dependency.upper())
+if 'IMAGE_CODECS' in keys:
+    for dependency in ['libpng', 'giflib', 'libjpeg', 'nanosvg']:
+        sources += cmake_sources(root / 'external' / dependency / 'CMakeLists.txt',
+                                 'FVM_' + dependency.upper())
+    sources += [root / 'external/cairo/upstream/src' / name for name in
+                ['cairo-png.c', 'cairo-svg-surface.c']]
 if 'SQLITE' in keys:
     sources += [root / 'external/sqlite/upstream/sqlite3.c']
 else:
@@ -91,6 +102,12 @@ def compile_source(source):
         # config.h is private to each library; its directory must come first.
         compile_flags = ['-I' + str(generated / dependency)] + compile_flags
         compile_flags += ['-DHAVE_CONFIG_H=1', '-Iexternal/cairo/upstream']
+    if 'external/giflib/upstream/' in str(source):
+        compile_flags += ['-D_POSIX_C_SOURCE=200809L']
+    if 'external/libpng/upstream/' in str(source):
+        compile_flags += ['-DPNG_ARM_NEON_OPT=0', '-DPNG_POWERPC_VSX_OPT=0',
+                          '-DPNG_INTEL_SSE_OPT=0', '-DPNG_MIPS_MSA_OPT=0',
+                          '-DPNG_LOONGARCH_LSX_OPT=0']
     if source.name == 'sqlite3.c':
         compile_flags += ['-DSQLITE_THREADSAFE=1', '-DSQLITE_OMIT_LOAD_EXTENSION=1',
                           '-DSQLITE_DQS=0', '-DSQLITE_DEFAULT_MEMSTATUS=0',
@@ -118,7 +135,8 @@ try:
     programs = (sorted(root.glob('tests/*.c')) + sorted(root.glob('tests/*.cpp')) +
                 sorted(root.glob('examples/**/main.c')) + sorted(root.glob('examples/**/main.cpp')))
     programs = [source for source in programs
-                if ('SQLITE' in keys or 'sqlite' not in str(source))
+                if ('IMAGE_CODECS' in keys or 'image_codecs' not in str(source))
+                and ('SQLITE' in keys or 'sqlite' not in str(source))
                 and ('OS_PORTS' in keys or 'os_ports' not in str(source))
                 and ('RENDER_JOBS' in keys or not any(name in str(source)
                      for name in ['render_jobs', 'parallel_render']))]
@@ -136,7 +154,8 @@ try:
               'address_excluded_tests': ['tests/container_exceptions.cpp'] if args.sanitize else [],
               'leak_sanitizer': False if args.sanitize else None,
               'sqlite': 'bundled 3.50.4' if 'SQLITE' in keys else 'disabled',
-              'definitions': keys, 'platform': 'Linux'}
+              'definitions': keys, 'platform': 'Linux',
+              'image_codecs': ['libpng 1.6.59', 'giflib 5.2.2', 'libjpeg 9f', 'NanoSVG', 'Cairo PNG/SVG'] if 'IMAGE_CODECS' in keys else []}
     (output / 'test-results.json').write_text(json.dumps(report, indent=2) + '\n')
     suffix = '; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if args.sanitize else ''
     print('PASS: %d tests and examples; strict C89/C++98%s' % (len(passed), suffix))

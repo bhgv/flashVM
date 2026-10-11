@@ -1,0 +1,1280 @@
+--- a/dgif_lib.c
++++ b/dgif_lib.c
+@@ -31,7 +31,7 @@
+ 
+ /* avoid extra function call in case we use fread (TVT) */
+ static int InternalRead(GifFileType *gif, GifByteType *buf, int len) {
+-	// fprintf(stderr, "### Read: %d\n", len);
++	/*  fprintf(stderr, "### Read: %d\n", len); */
+ 	return (((GifFilePrivateType *)gif->Private)->Read
+ 	            ? ((GifFilePrivateType *)gif->Private)->Read(gif, buf, len)
+ 	            : fread(buf, 1, len,
+@@ -247,7 +247,7 @@
+ ******************************************************************************/
+ int DGifGetScreenDesc(GifFileType *GifFile) {
+ 	int BitsPerPixel;
+-	bool SortFlag;
++	GifBooleanType SortFlag;
+ 	GifByteType Buf[3];
+ 	GifFilePrivateType *Private = (GifFilePrivateType *)GifFile->Private;
+ 
+@@ -338,7 +338,7 @@
+ 		return GIF_ERROR;
+ 	}
+ 
+-	// fprintf(stderr, "### DGifGetRecordType: %02x\n", Buf);
++	/*  fprintf(stderr, "### DGifGetRecordType: %02x\n", Buf); */
+ 	switch (Buf) {
+ 	case DESCRIPTOR_INTRODUCER:
+ 		*Type = IMAGE_DESC_RECORD_TYPE;
+@@ -382,7 +382,7 @@
+ 		return GIF_ERROR;
+ 	}
+ 	BitsPerPixel = (Buf[0] & 0x07) + 1;
+-	GifFile->Image.Interlace = (Buf[0] & 0x40) ? true : false;
++	GifFile->Image.Interlace = (Buf[0] & 0x40) ? 1 : 0;
+ 
+ 	/* Setup the colormap */
+ 	if (GifFile->Image.ColorMap) {
+@@ -568,7 +568,7 @@
+ 	GifByteType Buf;
+ 	GifFilePrivateType *Private = (GifFilePrivateType *)GifFile->Private;
+ 
+-	// fprintf(stderr, "### -> DGifGetExtension:\n");
++	/*  fprintf(stderr, "### -> DGifGetExtension:\n"); */
+ 	if (!IS_READABLE(Private)) {
+ 		/* This file was NOT open for reading: */
+ 		GifFile->Error = D_GIF_ERR_NOT_READABLE;
+@@ -581,8 +581,8 @@
+ 		return GIF_ERROR;
+ 	}
+ 	*ExtCode = Buf;
+-	// fprintf(stderr, "### <- DGifGetExtension: %02x, about to call
+-	// next\n", Buf);
++	/*  fprintf(stderr, "### <- DGifGetExtension: %02x, about to call */
++	/*  next\n", Buf); */
+ 
+ 	return DGifGetExtensionNext(GifFile, Extension);
+ }
+@@ -596,12 +596,12 @@
+ 	GifByteType Buf;
+ 	GifFilePrivateType *Private = (GifFilePrivateType *)GifFile->Private;
+ 
+-	// fprintf(stderr, "### -> DGifGetExtensionNext\n");
++	/*  fprintf(stderr, "### -> DGifGetExtensionNext\n"); */
+ 	if (InternalRead(GifFile, &Buf, 1) != 1) {
+ 		GifFile->Error = D_GIF_ERR_READ_FAILED;
+ 		return GIF_ERROR;
+ 	}
+-	// fprintf(stderr, "### DGifGetExtensionNext sees %d\n", Buf);
++	/*  fprintf(stderr, "### DGifGetExtensionNext sees %d\n", Buf); */
+ 
+ 	if (Buf > 0) {
+ 		*Extension = Private->Buf; /* Use private unused buffer. */
+@@ -615,7 +615,7 @@
+ 	} else {
+ 		*Extension = NULL;
+ 	}
+-	// fprintf(stderr, "### <- DGifGetExtensionNext: %p\n", Extension);
++	/*  fprintf(stderr, "### <- DGifGetExtensionNext: %p\n", Extension); */
+ 
+ 	return GIF_OK;
+ }
+@@ -657,7 +657,7 @@
+ 	}
+ 
+ 	GCB->DisposalMode = DISPOSAL_UNSPECIFIED;
+-	GCB->UserInputFlag = false;
++	GCB->UserInputFlag = 0;
+ 	GCB->DelayTime = 0;
+ 	GCB->TransparentColor = NO_TRANSPARENT_COLOR;
+ 
+@@ -1151,13 +1151,14 @@
+  SavedImages may point to the spoilt image and null pointer buffers.
+ *******************************************************************************/
+ void DGifDecreaseImageCounter(GifFileType *GifFile) {
++	SavedImage *correct_saved_images;
+ 	GifFile->ImageCount--;
+ 	if (GifFile->SavedImages[GifFile->ImageCount].RasterBits != NULL) {
+ 		free(GifFile->SavedImages[GifFile->ImageCount].RasterBits);
+ 	}
+ 
+-	// Realloc array according to the new image counter.
+-	SavedImage *correct_saved_images = (SavedImage *)reallocarray(
++	/*  Realloc array according to the new image counter. */
++	correct_saved_images = (SavedImage *)reallocarray(
+ 	    GifFile->SavedImages, GifFile->ImageCount, sizeof(SavedImage));
+ 	if (correct_saved_images != NULL) {
+ 		GifFile->SavedImages = correct_saved_images;
+--- a/egif_lib.c
++++ b/egif_lib.c
+@@ -57,7 +57,7 @@
+  Returns a dynamically allocated GifFileType pointer which serves as the GIF
+  info record. The Error member is cleared if successful.
+ ******************************************************************************/
+-GifFileType *EGifOpenFileName(const char *FileName, const bool TestExistence,
++GifFileType *EGifOpenFileName(const char *FileName, const GifBooleanType TestExistence,
+                               int *Error) {
+ 
+ 	int FileHandle;
+@@ -131,7 +131,7 @@
+ 	Private->FileHandle = FileHandle;
+ 	Private->File = f;
+ 	Private->FileState = FILE_STATE_WRITE;
+-	Private->gif89 = false;
++	Private->gif89 = 0;
+ 
+ 	Private->Write = (OutputFunc)0;   /* No user write routine (MRB) */
+ 	GifFile->UserData = (void *)NULL; /* No user write handle (MRB) */
+@@ -188,7 +188,7 @@
+ 	Private->Write = writeFunc;   /* User write routine (MRB) */
+ 	GifFile->UserData = userData; /* User write handle (MRB) */
+ 
+-	Private->gif89 = false; /* initially, write GIF87 */
++	Private->gif89 = 0; /* initially, write GIF87 */
+ 
+ 	GifFile->Error = 0;
+ 
+@@ -218,7 +218,7 @@
+ 			    function == GRAPHICS_EXT_FUNC_CODE ||
+ 			    function == PLAINTEXT_EXT_FUNC_CODE ||
+ 			    function == APPLICATION_EXT_FUNC_CODE) {
+-				Private->gif89 = true;
++				Private->gif89 = 1;
+ 			}
+ 		}
+ 	}
+@@ -229,7 +229,7 @@
+ 		    function == GRAPHICS_EXT_FUNC_CODE ||
+ 		    function == PLAINTEXT_EXT_FUNC_CODE ||
+ 		    function == APPLICATION_EXT_FUNC_CODE) {
+-			Private->gif89 = true;
++			Private->gif89 = 1;
+ 		}
+ 	}
+ 
+@@ -242,12 +242,12 @@
+ 
+ /******************************************************************************
+  Set the GIF version. In the extremely unlikely event that there is ever
+- another version, replace the bool argument with an enum in which the
+- GIF87 value is 0 (numerically the same as bool false) and the GIF89 value
+- is 1 (numerically the same as bool true).  That way we'll even preserve
++ another version, replace the GifBooleanType argument with an enum in which the
++ GIF87 value is 0 (numerically the same as GifBooleanType 0) and the GIF89 value
++ is 1 (numerically the same as GifBooleanType 1).  That way we'll even preserve
+  object-file compatibility!
+ ******************************************************************************/
+-void EGifSetGifVersion(GifFileType *GifFile, const bool gif89) {
++void EGifSetGifVersion(GifFileType *GifFile, const GifBooleanType gif89) {
+ 	GifFilePrivateType *Private = (GifFilePrivateType *)GifFile->Private;
+ 
+ 	Private->gif89 = gif89;
+@@ -365,7 +365,7 @@
+  call to any of the pixel dump routines.
+ ******************************************************************************/
+ int EGifPutImageDesc(GifFileType *GifFile, const int Left, const int Top,
+-                     const int Width, const int Height, const bool Interlace,
++                     const int Width, const int Height, const GifBooleanType Interlace,
+                      const ColorMapObject *ColorMap) {
+ 	GifByteType Buf[3];
+ 	GifFilePrivateType *Private = (GifFilePrivateType *)GifFile->Private;
+--- a/getarg.c
++++ b/getarg.c
+@@ -119,7 +119,7 @@
+ 
+ #define SPACE_CHAR '|' /* The character not to print using HowTo. */
+ 
+-#define ARG_OK false
++#define ARG_OK 0
+ 
+ #define ISSPACE(x) ((x) <= ' ') /* Not conventional - but works fine! */
+ 
+@@ -141,7 +141,7 @@
+                                char ***argv);
+ static void GASetParamCount(const char *CtrlStr, const int Max,
+                             int *ParamCount);
+-static bool GAOptionExists(const char **argv_end, const char **argv);
++static GifBooleanType GAOptionExists(const char **argv_end, const char **argv);
+ 
+ /***************************************************************************
+  Allocate or die
+@@ -163,7 +163,7 @@
+  Routine to access the command line argument and interpret them:
+  Return ARG_OK (0) is case of successful parsing, error code else...
+ ***************************************************************************/
+-bool GAGetArgs(int argc, char **argv, char *CtrlStr, ...) {
++GifBooleanType GAGetArgs(int argc, char **argv, char *CtrlStr, ...) {
+ 
+ 	int i, ParamCount = 0;
+ 	void *Parameters[MAX_PARAM]; /* Save here parameter addresses. */
+@@ -181,14 +181,14 @@
+ 
+ 	argv++; /* Skip the program name (first in argv/c list). */
+ 	while (argv < (char **)argv_end) {
+-		bool Error = false;
++		GifBooleanType Error = 0;
+ 		if (!GAOptionExists(argv_end, (const char **)argv)) {
+ 			break; /* The loop. */
+ 		}
+ 		char *Option = *argv++;
+ 		if ((Error = GAUpdateParameters(
+ 		         Parameters, &ParamCount, Option, CtrlStrCopy, CtrlStr,
+-		         (char **)argv_end, &argv)) != false) {
++		         (char **)argv_end, &argv)) != 0) {
+ 			return Error;
+ 		}
+ 	}
+@@ -254,7 +254,7 @@
+                               char ***argv) {
+ 
+ 	int i;
+-	bool BooleanTrue = Option[2] != '-';
++	GifBooleanType BooleanTrue = Option[2] != '-';
+ 
+ 	if (Option[0] != '-') {
+ 		GAErrorToken = Option;
+@@ -282,7 +282,7 @@
+ 	                                            correct prm. */
+ 	i += 3;
+ 	/* Set boolean flag for that option. */
+-	*(bool *)Parameters[(*ParamCount)++] = BooleanTrue;
++	*(GifBooleanType *)Parameters[(*ParamCount)++] = BooleanTrue;
+ 	if (ISSPACE(CtrlStrCopy[i])) {
+ 		return ARG_OK; /* Only a boolean flag is needed. */
+ 	}
+@@ -465,14 +465,14 @@
+ 			TmpArray.FltArray[NumOfPrm] = xmalloc(sizeof(float));
+ 			ScanRes =
+ 			    sscanf(*((*argv)++), "%f",
+-			           // cppcheck-suppress invalidPointerCast
++			           /*  cppcheck-suppress invalidPointerCast */
+ 			           (float *)TmpArray.LngArray[NumOfPrm++]);
+ 			break;
+ 		case 'F':
+ 			TmpArray.DblArray[NumOfPrm] = xmalloc(sizeof(double));
+ 			ScanRes =
+ 			    sscanf(*((*argv)++), "%lf",
+-			           // cppcheck-suppress invalidPointerCast
++			           /*  cppcheck-suppress invalidPointerCast */
+ 			           (double *)TmpArray.LngArray[NumOfPrm++]);
+ 			break;
+ 		case 's':
+@@ -535,14 +535,14 @@
+  Routine to check if more option (i.e. first char == '-') exists in the
+  given list argc, argv:
+ ***************************************************************************/
+-static bool GAOptionExists(const char **argv_end, const char **argv) {
++static GifBooleanType GAOptionExists(const char **argv_end, const char **argv) {
+ 
+ 	while (argv < argv_end) {
+ 		if ((*argv++)[0] == '-') {
+-			return true;
+-		}
+-	}
+-	return false;
++			return 1;
++		}
++	}
++	return 0;
+ }
+ 
+ /***************************************************************************
+@@ -580,7 +580,7 @@
+ void GAPrintHowTo(char *CtrlStr) {
+ 
+ 	int i = 0;
+-	bool SpaceFlag;
++	GifBooleanType SpaceFlag;
+ 
+ 	fprintf(stderr, "Usage: ");
+ 	/* Print program name - first word in ctrl. str. (optional): */
+@@ -589,7 +589,7 @@
+ 	}
+ 
+ 	while (i < (int)strlen(CtrlStr)) {
+-		// cppcheck-suppress arrayIndexThenCheck
++		/*  cppcheck-suppress arrayIndexThenCheck */
+ 		while ((ISSPACE(CtrlStr[i])) && (i < (int)strlen(CtrlStr))) {
+ 			i++;
+ 		}
+@@ -597,7 +597,7 @@
+ 		case '%':
+ 			fprintf(stderr, " [-%c", CtrlStr[i++]);
+ 			i += 2; /* Skip the '%-' or '!- after the char! */
+-			SpaceFlag = true;
++			SpaceFlag = 1;
+ 			while (!ISCTRLCHAR(CtrlStr[i]) &&
+ 			       (i < (int)strlen(CtrlStr)) &&
+ 			       (!ISSPACE(CtrlStr[i]))) {
+@@ -608,7 +608,7 @@
+ 						fprintf(stderr, " %c",
+ 						        CtrlStr[i - 1]);
+ 					}
+-					SpaceFlag = false;
++					SpaceFlag = 0;
+ 				} else if (CtrlStr[i++] == SPACE_CHAR) {
+ 					fprintf(stderr, " ");
+ 				} else {
+@@ -627,7 +627,7 @@
+ 		case '!':
+ 			fprintf(stderr, " -%c", CtrlStr[i++]);
+ 			i += 2; /* Skip the '%-' or '!- after the char! */
+-			SpaceFlag = true;
++			SpaceFlag = 1;
+ 			while (!ISCTRLCHAR(CtrlStr[i]) &&
+ 			       (i < (int)strlen(CtrlStr)) &&
+ 			       (!ISSPACE(CtrlStr[i]))) {
+@@ -638,7 +638,7 @@
+ 						fprintf(stderr, " %c",
+ 						        CtrlStr[i - 1]);
+ 					}
+-					SpaceFlag = false;
++					SpaceFlag = 0;
+ 				} else if (CtrlStr[i++] == SPACE_CHAR) {
+ 					fprintf(stderr, " ");
+ 				} else {
+--- a/getarg.h
++++ b/getarg.h
+@@ -23,7 +23,7 @@
+ #define CMD_ERR_NumRead 4   /* Failed on reading number. */
+ #define CMD_ERR_AllSatis 5  /* Fail to satisfy (must-'!') option. */
+ 
+-bool GAGetArgs(int argc, char **argv, char *CtrlStr, ...);
++GifBooleanType GAGetArgs(int argc, char **argv, char *CtrlStr, ...);
+ void GAPrintErrMsg(int Error);
+ void GAPrintHowTo(char *CtrlStr);
+ 
+--- a/gif2rgb.c
++++ b/gif2rgb.c
+@@ -98,7 +98,7 @@
+ 			}
+ 		}
+ 	} else {
+-		OneFileFlag = true;
++		OneFileFlag = 1;
+ 
+ #ifdef _WIN32
+ 		_setmode(0, O_BINARY);
+@@ -170,7 +170,7 @@
+ 
+ 	if (EGifPutScreenDesc(GifFile, Width, Height, ExpColorMapSize, 0,
+ 	                      OutputColorMap) == GIF_ERROR ||
+-	    EGifPutImageDesc(GifFile, 0, 0, Width, Height, false, NULL) ==
++	    EGifPutImageDesc(GifFile, 0, 0, Width, Height, 0, NULL) ==
+ 	        GIF_ERROR) {
+ 		PrintGifError(Error);
+ 		exit(EXIT_FAILURE);
+@@ -198,7 +198,7 @@
+ /******************************************************************************
+  Close output file (if open), and exit.
+ ******************************************************************************/
+-static void RGB2GIF(bool OneFileFlag, int NumFiles, char *FileName,
++static void RGB2GIF(GifBooleanType OneFileFlag, int NumFiles, char *FileName,
+                     int ExpNumOfColors, int Width, int Height) {
+ 	int ColorMapSize;
+ 
+@@ -269,7 +269,7 @@
+ 			}
+ 		}
+ 	} else {
+-		OneFileFlag = true;
++		OneFileFlag = 1;
+ 
+ #ifdef _WIN32
+ 		_setmode(1, O_BINARY);
+@@ -350,7 +350,7 @@
+ 	}
+ }
+ 
+-static void GIF2RGB(int NumFiles, char *FileName, bool OneFileFlag,
++static void GIF2RGB(int NumFiles, char *FileName, GifBooleanType OneFileFlag,
+                     char *OutFileName) {
+ 	int i, j, Size, Row, Col, Width, Height, ExtCode, Count;
+ 	GifRecordType RecordType;
+@@ -532,16 +532,16 @@
+  * Interpret the command line and scan the given GIF file.
+  ******************************************************************************/
+ int main(int argc, char **argv) {
+-	bool Error, OutFileFlag = false, ColorFlag = false, SizeFlag = false,
+-	            GifNoisyPrint = false;
++	GifBooleanType Error, OutFileFlag = 0, ColorFlag = 0, SizeFlag = 0,
++	            GifNoisyPrint = 0;
+ 	int NumFiles, Width = 0, Height = 0, ExpNumOfColors = 8;
+ 	char *OutFileName, **FileName = NULL;
+-	static bool OneFileFlag = false, HelpFlag = false;
++	static GifBooleanType OneFileFlag = 0, HelpFlag = 0;
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &ColorFlag,
+ 	                       &ExpNumOfColors, &SizeFlag, &Width, &Height,
+ 	                       &OneFileFlag, &OutFileFlag, &OutFileName,
+-	                       &HelpFlag, &NumFiles, &FileName)) != false ||
++	                       &HelpFlag, &NumFiles, &FileName)) != 0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+--- a/gif_font.c
++++ b/gif_font.c
+@@ -200,12 +200,25 @@
+ 	}
+ }
+ 
++/* FlashVM: reentrant tokenization using only ANSI C string operations. */
++static char *gif_token(char *text, const char *delimiters, char **state) {
++    char *end;
++    if (text == NULL) text = *state;
++    text += strspn(text, delimiters);
++    if (*text == '\0') { *state = text; return NULL; }
++    end = text + strcspn(text, delimiters);
++    if (*end != '\0') *end++ = '\0';
++    *state = end;
++    return text;
++}
++
+ void GifDrawBoxedText8x8(SavedImage *Image, const int x, const int y,
+                          const char *legend, const int border, const int bg,
+                          const int fg) {
+ 	int j = 0, LineCount = 0, TextWidth = 0;
+ 	const char *cp;
+ 	char *dup;
++	char *lasts;
+ 
+ 	/* compute size of text to box */
+ 	for (cp = legend; *cp; cp++) {
+@@ -235,8 +248,7 @@
+ 		    border + TextWidth * GIF_FONT_WIDTH + border - 1,
+ 		    border + LineCount * GIF_FONT_HEIGHT + border - 1, bg);
+ 		(void)strcpy(dup, (char *)legend);
+-		char *lasts;
+-		cp = strtok_r(dup, "\r\n", &lasts);
++		cp = gif_token(dup, "\r\n", &lasts);
+ 		do {
+ 			int leadspace = 0;
+ 
+@@ -247,7 +259,7 @@
+ 			GifDrawText8x8(
+ 			    Image, x + border + (leadspace * GIF_FONT_WIDTH),
+ 			    y + border + (GIF_FONT_HEIGHT * i++), cp, fg);
+-			cp = strtok_r(NULL, "\r\n", &lasts);
++			cp = gif_token(NULL, "\r\n", &lasts);
+ 		} while (cp);
+ 		(void)free((void *)dup);
+ 
+--- a/gif_lib.h
++++ b/gif_lib.h
+@@ -20,7 +20,8 @@
+ #define GIF_ERROR 0
+ #define GIF_OK 1
+ 
+-#include <stdbool.h>
++/* FlashVM C89-compatible, byte-sized GIF boolean. */
++typedef unsigned char GifBooleanType;
+ #include <stddef.h>
+ 
+ #define GIF_STAMP "GIFVER" /* First chars in file - GIF stamp.  */
+@@ -42,13 +43,13 @@
+ typedef struct ColorMapObject {
+ 	int ColorCount;
+ 	int BitsPerPixel;
+-	bool SortFlag;
++	GifBooleanType SortFlag;
+ 	GifColorType *Colors; /* on malloc(3) heap */
+ } ColorMapObject;
+ 
+ typedef struct GifImageDesc {
+ 	GifWord Left, Top, Width, Height; /* Current image dimensions. */
+-	bool Interlace;                   /* Sequential/Interlaced lines. */
++	GifBooleanType Interlace;                   /* Sequential/Interlaced lines. */
+ 	ColorMapObject *ColorMap;         /* The local color map */
+ } GifImageDesc;
+ 
+@@ -114,7 +115,7 @@
+ #define DISPOSE_DO_NOT 1       /* Leave image in place */
+ #define DISPOSE_BACKGROUND 2   /* Set area too background color */
+ #define DISPOSE_PREVIOUS 3     /* Restore to previous content */
+-	bool UserInputFlag;    /* User confirmation required before disposal */
++	GifBooleanType UserInputFlag;    /* User confirmation required before disposal */
+ 	int DelayTime;         /* pre-display delay in 0.01sec units */
+ 	int TransparentColor;  /* Palette index for transparency, -1 if none */
+ #define NO_TRANSPARENT_COLOR -1
+@@ -126,7 +127,7 @@
+ 
+ /* Main entry points */
+ GifFileType *EGifOpenFileName(const char *GifFileName,
+-                              const bool GifTestExistence, int *Error);
++                              const GifBooleanType GifTestExistence, int *Error);
+ GifFileType *EGifOpenFileHandle(const int GifFileHandle, int *Error);
+ GifFileType *EGifOpen(void *userPtr, OutputFunc writeFunc, int *Error);
+ int EGifSpew(GifFileType *GifFile);
+@@ -152,9 +153,9 @@
+                       const ColorMapObject *GifColorMap);
+ int EGifPutImageDesc(GifFileType *GifFile, const int GifLeft, const int GifTop,
+                      const int GifWidth, const int GifHeight,
+-                     const bool GifInterlace,
++                     const GifBooleanType GifInterlace,
+                      const ColorMapObject *GifColorMap);
+-void EGifSetGifVersion(GifFileType *GifFile, const bool gif89);
++void EGifSetGifVersion(GifFileType *GifFile, const GifBooleanType gif89);
+ int EGifPutLine(GifFileType *GifFile, GifPixelType *GifLine, int GifLineLen);
+ int EGifPutPixel(GifFileType *GifFile, const GifPixelType GifPixel);
+ int EGifPutComment(GifFileType *GifFile, const char *GifComment);
+--- a/gif_lib_private.h
++++ b/gif_lib_private.h
+@@ -59,7 +59,7 @@
+ 	GifByteType Suffix[LZ_MAX_CODE + 1]; /* So we can trace the codes. */
+ 	GifPrefixType Prefix[LZ_MAX_CODE + 1];
+ 	GifHashTableType *HashTable;
+-	bool gif89;
++	GifBooleanType gif89;
+ } GifFilePrivateType;
+ 
+ #ifndef HAVE_REALLOCARRAY
+--- a/gifalloc.c
++++ b/gifalloc.c
+@@ -63,7 +63,7 @@
+ 
+ 	Object->ColorCount = ColorCount;
+ 	Object->BitsPerPixel = GifBitSize(ColorCount);
+-	Object->SortFlag = false;
++	Object->SortFlag = 0;
+ 
+ 	if (ColorMap != NULL) {
+ 		memcpy((char *)Object->Colors, (char *)ColorMap,
+@@ -323,7 +323,7 @@
+  */
+ SavedImage *GifMakeSavedImage(GifFileType *GifFile,
+                               const SavedImage *CopyFrom) {
+-	// cppcheck-suppress ctunullpointer
++	/*  cppcheck-suppress ctunullpointer */
+ 	if (GifFile->SavedImages == NULL) {
+ 		GifFile->SavedImages = (SavedImage *)malloc(sizeof(SavedImage));
+ 	} else {
+--- a/gifbg.c
++++ b/gifbg.c
+@@ -61,10 +61,10 @@
+ ******************************************************************************/
+ int main(int argc, char **argv) {
+ 	int i, l, LevelWidth, LogNumLevels, ErrorCode, Count = 0;
+-	bool Error, FlipDir, DoAllMaximum = false, DirectionFlag = false,
+-	                     LevelsFlag = false, ColorFlag = false,
+-	                     MinFlag = false, MaxFlag = false, SizeFlag = false,
+-	                     HelpFlag = false, GifNoisyPrint;
++	GifBooleanType Error, FlipDir, DoAllMaximum = 0, DirectionFlag = 0,
++	                     LevelsFlag = 0, ColorFlag = 0,
++	                     MinFlag = 0, MaxFlag = 0, SizeFlag = 0,
++	                     HelpFlag = 0, GifNoisyPrint;
+ 	GifPixelType Color;
+ 	char *DirectionStr = DEFAULT_DIR;
+ 	GifRowType Line;
+@@ -76,7 +76,7 @@
+ 	         &DirectionStr, &LevelsFlag, &NumLevels, &ColorFlag, &RedColor,
+ 	         &GreenColor, &BlueColor, &MinFlag, &MinimumIntensity, &MaxFlag,
+ 	         &MaximumIntensity, &SizeFlag, &ImageWidth, &ImageHeight,
+-	         &HelpFlag)) != false) {
++	         &HelpFlag)) != 0) {
+ 		GAPrintErrMsg(Error);
+ 		GAPrintHowTo(CtrlStr);
+ 		exit(EXIT_FAILURE);
+@@ -97,7 +97,7 @@
+ 
+ 	/* Convert DirectionStr to our local representation: */
+ 	Direction = DIR_NONE;
+-	FlipDir = false;
++	FlipDir = 0;
+ 	/* Make sure it's upper case. */
+ 	for (i = 0; i < (int)strlen(DirectionStr); i++) {
+ 		if (islower(DirectionStr[i])) {
+@@ -119,7 +119,7 @@
+ 			case 'L':
+ 			case 'W':
+ 				Direction = DIR_TOP_LEFT;
+-				FlipDir = true;
++				FlipDir = 1;
+ 				break;
+ 			}
+ 		}
+@@ -132,7 +132,7 @@
+ 	case 'S':
+ 		if (strlen(DirectionStr) < 2) {
+ 			Direction = DIR_BOT;
+-			FlipDir = true;
++			FlipDir = 1;
+ 		} else {
+ 			switch (DirectionStr[1]) {
+ 			case 'R':
+@@ -142,7 +142,7 @@
+ 			case 'L':
+ 			case 'W':
+ 				Direction = DIR_BOT_LEFT;
+-				FlipDir = true;
++				FlipDir = 1;
+ 				break;
+ 			}
+ 		}
+@@ -150,7 +150,7 @@
+ 	case 'L': /* Left or West */
+ 	case 'W':
+ 		Direction = DIR_LEFT;
+-		FlipDir = true;
++		FlipDir = 1;
+ 		break;
+ 	}
+ 	if (Direction == DIR_NONE) {
+@@ -183,7 +183,7 @@
+ 	if (MinimumIntensity == 100 && MaximumIntensity == 100 &&
+ 	    NumLevels == 2) {
+ 		MinimumIntensity = 0;
+-		DoAllMaximum = true;
++		DoAllMaximum = 1;
+ 		Direction = DIR_RIGHT;
+ 	}
+ 
+@@ -232,7 +232,7 @@
+ 	}
+ 
+ 	/* Dump out the image descriptor: */
+-	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, false,
++	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, 0,
+ 	                     NULL) == GIF_ERROR) {
+ 		QuitGifError(GifFile);
+ 	}
+--- a/gifbuild.c
++++ b/gifbuild.c
+@@ -27,7 +27,7 @@
+                            "PQRSTUVWXYZ!\"#$%&'()*+,-./:<=>?@[\\]^_`{|}~";
+ #define PRINTABLES (sizeof(KeyLetters) - 1)
+ 
+-static void Icon2Gif(char *FileName, FILE *txtin, bool, int fdout);
++static void Icon2Gif(char *FileName, FILE *txtin, GifBooleanType, int fdout);
+ static void Gif2Icon(char *FileName, int fdin, int fdout, char NameTable[]);
+ static int EscapeString(char *cp, char *tp);
+ 
+@@ -36,14 +36,14 @@
+ ******************************************************************************/
+ int main(int argc, char **argv) {
+ 	int NumFiles;
+-	bool Error, DisasmFlag = false, HelpFlag = false, TextLineFlag = false,
+-	            GifNoisyPrint = false;
++	GifBooleanType Error, DisasmFlag = 0, HelpFlag = 0, TextLineFlag = 0,
++	            GifNoisyPrint = 0;
+ 	char **FileNames = NULL;
+ 	char *TextLines[1];
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &DisasmFlag,
+ 	                       &TextLineFlag, &TextLines[0], &HelpFlag,
+-	                       &NumFiles, &FileNames)) != false) {
++	                       &NumFiles, &FileNames)) != 0) {
+ 		GAPrintErrMsg(Error);
+ 		GAPrintHowTo(CtrlStr);
+ 		exit(EXIT_FAILURE);
+@@ -109,14 +109,14 @@
+ #define PARSE_ERROR(str)                                                       \
+ 	(void)fprintf(stderr, "%s:%d: %s\n", FileName, LineNum, str);
+ 
+-static void Icon2Gif(char *FileName, FILE *txtin, bool GifNoisyPrint,
++static void Icon2Gif(char *FileName, FILE *txtin, GifBooleanType GifNoisyPrint,
+                      int fdout) {
+ 	unsigned int ColorMapSize = 0;
+ 	GifColorType GlobalColorMap[256], LocalColorMap[256],
+ 	    *ColorMap = GlobalColorMap;
+ 	char GlobalColorKeys[PRINTABLES], LocalColorKeys[PRINTABLES],
+ 	    *KeyTable = GlobalColorKeys;
+-	bool SortFlag = false;
++	GifBooleanType SortFlag = 0;
+ 	unsigned int ExtCode, intval;
+ 	int red, green, blue, n;
+ 	char buf[BUFSIZ * 2], InclusionFile[64];
+@@ -209,7 +209,7 @@
+ 
+ 			ColorMapSize = 0;
+ 			ColorMap = GlobalColorMap;
+-			SortFlag = false;
++			SortFlag = 0;
+ 			KeyTable = GlobalColorKeys;
+ 			memset(GlobalColorKeys, '\0', sizeof(GlobalColorKeys));
+ 		}
+@@ -251,11 +251,11 @@
+ 		}
+ 
+ 		else if (strcmp(buf, "	sort flag on\n") == 0) {
+-			SortFlag = true;
++			SortFlag = 1;
+ 		}
+ 
+ 		else if (strcmp(buf, "	sort flag off\n") == 0) {
+-			SortFlag = false;
++			SortFlag = 0;
+ 		}
+ 
+ 		else if (strcmp(buf, "end\n") == 0) {
+@@ -281,7 +281,7 @@
+ 		/* GIF inclusion */
+ 		/* ugly magic number is because scanf has no */
+ 		else if (sscanf(buf, "include %63s", InclusionFile) == 1) {
+-			bool DoTranslation;
++			GifBooleanType DoTranslation;
+ 			GifPixelType Translation[256];
+ 
+ 			GifFileType *Inclusion;
+@@ -295,7 +295,7 @@
+ 
+ 			if (DGifSlurp(Inclusion) == GIF_ERROR) {
+ 				PARSE_ERROR("Inclusion read failed.");
+-				// cppcheck-suppress knownConditionTrueFalse
++				/*  cppcheck-suppress knownConditionTrueFalse */
+ 				if (Inclusion != NULL) {
+ 					PrintGifError(Inclusion->Error);
+ 					DGifCloseFile(Inclusion, NULL);
+@@ -306,22 +306,22 @@
+ 				exit(EXIT_FAILURE);
+ 			}
+ 
+-			// cppcheck-suppress nullPointerRedundantCheck
++			/*  cppcheck-suppress nullPointerRedundantCheck */
+ 			if ((DoTranslation = (GifFileOut->SColorMap !=
+ 			                      (ColorMapObject *)NULL))) {
+ 				ColorMapObject *UnionMap;
+ 
+ 				UnionMap = GifUnionColorMap(
+-				    // cppcheck-suppress nullPointerRedundantCheck
++				    /*  cppcheck-suppress nullPointerRedundantCheck */
+ 				    GifFileOut->SColorMap, Inclusion->SColorMap,
+ 				    Translation);
+ 
+ 				if (UnionMap == NULL) {
+ 					PARSE_ERROR("Inclusion failed --- "
+ 					            "global map conflict.");
+-					// cppcheck-suppress nullPointerRedundantCheck
++					/*  cppcheck-suppress nullPointerRedundantCheck */
+ 					PrintGifError(GifFileOut->Error);
+-					// cppcheck-suppress knownConditionTrueFalse
++					/*  cppcheck-suppress knownConditionTrueFalse */
+ 					if (Inclusion != NULL) {
+ 						DGifCloseFile(Inclusion, NULL);
+ 					}
+@@ -343,9 +343,9 @@
+ 				         GifFileOut, CopyFrom)) == NULL) {
+ 					PARSE_ERROR("Inclusion failed --- out "
+ 					            "of memory.");
+-					// cppcheck-suppress nullPointerRedundantCheck
++					/*  cppcheck-suppress nullPointerRedundantCheck */
+ 					PrintGifError(GifFileOut->Error);
+-					// cppcheck-suppress knownConditionTrueFalse
++					/*  cppcheck-suppress knownConditionTrueFalse */
+ 					if (Inclusion != NULL) {
+ 						DGifCloseFile(Inclusion, NULL);
+ 					}
+@@ -446,13 +446,13 @@
+ 					if (strcmp(tp,
+ 					           "user input flag on\n") ==
+ 					    0) {
+-						gcb.UserInputFlag = true;
++						gcb.UserInputFlag = 1;
+ 						continue;
+ 					}
+ 					if (strcmp(tp,
+ 					           "user input flag off\n") ==
+ 					    0) {
+-						gcb.UserInputFlag = false;
++						gcb.UserInputFlag = 0;
+ 						continue;
+ 					}
+ 					if (sscanf(tp, "delay %d\n",
+@@ -576,7 +576,7 @@
+ 		}
+ 
+ 		else if (strcmp(buf, "image interlaced\n") == 0) {
+-			NewImage->ImageDesc.Interlace = true;
++			NewImage->ImageDesc.Interlace = 1;
+ 			continue;
+ 		}
+ 
+@@ -586,7 +586,7 @@
+ 			int i, j;
+ 			static GifPixelType *Raster;
+ 			int c;
+-			bool hex = (strstr(buf, "hex") != NULL);
++			GifBooleanType hex = (strstr(buf, "hex") != NULL);
+ 
+ 			/* coverity[overflow_sink] */
+ 			if ((Raster = (GifPixelType *)malloc(
+@@ -679,7 +679,7 @@
+ 	/* connect trailing extension blocks */
+ 	GifFileOut->ExtensionBlockCount = LeadingExtensionBlockCount;
+ 	GifFileOut->ExtensionBlocks = LeadingExtensionBlocks;
+-	// LeadingExtensionBlockCount = 0;
++	/*  LeadingExtensionBlockCount = 0; */
+ 	LeadingExtensionBlocks = NULL;
+ 
+ 	EGifSpew(GifFileOut);
+@@ -718,7 +718,7 @@
+ 
+ 	for (ep = ExtensionBlocks; ep < ExtensionBlocks + ExtensionBlockCount;
+ 	     ep++) {
+-		bool last = (ep - ExtensionBlocks == (ExtensionBlockCount - 1));
++		GifBooleanType last = (ep - ExtensionBlocks == (ExtensionBlockCount - 1));
+ 		if (ep->Function == COMMENT_EXT_FUNC_CODE) {
+ 			printf("comment\n");
+ 			VisibleDumpBuffer(ep->Bytes, ep->ByteCount);
+@@ -887,7 +887,7 @@
+ 			printf("end\n\n");
+ 		}
+ 
+-		/* one of these conditions has to be true */
++		/* one of these conditions has to be 1 */
+ 		if (image->ImageDesc.ColorMap) {
+ 			ColorCount = image->ImageDesc.ColorMap->ColorCount;
+ 		} else if (GifFile->SColorMap) {
+--- a/gifclrmp.c
++++ b/gifclrmp.c
+@@ -26,8 +26,8 @@
+     PROGRAM_NAME " v%- s%- t%-TranslationFile!s l%-ColorMapFile!s g%-Gamma!F "
+                  "i%-Image#!d h%- GifFile!*s";
+ 
+-static bool SaveFlag = false, TranslateFlag = false, LoadFlag = false,
+-            GammaFlag = false;
++static GifBooleanType SaveFlag = 0, TranslateFlag = 0, LoadFlag = 0,
++            GammaFlag = 0;
+ static double Gamma = 1.0;
+ static FILE *ColorFile = NULL;
+ FILE *TranslateFile = NULL;
+@@ -42,7 +42,7 @@
+ int main(int argc, char **argv) {
+ 	int NumFiles, ExtCode, CodeSize, ImageNum = 0, ImageN, HasGIFOutput,
+ 	                                 ErrorCode;
+-	bool Error, ImageNFlag = false, HelpFlag = false, GifNoisyPrint = false;
++	GifBooleanType Error, ImageNFlag = 0, HelpFlag = 0, GifNoisyPrint = 0;
+ 	GifRecordType RecordType;
+ 	GifByteType *Extension, *CodeBlock;
+ 	char **FileName = NULL, *ColorFileName, *TranslateFileName;
+@@ -52,7 +52,7 @@
+ 	                       &TranslateFlag, &TranslateFileName, &LoadFlag,
+ 	                       &ColorFileName, &GammaFlag, &Gamma, &ImageNFlag,
+ 	                       &ImageN, &HelpFlag, &NumFiles, &FileName)) !=
+-	        false ||
++	        0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+@@ -77,7 +77,7 @@
+ 
+ 	/* Default action is to dump colormaps */
+ 	if (!SaveFlag && !LoadFlag && !GammaFlag && !TranslateFlag) {
+-		SaveFlag = true;
++		SaveFlag = 1;
+ 	}
+ 
+ 	if (NumFiles == 1) {
+--- a/gifcolor.c
++++ b/gifcolor.c
+@@ -35,7 +35,7 @@
+ ******************************************************************************/
+ int main(int argc, char **argv) {
+ 	int i, j, l, GifNoisyPrint, ColorMapSize, ErrorCode;
+-	bool Error, BackGroundFlag = false, HelpFlag = false;
++	GifBooleanType Error, BackGroundFlag = 0, HelpFlag = 0;
+ 	char Line[LINE_LEN];
+ 	GifRowType RasterBuffer[GIF_FONT_HEIGHT];
+ 	ColorMapObject *ColorMap;
+@@ -45,7 +45,7 @@
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint,
+ 	                       &BackGroundFlag, &BackGround, &HelpFlag)) !=
+-	    false) {
++	    0) {
+ 		GAPrintErrMsg(Error);
+ 		GAPrintHowTo(CtrlStr);
+ 		exit(EXIT_FAILURE);
+@@ -98,7 +98,7 @@
+ 
+ 	/* Dump out the image descriptor: */
+ 	if (EGifPutImageDesc(GifFile, 0, 0, IMAGEWIDTH,
+-	                     ColorMapSize * GIF_FONT_HEIGHT, false,
++	                     ColorMapSize * GIF_FONT_HEIGHT, 0,
+ 	                     NULL) == GIF_ERROR) {
+ 		QuitGifError(GifFile);
+ 	}
+--- a/gifecho.c
++++ b/gifecho.c
+@@ -48,9 +48,9 @@
+ 	int i, j, l, ImageWidth, ImageHeight, NumOfLines, LogNumLevels,
+ 	    ErrorCode, NumLevels, ColorMapSize = 1,
+ 	                          ForeGroundIndex = DEFAULT_FG_INDEX;
+-	bool Error, ClrMapSizeFlag = false, ForeGroundFlag = false,
+-	            TextLineFlag = false, HelpFlag = false, ColorFlag = false,
+-	            GifNoisyPrint = false;
++	GifBooleanType Error, ClrMapSizeFlag = 0, ForeGroundFlag = 0,
++	            TextLineFlag = 0, HelpFlag = 0, ColorFlag = 0,
++	            GifNoisyPrint = 0;
+ 	char *TextLines[MAX_NUM_TEXT_LINES];
+ 	GifRowType RasterBuffer[GIF_FONT_HEIGHT];
+ 	ColorMapObject *ColorMap;
+@@ -60,7 +60,7 @@
+ 	         GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &ClrMapSizeFlag,
+ 	                   &ColorMapSize, &ForeGroundFlag, &ForeGroundIndex,
+ 	                   &ColorFlag, &RedColor, &GreenColor, &BlueColor,
+-	                   &TextLineFlag, &TextLines[0], &HelpFlag)) != false) {
++	                   &TextLineFlag, &TextLines[0], &HelpFlag)) != 0) {
+ 		GAPrintErrMsg(Error);
+ 		GAPrintHowTo(CtrlStr);
+ 		exit(EXIT_FAILURE);
+@@ -156,7 +156,7 @@
+ 	}
+ 
+ 	/* Dump out the image descriptor: */
+-	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, false,
++	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, 0,
+ 	                     NULL) == GIF_ERROR) {
+ 		QuitGifError(GifFile);
+ 	}
+--- a/giffix.c
++++ b/giffix.c
+@@ -30,7 +30,7 @@
+ int main(int argc, char **argv) {
+ 	int i, j, NumFiles, ExtCode, Row, Col, Width, Height, ErrorCode,
+ 	    DarkestColor = 0, ColorIntens = 10000;
+-	bool Error, HelpFlag = false, GifNoisyPrint = false;
++	GifBooleanType Error, HelpFlag = 0, GifNoisyPrint = 0;
+ 	GifRecordType RecordType;
+ 	GifByteType *Extension;
+ 	char **FileName = NULL;
+@@ -40,7 +40,7 @@
+ 	int ImageNum = 0;
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &HelpFlag,
+-	                       &NumFiles, &FileName)) != false ||
++	                       &NumFiles, &FileName)) != 0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+@@ -120,7 +120,7 @@
+ 
+ 			/* Put the image descriptor to out file: */
+ 			if (EGifPutImageDesc(
+-			        GifFileOut, Col, Row, Width, Height, false,
++			        GifFileOut, Col, Row, Width, Height, 0,
+ 			        GifFileIn->Image.ColorMap) == GIF_ERROR) {
+ 				QuitGifError(GifFileIn, GifFileOut);
+ 			}
+--- a/gifhisto.c
++++ b/gifhisto.c
+@@ -43,8 +43,8 @@
+ int main(int argc, char **argv) {
+ 	int i, j, ErrorCode, NumFiles, ExtCode, CodeSize, NumColors = 2,
+ 	                                                  ImageNum = 0;
+-	bool Error, TextFlag = false, SizeFlag = false, ImageNFlag = false,
+-	            BackGroundFlag = false, HelpFlag = false, GifNoisyPrint;
++	GifBooleanType Error, TextFlag = 0, SizeFlag = 0, ImageNFlag = 0,
++	            BackGroundFlag = 0, HelpFlag = 0, GifNoisyPrint;
+ 	long Histogram[256];
+ 	GifRecordType RecordType;
+ 	GifByteType *Extension, *CodeBlock;
+@@ -57,7 +57,7 @@
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &TextFlag,
+ 	                       &SizeFlag, &ImageWidth, &ImageHeight,
+ 	                       &ImageNFlag, &ImageN, &BackGroundFlag, &HelpFlag,
+-	                       &NumFiles, &FileName)) != false ||
++	                       &NumFiles, &FileName)) != 0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+@@ -224,7 +224,7 @@
+ 
+ 		/* Dump out image descriptor to fit histogram dimensions: */
+ 		if (EGifPutImageDesc(GifFileOut, 0, 0, ImageWidth, ImageHeight,
+-		                     false, NULL) == GIF_ERROR) {
++		                     0, NULL) == GIF_ERROR) {
+ 			QuitGifError(GifFileIn, GifFileOut);
+ 		}
+ 
+--- a/gifinto.c
++++ b/gifinto.c
+@@ -63,15 +63,15 @@
+ int main(int argc, char **argv) {
+ 	int FD;
+ 	int NumFiles;
+-	bool Error, MinSizeFlag = false, HelpFlag = false,
+-	            GifNoisyPrint = false;
++	GifBooleanType Error, MinSizeFlag = 0, HelpFlag = 0,
++	            GifNoisyPrint = 0;
+ 	char **FileName = NULL, FoutTmpName[STRLEN + 1], FullPath[STRLEN + 1],
+ 	     *p;
+ 	FILE *Fin, *Fout;
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint,
+ 	                       &MinSizeFlag, &MinFileSize, &HelpFlag, &NumFiles,
+-	                       &FileName)) != false ||
++	                       &FileName)) != 0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+--- a/giftext.c
++++ b/giftext.c
+@@ -29,9 +29,9 @@
+ static char *CtrlStr = PROGRAM_NAME " v%- c%- e%- z%- p%- r%- h%- GifFile!*s";
+ 
+ static void PrintCodeBlock(GifFileType *GifFile, GifByteType *CodeBlock,
+-                           bool Reset);
+-static void PrintPixelBlock(GifByteType *PixelBlock, int Len, bool Reset);
+-static void PrintExtBlock(GifByteType *Extension, bool Reset);
++                           GifBooleanType Reset);
++static void PrintPixelBlock(GifByteType *PixelBlock, int Len, GifBooleanType Reset);
++static void PrintExtBlock(GifByteType *Extension, GifBooleanType Reset);
+ static void PrintLZCodes(GifFileType *GifFile);
+ 
+ /******************************************************************************
+@@ -39,9 +39,9 @@
+ ******************************************************************************/
+ int main(int argc, char **argv) {
+ 	int i, j, ExtCode, ErrorCode, CodeSize, NumFiles, Len, ImageNum = 1;
+-	bool Error, ColorMapFlag = false, EncodedFlag = false,
+-	            LZCodesFlag = false, PixelFlag = false, HelpFlag = false,
+-	            RawFlag = false, GifNoisyPrint;
++	GifBooleanType Error, ColorMapFlag = 0, EncodedFlag = 0,
++	            LZCodesFlag = 0, PixelFlag = 0, HelpFlag = 0,
++	            RawFlag = 0, GifNoisyPrint;
+ 	char *GifFileName, **FileName = NULL;
+ 	GifPixelType *Line;
+ 	GifRecordType RecordType;
+@@ -51,7 +51,7 @@
+ 	if ((Error =
+ 	         GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &ColorMapFlag,
+ 	                   &EncodedFlag, &LZCodesFlag, &PixelFlag, &RawFlag,
+-	                   &HelpFlag, &NumFiles, &FileName)) != false ||
++	                   &HelpFlag, &NumFiles, &FileName)) != 0 ||
+ 	    (NumFiles > 1 && !HelpFlag)) {
+ 		if (Error) {
+ 			GAPrintErrMsg(Error);
+@@ -87,7 +87,7 @@
+ 
+ 	/* Because we write binary data - make sure no text will be written. */
+ 	if (RawFlag) {
+-		ColorMapFlag = EncodedFlag = LZCodesFlag = PixelFlag = false;
++		ColorMapFlag = EncodedFlag = LZCodesFlag = PixelFlag = 0;
+ #ifdef _WIN32
+ 		_setmode(1, O_BINARY); /* Make sure it is in binary mode. */
+ #endif                                 /* _WIN32 */
+@@ -200,7 +200,7 @@
+ 				printf("\nImage LZ compressed Codes (Code Size "
+ 				       "= %d):\n",
+ 				       CodeSize);
+-				PrintCodeBlock(GifFile, CodeBlock, true);
++				PrintCodeBlock(GifFile, CodeBlock, 1);
+ 				while (CodeBlock != NULL) {
+ 					if (DGifGetCodeNext(GifFile,
+ 					                    &CodeBlock) ==
+@@ -209,7 +209,7 @@
+ 						exit(EXIT_FAILURE);
+ 					}
+ 					PrintCodeBlock(GifFile, CodeBlock,
+-					               false);
++					               0);
+ 				}
+ 			} else if (LZCodesFlag) {
+ 				PrintLZCodes(GifFile);
+@@ -228,7 +228,7 @@
+ 					    Line, GifFile->Image.Width, i == 0);
+ 				}
+ 				PrintPixelBlock(NULL, GifFile->Image.Width,
+-				                false);
++				                0);
+ 				free((char *)Line);
+ 			} else if (RawFlag) {
+ 				Line = (GifPixelType *)malloc(
+@@ -290,7 +290,7 @@
+ 				}
+ 				printf(" (Ext Code = %d [%c]):\n", ExtCode,
+ 				       MAKE_PRINTABLE(ExtCode));
+-				PrintExtBlock(Extension, true);
++				PrintExtBlock(Extension, 1);
+ 
+ 				if (ExtCode == GRAPHICS_EXT_FUNC_CODE) {
+ 					GraphicsControlBlock gcb;
+@@ -331,7 +331,7 @@
+ 				if (Extension == NULL) {
+ 					break;
+ 				}
+-				PrintExtBlock(Extension, false);
++				PrintExtBlock(Extension, 0);
+ 			}
+ 			break;
+ 		case TERMINATE_RECORD_TYPE:
+@@ -359,7 +359,7 @@
+  or reset to start state if Reset. If CodeBlock is NULL, output is flushed
+ ******************************************************************************/
+ static void PrintCodeBlock(GifFileType *GifFile, GifByteType *CodeBlock,
+-                           bool Reset) {
++                           GifBooleanType Reset) {
+ 	static int CrntPlace = 0;
+ 	static long CodeCount = 0;
+ 	int i, Len;
+@@ -396,7 +396,7 @@
+ 		CodeCount = 0;
+ 	}
+ 
+-	// cppcheck-suppress nullPointerRedundantCheck
++	/*  cppcheck-suppress nullPointerRedundantCheck */
+ 	Len = CodeBlock[0];
+ 	for (i = 1; i <= Len; i++) {
+ 		if (CrntPlace == 0) {
+@@ -415,7 +415,7 @@
+  place). Save local information so printing can be performed continuously,
+  or reset to start state if Reset. If Extension is NULL, output is flushed
+ ******************************************************************************/
+-static void PrintExtBlock(GifByteType *Extension, bool Reset) {
++static void PrintExtBlock(GifByteType *Extension, GifBooleanType Reset) {
+ 	static int CrntPlace = 0;
+ 	static long ExtCount = 0;
+ 	static char HexForm[49], AsciiForm[17];
+@@ -461,7 +461,7 @@
+  Save local information so printing can be performed continuously,
+  or reset to start state if Reset. If PixelBlock is NULL, output is flushed
+ ******************************************************************************/
+-static void PrintPixelBlock(GifByteType *PixelBlock, int Len, bool Reset) {
++static void PrintPixelBlock(GifByteType *PixelBlock, int Len, GifBooleanType Reset) {
+ 	static int CrntPlace = 0;
+ 	static long ExtCount = 0;
+ 	static char HexForm[49], AsciiForm[17];
+--- a/giftool.c
++++ b/giftool.c
+@@ -23,7 +23,7 @@
+ 
+ enum boolmode { numeric, onoff, tf, yesno };
+ 
+-char *putbool(bool flag, enum boolmode mode) {
++char *putbool(GifBooleanType flag, enum boolmode mode) {
+ 	if (flag) {
+ 		switch (mode) {
+ 		case numeric:
+@@ -33,7 +33,7 @@
+ 			return "on";
+ 			break;
+ 		case tf:
+-			return "true";
++			return "1";
+ 			break;
+ 		case yesno:
+ 			return "yes";
+@@ -48,7 +48,7 @@
+ 			return "off";
+ 			break;
+ 		case tf:
+-			return "false";
++			return "0";
+ 			break;
+ 		case yesno:
+ 			return "no";
+@@ -59,19 +59,19 @@
+ 	return "FAIL"; /* should never happen */
+ }
+ 
+-bool getbool(char *from) {
++GifBooleanType getbool(char *from) {
+ 	struct valmap {
+ 		char *name;
+-		bool val;
++		GifBooleanType val;
+ 	} boolnames[] =
+ 	    {
+-	        {"yes", true}, {"on", true},  {"1", true},
+-	        {"t", true},   {"no", false}, {"off", false},
+-	        {"0", false},  {"f", false},  {NULL, false},
++	        {"yes", 1}, {"on", 1},  {"1", 1},
++	        {"t", 1},   {"no", 0}, {"off", 0},
++	        {"0", 0},  {"f", 0},  {NULL, 0},
+ 	    },
+ 	  *sp;
+ 
+-	// cppcheck-suppress nullPointerRedundantCheck
++	/*  cppcheck-suppress nullPointerRedundantCheck */
+ 	for (sp = boolnames; sp->name; sp++) {
+ 		if (strcmp(sp->name, from) == 0) {
+ 			return sp->val;
+@@ -81,7 +81,7 @@
+ 	if (sp == NULL) {
+ 		(void)fprintf(stderr,
+ 		              "giftool: %s is not a valid boolean argument.\n",
+-		              // cppcheck-suppress nullPointerRedundantCheck
++		              /*  cppcheck-suppress nullPointerRedundantCheck */
+ 		              sp->name);
+ 	}
+ 	exit(EXIT_FAILURE);
+@@ -106,7 +106,7 @@
+ 		int color;
+ 		int dispose;
+ 		char *format;
+-		bool flag;
++		GifBooleanType flag;
+ 		struct {
+ 			int x, y;
+ 		} p;
+@@ -119,7 +119,7 @@
+ 	struct operation operations[MAX_OPERATIONS];
+ 	struct operation *top = operations;
+ 	int selected[MAX_IMAGES], nselected = 0;
+-	bool have_selection = false;
++	GifBooleanType have_selection = 0;
+ 	char *cp;
+ 	int i, status, ErrorCode;
+ 	GifFileType *GifFileIn, *GifFileOut = (GifFileType *)NULL;
+@@ -163,7 +163,7 @@
+ 			break;
+ 
+ 		case 'n':
+-			have_selection = true;
++			have_selection = 1;
+ 			nselected = 0;
+ 			cp = optarg;
+ 			for (;;) {
+--- a/gifwedge.c
++++ b/gifwedge.c
+@@ -35,15 +35,15 @@
+ ******************************************************************************/
+ int main(int argc, char **argv) {
+ 	int i, j, l, c, LevelStep, LogNumLevels, ErrorCode, Count = 0;
+-	bool Error, LevelsFlag = false, SizeFlag = false, HelpFlag = false,
+-	            GifNoisyPrint = false;
++	GifBooleanType Error, LevelsFlag = 0, SizeFlag = 0, HelpFlag = 0,
++	            GifNoisyPrint = 0;
+ 	GifRowType Line;
+ 	ColorMapObject *ColorMap;
+ 	GifFileType *GifFile;
+ 
+ 	if ((Error = GAGetArgs(argc, argv, CtrlStr, &GifNoisyPrint, &LevelsFlag,
+ 	                       &NumLevels, &SizeFlag, &ImageWidth, &ImageHeight,
+-	                       &HelpFlag)) != false) {
++	                       &HelpFlag)) != 0) {
+ 		GAPrintErrMsg(Error);
+ 		GAPrintHowTo(CtrlStr);
+ 		exit(EXIT_FAILURE);
+@@ -108,7 +108,7 @@
+ 	}
+ 
+ 	/* Dump out the image descriptor: */
+-	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, false,
++	if (EGifPutImageDesc(GifFile, 0, 0, ImageWidth, ImageHeight, 0,
+ 	                     NULL) == GIF_ERROR) {
+ 
+ 		PrintGifError(GifFile->Error);
+--- a/qprintf.c
++++ b/qprintf.c
+@@ -14,7 +14,7 @@
+ 
+ #include "gif_lib.h"
+ 
+-bool GifNoisyPrint = false;
++GifBooleanType GifNoisyPrint = 0;
+ 
+ /*****************************************************************************
+  Same as fprintf to stderr but with optional print.
+--- a/quantize.c
++++ b/quantize.c
+@@ -300,7 +300,7 @@
+ 		    QuantizedColor->RGB[SortRGBAxis]; /* Max. of first half */
+ 		/* coverity[var_deref_op] */
+ 		MinColor =
+-		    // cppcheck-suppress nullPointerRedundantCheck
++		    /*  cppcheck-suppress nullPointerRedundantCheck */
+ 		    QuantizedColor->Pnext->RGB[SortRGBAxis]; /* of second */
+ 		MaxColor <<= (8 - BITS_PER_PRIM_COLOR);
+ 		MinColor <<= (8 - BITS_PER_PRIM_COLOR);

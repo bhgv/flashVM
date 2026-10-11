@@ -3,7 +3,8 @@
 Official release: see PROVENANCE.json. Library sources, original license files
 and version metadata are included. The local CMake profile builds static Cairo
 with image, recording and user-font support, using bundled scalar Pixman.
-X11, GL, native font discovery, PNG and document backends are not enabled.
+X11, GL and native font discovery are disabled. PNG and SVG are enabled only
+with IMAGE_CODECS; other document backends are disabled.
 
 No autoconf, Meson, pkg-config, network access or preinstalled graphics library
 is required. CMake generates private platform configuration headers in the build
@@ -23,3 +24,12 @@ Cairo распространяется на условиях LGPL-2.1 или MPL
 находятся в upstream/. Проверен только профиль растеризации в память на Linux.
 Все изменения совместимости приведены в flashvm.patch; экранные адаптеры этим
 коммитом не реализуются.
+
+## PNG/SVG integration
+
+IMAGE_CODECS enables bundled libpng and Cairo PNG/SVG stream APIs independently
+of the FlashVM raster selection. The earlier image-only profile remains when
+codecs are disabled. See [integration and limits](../../doc/IMAGE_CODECS.md).
+
+IMAGE_CODECS включает чтение/запись PNG и запись SVG через Cairo. Подробности
+и ограничения: [документация](../../doc/IMAGE_CODECS.ru.md).

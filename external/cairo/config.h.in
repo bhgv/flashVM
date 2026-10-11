@@ -1,5 +1,6 @@
-/* Cairo image/recording/user-font core only. Native fonts, PNG, PDF and
- * display backends are disabled; pthread/Win32 locking remains enabled. */
+/* Cairo image/recording/user-font core; PNG and SVG follow IMAGE_CODECS.
+ * Native fonts, PDF and display backends are disabled. Platform locking
+ * remains enabled. */
 #ifndef FVM_CAIRO_CONFIG_H
 #define FVM_CAIRO_CONFIG_H
 #ifndef _GNU_SOURCE

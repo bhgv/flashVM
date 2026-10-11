@@ -1,0 +1,12 @@
+{
+  "name": "libpng",
+  "version": "1.6.59",
+  "source_url": "https://download.sourceforge.net/libpng/libpng-1.6.59.tar.xz",
+  "license": "libpng license",
+  "local_changes": [],
+  "patch": "flashvm.patch",
+  "offline_build": true,
+  "archive": "libpng-1.6.59.tar.xz",
+  "archive_sha256": "d80dd2a38a37f803cb9b6ac7b14bd6e74ddc3b654780a8380bdf93523fdb4389",
+  "configuration": "upstream/scripts/pnglibconf.h.prebuilt copied to upstream/pnglibconf.h; scalar C89 build"
+}

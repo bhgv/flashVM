@@ -65,3 +65,8 @@ FVM_ENABLE_RENDER дополнительно может потребовать �
 Windows/macOS/Android. Промежуточный premultiplied-буфер Cairo может округлять RGB
 при малой альфе иначе, чем AGG; отступы и нетронутые пиксели сохраняются.
 См. [подтверждающие проверки](DEPENDENCY_CHECKPOINT.ru.md).
+
+IMAGE_CODECS (по умолчанию) / NO_IMAGE_CODECS — отдельная группа библиотек
+PNG/GIF/JPEG/SVG. При включении Cairo/Pixman собираются также с AGG или
+NO_GRAPHICS для экспорта SVG; выбор основного растеризатора не меняется.
+Подробнее: [API и ограничения](IMAGE_CODECS.ru.md).

@@ -48,3 +48,8 @@ INTERPRETER
 # Media / Мультимедиа: MEDIA is not implemented / MEDIA ещё не реализован.
 NO_MEDIA
 # MEDIA
+
+# Image libraries / Библиотеки изображений: read/write PNG, GIF, JPEG and SVG.
+# SVG: NanoSVG reader/rasterizer + Cairo writer; restricted read profile.
+IMAGE_CODECS
+# NO_IMAGE_CODECS

@@ -10,6 +10,7 @@ rejects unknown keys, duplicates, empty groups and competing selections.
 | Rasterizer | GRAPHICS_AGG | GRAPHICS_CAIRO, NO_GRAPHICS |
 | Target OS | AUTO_PLATFORM | WINDOWS, LINUX, MAC, ANDROID |
 | Presentation | HEADLESS | FB, GLES, OGL, DX, SDL1, SDL2, SDL3 — not implemented |
+| Image libraries | IMAGE_CODECS | NO_IMAGE_CODECS |
 | Database | SQLITE | NO_SQLITE |
 | Native input/TCP | OS_PORTS | NO_OS_PORTS |
 | Worker render jobs | RENDER_JOBS | NO_RENDER_JOBS |
@@ -28,7 +29,9 @@ Win32 surface code is not a FlashVM screen adapter and is not enabled here.
 
 With `GRAPHICS_CAIRO`, CMake compiles bundled Cairo and Pixman and the FlashVM
 raster API uses Cairo. With `GRAPHICS_AGG`, it compiles bundled AGG. `NO_GRAPHICS`
-builds neither raster library and returns FVM_UNSUPPORTED from valid raster calls.
+builds no FlashVM raster backend and returns FVM_UNSUPPORTED from valid raster calls.
+IMAGE_CODECS independently builds PNG/GIF/JPEG and Cairo/NanoSVG for SVG.
+See [image APIs and limits](IMAGE_CODECS.md).
 zlib and mini_regex remain enabled in all profiles. `SQLITE` compiles the bundled
 amalgamation, C adapter and SQLite programs; no system lookup or fallback occurs.
 
@@ -48,7 +51,7 @@ directory; selected keys are also public compiler definitions on the flashvm tar
 The default file has one enabled key in each group. The generated header contains
 AUTO_PLATFORM and exactly one resolved OS macro. Old FVM_ENABLE_AGG,
 FVM_ENABLE_CAIRO, FVM_ENABLE_SQLITE, FVM_ENABLE_OS_PORTS and
-FVM_ENABLE_RENDER_JOBS cache switches are accepted only if they agree with the
+FVM_ENABLE_RENDER_JOBS and FVM_ENABLE_IMAGE_CODECS cache switches are accepted only if they agree with the
 file. A conflicting old cache must be removed or replaced with a fresh build.
 FVM_BUILD_TESTS/FVM_BUILD_EXAMPLES remain independent CMake options;
 FVM_ENABLE_RENDER can additionally require an available rasterizer.

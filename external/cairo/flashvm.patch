@@ -27,7 +27,7 @@
  #else
  #error No matching integer pointer type
  #endif
-@@ -286,7 +286,7 @@
+@@ -286,12 +286,14 @@
  #elif SIZEOF_VOID_P==SIZEOF_LONG
  typedef unsigned long cairo_atomic_intptr_t;
  #elif SIZEOF_VOID_P==SIZEOF_LONG_LONG
@@ -36,9 +36,17 @@
  #else
  #error No matching integer pointer type
  #endif
+ 
+-typedef cairo_atomic_intptr_t cairo_atomic_int_t;
++/* Status and reference-count storage is int-sized even on LP64.
++ * Pointer operations have separate void ** primitives below. */
++typedef int cairo_atomic_int_t;
+ 
+ cairo_private void
+ _cairo_atomic_int_inc (cairo_atomic_int_t *x);
 --- a/src/cairo-atomic.c
 +++ b/src/cairo-atomic.c
-@@ -39,7 +39,7 @@
+@@ -39,10 +39,10 @@
  #ifdef HAS_ATOMIC_OPS
  COMPILE_TIME_ASSERT(sizeof(void*) == sizeof(int) ||
  		    sizeof(void*) == sizeof(long) ||
@@ -46,7 +54,66 @@
 +		    sizeof(void*) == sizeof(int64_t));
  #else
  void
- _cairo_atomic_int_inc (cairo_atomic_intptr_t *x)
+-_cairo_atomic_int_inc (cairo_atomic_intptr_t *x)
++_cairo_atomic_int_inc (cairo_atomic_int_t *x)
+ {
+     CAIRO_MUTEX_LOCK (_cairo_atomic_mutex);
+     *x += 1;
+@@ -50,7 +50,7 @@
+ }
+ 
+ cairo_bool_t
+-_cairo_atomic_int_dec_and_test (cairo_atomic_intptr_t *x)
++_cairo_atomic_int_dec_and_test (cairo_atomic_int_t *x)
+ {
+     cairo_bool_t ret;
+ 
+@@ -61,10 +61,10 @@
+     return ret;
+ }
+ 
+-cairo_atomic_intptr_t
+-_cairo_atomic_int_cmpxchg_return_old_impl (cairo_atomic_intptr_t *x, cairo_atomic_intptr_t oldv, cairo_atomic_intptr_t newv)
++cairo_atomic_int_t
++_cairo_atomic_int_cmpxchg_return_old_impl (cairo_atomic_int_t *x, cairo_atomic_int_t oldv, cairo_atomic_int_t newv)
+ {
+-    cairo_atomic_intptr_t ret;
++    cairo_atomic_int_t ret;
+ 
+     CAIRO_MUTEX_LOCK (_cairo_atomic_mutex);
+     ret = *x;
+@@ -90,10 +90,10 @@
+ }
+ 
+ #ifdef ATOMIC_OP_NEEDS_MEMORY_BARRIER
+-cairo_atomic_intptr_t
+-_cairo_atomic_int_get (cairo_atomic_intptr_t *x)
++cairo_atomic_int_t
++_cairo_atomic_int_get (cairo_atomic_int_t *x)
+ {
+-    cairo_atomic_intptr_t ret;
++    cairo_atomic_int_t ret;
+ 
+     CAIRO_MUTEX_LOCK (_cairo_atomic_mutex);
+     ret = *x;
+@@ -102,14 +102,14 @@
+     return ret;
+ }
+ 
+-cairo_atomic_intptr_t
+-_cairo_atomic_int_get_relaxed (cairo_atomic_intptr_t *x)
++cairo_atomic_int_t
++_cairo_atomic_int_get_relaxed (cairo_atomic_int_t *x)
+ {
+     return _cairo_atomic_int_get (x);
+ }
+ 
+ void
+-_cairo_atomic_int_set_relaxed (cairo_atomic_intptr_t *x, cairo_atomic_intptr_t val)
++_cairo_atomic_int_set_relaxed (cairo_atomic_int_t *x, cairo_atomic_int_t val)
+ {
+     CAIRO_MUTEX_LOCK (_cairo_atomic_mutex);
+     *x = val;
 --- a/src/cairo-backend-private.h
 +++ b/src/cairo-backend-private.h
 @@ -41,7 +41,7 @@
@@ -551,6 +618,17 @@
      target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
      status = _cairo_surface_offset_glyphs (surface->target,
  					   -surface->extents.x, -surface->extents.y,
+--- a/src/cairo-svg-surface.c
++++ b/src/cairo-svg-surface.c
+@@ -1462,7 +1462,7 @@
+ 
+ 	    if (*p == '&')
+ 		_cairo_output_stream_printf (stream, "&amp;");
+-	    else // p == '"'
++	    else /*  p == '"' */
+ 		_cairo_output_stream_printf (stream, "&quot;");
+ 	}
+     }
 --- a/src/cairo-tag-attributes-private.h
 +++ b/src/cairo-tag-attributes-private.h
 @@ -46,7 +46,7 @@
@@ -642,6 +720,132 @@
  	    _cairo_traps_add_trap (r->traps, top, bot, &left, &right);
  	}
  	spans++;
+--- a/src/cairo-type1-glyph-names.c
++++ b/src/cairo-type1-glyph-names.c
+@@ -262,42 +262,88 @@
+ exit;
+ #endif
+ 
++/* FlashVM C89: byte initializer preserves the generated offsets exactly. */
+ static const char glyph_name_symbol[] = {
+-  "\0" "space\0" "exclam\0" "quotedbl\0" "numbersign\0" "dollar\0" "percent\0"
+-  "ampersand\0" "quoteright\0" "parenleft\0" "parenright\0" "asterisk\0"
+-  "plus\0" "comma\0" "hyphen\0" "period\0" "slash\0" "zero\0" "one\0" "two\0"
+-  "three\0" "four\0" "five\0" "six\0" "seven\0" "eight\0" "nine\0" "colon\0"
+-  "semicolon\0" "less\0" "equal\0" "greater\0" "question\0" "at\0" "A\0" "B\0"
+-  "C\0" "D\0" "E\0" "F\0" "G\0" "H\0" "I\0" "J\0" "K\0" "L\0" "M\0" "N\0" "O\0"
+-  "P\0" "Q\0" "R\0" "S\0" "T\0" "U\0" "V\0" "W\0" "X\0" "Y\0" "Z\0"
+-  "bracketleft\0" "backslash\0" "bracketright\0" "asciicircum\0" "underscore\0"
+-  "quoteleft\0" "a\0" "b\0" "c\0" "d\0" "e\0" "f\0" "g\0" "h\0" "i\0" "j\0"
+-  "k\0" "l\0" "m\0" "n\0" "o\0" "p\0" "q\0" "r\0" "s\0" "t\0" "u\0" "v\0" "w\0"
+-  "x\0" "y\0" "z\0" "braceleft\0" "bar\0" "braceright\0" "asciitilde\0"
+-  "exclamdown\0" "cent\0" "sterling\0" "fraction\0" "yen\0" "florin\0"
+-  "section\0" "currency\0" "quotesingle\0" "quotedblleft\0" "guillemotleft\0"
+-  "guilsinglleft\0" "guilsinglright\0" "fi\0" "fl\0" "endash\0" "dagger\0"
+-  "daggerdbl\0" "periodcentered\0" "paragraph\0" "bullet\0" "quotesinglbase\0"
+-  "quotedblbase\0" "quotedblright\0" "guillemotright\0" "ellipsis\0"
+-  "perthousand\0" "questiondown\0" "grave\0" "acute\0" "circumflex\0" "tilde\0"
+-  "macron\0" "breve\0" "dotaccent\0" "dieresis\0" "ring\0" "cedilla\0"
+-  "hungarumlaut\0" "ogonek\0" "caron\0" "emdash\0" "AE\0" "ordfeminine\0"
+-  "Lslash\0" "Oslash\0" "OE\0" "ordmasculine\0" "ae\0" "dotlessi\0" "lslash\0"
+-  "oslash\0" "oe\0" "germandbls\0" "Euro\0" "Scaron\0" "Zcaron\0" "trademark\0"
+-  "scaron\0" "zcaron\0" "Ydieresis\0" "brokenbar\0" "copyright\0"
+-  "logicalnot\0" "registered\0" "degree\0" "plusminus\0" "twosuperior\0"
+-  "threesuperior\0" "mu\0" "onesuperior\0" "onequarter\0" "onehalf\0"
+-  "threequarters\0" "Agrave\0" "Aacute\0" "Acircumflex\0" "Atilde\0"
+-  "Adieresis\0" "Aring\0" "Ccedilla\0" "Egrave\0" "Eacute\0" "Ecircumflex\0"
+-  "Edieresis\0" "Igrave\0" "Iacute\0" "Icircumflex\0" "Idieresis\0" "Eth\0"
+-  "Ntilde\0" "Ograve\0" "Oacute\0" "Ocircumflex\0" "Otilde\0" "Odieresis\0"
+-  "multiply\0" "Ugrave\0" "Uacute\0" "Ucircumflex\0" "Udieresis\0" "Yacute\0"
+-  "Thorn\0" "agrave\0" "aacute\0" "acircumflex\0" "atilde\0" "adieresis\0"
+-  "aring\0" "ccedilla\0" "egrave\0" "eacute\0" "ecircumflex\0" "edieresis\0"
+-  "igrave\0" "iacute\0" "icircumflex\0" "idieresis\0" "eth\0" "ntilde\0"
+-  "ograve\0" "oacute\0" "ocircumflex\0" "otilde\0" "odieresis\0" "divide\0"
+-  "ugrave\0" "uacute\0" "ucircumflex\0" "udieresis\0" "yacute\0" "thorn\0"
+-  "ydieresis\0"
++    0, 115, 112, 97, 99, 101, 0, 101, 120, 99, 108, 97, 109, 0, 113, 117, 111, 116, 101, 100,
++    98, 108, 0, 110, 117, 109, 98, 101, 114, 115, 105, 103, 110, 0, 100, 111, 108, 108, 97, 114,
++    0, 112, 101, 114, 99, 101, 110, 116, 0, 97, 109, 112, 101, 114, 115, 97, 110, 100, 0, 113,
++    117, 111, 116, 101, 114, 105, 103, 104, 116, 0, 112, 97, 114, 101, 110, 108, 101, 102, 116, 0,
++    112, 97, 114, 101, 110, 114, 105, 103, 104, 116, 0, 97, 115, 116, 101, 114, 105, 115, 107, 0,
++    112, 108, 117, 115, 0, 99, 111, 109, 109, 97, 0, 104, 121, 112, 104, 101, 110, 0, 112, 101,
++    114, 105, 111, 100, 0, 115, 108, 97, 115, 104, 0, 122, 101, 114, 111, 0, 111, 110, 101, 0,
++    116, 119, 111, 0, 116, 104, 114, 101, 101, 0, 102, 111, 117, 114, 0, 102, 105, 118, 101, 0,
++    115, 105, 120, 0, 115, 101, 118, 101, 110, 0, 101, 105, 103, 104, 116, 0, 110, 105, 110, 101,
++    0, 99, 111, 108, 111, 110, 0, 115, 101, 109, 105, 99, 111, 108, 111, 110, 0, 108, 101, 115,
++    115, 0, 101, 113, 117, 97, 108, 0, 103, 114, 101, 97, 116, 101, 114, 0, 113, 117, 101, 115,
++    116, 105, 111, 110, 0, 97, 116, 0, 65, 0, 66, 0, 67, 0, 68, 0, 69, 0, 70, 0,
++    71, 0, 72, 0, 73, 0, 74, 0, 75, 0, 76, 0, 77, 0, 78, 0, 79, 0, 80, 0,
++    81, 0, 82, 0, 83, 0, 84, 0, 85, 0, 86, 0, 87, 0, 88, 0, 89, 0, 90, 0,
++    98, 114, 97, 99, 107, 101, 116, 108, 101, 102, 116, 0, 98, 97, 99, 107, 115, 108, 97, 115,
++    104, 0, 98, 114, 97, 99, 107, 101, 116, 114, 105, 103, 104, 116, 0, 97, 115, 99, 105, 105,
++    99, 105, 114, 99, 117, 109, 0, 117, 110, 100, 101, 114, 115, 99, 111, 114, 101, 0, 113, 117,
++    111, 116, 101, 108, 101, 102, 116, 0, 97, 0, 98, 0, 99, 0, 100, 0, 101, 0, 102, 0,
++    103, 0, 104, 0, 105, 0, 106, 0, 107, 0, 108, 0, 109, 0, 110, 0, 111, 0, 112, 0,
++    113, 0, 114, 0, 115, 0, 116, 0, 117, 0, 118, 0, 119, 0, 120, 0, 121, 0, 122, 0,
++    98, 114, 97, 99, 101, 108, 101, 102, 116, 0, 98, 97, 114, 0, 98, 114, 97, 99, 101, 114,
++    105, 103, 104, 116, 0, 97, 115, 99, 105, 105, 116, 105, 108, 100, 101, 0, 101, 120, 99, 108,
++    97, 109, 100, 111, 119, 110, 0, 99, 101, 110, 116, 0, 115, 116, 101, 114, 108, 105, 110, 103,
++    0, 102, 114, 97, 99, 116, 105, 111, 110, 0, 121, 101, 110, 0, 102, 108, 111, 114, 105, 110,
++    0, 115, 101, 99, 116, 105, 111, 110, 0, 99, 117, 114, 114, 101, 110, 99, 121, 0, 113, 117,
++    111, 116, 101, 115, 105, 110, 103, 108, 101, 0, 113, 117, 111, 116, 101, 100, 98, 108, 108, 101,
++    102, 116, 0, 103, 117, 105, 108, 108, 101, 109, 111, 116, 108, 101, 102, 116, 0, 103, 117, 105,
++    108, 115, 105, 110, 103, 108, 108, 101, 102, 116, 0, 103, 117, 105, 108, 115, 105, 110, 103, 108,
++    114, 105, 103, 104, 116, 0, 102, 105, 0, 102, 108, 0, 101, 110, 100, 97, 115, 104, 0, 100,
++    97, 103, 103, 101, 114, 0, 100, 97, 103, 103, 101, 114, 100, 98, 108, 0, 112, 101, 114, 105,
++    111, 100, 99, 101, 110, 116, 101, 114, 101, 100, 0, 112, 97, 114, 97, 103, 114, 97, 112, 104,
++    0, 98, 117, 108, 108, 101, 116, 0, 113, 117, 111, 116, 101, 115, 105, 110, 103, 108, 98, 97,
++    115, 101, 0, 113, 117, 111, 116, 101, 100, 98, 108, 98, 97, 115, 101, 0, 113, 117, 111, 116,
++    101, 100, 98, 108, 114, 105, 103, 104, 116, 0, 103, 117, 105, 108, 108, 101, 109, 111, 116, 114,
++    105, 103, 104, 116, 0, 101, 108, 108, 105, 112, 115, 105, 115, 0, 112, 101, 114, 116, 104, 111,
++    117, 115, 97, 110, 100, 0, 113, 117, 101, 115, 116, 105, 111, 110, 100, 111, 119, 110, 0, 103,
++    114, 97, 118, 101, 0, 97, 99, 117, 116, 101, 0, 99, 105, 114, 99, 117, 109, 102, 108, 101,
++    120, 0, 116, 105, 108, 100, 101, 0, 109, 97, 99, 114, 111, 110, 0, 98, 114, 101, 118, 101,
++    0, 100, 111, 116, 97, 99, 99, 101, 110, 116, 0, 100, 105, 101, 114, 101, 115, 105, 115, 0,
++    114, 105, 110, 103, 0, 99, 101, 100, 105, 108, 108, 97, 0, 104, 117, 110, 103, 97, 114, 117,
++    109, 108, 97, 117, 116, 0, 111, 103, 111, 110, 101, 107, 0, 99, 97, 114, 111, 110, 0, 101,
++    109, 100, 97, 115, 104, 0, 65, 69, 0, 111, 114, 100, 102, 101, 109, 105, 110, 105, 110, 101,
++    0, 76, 115, 108, 97, 115, 104, 0, 79, 115, 108, 97, 115, 104, 0, 79, 69, 0, 111, 114,
++    100, 109, 97, 115, 99, 117, 108, 105, 110, 101, 0, 97, 101, 0, 100, 111, 116, 108, 101, 115,
++    115, 105, 0, 108, 115, 108, 97, 115, 104, 0, 111, 115, 108, 97, 115, 104, 0, 111, 101, 0,
++    103, 101, 114, 109, 97, 110, 100, 98, 108, 115, 0, 69, 117, 114, 111, 0, 83, 99, 97, 114,
++    111, 110, 0, 90, 99, 97, 114, 111, 110, 0, 116, 114, 97, 100, 101, 109, 97, 114, 107, 0,
++    115, 99, 97, 114, 111, 110, 0, 122, 99, 97, 114, 111, 110, 0, 89, 100, 105, 101, 114, 101,
++    115, 105, 115, 0, 98, 114, 111, 107, 101, 110, 98, 97, 114, 0, 99, 111, 112, 121, 114, 105,
++    103, 104, 116, 0, 108, 111, 103, 105, 99, 97, 108, 110, 111, 116, 0, 114, 101, 103, 105, 115,
++    116, 101, 114, 101, 100, 0, 100, 101, 103, 114, 101, 101, 0, 112, 108, 117, 115, 109, 105, 110,
++    117, 115, 0, 116, 119, 111, 115, 117, 112, 101, 114, 105, 111, 114, 0, 116, 104, 114, 101, 101,
++    115, 117, 112, 101, 114, 105, 111, 114, 0, 109, 117, 0, 111, 110, 101, 115, 117, 112, 101, 114,
++    105, 111, 114, 0, 111, 110, 101, 113, 117, 97, 114, 116, 101, 114, 0, 111, 110, 101, 104, 97,
++    108, 102, 0, 116, 104, 114, 101, 101, 113, 117, 97, 114, 116, 101, 114, 115, 0, 65, 103, 114,
++    97, 118, 101, 0, 65, 97, 99, 117, 116, 101, 0, 65, 99, 105, 114, 99, 117, 109, 102, 108,
++    101, 120, 0, 65, 116, 105, 108, 100, 101, 0, 65, 100, 105, 101, 114, 101, 115, 105, 115, 0,
++    65, 114, 105, 110, 103, 0, 67, 99, 101, 100, 105, 108, 108, 97, 0, 69, 103, 114, 97, 118,
++    101, 0, 69, 97, 99, 117, 116, 101, 0, 69, 99, 105, 114, 99, 117, 109, 102, 108, 101, 120,
++    0, 69, 100, 105, 101, 114, 101, 115, 105, 115, 0, 73, 103, 114, 97, 118, 101, 0, 73, 97,
++    99, 117, 116, 101, 0, 73, 99, 105, 114, 99, 117, 109, 102, 108, 101, 120, 0, 73, 100, 105,
++    101, 114, 101, 115, 105, 115, 0, 69, 116, 104, 0, 78, 116, 105, 108, 100, 101, 0, 79, 103,
++    114, 97, 118, 101, 0, 79, 97, 99, 117, 116, 101, 0, 79, 99, 105, 114, 99, 117, 109, 102,
++    108, 101, 120, 0, 79, 116, 105, 108, 100, 101, 0, 79, 100, 105, 101, 114, 101, 115, 105, 115,
++    0, 109, 117, 108, 116, 105, 112, 108, 121, 0, 85, 103, 114, 97, 118, 101, 0, 85, 97, 99,
++    117, 116, 101, 0, 85, 99, 105, 114, 99, 117, 109, 102, 108, 101, 120, 0, 85, 100, 105, 101,
++    114, 101, 115, 105, 115, 0, 89, 97, 99, 117, 116, 101, 0, 84, 104, 111, 114, 110, 0, 97,
++    103, 114, 97, 118, 101, 0, 97, 97, 99, 117, 116, 101, 0, 97, 99, 105, 114, 99, 117, 109,
++    102, 108, 101, 120, 0, 97, 116, 105, 108, 100, 101, 0, 97, 100, 105, 101, 114, 101, 115, 105,
++    115, 0, 97, 114, 105, 110, 103, 0, 99, 99, 101, 100, 105, 108, 108, 97, 0, 101, 103, 114,
++    97, 118, 101, 0, 101, 97, 99, 117, 116, 101, 0, 101, 99, 105, 114, 99, 117, 109, 102, 108,
++    101, 120, 0, 101, 100, 105, 101, 114, 101, 115, 105, 115, 0, 105, 103, 114, 97, 118, 101, 0,
++    105, 97, 99, 117, 116, 101, 0, 105, 99, 105, 114, 99, 117, 109, 102, 108, 101, 120, 0, 105,
++    100, 105, 101, 114, 101, 115, 105, 115, 0, 101, 116, 104, 0, 110, 116, 105, 108, 100, 101, 0,
++    111, 103, 114, 97, 118, 101, 0, 111, 97, 99, 117, 116, 101, 0, 111, 99, 105, 114, 99, 117,
++    109, 102, 108, 101, 120, 0, 111, 116, 105, 108, 100, 101, 0, 111, 100, 105, 101, 114, 101, 115,
++    105, 115, 0, 100, 105, 118, 105, 100, 101, 0, 117, 103, 114, 97, 118, 101, 0, 117, 97, 99,
++    117, 116, 101, 0, 117, 99, 105, 114, 99, 117, 109, 102, 108, 101, 120, 0, 117, 100, 105, 101,
++    114, 101, 115, 105, 115, 0, 121, 97, 99, 117, 116, 101, 0, 116, 104, 111, 114, 110, 0, 121,
++    100, 105, 101, 114, 101, 115, 105, 115, 0, 0,
+ };
+ 
+ static const int16_t ps_standard_encoding_offset[256] = {
 --- a/src/cairo-types-private.h
 +++ b/src/cairo-types-private.h
 @@ -258,7 +258,7 @@

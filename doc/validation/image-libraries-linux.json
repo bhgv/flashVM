@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-11",
+  "platform": "Linux x86_64",
+  "compiler": "GCC/G++ 13.3.0",
+  "cmake": "3.31.10",
+  "profiles": {
+    "agg": {
+      "status": "passed",
+      "count": 108,
+      "build_type": "Release",
+      "language_modes": [
+        "C90",
+        "C++98"
+      ],
+      "pedantic_errors": true
+    },
+    "cairo": {
+      "status": "passed",
+      "count": 108,
+      "build_type": "Release",
+      "language_modes": [
+        "C90",
+        "C++98"
+      ],
+      "pedantic_errors": true
+    },
+    "none": {
+      "status": "passed",
+      "count": 108,
+      "build_type": "Release",
+      "language_modes": [
+        "C90",
+        "C++98"
+      ],
+      "pedantic_errors": true
+    },
+    "off": {
+      "status": "passed",
+      "count": 102,
+      "build_type": "Release",
+      "language_modes": [
+        "C90",
+        "C++98"
+      ],
+      "pedantic_errors": true
+    },
+    "cairo-off": {
+      "status": "passed",
+      "count": 102,
+      "build_type": "Release",
+      "language_modes": [
+        "C90",
+        "C++98"
+      ],
+      "pedantic_errors": true
+    }
+  },
+  "definition_cases": 23,
+  "vendor_files": 1044,
+  "cairo_glyph_table_bytes_verified": 1590,
+  "asan_ubsan_tests": 108,
+  "address_excluded_tests": [
+    "tests/container_exceptions.cpp"
+  ],
+  "leak_sanitizer": false,
+  "unvalidated_platforms": [
+    "Windows",
+    "macOS",
+    "Android"
+  ],
+  "mirror_updated": false
+}

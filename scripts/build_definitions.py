@@ -8,6 +8,7 @@ import struct
 import sys
 
 GROUPS = (
+    ('IMAGE_CODECS', 'NO_IMAGE_CODECS'),
     ('GRAPHICS_AGG', 'GRAPHICS_CAIRO', 'NO_GRAPHICS'),
     ('AUTO_PLATFORM', 'WINDOWS', 'LINUX', 'MAC', 'ANDROID'),
     ('HEADLESS', 'FB', 'GLES', 'OGL', 'DX', 'SDL1', 'SDL2', 'SDL3'),
@@ -48,7 +49,7 @@ def generated_headers(root, output, keys):
     (output / 'flashvm_build_config.h').write_text(
         '/* Generated from DEFS.txt. */\n' +
         ''.join('#define ' + key + ' 1\n' for key in keys))
-    if 'GRAPHICS_CAIRO' not in keys:
+    if 'GRAPHICS_CAIRO' not in keys and 'IMAGE_CODECS' not in keys:
         return
     replacements = {
         '@FVM_VENDOR_SIZEOF_LONG@': str(struct.calcsize('l')),
@@ -66,7 +67,8 @@ def generated_headers(root, output, keys):
             '/* little endian */')
         (directory / 'config.h').write_text(template)
     (output / 'cairo/cairo-features.h').write_text(
-        (root / 'external/cairo/cairo-features.h').read_text())
+        (root / 'external/cairo/cairo-features.h.in').read_text().replace(
+            '@FVM_CAIRO_IMAGE_CODECS@', '1' if 'IMAGE_CODECS' in keys else '0'))
     template = (root / 'external/pixman/upstream/pixman/pixman-version.h.in').read_text()
     for name, value in (('MAJOR', '0'), ('MINOR', '38'), ('MICRO', '4')):
         template = template.replace('@PIXMAN_VERSION_' + name + '@', value)

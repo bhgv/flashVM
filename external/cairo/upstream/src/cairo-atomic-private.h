@@ -291,7 +291,9 @@ typedef uint64_t cairo_atomic_intptr_t;
 #error No matching integer pointer type
 #endif
 
-typedef cairo_atomic_intptr_t cairo_atomic_int_t;
+/* Status and reference-count storage is int-sized even on LP64.
+ * Pointer operations have separate void ** primitives below. */
+typedef int cairo_atomic_int_t;
 
 cairo_private void
 _cairo_atomic_int_inc (cairo_atomic_int_t *x);
