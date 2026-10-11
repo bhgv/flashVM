@@ -211,3 +211,7 @@ invoked through the C API. AVM1 script closures and `__call` are not yet impleme
 ## Native `__call` bridge (step 26)
 
 `include/flashvm/meta_call.h` provides `fvm_meta_call`: native metatable callbacks receive the owner, defining metatable, and a new indexed argument table. See `tests/meta_call.c`. The proposed thread/channel language extensions are **not implemented**; design notes: `doc/THREADS_CHANNELS.md` and `doc/THREADS_CHANNELS.ru.md`.
+
+### In-process channels (stage 27)
+
+See [channels API](doc/CHANNELS.md) and [C89 example](examples/embedding/channels/README.md). A portable, synchronized FIFO channel is available to C and C++ embedding code. Worker VM execution and ActionScript channel operators are **not yet implemented**.
