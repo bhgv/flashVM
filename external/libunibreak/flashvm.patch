@@ -1,0 +1,223 @@
+--- a/src/eastasianwidthdef.h
++++ b/src/eastasianwidthdef.h
+@@ -37,7 +37,7 @@
+     EAW_H,  /**< Halfwidth */
+     EAW_Na, /**< Narrow */
+     EAW_W,  /**< Wide */
+-    EAW_N,  /**< Neutral */
++    EAW_N   /**< Neutral */
+ };
+ 
+ /**
+--- a/src/graphemebreak.c
++++ b/src/graphemebreak.c
+@@ -141,24 +141,26 @@
+     size_t posNext = 0;
+     enum Rule9cStage rule9cStage = R9C_INACTIVE;
+     int rule11Detector = 0;
+-    bool evenRegionalIndicators = true;  // is the number of preceeding
+-                                         // GBP_RegionalIndicator characters
+-                                         // even
++    bool evenRegionalIndicators = true;  /*  is the number of preceeding */
++                                         /*  GBP_RegionalIndicator characters */
++                                         /*  even */
+ 
+     utf32_t ch = get_next_char(s, len, &posNext);
+     enum GraphemeBreakClass current_class = get_char_gb_class(ch);
+     enum IndicConjunctBreakClass current_incb = get_char_incb_class(ch);
+ 
+-    // initialize whole output to inside char
++    /*  initialize whole output to inside char */
+     memset(brks, GRAPHEMEBREAK_INSIDEACHAR, len);
+ 
+     while (true)
+     {
+-
+-        // this state-machine recognizes the following pattern:
+-        // extended_pictograph Extended* ZWJ
+-        // when that pattern has been detected rule11Detector will be
+-        // 3 and rule 11 can be applied below
++        enum GraphemeBreakClass prev_class;
++        size_t brksPos;
++
++        /*  this state-machine recognizes the following pattern: */
++        /*  extended_pictograph Extended* ZWJ */
++        /*  when that pattern has been detected rule11Detector will be */
++        /*  3 and rule 11 can be applied below */
+         switch (current_class)
+         {
+         case GBP_ZWJ:
+@@ -197,24 +199,24 @@
+ 
+         rule9cStage = update_rule9c_stage(rule9cStage, current_incb);
+ 
+-        enum GraphemeBreakClass prev_class = current_class;
+-
+-        // safe position if current character so that we can store the
+-        // result there later on
+-        size_t brksPos = posNext - 1;
+-
+-        // get nect character
++        prev_class = current_class;
++
++        /*  safe position if current character so that we can store the */
++        /*  result there later on */
++        brksPos = posNext - 1;
++
++        /*  get nect character */
+         ch = get_next_char(s, len, &posNext);
+ 
+         if (ch == EOS)
+         {
+-            // done, place one final break after the last character as per
+-            // algorithm rule GB1
++            /*  done, place one final break after the last character as per */
++            /*  algorithm rule GB1 */
+             brks[brksPos] = GRAPHEMEBREAK_BREAK;
+             break;
+         }
+ 
+-        // get class of current character
++        /*  get class of current character */
+         current_class = get_char_gb_class(ch);
+         current_incb = get_char_incb_class(ch);
+ 
+@@ -227,65 +229,65 @@
+             evenRegionalIndicators = true;
+         }
+ 
+-        // check all rules
++        /*  check all rules */
+         if (prev_class == GBP_CR && current_class == GBP_LF)
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB3
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB3 */
+         }
+         else if ((prev_class == GBP_CR) || (prev_class == GBP_LF) ||
+                  (prev_class == GBP_Control) || (current_class == GBP_CR) ||
+                  (current_class == GBP_LF) ||
+                  (current_class == GBP_Control))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_BREAK;  // Rule: GB4 + GB5
++            brks[brksPos] = GRAPHEMEBREAK_BREAK;  /*  Rule: GB4 + GB5 */
+         }
+         else if ((prev_class == GBP_L) &&
+                  ((current_class == GBP_L) || (current_class == GBP_V) ||
+                   (current_class == GBP_LV) || (current_class == GBP_LVT)))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB6
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB6 */
+         }
+         else if (((prev_class == GBP_LV) || (prev_class == GBP_V)) &&
+                  ((current_class == GBP_V) || (current_class == GBP_T)))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB7
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB7 */
+         }
+         else if (((prev_class == GBP_LVT) || (prev_class == GBP_T)) &&
+                  (current_class == GBP_T))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB8
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB8 */
+         }
+         else if ((current_class == GBP_Extend) ||
+                  (current_class == GBP_ZWJ) ||
+                  (current_class == GBP_Virama))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB9
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB9 */
+         }
+         else if (current_class == GBP_SpacingMark)
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB9a
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB9a */
+         }
+         else if (prev_class == GBP_Prepend)
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB9b
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB9b */
+         }
+         else if ((rule9cStage == R9C_LINKER) &&
+                  (current_incb == InCB_Consonant))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB9c
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB9c */
+         }
+         else if ((rule11Detector == 3) && ub_is_extended_pictographic(ch))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB11
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB11 */
+         }
+         else if (!evenRegionalIndicators &&
+                  (current_class == GBP_Regional_Indicator))
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  // Rule: GB12 + GB13
++            brks[brksPos] = GRAPHEMEBREAK_NOBREAK;  /*  Rule: GB12 + GB13 */
+         }
+         else
+         {
+-            brks[brksPos] = GRAPHEMEBREAK_BREAK;  // Rule: GB999
++            brks[brksPos] = GRAPHEMEBREAK_BREAK;  /*  Rule: GB999 */
+         }
+     }
+ }
+--- a/src/linebreak.c
++++ b/src/linebreak.c
+@@ -384,11 +384,12 @@
+ static enum LineBreakClass get_char_lb_class_default(
+         utf32_t ch)
+ {
++    const struct LineBreakProperties *result_ptr;
+     if (ch < 65536) {
+         return lb_prop_bmp[ch];
+     }
+ 
+-    const struct LineBreakProperties *result_ptr =
++    result_ptr =
+         ub_bsearch(ch, lb_prop_supplementary, lb_prop_supplementary_len - 1,
+                    sizeof(struct LineBreakProperties));
+     if (result_ptr)
+--- a/src/unibreakdef.h
++++ b/src/unibreakdef.h
+@@ -35,12 +35,11 @@
+ #ifndef UNIBREAKDEF_H
+ #define UNIBREAKDEF_H
+ 
+-#if defined(_MSC_VER) && _MSC_VER < 1800
++/* FlashVM: no C99 stdbool dependency in the C89 implementation. */
++#ifndef __cplusplus
+ typedef int bool;
+ #define false 0
+ #define true 1
+-#else
+-#include <stdbool.h>
+ #endif
+ 
+ #include <stddef.h>
+@@ -69,20 +68,22 @@
+ utf32_t ub_get_next_char_utf16(const utf16_t *s, size_t len, size_t *ip);
+ utf32_t ub_get_next_char_utf32(const utf32_t *s, size_t len, size_t *ip);
+ 
+-__inline const void *ub_bsearch(utf32_t ch, const void *ptr, size_t count,
++static const void *ub_bsearch(utf32_t ch, const void *ptr, size_t count,
+                                 size_t size)
+ {
+     int min = 0;
+     int max = count - 1;
+     int mid;
++    const unsigned char *mid_ptr;
++    utf32_t mid_start, mid_end;
+ 
+     do
+     {
+         mid = (min + max) / 2;
+-        const unsigned char *mid_ptr =
++        mid_ptr =
+             (const unsigned char *)ptr + mid * size;
+-        utf32_t mid_start = *(const utf32_t *)mid_ptr;
+-        utf32_t mid_end = *((const utf32_t *)mid_ptr + 1);
++        mid_start = *(const utf32_t *)mid_ptr;
++        mid_end = *((const utf32_t *)mid_ptr + 1);
+ 
+         if (ch < mid_start)
+         {

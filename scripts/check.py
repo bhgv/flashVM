@@ -28,6 +28,11 @@ flags = ['-g', '-O1', '-Wall', '-Wextra', '-pedantic-errors', '-Iinclude',
          '-Iports', '-Iexternal/mini_regex', '-Iexternal/zlib/upstream',
          '-I' + str(generated), '-pthread']
 flags += ['-D' + key + '=1' for key in keys]
+if 'FONTS' in keys:
+    flags += ['-DFVM_HAS_FONTS=1', '-DFRIBIDI_LIB_STATIC',
+              '-Iexternal/freetype/upstream/include', '-Iexternal/harfbuzz/upstream/src',
+              '-Iexternal/libunibreak/upstream/src', '-Iexternal/fribidi/upstream/lib',
+              '-Iexternal/fribidi']
 if 'GRAPHICS_AGG' in keys:
     flags += ['-Iexternal/agg/upstream/include', '-DFVM_HAS_AGG=1']
 if 'GRAPHICS_CAIRO' in keys:
@@ -53,7 +58,9 @@ if args.sanitize:
 def run(command):
     result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True)
-    if result.returncode:
+    # Fail on sanitizer diagnostics even if a runtime recovers with exit code 0.
+    if result.returncode or (args.sanitize and
+            any(marker in result.stdout for marker in ['runtime error:', 'ERROR: AddressSanitizer'])):
         raise RuntimeError(' '.join(map(str, command)) + '\n' + result.stdout)
     return result.stdout
 
@@ -65,6 +72,9 @@ sources += [root / 'external/zlib/upstream' / name for name in [
     'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]
 if 'GRAPHICS_AGG' in keys:
     sources += list(root.glob('external/agg/upstream/src/*.cpp'))
+    if 'FONTS' in keys:
+        flags += ['-Iexternal/agg/upstream/font_freetype']
+        sources += [root / 'external/agg/upstream/font_freetype/agg_font_freetype.cpp']
 if 'GRAPHICS_CAIRO' in keys or 'IMAGE_CODECS' in keys:
     for dependency in ['cairo', 'pixman']:
         sources += cmake_sources(root / 'external' / dependency / 'CMakeLists.txt',
@@ -75,6 +85,12 @@ if 'IMAGE_CODECS' in keys:
                                  'FVM_' + dependency.upper())
     sources += [root / 'external/cairo/upstream/src' / name for name in
                 ['cairo-png.c', 'cairo-svg-surface.c']]
+if 'FONTS' in keys:
+    for dependency in ['freetype', 'harfbuzz', 'libunibreak', 'fribidi']:
+        sources += cmake_sources(root / 'external' / dependency / 'CMakeLists.txt',
+                                 'FVM_' + dependency.upper())
+    if 'GRAPHICS_CAIRO' in keys or 'IMAGE_CODECS' in keys:
+        sources += [root / 'external/cairo/upstream/src/cairo-ft-font.c']
 if 'SQLITE' in keys:
     sources += [root / 'external/sqlite/upstream/sqlite3.c']
 else:
@@ -102,6 +118,15 @@ def compile_source(source):
         # config.h is private to each library; its directory must come first.
         compile_flags = ['-I' + str(generated / dependency)] + compile_flags
         compile_flags += ['-DHAVE_CONFIG_H=1', '-Iexternal/cairo/upstream']
+    if 'external/freetype/upstream/' in str(source):
+        compile_flags += ['-DFT2_BUILD_LIBRARY', '-DFT_CONFIG_OPTION_SYSTEM_ZLIB']
+    if 'external/harfbuzz/upstream/' in str(source):
+        compile_flags += ['-DHAVE_ATEXIT=1', '-DHAVE_PTHREAD=1', '-DHAVE_FREETYPE=1', '-DHAVE_OT=1', '-DHAVE_FALLBACK=1',
+                          '-DHAVE_UCDN=1', '-DHB_NO_WIN1256=1',
+                          '-Iexternal/harfbuzz/upstream/src/hb-ucdn', '-fno-strict-aliasing']
+    if 'external/fribidi/upstream/' in str(source):
+        compile_flags = ['-Iexternal/fribidi'] + compile_flags
+        compile_flags += ['-DHAVE_CONFIG_H=1', '-DFRIBIDI_BUILD']
     if 'external/giflib/upstream/' in str(source):
         compile_flags += ['-D_POSIX_C_SOURCE=200809L']
     if 'external/libpng/upstream/' in str(source):
@@ -113,7 +138,7 @@ def compile_source(source):
                           '-DSQLITE_DQS=0', '-DSQLITE_DEFAULT_MEMSTATUS=0',
                           '-D_GNU_SOURCE=1', '-D_POSIX_C_SOURCE=200809L', '-D_DEFAULT_SOURCE=1']
     obj = output / (str(source.relative_to(root)).replace('/', '_') + '.o')
-    compiler = ['g++', '-std=c++98'] if source.suffix == '.cpp' else ['gcc', '-std=c89']
+    compiler = ['g++', '-std=c++98'] if source.suffix in ['.cpp', '.cc'] else ['gcc', '-std=c89']
     run(compiler + compile_flags + ['-c', str(source), '-o', str(obj)])
     return str(obj)
 
@@ -135,7 +160,8 @@ try:
     programs = (sorted(root.glob('tests/*.c')) + sorted(root.glob('tests/*.cpp')) +
                 sorted(root.glob('examples/**/main.c')) + sorted(root.glob('examples/**/main.cpp')))
     programs = [source for source in programs
-                if ('IMAGE_CODECS' in keys or 'image_codecs' not in str(source))
+                if ('FONTS' in keys or 'font_libraries' not in str(source))
+                and ('IMAGE_CODECS' in keys or 'image_codecs' not in str(source))
                 and ('SQLITE' in keys or 'sqlite' not in str(source))
                 and ('OS_PORTS' in keys or 'os_ports' not in str(source))
                 and ('RENDER_JOBS' in keys or not any(name in str(source)
@@ -155,6 +181,7 @@ try:
               'leak_sanitizer': False if args.sanitize else None,
               'sqlite': 'bundled 3.50.4' if 'SQLITE' in keys else 'disabled',
               'definitions': keys, 'platform': 'Linux',
+              'fonts': ['FreeType 2.14.3', 'HarfBuzz 1.8.8', 'libunibreak 6.1', 'FriBidi 1.0.16'] if 'FONTS' in keys else [],
               'image_codecs': ['libpng 1.6.59', 'giflib 5.2.2', 'libjpeg 9f', 'NanoSVG', 'Cairo PNG/SVG'] if 'IMAGE_CODECS' in keys else []}
     (output / 'test-results.json').write_text(json.dumps(report, indent=2) + '\n')
     suffix = '; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if args.sanitize else ''

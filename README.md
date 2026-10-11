@@ -1,3 +1,10 @@
+Font/vector checkpoint: bundled static FreeType 2.14.3, HarfBuzz 1.8.8,
+libunibreak 6.1 and FriBidi 1.0.16; C89 native font/shaping APIs and editable
+Bezier paths with AGG/Cairo fill/stroke/image masks. FONTS/NO_FONTS in DEFS.txt.
+See [English](doc/FONT_LIBRARIES.md), [Русский](doc/FONT_LIBRARIES.ru.md) and
+[validation](doc/FONT_LIBRARIES_CHECKPOINT.md). Full text layout/ActionScript
+integration remains unfinished; the mirror is not updated automatically.
+
 Dependency review checkpoint: `extern/` is merged into `external/`. Cairo 1.16.0,
 Pixman 0.38.4 and SQLite 3.50.4 sources are bundled and preconfigured for local
 builds. Edit top-level [DEFS.txt](DEFS.txt) to choose competing variants; default

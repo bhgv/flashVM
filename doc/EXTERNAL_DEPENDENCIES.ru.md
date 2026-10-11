@@ -34,3 +34,7 @@ GUI, GL, системные шрифты и PDF/PS Cairo отключены. А�
 сторонних библиотек — в `external/`. Массовое переформатирование upstream не
 выполнялось. Выполнение на Windows/macOS/Android пока не проверено. См.
 [ключи сборки](BUILD_DEFINITIONS.ru.md) и [проверки коммита](DEPENDENCY_CHECKPOINT.ru.md).
+
+FONTS добавляет встроенные статические FreeType 2.14.3, HarfBuzz 1.8.8,
+libunibreak 6.1, FriBidi 1.0.16 и адаптеры FreeType для AGG/Cairo. Fontconfig
+и поиск системных шрифтов отключены. [Профиль и ограничения](FONT_LIBRARIES.ru.md).

@@ -1,0 +1,18 @@
+{
+  "name": "libunibreak",
+  "version": "6.1",
+  "source_url": "https://codeload.github.com/adah1972/libunibreak/tar.gz/refs/tags/libunibreak_6_1",
+  "archive": "libunibreak-6.1.tar.gz",
+  "archive_sha256": "890674996168ef5ba143d80d49ab8b61594a4eb70198dcac76caf6e1bd264a41",
+  "license": "zlib/libpng; Unicode data terms retained",
+  "local_changes": [
+    "src/eastasianwidthdef.h",
+    "src/graphemebreak.c",
+    "src/linebreak.c",
+    "src/unibreakdef.h"
+  ],
+  "patch": "flashvm.patch",
+  "offline_build": true,
+  "linkage": "STATIC",
+  "language": "C89"
+}

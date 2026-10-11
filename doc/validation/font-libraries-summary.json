@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "platform": "Linux x86_64",
+  "compiler": "GCC/G++ 13.3.0",
+  "standards": [
+    "C89/C90",
+    "C++98"
+  ],
+  "pedantic_errors": true,
+  "cmake": "3.31.10",
+  "BUILD_SHARED_LIBS": "ON",
+  "tests": {
+    "AGG": 114,
+    "Cairo": 114,
+    "NO_FONTS": 110,
+    "NO_GRAPHICS_NO_IMAGE_CODECS": 108,
+    "ASan_UBSan": 114
+  },
+  "vendor_files_verified": 2094,
+  "mirror_updated": false,
+  "limitations": [
+    "Windows/macOS/Android not executed",
+    "LeakSanitizer disabled: restricted /proc environment",
+    "historical container allocator test uses UBSan only",
+    "native text primitives implemented; complete paragraph layout and ActionScript TextField integration remain separate work"
+  ]
+}

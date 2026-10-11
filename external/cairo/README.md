@@ -3,7 +3,8 @@
 Official release: see PROVENANCE.json. Library sources, original license files
 and version metadata are included. The local CMake profile builds static Cairo
 with image, recording and user-font support, using bundled scalar Pixman.
-X11, GL and native font discovery are disabled. PNG and SVG are enabled only
+X11, GL and native font discovery are disabled. FONTS enables the bundled
+FreeType backend, with host-supplied faces and no Fontconfig dependency. PNG and SVG are enabled only
 with IMAGE_CODECS; other document backends are disabled.
 
 No autoconf, Meson, pkg-config, network access or preinstalled graphics library
@@ -33,3 +34,5 @@ codecs are disabled. See [integration and limits](../../doc/IMAGE_CODECS.md).
 
 IMAGE_CODECS включает чтение/запись PNG и запись SVG через Cairo. Подробности
 и ограничения: [документация](../../doc/IMAGE_CODECS.ru.md).
+
+Font/static integration: [English](../../doc/FONT_LIBRARIES.md), [Русский](../../doc/FONT_LIBRARIES.ru.md).

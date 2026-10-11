@@ -3,7 +3,7 @@
 Source repository: https://github.com/ghaerr/agg-2.6
 Pinned commit: `c4f36b4432142f22c0bf82c6fbdb41567a236be2`.
 Included: `agg-src/include`, top-level `agg-src/src/*.cpp`, COPYING material
-(`upstream/copying`), README and ChangeLog. GUI/font/platform adapters and
+(`upstream/copying`), README and ChangeLog. The FreeType bridge is included with FONTS; GUI/platform adapters and
 examples are excluded; FlashVM system adapters remain in `ports/`.
 The imported core identifies itself as AGG 2.4 and retains its permissive
 copyright notices and dual-license text. Repository name is not a version claim.
@@ -26,3 +26,7 @@ Integer alpha blending can differ by one RGB unit after rounding.
 только RGBA8, размеры до 4096 и координаты +/-4096. Изменения для C++98 отмечены
 в исходниках. 16-битные компоненты с данной конфигурацией использовать нельзя.
 Это растеризатор полигонов, пока без декодера SWF-фигур и фильтров.
+
+FONTS adds the pinned font_freetype bridge (the FT_Outline tag pointer was
+adapted to FreeType 2.14.3). The independent FlashVM path API now also supports
+Bezier curves, fill/stroke and image masks; see [fonts](../../doc/FONT_LIBRARIES.md).

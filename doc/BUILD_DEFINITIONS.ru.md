@@ -70,3 +70,8 @@ IMAGE_CODECS (по умолчанию) / NO_IMAGE_CODECS — отдельная 
 PNG/GIF/JPEG/SVG. При включении Cairo/Pixman собираются также с AGG или
 NO_GRAPHICS для экспорта SVG; выбор основного растеризатора не меняется.
 Подробнее: [API и ограничения](IMAGE_CODECS.ru.md).
+
+FONTS (по умолчанию) / NO_FONTS — FreeType, HarfBuzz, libunibreak и FriBidi,
+адаптеры FreeType для выбранных AGG/Cairo, нативные API шрифтов/контуров.
+Все цели external статические независимо от BUILD_SHARED_LIBS. См.
+[подключение шрифтов](FONT_LIBRARIES.ru.md).

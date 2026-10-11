@@ -1,0 +1,67 @@
+--- a/lib/fribidi-arabic.c
++++ b/lib/fribidi-arabic.c
+@@ -158,7 +158,7 @@
+ 	fribidi_shape_arabic_ligature ((table), sizeof(table)/sizeof((table)[0]), levels, len, ar_props, str)
+ 
+ #define DO_SHAPING(tablemacro, len, ar_props, str) \
+-	fribidi_shape_arabic_joining (tablemacro(,), len, ar_props, str);
++	fribidi_shape_arabic_joining (tablemacro(unused,unused), len, ar_props, str);
+ 	
+ 
+ 
+--- a/lib/fribidi.c
++++ b/lib/fribidi.c
+@@ -295,23 +295,37 @@
+ 
+ const char *fribidi_unicode_version = FRIBIDI_UNICODE_VERSION;
+ 
+-const char *fribidi_version_info =
+-  "(" FRIBIDI_NAME ") " FRIBIDI_VERSION "\n"
+-  "interface version " FRIBIDI_INTERFACE_VERSION_STRING ",\n"
+-  "Unicode Character Database version " FRIBIDI_UNICODE_VERSION ",\n"
+-  "Configure options"
++/* FlashVM C89: preserve the long informational string as byte data. */
++static const char fribidi_version_info_data[] = {
++  40,71,78,85,32,70,114,105,66,105,100,105,41,32,49,46,48,46,49,54,10,105,110,116,
++  101,114,102,97,99,101,32,118,101,114,115,105,111,110,32,52,44,10,85,110,105,99,111,100,
++  101,32,67,104,97,114,97,99,116,101,114,32,68,97,116,97,98,97,115,101,32,118,101,114,
++  115,105,111,110,32,49,54,46,48,46,48,44,10,67,111,110,102,105,103,117,114,101,32,111,
++  112,116,105,111,110,115,
+ #ifdef DEBUG
+-  " --enable-debug"
+-#endif /* DEBUG */
+-  ".\n\n"
+-  "Copyright (C) 2004  Sharif FarsiWeb, Inc.\n"
+-  "Copyright (C) 2001, 2002, 2004, 2005  Behdad Esfahbod\n"
+-  "Copyright (C) 1999, 2000, 2017, 2018, 2019  Dov Grobgeld\n"
+-  FRIBIDI_NAME " comes with NO WARRANTY, to the extent permitted by law.\n"
+-  "You may redistribute copies of " FRIBIDI_NAME " under\n"
+-  "the terms of the GNU Lesser General Public License.\n"
+-  "For more information about these matters, see the file named COPYING.\n\n"
+-  "Written by Behdad Esfahbod and Dov Grobgeld.\n";
++  32,45,45,101,110,97,98,108,101,45,100,101,98,117,103,
++#endif
++  46,10,10,67,111,112,121,114,105,103,104,116,32,40,67,41,32,50,48,48,52,32,32,83,
++  104,97,114,105,102,32,70,97,114,115,105,87,101,98,44,32,73,110,99,46,10,67,111,112,
++  121,114,105,103,104,116,32,40,67,41,32,50,48,48,49,44,32,50,48,48,50,44,32,50,
++  48,48,52,44,32,50,48,48,53,32,32,66,101,104,100,97,100,32,69,115,102,97,104,98,
++  111,100,10,67,111,112,121,114,105,103,104,116,32,40,67,41,32,49,57,57,57,44,32,50,
++  48,48,48,44,32,50,48,49,55,44,32,50,48,49,56,44,32,50,48,49,57,32,32,68,
++  111,118,32,71,114,111,98,103,101,108,100,10,71,78,85,32,70,114,105,66,105,100,105,32,
++  99,111,109,101,115,32,119,105,116,104,32,78,79,32,87,65,82,82,65,78,84,89,44,32,
++  116,111,32,116,104,101,32,101,120,116,101,110,116,32,112,101,114,109,105,116,116,101,100,32,
++  98,121,32,108,97,119,46,10,89,111,117,32,109,97,121,32,114,101,100,105,115,116,114,105,
++  98,117,116,101,32,99,111,112,105,101,115,32,111,102,32,71,78,85,32,70,114,105,66,105,
++  100,105,32,117,110,100,101,114,10,116,104,101,32,116,101,114,109,115,32,111,102,32,116,104,
++  101,32,71,78,85,32,76,101,115,115,101,114,32,71,101,110,101,114,97,108,32,80,117,98,
++  108,105,99,32,76,105,99,101,110,115,101,46,10,70,111,114,32,109,111,114,101,32,105,110,
++  102,111,114,109,97,116,105,111,110,32,97,98,111,117,116,32,116,104,101,115,101,32,109,97,
++  116,116,101,114,115,44,32,115,101,101,32,116,104,101,32,102,105,108,101,32,110,97,109,101,
++  100,32,67,79,80,89,73,78,71,46,10,10,87,114,105,116,116,101,110,32,98,121,32,66,
++  101,104,100,97,100,32,69,115,102,97,104,98,111,100,32,97,110,100,32,68,111,118,32,71,
++  114,111,98,103,101,108,100,46,10,0,
++};
++const char *fribidi_version_info = fribidi_version_info_data;
+ 
+ /* Editor directions:
+  * vim:textwidth=78:tabstop=8:shiftwidth=2:autoindent:cindent

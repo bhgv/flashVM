@@ -8,6 +8,7 @@ import struct
 import sys
 
 GROUPS = (
+    ('FONTS', 'NO_FONTS'),
     ('IMAGE_CODECS', 'NO_IMAGE_CODECS'),
     ('GRAPHICS_AGG', 'GRAPHICS_CAIRO', 'NO_GRAPHICS'),
     ('AUTO_PLATFORM', 'WINDOWS', 'LINUX', 'MAC', 'ANDROID'),
@@ -68,7 +69,8 @@ def generated_headers(root, output, keys):
         (directory / 'config.h').write_text(template)
     (output / 'cairo/cairo-features.h').write_text(
         (root / 'external/cairo/cairo-features.h.in').read_text().replace(
-            '@FVM_CAIRO_IMAGE_CODECS@', '1' if 'IMAGE_CODECS' in keys else '0'))
+            '@FVM_CAIRO_IMAGE_CODECS@', '1' if 'IMAGE_CODECS' in keys else '0').replace(
+            '@FVM_CAIRO_FONTS@', '1' if 'FONTS' in keys else '0'))
     template = (root / 'external/pixman/upstream/pixman/pixman-version.h.in').read_text()
     for name, value in (('MAJOR', '0'), ('MINOR', '38'), ('MICRO', '4')):
         template = template.replace('@PIXMAN_VERSION_' + name + '@', value)

@@ -11,6 +11,10 @@ pkg-config, or search for a system Cairo, Pixman, SQLite, zlib or AGG installati
 | agg | AGG 2.4 core at the recorded fork commit | `GRAPHICS_AGG` |
 | cairo | 1.16.0, image + optional PNG/SVG | `GRAPHICS_CAIRO` or `IMAGE_CODECS` |
 | pixman | 0.38.4, scalar core with thread-local storage | With Cairo |
+| freetype | 2.14.3 | `FONTS` (default) |
+| harfbuzz | 1.8.8 + C++98 patch | `FONTS` |
+| libunibreak | 6.1 | `FONTS` |
+| fribidi | 1.0.16 | `FONTS` |
 | sqlite | 3.50.4 amalgamation | `SQLITE` (default) |
 | libpng | 1.6.59 | `IMAGE_CODECS` (default) |
 | giflib | 5.2.2 | `IMAGE_CODECS` |
@@ -38,3 +42,7 @@ source change. `SOURCES.sha256` covers the vendored upstream files. See
 и патчи сохранены. Подробнее: [ключи сборки](../doc/BUILD_DEFINITIONS.ru.md).
 
 Image read/write integration: [English](../doc/IMAGE_CODECS.md), [Русский](../doc/IMAGE_CODECS.ru.md).
+
+Font/vector integration: [English](../doc/FONT_LIBRARIES.md), [Русский](../doc/FONT_LIBRARIES.ru.md).
+All selected bundled targets are STATIC even with BUILD_SHARED_LIBS=ON.
+Все выбранные библиотеки external собираются статически.

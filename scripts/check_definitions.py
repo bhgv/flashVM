@@ -26,6 +26,9 @@ cases = [
     ('default', base, None),
     ('cairo', select(base, 'GRAPHICS_AGG', 'GRAPHICS_CAIRO'), None),
     ('no_graphics', select(base, 'GRAPHICS_AGG', 'NO_GRAPHICS'), None),
+    ('no_fonts', select(base, 'FONTS', 'NO_FONTS'), None),
+    ('missing_fonts', base.replace('\nFONTS\n', '\n# FONTS\n'), 'requires exactly one key'),
+    ('conflicting_fonts', base.replace('# NO_FONTS\n', 'NO_FONTS\n'), 'requires exactly one key'),
     ('no_codecs', select(base, 'IMAGE_CODECS', 'NO_IMAGE_CODECS'), None),
     ('missing_codecs', base.replace('\nIMAGE_CODECS\n', '\n# IMAGE_CODECS\n'), 'requires exactly one key'),
     ('conflicting_codecs', base.replace('# NO_IMAGE_CODECS\n', 'NO_IMAGE_CODECS\n'), 'requires exactly one key'),
@@ -50,7 +53,7 @@ with tempfile.TemporaryDirectory(prefix='flashvm-definitions-', dir=temporary_ro
         definitions.write_text(text)
         command = [args.cmake, '-S', str(root), '-B', str(directory / name),
                    '-DFVM_DEFS_FILE=' + str(definitions),
-                   '-DFVM_BUILD_TESTS=OFF', '-DFVM_BUILD_EXAMPLES=OFF']
+                   '-DFVM_BUILD_TESTS=OFF', '-DFVM_BUILD_EXAMPLES=OFF', '-DBUILD_SHARED_LIBS=ON']
         result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=60)
         if diagnostic:
@@ -78,7 +81,7 @@ with tempfile.TemporaryDirectory(prefix='flashvm-definitions-', dir=temporary_ro
     build = directory / 'reconfigure'
     subprocess.run([args.cmake, '-S', str(root), '-B', str(build),
                     '-DFVM_DEFS_FILE=' + str(definitions),
-                    '-DFVM_BUILD_TESTS=OFF', '-DFVM_BUILD_EXAMPLES=OFF'],
+                    '-DFVM_BUILD_TESTS=OFF', '-DFVM_BUILD_EXAMPLES=OFF', '-DBUILD_SHARED_LIBS=ON'],
                    check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     definitions.write_text(base + '\nGRAPHICS_CAIRO\n')
     result = subprocess.run([args.cmake, '--build', str(build)], text=True,

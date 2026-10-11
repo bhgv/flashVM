@@ -35,3 +35,7 @@ same DEFS.txt and vendor source lists. Sanitizer limits are recorded in
 Only Linux x86_64 execution is validated. Portable source/configuration does
 not establish Windows/macOS/Android readiness. FB/GLES/OGL/DX/SDL1/SDL2/SDL3,
 JIT and media are reserved keys; selecting them produces a configuration error.
+
+FONTS adds bundled static FreeType 2.14.3, HarfBuzz 1.8.8, libunibreak 6.1 and
+FriBidi 1.0.16, plus AGG/Cairo FreeType adapters. Fontconfig/system font discovery
+remains disabled. [Profile and compatibility limits](FONT_LIBRARIES.md).

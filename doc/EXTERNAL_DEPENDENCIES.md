@@ -35,3 +35,7 @@ system adapters stay in `ports/`; upstream library platform internals remain in
 `external/`. No third-party source was reformatted wholesale. Windows, macOS
 and Android execution remains unvalidated. See [build definitions](BUILD_DEFINITIONS.md)
 and [checkpoint validation](DEPENDENCY_CHECKPOINT.md).
+
+FONTS adds bundled static FreeType 2.14.3, HarfBuzz 1.8.8, libunibreak 6.1 and
+FriBidi 1.0.16, plus AGG/Cairo FreeType adapters. Fontconfig/system font discovery
+remains disabled. [Profile and compatibility limits](FONT_LIBRARIES.md).

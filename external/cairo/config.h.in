@@ -1,5 +1,6 @@
 /* Cairo image/recording/user-font core; PNG and SVG follow IMAGE_CODECS.
- * Native fonts, PDF and display backends are disabled. Platform locking
+ * FreeType faces follow FONTS; native font discovery, PDF and display backends
+ * are disabled. Platform locking
  * remains enabled. */
 #ifndef FVM_CAIRO_CONFIG_H
 #define FVM_CAIRO_CONFIG_H
@@ -9,6 +10,14 @@
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
+/* FreeType APIs present in the pinned 2.14.3 distribution. */
+#define HAVE_FT_GLYPHSLOT_EMBOLDEN 1
+#define HAVE_FT_GLYPHSLOT_OBLIQUE 1
+#define HAVE_FT_LIBRARY_SETLCDFILTER 1
+#define HAVE_FT_GET_VAR_DESIGN_COORDINATES 1
+#define HAVE_FT_LOAD_SFNT_TABLE 1
+#define HAVE_FT_DONE_MM_VAR 1
+#define HAVE_FT_GET_X11_FONT_FORMAT 1
 #define HAVE_STDINT_H 1
 #define HAVE_UINT64_T 1
 #define CAIRO_HAS_PTHREAD @FVM_VENDOR_PTHREAD@

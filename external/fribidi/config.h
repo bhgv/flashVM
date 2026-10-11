@@ -1,0 +1,8 @@
+#ifndef FVM_FRIBIDI_CONFIG_H
+#define FVM_FRIBIDI_CONFIG_H
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_MEMORY_H 1
+#define HAVE_STRINGIZE 1
+#define SIZEOF_INT 4
+#endif
