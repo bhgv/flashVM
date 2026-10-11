@@ -1,3 +1,5 @@
+Native text checkpoint: owned single-font horizontal layout, wrapping, bidi/script runs, measurement and editable block/glyph paths are tested. See [TEXT_LAYOUT.md](TEXT_LAYOUT.md). SWF TextField/TextFormat integration remains outstanding.
+
 Numeric library checkpoint: opt-in Math methods/constants and primitive
 Number/Boolean/isNaN/isFinite are now tested; see STANDARD_NUMERIC.md.
 Boxed classes, first-class functions, property attributes and complete coercion

@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "date": "2026-10-11",
+  "platform": "Linux x86_64",
+  "compiler": "GCC/G++ 13.3.0",
+  "standards": [
+    "C89/C90",
+    "C++98"
+  ],
+  "pedantic_errors": true,
+  "cmake": "3.31.10",
+  "BUILD_SHARED_LIBS": "ON",
+  "tests": {
+    "AGG": 117,
+    "Cairo": 117,
+    "NO_FONTS": 113,
+    "NO_GRAPHICS_NO_IMAGE_CODECS": 111,
+    "ASan_UBSan": 117
+  },
+  "internal_bidi_reference_cases": 384,
+  "independent_workers": 8,
+  "vendor_files_verified": 2094,
+  "mirror_updated": false,
+  "limitations": [
+    "Windows/macOS/Android not executed",
+    "LeakSanitizer disabled: /proc unavailable",
+    "historical custom allocator exception test uses UBSan only",
+    "single font/style horizontal layout; no complete SWF TextField/TextFormat",
+    "simple script inheritance; no full Script_Extensions/bracket itemizer",
+    "tabs and soft hyphen return UNSUPPORTED"
+  ]
+}

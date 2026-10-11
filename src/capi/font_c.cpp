@@ -1,4 +1,5 @@
 #include "flashvm/font.h"
+#include "font_internal.hpp"
 #include "../details/vector.hpp"
 #include <cstring>
 #include <climits>
@@ -217,19 +218,24 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Pat
     *out = path;
     return FVM_OK;
 }
-extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t size,
-                                     FVM_TextDirection direction, const char *language,
-                                     FVM_TextRun **out)
+static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
+                                size_t length, FVM_TextDirection direction, hb_script_t script,
+                                const char *language, bool remove_ignorables, FVM_TextRun **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!font || !valid_utf8(text, size) || direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
+    if (!font || !valid_utf8(text, size) || offset > size || length > size - offset ||
+        direction < FVM_TEXT_AUTO || direction > FVM_TEXT_RTL)
         return FVM_INVALID_ARGUMENT;
     hb_buffer_t *buffer = hb_buffer_create();
     if (buffer == hb_buffer_get_empty())
         return FVM_OUT_OF_MEMORY;
-    hb_buffer_add_utf8(buffer, text ? text : "", (int)size, 0, (int)size);
+    hb_buffer_add_utf8(buffer, text ? text : "", (int)size, (unsigned int)offset, (int)length);
+    if (script != HB_SCRIPT_INVALID)
+        hb_buffer_set_script(buffer, script);
+    if (remove_ignorables)
+        hb_buffer_set_flags(buffer, HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES);
     if (direction != FVM_TEXT_AUTO)
         hb_buffer_set_direction(buffer,
                                 direction == FVM_TEXT_LTR ? HB_DIRECTION_LTR : HB_DIRECTION_RTL);
@@ -274,6 +280,19 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t si
     hb_buffer_destroy(buffer);
     *out = run;
     return FVM_OK;
+}
+extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t size,
+                                     FVM_TextDirection direction, const char *language,
+                                     FVM_TextRun **out)
+{
+    return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false,
+                         out);
+}
+FVM_Result fvm_font_shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
+                                  size_t length, FVM_TextDirection direction, hb_script_t script,
+                                  const char *language, FVM_TextRun **out)
+{
+    return shape_segment(font, text, size, offset, length, direction, script, language, true, out);
 }
 extern "C" size_t fvm_text_run_count(const FVM_TextRun *run)
 {

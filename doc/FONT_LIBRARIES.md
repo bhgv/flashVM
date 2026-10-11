@@ -125,3 +125,5 @@ PROVENANCE.json records archive hashes and complete local source changes in
 flashvm.patch. C89/C++98 modes stay strict; supported native integer/compiler
 facilities remain necessary for upstream internals. See
 [checkpoint validation](FONT_LIBRARIES_CHECKPOINT.md).
+
+Native owned paragraph/line layout: [TEXT_LAYOUT.md](TEXT_LAYOUT.md).

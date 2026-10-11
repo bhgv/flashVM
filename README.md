@@ -1,3 +1,5 @@
+Text layout checkpoint: [English](doc/TEXT_LAYOUT.md) / [Русский](doc/TEXT_LAYOUT.ru.md).
+
 Font/vector checkpoint: bundled static FreeType 2.14.3, HarfBuzz 1.8.8,
 libunibreak 6.1 and FriBidi 1.0.16; C89 native font/shaping APIs and editable
 Bezier paths with AGG/Cairo fill/stroke/image masks. FONTS/NO_FONTS in DEFS.txt.
