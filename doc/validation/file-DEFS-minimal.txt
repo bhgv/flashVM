@@ -1,0 +1,59 @@
+# FlashVM build keys / Ключи сборки FlashVM
+# One uncommented key per group; '#' disables a line.
+# В каждой группе включите ровно один ключ. Комментарий начинается с '#'.
+# CMake reads this file on configuration and regenerates build macros.
+# CMake читает файл при конфигурации и генерирует макросы компилятора.
+
+# Rasterizer / Растеризатор (host RGBA8 memory buffer)
+# GRAPHICS_AGG
+# GRAPHICS_CAIRO
+NO_GRAPHICS
+
+# Platform / Платформа: AUTO_PLATFORM uses the CMake target toolchain.
+# AUTO_PLATFORM определяет целевую платформу, а не машину сборки.
+AUTO_PLATFORM
+# WINDOWS
+# LINUX
+# MAC
+# ANDROID
+
+# Presentation / Вывод: only HEADLESS is implemented in this checkpoint.
+# HEADLESS: приложение получает RGBA8; окно/экран открывает само приложение.
+# Остальные адаптеры ещё не реализованы: их выбор завершает CMake ошибкой.
+HEADLESS
+# FB
+# GLES
+# OGL
+# DX
+# SDL1
+# SDL2
+# SDL3
+
+# Database / База данных: source is always external/sqlite/upstream.
+SQLITE
+# NO_SQLITE
+
+# Native input and TCP / Нативный ввод и TCP
+OS_PORTS
+# NO_OS_PORTS
+
+# Render worker jobs / Задания отрисовки в потоках
+RENDER_JOBS
+# NO_RENDER_JOBS
+
+# Execution / Исполнение: JIT is not implemented / JIT ещё не реализован.
+INTERPRETER
+# JIT
+
+# Media / Мультимедиа: MEDIA is not implemented / MEDIA ещё не реализован.
+NO_MEDIA
+# MEDIA
+
+# Image libraries / Библиотеки изображений: read/write PNG, GIF, JPEG and SVG.
+# SVG: NanoSVG reader/rasterizer + Cairo writer; restricted read profile.
+# IMAGE_CODECS
+NO_IMAGE_CODECS
+
+# Font outlines, shaping, line breaks and bidi / Шрифты и раскладка текста
+FONTS
+# NO_FONTS

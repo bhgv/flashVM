@@ -26,7 +26,7 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
-  ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
+  ports/file_port.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)
@@ -172,4 +172,13 @@ if(FVM_BUILD_EXAMPLES)
   foreach(source ${FVM_EXAMPLE_SOURCES})
     fvm_add_program(${source})
   endforeach()
+endif()
+
+# Separate processes verify that persisted graph/callback references do not
+# depend on an originating process address. Fixture ordering also supports -j.
+if(FVM_BUILD_TESTS)
+  set_tests_properties(flashvm_tests_file_process_1_writer PROPERTIES
+    FIXTURES_SETUP file_process_state)
+  set_tests_properties(flashvm_tests_file_process_2_reader PROPERTIES
+    FIXTURES_REQUIRED file_process_state)
 endif()

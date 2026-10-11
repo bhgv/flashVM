@@ -6,6 +6,7 @@
 #include "flashvm/worker.h"
 #include "flashvm/transfer.h"
 #include "flashvm/table.h"
+#include "flashvm/metamethod.h"
 #include "../../ports/thread_port.h"
 #include <new>
 #include <climits>
@@ -157,6 +158,10 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
         do
         {
             r = fvm_channel_receive_value(c, ch, &v, 0);
+            int file = 0;
+            fvm_channel_is_file(ch, &file);
+            if (r == FVM_NOT_FOUND && op == 2 && file)
+                return FVM_ERROR;
             if (r == FVM_NOT_FOUND && op == 2 && !stopped(c))
                 fvm_port_thread_sleep_us(1000);
             else
@@ -223,12 +228,27 @@ static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, c
     unsigned long capacity = 0;
     FVM_Channel *ch = 0;
     FVM_Object *o = 0;
-    if (n > 1 || (n && (!integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)))
-        return FVM_INVALID_ARGUMENT;
-    FVM_Result r = fvm_channel_create(&ch);
+    FVM_Result r;
+    if (n >= 1 && a[0].type == FVM_VALUE_STRING && a[0].string && !std::strcmp(a[0].string, "file"))
+    {
+        if ((n != 2 && n != 3) || a[1].type != FVM_VALUE_STRING || !a[1].string ||
+            (n == 3 && (a[2].type != FVM_VALUE_STRING || !a[2].string)))
+            return FVM_INVALID_ARGUMENT;
+        r = fvm_channel_open_file(a[1].string, n == 3 ? a[2].string : 0, &ch);
+    }
+    else
+    {
+        if (n > 1 ||
+            (n && (!integer_arg(a[0], ULONG_MAX, &capacity) || (size_t)capacity != capacity)))
+            return FVM_INVALID_ARGUMENT;
+        r = fvm_channel_create(&ch);
+    }
     if (r != FVM_OK)
         return r;
-    fvm_channel_set_capacity(ch, (size_t)capacity);
+    int file = 0;
+    fvm_channel_is_file(ch, &file);
+    if (!file)
+        fvm_channel_set_capacity(ch, (size_t)capacity);
     r = fvm_extensions_wrap_channel(c, ch, &o);
     fvm_channel_release(ch);
     if (r == FVM_OK)
@@ -238,6 +258,35 @@ static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, c
         out->object = o;
     }
     return r;
+}
+/* Returning the attached value lets script assignment preserve primitive metadata. */
+static FVM_Result meta_attach(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
+                              FVM_Value *out, void *)
+{
+    if (n != 2 || (a[1].type != FVM_VALUE_OBJECT && a[1].type != FVM_VALUE_NULL &&
+                   a[1].type != FVM_VALUE_UNDEFINED))
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value value = a[0];
+    FVM_Result result =
+        fvm_value_set_metatable(c, &value, a[1].type == FVM_VALUE_OBJECT ? a[1].object : 0);
+    if (result == FVM_OK)
+        *out = value;
+    return result;
+}
+static FVM_Result meta_get(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
+                           FVM_Value *out, void *)
+{
+    if (n != 1)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *meta = 0;
+    FVM_Result result = fvm_value_get_metatable(c, a, &meta);
+    fvm_value_undefined(out);
+    if (meta)
+    {
+        out->type = FVM_VALUE_OBJECT;
+        out->object = meta;
+    }
+    return result;
 }
 static FVM_Result worker_op(FVM_Context *c, FVM_Object *s, unsigned int n, FVM_Value *out, int op)
 {
@@ -567,30 +616,31 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
 {
     if (!c || c->destroying)
         return FVM_INVALID_ARGUMENT;
-    const char *names[3] = {"gc", "thread", "channel"};
-    FVM_Object *objects[3];
+    const char *names[4] = {"gc", "thread", "channel", "metatable"};
+    FVM_Object *objects[4];
     FVM_Value v;
     int existing = 0;
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         if (c->global->properties.find(names[i]) != c->global->properties.end())
         {
             v = c->global->properties.find(names[i])->second;
-            if (v.type != FVM_VALUE_OBJECT || v.object->resource_kind != GC_NAMESPACE + i)
+            if (v.type != FVM_VALUE_OBJECT ||
+                v.object->resource_kind != (i == 3 ? 7 : GC_NAMESPACE + i))
                 return FVM_INVALID_ARGUMENT;
             ++existing;
         }
     }
     if (existing)
-        return existing == 3 ? FVM_OK : FVM_INVALID_ARGUMENT;
+        return existing == 4 ? FVM_OK : FVM_INVALID_ARGUMENT;
     try
     {
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 4; ++i)
         {
             FVM_Result r = fvm_object_create(c, &objects[i]);
             if (r != FVM_OK)
                 return r;
-            objects[i]->resource_kind = GC_NAMESPACE + i;
+            objects[i]->resource_kind = i == 3 ? 7 : GC_NAMESPACE + i;
         }
         method(objects[0], "collect", gc_collect, 0, true);
         method(objects[0], "step", gc_step, 1, true);
@@ -605,10 +655,12 @@ extern "C" FVM_Result fvm_extensions_install(FVM_Context *c)
         method(objects[1], "sleepms", sleepms, 5);
         method(objects[1], "sleepus", sleepus, 6);
         method(objects[2], "create", create_channel, 0);
+        method(objects[3], "attach", meta_attach, 0);
+        method(objects[3], "get", meta_get, 0);
         /* Build globals transactionally so allocation failures cannot leave partial installation.
          */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 4; ++i)
         {
             fvm_value_undefined(&v);
             v.type = FVM_VALUE_OBJECT;

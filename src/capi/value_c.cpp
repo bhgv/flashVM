@@ -3,7 +3,7 @@
 #include "flashvm/stack.h"
 #include <cstring>
 #include <new>
-static FVM_Result valid_value(FVM_Context *context, const FVM_Value *value)
+FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
 {
     if (!value)
         return FVM_INVALID_ARGUMENT;
@@ -18,13 +18,15 @@ static FVM_Result valid_value(FVM_Context *context, const FVM_Value *value)
         return FVM_INVALID_ARGUMENT;
     if (value->type == FVM_VALUE_OBJECT && (!value->object || value->object->owner != context))
         return FVM_INVALID_ARGUMENT;
+    if (value->metatable && (value->type == FVM_VALUE_OBJECT || value->metatable->owner != context))
+        return FVM_INVALID_ARGUMENT;
     if (value->type == FVM_VALUE_STRING && !value->string)
         return FVM_INVALID_ARGUMENT;
     return FVM_OK;
 }
 static FVM_Result copy_value(FVM_Context *context, const FVM_Value *src, FVM_Value *dst)
 {
-    FVM_Result r = valid_value(context, src);
+    FVM_Result r = fvm_validate_value(context, src);
     if (r != FVM_OK)
         return r;
     *dst = *src;
@@ -411,7 +413,7 @@ extern "C"
         if (!c || !self || self->owner != c || !name || !out || (argc && !argv))
             return FVM_INVALID_ARGUMENT;
         for (i = 0; i < argc; ++i)
-            if (valid_value(c, &argv[i]) != FVM_OK)
+            if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
         FVM_NativeEntry entry;
         FVM_Result lookup = fvm_lookup_native_method(self, name, &entry);
@@ -539,7 +541,7 @@ extern "C"
         if (!c || !name || (argc && !argv) || c->destroying || c->gc_releasing)
             return FVM_INVALID_ARGUMENT;
         for (unsigned int i = 0; i < argc; ++i)
-            if (valid_value(c, &argv[i]) != FVM_OK)
+            if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
         if (std::strcmp(name, "Object") == 0)
             return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
@@ -575,7 +577,7 @@ extern "C"
         if (!c || !name || !out || (argc && !argv))
             return FVM_INVALID_ARGUMENT;
         for (i = 0; i < argc; ++i)
-            if (valid_value(c, &argv[i]) != FVM_OK)
+            if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it = c->functions.find(name);
         if (it == c->functions.end())

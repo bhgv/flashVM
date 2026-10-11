@@ -96,6 +96,7 @@ struct FVM_Context
     fvm_detail::vector<char *> strings;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry> functions;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry> constructors;
+    fvm_detail::map<fvm_detail::string, FVM_NativeFunction> serialization_callbacks;
     fvm_detail::vector<unsigned char> swf_bytes;
     FVM_SWFInfo swf_info;
     bool swf_loaded;
@@ -118,5 +119,10 @@ void fvm_standard_text_cleanup(FVM_Context *);
 /* Shared bounded method lookup for C API and AVM1. Noncallable own properties
  * shadow inherited callbacks; NOT_FOUND permits legacy named-function fallback. */
 FVM_Result fvm_lookup_native_method(FVM_Object *, const char *, FVM_NativeEntry *);
+unsigned long fvm_numeric_callback_id(FVM_NativeFunction);
+FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long);
+unsigned long fvm_text_callback_id(FVM_NativeFunction);
+FVM_NativeFunction fvm_text_callback_from_id(unsigned long);
 FVM_Result fvm_release_object_resource(FVM_Context *, FVM_Object *);
+FVM_Result fvm_validate_value(FVM_Context *, const FVM_Value *);
 #endif

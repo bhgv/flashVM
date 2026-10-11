@@ -5,7 +5,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* Opt-in ActionScript namespaces: gc, thread and channel. Idempotent when
+/* Opt-in ActionScript namespaces: gc, thread, channel and metatable. Idempotent when
    installed namespaces are intact. Existing globals are not overwritten. */
 FVM_API FVM_Result fvm_extensions_install(FVM_Context *);
 /* Retained wrapper usable by ActionScript; publish with fvm_set_global.

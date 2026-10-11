@@ -1,0 +1,5 @@
+==9==WARNING: reading executable name failed with errno 2, some stack frames may not be symbolized
+==9==WARNING: reading executable name failed with errno 2, some stack frames may not be symbolized
+==9==WARNING: ASan is ignoring requested __asan_handle_no_return: stack type: default top: 0x000000000000; bottom 0x7ffdb9023000; size: 0xffff800246fdd000 (-140727707381760)
+False positive error reports may follow
+For details see https://github.com/google/sanitizers/issues/189

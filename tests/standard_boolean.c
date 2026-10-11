@@ -122,7 +122,9 @@ int main(void)
     assert(fvm_get_global(c, "text", &out) == FVM_OK && strcmp(out.string, "false") == 0);
     assert(fvm_get_global(c, "boxed", &v) == FVM_OK);
     assert(fvm_channel_create(&channel) == FVM_OK);
-    assert(fvm_channel_send_value(c, channel, &v, 0) == FVM_UNSUPPORTED);
+    assert(fvm_channel_send_value(c, channel, &v, 0) == FVM_OK);
+    assert(fvm_channel_receive_value(c, channel, &out, 0) == FVM_OK);
+    assert(fvm_object_call(c, out.object, "valueOf", 0, 0, &out) == FVM_OK && !out.boolean);
     fvm_channel_destroy(channel);
     assert(fvm_context_create(runtime, &other) == FVM_OK);
     assert(fvm_object_create(other, &foreign) == FVM_OK);

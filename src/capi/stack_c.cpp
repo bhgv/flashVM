@@ -13,9 +13,7 @@ struct FVM_Stack
 };
 static int valid(FVM_Context *c, const FVM_Value *v)
 {
-    return v && v->type >= FVM_VALUE_UNDEFINED && v->type <= FVM_VALUE_OBJECT &&
-           (v->type != FVM_VALUE_OBJECT || (v->object && v->object->owner == c)) &&
-           (v->type != FVM_VALUE_STRING || v->string);
+    return fvm_validate_value(c, v) == FVM_OK;
 }
 extern "C"
 {

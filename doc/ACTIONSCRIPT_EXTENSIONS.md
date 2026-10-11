@@ -2,9 +2,9 @@
 
 ## Installation and dispatch
 
-Call `fvm_extensions_install(context)` before executing AVM1. It installs three
-context-owned global namespace objects: `gc`, `thread`, `channel`. Installation
-is idempotent when all three remain installed; conflicting or partially replaced
+Call `fvm_extensions_install(context)` before executing AVM1. It installs four
+context-owned global namespace objects: `gc`, `thread`, `channel`, `metatable`. Installation
+is idempotent when all four remain installed; conflicting or partially replaced
 globals return `FVM_INVALID_ARGUMENT`, without overwriting user globals. Ordinary
 contexts remain unchanged until installation. The C89 interface is declared in
 `flashvm/extensions.h`; the implementation is C++98 and uses internal containers.
@@ -97,19 +97,20 @@ Final native release must occur after all native users have stopped.
 `flashvm/transfer.h` exposes `fvm_channel_send_value` and
 `fvm_channel_receive_value`. Named/indexed properties, prototypes and metatables
 are copied iteratively; cycles and repeated references survive. Source VM
-reclamation/destruction after a successful send is safe. Maximum snapshot size
-is 4096 objects; larger graphs return `FVM_UNSUPPORTED` before enqueueing.
-Native callbacks, userdata, callable objects and builtin resource wrappers are
-rejected anywhere in the graph. Share channels explicitly with the worker
-argument or embedding bridge, rather than queueing native handles into cycles.
+reclamation/destruction after a successful send is safe. Limits and the supported native codecs are described in
+[FILE_CHANNELS.md](FILE_CHANNELS.md). Since development 0.3 snapshots have a bounded,
+versioned pointer-free binary format that is also used by file channels.
+Boxed Boolean, Math, TextFormat and host-created TextField state have codecs;
+application native callbacks require stable registered identities. Live resource
+handles and arbitrary closures remain unsupported. Plain receive leaves graph
+packets in the queue; context-aware receive decodes them transactionally and
+consumes rejected records. TCP/UDP/TLS transports remain future work.
 
-Primitive and graph messages share one FIFO. Legacy primitive receive returns
-`FVM_UNSUPPORTED` without dequeuing when the head is a graph packet; use the new
-receive API for mixed queues. Received strings belong to the destination context.
-Snapshot failure does not enqueue a partial message. Receive consumes a packet;
-on decode failure it reports an error, and partial ordinary objects are reclaimed
-by a later collection. These are internal in-process snapshots, not a network
-serialization format. TCP/UDP/TLS transports remain future work.
+`channel.create("file", path[, mode])` accepts `r`, `w`, `rw` (default).
+File EOF and capacity/count behavior differ from memory queues as documented
+in FILE_CHANNELS.md. `metatable.attach(value, table)` returns a value with metadata;
+`metatable.get(value)` retrieves its table. ABI 2 adds primitive metadata and
+requires rebuilding native clients.
 
 ## Evidence and limits
 

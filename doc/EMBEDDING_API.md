@@ -4,7 +4,7 @@ FlashVM currently embeds a C89-compatible native value/object runtime backed by 
 
 ## Lifecycle
 
-Call `fvm_config_init(&config)`, then `fvm_runtime_create(&config, &runtime)` and `fvm_context_create(runtime, &context)`. Check each `FVM_Result` against `FVM_OK`. Destroy the context before its runtime with `fvm_context_destroy` and `fvm_runtime_destroy`. `fvm_abi_version()` returns the current ABI version (1). Feature flags are reserved; setting them does not activate unimplemented modules.
+Call `fvm_config_init(&config)`, then `fvm_runtime_create(&config, &runtime)` and `fvm_context_create(runtime, &context)`. Check each `FVM_Result` against `FVM_OK`. Destroy the context before its runtime with `fvm_context_destroy` and `fvm_runtime_destroy`. `fvm_abi_version()` returns the current ABI version (2). Feature flags are reserved; setting them does not activate unimplemented modules.
 
 ## Values, objects, globals
 

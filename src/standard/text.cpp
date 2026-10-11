@@ -7,11 +7,7 @@
 #include <new>
 #include <limits>
 
-struct FVM_FontSource
-{
-    fvm_detail::vector<unsigned char> bytes;
-    long index;
-};
+#include "text_state.hpp"
 void fvm_standard_text_cleanup(FVM_Context *context)
 {
     for (fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator i = context->fonts.begin();
@@ -677,6 +673,38 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
     return FVM_OK;
 }
 } // namespace
+unsigned long fvm_text_callback_id(FVM_NativeFunction callback)
+{
+    if (callback == get_extent)
+        return 200;
+    if (callback == field_method)
+        return 201;
+    if (callback == field_get)
+        return 202;
+    if (callback == field_set)
+        return 203;
+    if (callback == replace_text)
+        return 204;
+    if (callback == unsupported)
+        return 205;
+    return 0;
+}
+FVM_NativeFunction fvm_text_callback_from_id(unsigned long id)
+{
+    if (id == 200)
+        return get_extent;
+    if (id == 201)
+        return field_method;
+    if (id == 202)
+        return field_get;
+    if (id == 203)
+        return field_set;
+    if (id == 204)
+        return replace_text;
+    if (id == 205)
+        return unsupported;
+    return 0;
+}
 extern "C" FVM_Result fvm_standard_text_install(FVM_Context *c)
 {
     if (!c || c->destroying || c->gc_collecting || c->gc_releasing)
@@ -927,4 +955,162 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
     }
     *out = path;
     return FVM_OK;
+}
+
+namespace
+{
+const char *field_selectors[] = {
+    "getTextFormat", "getNewTextFormat", "setTextFormat", "setNewTextFormat", "text",
+    "multiline",     "wordWrap",         "_width",        "_height",          "textColor",
+    "length",        "textWidth",        "textHeight"};
+void snapshot_style(FVM_Context *context, const Style &style, FVM_TextStyleState &out)
+{
+    out.font = style.font;
+    out.size = style.size;
+    out.leading = style.leading;
+    out.color = style.color;
+    out.alignment = (unsigned long)style.alignment;
+    out.source = *context->fonts.find(style.font)->second;
+}
+FVM_Result restore_style(FVM_Context *context, const FVM_TextStyleState &src, Style &out)
+{
+    if (src.font.empty() || src.font.size() > 255 || !finite_range(src.size, 1, 4096) ||
+        !finite_range(src.leading, -4096, 4096) || src.color > 16777215UL || src.alignment > 2)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator existing =
+        context->fonts.find(src.font);
+    if (existing != context->fonts.end())
+    {
+        FVM_FontSource *face = existing->second;
+        if (face->index != src.source.index || face->bytes.size() != src.source.bytes.size() ||
+            (face->bytes.size() &&
+             std::memcmp(face->bytes.begin(), src.source.bytes.begin(), face->bytes.size())))
+            return FVM_INVALID_ARGUMENT;
+    }
+    else
+    {
+        FVM_Result result =
+            fvm_standard_text_register_font(context, src.font.c_str(), src.source.bytes.begin(),
+                                            src.source.bytes.size(), src.source.index);
+        if (result != FVM_OK)
+            return result;
+    }
+    out.font = src.font;
+    out.size = src.size;
+    out.leading = src.leading;
+    out.color = src.color;
+    out.alignment = (FVM_TextAlignment)src.alignment;
+    return FVM_OK;
+}
+} // namespace
+const char *fvm_text_callback_selector(FVM_NativeFunction callback, void *userdata)
+{
+    unsigned long id = fvm_text_callback_id(callback);
+    if (id < 201 || id > 203 || !userdata)
+        return 0;
+    const char *name = (const char *)userdata;
+    for (size_t i = 0; i < sizeof(field_selectors) / sizeof(field_selectors[0]); ++i)
+        if (!std::strcmp(name, field_selectors[i]) && ((id == 201) == (i < 4)) &&
+            (id != 203 || i < 10))
+            return field_selectors[i];
+    return 0;
+}
+void *fvm_text_callback_userdata(unsigned long id, const char *name)
+{
+    return (void *)fvm_text_callback_selector(fvm_text_callback_from_id(id), (void *)name);
+}
+size_t fvm_textfield_snapshot_size(FVM_Object *object)
+{
+    Field *field = (Field *)object->resource;
+    if (!field)
+        return (size_t)-1;
+    FVM_Context *context = object->owner;
+    fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator a =
+        context->fonts.find(field->current.font);
+    fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator b =
+        context->fonts.find(field->future.font);
+    if (a == context->fonts.end() || b == context->fonts.end())
+        return (size_t)-1;
+    return 128 + std::strlen(field->text) + field->current.font.size() + field->future.font.size() +
+           a->second->bytes.size() + b->second->bytes.size();
+}
+FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
+{
+    Field *field = (Field *)object->resource;
+    if (!field || fvm_textfield_snapshot_size(object) == (size_t)-1)
+        return FVM_UNSUPPORTED;
+    snapshot_style(object->owner, field->current, out.current);
+    snapshot_style(object->owner, field->future, out.future);
+    out.text = field->text;
+    out.width = field->width;
+    out.height = field->height;
+    out.multiline = field->multiline;
+    out.wrap = field->wrap;
+    return FVM_OK;
+}
+FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
+                                 const FVM_TextFieldState &state)
+{
+    if (!context->standard_text_library)
+        return FVM_UNSUPPORTED;
+    if (!finite_range(state.width, 0, 1000000) || !finite_range(state.height, 0, 1000000) ||
+        fvm_utf8_validate(state.text.c_str(), state.text.size(), 0) != FVM_UTF8_OK)
+        return FVM_INVALID_ARGUMENT;
+    Field *field = new Field;
+    try
+    {
+        FVM_Result result = restore_style(context, state.current, field->current);
+        if (result == FVM_OK)
+            result = restore_style(context, state.future, field->future);
+        if (result != FVM_OK)
+        {
+            delete field;
+            return result;
+        }
+        /* Validate metrics as a normal field edit does, then discard layout caches. */
+        Style *styles[] = {&field->current, &field->future};
+        for (size_t i = 0; i < 2; ++i)
+        {
+            FontOwner font;
+            result = open_font(context, *styles[i], &font.font);
+            if (result != FVM_OK)
+            {
+                delete field;
+                return result;
+            }
+            FVM_FontMetrics metrics;
+            result = fvm_font_metrics(font.font, &metrics);
+            if (result != FVM_OK ||
+                !finite_range(metrics.ascent + metrics.descent + styles[i]->leading, 1.0 / 64,
+                              1000000))
+            {
+                delete field;
+                return result == FVM_OK ? FVM_INVALID_ARGUMENT : result;
+            }
+        }
+        char *text = new char[state.text.size() + 1];
+        std::memcpy(text, state.text.c_str(), state.text.size() + 1);
+        try
+        {
+            context->strings.push_back(text);
+        }
+        catch (...)
+        {
+            delete[] text;
+            throw;
+        }
+        field->text = text;
+        field->width = state.width;
+        field->height = state.height;
+        field->multiline = state.multiline;
+        field->wrap = state.wrap;
+        object->resource = field;
+        object->release_resource = release_field;
+        return FVM_OK;
+    }
+    catch (...)
+    {
+        delete field;
+        throw;
+    }
 }

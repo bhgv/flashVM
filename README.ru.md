@@ -198,3 +198,6 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 [Расширения ActionScript](doc/ACTIONSCRIPT_EXTENSIONS.ru.md), [контракты GC](doc/GC_COMPLETION.ru.md), [владение потоками и каналами](doc/CONCURRENCY_SAFETY.ru.md), [результаты проверок](doc/VALIDATION.ru.md). Добавлены ограниченные проходы финализации, release userdata, корни захваченных нативными callback объектов, безопасный одновременный join, независимое владение строками сообщений, снимки циклических графов и опциональные объекты `gc`/`thread`/`channel`.
 
 Сборка по умолчанию не требует внешних системных библиотек. SQLite встроен исходниками и включён по умолчанию через DEFS.txt; исходники встроенного regex находятся в `external/`. На Linux без CMake: `python3 scripts/check.py`; ASan/UBSan: добавить `--sanitize`. Ограничения LeakSanitizer и платформ указаны в отчёте.
+
+Файловые каналы и метатаблицы значений: [по-русски](doc/FILE_CHANNELS.ru.md), [по-английски](doc/FILE_CHANNELS.md).
+Текущий ABI — 2: нативные клиенты необходимо пересобрать. [Отчёт и ограничения](doc/FILE_CHANNELS_CHECKPOINT.ru.md).

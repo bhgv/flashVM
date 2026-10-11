@@ -1,0 +1,51 @@
+==9==WARNING: reading executable name failed with errno 2, some stack frames may not be symbolized
+==9==WARNING: reading executable name failed with errno 2, some stack frames may not be symbolized
+==9==WARNING: ASan is ignoring requested __asan_handle_no_return: stack type: default top: 0x000000000000; bottom 0x7ffd44383000; size: 0xffff8002bbc7d000 (-140725747986432)
+False positive error reports may follow
+For details see https://github.com/google/sanitizers/issues/189
+=================================================================
+==9==ERROR: AddressSanitizer: stack-buffer-underflow on address 0x7ffd44384b70 at pc 0x7f07ed3f174f bp 0x7ffd44384b40 sp 0x7ffd443842e8
+WRITE of size 24 at 0x7ffd44384b70 thread T0
+    #0 0x7f07ed3f174e  (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d)
+    #1 0x7f07ed474413  (/lib/x86_64-linux-gnu/libasan.so.8+0x103413) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d)
+    #2 0x7f07ed47b6cd  (/lib/x86_64-linux-gnu/libasan.so.8+0x10a6cd) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d)
+    #3 0x4014da  (/proc/self/exe+0x4014da) (BuildId: 974c1d9ce57b08308fd55db516f07d3861495520)
+    #4 0x401510  (/proc/self/exe+0x401510) (BuildId: 974c1d9ce57b08308fd55db516f07d3861495520)
+    #5 0x7f07ec7dc1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)
+    #6 0x7f07ec7dc28a  (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)
+    #7 0x401274  (/proc/self/exe+0x401274) (BuildId: 974c1d9ce57b08308fd55db516f07d3861495520)
+
+Address 0x7ffd44384b70 is a wild pointer inside of access range of size 0x000000000018.
+SUMMARY: AddressSanitizer: stack-buffer-underflow (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d) 
+Shadow bytes around the buggy address:
+  0x7ffd44384880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7ffd44384b00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00[f1]f1
+  0x7ffd44384b80: f1 f1 00 00 f3 f3 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384c80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384d00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7ffd44384d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==9==ABORTING

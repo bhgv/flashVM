@@ -13,6 +13,8 @@ from build_definitions import cmake_sources, generated_headers, read_keys
 parser = argparse.ArgumentParser()
 parser.add_argument('--sanitize', action='store_true')
 parser.add_argument('--defs', type=pathlib.Path)
+parser.add_argument('--limited-asan-stack', action='store_true',
+                    help='GCC: disable stack instrumentation only in serialization exception frames (restricted /proc environments)')
 args = parser.parse_args()
 root = pathlib.Path(__file__).resolve().parents[1]
 output = root / ('build-sanitize' if args.sanitize else 'build-check')
@@ -66,7 +68,7 @@ def run(command):
 
 
 sources = (list(root.glob('src/**/*.cpp')) + list(root.glob('src/**/*.c')) +
-           list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
+           [root / 'ports/file_port.c'] + list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
 sources += [root / 'external/zlib/upstream' / name for name in [
     'adler32.c', 'crc32.c', 'deflate.c', 'trees.c', 'inflate.c', 'inftrees.c',
     'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]
@@ -106,7 +108,12 @@ def program_flags(source):
     if args.sanitize and source.name == 'container_exceptions.cpp':
         return [flag.replace('-fsanitize=address,undefined', '-fsanitize=undefined')
                 for flag in flags]
-    return list(flags)
+    selected = list(flags)
+    if args.sanitize and args.limited_asan_stack and source.name == 'serialization_c.cpp':
+        # libasan cannot unpoison unwound stack frames when /proc stack discovery
+        # fails. Heap/global ASan and UBSan remain enabled in this translation unit.
+        selected += ['--param=asan-stack=0']
+    return selected
 
 
 def compile_source(source):
@@ -179,12 +186,15 @@ try:
               'compiler': run(['gcc', '--version']).splitlines()[0], 'sanitizers': args.sanitize,
               'address_excluded_tests': ['tests/container_exceptions.cpp'] if args.sanitize else [],
               'leak_sanitizer': False if args.sanitize else None,
+              'address_stack_excluded_sources': ['src/capi/serialization_c.cpp'] if args.sanitize and args.limited_asan_stack else [],
               'sqlite': 'bundled 3.50.4' if 'SQLITE' in keys else 'disabled',
               'definitions': keys, 'platform': 'Linux',
               'fonts': ['FreeType 2.14.3', 'HarfBuzz 1.8.8', 'libunibreak 6.1', 'FriBidi 1.0.16'] if 'FONTS' in keys else [],
               'image_codecs': ['libpng 1.6.59', 'giflib 5.2.2', 'libjpeg 9f', 'NanoSVG', 'Cairo PNG/SVG'] if 'IMAGE_CODECS' in keys else []}
     (output / 'test-results.json').write_text(json.dumps(report, indent=2) + '\n')
     suffix = '; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if args.sanitize else ''
+    if args.sanitize and args.limited_asan_stack:
+        suffix += '; serialization stack ASan disabled explicitly; heap/global ASan and UBSan retained'
     print('PASS: %d tests and examples; strict C89/C++98%s' % (len(passed), suffix))
 except Exception as error:
     print(error, file=sys.stderr)

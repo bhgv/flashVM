@@ -58,8 +58,9 @@ Method values are not exposed as function-valued properties by fvm_object_get.
 Class/prototype constructor cycles are traced. The constructor registry captures
 the class, so deleting the global Boolean binding does not lose the constructor's
 resources. As with all returned object pointers, hold a pin/root while native code
-keeps a wrapper. Channel graph transfer rejects wrappers/native method graphs;
-transfer valueOf/toString results instead. Wrappers are never copied as plain data.
+keeps a wrapper. Since development 0.3, context-aware channels serialize boxed
+Boolean state and built-in prototype methods, including file channels.
+See FILE_CHANNELS.md; arbitrary native callbacks still require registered identities.
 
 ActionScript workers recreate the opted-in standard namespace in their own
 contexts; parent prototype changes are not copied. Tests run eight workers with

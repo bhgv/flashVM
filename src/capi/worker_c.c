@@ -23,6 +23,7 @@ static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src) {
     size_t len;
     char *s;
     if (!dst || !src || src->type < FVM_VALUE_UNDEFINED || src->type >= FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
+    if (src->metatable) return FVM_UNSUPPORTED;
     *dst = *src;
     if (src->type != FVM_VALUE_STRING) return FVM_OK;
     if (!src->string) return FVM_INVALID_ARGUMENT;

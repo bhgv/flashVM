@@ -295,15 +295,24 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
     }
 MATH_WRAPPER(math_abs, ABS)
 MATH_WRAPPER(math_acos, ACOS)
-MATH_WRAPPER(math_asin, ASIN) MATH_WRAPPER(math_atan, ATAN) MATH_WRAPPER(math_atan2, ATAN2)
-    MATH_WRAPPER(math_ceil, CEIL) MATH_WRAPPER(math_cos, COS) MATH_WRAPPER(math_exp, EXP)
-        MATH_WRAPPER(math_floor, FLOOR) MATH_WRAPPER(math_log, LOG) MATH_WRAPPER(math_max, MAX)
-            MATH_WRAPPER(math_min, MIN) MATH_WRAPPER(math_pow, POW)
-                MATH_WRAPPER(math_random, RANDOM) MATH_WRAPPER(math_round, ROUND)
-                    MATH_WRAPPER(math_sin, SIN) MATH_WRAPPER(math_sqrt, SQRT)
-                        MATH_WRAPPER(math_tan, TAN)
+MATH_WRAPPER(math_asin, ASIN)
+MATH_WRAPPER(math_atan, ATAN)
+MATH_WRAPPER(math_atan2, ATAN2)
+MATH_WRAPPER(math_ceil, CEIL)
+MATH_WRAPPER(math_cos, COS)
+MATH_WRAPPER(math_exp, EXP)
+MATH_WRAPPER(math_floor, FLOOR)
+MATH_WRAPPER(math_log, LOG)
+MATH_WRAPPER(math_max, MAX)
+MATH_WRAPPER(math_min, MIN)
+MATH_WRAPPER(math_pow, POW)
+MATH_WRAPPER(math_random, RANDOM)
+MATH_WRAPPER(math_round, ROUND)
+MATH_WRAPPER(math_sin, SIN)
+MATH_WRAPPER(math_sqrt, SQRT)
+MATH_WRAPPER(math_tan, TAN)
 #undef MATH_WRAPPER
-                            struct Method
+struct Method
 {
     const char *name;
     FVM_NativeFunction callback;
@@ -404,20 +413,32 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"isNaN", isnan_call},
                                    {"isFinite", isfinite_call}};
 } // namespace
+unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
+{
+    if (callback == boolean_value)
+        return 1;
+    if (callback == boolean_string)
+        return 2;
+    for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
+        if (callback == math_methods[i].callback)
+            return 100 + (unsigned long)i;
+    return 0;
+}
+FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
+{
+    if (id == 1)
+        return boolean_value;
+    if (id == 2)
+        return boolean_string;
+    if (id >= 100 && id < 100 + sizeof(math_methods) / sizeof(math_methods[0]))
+        return math_methods[id - 100].callback;
+    return 0;
+}
 extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value, double *out)
 {
     if (!c || !value || !out)
         return FVM_INVALID_ARGUMENT;
-    /* C callers can supply an invalid enum representation. Validate its bytes
-     * before the C++ switch reads a scalar enum (also required by UBSan). */
-    bool valid_type = false;
-    for (int i = FVM_VALUE_UNDEFINED; i <= FVM_VALUE_OBJECT; ++i)
-    {
-        FVM_ValueType candidate = (FVM_ValueType)i;
-        if (std::memcmp(&value->type, &candidate, sizeof(candidate)) == 0)
-            valid_type = true;
-    }
-    if (!valid_type)
+    if (fvm_validate_value(c, value) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
     switch (value->type)
     {

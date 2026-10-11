@@ -1,6 +1,7 @@
 #include "../core/runtime.hpp"
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
+#include "flashvm/metamethod.h"
 #include "flashvm/worker.h"
 #include "../details/vector.hpp"
 #include "../details/string.hpp"
@@ -432,12 +433,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x4e)
             { /* GetMember */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 2].type != FVM_VALUE_OBJECT)
+                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
                 FVM_Value v;
                 FVM_Result r =
-                    fvm_object_get(c, stack[stack.size() - 2].object, stack.back().string, &v);
+                    fvm_value_get_property(c, &stack[stack.size() - 2], stack.back().string, &v);
                 if (r != FVM_OK)
                     return r;
                 stack.pop_back();
@@ -445,11 +445,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x4f)
             { /* SetMember */
-                if (stack.size() < 3 || stack[stack.size() - 2].type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 3].type != FVM_VALUE_OBJECT)
+                if (stack.size() < 3 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                FVM_Result r = fvm_object_set(c, stack[stack.size() - 3].object,
-                                              stack[stack.size() - 2].string, &stack.back());
+                FVM_Result r = fvm_value_set_property(
+                    c, &stack[stack.size() - 3], stack[stack.size() - 2].string, &stack.back());
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - 3);
@@ -483,6 +482,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value rhs = stack.back();
                 stack.pop_back();
                 FVM_Value &lhs = stack.back();
+                if (a.op == 0x0e || a.op == 0x0f)
+                {
+                    FVM_Value operands[2] = {lhs, rhs}, result;
+                    const char *hook = a.op == 0x0e ? "__eq" : "__lt";
+                    FVM_Result status =
+                        fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
+                    if (status == FVM_NOT_FOUND)
+                        status = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &result);
+                    if (status == FVM_OK)
+                    {
+                        fvm_value_boolean(&lhs, truth(result));
+                        ++pc;
+                        continue;
+                    }
+                    if (status != FVM_NOT_FOUND)
+                        return status;
+                }
                 if (lhs.type != FVM_VALUE_NUMBER || rhs.type != FVM_VALUE_NUMBER)
                     return FVM_UNSUPPORTED;
                 int value = 0;
@@ -567,8 +583,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value b = stack.back();
                 stack.pop_back();
                 FVM_Value &v = stack.back();
+                const char *hook = a.op == 0x0a   ? "__add"
+                                   : a.op == 0x0b ? "__sub"
+                                   : a.op == 0x0c ? "__mul"
+                                                  : "__div";
+                FVM_Value operands[2] = {v, b}, result;
+                FVM_Result status =
+                    fvm_value_meta_invoke(c, &operands[0], hook, 2, operands, &result);
+                if (status == FVM_NOT_FOUND)
+                    status = fvm_value_meta_invoke(c, &operands[1], hook, 2, operands, &result);
+                if (status == FVM_OK)
+                {
+                    v = result;
+                    ++pc;
+                    continue;
+                }
+                if (status != FVM_NOT_FOUND)
+                    return status;
                 if (v.type != FVM_VALUE_NUMBER || b.type != FVM_VALUE_NUMBER)
                     return FVM_UNSUPPORTED;
+                v.metatable = 0;
                 if (a.op == 0x0a)
                     v.number += b.number;
                 if (a.op == 0x0b)
@@ -739,9 +773,7 @@ extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object
     if (!c || !name || !out || (self && self->owner != c) || (argc && !args))
         return FVM_INVALID_ARGUMENT;
     for (unsigned int i = 0; i < argc; ++i)
-        if (args[i].type < FVM_VALUE_UNDEFINED || args[i].type > FVM_VALUE_OBJECT ||
-            (args[i].type == FVM_VALUE_OBJECT && (!args[i].object || args[i].object->owner != c)) ||
-            (args[i].type == FVM_VALUE_STRING && !args[i].string))
+        if (fvm_validate_value(c, args + i) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::iterator it =
         c->script_functions.find(name);
