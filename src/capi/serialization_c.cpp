@@ -1,3 +1,5 @@
+#include "flashvm/utf8.h"
+#include "../standard/string_state.hpp"
 #include "../standard/number_state.hpp"
 #include "../standard/error_state.hpp"
 #include "../core/runtime.hpp"
@@ -78,7 +80,8 @@ bool known_kind(unsigned long kind)
 {
     return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
            kind == 10 || kind == 20 || kind == 21 || kind == 22 || kind == 23 || kind == 24 ||
-           kind == 25 || kind == 1001 || kind == 1003 || kind == 1004 || kind == 1002;
+           kind == 25 || kind == 26 || kind == 27 || kind == 1001 || kind == 1003 || kind == 1004 ||
+           kind == 1002;
 }
 size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Object *> &seen)
 {
@@ -151,6 +154,8 @@ Callback capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata,
         dst.builtin = fvm_error_callback_id(fn);
     if (!dst.builtin)
         dst.builtin = fvm_number_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_string_callback_id(fn);
     if (selector)
         dst.name = selector;
     if (!dst.builtin)
@@ -212,11 +217,12 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             FVM_Result result = fvm_textfield_snapshot(src, dst.text);
             require(result == FVM_OK, result);
         }
-        if (dst.kind == 20 || dst.kind == 24)
+        if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26)
         {
             require(src->resource_result_valid &&
-                        src->resource_result.type ==
-                            (dst.kind == 20 ? FVM_VALUE_BOOLEAN : FVM_VALUE_NUMBER),
+                        src->resource_result.type == (dst.kind == 20   ? FVM_VALUE_BOOLEAN
+                                                      : dst.kind == 24 ? FVM_VALUE_NUMBER
+                                                                       : FVM_VALUE_STRING),
                     FVM_UNSUPPORTED);
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
@@ -593,14 +599,20 @@ Graph read_graph(Reader &r)
         o.metatable = r.ref();
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
-        else if (o.kind == 20 || o.kind == 24)
-            require(o.state.type == (o.kind == 20 ? FVM_VALUE_BOOLEAN : FVM_VALUE_NUMBER));
+        else if (o.kind == 20 || o.kind == 24 || o.kind == 26)
+            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
+                                     : o.kind == 24 ? FVM_VALUE_NUMBER
+                                                    : FVM_VALUE_STRING));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
                     o.state.number == (unsigned long)o.state.number);
         else
             require(o.state.type == FVM_VALUE_UNDEFINED);
+        if (o.kind == 26)
+            require(std::strlen(o.state.string.c_str()) == o.state.string.size() &&
+                    fvm_utf8_validate(o.state.string.c_str(), o.state.string.size(), 0) ==
+                        FVM_UTF8_OK);
         size_t count = r.count();
         for (size_t j = 0; j < count; ++j)
         {
@@ -763,6 +775,8 @@ FVM_NativeEntry restore_callback(FVM_Context *c, const Callback &src,
             dst.callback = fvm_error_callback_from_id(src.builtin);
         if (!dst.callback)
             dst.callback = fvm_number_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_string_callback_from_id(src.builtin);
         require(dst.callback != 0, FVM_UNSUPPORTED);
     }
     else if (!src.name.empty())
@@ -828,7 +842,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 FVM_Result result = fvm_textfield_restore(c, dst, src.text);
                 require(result == FVM_OK, result);
             }
-            if (src.kind == 20 || src.kind == 24)
+            if (src.kind == 20 || src.kind == 24 || src.kind == 26)
             {
                 dst->resource_result_valid = true;
                 dst->resource_result = restore_value(c, src.state, objects);

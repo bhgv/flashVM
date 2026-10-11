@@ -92,33 +92,40 @@ int main()
         fvm_context_destroy(c);
     }
     assert(installed);
-    for (long failure = 0; failure < 64 && !constructed; ++failure)
+    const char *constructor_names[] = {"Error", "Number", "String"};
+    for (unsigned int constructor_index = 0; constructor_index < 3; ++constructor_index)
     {
-        FVM_Context *c = 0;
-        FVM_Object *error = 0;
-        FVM_Value message, text;
-        assert(fvm_context_create(runtime, &c) == FVM_OK);
-        assert(fvm_standard_install(c) == FVM_OK);
-        fvm_value_string(&message, "allocation checkpoint");
-        allowance = failure;
-        FVM_Result result = fvm_construct(c, "Error", 1, &message, &error);
-        allowance = -1;
-        assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
-        if (result == FVM_OK)
+        constructed = false;
+        for (long failure = 0; failure < 64 && !constructed; ++failure)
         {
-            constructed = true;
-            assert(error);
-            assert(fvm_object_call(c, error, "toString", 0, 0, &text) == FVM_OK);
+            FVM_Context *c = 0;
+            FVM_Object *error = 0;
+            FVM_Value message, text;
+            assert(fvm_context_create(runtime, &c) == FVM_OK);
+            assert(fvm_standard_install(c) == FVM_OK);
+            fvm_value_string(&message, "allocation checkpoint");
+            allowance = failure;
+            FVM_Result result =
+                fvm_construct(c, constructor_names[constructor_index], 1, &message, &error);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            if (result == FVM_OK)
+            {
+                constructed = true;
+                assert(error);
+                assert(fvm_object_call(c, error, "toString", 0, 0, &text) == FVM_OK);
+            }
+            else
+            {
+                assert(!error);
+                assert(fvm_gc_collect(c, 0) == FVM_OK);
+                assert(fvm_construct(c, constructor_names[constructor_index], 1, &message,
+                                     &error) == FVM_OK);
+            }
+            fvm_context_destroy(c);
         }
-        else
-        {
-            assert(!error);
-            assert(fvm_gc_collect(c, 0) == FVM_OK);
-            assert(fvm_construct(c, "Error", 1, &message, &error) == FVM_OK);
-        }
-        fvm_context_destroy(c);
+        assert(constructed);
     }
-    assert(constructed);
     bool materialized = false;
     for (long failure = 0; failure < 256 && !materialized; ++failure)
     {
@@ -161,6 +168,45 @@ int main()
         {
             allowance = failure;
             FVM_Result result = fvm_call(c, parsers[parser], 1, &input, &output);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            completed = result == FVM_OK;
+            if (!completed)
+                assert(output.type == FVM_VALUE_UNDEFINED);
+        }
+        assert(completed);
+        fvm_context_destroy(c);
+    }
+    {
+        FVM_Context *c = 0;
+        FVM_Object *string = 0;
+        FVM_Value input, output;
+        assert(fvm_context_create(runtime, &c) == FVM_OK);
+        assert(fvm_standard_install(c) == FVM_OK);
+        fvm_value_string(&input, "allocation checkpoint");
+        assert(fvm_construct(c, "String", 1, &input, &string) == FVM_OK);
+        const char *methods[] = {"charAt", "substring", "indexOf", "concat"};
+        for (unsigned int method_index = 0; method_index < 4; ++method_index)
+        {
+            bool completed = false;
+            for (long failure = 0; failure < 128 && !completed; ++failure)
+            {
+                allowance = failure;
+                FVM_Result result =
+                    fvm_object_call(c, string, methods[method_index], 0, 0, &output);
+                allowance = -1;
+                assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+                completed = result == FVM_OK;
+                if (!completed)
+                    assert(output.type == FVM_VALUE_UNDEFINED);
+            }
+            assert(completed);
+        }
+        bool completed = false;
+        for (long failure = 0; failure < 64 && !completed; ++failure)
+        {
+            allowance = failure;
+            FVM_Result result = fvm_object_get(c, string, "length", &output);
             allowance = -1;
             assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
             completed = result == FVM_OK;

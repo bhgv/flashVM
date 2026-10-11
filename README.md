@@ -1,5 +1,5 @@
-Development version: **0.11** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.11 ` and an English description. Increase the subversion before each
+Development version: **0.12** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.12 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.11** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.11 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.12** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.12 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -18,6 +18,10 @@ Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FE
 Зеркало обновляется только по прямой команде пользователя. Для отправки используйте
 указанный выше `origin` и HTTP-буфер 64 МиБ, без принудительной перезаписи истории.
 После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
+
+String checkpoint: native wrapper, UTF-16 indexed length/search/ranges,
+fromCharCode, GC and graph transfer. See [English](doc/STANDARD_STRING.md) /
+[Русский](doc/STANDARD_STRING.ru.md) for the tested subset and representation limits.
 
 Global conversion checkpoint: parseInt/parseFloat prefix parsing and String(),
 with C/AVM1 calls and allocation-failure tests. See [English](doc/GLOBAL_PARSING.md) /

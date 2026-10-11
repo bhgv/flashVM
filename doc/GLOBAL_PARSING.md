@@ -50,3 +50,6 @@ These functions are registered native callbacks, not first-class Function values
 Existing GC/channel support is unchanged. The .as example illustrates the API;
 there is no ActionScript source compiler here. Builds and actual tests establish
 a bounded development checkpoint, not complete SWF 8 compatibility.
+
+Since v0.12 a native String wrapper is also available; the primitive conversion
+function described here is retained. See [STANDARD_STRING.md](STANDARD_STRING.md).

@@ -40,6 +40,11 @@ static void write_values(const char *path)
     value.type = FVM_VALUE_OBJECT;
     value.object = error;
     assert(fvm_channel_send_value(c, file, &value, 0) == FVM_OK);
+    fvm_value_string(&message, "A\320\221\360\237\230\200Z");
+    assert(fvm_construct(c, "String", 1, &message, &error) == FVM_OK);
+    value.type = FVM_VALUE_OBJECT;
+    value.object = error;
+    assert(fvm_channel_send_value(c, file, &value, 0) == FVM_OK);
     fvm_channel_release(file);
     fvm_mutex_release(mutex);
     fvm_context_destroy(c);
@@ -81,6 +86,12 @@ static void read_values(const char *path)
     fvm_value_number(&code, 16);
     assert(fvm_object_call(c, value.object, "toString", 1, &code, &text) == FVM_OK &&
            !strcmp(text.string, "fff"));
+    assert(fvm_channel_receive_value(c, file, &value, 0) == FVM_OK);
+    assert(fvm_gc_pin(c, value.object) == FVM_OK);
+    assert(fvm_gc_collect(c, 0) == FVM_OK);
+    assert(fvm_object_get(c, value.object, "length", &code) == FVM_OK && code.number == 5);
+    assert(fvm_object_call(c, value.object, "valueOf", 0, 0, &text) == FVM_OK &&
+           !strcmp(text.string, "A\320\221\360\237\230\200Z"));
     fvm_channel_release(file);
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);

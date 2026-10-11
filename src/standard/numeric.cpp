@@ -1,3 +1,4 @@
+#include "string_state.hpp"
 #include "global_parsing.hpp"
 #include "number_state.hpp"
 #include "error_state.hpp"
@@ -481,6 +482,12 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
             *out = value->object->resource_result.number;
             return FVM_OK;
         }
+        if (value->object->resource_kind == 26 && value->object->resource_result_valid &&
+            value->object->resource_result.type == FVM_VALUE_STRING)
+        {
+            *out = parse_number(value->object->resource_result.string);
+            return FVM_OK;
+        }
         return FVM_UNSUPPORTED;
     default:
         return FVM_INVALID_ARGUMENT;
@@ -536,7 +543,10 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 method.callback != boolean_string)
                 return FVM_INVALID_ARGUMENT;
             FVM_Result error_result = fvm_error_validate(c);
-            return error_result == FVM_OK ? fvm_number_validate(c) : error_result;
+            if (error_result != FVM_OK)
+                return error_result;
+            error_result = fvm_number_validate(c);
+            return error_result == FVM_OK ? fvm_string_validate(c) : error_result;
         }
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             if (c->global->properties.find(names[i]) != c->global->properties.end() ||
@@ -618,6 +628,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         if (result != FVM_OK)
             return result;
         result = fvm_number_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_string_stage(c, globals, constructors);
         if (result != FVM_OK)
             return result;
         c->global->properties.swap(globals);
