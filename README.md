@@ -1,3 +1,11 @@
+Development version: **0.1** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.1 ` and an English description. This version identifies a development
+snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
+
+Версия разработки: **0.1** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.1 ` и описания на английском. Полная совместимость с SWF 8 ещё
+не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
+
 ActionScript text bridge: [English](doc/STANDARD_TEXT.md) / [Русский](doc/STANDARD_TEXT.ru.md).
 
 Text layout checkpoint: [English](doc/TEXT_LAYOUT.md) / [Русский](doc/TEXT_LAYOUT.ru.md).

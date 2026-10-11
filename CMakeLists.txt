@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
-project(FlashVM LANGUAGES C CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION.txt" FVM_VERSION LIMIT_COUNT 1)
+project(FlashVM VERSION "${FVM_VERSION}" LANGUAGES C CXX)
 
 # The VM and bundled backends must build without modern C/C++ language modes.
 set(CMAKE_C_STANDARD 90)
