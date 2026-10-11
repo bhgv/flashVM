@@ -97,3 +97,7 @@ ActionScript у MovieClip. Межпоточная передача событи�
 См. [описание API](doc/METAMETHODS.ru.md) и `tests/metamethods.c`:
 `__index`, `__newindex`, `__iterate` и явная финализация `__gc`.
 Автоматического сборщика мусора и синтаксиса AS `pairs()` пока нет.
+
+### Стековые расширения C89/C++98 (этап 24)
+
+Lua-подобный интерфейс описан [по-русски](doc/STACK_API.ru.md) и [по-английски](doc/STACK_API.md). Рабочие примеры находятся в `examples/extending/stack_c/` и `examples/embedding/cpp98_stack/`. Это не ABI Lua; непосредственный вызов стековых функций из AVM1 ещё не реализован.

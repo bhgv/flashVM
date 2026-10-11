@@ -7,6 +7,9 @@
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
 #include "../details/vector.hpp"
+struct FVM_Stack;
+typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
+struct FVM_StackEntry { FVM_StackCallbackInternal callback; void *userdata; };
 struct FVM_NativeEntry {
     FVM_NativeFunction callback;
     void *userdata;
@@ -28,6 +31,7 @@ struct FVM_ScriptFunction {
 struct FVM_QueuedInput { FVM_InputEvent event; FVM_InputPhase phase; };
 struct FVM_Context {
     FVM_Runtime *runtime;
+    fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
     FVM_Object *global;
     fvm_detail::vector<FVM_Object *> objects;
     fvm_detail::vector<char *> strings;

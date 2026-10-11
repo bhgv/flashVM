@@ -196,3 +196,7 @@ versus system-linked status, and the new standalone C++98 hybrid table.
 See [metamethod API](doc/METAMETHODS.md) and `tests/metamethods.c` for
 `__index`, `__newindex`, `__iterate`, and explicit `__gc` finalization.
 Automatic tracing GC and AS `pairs()` are not implemented yet.
+
+### C89/C++98 stack extensions (stage 24)
+
+The Lua-inspired stack bridge is described in [English](doc/STACK_API.md) and [Russian](doc/STACK_API.ru.md). Working examples: `examples/extending/stack_c/` and `examples/embedding/cpp98_stack/`. This is not a Lua-compatible ABI, and stack callbacks are not yet callable directly from AVM1.
