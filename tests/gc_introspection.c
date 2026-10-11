@@ -1,5 +1,4 @@
 #include "flashvm/gc.h"
-#include "flashvm/object.h"
 #include <assert.h>
 int main(void) {
  FVM_Config cfg; FVM_Runtime *r=0;FVM_Context *c=0;FVM_Object *o=0;
