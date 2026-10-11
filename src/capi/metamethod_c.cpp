@@ -1,3 +1,4 @@
+#include "../core/native_call_guard.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/metamethod.h"
 #include <cstring>
@@ -22,7 +23,7 @@ FVM_Result fvm_meta_finalize(FVM_Context *c,FVM_Object *o) {
     fvm_value_undefined(&args[0]);args[0].type=FVM_VALUE_OBJECT;args[0].object=o;
     args[1]=args[0];args[1].object=m;args[2]=args[0];
     fvm_value_undefined(&result);
-    try {return it->second.callback(c,o,3,args,&result,it->second.userdata);}
+    try {FVM_NativeCallGuard native_guard(c); return it->second.callback(c,o,3,args,&result,it->second.userdata);}
     catch(...){return FVM_ERROR;}
 }
 FVM_Result fvm_meta_iterate(FVM_Context *c,FVM_Object *o,unsigned long index,FVM_Value *key,FVM_Value *value) {
@@ -36,7 +37,7 @@ FVM_Result fvm_meta_iterate(FVM_Context *c,FVM_Object *o,unsigned long index,FVM
             fvm_value_undefined(&args[0]);args[0].type=FVM_VALUE_OBJECT;args[0].object=o;
             args[1]=args[0];args[1].object=m;
             fvm_value_number(&args[2],(double)index);
-            try {return it->second.callback(c,o,3,args,value,it->second.userdata);}
+            try {FVM_NativeCallGuard native_guard(c); return it->second.callback(c,o,3,args,value,it->second.userdata);}
             catch(...){return FVM_ERROR;}
         }
     }

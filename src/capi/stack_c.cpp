@@ -1,3 +1,4 @@
+#include "../core/native_call_guard.hpp"
 #include "flashvm/stack.h"
 #include "flashvm/callable.h"
 #include "../core/runtime.hpp"
@@ -58,7 +59,7 @@ FVM_Result fvm_stack_call(FVM_Context *c,const char *name,unsigned int argc,cons
     r=fvm_stack_create(c,&s); if (r!=FVM_OK) return r;
     for(i=0;i<argc;++i) { r=fvm_stack_push(s,&args[i]); if(r!=FVM_OK) break; }
     if(r==FVM_OK) {
-        try { r=it->second.callback(c,s,it->second.userdata); }
+        try { FVM_NativeCallGuard native_guard(c); r=it->second.callback(c,s,it->second.userdata); }
         catch (...) { r=FVM_ERROR; }
     }
     if(r==FVM_OK) {
@@ -108,7 +109,7 @@ FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
         if (r!=FVM_OK) break;
     }
     if (r==FVM_OK) {
-        try { r=it->second.callback(c,stack,it->second.userdata); }
+        try { FVM_NativeCallGuard native_guard(c); r=it->second.callback(c,stack,it->second.userdata); }
         catch (...) { r=FVM_ERROR; }
     }
     if (r==FVM_OK) {

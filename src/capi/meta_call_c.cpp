@@ -1,3 +1,4 @@
+#include "../core/native_call_guard.hpp"
 #include "flashvm/meta_call.h"
 #include "flashvm/table.h"
 #include "flashvm/callable.h"
@@ -38,6 +39,6 @@ extern "C" FVM_Result fvm_meta_call(FVM_Context *context, FVM_Object *owner,
     fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it =
         meta->metamethods.find("__call");
     if (it == meta->metamethods.end()) return FVM_UNSUPPORTED;
-    try { return it->second.callback(context, owner, 3, params, result, it->second.userdata); }
+    try { FVM_NativeCallGuard native_guard(context); return it->second.callback(context, owner, 3, params, result, it->second.userdata); }
     catch (...) { return FVM_ERROR; }
 }

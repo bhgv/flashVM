@@ -1,3 +1,4 @@
+#include "../core/native_call_guard.hpp"
 #include "../core/runtime.hpp"
 #include <cstring>
 #include <new>
@@ -90,7 +91,7 @@ FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_V
             args[1]=args[0]; args[1].object=o->metatable;
             fvm_value_string(&args[2],name);
             fvm_value_undefined(&result);
-            try { return fn->second.callback(c,receiver,3,args,&result,fn->second.userdata)==FVM_OK ? (*out=result,FVM_OK) : FVM_ERROR; }
+            try { FVM_NativeCallGuard native_guard(c); return fn->second.callback(c,receiver,3,args,&result,fn->second.userdata)==FVM_OK ? (*out=result,FVM_OK) : FVM_ERROR; }
             catch (...) { return FVM_ERROR; }
         }
         if (m==o->metatable->properties.end()) break;
@@ -119,7 +120,7 @@ FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const
                 args[1]=args[0];args[1].object=o->metatable;
                 fvm_value_string(&args[2],name);args[3]=copy;
                 fvm_value_undefined(&result);
-                try { return fn->second.callback(c,o,4,args,&result,fn->second.userdata); }
+                try { FVM_NativeCallGuard native_guard(c); return fn->second.callback(c,o,4,args,&result,fn->second.userdata); }
                 catch (...) { return FVM_ERROR; }
             }
             if (m==o->metatable->properties.end() || m->second.type!=FVM_VALUE_OBJECT || !m->second.object) break;
@@ -149,7 +150,7 @@ FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name, u
     fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
     if (it==c->functions.end()) return FVM_UNSUPPORTED;
     fvm_value_undefined(out);
-    try { return it->second.callback(c,self,argc,argv,out,it->second.userdata); }
+    try { FVM_NativeCallGuard native_guard(c); return it->second.callback(c,self,argc,argv,out,it->second.userdata); }
     catch (...) { return FVM_ERROR; }
 }
 FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc, const FVM_Value *argv, FVM_Value *out) {
@@ -159,7 +160,7 @@ FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc, const F
     fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
     if (it==c->functions.end()) return FVM_UNSUPPORTED;
     fvm_value_undefined(out);
-    try { return it->second.callback(c,c->global,argc,argv,out,it->second.userdata); }
+    try { FVM_NativeCallGuard native_guard(c); return it->second.callback(c,c->global,argc,argv,out,it->second.userdata); }
     catch (...) { return FVM_ERROR; }
 }
 }

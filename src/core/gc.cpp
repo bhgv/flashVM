@@ -108,8 +108,8 @@ FVM_Result fvm_gc_threshold(FVM_Context *c,unsigned long *threshold) {
 }
 FVM_Result fvm_gc_step(FVM_Context *c,unsigned long *reclaimed) {
     if (!c)return FVM_INVALID_ARGUMENT;
-    if (c->gc_native_depth) return FVM_OK;
     if(reclaimed)*reclaimed=0;
+    if (c->gc_native_depth) return FVM_OK;
     if(c->gc_mode==FVM_GC_SUSPENDED)return FVM_OK;
     /* The allocation threshold is monotonic with the tuning setting. */
     unsigned long threshold=0;
