@@ -11,6 +11,8 @@ struct FVM_Stack;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
 struct FVM_StackEntry { FVM_StackCallbackInternal callback; void *userdata; };
 struct FVM_NativeEntry {
+    FVM_Object *root;
+    FVM_NativeEntry():root(0),callback(0),userdata(0) {}
     FVM_NativeFunction callback;
     void *userdata;
 };
@@ -24,6 +26,9 @@ struct FVM_Object {
     bool finalized;
     bool gc_marked;
     unsigned long gc_pins;
+    FVM_StackEntry callable;
+    void *resource;
+    void (*release_resource)(void *);
 };
 struct FVM_Runtime { FVM_Config config; };
 struct FVM_ScriptFunction {
@@ -40,7 +45,7 @@ struct FVM_GCRootFrame {
 struct FVM_Context {
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
-    fvm_detail::map<unsigned long,FVM_StackEntry> callable_objects;
+    fvm_detail::vector<fvm_detail::vector<FVM_Value> *> gc_stacks;
     FVM_Object *global;
     fvm_detail::vector<FVM_Object *> objects;
     fvm_detail::vector<char *> strings;
@@ -58,6 +63,7 @@ struct FVM_Context {
     int gc_mode;
     unsigned long gc_allocations;
     bool gc_collecting;
+    bool destroying;
     FVM_GCRootFrame *gc_frames;
     unsigned int gc_native_depth;
 };

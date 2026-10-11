@@ -31,7 +31,7 @@ void fvm_value_boolean(FVM_Value *v, int b) { if (v) { fvm_value_undefined(v); v
 FVM_Result fvm_value_string(FVM_Value *v, const char *s) { if (!v || !s) return FVM_INVALID_ARGUMENT; fvm_value_undefined(v); v->type=FVM_VALUE_STRING; v->string=s; return FVM_OK; }
 FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     FVM_Object *o;
-    if (!c || !out) return FVM_INVALID_ARGUMENT;
+    if (!c || !out || c->destroying) return FVM_INVALID_ARGUMENT;
     *out=0;
     o=new (std::nothrow) FVM_Object;
     if (!o) return FVM_OUT_OF_MEMORY;
@@ -41,10 +41,12 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     o->finalized=false;
     o->gc_marked=false;
     o->gc_pins=0;
+    o->callable.callback=0; o->callable.userdata=0;
+    o->resource=0; o->release_resource=0;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
     *out=o;
-    ++c->gc_allocations;
+    if (c->gc_allocations != (unsigned long)-1) ++c->gc_allocations;
     return FVM_OK;
 }
 FVM_Result fvm_object_set_prototype(FVM_Context *c, FVM_Object *o, FVM_Object *proto) {
@@ -142,6 +144,12 @@ FVM_Result fvm_register_function(FVM_Context *c, const char *name, FVM_NativeFun
     try { c->functions[name]=entry; }
     catch (...) { return FVM_OUT_OF_MEMORY; }
     return FVM_OK;
+}
+FVM_Result fvm_register_function_rooted(FVM_Context *c,const char *name,FVM_NativeFunction cb,void *user,FVM_Object *root) {
+    if (!c || (root && root->owner!=c)) return FVM_INVALID_ARGUMENT;
+    FVM_Result r=fvm_register_function(c,name,cb,user);
+    if (r==FVM_OK) c->functions.find(name)->second.root=root;
+    return r;
 }
 FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name, unsigned int argc, const FVM_Value *argv, FVM_Value *out) {
     unsigned int i;

@@ -19,9 +19,18 @@ FVM_Result fvm_stack_create(FVM_Context *c,FVM_Stack **out) {
     *out=new(std::nothrow) FVM_Stack;
     if (!*out) return FVM_OUT_OF_MEMORY;
     (*out)->context=c;
+    try { c->gc_stacks.push_back(&(*out)->values); }
+    catch (...) { delete *out; *out=0; return FVM_OUT_OF_MEMORY; }
     return FVM_OK;
 }
-void fvm_stack_destroy(FVM_Stack *s) { delete s; }
+void fvm_stack_destroy(FVM_Stack *s) {
+    if (!s) return;
+    for (size_t i=0;i<s->context->gc_stacks.size();++i)
+        if (s->context->gc_stacks[i]==&s->values) {
+            s->context->gc_stacks.erase(s->context->gc_stacks.begin()+i); break;
+        }
+    delete s;
+}
 unsigned int fvm_stack_size(const FVM_Stack *s) { return s?(unsigned int)s->values.size():0; }
 FVM_Result fvm_stack_get(const FVM_Stack *s,int index,FVM_Value *out) {
     long n, pos;
@@ -83,14 +92,13 @@ FVM_Result fvm_callable_create(FVM_Context *c, FVM_StackFunction cb,
     if (r!=FVM_OK) return r;
     entry.callback=cb;
     entry.userdata=user;
-    try { c->callable_objects[(unsigned long)obj]=entry; }
-    catch (...) { return FVM_OUT_OF_MEMORY; }
+    obj->callable=entry;
     *out=obj;
     return FVM_OK;
 }
 FVM_Result fvm_callable_is(FVM_Context *c,FVM_Object *obj,int *out) {
     if (!c || !obj || !out || obj->owner!=c) return FVM_INVALID_ARGUMENT;
-    *out=c->callable_objects.find((unsigned long)obj)!=c->callable_objects.end();
+    *out=obj->callable.callback!=0;
     return FVM_OK;
 }
 FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
@@ -100,8 +108,8 @@ FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
     unsigned int i;
     if (!c || !obj || !out || obj->owner!=c || (argc && !args))
         return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<unsigned long,FVM_StackEntry>::iterator it=c->callable_objects.find((unsigned long)obj);
-    if (it==c->callable_objects.end()) return FVM_UNSUPPORTED;
+    FVM_StackEntry entry=obj->callable;
+    if (!entry.callback) return FVM_UNSUPPORTED;
     r=fvm_stack_create(c,&stack);
     if (r!=FVM_OK) return r;
     for(i=0;i<argc;++i) {
@@ -109,7 +117,7 @@ FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
         if (r!=FVM_OK) break;
     }
     if (r==FVM_OK) {
-        try { FVM_NativeCallGuard native_guard(c); r=it->second.callback(c,stack,it->second.userdata); }
+        try { FVM_NativeCallGuard native_guard(c); r=entry.callback(c,stack,entry.userdata); }
         catch (...) { r=FVM_ERROR; }
     }
     if (r==FVM_OK) {

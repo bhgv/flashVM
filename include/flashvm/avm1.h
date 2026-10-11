@@ -1,6 +1,6 @@
 #ifndef FLASHVM_AVM1_H
 #define FLASHVM_AVM1_H
-#include "flashvm.h"
+#include "value.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -14,6 +14,8 @@ typedef struct FVM_AVM1Info {
 FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
 /* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
 FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
+/* Invoke a named AVM1 function with rooted parameter bindings and receiver. */
+FVM_API FVM_Result fvm_avm1_call(FVM_Context *, const char *, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *);
 /* Executes top-level DoAction tags from the loaded FWS file, in file order. */
 FVM_API FVM_Result fvm_swf_execute_actions(FVM_Context *);
 #ifdef __cplusplus

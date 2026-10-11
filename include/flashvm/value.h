@@ -28,6 +28,9 @@ FVM_API FVM_Result fvm_object_set(FVM_Context *, FVM_Object *, const char *, con
 FVM_API FVM_Result fvm_get_global(FVM_Context *, const char *, FVM_Value *);
 FVM_API FVM_Result fvm_set_global(FVM_Context *, const char *, const FVM_Value *);
 FVM_API FVM_Result fvm_register_function(FVM_Context *, const char *, FVM_NativeFunction, void *);
+/* Registered capture is traced while the function is registered. Replacing
+   the function releases this root. Arbitrary userdata memory is never scanned. */
+FVM_API FVM_Result fvm_register_function_rooted(FVM_Context *, const char *, FVM_NativeFunction, void *, FVM_Object *);
 /* Call a native method registered by name, binding self to receiver.
    This is an initial bridge; AVM1 function-valued properties are not supported. */
 FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int, const FVM_Value *, FVM_Value *);

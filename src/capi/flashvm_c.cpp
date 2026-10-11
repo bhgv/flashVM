@@ -37,6 +37,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->gc_mode = 0;
     context->gc_allocations = 0;
     context->gc_collecting = false;
+    context->destroying = false;
     context->gc_frames = 0;
     context->gc_native_depth = 0;
     context->pumping_input = false;
@@ -47,8 +48,12 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     return FVM_OK;
 }
 void fvm_context_destroy(FVM_Context *context) {
-    if (!context) return;
+    if (!context || context->destroying || context->gc_collecting || context->gc_native_depth) return;
+    context->destroying=true;
+    context->gc_collecting=true;
     for (size_t i=0;i<context->objects.size();++i) fvm_meta_finalize(context,context->objects[i]);
+    for (size_t i=0;i<context->objects.size();++i)
+        if (context->objects[i]->release_resource) context->objects[i]->release_resource(context->objects[i]->resource);
     for (size_t i=0;i<context->objects.size();++i) delete context->objects[i];
     for (size_t i=0;i<context->strings.size();++i) delete [] context->strings[i];
     delete context;

@@ -27,8 +27,10 @@ static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn,
             frame[fn.parameters[i]]=value;
         }
     } catch (const std::bad_alloc &) { return FVM_OUT_OF_MEMORY; }
+    FVM_ScriptFunction snapshot;
+    try { snapshot=fn; } catch (...) { return FVM_OUT_OF_MEMORY; }
     ++c->script_depth;
-    FVM_Result status=execute(c,&fn.body[0],fn.body.size(),result,&frame,receiver);
+    FVM_Result status=execute(c,&snapshot.body[0],snapshot.body.size(),result,&frame,receiver);
     --c->script_depth;
     return status;
 }
@@ -293,4 +295,16 @@ extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c) {
         if (!code) break;
     }
     return FVM_OK;
+}
+
+extern "C" FVM_Result fvm_avm1_call(FVM_Context *c,const char *name,FVM_Object *self,
+    unsigned int argc,const FVM_Value *args,FVM_Value *out) {
+    if (!c || !name || !out || (self && self->owner!=c) || (argc && !args)) return FVM_INVALID_ARGUMENT;
+    for (unsigned int i=0;i<argc;++i)
+        if (args[i].type<FVM_VALUE_UNDEFINED || args[i].type>FVM_VALUE_OBJECT ||
+            (args[i].type==FVM_VALUE_OBJECT && (!args[i].object || args[i].object->owner!=c)) ||
+            (args[i].type==FVM_VALUE_STRING && !args[i].string)) return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<fvm_detail::string,FVM_ScriptFunction>::iterator it=c->script_functions.find(name);
+    if(it==c->script_functions.end()) return FVM_NOT_FOUND;
+    return call_script(c,it->second,argc,args,self ? self : c->global,out);
 }

@@ -9,12 +9,19 @@ static void mark_object(FVM_Object *o, fvm_detail::vector<FVM_Object *> &pending
     o->gc_marked=true;
     pending.push_back(o);
 }
-static void mark_graph(FVM_Context *c) {
+static void mark_graph(FVM_Context *c, size_t newborn_start=(size_t)-1) {
     fvm_detail::vector<FVM_Object *> pending;
     mark_object(c->global,pending);
     size_t i;
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator fn;
+    for (fn=c->functions.begin();fn!=c->functions.end();++fn) mark_object(fn->second.root,pending);
+    for (i=0;i<c->gc_stacks.size();++i)
+        for (size_t j=0;j<c->gc_stacks[i]->size();++j) {
+            const FVM_Value &v=(*c->gc_stacks[i])[j];
+            if (v.type==FVM_VALUE_OBJECT) mark_object(v.object,pending);
+        }
     for (i=0;i<c->objects.size();++i)
-        if (c->objects[i]->gc_pins) mark_object(c->objects[i],pending);
+        if (i>=newborn_start || c->objects[i]->gc_pins) mark_object(c->objects[i],pending);
     for (FVM_GCRootFrame *frame=c->gc_frames;frame;frame=frame->previous) {
         mark_object(frame->receiver,pending);
         if (frame->stack) for(size_t j=0;j<frame->stack->size();++j) {
@@ -31,6 +38,7 @@ static void mark_graph(FVM_Context *c) {
         FVM_Object *o=pending.back();pending.pop_back();
         mark_object(o->prototype,pending);
         mark_object(o->metatable,pending);
+        for(fn=o->metamethods.begin();fn!=o->metamethods.end();++fn) mark_object(fn->second.root,pending);
         fvm_detail::map<fvm_detail::string,FVM_Value>::iterator p;
         for (p=o->properties.begin();p!=o->properties.end();++p)
             if (p->second.type==FVM_VALUE_OBJECT) mark_object(p->second.object,pending);
@@ -71,31 +79,38 @@ FVM_Result fvm_gc_collect(FVM_Context *c,unsigned long *reclaimed) {
     if (reclaimed) *reclaimed=0;
     c->gc_collecting=true;
     size_t i;
+    const size_t original_count=c->objects.size();
+    FVM_Result finalizer_result=FVM_OK;
     try {
         for(i=0;i<c->objects.size();++i)c->objects[i]->gc_marked=false;
         mark_graph(c);
         /* Finalizers may resurrect objects by placing them into the global graph.
            Mark again after all finalizers, before deleting anything. */
-        for(i=0;i<c->objects.size();++i) {
+        for(i=0;i<original_count;++i) {
             FVM_Object *o=c->objects[i];
-            if (!o->gc_marked) fvm_meta_finalize(c,o);
+            if (!o->gc_marked) {
+                FVM_Result r=fvm_meta_finalize(c,o);
+                if(finalizer_result==FVM_OK && r!=FVM_OK) finalizer_result=r;
+            }
         }
         for(i=0;i<c->objects.size();++i)c->objects[i]->gc_marked=false;
-        mark_graph(c);
+        /* Snapshot bounds finalization; newborn graphs survive this pass. */
+        mark_graph(c,original_count);
         unsigned long freed=0;
-        i=0;
-        while(i<c->objects.size()) {
+        size_t kept=0;
+        for(i=0;i<c->objects.size();++i) {
             FVM_Object *o=c->objects[i];
-            if(o->gc_marked) {++i;continue;}
+            if(o->gc_marked) { c->objects[kept++]=o; continue; }
+            if(o->release_resource) o->release_resource(o->resource);
             delete o;
-            c->objects.erase(c->objects.begin()+i);
             ++freed;
         }
+        c->objects.resize(kept);
         if(reclaimed)*reclaimed=freed;
         c->gc_allocations=0;
     } catch(...) {c->gc_collecting=false;return FVM_OUT_OF_MEMORY;}
     c->gc_collecting=false;
-    return FVM_OK;
+    return finalizer_result;
 }
 FVM_Result fvm_gc_pending_allocations(FVM_Context *c,unsigned long *count) {
     if (!c || !count) return FVM_INVALID_ARGUMENT;

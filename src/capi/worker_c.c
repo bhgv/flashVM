@@ -37,13 +37,13 @@ static void free_value(FVM_Value *v) {
 }
 static void worker_entry(void *arg) {
     FVM_Worker *w = (FVM_Worker *)arg;
-    fvm_port_sync_lock(w->sync);
-    while (!w->started) fvm_port_sync_wait(w->sync);
-    fvm_port_sync_unlock(w->sync);
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
     FVM_Value result;
     FVM_Result r;
+    fvm_port_sync_lock(w->sync);
+    while (!w->started) fvm_port_sync_wait(w->sync);
+    fvm_port_sync_unlock(w->sync);
     fvm_value_undefined(&result);
     r = fvm_runtime_create(&w->config, &runtime);
     if (r == FVM_OK) r = fvm_context_create(runtime, &context);
