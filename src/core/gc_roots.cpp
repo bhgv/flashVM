@@ -1,6 +1,7 @@
 #include "runtime.hpp"
 #include "flashvm/gc_roots.h"
 #include <new>
+#include <cstring>
 
 struct FVM_GCRootScope {
     FVM_Context *context;
@@ -23,9 +24,19 @@ FVM_Result fvm_gc_roots_begin(FVM_Context *context, FVM_GCRootScope **out) {
     return FVM_OK;
 }
 FVM_Result fvm_gc_roots_add(FVM_GCRootScope *scope, const FVM_Value *value) {
-    if (!scope || !value || scope->context->gc_collecting ||
-        value->type<FVM_VALUE_UNDEFINED || value->type>FVM_VALUE_OBJECT ||
-        (value->type==FVM_VALUE_STRING && !value->string)) return FVM_INVALID_ARGUMENT;
+    if (!scope || !value || scope->context->gc_collecting) return FVM_INVALID_ARGUMENT;
+    /* C clients may supply an invalid enum representation. Inspect bytes before
+       loading the enum in C++: a scalar enum load itself can be undefined. */
+    bool valid_type=false;
+    for (int tag=FVM_VALUE_UNDEFINED; tag<=FVM_VALUE_OBJECT; ++tag) {
+        FVM_ValueType candidate=static_cast<FVM_ValueType>(tag);
+        if (std::memcmp(&value->type,&candidate,sizeof candidate)==0) {
+            valid_type=true;
+            break;
+        }
+    }
+    if (!valid_type || (value->type==FVM_VALUE_STRING && !value->string))
+        return FVM_INVALID_ARGUMENT;
     if (value->type==FVM_VALUE_OBJECT && (!value->object || value->object->owner!=scope->context))
         return FVM_INVALID_ARGUMENT;
     try { scope->values.push_back(*value); }
