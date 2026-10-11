@@ -260,3 +260,7 @@ The script-level `gc.mode()` / `gc.state()` API is planned, not implemented.
 See [GC safe points](doc/GC_SAFE_POINTS.md), [GC modes](doc/GC_MODES.md), [API index](doc/API_INDEX.md), and [GC troubleshooting](doc/GC_TROUBLESHOOTING.md). The collector is not yet safe to run inside active AVM1 frames.
 
 GC active-frame roots: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc/GC_ACTIVE_FRAMES.ru.md).
+
+### Native GC roots
+
+See [temporary root scopes](doc/GC_NATIVE_ROOTS.md) for C89 embedding, ownership rules and current limitations.

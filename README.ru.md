@@ -161,3 +161,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 См. [безопасные точки](doc/GC_SAFE_POINTS.md), [режимы GC](doc/GC_MODES.ru.md), [указатель API](doc/API_INDEX.ru.md) и [диагностику](doc/GC_TROUBLESHOOTING.md). Сборку пока нельзя безопасно запускать внутри активных кадров AVM1.
 
 Корни GC активных кадров: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc/GC_ACTIVE_FRAMES.ru.md).
+
+### Временные корни GC
+
+См. [временные области корней](doc/GC_NATIVE_ROOTS.ru.md): встраивание из C89, правила владения и ограничения.
