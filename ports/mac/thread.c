@@ -1,6 +1,11 @@
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 199309L
+#endif
 #include "../thread_port.h"
 #include <pthread.h>
 #include <stdlib.h>
+#include <time.h>
+#include <errno.h>
 struct FVM_PortThread { pthread_t thread; FVM_PortThreadFn fn; void *arg; };
 static void *thread_entry(void *arg) {
     FVM_PortThread *t=(FVM_PortThread *)arg;
@@ -18,4 +23,19 @@ FVM_PortThread *fvm_port_thread_start(FVM_PortThreadFn fn, void *arg) {
 }
 void fvm_port_thread_join(FVM_PortThread *t) {
     if (t) { pthread_join(t->thread,0); free(t); }
+}
+
+int fvm_port_thread_is_current(FVM_PortThread *t) {
+    return t && pthread_equal(pthread_self(),t->thread);
+}
+void fvm_port_thread_sleep_us(unsigned long us) {
+    struct timespec delay, remaining;
+    /* Bound each time_t conversion even on 32-bit ports. */
+    while (us) {
+        unsigned long chunk=us>1000000UL ? 1000000UL : us;
+        delay.tv_sec=(time_t)(chunk/1000000UL);
+        delay.tv_nsec=(long)(chunk%1000000UL)*1000L;
+        while (nanosleep(&delay,&remaining)!=0 && errno==EINTR) delay=remaining;
+        us-=chunk;
+    }
 }

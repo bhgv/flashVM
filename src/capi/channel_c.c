@@ -2,6 +2,7 @@
 #include "../../ports/channel_sync.h"
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 typedef struct FVM_ChannelNode {
     FVM_Value value;
     char *owned_string;
@@ -39,6 +40,7 @@ void fvm_channel_close(FVM_Channel *c) {
 FVM_Result fvm_channel_retain(FVM_Channel *c) {
     if (!c) return FVM_INVALID_ARGUMENT;
     fvm_port_sync_lock(c->sync);
+    if (c->references==(size_t)-1) { fvm_port_sync_unlock(c->sync); return FVM_INVALID_ARGUMENT; }
     ++c->references;
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
@@ -59,10 +61,10 @@ void fvm_channel_release(FVM_Channel *c) {
     free(c);
 }
 void fvm_channel_destroy(FVM_Channel *c) { fvm_channel_release(c); }
-FVM_Result fvm_channel_send(FVM_Channel *c,const FVM_Value *v) {
+static FVM_Result send_value(FVM_Channel *c,const FVM_Value *v,int blocking) {
     FVM_ChannelNode *n;
     size_t len;
-    if (!c || !v || v->type==FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
+    if (!c || !v || v->type<FVM_VALUE_UNDEFINED || v->type>=FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
     n=(FVM_ChannelNode *)calloc(1,sizeof(*n));
     if (!n) return FVM_OUT_OF_MEMORY;
     n->value=*v;
@@ -75,8 +77,14 @@ FVM_Result fvm_channel_send(FVM_Channel *c,const FVM_Value *v) {
         n->value.string=n->owned_string;
     }
     fvm_port_sync_lock(c->sync);
-    while (!c->closed && c->capacity && c->pending >= c->capacity)
+    while (!c->closed && c->capacity && c->pending >= c->capacity) {
+        if (!blocking) {
+            fvm_port_sync_unlock(c->sync);
+            free(n->owned_string); free(n);
+            return FVM_NOT_FOUND;
+        }
         fvm_port_sync_wait(c->sync);
+    }
     if (c->closed) {
         fvm_port_sync_unlock(c->sync);
         free(n->owned_string); free(n);
@@ -155,4 +163,33 @@ FVM_Result fvm_channel_pending(FVM_Channel *c, size_t *pending) {
     *pending = c->pending;
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
+}
+
+FVM_Result fvm_channel_send(FVM_Channel *c,const FVM_Value *v) {
+    return send_value(c,v,1);
+}
+FVM_Result fvm_channel_try_send(FVM_Channel *c,const FVM_Value *v) {
+    return send_value(c,v,0);
+}
+FVM_Result fvm_channel_receive_owned(FVM_Channel *c,FVM_Value *out,int blocking) {
+    FVM_ChannelNode *n;
+    FVM_Result r;
+    if (!c || !out) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(c->sync);
+    while (!c->head && !c->closed && blocking) fvm_port_sync_wait(c->sync);
+    if (!c->head) {
+        r=c->closed ? FVM_ERROR : FVM_NOT_FOUND;
+        fvm_port_sync_unlock(c->sync);return r;
+    }
+    n=c->head;c->head=n->next;
+    if (!c->head) c->tail=0;
+    --c->pending;*out=n->value;
+    fvm_port_sync_signal_all(c->sync);
+    fvm_port_sync_unlock(c->sync);
+    free(n);return FVM_OK;
+}
+void fvm_channel_message_release(FVM_Value *v) {
+    if (!v) return;
+    if (v->type==FVM_VALUE_STRING) free((void *)v->string);
+    fvm_value_undefined(v);
 }

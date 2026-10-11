@@ -12,6 +12,7 @@ struct FVM_Worker {
     FVM_Value output;
     FVM_Result result;
     int joined;
+    int joining;
     FVM_PortSync *sync;
     int started;
     int finished;
@@ -20,7 +21,7 @@ struct FVM_Worker {
 static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src) {
     size_t len;
     char *s;
-    if (!dst || !src || src->type == FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
+    if (!dst || !src || src->type < FVM_VALUE_UNDEFINED || src->type >= FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
     *dst = *src;
     if (src->type != FVM_VALUE_STRING) return FVM_OK;
     if (!src->string) return FVM_INVALID_ARGUMENT;
@@ -51,13 +52,13 @@ static void worker_entry(void *arg) {
         r = w->callback(context, &w->input, &result, w->userdata);
         if (r == FVM_OK) r = copy_value(&w->output, &result);
     }
+    if (context) fvm_context_destroy(context);
+    if (runtime) fvm_runtime_destroy(runtime);
     fvm_port_sync_lock(w->sync);
     w->result = r;
     w->finished = 1;
     fvm_port_sync_signal_all(w->sync);
     fvm_port_sync_unlock(w->sync);
-    if (context) fvm_context_destroy(context);
-    if (runtime) fvm_runtime_destroy(runtime);
 }
 static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction callback,
                                 const FVM_Value *input, void *userdata,
@@ -110,16 +111,29 @@ FVM_Result fvm_worker_state(FVM_Worker *w, FVM_WorkerState *state) {
     return FVM_OK;
 }
 FVM_Result fvm_worker_join(FVM_Worker *w, FVM_Value *out) {
+    FVM_PortThread *thread;
     if (!w) return FVM_INVALID_ARGUMENT;
-    if (!w->joined) {
-        fvm_worker_start(w);
-        fvm_port_thread_join(w->thread);
-        w->thread = 0;
-        fvm_port_sync_lock(w->sync);
-        w->joined = 1;
+    fvm_port_sync_lock(w->sync);
+    if (!w->finished && w->thread && fvm_port_thread_is_current(w->thread)) {
         fvm_port_sync_unlock(w->sync);
+        return FVM_INVALID_ARGUMENT;
     }
-    if (out) *out = w->output;
+    while (w->joining && !w->joined) fvm_port_sync_wait(w->sync);
+    if (!w->joined) {
+        w->joining=1;
+        w->started=1;
+        thread=w->thread;
+        fvm_port_sync_signal_all(w->sync);
+        fvm_port_sync_unlock(w->sync);
+        fvm_port_thread_join(thread);
+        fvm_port_sync_lock(w->sync);
+        w->thread=0;
+        w->joined=1;
+        w->joining=0;
+        fvm_port_sync_signal_all(w->sync);
+    }
+    if (out) *out=w->output;
+    fvm_port_sync_unlock(w->sync);
     return w->result;
 }
 void fvm_worker_destroy(FVM_Worker *w) {

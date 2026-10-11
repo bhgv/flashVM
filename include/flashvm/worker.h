@@ -27,7 +27,8 @@ typedef enum FVM_WorkerState {
 } FVM_WorkerState;
 /* Thread-safe snapshot of lifecycle state. */
 FVM_API FVM_Result fvm_worker_state(FVM_Worker *, FVM_WorkerState *);
-/* Waits for completion; returned strings remain valid until destroy. */
+/* Concurrent joins are serialized. Self-join returns FVM_INVALID_ARGUMENT.
+   Destroy must not race any operation. Returned strings live until destroy. */
 FVM_API FVM_Result fvm_worker_join(FVM_Worker *, FVM_Value *);
 /* Cooperative cancellation request. Never forcibly terminates an OS thread.
  * Callback may poll fvm_worker_stop_requested() using its worker handle.

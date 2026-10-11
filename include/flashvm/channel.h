@@ -23,6 +23,13 @@ FVM_API void fvm_channel_destroy(FVM_Channel *channel);
  * FVM_ERROR on a closed and empty channel. */
 FVM_API FVM_Result fvm_channel_send(FVM_Channel *channel, const FVM_Value *value);
 FVM_API FVM_Result fvm_channel_receive(FVM_Channel *channel, FVM_Value *out_value);
+/* Nonblocking send: FVM_NOT_FOUND when full, FVM_ERROR when closed. */
+FVM_API FVM_Result fvm_channel_try_send(FVM_Channel *, const FVM_Value *);
+/* Transfers ownership of any string to the receiver. Safe for multiple
+   consumers; unlike borrowed receive, another receive cannot invalidate it.
+   blocking=0 returns FVM_NOT_FOUND if empty/open. Release exactly once. */
+FVM_API FVM_Result fvm_channel_receive_owned(FVM_Channel *, FVM_Value *, int blocking);
+FVM_API void fvm_channel_message_release(FVM_Value *);
 /* Nonblocking receive: returns FVM_NOT_FOUND when empty and open;
  * FVM_ERROR when empty and closed. Received strings follow the same
  * borrowed-lifetime rule as fvm_channel_receive(). */
