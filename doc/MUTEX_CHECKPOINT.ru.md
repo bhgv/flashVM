@@ -41,7 +41,7 @@ ActionScript-проверки исполняют байткод AVM1. `.as` — 
 кучи/глобальных данных ASan и UBSan остаются. `tests/container_exceptions.cpp`
 проверяется только UBSan. LeakSanitizer отключён. Полное покрытие стековым ASan
 и проверка утечек не заявляются. Независимый пример этого ограничения сохранён
-в `doc/validation/file-sanitizer-exception-probe.cpp` с пояснением прошлого этапа.
+в `scripts/probes/file-sanitizer-exception-probe.cpp` с пояснением прошлого этапа.
 Для окончательной проверки пересобраны все VM/платформенные объекты и каждый
 тест/пример; неизменившиеся внешние instrumented-объекты взяты из полного запуска.
 

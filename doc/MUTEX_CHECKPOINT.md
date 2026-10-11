@@ -41,7 +41,7 @@ Stack ASan is disabled **only** in `src/capi/serialization_c.cpp`; heap/global
 ASan and UBSan remain enabled there. `tests/container_exceptions.cpp` uses UBSan
 only. LeakSanitizer is disabled. Full stack-ASan coverage and leak checking have
 not been certified. The independent exception probe and rationale remain in
-`doc/validation/file-sanitizer-exception-probe.cpp` and the previous checkpoint.
+`scripts/probes/file-sanitizer-exception-probe.cpp` and the previous checkpoint.
 The final core/platform objects and every test/example were rebuilt; unchanged
 vendor sanitizer objects from the full run were retained for the final relink.
 

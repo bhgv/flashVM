@@ -1,3 +1,0 @@
-PASS tests/sqlite_bundled.c: signed 64-bit minimum/maximum bindings and SQL conversions
-C89 -pedantic-errors -Werror=implicit-function-declaration; ASan/UBSan; LeakSanitizer disabled
-Executable-name lookup unavailable in this environment; sanitizer may omit symbolic frame names.

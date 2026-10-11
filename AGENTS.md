@@ -21,3 +21,7 @@
   sources in `external/`.
 - Write readable code with useful comments, verify affected builds and tests,
   and document supported behavior and remaining limitations in Russian and English.
+
+- Never commit generated build/test logs, validation JSON summaries, copied build
+  profiles, or source-hash dumps. Keep them outside the repository or in ignored
+  build output. Commit actual tests, reusable build profiles and concise reports.

@@ -15,3 +15,8 @@ __pycache__/
 # Compiler and configuration scratch artifacts
 /cc*.s
 /flashvm-definitions-*/
+
+# Generated validation output is not source code.
+*.log
+/doc/validation/
+/validation-artifacts/
