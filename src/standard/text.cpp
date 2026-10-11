@@ -391,6 +391,134 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
     object_value(out, object);
     return FVM_OK;
 }
+/* Public field indices count UTF-16 units. The current string model stores only
+ * Unicode scalars, so a boundary inside a surrogate pair cannot be represented.
+ * Validate the entire string and never publish a partial offset on failure. */
+static FVM_Result text_boundary(const char *text, size_t index, size_t &byte, size_t &length)
+{
+    size_t offset = 0, units = 0, bytes = std::strlen(text), found = 0;
+    bool boundary = index == 0;
+    while (offset < bytes)
+    {
+        unsigned long cp;
+        if (fvm_utf8_read(text, bytes, &offset, &cp) != FVM_UTF8_OK)
+            return FVM_INVALID_ARGUMENT;
+        size_t next = units + (cp > 0xffff ? 2 : 1);
+        if (index > units && index < next)
+            return FVM_UNSUPPORTED;
+        units = next;
+        if (index == units)
+        {
+            found = offset;
+            boundary = true;
+        }
+    }
+    if (!boundary)
+        return FVM_INVALID_ARGUMENT;
+    byte = found;
+    length = units;
+    return FVM_OK;
+}
+static FVM_Result text_index(FVM_Context *c, const FVM_Value &value, size_t &index)
+{
+    double d;
+    FVM_Result result = number(c, value, d);
+    if (result != FVM_OK)
+        return result;
+    /* 4096 supported scalars can occupy at most 8192 UTF-16 units. */
+    if (!finite_range(d, 0, 8192) || d != std::floor(d))
+        return FVM_INVALID_ARGUMENT;
+    index = (size_t)d;
+    return FVM_OK;
+}
+static FVM_Result text_range(FVM_Context *c, const char *text, unsigned int n,
+                             const FVM_Value *args, size_t &begin, size_t &end, size_t &length)
+{
+    size_t first, last, ignored;
+    FVM_Result result = text_index(c, args[0], first);
+    if (result != FVM_OK)
+        return result;
+    last = first + 1;
+    if (n == 2)
+    {
+        result = text_index(c, args[1], last);
+        if (result != FVM_OK)
+            return result;
+    }
+    if (last < first)
+        return FVM_INVALID_ARGUMENT;
+    result = text_boundary(text, first, begin, length);
+    if (result != FVM_OK)
+        return result;
+    return text_boundary(text, last, end, ignored);
+}
+static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
+                               const FVM_Value *args, FVM_Value *out, void *)
+{
+    if (!self || self->resource_kind != TEXT_FIELD || !self->resource)
+        return FVM_INVALID_ARGUMENT;
+    if (n != 3 || args[2].type != FVM_VALUE_STRING)
+        return FVM_UNSUPPORTED;
+    Field *field = (Field *)self->resource;
+    size_t begin, end, length;
+    FVM_Result result = text_range(c, field->text, 2, args, begin, end, length);
+    if (result != FVM_OK)
+        return result;
+    const char *replacement = args[2].string;
+    size_t bytes = std::strlen(field->text), inserted = std::strlen(replacement), count;
+    if (inserted > 16384)
+        return FVM_UNSUPPORTED;
+    if (fvm_utf8_validate(replacement, inserted, &count) != FVM_UTF8_OK)
+        return FVM_INVALID_ARGUMENT;
+    size_t total = bytes - (end - begin) + inserted;
+    if (total > 16384)
+        return FVM_UNSUPPORTED;
+    if (begin == end && !inserted)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    try
+    {
+        fvm_detail::vector<char> joined;
+        joined.resize(total + 1);
+        std::memcpy(joined.begin(), field->text, begin);
+        std::memcpy(joined.begin() + begin, replacement, inserted);
+        std::memcpy(joined.begin() + begin + inserted, field->text + end, bytes - end);
+        joined[total] = 0;
+        if (fvm_utf8_validate(joined.begin(), total, &count) != FVM_UTF8_OK)
+            return FVM_INVALID_ARGUMENT;
+        if (count > 4096)
+            return FVM_UNSUPPORTED;
+        /* Preserve the uniform current format. In an empty field the first
+         * inserted text uses the future format. Styled spans are not simulated. */
+        Style next = length ? field->current : field->future;
+        char *owned = new (std::nothrow) char[total + 1];
+        if (!owned)
+            return FVM_OUT_OF_MEMORY;
+        std::memcpy(owned, joined.begin(), total + 1);
+        try
+        {
+            c->strings.push_back(owned);
+        }
+        catch (...)
+        {
+            delete[] owned;
+            return FVM_OUT_OF_MEMORY;
+        }
+        /* All validation/allocation completes before changing the field. Old
+         * context-owned text snapshots and aliased replacement strings survive. */
+        field->text = owned;
+        field->current.swap(next);
+        field->invalidate();
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
 static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
                                const FVM_Value *args, FVM_Value *out, void *userdata)
 {
@@ -401,7 +529,20 @@ static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
     bool future =
         std::strcmp(name, "getNewTextFormat") == 0 || std::strcmp(name, "setNewTextFormat") == 0;
     if (name[0] == 'g')
-        return n ? FVM_UNSUPPORTED : style_format(c, future ? field->future : field->current, out);
+    {
+        if (n)
+        {
+            if (future || n > 2)
+                return FVM_UNSUPPORTED;
+            size_t begin, end, length;
+            FVM_Result result = text_range(c, field->text, n, args, begin, end, length);
+            if (result != FVM_OK)
+                return result;
+            if (begin == end)
+                return FVM_INVALID_ARGUMENT;
+        }
+        return style_format(c, future ? field->future : field->current, out);
+    }
     if (n != 1 || args[0].type != FVM_VALUE_OBJECT)
         return FVM_UNSUPPORTED;
     Style next = future ? field->future : field->current;
@@ -701,6 +842,9 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
             entry.userdata = (void *)methods[i];
             object->methods[methods[i]] = entry;
         }
+        FVM_NativeEntry replace;
+        replace.callback = replace_text;
+        object->methods["replaceText"] = replace;
         const char *unimplemented[] = {
             "html",       "htmlText",     "type",          "autoSize",
             "border",     "borderColor",  "background",    "backgroundColor",
@@ -716,8 +860,8 @@ extern "C" FVM_Result fvm_textfield_create(FVM_Context *c, const char *font_name
             if (result != FVM_OK)
                 return result;
         }
-        const char *unimplemented_methods[] = {"replaceText", "replaceSel",  "removeTextField",
-                                               "getDepth",    "addListener", "removeListener"};
+        const char *unimplemented_methods[] = {"replaceSel", "removeTextField", "getDepth",
+                                               "addListener", "removeListener"};
         for (size_t i = 0; i < sizeof(unimplemented_methods) / sizeof(unimplemented_methods[0]);
              ++i)
         {

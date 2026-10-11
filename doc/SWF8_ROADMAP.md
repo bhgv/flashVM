@@ -1,6 +1,6 @@
-ActionScript text checkpoint: named native TextFormat construction, extent measurement and a host-created whole-format TextField bridge are now tested. See STANDARD_TEXT.md. MovieClip creation, SWF fonts, HTML, styled ranges and complete display/input behavior remain outstanding.
+ActionScript text checkpoint: named native TextFormat construction, extent measurement, a host-created uniform-format TextField bridge, UTF-16 range editing and format reads are now tested. See STANDARD_TEXT.md. MovieClip creation, SWF fonts, HTML, styled range writes and complete display/input behavior remain outstanding.
 
-Native text checkpoint: owned single-font horizontal layout, wrapping, bidi/script runs, measurement and editable block/glyph paths are tested. See [TEXT_LAYOUT.md](TEXT_LAYOUT.md). SWF TextField/TextFormat integration remains outstanding.
+Native text checkpoint: owned single-font horizontal layout, wrapping, bidi/script runs, measurement and editable block/glyph paths are tested. See [TEXT_LAYOUT.md](TEXT_LAYOUT.md). SWF display-list and embedded-font integration remains outstanding.
 
 Numeric library checkpoint: opt-in Math methods/constants and primitive
 Number/Boolean/isNaN/isFinite are now tested; see STANDARD_NUMERIC.md.

@@ -17,6 +17,11 @@ Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FE
 
 ActionScript text bridge: [English](doc/STANDARD_TEXT.md) / [Русский](doc/STANDARD_TEXT.ru.md).
 
+Text editing checkpoint: UTF-16-indexed replaceText and uniform character/range
+getTextFormat reads, with transactional validation and refreshed layout.
+See [English evidence](doc/TEXT_EDITING_CHECKPOINT.md) /
+[проверки на русском](doc/TEXT_EDITING_CHECKPOINT.ru.md).
+
 Text layout checkpoint: [English](doc/TEXT_LAYOUT.md) / [Русский](doc/TEXT_LAYOUT.ru.md).
 
 Font/vector checkpoint: bundled static FreeType 2.14.3, HarfBuzz 1.8.8,

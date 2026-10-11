@@ -14,7 +14,8 @@ on repeat calls. No libraries are downloaded or linked dynamically.
 | new TextFormat | Thirteen positional parameters; missing properties are null; additional Flash 8 fields are initially null |
 | TextFormat.getTextExtent | Six numeric metrics, optional measured wrapping, 4-pixel total gutter, font size and leading |
 | Host-created TextField | text, multiline, wordWrap, _width, _height, textColor and read-only length/textWidth/textHeight |
-| Formatting methods | Whole-field getTextFormat/setTextFormat and getNewTextFormat/setNewTextFormat snapshots |
+| Formatting methods | Whole-field format writes, uniform getTextFormat character/range snapshots, independent current/future snapshots |
+| replaceText | UTF-16 range replacement, insertion/deletion, transactional validation and layout invalidation |
 | Geometry | Independent editable text-field outline including the 2-pixel origin gutter |
 
 The naming/constructor order, null formatting properties and extent gutter
@@ -65,7 +66,7 @@ setTextFormat changes current text; setNewTextFormat changes future text.
 Replacing text uses a copy of the future format. get methods return independent
 TextFormat objects. Unimplemented properties in these snapshots remain null;
 this is an explicit difference from complete AS2 getTextFormat results.
-Character-range formatting overloads return UNSUPPORTED. Numeric formatting
+Character-range formatting writes remain UNSUPPORTED. Numeric formatting
 uses the existing primitive ToNumber subset; text requires a UTF-8 string and
 multiline/wordWrap require booleans. Full AS coercion and SWF-version gating are
 not claimed. RGB colors are integral 0..0xffffff; dimensions are finite
@@ -85,11 +86,48 @@ requests can be stored as text but fail when measured/exported.
 Known unsupported display/input properties (html/htmlText, autoSize, border,
 background, embedFonts, password, selectable, scrolling, antialias settings,
 filters and display transforms) explicitly return UNSUPPORTED on access/write.
-Likewise replaceText/replaceSel, listener and display-node methods are blocked.
+Likewise replaceSel, listener and display-node methods are blocked.
 There is no timeline, MovieClip.createTextField, HTML parser, styled spans,
 selection/caret/input editing, font fallback, SWF embedded font decoding or
 complete display list in this checkpoint. Direct new TextField is unsupported;
 host construction is the explicit temporary bridge.
+
+## Text editing and range reads
+
+`replaceText(beginIndex, endIndex, newText)` replaces the half-open range
+`[beginIndex,endIndex)`. Equal indices insert, and an empty replacement deletes.
+Both endpoints must be finite nonnegative integers within `length`; reversed,
+fractional or out-of-bounds ranges return INVALID_ARGUMENT. Indices use UTF-16
+code units, not UTF-8 byte offsets. A boundary inside a supplementary character's
+surrogate pair returns UNSUPPORTED: isolated surrogates cannot currently be
+stored in the scalar-only UTF-8 value model. This restriction also applies to
+format reads. No clamping, fractional truncation or complete AS coercion is claimed.
+
+Replacement strings must be valid UTF-8. Result limits remain 4096 Unicode
+scalars / 16384 bytes. Resource-limit failures return UNSUPPORTED. Allocation
+and validation finish before committing text/style changes; failed edits retain
+text and cached layout. Successful edits invalidate cached measurement/contours;
+previously returned text snapshots and exported paths remain independent.
+Aliasing a replacement with an old text snapshot is supported.
+
+The current uniform format is preserved while editing a nonempty field. An
+insertion into an empty field uses the future format. This explicit interim
+policy does not prove Flash insertion-point formatting parity. Different styled
+spans, selection, input events, CSS and HTML editing remain unimplemented.
+
+`getTextFormat(beginIndex)` and `getTextFormat(beginIndex,endIndex)` now return
+independent snapshots of the uniform current style for a nonempty valid range.
+The single-index overload addresses one UTF-16 unit and therefore cannot select
+only half of a supplementary character. Empty/out-of-range reads return
+INVALID_ARGUMENT. Unimplemented format properties still remain null. Partial
+`setTextFormat` writes and argument-bearing `getNewTextFormat` stay UNSUPPORTED.
+
+The AS2 reference establishes the half-open range and overload signatures;
+edge handling and the limitations above describe FlashVM's tested contract,
+not behavior validated against a complete Flash player. The C89 embedding
+example executes edits and reads; `editing.as` describes the corresponding
+host-published AS2 usage. Its source is illustrative, not compiler-corpus evidence.
+`tests/standard_textfield_editing.c` separately exercises AVM1 CallMethod.
 
 ## Profiles and example
 

@@ -9,7 +9,7 @@ int main(void)
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
     FVM_Object *format = 0, *field = 0;
-    FVM_Value value, args[1], result;
+    FVM_Value value, args[3], result;
     FVM_Path *outline = 0;
     assert(fvm_config_init(&config) == FVM_OK);
     assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
@@ -37,6 +37,18 @@ int main(void)
     assert(fvm_object_set(context, field, "text", &value) == FVM_OK);
     assert(fvm_object_get(context, field, "textHeight", &result) == FVM_OK);
     printf("caption.textHeight = %.2f pixels\n", result.number);
+    /* Replace [0,2), retaining the current uniform style and invalidating layout. */
+    fvm_value_number(&args[0], 0);
+    fvm_value_number(&args[1], 2);
+    assert(fvm_value_string(&args[2], "B") == FVM_OK);
+    assert(fvm_object_call(context, field, "replaceText", 3, args, &result) == FVM_OK);
+    assert(fvm_object_get(context, field, "text", &result) == FVM_OK);
+    printf("caption.text = %s\n", result.string);
+    assert(strcmp(result.string, "B fi") == 0);
+    fvm_value_number(&args[0], 0);
+    assert(fvm_object_call(context, field, "getTextFormat", 1, args, &result) == FVM_OK);
+    assert(fvm_object_get(context, result.object, "size", &value) == FVM_OK);
+    assert(value.type == FVM_VALUE_NUMBER && value.number == 40);
     assert(fvm_textfield_path(context, field, &outline) == FVM_OK);
 #else
     (void)format;
