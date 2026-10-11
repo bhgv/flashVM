@@ -50,6 +50,8 @@ extern "C"
         if (!context)
             return FVM_OUT_OF_MEMORY;
         context->worker = 0;
+        context->standard_library = false;
+        context->random_state = 1;
         context->runtime = runtime;
         context->global = 0;
         context->swf_loaded = false;

@@ -42,7 +42,7 @@ else()
 endif()
 
 file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
-                                 src/avm1/*.cpp src/swf/*.cpp)
+                                 src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c

@@ -74,6 +74,8 @@ struct FVM_GCRootFrame
 struct FVM_Context
 {
     FVM_Worker *worker;
+    bool standard_library;
+    unsigned long random_state;
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string, FVM_StackEntry> stack_functions;
     fvm_detail::vector<fvm_detail::vector<FVM_Value> *> gc_stacks;
