@@ -11,6 +11,7 @@ extern "C" {
  */
 FVM_API FVM_Result fvm_meta_register(FVM_Context *, FVM_Object *metatable,
     const char *method, FVM_NativeFunction callback, void *userdata);
+FVM_API FVM_Result fvm_meta_register_rooted(FVM_Context *,FVM_Object *,const char *,FVM_NativeFunction,void *,FVM_Object *);
 /* Index lookup, write interception, and iterator use registered callbacks.
  * Iteration: return FVM_VALUE_UNDEFINED to signal end; otherwise return a
  * value and optionally populate key via fvm_meta_iterate's out_key.
@@ -18,7 +19,7 @@ FVM_API FVM_Result fvm_meta_register(FVM_Context *, FVM_Object *metatable,
 FVM_API FVM_Result fvm_meta_iterate(FVM_Context *, FVM_Object *,
     unsigned long invocation, FVM_Value *out_key, FVM_Value *out_value);
 /* Explicit finalization of an owned table, at most once.  The object remains
- * allocated until context teardown; this is NOT a tracing GC. */
+ * allocated until a later tracing collection or context teardown. */
 FVM_API FVM_Result fvm_meta_finalize(FVM_Context *, FVM_Object *);
 #ifdef __cplusplus
 }

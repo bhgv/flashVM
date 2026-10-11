@@ -1,6 +1,7 @@
 #include "../core/runtime.hpp"
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
+#include "flashvm/worker.h"
 #include "../details/vector.hpp"
 #include "../details/string.hpp"
 #include <cstdio>
@@ -32,6 +33,15 @@ static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn,
     ++c->script_depth;
     FVM_Result status=execute(c,&snapshot.body[0],snapshot.body.size(),result,&frame,receiver);
     --c->script_depth;
+    /* A returned bytecode literal must outlive the function snapshot. */
+    if(status==FVM_OK && result && result->type==FVM_VALUE_STRING) {
+        size_t len=std::strlen(result->string);
+        char *copy=new(std::nothrow) char[len+1];
+        if(!copy) return FVM_OUT_OF_MEMORY;
+        std::memcpy(copy,result->string,len+1);
+        try { c->strings.push_back(copy); } catch(...) {delete [] copy;return FVM_OUT_OF_MEMORY;}
+        result->string=copy;
+    }
     return status;
 }
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self) {
@@ -74,7 +84,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                locals and receivers are registered by RootGuard. Never collect
                in the middle of an opcode or while a native callback runs. */
             if ((steps & 63UL)==1UL) {
-                FVM_Result gc_result=fvm_gc_step(c,0);
+                int stopped=0;
+                if(c->worker && fvm_worker_stop_requested(c->worker,&stopped)==FVM_OK && stopped) return FVM_ERROR;
+                FVM_Result gc_result=c->gc_collecting ? FVM_OK : fvm_gc_step(c,0);
                 if (gc_result!=FVM_OK) return gc_result;
             }
             if (a.op==0) return FVM_OK;
@@ -177,8 +189,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
             } else if (a.op==0x3c || a.op==0x41) { /* DefineLocal / DeclareLocal */
                 if (!locals) return FVM_UNSUPPORTED;
-                if (stack.empty() || stack.back().type!=FVM_VALUE_STRING) return FVM_ERROR;
-                if (a.op==0x3c && stack.size()<2) return FVM_ERROR;
+                if (a.op==0x3c) {
+                    if(stack.size()<2 || stack[stack.size()-2].type!=FVM_VALUE_STRING)return FVM_ERROR;
+                } else if(stack.empty() || stack.back().type!=FVM_VALUE_STRING)return FVM_ERROR;
                 fvm_detail::string name=stack[a.op==0x3c ? stack.size()-2 : stack.size()-1].string;
                 FVM_Value v; fvm_value_undefined(&v);
                 if (a.op==0x3c) v=stack.back();
@@ -224,7 +237,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value result; fvm_value_undefined(&result);
                 FVM_Result r;
                 fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator script=c->script_functions.find(name);
-                if (script!=c->script_functions.end())
+                if (receiver->methods.find(name)==receiver->methods.end() && script!=c->script_functions.end())
                     r=call_script(c,script->second,argc,argc?&args[0]:0,receiver,&result);
                 else r=fvm_object_call(c,receiver,name.c_str(),argc,argc?&args[0]:0,&result);
                 if (r!=FVM_OK) return r;
@@ -270,6 +283,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
 }
 }
 extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t size) {
+    if(!c) return FVM_INVALID_ARGUMENT;
     FVM_AVM1Info info;
     info.struct_size=sizeof(info);
     FVM_Result r=fvm_avm1_inspect(data,size,&info);

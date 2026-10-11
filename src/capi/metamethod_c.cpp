@@ -60,3 +60,10 @@ FVM_Result fvm_meta_iterate(FVM_Context *c,FVM_Object *o,unsigned long index,FVM
     return FVM_OK;
 }
 }
+
+extern "C" FVM_Result fvm_meta_register_rooted(FVM_Context *c,FVM_Object *m,const char *name,FVM_NativeFunction cb,void *ud,FVM_Object *root) {
+    if(!c || (root && root->owner!=c)) return FVM_INVALID_ARGUMENT;
+    FVM_Result r=fvm_meta_register(c,m,name,cb,ud);
+    if(r==FVM_OK)m->metamethods.find(name)->second.root=root;
+    return r;
+}

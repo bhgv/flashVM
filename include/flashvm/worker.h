@@ -43,6 +43,11 @@ FVM_API FVM_Result fvm_worker_stop_requested(FVM_Worker *worker, int *requested)
  */
 FVM_API FVM_Result fvm_worker_join_all(FVM_Worker **workers,
                                        unsigned int count, FVM_Value *results);
+/* Borrow current context worker; FVM_NOT_FOUND in a host context.
+   The returned handle remains owned by its creator. */
+FVM_API FVM_Result fvm_worker_current(FVM_Context *,FVM_Worker **);
+/* Nonblocking result snapshot; FVM_NOT_FOUND while still running. */
+FVM_API FVM_Result fvm_worker_result(FVM_Worker *, FVM_Value *);
 /* Must only be called after join. */
 FVM_API void fvm_worker_destroy(FVM_Worker *);
 #ifdef __cplusplus

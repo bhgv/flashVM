@@ -17,6 +17,8 @@ FVM_API FVM_Result fvm_stack_push(FVM_Stack *, const FVM_Value *);
 FVM_API FVM_Result fvm_stack_pop(FVM_Stack *, unsigned int);
 FVM_API FVM_Result fvm_stack_clear(FVM_Stack *);
 FVM_API FVM_Result fvm_stack_register(FVM_Context *, const char *, FVM_StackFunction, void *);
+/* Captured table is a GC root until registration is replaced. */
+FVM_API FVM_Result fvm_stack_register_rooted(FVM_Context *,const char *,FVM_StackFunction,void *,FVM_Object *);
 /* Calls a registered stack function with a temporary argument stack.
  * The callback receives exactly argc entries. On success it must leave
  * exactly one result entry; an empty stack means undefined. */

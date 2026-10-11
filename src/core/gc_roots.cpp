@@ -23,7 +23,9 @@ FVM_Result fvm_gc_roots_begin(FVM_Context *context, FVM_GCRootScope **out) {
     return FVM_OK;
 }
 FVM_Result fvm_gc_roots_add(FVM_GCRootScope *scope, const FVM_Value *value) {
-    if (!scope || !value || scope->context->gc_collecting) return FVM_INVALID_ARGUMENT;
+    if (!scope || !value || scope->context->gc_collecting ||
+        value->type<FVM_VALUE_UNDEFINED || value->type>FVM_VALUE_OBJECT ||
+        (value->type==FVM_VALUE_STRING && !value->string)) return FVM_INVALID_ARGUMENT;
     if (value->type==FVM_VALUE_OBJECT && (!value->object || value->object->owner!=scope->context))
         return FVM_INVALID_ARGUMENT;
     try { scope->values.push_back(*value); }

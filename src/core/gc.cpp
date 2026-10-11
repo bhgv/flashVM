@@ -12,6 +12,8 @@ static void mark_object(FVM_Object *o, fvm_detail::vector<FVM_Object *> &pending
 static void mark_graph(FVM_Context *c, size_t newborn_start=(size_t)-1) {
     fvm_detail::vector<FVM_Object *> pending;
     mark_object(c->global,pending);
+    fvm_detail::map<fvm_detail::string,FVM_StackEntry>::iterator stack_fn;
+    for(stack_fn=c->stack_functions.begin();stack_fn!=c->stack_functions.end();++stack_fn) mark_object(stack_fn->second.root,pending);
     size_t i;
     fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator fn;
     for (fn=c->functions.begin();fn!=c->functions.end();++fn) mark_object(fn->second.root,pending);
@@ -36,8 +38,11 @@ static void mark_graph(FVM_Context *c, size_t newborn_start=(size_t)-1) {
     }
     while (!pending.empty()) {
         FVM_Object *o=pending.back();pending.pop_back();
+        if(o->resource_result_valid && o->resource_result.type==FVM_VALUE_OBJECT)mark_object(o->resource_result.object,pending);
+        mark_object(o->callable.root,pending);
         mark_object(o->prototype,pending);
         mark_object(o->metatable,pending);
+        for(fn=o->methods.begin();fn!=o->methods.end();++fn) mark_object(fn->second.root,pending);
         for(fn=o->metamethods.begin();fn!=o->metamethods.end();++fn) mark_object(fn->second.root,pending);
         fvm_detail::map<fvm_detail::string,FVM_Value>::iterator p;
         for (p=o->properties.begin();p!=o->properties.end();++p)
@@ -59,7 +64,7 @@ FVM_Result fvm_gc_state(FVM_Context *c,int *mode) {
     *mode=c->gc_mode;return FVM_OK;
 }
 FVM_Result fvm_gc_pin(FVM_Context *c,FVM_Object *o) {
-    if (!c || !o || o->owner!=c || o->gc_pins==ULONG_MAX) return FVM_INVALID_ARGUMENT;
+    if (!c || !o || c->gc_releasing || o->owner!=c || o->gc_pins==ULONG_MAX) return FVM_INVALID_ARGUMENT;
     ++o->gc_pins;return FVM_OK;
 }
 FVM_Result fvm_gc_pin_count(FVM_Context *c,FVM_Object *o,unsigned long *count) {
@@ -67,7 +72,7 @@ FVM_Result fvm_gc_pin_count(FVM_Context *c,FVM_Object *o,unsigned long *count) {
     *count=o->gc_pins;return FVM_OK;
 }
 FVM_Result fvm_gc_unpin(FVM_Context *c,FVM_Object *o) {
-    if (!c || !o || o->owner!=c || !o->gc_pins) return FVM_INVALID_ARGUMENT;
+    if (!c || !o || c->gc_releasing || o->owner!=c || !o->gc_pins) return FVM_INVALID_ARGUMENT;
     --o->gc_pins;return FVM_OK;
 }
 FVM_Result fvm_gc_object_count(FVM_Context *c,unsigned long *n) {
@@ -96,12 +101,17 @@ FVM_Result fvm_gc_collect(FVM_Context *c,unsigned long *reclaimed) {
         for(i=0;i<c->objects.size();++i)c->objects[i]->gc_marked=false;
         /* Snapshot bounds finalization; newborn graphs survive this pass. */
         mark_graph(c,original_count);
+        /* Resource callbacks see a coherent heap: do not delete objects until
+           every unreachable resource has been released. */
+        for(i=0;i<c->objects.size();++i) if(!c->objects[i]->gc_marked) {
+            FVM_Result r=fvm_release_object_resource(c,c->objects[i]);
+            if(finalizer_result==FVM_OK && r!=FVM_OK)finalizer_result=r;
+        }
         unsigned long freed=0;
         size_t kept=0;
         for(i=0;i<c->objects.size();++i) {
             FVM_Object *o=c->objects[i];
             if(o->gc_marked) { c->objects[kept++]=o; continue; }
-            if(o->release_resource) o->release_resource(o->resource);
             delete o;
             ++freed;
         }

@@ -129,3 +129,16 @@ FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
     return r;
 }
 }
+
+extern "C" FVM_Result fvm_stack_register_rooted(FVM_Context *c,const char *name,FVM_StackFunction cb,void *ud,FVM_Object *root) {
+    if(!c || (root && root->owner!=c)) return FVM_INVALID_ARGUMENT;
+    FVM_Result r=fvm_stack_register(c,name,cb,ud);
+    if(r==FVM_OK)c->stack_functions.find(name)->second.root=root;
+    return r;
+}
+extern "C" FVM_Result fvm_callable_create_rooted(FVM_Context *c,FVM_StackFunction cb,void *ud,FVM_Object *root,FVM_Object **out) {
+    if(!c || (root && root->owner!=c)) return FVM_INVALID_ARGUMENT;
+    FVM_Result r=fvm_callable_create(c,cb,ud,out);
+    if(r==FVM_OK)(*out)->callable.root=root;
+    return r;
+}

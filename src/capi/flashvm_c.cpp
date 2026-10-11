@@ -30,6 +30,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     if (!runtime) return FVM_INVALID_ARGUMENT;
     context = new (std::nothrow) FVM_Context;
     if (!context) return FVM_OUT_OF_MEMORY;
+    context->worker=0;
     context->runtime = runtime;
     context->global = 0;
     context->swf_loaded = false;
@@ -38,6 +39,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->gc_allocations = 0;
     context->gc_collecting = false;
     context->destroying = false;
+    context->gc_releasing = false;
     context->gc_frames = 0;
     context->gc_native_depth = 0;
     context->pumping_input = false;
@@ -53,7 +55,7 @@ void fvm_context_destroy(FVM_Context *context) {
     context->gc_collecting=true;
     for (size_t i=0;i<context->objects.size();++i) fvm_meta_finalize(context,context->objects[i]);
     for (size_t i=0;i<context->objects.size();++i)
-        if (context->objects[i]->release_resource) context->objects[i]->release_resource(context->objects[i]->resource);
+        fvm_release_object_resource(context,context->objects[i]);
     for (size_t i=0;i<context->objects.size();++i) delete context->objects[i];
     for (size_t i=0;i<context->strings.size();++i) delete [] context->strings[i];
     delete context;

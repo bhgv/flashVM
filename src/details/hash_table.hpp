@@ -27,7 +27,7 @@ private:
     void rehash(size_t n) { entry **b=new entry*[n];for(size_t i=0;i<n;++i)b[i]=0;for(entry *e=head_;e;e=e->next){size_t k=hash_key(e->first)%n;e->bucket_next=b[k];b[k]=e;}delete [] buckets_;buckets_=b;capacity_=n; }
 public:
     map():buckets_(0),capacity_(0),count_(0),head_(0),tail_(0){}
-    map(const map &m):buckets_(0),capacity_(0),count_(0),head_(0),tail_(0){for(entry *e=m.head_;e;e=e->next)(*this)[e->first]=e->second;}
+    map(const map &m):buckets_(0),capacity_(0),count_(0),head_(0),tail_(0){try {for(entry *e=m.head_;e;e=e->next)(*this)[e->first]=e->second;}catch(...){clear();delete [] buckets_;throw;}}
     map &operator=(const map &m){if(this!=&m){map tmp(m);swap(tmp);}return *this;}
     ~map(){clear();delete [] buckets_;}
     void swap(map &m){entry **b=buckets_;buckets_=m.buckets_;m.buckets_=b;size_t n=capacity_;capacity_=m.capacity_;m.capacity_=n;n=count_;count_=m.count_;m.count_=n;entry *p=head_;head_=m.head_;m.head_=p;p=tail_;tail_=m.tail_;m.tail_=p;}

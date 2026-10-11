@@ -8,11 +8,16 @@
 #include "../details/string.hpp"
 #include "../details/vector.hpp"
 struct FVM_Stack;
+struct FVM_Worker;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
-struct FVM_StackEntry { FVM_StackCallbackInternal callback; void *userdata; };
+struct FVM_StackEntry {
+    FVM_StackCallbackInternal callback; void *userdata; FVM_Object *root;
+    FVM_StackEntry():callback(0),userdata(0),root(0) {}
+};
 struct FVM_NativeEntry {
+    bool collector_entry;
     FVM_Object *root;
-    FVM_NativeEntry():root(0),callback(0),userdata(0) {}
+    FVM_NativeEntry():collector_entry(false),root(0),callback(0),userdata(0) {}
     FVM_NativeFunction callback;
     void *userdata;
 };
@@ -27,6 +32,10 @@ struct FVM_Object {
     bool gc_marked;
     unsigned long gc_pins;
     FVM_StackEntry callable;
+    bool resource_result_valid;
+    FVM_Value resource_result;
+    int resource_kind;
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry> methods;
     void *resource;
     void (*release_resource)(void *);
 };
@@ -43,6 +52,7 @@ struct FVM_GCRootFrame {
     FVM_Object *receiver;
 };
 struct FVM_Context {
+    FVM_Worker *worker;
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
     fvm_detail::vector<fvm_detail::vector<FVM_Value> *> gc_stacks;
@@ -64,7 +74,9 @@ struct FVM_Context {
     unsigned long gc_allocations;
     bool gc_collecting;
     bool destroying;
+    bool gc_releasing;
     FVM_GCRootFrame *gc_frames;
     unsigned int gc_native_depth;
 };
+FVM_Result fvm_release_object_resource(FVM_Context *,FVM_Object *);
 #endif

@@ -31,7 +31,7 @@ void fvm_value_boolean(FVM_Value *v, int b) { if (v) { fvm_value_undefined(v); v
 FVM_Result fvm_value_string(FVM_Value *v, const char *s) { if (!v || !s) return FVM_INVALID_ARGUMENT; fvm_value_undefined(v); v->type=FVM_VALUE_STRING; v->string=s; return FVM_OK; }
 FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     FVM_Object *o;
-    if (!c || !out || c->destroying) return FVM_INVALID_ARGUMENT;
+    if (!c || !out || c->destroying || c->gc_releasing) return FVM_INVALID_ARGUMENT;
     *out=0;
     o=new (std::nothrow) FVM_Object;
     if (!o) return FVM_OUT_OF_MEMORY;
@@ -42,6 +42,8 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     o->gc_marked=false;
     o->gc_pins=0;
     o->callable.callback=0; o->callable.userdata=0;
+    o->resource_result_valid=false;fvm_value_undefined(&o->resource_result);
+    o->resource_kind=0;
     o->resource=0; o->release_resource=0;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
@@ -155,10 +157,27 @@ FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name, u
     unsigned int i;
     if (!c || !self || self->owner!=c || !name || !out || (argc && !argv)) return FVM_INVALID_ARGUMENT;
     for (i=0;i<argc;++i) if (valid_value(c,&argv[i])!=FVM_OK) return FVM_INVALID_ARGUMENT;
-    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=c->functions.find(name);
-    if (it==c->functions.end()) return FVM_UNSUPPORTED;
+    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it=self->methods.find(name);
+    if (it==self->methods.end()) {
+        it=c->functions.find(name);
+        if(it==c->functions.end()) return FVM_UNSUPPORTED;
+    }
+    FVM_NativeEntry entry=it->second;
     fvm_value_undefined(out);
-    try { FVM_NativeCallGuard native_guard(c); return it->second.callback(c,self,argc,argv,out,it->second.userdata); }
+    try {
+        if(entry.collector_entry) {
+            fvm_detail::vector<FVM_Value> args;
+            for(i=0;i<argc;++i) args.push_back(argv[i]);
+            FVM_GCRootFrame frame;
+            frame.previous=c->gc_frames;frame.stack=&args;frame.locals=0;frame.receiver=self;
+            c->gc_frames=&frame;
+            struct Pop { FVM_Context *c; FVM_GCRootFrame *f; ~Pop(){c->gc_frames=f->previous;} } pop;
+            pop.c=c;pop.f=&frame;
+            return entry.callback(c,self,argc,argv,out,entry.userdata);
+        }
+        FVM_NativeCallGuard native_guard(c);
+        return entry.callback(c,self,argc,argv,out,entry.userdata);
+    }
     catch (...) { return FVM_ERROR; }
 }
 FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc, const FVM_Value *argv, FVM_Value *out) {

@@ -1,9 +1,12 @@
 #include "flashvm/channel.h"
+#include "../core/channel_packet.h"
 #include "../../ports/channel_sync.h"
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 typedef struct FVM_ChannelNode {
+    void *packet;
+    void (*release_packet)(void *);
     FVM_Value value;
     char *owned_string;
     struct FVM_ChannelNode *next;
@@ -55,13 +58,13 @@ void fvm_channel_release(FVM_Channel *c) {
     fvm_port_sync_unlock(c->sync);
     if (!last) return;
     n=c->head;
-    while (n) { next=n->next; free(n->owned_string); free(n); n=next; }
+    while (n) { next=n->next; if(n->release_packet) n->release_packet(n->packet); free(n->owned_string); free(n); n=next; }
     free(c->last_string);
     fvm_port_sync_destroy(c->sync);
     free(c);
 }
 void fvm_channel_destroy(FVM_Channel *c) { fvm_channel_release(c); }
-static FVM_Result send_value(FVM_Channel *c,const FVM_Value *v,int blocking) {
+FVM_Result fvm_channel_send_primitive(FVM_Channel *c,const FVM_Value *v,int blocking) {
     FVM_ChannelNode *n;
     size_t len;
     if (!c || !v || v->type<FVM_VALUE_UNDEFINED || v->type>=FVM_VALUE_OBJECT) return FVM_INVALID_ARGUMENT;
@@ -105,6 +108,7 @@ FVM_Result fvm_channel_receive(FVM_Channel *c,FVM_Value *out) {
     while (!c->head && !c->closed) fvm_port_sync_wait(c->sync);
     if (!c->head) { fvm_port_sync_unlock(c->sync); return FVM_ERROR; }
     n=c->head;
+    if(n->packet) { fvm_port_sync_unlock(c->sync); return FVM_UNSUPPORTED; }
     c->head=n->next;
     if (!c->head) c->tail=0;
     --c->pending;
@@ -129,6 +133,7 @@ FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out) {
         return result;
     }
     n = c->head;
+    if(n->packet) { fvm_port_sync_unlock(c->sync); return FVM_UNSUPPORTED; }
     c->head = n->next;
     if (!c->head) c->tail = 0;
     --c->pending;
@@ -166,10 +171,10 @@ FVM_Result fvm_channel_pending(FVM_Channel *c, size_t *pending) {
 }
 
 FVM_Result fvm_channel_send(FVM_Channel *c,const FVM_Value *v) {
-    return send_value(c,v,1);
+    return fvm_channel_send_primitive(c,v,1);
 }
 FVM_Result fvm_channel_try_send(FVM_Channel *c,const FVM_Value *v) {
-    return send_value(c,v,0);
+    return fvm_channel_send_primitive(c,v,0);
 }
 FVM_Result fvm_channel_receive_owned(FVM_Channel *c,FVM_Value *out,int blocking) {
     FVM_ChannelNode *n;
@@ -181,7 +186,9 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c,FVM_Value *out,int blocking)
         r=c->closed ? FVM_ERROR : FVM_NOT_FOUND;
         fvm_port_sync_unlock(c->sync);return r;
     }
-    n=c->head;c->head=n->next;
+    n=c->head;
+    if(n->packet) { fvm_port_sync_unlock(c->sync); return FVM_UNSUPPORTED; }
+    c->head=n->next;
     if (!c->head) c->tail=0;
     --c->pending;*out=n->value;
     fvm_port_sync_signal_all(c->sync);
@@ -192,4 +199,34 @@ void fvm_channel_message_release(FVM_Value *v) {
     if (!v) return;
     if (v->type==FVM_VALUE_STRING) free((void *)v->string);
     fvm_value_undefined(v);
+}
+
+FVM_Result fvm_channel_packet_send(FVM_Channel *c,void *packet,void (*release)(void *),int blocking) {
+    FVM_ChannelNode *n;
+    if(!c || !packet || !release) return FVM_INVALID_ARGUMENT;
+    n=(FVM_ChannelNode *)calloc(1,sizeof(*n));
+    if(!n) return FVM_OUT_OF_MEMORY;
+    n->packet=packet;n->release_packet=release;
+    fvm_port_sync_lock(c->sync);
+    while(!c->closed && c->capacity && c->pending>=c->capacity) {
+        if(!blocking) {fvm_port_sync_unlock(c->sync);free(n);return FVM_NOT_FOUND;}
+        fvm_port_sync_wait(c->sync);
+    }
+    if(c->closed) {fvm_port_sync_unlock(c->sync);free(n);return FVM_ERROR;}
+    if(c->tail) c->tail->next=n;else c->head=n;
+    c->tail=n;++c->pending;
+    fvm_port_sync_signal_all(c->sync);fvm_port_sync_unlock(c->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_channel_receive_mixed(FVM_Channel *c,FVM_Value *out,void **packet,int blocking) {
+    FVM_ChannelNode *n;FVM_Result r;
+    if(!c || !out || !packet) return FVM_INVALID_ARGUMENT;
+    *packet=0;
+    fvm_port_sync_lock(c->sync);
+    while(!c->head && !c->closed && blocking) fvm_port_sync_wait(c->sync);
+    if(!c->head) {r=c->closed ? FVM_ERROR : FVM_NOT_FOUND;fvm_port_sync_unlock(c->sync);return r;}
+    n=c->head;c->head=n->next;if(!c->head)c->tail=0;
+    --c->pending;*packet=n->packet;*out=n->value;
+    fvm_port_sync_signal_all(c->sync);fvm_port_sync_unlock(c->sync);
+    free(n);return FVM_OK;
 }

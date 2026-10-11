@@ -7,10 +7,11 @@ extern "C" {
 /* Context-owned callable objects: no cross-context transfer or concurrent access.
  * This bridge supports registered C stack callbacks. Script closures are future work.
  * A callable can be stored in any object property as an ordinary object value.
- * The binding remains alive until its owning context is destroyed.
+ * The binding lives until the callable object is reclaimed.
  */
 FVM_API FVM_Result fvm_callable_create(FVM_Context *, FVM_StackFunction,
                                         void *userdata, FVM_Object **result);
+FVM_API FVM_Result fvm_callable_create_rooted(FVM_Context *,FVM_StackFunction,void *,FVM_Object *capture,FVM_Object **);
 FVM_API FVM_Result fvm_callable_is(FVM_Context *, FVM_Object *, int *result);
 FVM_API FVM_Result fvm_callable_invoke(FVM_Context *, FVM_Object *,
                                         unsigned int argc, const FVM_Value *argv,

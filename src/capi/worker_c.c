@@ -1,4 +1,5 @@
 #include "flashvm/worker.h"
+#include "../core/worker_context.h"
 #include "../../ports/thread_port.h"
 #include "../../ports/channel_sync.h"
 #include <stdlib.h>
@@ -49,6 +50,7 @@ static void worker_entry(void *arg) {
     r = fvm_runtime_create(&w->config, &runtime);
     if (r == FVM_OK) r = fvm_context_create(runtime, &context);
     if (r == FVM_OK) {
+        fvm_context_bind_worker(context,w);
         r = w->callback(context, &w->input, &result, w->userdata);
         if (r == FVM_OK) r = copy_value(&w->output, &result);
     }
@@ -74,7 +76,7 @@ static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction cal
     w->callback = callback;
     w->userdata = userdata;
     w->result = FVM_ERROR;
-    w->started = start_now;
+    w->started = 0;
     w->sync = fvm_port_sync_create();
     if (!w->sync) { free(w); return FVM_OUT_OF_MEMORY; }
     fvm_value_undefined(&w->output);
@@ -83,6 +85,11 @@ static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction cal
     w->thread = fvm_port_thread_start(worker_entry, w);
     if (!w->thread) { free_value(&w->input); fvm_port_sync_destroy(w->sync); free(w); return FVM_ERROR; }
     *out = w;
+    /* Publish the OS handle before callbacks can inspect or join themselves. */
+    fvm_port_sync_lock(w->sync);
+    w->started=start_now;
+    if(start_now)fvm_port_sync_signal_all(w->sync);
+    fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
 FVM_Result fvm_worker_run(const FVM_Config *c, FVM_WorkerFunction f,
@@ -175,4 +182,14 @@ FVM_Result fvm_worker_join_all(FVM_Worker **workers,
         if (first == FVM_OK && r != FVM_OK) first = r;
     }
     return first;
+}
+
+FVM_Result fvm_worker_result(FVM_Worker *w,FVM_Value *out) {
+    FVM_Result r;
+    if (!w || !out) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(w->sync);
+    r=w->finished ? w->result : FVM_NOT_FOUND;
+    if(w->finished) *out=w->output;
+    fvm_port_sync_unlock(w->sync);
+    return r;
 }
