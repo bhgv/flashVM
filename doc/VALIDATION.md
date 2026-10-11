@@ -1,3 +1,12 @@
+# Numeric library checkpoint (phase 3)
+
+2026-10-11: strict C89/C++98 and CMake Release/CTest passed 95 Linux tests/examples.
+94 ran under ASan+UBSan; the container-exception test ran under UBSan only.
+LeakSanitizer remains unavailable. Numeric methods, primitive conversion,
+installation conflicts, signed zero/NaN/infinity, AVM1 and script-worker calls
+are covered. Evidence: `doc/validation/phase3-*`. Other OS/ISA targets remain
+unvalidated; this does not establish complete SWF 8 compatibility.
+
 # SWF 8 development checkpoint validation
 
 2026-10-11: 94 tests/examples passed in strict Linux C89/C++98; 93 under

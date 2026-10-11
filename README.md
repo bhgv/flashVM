@@ -1,3 +1,8 @@
+Numeric standard library checkpoint: opt-in Math and primitive conversions
+are now available. See [numeric API](doc/STANDARD_NUMERIC.md) for installation,
+verified behavior and remaining compatibility limits. Phase 3: 95 Linux tests
+and examples passed; mirror updates remain manual.
+
 SWF 8 development checkpoint: bounded FWS/CWS loading, all AVM1 Push encodings,
 constant pools/four registers, Lua-inspired C callbacks and bundled zlib/AGG.
 This is still a partial VM, with no JIT or complete player. See

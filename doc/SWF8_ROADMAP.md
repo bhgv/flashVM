@@ -1,3 +1,8 @@
+Numeric library checkpoint: opt-in Math methods/constants and primitive
+Number/Boolean/isNaN/isFinite are now tested; see STANDARD_NUMERIC.md.
+Boxed classes, first-class functions, property attributes and complete coercion
+remain outstanding. Other scope below is unchanged.
+
 # SWF 8 compatibility contract and remaining implementation
 
 The project is **not a complete Flash Player or SWF 8 VM**. A passing subset
