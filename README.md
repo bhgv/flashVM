@@ -190,3 +190,9 @@ yet vendored (see [extern/README.md](extern/README.md)).
 
 See [External dependencies](doc/EXTERNAL_DEPENDENCIES.md) for exact bundled
 versus system-linked status, and the new standalone C++98 hybrid table.
+
+### Stage 23: native metamethods
+
+See [metamethod API](doc/METAMETHODS.md) and `tests/metamethods.c` for
+`__index`, `__newindex`, `__iterate`, and explicit `__gc` finalization.
+Automatic tracing GC and AS `pairs()` are not implemented yet.

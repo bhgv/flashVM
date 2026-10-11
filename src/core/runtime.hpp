@@ -7,18 +7,20 @@
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
 #include "../details/vector.hpp"
+struct FVM_NativeEntry {
+    FVM_NativeFunction callback;
+    void *userdata;
+};
 struct FVM_Object {
     fvm_detail::map<fvm_detail::string, FVM_Value> properties;
     fvm_detail::map<unsigned long, FVM_Value> indexed;
     FVM_Object *metatable;
     FVM_Context *owner;
     FVM_Object *prototype;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry> metamethods;
+    bool finalized;
 };
 struct FVM_Runtime { FVM_Config config; };
-struct FVM_NativeEntry {
-    FVM_NativeFunction callback;
-    void *userdata;
-};
 struct FVM_ScriptFunction {
     fvm_detail::vector<unsigned char> body;
     fvm_detail::vector<fvm_detail::string> parameters;

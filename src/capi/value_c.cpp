@@ -37,6 +37,7 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     o->owner=c;
     o->prototype=0;
     o->metatable=0;
+    o->finalized=false;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
     *out=o;
@@ -79,6 +80,16 @@ FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_V
     for (depth=0;o && depth<1024;++depth) {
         if (!o->metatable) break;
         fvm_detail::map<fvm_detail::string,FVM_Value>::iterator m=o->metatable->properties.find("__index");
+        fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator fn=o->metatable->metamethods.find("__index");
+        if (fn!=o->metatable->metamethods.end()) {
+            FVM_Value args[3]; FVM_Value result;
+            fvm_value_undefined(&args[0]); args[0].type=FVM_VALUE_OBJECT; args[0].object=receiver;
+            args[1]=args[0]; args[1].object=o->metatable;
+            fvm_value_string(&args[2],name);
+            fvm_value_undefined(&result);
+            try { return fn->second.callback(c,receiver,3,args,&result,fn->second.userdata)==FVM_OK ? (*out=result,FVM_OK) : FVM_ERROR; }
+            catch (...) { return FVM_ERROR; }
+        }
         if (m==o->metatable->properties.end()) break;
         if (m->second.type!=FVM_VALUE_OBJECT || !m->second.object) break;
         o=m->second.object;
@@ -98,6 +109,16 @@ FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const
     if (o->properties.find(name)==o->properties.end()) {
         while (o->metatable && depth++<1024) {
             fvm_detail::map<fvm_detail::string,FVM_Value>::iterator m=o->metatable->properties.find("__newindex");
+            fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator fn=o->metatable->metamethods.find("__newindex");
+            if (fn!=o->metatable->metamethods.end()) {
+                FVM_Value args[4],result;
+                fvm_value_undefined(&args[0]);args[0].type=FVM_VALUE_OBJECT;args[0].object=o;
+                args[1]=args[0];args[1].object=o->metatable;
+                fvm_value_string(&args[2],name);args[3]=copy;
+                fvm_value_undefined(&result);
+                try { return fn->second.callback(c,o,4,args,&result,fn->second.userdata); }
+                catch (...) { return FVM_ERROR; }
+            }
             if (m==o->metatable->properties.end() || m->second.type!=FVM_VALUE_OBJECT || !m->second.object) break;
             o=m->second.object;
             if (o->properties.find(name)!=o->properties.end()) break;

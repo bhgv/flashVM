@@ -1,6 +1,7 @@
 #include "../core/runtime.hpp"
 #include <new>
 #include <cstring>
+#include "flashvm/metamethod.h"
 extern "C" {
 unsigned long fvm_abi_version(void) { return FVM_ABI_VERSION; }
 FVM_Result fvm_config_init(FVM_Config *config) {
@@ -42,6 +43,7 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
 }
 void fvm_context_destroy(FVM_Context *context) {
     if (!context) return;
+    for (size_t i=0;i<context->objects.size();++i) fvm_meta_finalize(context,context->objects[i]);
     for (size_t i=0;i<context->objects.size();++i) delete context->objects[i];
     for (size_t i=0;i<context->strings.size();++i) delete [] context->strings[i];
     delete context;
