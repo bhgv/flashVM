@@ -264,3 +264,8 @@ GC active-frame roots: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc
 ### Native GC roots
 
 See [temporary root scopes](doc/GC_NATIVE_ROOTS.md) for C89 embedding, ownership rules and current limitations.
+
+### GC callback safety and diagnostics
+
+See [GC callback safety](doc/GC_CALLBACK_SAFETY.md) for native-call
+collection guards, root ownership and the versioned C89 diagnostic API.
