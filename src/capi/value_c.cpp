@@ -48,6 +48,36 @@ static FVM_Result copy_value(FVM_Context *context, const FVM_Value *src, FVM_Val
     }
     return FVM_OK;
 }
+FVM_Result fvm_lookup_native_method(FVM_Object *object, const char *name, FVM_NativeEntry *out)
+{
+    if (!object || !name || !out)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        fvm_detail::string key(name);
+        for (unsigned int depth = 0; object && depth < 1024; ++depth)
+        {
+            /* Function-valued data/accessor dispatch is still unsupported. A data
+             * assignment must nevertheless shadow a previously registered method. */
+            if (object->properties.find(key) != object->properties.end() ||
+                object->accessors.find(key) != object->accessors.end())
+                return FVM_UNSUPPORTED;
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+                object->methods.find(key);
+            if (method != object->methods.end())
+            {
+                *out = method->second;
+                return FVM_OK;
+            }
+            object = object->prototype;
+        }
+        return object ? FVM_ERROR : FVM_NOT_FOUND;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
 extern "C"
 {
     void fvm_value_undefined(FVM_Value *v)
@@ -147,9 +177,18 @@ extern "C"
     {
         if (!c || !o || o->owner != c || !name || !out)
             return FVM_INVALID_ARGUMENT;
-        *out = o->properties.find(name) != o->properties.end() ||
-               o->accessors.find(name) != o->accessors.end();
-        return FVM_OK;
+        try
+        {
+            fvm_detail::string key(name);
+            *out = o->properties.find(key) != o->properties.end() ||
+                   o->accessors.find(key) != o->accessors.end() ||
+                   o->methods.find(key) != o->methods.end();
+            return FVM_OK;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
     }
     /* AVM1 prototype lookup takes precedence over Lua-style __index fallback.
      * Only table-valued metamethods are supported at this stage. */
@@ -374,15 +413,18 @@ extern "C"
         for (i = 0; i < argc; ++i)
             if (valid_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
-            self->methods.find(name);
-        if (it == self->methods.end())
+        FVM_NativeEntry entry;
+        FVM_Result lookup = fvm_lookup_native_method(self, name, &entry);
+        if (lookup != FVM_OK && lookup != FVM_NOT_FOUND)
+            return lookup;
+        if (lookup == FVM_NOT_FOUND)
         {
-            it = c->functions.find(name);
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                c->functions.find(name);
             if (it == c->functions.end())
                 return FVM_UNSUPPORTED;
+            entry = it->second;
         }
-        FVM_NativeEntry entry = it->second;
         fvm_value_undefined(out);
         try
         {
@@ -416,6 +458,31 @@ extern "C"
         catch (...)
         {
             return FVM_ERROR;
+        }
+    }
+    FVM_Result fvm_object_define_method_rooted(FVM_Context *c, FVM_Object *object, const char *name,
+                                               FVM_NativeFunction callback, void *userdata,
+                                               FVM_Object *root)
+    {
+        if (!c || !object || object->owner != c || !name || !*name || !callback ||
+            (root && root->owner != c) || c->destroying || c->gc_releasing)
+            return FVM_INVALID_ARGUMENT;
+        FVM_NativeEntry entry;
+        entry.callback = callback;
+        entry.userdata = userdata;
+        entry.root = root;
+        try
+        {
+            fvm_detail::string key(name);
+            if (object->properties.find(key) != object->properties.end() ||
+                object->accessors.find(key) != object->accessors.end())
+                return FVM_INVALID_ARGUMENT;
+            object->methods[key] = entry;
+            return FVM_OK;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
         }
     }
     FVM_Result fvm_object_define_accessor_rooted(FVM_Context *c, FVM_Object *object,

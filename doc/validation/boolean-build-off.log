@@ -1,0 +1,299 @@
+[  0%] Built target fvm_sqlite
+[  3%] Built target fvm_zlib
+[  5%] Built target fvm_gif
+[ 10%] Built target fvm_agg
+[ 11%] Built target fvm_nanosvg
+[ 19%] Built target fvm_jpeg
+[ 22%] Built target fvm_png
+[ 27%] Built target fvm_pixman
+[ 49%] Built target fvm_cairo
+[ 56%] Built target flashvm
+[ 56%] Building CXX object CMakeFiles/flashvm_tests_actionscript_extensions.dir/tests/actionscript_extensions.cpp.o
+[ 56%] Building C object CMakeFiles/flashvm_tests_auxlib.dir/tests/auxlib.c.o
+[ 56%] Linking CXX executable flashvm_tests_auxlib
+[ 56%] Built target flashvm_tests_auxlib
+[ 56%] Building C object CMakeFiles/flashvm_tests_avm1.dir/tests/avm1.c.o
+[ 56%] Linking CXX executable flashvm_tests_avm1
+[ 56%] Built target flashvm_tests_avm1
+[ 56%] Building C object CMakeFiles/flashvm_tests_avm1_callmethod.dir/tests/avm1_callmethod.c.o
+[ 57%] Linking CXX executable flashvm_tests_avm1_callmethod
+[ 58%] Linking CXX executable flashvm_tests_actionscript_extensions
+[ 58%] Built target flashvm_tests_avm1_callmethod
+[ 58%] Building C object CMakeFiles/flashvm_tests_avm1_functions.dir/tests/avm1_functions.c.o
+[ 58%] Linking CXX executable flashvm_tests_avm1_functions
+[ 58%] Built target flashvm_tests_actionscript_extensions
+[ 58%] Building C object CMakeFiles/flashvm_tests_avm1_parameters.dir/tests/avm1_parameters.c.o
+[ 58%] Linking CXX executable flashvm_tests_avm1_parameters
+[ 58%] Built target flashvm_tests_avm1_functions
+[ 59%] Building CXX object CMakeFiles/flashvm_tests_avm1_push_values.dir/tests/avm1_push_values.cpp.o
+[ 59%] Built target flashvm_tests_avm1_parameters
+[ 59%] Building C object CMakeFiles/flashvm_tests_avm1_script_method.dir/tests/avm1_script_method.c.o
+[ 59%] Linking CXX executable flashvm_tests_avm1_script_method
+[ 59%] Built target flashvm_tests_avm1_script_method
+[ 59%] Building C object CMakeFiles/flashvm_tests_avm1_stack.dir/tests/avm1_stack.c.o
+[ 59%] Linking CXX executable flashvm_tests_avm1_stack
+[ 59%] Linking CXX executable flashvm_tests_avm1_push_values
+[ 59%] Built target flashvm_tests_avm1_stack
+[ 60%] Building C object CMakeFiles/flashvm_tests_build_config.dir/tests/build_config.c.o
+[ 60%] Built target flashvm_tests_avm1_push_values
+[ 60%] Built target flashvm_tests_cairo_backend
+[ 60%] Linking CXX executable flashvm_tests_build_config
+[ 60%] Building C object CMakeFiles/flashvm_tests_callable.dir/tests/callable.c.o
+[ 60%] Built target flashvm_tests_build_config
+[ 60%] Building C object CMakeFiles/flashvm_tests_channel.dir/tests/channel.c.o
+[ 61%] Linking CXX executable flashvm_tests_callable
+[ 61%] Linking CXX executable flashvm_tests_channel
+[ 61%] Built target flashvm_tests_callable
+[ 61%] Building C object CMakeFiles/flashvm_tests_channel_capacity.dir/tests/channel_capacity.c.o
+[ 61%] Built target flashvm_tests_channel
+[ 61%] Building C object CMakeFiles/flashvm_tests_channel_close_races.dir/tests/channel_close_races.c.o
+[ 61%] Linking CXX executable flashvm_tests_channel_capacity
+[ 62%] Linking CXX executable flashvm_tests_channel_close_races
+[ 62%] Built target flashvm_tests_channel_capacity
+[ 62%] Building C object CMakeFiles/flashvm_tests_channel_graph_transfer.dir/tests/channel_graph_transfer.c.o
+[ 62%] Built target flashvm_tests_channel_close_races
+[ 62%] Building C object CMakeFiles/flashvm_tests_channel_owned.dir/tests/channel_owned.c.o
+[ 62%] Linking CXX executable flashvm_tests_channel_graph_transfer
+[ 62%] Linking CXX executable flashvm_tests_channel_owned
+[ 62%] Built target flashvm_tests_channel_graph_transfer
+[ 63%] Building C object CMakeFiles/flashvm_tests_channel_shared.dir/tests/channel_shared.c.o
+[ 63%] Linking CXX executable flashvm_tests_channel_shared
+[ 63%] Built target flashvm_tests_channel_owned
+[ 63%] Built target flashvm_tests_channel_shared
+[ 63%] Building C object CMakeFiles/flashvm_tests_channel_value.dir/tests/channel_value.c.o
+[ 64%] Built target flashvm_tests_container_exceptions
+[ 64%] Building CXX object CMakeFiles/flashvm_tests_cpp_embedding.dir/tests/cpp_embedding.cpp.o
+[ 64%] Linking CXX executable flashvm_tests_channel_value
+[ 64%] Linking CXX executable flashvm_tests_cpp_embedding
+[ 64%] Built target flashvm_tests_channel_value
+[ 64%] Built target flashvm_tests_detail_string
+[ 65%] Built target flashvm_tests_font_facade
+[ 65%] Built target flashvm_tests_cpp_embedding
+[ 65%] Building C object CMakeFiles/flashvm_tests_gc.dir/tests/gc.c.o
+[ 65%] Building C object CMakeFiles/flashvm_tests_gc_api_stack_capture.dir/tests/gc_api_stack_capture.c.o
+[ 65%] Linking CXX executable flashvm_tests_gc
+[ 65%] Linking CXX executable flashvm_tests_gc_api_stack_capture
+[ 65%] Built target flashvm_tests_gc
+[ 66%] Building C object CMakeFiles/flashvm_tests_gc_avm1_safe_point.dir/tests/gc_avm1_safe_point.c.o
+[ 66%] Built target flashvm_tests_gc_api_stack_capture
+[ 66%] Linking CXX executable flashvm_tests_gc_avm1_safe_point
+[ 66%] Building C object CMakeFiles/flashvm_tests_gc_callback_captures.dir/tests/gc_callback_captures.c.o
+[ 66%] Linking CXX executable flashvm_tests_gc_callback_captures
+[ 66%] Built target flashvm_tests_gc_avm1_safe_point
+[ 66%] Building C object CMakeFiles/flashvm_tests_gc_cycles.dir/tests/gc_cycles.c.o
+[ 66%] Built target flashvm_tests_gc_callback_captures
+[ 66%] Linking CXX executable flashvm_tests_gc_cycles
+[ 67%] Building C object CMakeFiles/flashvm_tests_gc_deep_graph.dir/tests/gc_deep_graph.c.o
+[ 67%] Linking CXX executable flashvm_tests_gc_deep_graph
+[ 67%] Built target flashvm_tests_gc_cycles
+[ 67%] Building C object CMakeFiles/flashvm_tests_gc_finalizer_snapshot.dir/tests/gc_finalizer_snapshot.c.o
+[ 67%] Built target flashvm_tests_gc_deep_graph
+[ 67%] Linking CXX executable flashvm_tests_gc_finalizer_snapshot
+[ 67%] Building C object CMakeFiles/flashvm_tests_gc_introspection.dir/tests/gc_introspection.c.o
+[ 68%] Linking CXX executable flashvm_tests_gc_introspection
+[ 68%] Built target flashvm_tests_gc_finalizer_snapshot
+[ 68%] Building C object CMakeFiles/flashvm_tests_gc_mode_errors.dir/tests/gc_mode_errors.c.o
+[ 68%] Linking CXX executable flashvm_tests_gc_mode_errors
+[ 68%] Built target flashvm_tests_gc_introspection
+[ 68%] Building C object CMakeFiles/flashvm_tests_gc_modes.dir/tests/gc_modes.c.o
+[ 68%] Linking CXX executable flashvm_tests_gc_modes
+[ 68%] Built target flashvm_tests_gc_mode_errors
+[ 68%] Building C object CMakeFiles/flashvm_tests_gc_native_reentry.dir/tests/gc_native_reentry.c.o
+[ 69%] Linking CXX executable flashvm_tests_gc_native_reentry
+[ 69%] Built target flashvm_tests_gc_modes
+[ 69%] Building C object CMakeFiles/flashvm_tests_gc_native_roots.dir/tests/gc_native_roots.c.o
+[ 69%] Linking CXX executable flashvm_tests_gc_native_roots
+[ 69%] Built target flashvm_tests_gc_native_reentry
+[ 69%] Building C object CMakeFiles/flashvm_tests_gc_nested_scopes.dir/tests/gc_nested_scopes.c.o
+[ 69%] Linking CXX executable flashvm_tests_gc_nested_scopes
+[ 69%] Built target flashvm_tests_gc_native_roots
+[ 70%] Building C object CMakeFiles/flashvm_tests_gc_resurrection.dir/tests/gc_resurrection.c.o
+[ 70%] Built target flashvm_tests_gc_nested_scopes
+[ 70%] Building C object CMakeFiles/flashvm_tests_gc_roots.dir/tests/gc_roots.c.o
+[ 70%] Linking CXX executable flashvm_tests_gc_resurrection
+[ 70%] Linking CXX executable flashvm_tests_gc_roots
+[ 70%] Built target flashvm_tests_gc_resurrection
+[ 70%] Building C object CMakeFiles/flashvm_tests_gc_safe_points.dir/tests/gc_safe_points.c.o
+[ 70%] Built target flashvm_tests_gc_roots
+[ 71%] Building C object CMakeFiles/flashvm_tests_gc_script_finalizer.dir/tests/gc_script_finalizer.c.o
+[ 71%] Linking CXX executable flashvm_tests_gc_safe_points
+[ 71%] Linking CXX executable flashvm_tests_gc_script_finalizer
+[ 71%] Built target flashvm_tests_gc_safe_points
+[ 71%] Building C object CMakeFiles/flashvm_tests_gc_stats.dir/tests/gc_stats.c.o
+[ 71%] Built target flashvm_tests_gc_script_finalizer
+[ 71%] Linking CXX executable flashvm_tests_gc_stats
+[ 71%] Building C object CMakeFiles/flashvm_tests_gc_userdata.dir/tests/gc_userdata.c.o
+[ 72%] Linking CXX executable flashvm_tests_gc_userdata
+[ 72%] Built target flashvm_tests_gc_stats
+[ 72%] Building C object CMakeFiles/flashvm_tests_gc_validation.dir/tests/gc_validation.c.o
+[ 72%] Built target flashvm_tests_gc_userdata
+[ 72%] Built target flashvm_tests_gesture_recognizer
+[ 72%] Linking CXX executable flashvm_tests_gc_validation
+[ 73%] Built target flashvm_tests_hybrid_table
+[ 73%] Built target flashvm_tests_image_codecs_cpp98
+[ 73%] Built target flashvm_tests_image_codecs_gif
+[ 74%] Built target flashvm_tests_image_codecs_jpeg
+[ 74%] Built target flashvm_tests_image_codecs_png
+[ 74%] Built target flashvm_tests_image_codecs_svg
+[ 75%] Built target flashvm_tests_input
+[ 75%] Built target flashvm_tests_gc_validation
+[ 75%] Built target flashvm_tests_input_dispatch
+[ 76%] Built target flashvm_tests_input_queue
+[ 76%] Building C object CMakeFiles/flashvm_tests_interpreter.dir/tests/interpreter.c.o
+[ 76%] Building C object CMakeFiles/flashvm_tests_members.dir/tests/members.c.o
+[ 76%] Linking CXX executable flashvm_tests_members
+[ 76%] Linking CXX executable flashvm_tests_interpreter
+[ 76%] Built target flashvm_tests_members
+[ 77%] Building C object CMakeFiles/flashvm_tests_meta_call.dir/tests/meta_call.c.o
+[ 77%] Built target flashvm_tests_interpreter
+[ 77%] Building C object CMakeFiles/flashvm_tests_metamethod_tables.dir/tests/metamethod_tables.c.o
+[ 77%] Linking CXX executable flashvm_tests_meta_call
+[ 77%] Linking CXX executable flashvm_tests_metamethod_tables
+[ 77%] Built target flashvm_tests_metamethod_tables
+[ 77%] Building C object CMakeFiles/flashvm_tests_metamethods.dir/tests/metamethods.c.o
+[ 77%] Built target flashvm_tests_meta_call
+[ 77%] Linking CXX executable flashvm_tests_metamethods
+[ 78%] Building C object CMakeFiles/flashvm_tests_native_properties.dir/tests/native_properties.c.o
+[ 78%] Built target flashvm_tests_metamethods
+[ 78%] Built target flashvm_tests_native_prototype_methods
+[ 78%] Linking CXX executable flashvm_tests_native_properties
+[ 78%] Building C object CMakeFiles/flashvm_tests_objects.dir/tests/objects.c.o
+[ 79%] Linking CXX executable flashvm_tests_objects
+[ 79%] Built target flashvm_tests_native_properties
+[ 79%] Built target flashvm_tests_os_ports
+[ 79%] Building C object CMakeFiles/flashvm_tests_prototypes.dir/tests/prototypes.c.o
+[ 79%] Built target flashvm_tests_objects
+[ 80%] Built target flashvm_tests_raster
+[ 80%] Linking CXX executable flashvm_tests_prototypes
+[ 80%] Built target flashvm_tests_raster_composite
+[ 80%] Built target flashvm_tests_render_jobs
+[ 81%] Built target flashvm_tests_smoke
+[ 81%] Built target flashvm_tests_sqlite
+[ 81%] Built target flashvm_tests_sqlite_bundled
+[ 82%] Building C object CMakeFiles/flashvm_tests_stack_api.dir/tests/stack_api.c.o
+[ 82%] Built target flashvm_tests_prototypes
+[ 82%] Built target flashvm_tests_standard_boolean
+[ 82%] Linking CXX executable flashvm_tests_stack_api
+[ 82%] Building C object CMakeFiles/flashvm_tests_standard_numeric.dir/tests/standard_numeric.c.o
+[ 82%] Built target flashvm_tests_stack_api
+[ 83%] Linking CXX executable flashvm_tests_standard_numeric
+[ 83%] Building C object CMakeFiles/flashvm_tests_standard_textfield.dir/tests/standard_textfield.c.o
+/workspace/scratch/9ba6567329fc/work/tests/standard_textfield.c: In function ‘main’:
+/workspace/scratch/9ba6567329fc/work/tests/standard_textfield.c:27:15: warning: unused variable ‘v’ [-Wunused-variable]
+   27 |     FVM_Value v;
+      |               ^
+/workspace/scratch/9ba6567329fc/work/tests/standard_textfield.c: At top level:
+/workspace/scratch/9ba6567329fc/work/tests/standard_textfield.c:8:15: warning: ‘get_number’ defined but not used [-Wunused-function]
+    8 | static double get_number(FVM_Context *c, FVM_Object *o, const char *name)
+      |               ^~~~~~~~~~
+[ 83%] Linking CXX executable flashvm_tests_standard_textfield
+[ 83%] Built target flashvm_tests_standard_numeric
+[ 83%] Built target flashvm_tests_standard_textfield_editing
+[ 83%] Built target flashvm_tests_standard_textfield
+[ 83%] Building C object CMakeFiles/flashvm_tests_standard_textformat.dir/tests/standard_textformat.c.o
+[ 83%] Built target flashvm_tests_svg_facade
+[ 83%] Built target flashvm_tests_swf
+[ 84%] Building C object CMakeFiles/flashvm_tests_swf_compressed.dir/tests/swf_compressed.c.o
+[ 85%] Linking CXX executable flashvm_tests_standard_textformat
+[ 85%] Linking CXX executable flashvm_tests_swf_compressed
+[ 85%] Built target flashvm_tests_standard_textformat
+[ 85%] Building C object CMakeFiles/flashvm_tests_swf_execute.dir/tests/swf_execute.c.o
+[ 85%] Built target flashvm_tests_swf_compressed
+[ 85%] Building C object CMakeFiles/flashvm_tests_tables_debug.dir/tests/tables_debug.c.o
+[ 85%] Linking CXX executable flashvm_tests_swf_execute
+[ 85%] Linking CXX executable flashvm_tests_tables_debug
+[ 85%] Built target flashvm_tests_swf_execute
+[ 86%] Built target flashvm_tests_text_api
+[ 86%] Built target flashvm_tests_text_layout
+[ 86%] Building C object CMakeFiles/flashvm_tests_text_layout_workers.dir/tests/text_layout_workers.c.o
+[ 86%] Built target flashvm_tests_tables_debug
+[ 87%] Linking CXX executable flashvm_tests_text_layout_workers
+[ 87%] Built target flashvm_tests_vector_paths
+[ 87%] Building C object CMakeFiles/flashvm_tests_worker.dir/tests/worker.c.o
+[ 87%] Built target flashvm_tests_text_layout_workers
+[ 87%] Linking CXX executable flashvm_tests_worker
+[ 88%] Building C object CMakeFiles/flashvm_tests_worker_channels.dir/tests/worker_channels.c.o
+[ 88%] Linking CXX executable flashvm_tests_worker_channels
+[ 88%] Built target flashvm_tests_worker
+[ 88%] Building C object CMakeFiles/flashvm_tests_worker_context.dir/tests/worker_context.c.o
+[ 88%] Built target flashvm_tests_worker_channels
+[ 88%] Building C object CMakeFiles/flashvm_tests_worker_join_concurrent.dir/tests/worker_join_concurrent.c.o
+[ 88%] Linking CXX executable flashvm_tests_worker_context
+[ 88%] Linking CXX executable flashvm_tests_worker_join_concurrent
+[ 88%] Built target flashvm_tests_worker_context
+[ 88%] Built target flashvm_tests_worker_join_concurrent
+[ 89%] Building C object CMakeFiles/flashvm_tests_worker_lifecycle.dir/tests/worker_lifecycle.c.o
+[ 89%] Building C object CMakeFiles/flashvm_tests_worker_stop.dir/tests/worker_stop.c.o
+[ 89%] Linking CXX executable flashvm_tests_worker_lifecycle
+[ 89%] Linking CXX executable flashvm_tests_worker_stop
+[ 89%] Built target flashvm_tests_worker_lifecycle
+[ 89%] Building CXX object CMakeFiles/flashvm_examples_embedding_channel_cpp98_main.dir/examples/embedding/channel_cpp98/main.cpp.o
+[ 89%] Built target flashvm_tests_worker_stop
+[ 89%] Building C object CMakeFiles/flashvm_examples_embedding_channel_values_main.dir/examples/embedding/channel_values/main.c.o
+[ 89%] Linking CXX executable flashvm_examples_embedding_channel_cpp98_main
+[ 90%] Linking CXX executable flashvm_examples_embedding_channel_values_main
+[ 90%] Built target flashvm_examples_embedding_channel_cpp98_main
+[ 90%] Built target flashvm_examples_embedding_channel_values_main
+[ 90%] Building C object CMakeFiles/flashvm_examples_embedding_channels_main.dir/examples/embedding/channels/main.c.o
+[ 90%] Building CXX object CMakeFiles/flashvm_examples_embedding_cpp98_stack_main.dir/examples/embedding/cpp98_stack/main.cpp.o
+[ 90%] Linking CXX executable flashvm_examples_embedding_channels_main
+[ 90%] Linking CXX executable flashvm_examples_embedding_cpp98_stack_main
+[ 90%] Built target flashvm_examples_embedding_channels_main
+[ 90%] Building C object CMakeFiles/flashvm_examples_embedding_gc_main.dir/examples/embedding/gc/main.c.o
+[ 90%] Built target flashvm_examples_embedding_cpp98_stack_main
+[ 90%] Built target flashvm_examples_embedding_gesture_dispatch_main
+[ 91%] Linking CXX executable flashvm_examples_embedding_gc_main
+[ 91%] Built target flashvm_examples_embedding_gesture_recognizer_main
+[ 92%] Built target flashvm_examples_embedding_image_codecs_main
+[ 92%] Built target flashvm_examples_embedding_input_main
+[ 92%] Built target flashvm_examples_embedding_input_queue_main
+[ 93%] Building C object CMakeFiles/flashvm_examples_embedding_main.dir/examples/embedding/main.c.o
+[ 93%] Built target flashvm_examples_embedding_gc_main
+[ 93%] Building C object CMakeFiles/flashvm_examples_embedding_object_methods_main.dir/examples/embedding/object_methods/main.c.o
+[ 93%] Linking CXX executable flashvm_examples_embedding_main
+[ 93%] Linking CXX executable flashvm_examples_embedding_object_methods_main
+[ 93%] Built target flashvm_examples_embedding_main
+[ 93%] Built target flashvm_examples_embedding_object_methods_main
+[ 93%] Building C object CMakeFiles/flashvm_examples_embedding_objects_main.dir/examples/embedding/objects/main.c.o
+[ 93%] Built target flashvm_examples_embedding_os_ports_main
+[ 93%] Built target flashvm_examples_embedding_parallel_render_main
+[ 94%] Building C object CMakeFiles/flashvm_examples_embedding_prototypes_main.dir/examples/embedding/prototypes/main.c.o
+[ 95%] Linking CXX executable flashvm_examples_embedding_objects_main
+[ 95%] Linking CXX executable flashvm_examples_embedding_prototypes_main
+[ 95%] Built target flashvm_examples_embedding_objects_main
+[ 95%] Built target flashvm_examples_embedding_standard_boolean_main
+[ 95%] Built target flashvm_examples_embedding_prototypes_main
+[ 95%] Built target flashvm_examples_embedding_standard_text_main
+[ 96%] Building C object CMakeFiles/flashvm_examples_embedding_tables_debug_main.dir/examples/embedding/tables_debug/main.c.o
+[ 97%] Built target flashvm_examples_embedding_text_main
+[ 97%] Built target flashvm_examples_embedding_text_layout_main
+[ 97%] Linking CXX executable flashvm_examples_embedding_tables_debug_main
+[ 97%] Building C object CMakeFiles/flashvm_examples_embedding_worker_channels_main.dir/examples/embedding/worker_channels/main.c.o
+[ 97%] Linking CXX executable flashvm_examples_embedding_worker_channels_main
+[ 97%] Built target flashvm_examples_embedding_tables_debug_main
+[ 97%] Building C object CMakeFiles/flashvm_examples_embedding_worker_lifecycle_main.dir/examples/embedding/worker_lifecycle/main.c.o
+[ 97%] Built target flashvm_examples_embedding_worker_channels_main
+[ 97%] Linking CXX executable flashvm_examples_embedding_worker_lifecycle_main
+[ 97%] Building C object CMakeFiles/flashvm_examples_embedding_worker_stop_main.dir/examples/embedding/worker_stop/main.c.o
+[ 98%] Linking CXX executable flashvm_examples_embedding_worker_stop_main
+[ 98%] Built target flashvm_examples_embedding_worker_lifecycle_main
+[ 98%] Building C object CMakeFiles/flashvm_examples_embedding_workers_main.dir/examples/embedding/workers/main.c.o
+[ 98%] Linking CXX executable flashvm_examples_embedding_workers_main
+[ 98%] Built target flashvm_examples_embedding_workers_main
+[ 98%] Building C object CMakeFiles/flashvm_examples_extending_callable_objects_main.dir/examples/extending/callable_objects/main.c.o
+[ 98%] Linking CXX executable flashvm_examples_extending_callable_objects_main
+[ 98%] Built target flashvm_examples_embedding_worker_stop_main
+[ 99%] Building C object CMakeFiles/flashvm_examples_extending_channel_worker_main.dir/examples/extending/channel_worker/main.c.o
+[ 99%] Built target flashvm_examples_extending_callable_objects_main
+[ 99%] Linking CXX executable flashvm_examples_extending_channel_worker_main
+[ 99%] Building C object CMakeFiles/flashvm_examples_extending_lua_style_main.dir/examples/extending/lua_style/main.c.o
+[ 99%] Linking CXX executable flashvm_examples_extending_lua_style_main
+[ 99%] Built target flashvm_examples_extending_channel_worker_main
+[ 99%] Building C object CMakeFiles/flashvm_examples_extending_main.dir/examples/extending/main.c.o
+[ 99%] Built target flashvm_examples_extending_lua_style_main
+[100%] Built target flashvm_examples_extending_sqlite_main
+[100%] Building C object CMakeFiles/flashvm_examples_extending_stack_c_main.dir/examples/extending/stack_c/main.c.o
+[100%] Linking CXX executable flashvm_examples_extending_main
+[100%] Linking CXX executable flashvm_examples_extending_stack_c_main
+[100%] Built target flashvm_examples_extending_main
+[100%] Built target flashvm_examples_extending_stack_c_main

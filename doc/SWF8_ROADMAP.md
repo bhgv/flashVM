@@ -2,9 +2,10 @@ ActionScript text checkpoint: named native TextFormat construction, extent measu
 
 Native text checkpoint: owned single-font horizontal layout, wrapping, bidi/script runs, measurement and editable block/glyph paths are tested. See [TEXT_LAYOUT.md](TEXT_LAYOUT.md). SWF display-list and embedded-font integration remains outstanding.
 
-Numeric library checkpoint: opt-in Math methods/constants and primitive
-Number/Boolean/isNaN/isFinite are now tested; see STANDARD_NUMERIC.md.
-Boxed classes, first-class functions, property attributes and complete coercion
+Numeric library checkpoint: opt-in Math methods/constants, primitive
+Number/Boolean/isNaN/isFinite, boxed Boolean construction and native prototype
+method calls are now tested; see STANDARD_NUMERIC.md and STANDARD_BOOLEAN.md.
+Further boxed classes, first-class functions, property attributes and complete coercion
 remain outstanding. Other scope below is unchanged.
 
 # SWF 8 compatibility contract and remaining implementation
@@ -18,7 +19,7 @@ requested on 2026-10-11, not an implemented feature list.
 | Containers | Bounded FWS/CWS parsing and normalization | Every SWF<=8 tag decoder, nested sprite validation, fuzz/corpus coverage |
 | AVM1 | Named functions, parameters, objects, basic arithmetic/calls/branches, all Push encodings, pools, four registers | Full opcode semantics, coercion/version differences, Function2, closures, with/try/throw, enumeration, delete, Unicode/string semantics |
 | Timeline | Top-level DoAction execution in file order | Frame scheduling, play/stop/goto, DoInitAction, nested MovieClip timelines, action/event ordering |
-| Objects | Generic objects/prototypes, host properties/callbacks | Object/Function/Array/String/Number/Boolean/Math/Date/Error and all versioned AS1/AS2 methods/properties |
+| Objects | Generic objects/prototypes, rooted native methods, numeric Math/conversions, Boolean wrappers, partial TextFormat/TextField | Object/Function/Array/String/Number/Date/Error, inherited Object APIs and complete versioned AS1/AS2 methods/properties |
 | Player system APIs | Partial host input/network helpers | Stage, Key, Mouse, Selection, System, capabilities/security, broadcaster, XML/XMLSocket, LoadVars, SharedObject, timers, loader semantics |
 | Display and text | RGBA8 antialiased polygon adapter | Display list, depths/transforms/masks, shapes/morphs/bitmaps, gradients, text/fonts, drawing APIs, filters/blends, hit testing |
 | Media | No SWF decoder/player | Sound codecs/streaming/mixing, video/codecs/synchronization, BitmapData and SWF8 media APIs |

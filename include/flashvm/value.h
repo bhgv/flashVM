@@ -31,7 +31,14 @@ FVM_API FVM_Result fvm_register_function(FVM_Context *, const char *, FVM_Native
 /* Registered capture is traced while the function is registered. Replacing
    the function releases this root. Arbitrary userdata memory is never scanned. */
 FVM_API FVM_Result fvm_register_function_rooted(FVM_Context *, const char *, FVM_NativeFunction, void *, FVM_Object *);
-/* Call a native method registered by name, binding self to receiver.
+/* Define/replace an own native method. Capture is traced by GC. Own data or
+ * accessor conflicts reject registration. Calls search up to 1024 prototype
+ * objects, bind the original receiver, and copy the selected callback entry.
+ * Data/accessor properties shadow callbacks; callable properties are not yet
+ * dispatched. Replacing a callback drops its previous capture root. */
+FVM_API FVM_Result fvm_object_define_method_rooted(FVM_Context *, FVM_Object *,
+    const char *, FVM_NativeFunction, void *, FVM_Object *root);
+/* Call a native method through the prototype chain, binding self to receiver.
    This is an initial bridge; AVM1 function-valued properties are not supported. */
 FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int, const FVM_Value *, FVM_Value *);
 FVM_API FVM_Result fvm_call(FVM_Context *, const char *, unsigned int, const FVM_Value *, FVM_Value *);

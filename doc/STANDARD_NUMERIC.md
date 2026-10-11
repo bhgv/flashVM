@@ -8,9 +8,10 @@ installation. Globals and registrations are published together after preparation
 Repeated installation validates the Math method registrations and numeric
 function registrations; it does not restore user-mutated constants.
 
-Installed: Math, NaN, Infinity; callable-by-name Number, Boolean, isNaN, isFinite.
-Number and Boolean are **primitive conversion functions**, not boxed classes or
-constructors. Global functions and Math methods are not yet exposed as first-class
+Installed: Math, NaN, Infinity; callable-by-name Number, Boolean, isNaN, isFinite,
+and a boxed Boolean constructor/prototype. Number remains a primitive conversion
+function without a boxed constructor. See [Boolean](STANDARD_BOOLEAN.md).
+Global functions and Math methods are not yet exposed as first-class
 function-valued properties. Constants are currently mutable ordinary properties;
 read-only/non-enumerable property attributes remain outstanding.
 
@@ -34,7 +35,9 @@ cryptographic randomness or a replica of Flash Player's PRNG.
 and preserves numbers. String conversion is independent of locale: ASCII
 whitespace, signed decimal/fraction/exponent, unsigned 0x hexadecimal, Infinity
 and empty-string zero. Invalid syntax yields NaN. Negative zero is preserved.
-Object ToPrimitive/valueOf/toString returns UNSUPPORTED. Unicode whitespace,
+Boxed Boolean converts its stored primitive to 0/1; custom overrides of valueOf
+are not consulted by this interim unboxing rule. Generic object
+ToPrimitive/valueOf/toString returns UNSUPPORTED. Unicode whitespace,
 all SWF-version coercion differences, and correctly rounded arbitrary-length
 numeric string conversion remain unfinished; the decimal parser retains up to
 19 significant digits and bounded exponent counters. This is an explicit
@@ -52,4 +55,4 @@ Validation: tests/standard_numeric.c covers every Math method, constants,
 NaN/infinity/signed zero, round ties, subnormal parsing, type conversion,
 conflict preservation, GC and real AVM1 CallMethod. The ActionScript extension
 integration test calls Math.pow inside an isolated script worker. Full standard
-objects, boxed prototypes and other system APIs remain in SWF8_ROADMAP.
+objects, further boxed classes and other system APIs remain in SWF8_ROADMAP.

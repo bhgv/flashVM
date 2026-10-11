@@ -1,5 +1,7 @@
-Development version: **0.1** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.1 ` and an English description. This version identifies a development
+Development version: **0.2** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.2 ` and an English description. Increase the subversion before each
+commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
+This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 
 Mirror updates require an explicit user command. Use `origin` pointing to
@@ -7,8 +9,10 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.1** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.1 ` и описания на английском. Полная совместимость с SWF 8 ещё
+Версия разработки: **0.2** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.2 ` и описания на английском. Перед каждым коммитом повышается
+субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
+Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
 
 Зеркало обновляется только по прямой команде пользователя. Для отправки используйте
@@ -16,6 +20,10 @@ Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FE
 После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
 
 ActionScript text bridge: [English](doc/STANDARD_TEXT.md) / [Русский](doc/STANDARD_TEXT.ru.md).
+
+Boolean checkpoint: boxed constructor, valueOf/toString, GC-traced native
+prototype methods and independently installed worker namespaces. See
+[English](doc/STANDARD_BOOLEAN.md) / [Русский](doc/STANDARD_BOOLEAN.ru.md).
 
 Text editing checkpoint: UTF-16-indexed replaceText and uniform character/range
 getTextFormat reads, with transactional validation and refreshed layout.
@@ -58,7 +66,7 @@ Portable SWF 1-8 / AVM1 runtime project (early scaffold).
 - Core: C++98; no C++11+ features, no OS-specific dependencies in core.
 - Optional backends: rendering, media, JIT, platform windowing.
 - Native extension interfaces will be versioned and GC-safe.
-- No claim of SWF playback or ActionScript execution yet.
+- No claim of complete SWF playback or full ActionScript compatibility.
 
 ## Build
 

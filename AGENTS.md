@@ -3,8 +3,11 @@
 - Start every new commit subject with `v<version> `, using the development
   version in `VERSION.txt`, followed by a meaningful English description.
   Example: `v0.1 Fix native constructor root lifetime`.
-- Change the version for an intentional development milestone; a version number
-  does not certify full SWF or platform compatibility. Keep ABI versions separate.
+- Before every new commit, increment the subversion in `VERSION.txt` and update
+  the current version in documentation. Use that new version in the commit
+  prefix. Append `-v<version>` immediately before `.zip` in delivered Git archive
+  names. A version number does not certify full SWF/platform compatibility.
+  Keep ABI versions separate. Never rewrite historical commit subjects.
 - The internal Git repository and delivered archive are authoritative. Update
   the remote mirror only on an explicit user command. Do not publish private
   stashes or rewrite existing history without explicit authorization.

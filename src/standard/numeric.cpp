@@ -6,6 +6,11 @@
 
 namespace
 {
+enum
+{
+    BOOLEAN_OBJECT = 20,
+    BOOLEAN_CLASS = 21
+};
 double nan_value()
 {
     return std::numeric_limits<double>::quiet_NaN();
@@ -289,10 +294,11 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
         return math_operation(c, n, a, o, operation);                                              \
     }
 MATH_WRAPPER(math_abs, ABS)
-MATH_WRAPPER(math_acos, ACOS) MATH_WRAPPER(math_asin, ASIN) MATH_WRAPPER(math_atan, ATAN)
-    MATH_WRAPPER(math_atan2, ATAN2) MATH_WRAPPER(math_ceil, CEIL) MATH_WRAPPER(math_cos, COS)
-        MATH_WRAPPER(math_exp, EXP) MATH_WRAPPER(math_floor, FLOOR) MATH_WRAPPER(math_log, LOG)
-            MATH_WRAPPER(math_max, MAX) MATH_WRAPPER(math_min, MIN) MATH_WRAPPER(math_pow, POW)
+MATH_WRAPPER(math_acos, ACOS)
+MATH_WRAPPER(math_asin, ASIN) MATH_WRAPPER(math_atan, ATAN) MATH_WRAPPER(math_atan2, ATAN2)
+    MATH_WRAPPER(math_ceil, CEIL) MATH_WRAPPER(math_cos, COS) MATH_WRAPPER(math_exp, EXP)
+        MATH_WRAPPER(math_floor, FLOOR) MATH_WRAPPER(math_log, LOG) MATH_WRAPPER(math_max, MAX)
+            MATH_WRAPPER(math_min, MIN) MATH_WRAPPER(math_pow, POW)
                 MATH_WRAPPER(math_random, RANDOM) MATH_WRAPPER(math_round, ROUND)
                     MATH_WRAPPER(math_sin, SIN) MATH_WRAPPER(math_sqrt, SQRT)
                         MATH_WRAPPER(math_tan, TAN)
@@ -331,6 +337,50 @@ FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_V
     fvm_value_boolean(o, truth);
     return FVM_OK;
 }
+FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
+                         FVM_Value *out, void *)
+{
+    if (!self || self->owner != c || self->resource_kind != BOOLEAN_OBJECT ||
+        !self->resource_result_valid || self->resource_result.type != FVM_VALUE_BOOLEAN)
+        return FVM_INVALID_ARGUMENT;
+    *out = self->resource_result;
+    return FVM_OK;
+}
+FVM_Result boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
+                          FVM_Value *out, void *)
+{
+    FVM_Value value;
+    FVM_Result result = boolean_value(c, self, n, args, &value, 0);
+    if (result != FVM_OK)
+        return result;
+    return fvm_value_string(out, value.boolean ? "true" : "false");
+}
+FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
+                               FVM_Value *out, void *userdata)
+{
+    FVM_Object *klass = (FVM_Object *)userdata;
+    FVM_Value prototype, value;
+    FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
+    if (result != FVM_OK || prototype.type != FVM_VALUE_OBJECT)
+        return FVM_INVALID_ARGUMENT;
+    result = boolean_call(c, 0, n, args, &value, 0);
+    if (result != FVM_OK)
+        return result;
+    FVM_Object *object = 0;
+    result = fvm_object_create(c, &object);
+    if (result != FVM_OK)
+        return result;
+    /* The wrapped primitive is inaccessible to ordinary property assignments.
+     * Prototype links and the constructor capture are traced by the existing GC. */
+    object->resource_kind = BOOLEAN_OBJECT;
+    object->resource_result = value;
+    object->resource_result_valid = true;
+    object->prototype = prototype.object;
+    fvm_value_undefined(out);
+    out->type = FVM_VALUE_OBJECT;
+    out->object = object;
+    return FVM_OK;
+}
 FVM_Result isnan_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                       FVM_Value *o, void *)
 {
@@ -358,6 +408,17 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
 {
     if (!c || !value || !out)
         return FVM_INVALID_ARGUMENT;
+    /* C callers can supply an invalid enum representation. Validate its bytes
+     * before the C++ switch reads a scalar enum (also required by UBSan). */
+    bool valid_type = false;
+    for (int i = FVM_VALUE_UNDEFINED; i <= FVM_VALUE_OBJECT; ++i)
+    {
+        FVM_ValueType candidate = (FVM_ValueType)i;
+        if (std::memcmp(&value->type, &candidate, sizeof(candidate)) == 0)
+            valid_type = true;
+    }
+    if (!valid_type)
+        return FVM_INVALID_ARGUMENT;
     switch (value->type)
     {
     case FVM_VALUE_UNDEFINED:
@@ -380,6 +441,13 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
     case FVM_VALUE_OBJECT:
         if (!value->object || value->object->owner != c)
             return FVM_INVALID_ARGUMENT;
+        if (value->object->resource_kind == BOOLEAN_OBJECT &&
+            value->object->resource_result_valid &&
+            value->object->resource_result.type == FVM_VALUE_BOOLEAN)
+        {
+            *out = value->object->resource_result.boolean ? 1 : 0;
+            return FVM_OK;
+        }
         return FVM_UNSUPPORTED;
     default:
         return FVM_INVALID_ARGUMENT;
@@ -410,6 +478,24 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             if (it == c->functions.end() || it->second.callback != global_functions[i].callback)
                 return FVM_INVALID_ARGUMENT;
         }
+        FVM_Value boolean_class, prototype;
+        if (fvm_get_global(c, "Boolean", &boolean_class) != FVM_OK ||
+            boolean_class.type != FVM_VALUE_OBJECT ||
+            boolean_class.object->resource_kind != BOOLEAN_CLASS ||
+            fvm_object_get(c, boolean_class.object, "prototype", &prototype) != FVM_OK ||
+            prototype.type != FVM_VALUE_OBJECT || prototype.object->resource_kind != BOOLEAN_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+            c->constructors.find("Boolean");
+        if (ctor == c->constructors.end() || ctor->second.callback != boolean_constructor ||
+            ctor->second.root != boolean_class.object)
+            return FVM_INVALID_ARGUMENT;
+        FVM_NativeEntry method;
+        if (fvm_lookup_native_method(prototype.object, "valueOf", &method) != FVM_OK ||
+            method.callback != boolean_value ||
+            fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
+            method.callback != boolean_string)
+            return FVM_INVALID_ARGUMENT;
         return FVM_OK;
     }
     for (size_t i = 0; i < 7; ++i)
@@ -426,6 +512,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
          * partially installed globals and function registrations. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry> functions = c->functions;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry> constructors = c->constructors;
         FVM_Object *math = 0;
         FVM_Result result = fvm_object_create(c, &math);
         if (result != FVM_OK)
@@ -462,8 +549,36 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             entry.callback = global_functions[i].callback;
             functions[global_functions[i].name] = entry;
         }
+        FVM_Object *boolean_class = 0, *prototype = 0;
+        result = fvm_object_create(c, &boolean_class);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_object_create(c, &prototype);
+        if (result != FVM_OK)
+            return result;
+        boolean_class->resource_kind = BOOLEAN_CLASS;
+        prototype->resource_kind = BOOLEAN_OBJECT;
+        prototype->resource_result_valid = true;
+        fvm_value_boolean(&prototype->resource_result, 0);
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = prototype;
+        boolean_class->properties["prototype"] = value;
+        value.object = boolean_class;
+        prototype->properties["constructor"] = value;
+        globals["Boolean"] = value;
+        FVM_NativeEntry constructor, method;
+        constructor.callback = boolean_constructor;
+        constructor.userdata = boolean_class;
+        constructor.root = boolean_class;
+        constructors["Boolean"] = constructor;
+        method.callback = boolean_value;
+        prototype->methods["valueOf"] = method;
+        method.callback = boolean_string;
+        prototype->methods["toString"] = method;
         c->global->properties.swap(globals);
         c->functions.swap(functions);
+        c->constructors.swap(constructors);
         c->standard_library = true;
         return FVM_OK;
     }

@@ -63,6 +63,11 @@ static void define(Bytes &b, const char *name, const char *param, const Bytes &b
     for (size_t i = 0; i < body.size(); ++i)
         byte(b, body[i]);
 }
+static FVM_Result parent_boolean_string(FVM_Context *, FVM_Object *, unsigned int,
+                                        const FVM_Value *, FVM_Value *out, void *)
+{
+    return fvm_value_string(out, "parent override");
+}
 int main()
 {
     FVM_Config cfg;
@@ -256,12 +261,50 @@ int main()
     byte(body, 0x3e);
     byte(body, 0);
     define(defs, "standardWorker", "input", body);
+    body.clear();
+    str(body, "box");
+    var(body, "input");
+    number(body, 1);
+    str(body, "Boolean");
+    byte(body, 0x40);
+    byte(body, 0x3c);
+    call(body, "gc", "collect", 0);
+    byte(body, 0x17);
+    call(body, "box", "toString", 0);
+    byte(body, 0x3e);
+    byte(body, 0);
+    define(defs, "booleanWorker", "input", body);
     byte(defs, 0);
     assert(fvm_avm1_execute(c, &defs[0], defs.size()) == FVM_OK);
     assert(fvm_value_string(&args[0], "standardWorker") == FVM_OK);
     fvm_value_number(&args[1], 2);
     assert(fvm_object_call(c, thread.object, "run", 2, args, &handle) == FVM_OK);
     assert(fvm_object_call(c, handle.object, "join", 0, 0, &v) == FVM_OK && v.number == 8);
+    /* Eight independently installed Boolean namespaces construct local wrappers,
+     * collect with a live local root, and transfer only primitive string results. */
+    FVM_Value boolean_workers[8];
+    FVM_Value boolean_class, boolean_prototype;
+    assert(fvm_get_global(c, "Boolean", &boolean_class) == FVM_OK);
+    assert(fvm_object_get(c, boolean_class.object, "prototype", &boolean_prototype) == FVM_OK);
+    assert(fvm_object_define_method_rooted(c, boolean_prototype.object, "toString",
+                                           parent_boolean_string, 0, 0) == FVM_OK);
+    assert(fvm_value_string(&args[0], "booleanWorker") == FVM_OK);
+    fvm_value_boolean(&args[1], 0);
+    for (unsigned int i = 0; i < 8; ++i)
+    {
+        assert(fvm_object_call(c, thread.object, "run_suspended", 2, args, &boolean_workers[i]) ==
+               FVM_OK);
+        assert(fvm_gc_pin(c, boolean_workers[i].object) == FVM_OK);
+    }
+    for (unsigned int i = 0; i < 8; ++i)
+        assert(fvm_object_call(c, boolean_workers[i].object, "start", 0, 0, &v) == FVM_OK);
+    for (unsigned int i = 0; i < 8; ++i)
+    {
+        assert(fvm_object_call(c, boolean_workers[i].object, "join", 0, 0, &v) == FVM_OK);
+        assert(v.type == FVM_VALUE_STRING && std::strcmp(v.string, "false") == 0);
+        assert(fvm_gc_unpin(c, boolean_workers[i].object) == FVM_OK);
+    }
+    assert(fvm_gc_collect(c, &freed) == FVM_OK && freed >= 8);
     fvm_context_destroy(c);
     assert(fvm_context_create(rt, &c) == FVM_OK);
     fvm_value_number(&v, 123);

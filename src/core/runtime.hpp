@@ -115,5 +115,8 @@ struct FVM_Context
     unsigned int gc_native_depth;
 };
 void fvm_standard_text_cleanup(FVM_Context *);
+/* Shared bounded method lookup for C API and AVM1. Noncallable own properties
+ * shadow inherited callbacks; NOT_FOUND permits legacy named-function fallback. */
+FVM_Result fvm_lookup_native_method(FVM_Object *, const char *, FVM_NativeEntry *);
 FVM_Result fvm_release_object_resource(FVM_Context *, FVM_Object *);
 #endif
