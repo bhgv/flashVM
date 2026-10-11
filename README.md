@@ -236,3 +236,11 @@ A tested C89 example of cross-thread request/reply messaging is in [`examples/em
 Bounded internal channel queues and backpressure: see [doc/CHANNEL_CAPACITY.md](doc/CHANNEL_CAPACITY.md).
 
 Shared channel ownership is documented in [doc/CHANNEL_OWNERSHIP.md](doc/CHANNEL_OWNERSHIP.md).
+
+### Owned channel handles (stages 34–38)
+
+See [English API and limitations](doc/CHANNEL_VALUES.md),
+[Russian API and limitations](doc/CHANNEL_VALUES.ru.md), and the C89/C++98
+examples in `examples/embedding/channel_values`, `channel_cpp98`, and
+`examples/extending/channel_worker`. These are native handles, **not yet**
+GC-managed ActionScript channel values.

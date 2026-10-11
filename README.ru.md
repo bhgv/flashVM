@@ -137,3 +137,11 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 Ограниченные очереди каналов и блокировка при заполнении: см. [doc/CHANNEL_CAPACITY.ru.md](doc/CHANNEL_CAPACITY.ru.md).
 
 Совместное владение каналами описано в [doc/CHANNEL_OWNERSHIP.md](doc/CHANNEL_OWNERSHIP.md).
+
+### Каналы с управляемым владением (этапы 34–38)
+
+См. [русское описание API](doc/CHANNEL_VALUES.ru.md),
+[английское описание](doc/CHANNEL_VALUES.md), примеры C89/C++98 в
+`examples/embedding/channel_values`, `channel_cpp98` и
+`examples/extending/channel_worker`. Пока это нативные дескрипторы, **не**
+управляемые GC значения ActionScript.
