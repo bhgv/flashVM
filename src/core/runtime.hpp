@@ -22,6 +22,8 @@ struct FVM_Object {
     FVM_Object *prototype;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry> metamethods;
     bool finalized;
+    bool gc_marked;
+    unsigned long gc_pins;
 };
 struct FVM_Runtime { FVM_Config config; };
 struct FVM_ScriptFunction {
@@ -47,5 +49,8 @@ struct FVM_Context {
     void *input_userdata;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> script_functions;
     unsigned int script_depth;
+    int gc_mode;
+    unsigned long gc_allocations;
+    bool gc_collecting;
 };
 #endif

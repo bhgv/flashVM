@@ -38,9 +38,12 @@ FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out) {
     o->prototype=0;
     o->metatable=0;
     o->finalized=false;
+    o->gc_marked=false;
+    o->gc_pins=0;
     try { c->objects.push_back(o); }
     catch (...) { delete o; return FVM_OUT_OF_MEMORY; }
     *out=o;
+    ++c->gc_allocations;
     return FVM_OK;
 }
 FVM_Result fvm_object_set_prototype(FVM_Context *c, FVM_Object *o, FVM_Object *proto) {

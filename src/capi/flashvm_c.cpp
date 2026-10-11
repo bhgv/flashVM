@@ -34,6 +34,9 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->global = 0;
     context->swf_loaded = false;
     context->script_depth = 0;
+    context->gc_mode = 0;
+    context->gc_allocations = 0;
+    context->gc_collecting = false;
     context->pumping_input = false;
     context->input_callback = 0;
     context->input_userdata = 0;
