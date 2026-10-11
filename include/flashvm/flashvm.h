@@ -27,7 +27,8 @@ typedef enum FVM_Result {
     FVM_ERROR = -1,
     FVM_OUT_OF_MEMORY = -2,
     FVM_INVALID_ARGUMENT = -3,
-    FVM_UNSUPPORTED = -4
+    FVM_UNSUPPORTED = -4,
+    FVM_NOT_FOUND = -5
 } FVM_Result;
 typedef struct FVM_Config {
     unsigned long struct_size;

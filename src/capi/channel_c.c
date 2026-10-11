@@ -87,6 +87,28 @@ FVM_Result fvm_channel_receive(FVM_Channel *c,FVM_Value *out) {
     free(n);
     return FVM_OK;
 }
+FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out) {
+    FVM_ChannelNode *n;
+    char *previous;
+    FVM_Result result;
+    if (!c || !out) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(c->sync);
+    if (!c->head) {
+        result = c->closed ? FVM_ERROR : FVM_NOT_FOUND;
+        fvm_port_sync_unlock(c->sync);
+        return result;
+    }
+    n = c->head;
+    c->head = n->next;
+    if (!c->head) c->tail = 0;
+    *out = n->value;
+    previous = c->last_string;
+    c->last_string = n->owned_string;
+    fvm_port_sync_unlock(c->sync);
+    free(previous);
+    free(n);
+    return FVM_OK;
+}
 FVM_Result fvm_channel_available(FVM_Channel *c,int *available) {
     if (!c || !available) return FVM_INVALID_ARGUMENT;
     fvm_port_sync_lock(c->sync);

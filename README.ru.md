@@ -129,3 +129,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 Переносимый C89 API поддерживает запрос остановки потока и ожидание массива
 потоков. См. [документацию](doc/WORKER_CANCELLATION.ru.md) и
 `examples/embedding/worker_stop/`. Объект ActionScript `thread` ещё не реализован.
+
+## Обмен сообщениями между потоками
+
+Рабочий пример C89 находится в [`examples/embedding/worker_channels/`](examples/embedding/worker_channels/). В [`doc/WORKER_CHANNELS.ru.md`](doc/WORKER_CHANNELS.ru.md) описаны блокирующее и неблокирующее чтение, время жизни строк, порядок остановки и ограничения.

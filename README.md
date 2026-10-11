@@ -228,3 +228,7 @@ Worker lifecycle API (suspended start, state snapshots, join):
 The portable C89 API supports cooperative worker stop requests and joining an
 array of workers. See [worker cancellation](doc/WORKER_CANCELLATION.md) and
 `examples/embedding/worker_stop/`. This is not yet the ActionScript `thread` API.
+
+## Worker/channel exchange
+
+A tested C89 example of cross-thread request/reply messaging is in [`examples/embedding/worker_channels/`](examples/embedding/worker_channels/). See [`doc/WORKER_CHANNELS.md`](doc/WORKER_CHANNELS.md) for blocking and nonblocking receives, borrowed string lifetimes, shutdown ordering and current limitations.

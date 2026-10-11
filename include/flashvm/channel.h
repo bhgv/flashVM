@@ -18,6 +18,10 @@ FVM_API void fvm_channel_destroy(FVM_Channel *channel);
  * FVM_ERROR on a closed and empty channel. */
 FVM_API FVM_Result fvm_channel_send(FVM_Channel *channel, const FVM_Value *value);
 FVM_API FVM_Result fvm_channel_receive(FVM_Channel *channel, FVM_Value *out_value);
+/* Nonblocking receive: returns FVM_NOT_FOUND when empty and open;
+ * FVM_ERROR when empty and closed. Received strings follow the same
+ * borrowed-lifetime rule as fvm_channel_receive(). */
+FVM_API FVM_Result fvm_channel_try_receive(FVM_Channel *channel, FVM_Value *out_value);
 /* Nonblocking: available=0 means no message; a closed channel may still
  * contain unread messages. */
 FVM_API FVM_Result fvm_channel_available(FVM_Channel *channel, int *available);
