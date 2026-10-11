@@ -215,3 +215,7 @@ invoked through the C API. AVM1 script closures and `__call` are not yet impleme
 ### In-process channels (stage 27)
 
 See [channels API](doc/CHANNELS.md) and [C89 example](examples/embedding/channels/README.md). A portable, synchronized FIFO channel is available to C and C++ embedding code. Worker VM execution and ActionScript channel operators are **not yet implemented**.
+
+### Native worker threads
+
+See [worker API](doc/WORKERS.md) and [C89 example](examples/embedding/workers/). Workers create isolated interpreter contexts through OS-specific `ports/` implementations. ActionScript `thread.run` is not implemented yet.
