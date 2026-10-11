@@ -32,6 +32,7 @@ struct FVM_QueuedInput { FVM_InputEvent event; FVM_InputPhase phase; };
 struct FVM_Context {
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
+    fvm_detail::map<unsigned long,FVM_StackEntry> callable_objects;
     FVM_Object *global;
     fvm_detail::vector<FVM_Object *> objects;
     fvm_detail::vector<char *> strings;

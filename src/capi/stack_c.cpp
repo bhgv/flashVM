@@ -1,4 +1,5 @@
 #include "flashvm/stack.h"
+#include "flashvm/callable.h"
 #include "../core/runtime.hpp"
 #include <new>
 #include <cstring>
@@ -66,5 +67,56 @@ FVM_Result fvm_stack_call(FVM_Context *c,const char *name,unsigned int argc,cons
         else fvm_value_undefined(out);
     }
     fvm_stack_destroy(s); return r;
+}
+}
+
+extern "C" {
+FVM_Result fvm_callable_create(FVM_Context *c, FVM_StackFunction cb,
+                               void *user, FVM_Object **out) {
+    FVM_Object *obj=0;
+    FVM_StackEntry entry;
+    FVM_Result r;
+    if (!c || !cb || !out) return FVM_INVALID_ARGUMENT;
+    *out=0;
+    r=fvm_object_create(c,&obj);
+    if (r!=FVM_OK) return r;
+    entry.callback=cb;
+    entry.userdata=user;
+    try { c->callable_objects[(unsigned long)obj]=entry; }
+    catch (...) { return FVM_OUT_OF_MEMORY; }
+    *out=obj;
+    return FVM_OK;
+}
+FVM_Result fvm_callable_is(FVM_Context *c,FVM_Object *obj,int *out) {
+    if (!c || !obj || !out || obj->owner!=c) return FVM_INVALID_ARGUMENT;
+    *out=c->callable_objects.find((unsigned long)obj)!=c->callable_objects.end();
+    return FVM_OK;
+}
+FVM_Result fvm_callable_invoke(FVM_Context *c,FVM_Object *obj,
+                               unsigned int argc,const FVM_Value *args,FVM_Value *out) {
+    FVM_Stack *stack=0;
+    FVM_Result r;
+    unsigned int i;
+    if (!c || !obj || !out || obj->owner!=c || (argc && !args))
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<unsigned long,FVM_StackEntry>::iterator it=c->callable_objects.find((unsigned long)obj);
+    if (it==c->callable_objects.end()) return FVM_UNSUPPORTED;
+    r=fvm_stack_create(c,&stack);
+    if (r!=FVM_OK) return r;
+    for(i=0;i<argc;++i) {
+        r=fvm_stack_push(stack,&args[i]);
+        if (r!=FVM_OK) break;
+    }
+    if (r==FVM_OK) {
+        try { r=it->second.callback(c,stack,it->second.userdata); }
+        catch (...) { r=FVM_ERROR; }
+    }
+    if (r==FVM_OK) {
+        if (stack->values.size()>1) r=FVM_ERROR;
+        else if (stack->values.size()==1) *out=stack->values[0];
+        else fvm_value_undefined(out);
+    }
+    fvm_stack_destroy(stack);
+    return r;
 }
 }

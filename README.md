@@ -200,3 +200,10 @@ Automatic tracing GC and AS `pairs()` are not implemented yet.
 ### C89/C++98 stack extensions (stage 24)
 
 The Lua-inspired stack bridge is described in [English](doc/STACK_API.md) and [Russian](doc/STACK_API.ru.md). Working examples: `examples/extending/stack_c/` and `examples/embedding/cpp98_stack/`. This is not a Lua-compatible ABI, and stack callbacks are not yet callable directly from AVM1.
+
+### Native callable objects (stage 25)
+
+See [callable API](doc/CALLABLE_OBJECTS.md) and
+[the C89 example](examples/extending/callable_objects/README.md).
+Native C callbacks can now be stored as context-owned object values and
+invoked through the C API. AVM1 script closures and `__call` are not yet implemented.
