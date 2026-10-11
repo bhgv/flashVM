@@ -10,6 +10,80 @@
 #include "agg_path_storage.h"
 #endif
 
+#ifdef FVM_HAS_CAIRO
+#include "cairo.h"
+#include <cstring>
+/* Cairo ARGB32 requires a 32-bit unsigned int on the selected ABI. */
+typedef char FVM_CairoWordMustBe32Bits[sizeof(unsigned int) == 4 ? 1 : -1];
+
+/* Cairo uses native-endian premultiplied ARGB32. The public FlashVM
+ * surface remains straight-alpha RGBA8 on every platform. */
+static unsigned int cairo_pixel(const unsigned char *rgba)
+{
+    unsigned int a = rgba[3];
+    return (a << 24) | (((rgba[0] * a + 127) / 255) << 16) | (((rgba[1] * a + 127) / 255) << 8) |
+           ((rgba[2] * a + 127) / 255);
+}
+
+static FVM_Result cairo_fill(FVM_RasterSurface *surface, const FVM_RasterPoint *points,
+                             size_t count, FVM_RasterColor color)
+{
+    /* An intermediate surface also avoids changing caller bytes on failure. */
+    cairo_surface_t *image =
+        cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)surface->width, (int)surface->height);
+    if (cairo_surface_status(image) != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_surface_destroy(image);
+        return FVM_OUT_OF_MEMORY;
+    }
+    unsigned char *data = cairo_image_surface_get_data(image);
+    int stride = cairo_image_surface_get_stride(image);
+    for (unsigned int y = 0; y < surface->height; ++y)
+        for (unsigned int x = 0; x < surface->width; ++x)
+        {
+            unsigned int pixel = cairo_pixel(surface->pixels + y * surface->stride + x * 4);
+            std::memcpy(data + y * stride + x * 4, &pixel, 4);
+        }
+    cairo_surface_mark_dirty(image);
+    cairo_t *context = cairo_create(image);
+    cairo_set_source_rgba(context, color.r / 255.0, color.g / 255.0, color.b / 255.0,
+                          color.a / 255.0);
+    cairo_move_to(context, points[0].x, points[0].y);
+    for (size_t i = 1; i < count; ++i)
+        cairo_line_to(context, points[i].x, points[i].y);
+    cairo_close_path(context);
+    cairo_fill(context);
+    cairo_status_t status = cairo_status(context);
+    cairo_destroy(context);
+    if (status != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_surface_destroy(image);
+        return status == CAIRO_STATUS_NO_MEMORY ? FVM_OUT_OF_MEMORY : FVM_ERROR;
+    }
+    cairo_surface_flush(image);
+    for (unsigned int y = 0; y < surface->height; ++y)
+        for (unsigned int x = 0; x < surface->width; ++x)
+        {
+            unsigned char *rgba = surface->pixels + y * surface->stride + x * 4;
+            unsigned int pixel;
+            std::memcpy(&pixel, data + y * stride + x * 4, 4);
+            /* Preserve untouched pixels exactly, including RGB hidden at alpha 0. */
+            if (pixel == cairo_pixel(rgba))
+                continue;
+            unsigned int a = pixel >> 24;
+            rgba[3] = (unsigned char)a;
+            for (unsigned int c = 0; c < 3; ++c)
+            {
+                unsigned int component = (pixel >> (16 - c * 8)) & 255;
+                unsigned int straight = a ? (component * 255 + a / 2) / a : 0;
+                rgba[c] = (unsigned char)(straight > 255 ? 255 : straight);
+            }
+        }
+    cairo_surface_destroy(image);
+    return FVM_OK;
+}
+#endif
+
 extern "C" FVM_Result fvm_raster_fill_polygon(FVM_RasterSurface *surface,
                                               const FVM_RasterPoint *points, size_t count,
                                               FVM_RasterColor color)
@@ -51,6 +125,8 @@ extern "C" FVM_Result fvm_raster_fill_polygon(FVM_RasterSurface *surface,
     {
         return FVM_OUT_OF_MEMORY;
     }
+#elif defined(FVM_HAS_CAIRO)
+    return cairo_fill(surface, points, count, color);
 #else
     (void)color;
     return FVM_UNSUPPORTED;

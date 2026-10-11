@@ -1,0 +1,694 @@
+--- a/src/cairo-atomic-private.h
++++ b/src/cairo-atomic-private.h
+@@ -104,7 +104,7 @@
+ #elif SIZEOF_VOID_P==SIZEOF_LONG
+ typedef long cairo_atomic_intptr_t;
+ #elif SIZEOF_VOID_P==SIZEOF_LONG_LONG
+-typedef long long cairo_atomic_intptr_t;
++typedef int64_t cairo_atomic_intptr_t;
+ #else
+ #error No matching integer pointer type
+ #endif
+@@ -200,7 +200,7 @@
+ #elif SIZEOF_VOID_P==SIZEOF_LONG
+ typedef long cairo_atomic_intptr_t;
+ #elif SIZEOF_VOID_P==SIZEOF_LONG_LONG
+-typedef long long cairo_atomic_intptr_t;
++typedef int64_t cairo_atomic_intptr_t;
+ #else
+ #error No matching integer pointer type
+ #endif
+@@ -234,7 +234,7 @@
+ #elif SIZEOF_VOID_P==SIZEOF_LONG
+ typedef unsigned long cairo_atomic_intptr_t;
+ #elif SIZEOF_VOID_P==SIZEOF_LONG_LONG
+-typedef unsigned long long cairo_atomic_intptr_t;
++typedef uint64_t cairo_atomic_intptr_t;
+ #else
+ #error No matching integer pointer type
+ #endif
+@@ -286,7 +286,7 @@
+ #elif SIZEOF_VOID_P==SIZEOF_LONG
+ typedef unsigned long cairo_atomic_intptr_t;
+ #elif SIZEOF_VOID_P==SIZEOF_LONG_LONG
+-typedef unsigned long long cairo_atomic_intptr_t;
++typedef uint64_t cairo_atomic_intptr_t;
+ #else
+ #error No matching integer pointer type
+ #endif
+--- a/src/cairo-atomic.c
++++ b/src/cairo-atomic.c
+@@ -39,7 +39,7 @@
+ #ifdef HAS_ATOMIC_OPS
+ COMPILE_TIME_ASSERT(sizeof(void*) == sizeof(int) ||
+ 		    sizeof(void*) == sizeof(long) ||
+-		    sizeof(void*) == sizeof(long long));
++		    sizeof(void*) == sizeof(int64_t));
+ #else
+ void
+ _cairo_atomic_int_inc (cairo_atomic_intptr_t *x)
+--- a/src/cairo-backend-private.h
++++ b/src/cairo-backend-private.h
+@@ -41,7 +41,7 @@
+ 
+ typedef enum _cairo_backend_type {
+     CAIRO_TYPE_DEFAULT,
+-    CAIRO_TYPE_SKIA,
++    CAIRO_TYPE_SKIA
+ } cairo_backend_type_t;
+ 
+ struct _cairo_backend {
+--- a/src/cairo-bentley-ottmann-rectangular.c
++++ b/src/cairo-bentley-ottmann-rectangular.c
+@@ -249,13 +249,12 @@
+     /* Only emit (trivial) non-degenerate trapezoids with positive height. */
+     if (likely (left->top < bot)) {
+ 	if (sweep_line->do_traps) {
+-	    cairo_line_t _left = {
+-		{ left->x, left->top },
+-		{ left->x, bot },
+-	    }, _right = {
+-		{ left->right->x, left->top },
+-		{ left->right->x, bot },
+-	    };
++            cairo_line_t _left, _right;
++            /* C89: automatic aggregates are assigned after declaration. */
++            _left.p1.x = _left.p2.x = left->x;
++            _right.p1.x = _right.p2.x = left->right->x;
++            _left.p1.y = _right.p1.y = left->top;
++            _left.p2.y = _right.p2.y = bot;
+ 	    _cairo_traps_add_trap (sweep_line->container, left->top, bot, &_left, &_right);
+ 	    status = _cairo_traps_status ((cairo_traps_t *) sweep_line->container);
+ 	} else {
+--- a/src/cairo-botor-scan-converter.c
++++ b/src/cairo-botor-scan-converter.c
+@@ -101,7 +101,7 @@
+ 
+ enum {
+     START = 0x1,
+-    STOP = 0x2,
++    STOP = 0x2
+ };
+ 
+ /* the parent is always given by index/2 */
+@@ -198,7 +198,7 @@
+ floored_muldivrem(int x, int a, int b)
+ {
+     struct quorem qr;
+-    long long xa = (long long)x*a;
++    int64_t xa = (int64_t)x*a;
+     qr.quo = xa/b;
+     qr.rem = xa%b;
+     if ((xa>=0) != (b>=0) && qr.rem) {
+@@ -1543,7 +1543,7 @@
+ {
+     /* XXX is compare_x_for_y() worth executing during sub steps? */
+     return line_equal (&left->edge.line, &right->edge.line);
+-    //edges_compare_x_for_y (&left->edge, &right->edge, y) >= 0;
++    /* edges_compare_x_for_y (&left->edge, &right->edge, y) >= 0; */
+ }
+ 
+ static void
+--- a/src/cairo-clip-tor-scan-converter.c
++++ b/src/cairo-clip-tor-scan-converter.c
+@@ -438,7 +438,7 @@
+ floored_muldivrem(int x, int a, int b)
+ {
+     struct quorem qr;
+-    long long xa = (long long)x*a;
++    int64_t xa = (int64_t)x*a;
+     qr.quo = xa/b;
+     qr.rem = xa%b;
+     if ((xa>=0) != (b>=0) && qr.rem) {
+@@ -1530,7 +1530,7 @@
+ #endif
+ 
+ #define INPUT_TO_GRID_general(in, out, grid_scale) do {		\
+-	long long tmp__ = (long long)(grid_scale) * (in);	\
++	int64_t tmp__ = (int64_t)(grid_scale) * (in);	\
+ 	tmp__ >>= GLITTER_INPUT_BITS;				\
+ 	(out) = tmp__;						\
+ } while (0)
+--- a/src/cairo-error-private.h
++++ b/src/cairo-error-private.h
+@@ -106,7 +106,7 @@
+     CAIRO_INT_STATUS_NOTHING_TO_DO,
+     CAIRO_INT_STATUS_FLATTEN_TRANSPARENCY,
+     CAIRO_INT_STATUS_IMAGE_FALLBACK,
+-    CAIRO_INT_STATUS_ANALYZE_RECORDING_SURFACE_PATTERN,
++    CAIRO_INT_STATUS_ANALYZE_RECORDING_SURFACE_PATTERN
+ };
+ 
+ typedef enum _cairo_int_status cairo_int_status_t;
+--- a/src/cairo-fixed-private.h
++++ b/src/cairo-fixed-private.h
+@@ -104,7 +104,7 @@
+ #define CAIRO_MAGIC_NUMBER_FIXED_16_16 (103079215104.0)
+ 
+ #if CAIRO_FIXED_BITS <= 32
+-#define CAIRO_MAGIC_NUMBER_FIXED ((1LL << (52 - CAIRO_FIXED_FRAC_BITS)) * 1.5)
++#define CAIRO_MAGIC_NUMBER_FIXED ((((int64_t)1) << (52 - CAIRO_FIXED_FRAC_BITS)) * 1.5)
+ 
+ /* For 32-bit fixed point numbers */
+ static inline cairo_fixed_t
+--- a/src/cairo-image-compositor.c
++++ b/src/cairo-image-compositor.c
+@@ -710,9 +710,10 @@
+ 			    cairo_tristrip_t *strip)
+ {
+     pixman_triangle_t tri;
+-    pixman_point_fixed_t *p[3] = {&tri.p1, &tri.p2, &tri.p3 };
++    pixman_point_fixed_t *p[3];
+     int n;
+ 
++    p[0] = &tri.p1; p[1] = &tri.p2; p[2] = &tri.p3;
+     set_point (p[0], &strip->points[0]);
+     set_point (p[1], &strip->points[1]);
+     set_point (p[2], &strip->points[2]);
+@@ -1272,16 +1273,16 @@
+ 	compositor.set_clip_region = set_clip_region;
+ 	compositor.pattern_to_surface = _cairo_image_source_create_for_pattern;
+ 	compositor.draw_image_boxes = draw_image_boxes;
+-	//compositor.copy_boxes = copy_boxes;
++	/* compositor.copy_boxes = copy_boxes; */
+ 	compositor.fill_boxes = fill_boxes;
+ 	compositor.check_composite = check_composite;
+ 	compositor.composite = composite;
+ 	compositor.lerp = lerp;
+-	//compositor.check_composite_boxes = check_composite_boxes;
++	/* compositor.check_composite_boxes = check_composite_boxes; */
+ 	compositor.composite_boxes = composite_boxes;
+-	//compositor.check_composite_traps = check_composite_traps;
++	/* compositor.check_composite_traps = check_composite_traps; */
+ 	compositor.composite_traps = composite_traps;
+-	//compositor.check_composite_tristrip = check_composite_traps;
++	/* compositor.check_composite_tristrip = check_composite_traps; */
+ #if PIXMAN_VERSION >= PIXMAN_VERSION_ENCODE(0,22,0)
+ 	compositor.composite_tristrip = composite_tristrip;
+ #endif
+@@ -1312,8 +1313,8 @@
+ 	compositor.fill_boxes = fill_boxes;
+ 	compositor.check_composite = check_composite;
+ 	compositor.composite = composite;
+-	//compositor.lerp = lerp;
+-	//compositor.check_composite_boxes = check_composite_boxes;
++	/* compositor.lerp = lerp; */
++	/* compositor.check_composite_boxes = check_composite_boxes; */
+ 	compositor.composite_boxes = composite_boxes;
+ 	compositor.check_composite_glyphs = check_composite_glyphs;
+ 	compositor.composite_glyphs = composite_glyphs;
+@@ -1621,7 +1622,7 @@
+ 	    uint8_t *data;
+ 	} mask;
+     } u;
+-    uint8_t _buf[0];
++    uint8_t _buf[1]; /* C89 trailing storage; SZ_BUF remains bounded. */
+ #define SZ_BUF (int)(sizeof (cairo_abstract_span_renderer_t) - sizeof (cairo_image_span_renderer_t))
+ } cairo_image_span_renderer_t;
+ COMPILE_TIME_ASSERT (sizeof (cairo_image_span_renderer_t) <= sizeof (cairo_abstract_span_renderer_t));
+@@ -3144,15 +3145,15 @@
+ 	spans.flags |= CAIRO_SPANS_COMPOSITOR_HAS_LERP;
+ #endif
+ 
+-	//spans.acquire = acquire;
+-	//spans.release = release;
++	/* spans.acquire = acquire; */
++	/* spans.release = release; */
+ 	spans.fill_boxes = fill_boxes;
+ 	spans.draw_image_boxes = draw_image_boxes;
+-	//spans.copy_boxes = copy_boxes;
++	/* spans.copy_boxes = copy_boxes; */
+ 	spans.pattern_to_surface = _cairo_image_source_create_for_pattern;
+-	//spans.check_composite_boxes = check_composite_boxes;
++	/* spans.check_composite_boxes = check_composite_boxes; */
+ 	spans.composite_boxes = composite_boxes;
+-	//spans.check_span_renderer = check_span_renderer;
++	/* spans.check_span_renderer = check_span_renderer; */
+ 	spans.renderer_init = span_renderer_init;
+ 	spans.renderer_fini = span_renderer_fini;
+ 
+--- a/src/cairo-mask-compositor.c
++++ b/src/cairo-mask-compositor.c
+@@ -712,7 +712,7 @@
+ enum {
+     NEED_CLIP_REGION = 0x1,
+     NEED_CLIP_SURFACE = 0x2,
+-    FORCE_CLIP_REGION = 0x4,
++    FORCE_CLIP_REGION = 0x4
+ };
+ 
+ static cairo_bool_t
+--- a/src/cairo-mono-scan-converter.c
++++ b/src/cairo-mono-scan-converter.c
+@@ -106,7 +106,7 @@
+ floored_muldivrem(int x, int a, int b)
+ {
+     struct quorem qr;
+-    long long xa = (long long)x*a;
++    int64_t xa = (int64_t)x*a;
+     qr.quo = xa/b;
+     qr.rem = xa%b;
+     if ((xa>=0) != (b>=0) && qr.rem) {
+--- a/src/cairo-path-stroke-polygon.c
++++ b/src/cairo-path-stroke-polygon.c
+@@ -122,7 +122,7 @@
+     if (! within_tolerance (point, _cairo_contour_last_point (&c->contour),
+ 			stroker->contour_tolerance))
+ 	_cairo_contour_add_point (&c->contour, point);
+-    //*_cairo_contour_last_point (&c->contour) = *point;
++    /* *_cairo_contour_last_point (&c->contour) = *point; */
+ }
+ 
+ static void
+--- a/src/cairo-path-stroke-traps.c
++++ b/src/cairo-path-stroke-traps.c
+@@ -299,9 +299,10 @@
+ 	    _cairo_traps_tessellate_triangle_with_edges (stroker->traps,
+ 							 tri, edges);
+ 	} else {
+-	    cairo_point_t t[] = { { in->point.x, in->point.y}, { inpt->x, inpt->y }, { outpt->x, outpt->y } };
+-	    cairo_point_t e[] = { { in->cw.x, in->cw.y}, { in->ccw.x, in->ccw.y },
+-				  { out->cw.x, out->cw.y}, { out->ccw.x, out->ccw.y } };
++            cairo_point_t t[3], e[4];
++            t[0] = in->point; t[1] = *inpt; t[2] = *outpt;
++            e[0] = in->cw; e[1] = in->ccw;
++            e[2] = out->cw; e[3] = out->ccw;
+ 	    _cairo_traps_tessellate_triangle_with_edges (stroker->traps, t, e);
+ 	}
+ 	break;
+@@ -462,9 +463,10 @@
+     }
+ 
+     case CAIRO_LINE_JOIN_BEVEL: {
+-	cairo_point_t t[] = { { in->point.x, in->point.y }, { inpt->x, inpt->y }, { outpt->x, outpt->y } };
+-	cairo_point_t e[] = { { in->cw.x, in->cw.y }, { in->ccw.x, in->ccw.y },
+-			      { out->cw.x, out->cw.y }, { out->ccw.x, out->ccw.y } };
++        cairo_point_t t[3], e[4];
++        t[0] = in->point; t[1] = *inpt; t[2] = *outpt;
++        e[0] = in->cw; e[1] = in->ccw;
++        e[2] = out->cw; e[3] = out->ccw;
+ 	_cairo_traps_tessellate_triangle_with_edges (stroker->traps, t, e);
+ 	break;
+     }
+--- a/src/cairo-path-stroke-tristrip.c
++++ b/src/cairo-path-stroke-tristrip.c
+@@ -180,7 +180,7 @@
+     {
+ 	cairo_point_t p = *midpt;
+ 	translate_point (&p, &stroker->pen.vertices[i].point);
+-	//contour_add_point (stroker, c, &p);
++	/* contour_add_point (stroker, c, &p); */
+     }
+ }
+ 
+@@ -204,8 +204,8 @@
+     } else {
+ 	outpt = &out->cw;
+     }
+-    //contour_add_point (stroker, inner, &in->point);
+-    //contour_add_point (stroker, inner, outpt);
++    /* contour_add_point (stroker, inner, &in->point); */
++    /* contour_add_point (stroker, inner, outpt); */
+ }
+ 
+ static void
+@@ -221,10 +221,10 @@
+ 	inpt = &out->cw;
+     }
+ 
+-    //contour_add_point (stroker, inner, &in->point);
+-    //contour_add_point (stroker, inner, inpt);
+-    //*_cairo_contour_first_point (&inner->contour) =
+-	//*_cairo_contour_last_point (&inner->contour);
++    /* contour_add_point (stroker, inner, &in->point); */
++    /* contour_add_point (stroker, inner, inpt); */
++    /* *_cairo_contour_first_point (&inner->contour) = */
++	/* *_cairo_contour_last_point (&inner->contour); */
+ }
+ 
+ static void
+@@ -399,8 +399,8 @@
+ 		p.x = _cairo_fixed_from_double (mx);
+ 		p.y = _cairo_fixed_from_double (my);
+ 
+-		//*_cairo_contour_last_point (&outer->contour) = p;
+-		//*_cairo_contour_first_point (&outer->contour) = p;
++		/* *_cairo_contour_last_point (&outer->contour) = p; */
++		/* *_cairo_contour_first_point (&outer->contour) = p; */
+ 		return;
+ 	    }
+ 	}
+@@ -410,7 +410,7 @@
+     case CAIRO_LINE_JOIN_BEVEL:
+ 	break;
+     }
+-    //contour_add_point (stroker, outer, outpt);
++    /* contour_add_point (stroker, outer, outpt); */
+ }
+ 
+ static void
+@@ -584,7 +584,7 @@
+ 		p.x = _cairo_fixed_from_double (mx);
+ 		p.y = _cairo_fixed_from_double (my);
+ 
+-		//*_cairo_contour_last_point (&outer->contour) = p;
++		/* *_cairo_contour_last_point (&outer->contour) = p; */
+ 		return;
+ 	    }
+ 	}
+@@ -594,7 +594,7 @@
+     case CAIRO_LINE_JOIN_BEVEL:
+ 	break;
+     }
+-    //contour_add_point (stroker,outer, outpt);
++    /* contour_add_point (stroker,outer, outpt); */
+ }
+ 
+ static void
+@@ -634,15 +634,15 @@
+ 	quad[2].y = f->cw.y + fvector.dy;
+ 	quad[3] = f->cw;
+ 
+-	//contour_add_point (stroker, c, &quad[1]);
+-	//contour_add_point (stroker, c, &quad[2]);
++	/* contour_add_point (stroker, c, &quad[1]); */
++	/* contour_add_point (stroker, c, &quad[2]); */
+     }
+ 
+     case CAIRO_LINE_CAP_BUTT:
+     default:
+ 	break;
+     }
+-    //contour_add_point (stroker, c, &f->cw);
++    /* contour_add_point (stroker, c, &f->cw); */
+ }
+ 
+ static void
+@@ -792,22 +792,22 @@
+ 	add_trailing_cap (stroker, &face);
+ 
+ 	/* ensure the circle is complete */
+-	//_cairo_contour_add_point (&stroker->ccw.contour,
+-				  //_cairo_contour_first_point (&stroker->ccw.contour));
++	/* _cairo_contour_add_point (&stroker->ccw.contour, */
++				  /* _cairo_contour_first_point (&stroker->ccw.contour)); */
+     } else {
+ 	if (stroker->has_current_face)
+ 	    add_trailing_cap (stroker, &stroker->current_face);
+ 
+-	//_cairo_polygon_add_contour (stroker->polygon, &stroker->ccw.contour);
+-	//_cairo_contour_reset (&stroker->ccw.contour);
++	/* _cairo_polygon_add_contour (stroker->polygon, &stroker->ccw.contour); */
++	/* _cairo_contour_reset (&stroker->ccw.contour); */
+ 
+ 	if (stroker->has_first_face) {
+-	    //_cairo_contour_add_point (&stroker->ccw.contour,
+-				      //&stroker->first_face.cw);
++	    /* _cairo_contour_add_point (&stroker->ccw.contour, */
++				      /* &stroker->first_face.cw); */
+ 	    add_leading_cap (stroker, &stroker->first_face);
+-	    //_cairo_polygon_add_contour (stroker->polygon,
+-					//&stroker->ccw.contour);
+-	    //_cairo_contour_reset (&stroker->ccw.contour);
++	    /* _cairo_polygon_add_contour (stroker->polygon, */
++					/* &stroker->ccw.contour); */
++	    /* _cairo_contour_reset (&stroker->ccw.contour); */
+ 	}
+     }
+ }
+@@ -929,11 +929,11 @@
+ 
+ 	    stroker->current_face.cw.x += face.point.x - stroker->current_face.point.x;
+ 	    stroker->current_face.cw.y += face.point.y - stroker->current_face.point.y;
+-	    //contour_add_point (stroker, &stroker->cw, &stroker->current_face.cw);
++	    /* contour_add_point (stroker, &stroker->cw, &stroker->current_face.cw); */
+ 
+ 	    stroker->current_face.ccw.x += face.point.x - stroker->current_face.point.x;
+ 	    stroker->current_face.ccw.y += face.point.y - stroker->current_face.point.y;
+-	    //contour_add_point (stroker, &stroker->ccw, &stroker->current_face.ccw);
++	    /* contour_add_point (stroker, &stroker->ccw, &stroker->current_face.ccw); */
+ 
+ 	    if (clockwise) {
+ 		inpt = &stroker->current_face.cw;
+--- a/src/cairo-pattern-private.h
++++ b/src/cairo-pattern-private.h
+@@ -51,7 +51,7 @@
+     CAIRO_PATTERN_NOTIFY_MATRIX = 0x1,
+     CAIRO_PATTERN_NOTIFY_FILTER = 0x2,
+     CAIRO_PATTERN_NOTIFY_EXTEND = 0x4,
+-    CAIRO_PATTERN_NOTIFY_OPACITY = 0x9,
++    CAIRO_PATTERN_NOTIFY_OPACITY = 0x9
+ };
+ 
+ struct _cairo_pattern_observer {
+--- a/src/cairo-recording-surface-private.h
++++ b/src/cairo-recording-surface-private.h
+@@ -51,7 +51,7 @@
+     CAIRO_COMMAND_SHOW_TEXT_GLYPHS,
+ 
+     /* cairo_tag_begin()/cairo_tag_end() */
+-    CAIRO_COMMAND_TAG,
++    CAIRO_COMMAND_TAG
+ } cairo_command_type_t;
+ 
+ typedef enum {
+--- a/src/cairo-rtree-private.h
++++ b/src/cairo-rtree-private.h
+@@ -47,7 +47,7 @@
+ enum {
+     CAIRO_RTREE_NODE_AVAILABLE,
+     CAIRO_RTREE_NODE_DIVIDED,
+-    CAIRO_RTREE_NODE_OCCUPIED,
++    CAIRO_RTREE_NODE_OCCUPIED
+ };
+ 
+ typedef struct _cairo_rtree_node {
+--- a/src/cairo-scaled-font-subsets.c
++++ b/src/cairo-scaled-font-subsets.c
+@@ -701,7 +701,7 @@
+ 	memset (collection->latin_to_subset_glyph_index, 0, 256*sizeof(unsigned long));
+ 
+ 	if (sub_font->reserve_notdef) {
+-	    // add .notdef
++	    /*  add .notdef */
+ 	    collection->glyphs[0] = 0;
+ 	    collection->utf8[0] = 0;
+ 	    collection->to_latin_char[0] = 0;
+--- a/src/cairo-surface-subsurface.c
++++ b/src/cairo-surface-subsurface.c
+@@ -114,10 +114,13 @@
+ 				 const cairo_clip_t *clip)
+ {
+     cairo_surface_subsurface_t *surface = abstract_surface;
+-    cairo_rectangle_int_t rect = { 0, 0, surface->extents.width, surface->extents.height };
++    cairo_rectangle_int_t rect;
+     cairo_status_t status;
+     cairo_clip_t *target_clip;
+ 
++    rect.x = rect.y = 0;
++    rect.width = surface->extents.width;
++    rect.height = surface->extents.height;
+     target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
+     status = _cairo_surface_offset_paint (surface->target,
+ 					 -surface->extents.x, -surface->extents.y,
+@@ -134,10 +137,13 @@
+ 				const cairo_clip_t *clip)
+ {
+     cairo_surface_subsurface_t *surface = abstract_surface;
+-    cairo_rectangle_int_t rect = { 0, 0, surface->extents.width, surface->extents.height };
++    cairo_rectangle_int_t rect;
+     cairo_status_t status;
+     cairo_clip_t *target_clip;
+ 
++    rect.x = rect.y = 0;
++    rect.width = surface->extents.width;
++    rect.height = surface->extents.height;
+     target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
+     status = _cairo_surface_offset_mask (surface->target,
+ 					 -surface->extents.x, -surface->extents.y,
+@@ -157,10 +163,13 @@
+ 				const cairo_clip_t		*clip)
+ {
+     cairo_surface_subsurface_t *surface = abstract_surface;
+-    cairo_rectangle_int_t rect = { 0, 0, surface->extents.width, surface->extents.height };
++    cairo_rectangle_int_t rect;
+     cairo_status_t status;
+     cairo_clip_t *target_clip;
+ 
++    rect.x = rect.y = 0;
++    rect.width = surface->extents.width;
++    rect.height = surface->extents.height;
+     target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
+     status = _cairo_surface_offset_fill (surface->target,
+ 					 -surface->extents.x, -surface->extents.y,
+@@ -183,10 +192,13 @@
+ 				  const cairo_clip_t			*clip)
+ {
+     cairo_surface_subsurface_t *surface = abstract_surface;
+-    cairo_rectangle_int_t rect = { 0, 0, surface->extents.width, surface->extents.height };
++    cairo_rectangle_int_t rect;
+     cairo_status_t status;
+     cairo_clip_t *target_clip;
+ 
++    rect.x = rect.y = 0;
++    rect.width = surface->extents.width;
++    rect.height = surface->extents.height;
+     target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
+     status = _cairo_surface_offset_stroke (surface->target,
+ 					   -surface->extents.x, -surface->extents.y,
+@@ -207,10 +219,13 @@
+ 				  const cairo_clip_t	*clip)
+ {
+     cairo_surface_subsurface_t *surface = abstract_surface;
+-    cairo_rectangle_int_t rect = { 0, 0, surface->extents.width, surface->extents.height };
++    cairo_rectangle_int_t rect;
+     cairo_status_t status;
+     cairo_clip_t *target_clip;
+ 
++    rect.x = rect.y = 0;
++    rect.width = surface->extents.width;
++    rect.height = surface->extents.height;
+     target_clip = _cairo_clip_copy_intersect_rectangle (clip, &rect);
+     status = _cairo_surface_offset_glyphs (surface->target,
+ 					   -surface->extents.x, -surface->extents.y,
+--- a/src/cairo-tag-attributes-private.h
++++ b/src/cairo-tag-attributes-private.h
+@@ -46,7 +46,7 @@
+     TAG_LINK_EMPTY,
+     TAG_LINK_DEST,
+     TAG_LINK_URI,
+-    TAG_LINK_FILE,
++    TAG_LINK_FILE
+ } cairo_tag_link_type_t;
+ 
+ typedef struct _cairo_link_attrs {
+--- a/src/cairo-tag-attributes.c
++++ b/src/cairo-tag-attributes.c
+@@ -46,7 +46,7 @@
+     ATTRIBUTE_BOOL,  /* Either true/false or 1/0 may be used. */
+     ATTRIBUTE_INT,
+     ATTRIBUTE_FLOAT, /* Decimal separator is in current locale. */
+-    ATTRIBUTE_STRING, /* Enclose in single quotes. String escapes:
++    ATTRIBUTE_STRING /* Enclose in single quotes. String escapes:
+                        *   \'  - single quote
+                        *   \\  - backslash
+                        */
+--- a/src/cairo-tor-scan-converter.c
++++ b/src/cairo-tor-scan-converter.c
+@@ -1456,7 +1456,7 @@
+ #endif
+ 
+ #define INPUT_TO_GRID_general(in, out, grid_scale) do {		\
+-    long long tmp__ = (long long)(grid_scale) * (in);	\
++    int64_t tmp__ = (int64_t)(grid_scale) * (in);	\
+     tmp__ += 1 << (GLITTER_INPUT_BITS-1);			\
+     tmp__ >>= GLITTER_INPUT_BITS;				\
+     (out) = tmp__;						\
+--- a/src/cairo-tor22-scan-converter.c
++++ b/src/cairo-tor22-scan-converter.c
+@@ -115,8 +115,8 @@
+ 
+ /* The input coordinate scale and the rasterisation grid scales. */
+ #define GLITTER_INPUT_BITS CAIRO_FIXED_FRAC_BITS
+-//#define GRID_X_BITS CAIRO_FIXED_FRAC_BITS
+-//#define GRID_Y 15
++/* #define GRID_X_BITS CAIRO_FIXED_FRAC_BITS */
++/* #define GRID_Y 15 */
+ #define GRID_X_BITS 2
+ #define GRID_Y_BITS 2
+ 
+@@ -477,7 +477,7 @@
+ floored_muldivrem(int x, int a, int b)
+ {
+     struct quorem qr;
+-    long long xa = (long long)x*a;
++    int64_t xa = (int64_t)x*a;
+     qr.quo = xa/b;
+     qr.rem = xa%b;
+     if ((xa>=0) != (b>=0) && qr.rem) {
+@@ -1337,7 +1337,7 @@
+ #endif
+ 
+ #define INPUT_TO_GRID_general(in, out, grid_scale) do {		\
+-    long long tmp__ = (long long)(grid_scale) * (in);	\
++    int64_t tmp__ = (int64_t)(grid_scale) * (in);	\
+     tmp__ >>= GLITTER_INPUT_BITS;				\
+     (out) = tmp__;						\
+ } while (0)
+--- a/src/cairo-traps-compositor.c
++++ b/src/cairo-traps-compositor.c
+@@ -923,7 +923,7 @@
+ enum {
+     NEED_CLIP_REGION = 0x1,
+     NEED_CLIP_SURFACE = 0x2,
+-    FORCE_CLIP_REGION = 0x4,
++    FORCE_CLIP_REGION = 0x4
+ };
+ 
+ static cairo_bool_t
+--- a/src/cairo-traps.c
++++ b/src/cairo-traps.c
+@@ -1082,8 +1082,11 @@
+ 	if (spans[0].coverage) {
+ 	    cairo_fixed_t x0 = _cairo_fixed_from_int(spans[0].x);
+ 	    cairo_fixed_t x1 = _cairo_fixed_from_int(spans[1].x);
+-	    cairo_line_t left = { { x0, top }, { x0, bot } },
+-			 right = { { x1, top }, { x1, bot } };
++            cairo_line_t left, right;
++            left.p1.x = left.p2.x = x0;
++            right.p1.x = right.p2.x = x1;
++            left.p1.y = right.p1.y = top;
++            left.p2.y = right.p2.y = bot;
+ 	    _cairo_traps_add_trap (r->traps, top, bot, &left, &right);
+ 	}
+ 	spans++;
+--- a/src/cairo-types-private.h
++++ b/src/cairo-types-private.h
+@@ -258,7 +258,7 @@
+ } cairo_internal_surface_type_t;
+ 
+ typedef enum _cairo_internal_device_type {
+-    CAIRO_INTERNAL_DEVICE_TYPE_OBSERVER = 0x1000,
++    CAIRO_INTERNAL_DEVICE_TYPE_OBSERVER = 0x1000
+ } cairo_device_surface_type_t;
+ 
+ #define CAIRO_HAS_TEST_PAGINATED_SURFACE 1
+@@ -390,7 +390,7 @@
+     CAIRO_STOCK_WHITE,
+     CAIRO_STOCK_BLACK,
+     CAIRO_STOCK_TRANSPARENT,
+-    CAIRO_STOCK_NUM_COLORS,
++    CAIRO_STOCK_NUM_COLORS
+ } cairo_stock_t;
+ 
+ typedef enum _cairo_image_transparency {
+--- a/src/cairoint.h
++++ b/src/cairoint.h
+@@ -141,15 +141,10 @@
+ #define STRINGIFY(macro_or_string)    STRINGIFY_ARG (macro_or_string)
+ #define STRINGIFY_ARG(contents)       #contents
+ 
+-#if defined (__GNUC__)
+-#define cairo_container_of(ptr, type, member) ({ \
+-    const __typeof__ (((type *) 0)->member) *mptr__ = (ptr); \
+-    (type *) ((char *) mptr__ - offsetof (type, member)); \
+-})
+-#else
++/* FlashVM: C89 container lookup without GNU statement expressions. */
+ #define cairo_container_of(ptr, type, member) \
+-    ((type *)((char *) (ptr) - (char *) &((type *)0)->member))
+-#endif
++    ((type *)((char *) (ptr) - offsetof (type, member)))
++
+ 
+ 
+ #define ASSERT_NOT_REACHED		\
+@@ -781,7 +776,7 @@
+ 
+ enum {
+     CAIRO_OPERATOR_BOUND_BY_MASK = 1 << 1,
+-    CAIRO_OPERATOR_BOUND_BY_SOURCE = 1 << 2,
++    CAIRO_OPERATOR_BOUND_BY_SOURCE = 1 << 2
+ };
+ 
+ cairo_private uint32_t

@@ -27,7 +27,7 @@ int main(void)
     color.b = 50;
     color.a = 128;
     result = fvm_raster_fill_polygon(&surface, rectangle, 4, color);
-#ifdef FVM_HAS_AGG
+#if defined(FVM_HAS_AGG) || defined(FVM_HAS_CAIRO)
     assert(result == FVM_OK);
     for (y = 0; y < 8; ++y)
     {

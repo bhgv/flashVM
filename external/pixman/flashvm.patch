@@ -1,0 +1,91 @@
+--- a/pixman/pixman-combine-float.c
++++ b/pixman/pixman-combine-float.c
+@@ -600,7 +600,7 @@
+ 	    if (4 * d <= da)
+ 		return d * sa + (2 * s - sa) * d * ((16 * d / da - 12) * d / da + 3);
+ 	    else
+-		return d * sa + (sqrtf (d * da) - d) * (2 * s - sa);
++		return d * sa + ((float) sqrt ((double) (d * da)) - d) * (2 * s - sa);
+ 	}
+     }
+ }
+--- a/pixman/pixman-compiler.h
++++ b/pixman/pixman-compiler.h
+@@ -11,7 +11,7 @@
+  *    force_inline   must be defined
+  */
+ #if defined (__GNUC__)
+-#  define FUNC     ((const char*) (__PRETTY_FUNCTION__))
++#  define FUNC     "pixman"
+ #elif defined (__sun) || (defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L)
+ #  define FUNC     ((const char*) (__func__))
+ #else
+--- a/pixman/pixman-fast-path.c
++++ b/pixman/pixman-fast-path.c
+@@ -2405,10 +2405,10 @@
+ #else
+ 	uint64_t top = line0->buffer[i];
+ 	uint64_t bot = line1->buffer[i];
+-	uint64_t tar = (top & 0xffff0000ffff0000ULL) >> 16;
+-	uint64_t bar = (bot & 0xffff0000ffff0000ULL) >> 16;
+-	uint64_t tgb = (top & 0x0000ffff0000ffffULL);
+-	uint64_t bgb = (bot & 0x0000ffff0000ffffULL);
++	uint64_t tar = (top & (((uint64_t)0xffff0000U << 32) | (uint64_t)0xffff0000U)) >> 16;
++	uint64_t bar = (bot & (((uint64_t)0xffff0000U << 32) | (uint64_t)0xffff0000U)) >> 16;
++	uint64_t tgb = (top & (((uint64_t)0xffffU << 32) | (uint64_t)0xffffU));
++	uint64_t bgb = (bot & (((uint64_t)0xffffU << 32) | (uint64_t)0xffffU));
+ 	uint64_t ar, gb;
+ 	uint32_t a, r, g, b;
+ 
+--- a/pixman/pixman-implementation.c
++++ b/pixman/pixman-implementation.c
+@@ -63,7 +63,7 @@
+     } cache [N_CACHED_FAST_PATHS];
+ } cache_t;
+ 
+-PIXMAN_DEFINE_THREAD_LOCAL (cache_t, fast_path_cache);
++PIXMAN_DEFINE_THREAD_LOCAL (cache_t, fast_path_cache)
+ 
+ static void
+ dummy_composite_rect (pixman_implementation_t *imp,
+--- a/pixman/pixman-inlines.h
++++ b/pixman/pixman-inlines.h
+@@ -150,23 +150,23 @@
+     br64 = br & 0xff0000ff;
+ 
+     f = tl64 * distixiy + tr64 * distxiy + bl64 * distixy + br64 * distxy;
+-    r = f & 0x0000ff0000ff0000ull;
++    r = f & (((uint64_t)0xff00U << 32) | (uint64_t)0xff0000U);
+ 
+     /* Red and Green */
+     tl64 = tl;
+-    tl64 = ((tl64 << 16) & 0x000000ff00000000ull) | (tl64 & 0x0000ff00ull);
++    tl64 = ((tl64 << 16) & (((uint64_t)0xffU << 32) | (uint64_t)0x0U)) | (tl64 & (((uint64_t)0x0U << 32) | (uint64_t)0xff00U));
+ 
+     tr64 = tr;
+-    tr64 = ((tr64 << 16) & 0x000000ff00000000ull) | (tr64 & 0x0000ff00ull);
++    tr64 = ((tr64 << 16) & (((uint64_t)0xffU << 32) | (uint64_t)0x0U)) | (tr64 & (((uint64_t)0x0U << 32) | (uint64_t)0xff00U));
+ 
+     bl64 = bl;
+-    bl64 = ((bl64 << 16) & 0x000000ff00000000ull) | (bl64 & 0x0000ff00ull);
++    bl64 = ((bl64 << 16) & (((uint64_t)0xffU << 32) | (uint64_t)0x0U)) | (bl64 & (((uint64_t)0x0U << 32) | (uint64_t)0xff00U));
+ 
+     br64 = br;
+-    br64 = ((br64 << 16) & 0x000000ff00000000ull) | (br64 & 0x0000ff00ull);
++    br64 = ((br64 << 16) & (((uint64_t)0xffU << 32) | (uint64_t)0x0U)) | (br64 & (((uint64_t)0x0U << 32) | (uint64_t)0xff00U));
+ 
+     f = tl64 * distixiy + tr64 * distxiy + bl64 * distixy + br64 * distxy;
+-    r |= ((f >> 16) & 0x000000ff00000000ull) | (f & 0xff000000ull);
++    r |= ((f >> 16) & (((uint64_t)0xffU << 32) | (uint64_t)0x0U)) | (f & (((uint64_t)0x0U << 32) | (uint64_t)0xff000000U));
+ 
+     return (uint32_t)(r >> 16);
+ }
+@@ -220,7 +220,7 @@
+ }
+ 
+ #endif
+-#endif // BILINEAR_INTERPOLATION_BITS <= 4
++#endif /* BILINEAR_INTERPOLATION_BITS <= 4 */
+ 
+ static force_inline argb_t
+ bilinear_interpolation_float (argb_t tl, argb_t tr,

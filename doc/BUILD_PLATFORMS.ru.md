@@ -1,30 +1,38 @@
-# Автономная сборка и проверки платформ
+# Офлайн-сборка и проверка платформ
 
-CMake 3.10+ задаёт строгие C90/C++98; GCC/Clang используют pedantic-errors.
-zlib и AGG собираются из включённых исходников. При конфигурации скачиваний нет.
+CMake 3.10+ выбирает строгие C90/C++98; GCC/Clang используют pedantic-errors
+и ошибку для неявных объявлений C-функций. Все нужные сторонние исходники
+находятся в external/. Загрузок при конфигурации и подмены системными
+Cairo/SQLite нет. Форма команд -S/-B требует CMake 3.13+; старые версии
+можно запускать из каталога сборки командой `cmake ..`.
+
+Измените корневой DEFS.txt либо задайте FVM_DEFS_FILE; см.
+[ключи сборки](BUILD_DEFINITIONS.ru.md). AUTO_PLATFORM следует целевому
+компилятору; явный ключ ОС должен совпадать с целью. По умолчанию включены
+AGG, встроенная SQLite и HEADLESS. GRAPHICS_CAIRO выбирает Cairo/Pixman.
+NO_GRAPHICS оставляет API растеризации с ответом UNSUPPORTED. Программы
+проверок отключённых адаптеров исключаются.
 
 Linux/macOS: `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`, затем
 `cmake --build build --parallel`, `ctest --test-dir build --output-on-failure`.
-Windows: выбрать компилятор/генератор, выполнить конфигурацию, затем
-`cmake --build build --config Release`,
-`ctest --test-dir build -C Release --output-on-failure`. У MSVC нет отдельного
-режима C++98; совместимость требует настоящего запуска этого компилятора.
-Android: указать NDK android.toolchain.cmake, ANDROID_ABI и ANDROID_PLATFORM.
-Тесты запускаются на устройстве/эмуляторе, не на машине сборки. SDK/NDK не входят
-в архив.
+Windows: выбрать компилятор/generator, выполнить конфигурацию, затем
+`cmake --build build --config Release` и
+`ctest --test-dir build -C Release --output-on-failure`. MSVC не имеет
+отдельного режима C++98; совместимость требует реальной сборки и запуска.
+Android: указать NDK android.toolchain.cmake, ANDROID_ABI и ANDROID_PLATFORM;
+запускать тесты на устройстве/эмуляторе. NDK и SDK в архив не включены.
 
-Опции: FVM_BUILD_TESTS, FVM_BUILD_EXAMPLES, FVM_ENABLE_AGG,
-FVM_ENABLE_OS_PORTS, FVM_ENABLE_RENDER_JOBS, FVM_ENABLE_SQLITE. Примеры/тесты
-отключённых адаптеров исключаются. При отключении тестов и примеров собираются
-только библиотеки. Без AGG API растеризации возвращает UNSUPPORTED. SQLite
-остаётся опциональной системной зависимостью. JIT и media пока отсутствуют;
-запрос их включения вызывает ошибку конфигурации.
+Скалярный профиль Cairo/Pixman сохраняет потоки и нативные 64-битные типы,
+но не требует экранных/шрифтовых пакетов и ассемблерных CPU-флагов. Собственный
+VFS SQLite остаётся в external/. Адаптеры ОС FlashVM расположены в ports/.
+Нужны toolchain, системные заголовки и библиотеки потоков/математики ОС.
 
-Тесты/примеры регистрируются общим CMake-helper, с активными assert в Release
-и таймаутом 30 секунд. После добавления тестов повторить конфигурацию.
-`scripts/check.py` проверяет Linux strict/sanitizer; SQLite исключён, zlib/AGG
-собираются из исходников. Ограничения sanitizer описаны в VALIDATION.
+CMake обнаруживает тесты/примеры, сохраняет assert в Release и задаёт таймаут
+30 секунд. После добавления исходника теста повторите конфигурацию.
+`scripts/check.py` собирает Linux strict/sanitizer по тому же DEFS.txt и спискам
+библиотек. Ограничения sanitizer указаны в
+[проверках коммита](DEPENDENCY_CHECKPOINT.ru.md).
 
-Пока подтверждён только запуск Linux. Выбор адаптеров не подтверждает готовность
-Windows/macOS/Android. Старые отчёты исторические; отчёты этой фазы:
-`doc/validation/phase2-*`. Инструменты сборки не входят в ZIP с исходниками.
+Проверено выполнение только на Linux x86_64. Платформенные исходники и настройки
+не доказывают готовность Windows/macOS/Android. Ключи FB/GLES/OGL/DX/SDL1/SDL2/SDL3,
+JIT и MEDIA зарезервированы; их выбор завершает конфигурацию ошибкой.

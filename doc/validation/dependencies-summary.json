@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-11",
+  "platform": "Linux x86_64",
+  "compiler": "GCC/G++ 13.3.0",
+  "language_modes": [
+    "C89/C90",
+    "C++98"
+  ],
+  "strict_pedantic": true,
+  "implicit_c_function_declarations": "errors",
+  "cmake": "3.31.10",
+  "cmake_profiles": {
+    "AGG_SQLITE_HEADLESS": 101,
+    "CAIRO_SQLITE_HEADLESS": 101,
+    "NO_GRAPHICS_SQLITE_HEADLESS": 101,
+    "NO_GRAPHICS_NO_SQLITE_NO_OS_PORTS_NO_RENDER_JOBS": 94
+  },
+  "standalone_default_tests": 101,
+  "sanitizer_cairo_tests": 101,
+  "asan_ubsan_tests": 100,
+  "ubsan_only_tests": [
+    "tests/container_exceptions.cpp"
+  ],
+  "leak_sanitizer": "disabled: environment lacks /proc task access",
+  "definitions_cases": 20,
+  "vendor_files_verified": 886,
+  "windows_macos_android_execution": "not validated",
+  "mirror": "not updated",
+  "standard_object_wip": "preserved separately in refs/stash, not in the reviewed working tree"
+}

@@ -1,0 +1,11 @@
+/* Scalar Pixman: no assembler/SIMD or compiler TLS requirements. */
+#define PACKAGE "pixman"
+#define PACKAGE_VERSION "0.38.4"
+#define SIZEOF_LONG @FVM_VENDOR_SIZEOF_LONG@
+#cmakedefine FVM_VENDOR_BIG_ENDIAN 1
+#ifdef FVM_VENDOR_BIG_ENDIAN
+#define WORDS_BIGENDIAN 1
+#endif
+#if @FVM_VENDOR_PTHREAD@
+#define HAVE_PTHREADS 1
+#endif

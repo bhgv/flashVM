@@ -17,7 +17,7 @@ codepoints, and values above U+10FFFF. An embedded NUL is a valid scalar.
   the first bytewise match. Returns 1 (match), 0 (none), -1 (bad arguments),
   or -2 (execution budget exhausted). Pattern must be NUL-terminated.
 
-The bundled `extern/mini_regex` engine supports only `^`, `$`, `.`, `*`,
+The bundled `external/mini_regex` engine supports only `^`, `$`, `.`, `*`,
 `+`, `?`, and backslash-escaped literal bytes. It does **not** implement
 character classes, groups, alternation, captures, Unicode properties, or
 PCRE/POSIX regex syntax. This limited engine is not suitable for processing
@@ -43,7 +43,7 @@ Unicode-символа (scalar value). Проверка UTF-8 отклоняет
   Результат: 1 — найдено, 0 — не найдено, -1 — неверные аргументы,
   -2 — исчерпан лимит вычислений.
 
-Встроенный модуль `extern/mini_regex` поддерживает только `^`, `$`, `.`,
+Встроенный модуль `external/mini_regex` поддерживает только `^`, `$`, `.`,
 `*`, `+`, `?` и экранирование буквальных байтов. Нет групп, альтернатив,
 классов символов, захватов, Unicode-свойств и полноценной совместимости
 с PCRE/POSIX. Сопоставление происходит по байтам UTF-8. Нормализация,

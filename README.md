@@ -1,3 +1,9 @@
+Dependency review checkpoint: `extern/` is merged into `external/`. Cairo 1.16.0,
+Pixman 0.38.4 and SQLite 3.50.4 sources are bundled and preconfigured for local
+builds. Edit top-level [DEFS.txt](DEFS.txt) to choose competing variants; default
+is AGG + SQLite + HEADLESS. See [build keys](doc/BUILD_DEFINITIONS.md) and
+[validation](doc/DEPENDENCY_CHECKPOINT.md). Screen adapters remain reserved keys.
+
 Numeric standard library checkpoint: opt-in Math and primitive conversions
 are now available. See [numeric API](doc/STANDARD_NUMERIC.md) for installation,
 verified behavior and remaining compatibility limits. Phase 3: 95 Linux tests
@@ -194,8 +200,8 @@ The C++98 runtime uses private string/vector/hash-map implementations in `src/de
 See [Text API / Текстовый API](doc/TEXT_API.md) for the C89 UTF-8 decoder,
 encoder, validation, offsets, and a deliberately limited byte-oriented regex
 engine. A compilable example is in `examples/embedding/text/`. Source for the
-regex subset lives under `extern/`; other optional dependencies are **not**
-yet vendored (see [extern/README.md](extern/README.md)).
+regex subset lives under `external/`; bundled graphics/database dependency profiles are listed in
+[external/README.md](external/README.md).
 
 ### Bundled dependencies and hybrid table
 
@@ -288,6 +294,6 @@ ownership rules and limitations.
 
 ## Tested development update
 
-See [ActionScript extensions](doc/ACTIONSCRIPT_EXTENSIONS.md), [collector contracts](doc/GC_COMPLETION.md), [concurrency ownership](doc/CONCURRENCY_SAFETY.md), and [validation](doc/VALIDATION.md). The update adds bounded finalization, userdata release, native capture roots, concurrent join safety, owned channel messages, cyclic graph snapshots and opt-in `gc`/`thread`/`channel` objects. Default builds require no external system library; optional system SQLite is now OFF unless explicitly enabled. No new third-party dependency was introduced; bundled regex sources remain in `extern/`.
+See [ActionScript extensions](doc/ACTIONSCRIPT_EXTENSIONS.md), [collector contracts](doc/GC_COMPLETION.md), [concurrency ownership](doc/CONCURRENCY_SAFETY.md), and [validation](doc/VALIDATION.md). The update adds bounded finalization, userdata release, native capture roots, concurrent join safety, owned channel messages, cyclic graph snapshots and opt-in `gc`/`thread`/`channel` objects. Default builds require no external system library; SQLite is now bundled and enabled by DEFS.txt by default. Bundled regex sources remain in `external/`.
 
 Without CMake on Linux, run `python3 scripts/check.py`; add `--sanitize` for ASan/UBSan. See validation for LeakSanitizer and platform limits.

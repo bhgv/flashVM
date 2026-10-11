@@ -24,7 +24,8 @@ extern "C"
     } FVM_RasterColor;
     /* Antialiased, nonzero winding fill; clipped to the image. No OS calls.
      * Coordinates must be finite and within +/- 4096 pixels.
-     * Returns UNSUPPORTED when the bundled AGG backend was disabled. */
+     * GRAPHICS_AGG / GRAPHICS_CAIRO select the bundled backend in DEFS.txt.
+     * Returns UNSUPPORTED with NO_GRAPHICS. */
     FVM_API FVM_Result fvm_raster_fill_polygon(FVM_RasterSurface *, const FVM_RasterPoint *, size_t,
                                                FVM_RasterColor);
 #ifdef __cplusplus

@@ -1,0 +1,4 @@
+-- FlashVM definitions: GRAPHICS_AGG;AUTO_PLATFORM;HEADLESS;SQLITE;OS_PORTS;RENDER_JOBS;INTERPRETER;NO_MEDIA;LINUX
+-- Configuring done (0.0s)
+-- Generating done (0.3s)
+-- Build files have been written to: $WORKSPACE/deps-build-agg

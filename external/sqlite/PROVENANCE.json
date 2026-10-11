@@ -1,0 +1,15 @@
+{
+  "name": "sqlite",
+  "version": "3.50.4",
+  "source_url": "https://www.sqlite.org/2025/sqlite-amalgamation-3500400.zip",
+  "archive": "sqlite-amalgamation-3500400.zip",
+  "archive_sha256": "1d3049dd0f830a025a53105fc79fd2ab9431aea99e137809d064d8ee8356b032",
+  "license": "Public domain; upstream source notices",
+  "vendored_scope": "sqlite3.c, sqlite3.h, sqlite3ext.h",
+  "local_changes": [
+    "sqlite3.c",
+    "sqlite3.h"
+  ],
+  "patch": "flashvm.patch",
+  "offline_build": true
+}

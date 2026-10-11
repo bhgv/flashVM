@@ -1,3 +1,5 @@
+Latest / Последняя проверка: [Dependency checkpoint](DEPENDENCY_CHECKPOINT.md).
+
 # Numeric library checkpoint (phase 3)
 
 2026-10-11: strict C89/C++98 and CMake Release/CTest passed 95 Linux tests/examples.

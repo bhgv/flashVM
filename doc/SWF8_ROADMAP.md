@@ -54,7 +54,7 @@ native callback ABI, all on each actual target or a documented emulator.
    movies. Publish explicit supported behavior and failures in both languages.
 
 New code uses C89/C++98 without STL containers. Source dependencies added in
-this phase live in `external/`; historical mini_regex remains in `extern/`.
+this phase live in `external/`; historical mini_regex remains in `external/`.
 Preserve upstream source notices; maintain readable formatting/comments.
 
 ## Repository policy

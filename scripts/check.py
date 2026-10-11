@@ -1,45 +1,145 @@
 #!/usr/bin/env python3
-"""Linux offline C89/C++98 build and complete test runner (no CMake needed)."""
-import argparse, concurrent.futures, pathlib, subprocess, sys, os, json
-p=argparse.ArgumentParser(); p.add_argument('--sanitize',action='store_true'); a=p.parse_args()
-root=pathlib.Path(__file__).resolve().parents[1]; out=root/('build-sanitize' if a.sanitize else 'build-check'); out.mkdir(exist_ok=True)
-flags=['-g','-O1','-Wall','-Wextra','-pedantic-errors','-Iinclude','-Iports','-Iextern/mini_regex','-Iexternal/zlib/upstream','-Iexternal/agg/upstream/include','-DFVM_HAS_AGG=1','-pthread']
-if a.sanitize:
- # This managed runtime has no /proc task access, so LeakSanitizer cannot run.
- os.environ['ASAN_OPTIONS']='detect_leaks=0:halt_on_error=1'
- os.environ['UBSAN_OPTIONS']='halt_on_error=1:print_stacktrace=1'
-if a.sanitize: flags+=['-fsanitize=address,undefined','-fno-omit-frame-pointer','-fno-pie','-no-pie']
-def run(cmd):
- r=subprocess.run(cmd,cwd=root,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
- if r.returncode: raise RuntimeError(' '.join(map(str,cmd))+'\n'+r.stdout)
- return r.stdout
-sources=list(root.glob('src/**/*.cpp'))+list(root.glob('src/**/*.c'))+list(root.glob('ports/linux/*.c'))+list(root.glob('extern/mini_regex/*.c'))
-sources += [root/'external/zlib/upstream'/n for n in ['adler32.c','crc32.c','deflate.c','trees.c','inflate.c','inftrees.c','inffast.c','zutil.c','compress.c','uncompr.c']]
-sources += list(root.glob('external/agg/upstream/src/*.cpp'))
-# SQLite is optional; this standalone runner exercises the dependency-free configuration.
-sources=[s for s in sources if s.name!='sqlite_c.cpp']
-def compile(s):
- compile_flags=[f.replace('-fsanitize=address,undefined','-fsanitize=undefined') for f in flags] if a.sanitize and s.name=='container_exceptions.cpp' else flags
- obj=out/(str(s.relative_to(root)).replace('/','_')+'.o')
- run(['g++' if s.suffix=='.cpp' else 'gcc','-std=c++98' if s.suffix=='.cpp' else '-std=c89']+compile_flags+['-c',str(s),'-o',str(obj)])
- return str(obj)
+"""Linux offline C89/C++98 compiler runner; DEFS.txt controls all build profiles."""
+import argparse
+import concurrent.futures
+import json
+import os
+import pathlib
+import subprocess
+import sys
+
+from build_definitions import cmake_sources, generated_headers, read_keys
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--sanitize', action='store_true')
+parser.add_argument('--defs', type=pathlib.Path)
+args = parser.parse_args()
+root = pathlib.Path(__file__).resolve().parents[1]
+output = root / ('build-sanitize' if args.sanitize else 'build-check')
+output.mkdir(exist_ok=True)
 try:
- with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool: objects=list(pool.map(compile,sources))
- if a.sanitize:
-  options=out/'sanitizer_options.c'
-  options.write_text('const char *__asan_default_options(void) {return "detect_leaks=0:halt_on_error=1";}\nint __lsan_is_turned_off(void) {return 1;}\n')
-  option_obj=out/'sanitizer_options.o'
-  run(['gcc','-std=c89','-c',str(options),'-o',str(option_obj)])
- else: option_obj=None
- archive=str(out/'libflashvm.a'); run(['ar','rcs',archive]+objects)
- tests=sorted(root.glob('tests/*.c'))+sorted(root.glob('tests/*.cpp'))+sorted(root.glob('examples/**/main.c'))+sorted(root.glob('examples/**/main.cpp'))
- tests=[t for t in tests if 'sqlite' not in str(t)]
- count=0; passed=[]
- for t in tests:
-  obj=compile(t); exe=out/(str(t.relative_to(root)).replace('/','_')+'.test')
-  link_flags=[f.replace('-fsanitize=address,undefined','-fsanitize=undefined') for f in flags] if a.sanitize and t.name=='container_exceptions.cpp' else flags
-  run(['g++']+link_flags+[obj]+([str(option_obj)] if option_obj else [])+[archive,'-o',str(exe)])
-  run(['timeout','30',str(exe)]); count+=1; passed.append(str(t.relative_to(root))); print('PASS',t.relative_to(root),flush=True)
- (out/'test-results.json').write_text(json.dumps({'status':'passed','tests':passed,'count':count,'flags':flags,'compiler':run(['gcc','--version']).splitlines()[0],'sanitizers':a.sanitize,'address_excluded_tests':['tests/container_exceptions.cpp'] if a.sanitize else [],'leak_sanitizer':False if a.sanitize else None,'sqlite':'excluded (optional system dependency)','platform':'Linux'},indent=2)+'\n')
- print('PASS: %d tests and examples; strict C89/C++98%s'%(count,'; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if a.sanitize else ''))
-except Exception as e: print(e,file=sys.stderr); sys.exit(1)
+    keys = read_keys(args.defs or root / 'DEFS.txt')
+except ValueError as error:
+    print(error, file=sys.stderr)
+    sys.exit(1)
+generated = output / 'generated'
+generated_headers(root, generated, keys)
+flags = ['-g', '-O1', '-Wall', '-Wextra', '-pedantic-errors', '-Iinclude',
+         '-Iports', '-Iexternal/mini_regex', '-Iexternal/zlib/upstream',
+         '-I' + str(generated), '-pthread']
+flags += ['-D' + key + '=1' for key in keys]
+if 'GRAPHICS_AGG' in keys:
+    flags += ['-Iexternal/agg/upstream/include', '-DFVM_HAS_AGG=1']
+if 'GRAPHICS_CAIRO' in keys:
+    flags += ['-DFVM_HAS_CAIRO=1']
+    for dependency, subdir in [('cairo', 'src'), ('pixman', 'pixman')]:
+        flags += ['-Iexternal/' + dependency + '/upstream/' + subdir,
+                  '-I' + str(generated / dependency)]
+if 'SQLITE' in keys:
+    flags += ['-Iexternal/sqlite/upstream', '-Iexternal/sqlite', '-DFVM_HAS_SQLITE=1']
+if args.sanitize:
+    # The managed environment lacks /proc task access required by LeakSanitizer.
+    os.environ['ASAN_OPTIONS'] = 'detect_leaks=0:halt_on_error=1'
+    os.environ['UBSAN_OPTIONS'] = 'halt_on_error=1:print_stacktrace=1'
+    flags += ['-fsanitize=address,undefined', '-fno-omit-frame-pointer',
+              '-fno-pie', '-no-pie']
+
+
+def run(command):
+    result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, text=True)
+    if result.returncode:
+        raise RuntimeError(' '.join(map(str, command)) + '\n' + result.stdout)
+    return result.stdout
+
+
+sources = (list(root.glob('src/**/*.cpp')) + list(root.glob('src/**/*.c')) +
+           list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
+sources += [root / 'external/zlib/upstream' / name for name in [
+    'adler32.c', 'crc32.c', 'deflate.c', 'trees.c', 'inflate.c', 'inftrees.c',
+    'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]
+if 'GRAPHICS_AGG' in keys:
+    sources += list(root.glob('external/agg/upstream/src/*.cpp'))
+if 'GRAPHICS_CAIRO' in keys:
+    for dependency in ['cairo', 'pixman']:
+        sources += cmake_sources(root / 'external' / dependency / 'CMakeLists.txt',
+                                 'FVM_' + dependency.upper())
+if 'SQLITE' in keys:
+    sources += [root / 'external/sqlite/upstream/sqlite3.c']
+else:
+    sources = [source for source in sources if source.name != 'sqlite_c.cpp']
+if 'NO_OS_PORTS' in keys:
+    sources = [source for source in sources if source.name not in ['input.c', 'network.c']]
+if 'NO_RENDER_JOBS' in keys:
+    sources = [source for source in sources if source.name != 'render_jobs.c']
+
+
+def program_flags(source):
+    # This test replaces new/delete and needs the historical UBSan-only exception.
+    if args.sanitize and source.name == 'container_exceptions.cpp':
+        return [flag.replace('-fsanitize=address,undefined', '-fsanitize=undefined')
+                for flag in flags]
+    return list(flags)
+
+
+def compile_source(source):
+    compile_flags = program_flags(source)
+    if source.suffix == '.c':
+        compile_flags += ['-Werror=implicit-function-declaration']
+    if any('external/' + name + '/upstream/' in str(source) for name in ['cairo', 'pixman']):
+        dependency = 'pixman' if 'external/pixman/upstream/' in str(source) else 'cairo'
+        # config.h is private to each library; its directory must come first.
+        compile_flags = ['-I' + str(generated / dependency)] + compile_flags
+        compile_flags += ['-DHAVE_CONFIG_H=1', '-Iexternal/cairo/upstream']
+    if source.name == 'sqlite3.c':
+        compile_flags += ['-DSQLITE_THREADSAFE=1', '-DSQLITE_OMIT_LOAD_EXTENSION=1',
+                          '-DSQLITE_DQS=0', '-DSQLITE_DEFAULT_MEMSTATUS=0',
+                          '-D_GNU_SOURCE=1', '-D_POSIX_C_SOURCE=200809L', '-D_DEFAULT_SOURCE=1']
+    obj = output / (str(source.relative_to(root)).replace('/', '_') + '.o')
+    compiler = ['g++', '-std=c++98'] if source.suffix == '.cpp' else ['gcc', '-std=c89']
+    run(compiler + compile_flags + ['-c', str(source), '-o', str(obj)])
+    return str(obj)
+
+
+try:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        objects = list(pool.map(compile_source, sources))
+    option_obj = None
+    if args.sanitize:
+        options = output / 'sanitizer_options.c'
+        options.write_text('const char *__asan_default_options(void) {return "detect_leaks=0:halt_on_error=1";}\n'
+                           'int __lsan_is_turned_off(void) {return 1;}\n')
+        option_obj = output / 'sanitizer_options.o'
+        run(['gcc', '-std=c89', '-c', str(options), '-o', str(option_obj)])
+    archive = str(output / 'libflashvm.a')
+    # ar would otherwise retain stale objects when switching profiles.
+    pathlib.Path(archive).unlink(missing_ok=True)
+    run(['ar', 'rcs', archive] + objects)
+    programs = (sorted(root.glob('tests/*.c')) + sorted(root.glob('tests/*.cpp')) +
+                sorted(root.glob('examples/**/main.c')) + sorted(root.glob('examples/**/main.cpp')))
+    programs = [source for source in programs
+                if ('SQLITE' in keys or 'sqlite' not in str(source))
+                and ('OS_PORTS' in keys or 'os_ports' not in str(source))
+                and ('RENDER_JOBS' in keys or not any(name in str(source)
+                     for name in ['render_jobs', 'parallel_render']))]
+    passed = []
+    for source in programs:
+        obj = compile_source(source)
+        executable = output / (str(source.relative_to(root)).replace('/', '_') + '.test')
+        run(['g++'] + program_flags(source) + [obj] +
+            ([str(option_obj)] if option_obj else []) + [archive, '-lm', '-ldl', '-o', str(executable)])
+        run(['timeout', '30', str(executable)])
+        passed.append(str(source.relative_to(root)))
+        print('PASS', source.relative_to(root), flush=True)
+    report = {'status': 'passed', 'tests': passed, 'count': len(passed), 'flags': flags,
+              'compiler': run(['gcc', '--version']).splitlines()[0], 'sanitizers': args.sanitize,
+              'address_excluded_tests': ['tests/container_exceptions.cpp'] if args.sanitize else [],
+              'leak_sanitizer': False if args.sanitize else None,
+              'sqlite': 'bundled 3.50.4' if 'SQLITE' in keys else 'disabled',
+              'definitions': keys, 'platform': 'Linux'}
+    (output / 'test-results.json').write_text(json.dumps(report, indent=2) + '\n')
+    suffix = '; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if args.sanitize else ''
+    print('PASS: %d tests and examples; strict C89/C++98%s' % (len(passed), suffix))
+except Exception as error:
+    print(error, file=sys.stderr)
+    sys.exit(1)

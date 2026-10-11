@@ -1,43 +1,35 @@
-# Dependency status update
+# External dependency sources
 
-Bundled zlib and AGG sources now live in `external/`, as requested in the SWF 8
-phase. See `external/README.md`, dependency-specific provenance/license/patch
-notes and `doc/BUILD_PLATFORMS.md`. Both are compiled offline and tested on
-Linux in this phase. Cairo is not integrated; its C11 requirement and pixman
-transitive dependency still need resolution for strict C89/C++98.
-SQLite remains optional system linkage. Existing mini_regex stays in `extern/`.
-The earlier "no network access" statement below is historical, not current.
+`external/` is the single dependency directory. Existing mini_regex was moved
+from `extern/`; no forwarding directory remains. Build paths and live documentation
+were updated. Historical validation reports retain their original paths.
 
-# External dependencies and offline builds
-
-FlashVM aims to vendor verified upstream sources under `extern/`.
-A dependency is **not bundled** unless its real source and licensing material
-are checked in and an offline build has been tested.
-
-| Dependency | Status | Requirements |
+| Dependency | Version | Integration |
 | --- | --- | --- |
-| mini_regex | Bundled and compiled | Limited byte-oriented regular expressions |
-| SQLite | Not bundled; optional system linkage | Official `sqlite3.c` and `sqlite3.h` amalgamation |
-| zlib | Not bundled | Upstream source archive and license notice |
-| AGG | Not bundled | C++98-compatible release and license verification |
-| Cairo | Not bundled | Cairo source and transitive dependencies, including pixman |
+| mini_regex | Existing byte-oriented subset | Always built |
+| zlib | 1.3.1 | Bounded CWS decompression |
+| AGG | 2.4 core, pinned fork commit | RGBA8 polygon rasterizer |
+| Cairo | 1.16.0 | Alternative polygon rasterizer, image/recording/user-font profile |
+| Pixman | 0.38.4 | Scalar compositing dependency of Cairo |
+| SQLite | 3.50.4 | Bundled static C adapter, enabled by default |
 
-The current build environment has no network access. Installed headers and
-binary libraries cannot substitute for source releases. No placeholder files
-are represented as vendored third-party code.
+All library source files needed by the selected profiles are included. There
+are no configure-time downloads or system-library fallbacks. Each vendor keeps
+upstream license notices; new pins include official archive URLs, SHA-256 hashes,
+and complete local source patches. `python3 scripts/check_vendor_sources.py`
+checks the vendored source manifest offline.
 
-Integration steps: obtain pinned upstream source archives; verify checksums;
-record license notices; add bundled/system/off CMake choices; test offline
-builds; validate on Windows, Linux, macOS and Android.
+C89/C++98 language modes remain strict, with pedantic errors on GCC/Clang and
+errors for undeclared C functions. Library implementation helpers still depend
+on native 64-bit system types and supported compiler inline/visibility facilities.
+These are not a promise of compatibility with every historical ANSI compiler.
+Cairo 1.18.4's upstream C11 build was not chosen; 1.16.0's selected core is compiled
+and tested with explicit compatibility patches. Pins are reproducibility choices,
+not assertions that these are the newest releases or a complete upstream audit.
 
-## Hybrid table details
-
-`src/details/hybrid_table.hpp` introduces a standalone C++98 container:
-dense nonnegative integer keys in an array of presence-marked slots, sparse
-integer and string keys in custom hash tables, and an independent FIFO queue.
-`get` reports presence separately from the value. `size` counts keys, not
-queued elements. Numeric indexing starts at zero. Sparse indices do not force
-huge array allocations. Existing keys can be overwritten.
-
-This is a **container building block**, not yet wired into AVM1 objects,
-garbage collection, prototypes or metatable dispatch.
+Cairo GUI, GL, PNG, native fonts and PDF/PS/SVG are outside this profile; Pixman
+assembler/SIMD is disabled. SQLite dynamic extension loading is disabled. FlashVM
+system adapters stay in `ports/`; upstream library platform internals remain in
+`external/`. No third-party source was reformatted wholesale. Windows, macOS
+and Android execution remains unvalidated. See [build definitions](BUILD_DEFINITIONS.md)
+and [checkpoint validation](DEPENDENCY_CHECKPOINT.md).

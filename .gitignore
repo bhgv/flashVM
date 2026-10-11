@@ -8,3 +8,10 @@
 *.dll
 *.dylib
 *.exe
+
+__pycache__/
+*.pyc
+
+# Compiler and configuration scratch artifacts
+/cc*.s
+/flashvm-definitions-*/

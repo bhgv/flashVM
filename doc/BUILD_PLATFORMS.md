@@ -1,32 +1,37 @@
-# Offline build and platform validation
+# Offline builds and platform validation
 
-CMake 3.10+ uses strict C90/C++98, with pedantic errors on GCC/Clang. Bundled
-zlib and AGG sources compile with the project. No configure-time downloads.
+CMake 3.10+ selects strict C90/C++98 modes, with pedantic errors on GCC/Clang
+and errors for undeclared C functions. All required third-party source is in
+`external/`. No configure-time download or system Cairo/SQLite fallback occurs.
+The `-S`/`-B` command form requires CMake 3.13+; older versions can configure
+from a build directory with `cmake ..`.
+
+Edit top-level DEFS.txt or provide FVM_DEFS_FILE; see
+[build definitions](BUILD_DEFINITIONS.md). AUTO_PLATFORM follows the target
+toolchain; explicit OS keys must match it. Default: AGG, bundled SQLite, HEADLESS.
+Cairo/Pixman are selected with GRAPHICS_CAIRO. NO_GRAPHICS builds the raster API
+as unsupported. Disabled SQLite/input/render-job programs are excluded.
 
 Linux/macOS: configure `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`, build
 `cmake --build build --parallel`, test `ctest --test-dir build --output-on-failure`.
-Windows: choose a supported C/C++ compiler/generator, configure the same way,
-then `cmake --build build --config Release` and
-`ctest --test-dir build -C Release --output-on-failure`. C++98 is not selectable
-as a separate MSVC language mode; compatibility still requires a real MSVC run.
-Android: pass the NDK's android.toolchain.cmake, ANDROID_ABI and
-ANDROID_PLATFORM at configuration; tests must execute on a device/emulator,
-not on the build host. NDK and platform SDKs are not bundled.
+Windows: choose the compiler/generator, configure, then
+`cmake --build build --config Release` and
+`ctest --test-dir build -C Release --output-on-failure`. MSVC has no separate
+C++98 switch; compatibility requires an actual MSVC build and execution.
+Android: pass the NDK android.toolchain.cmake, ANDROID_ABI and ANDROID_PLATFORM;
+tests execute on a device/emulator. NDK and SDKs are not included.
 
-Options: FVM_BUILD_TESTS, FVM_BUILD_EXAMPLES, FVM_ENABLE_AGG,
-FVM_ENABLE_OS_PORTS, FVM_ENABLE_RENDER_JOBS and optional FVM_ENABLE_SQLITE.
-Tests/examples with disabled adapters are excluded. Disabling tests and
-examples builds libraries only. AGG can be disabled; the raster API then
-returns UNSUPPORTED. SQLite remains an optional system dependency. No JIT or
-media backend is available; requesting either produces a configuration error.
+The scalar Cairo/Pixman profile keeps platform threading and native 64-bit types,
+but avoids display/font packages and CPU assembler flags. SQLite retains its
+own POSIX/Windows VFS under external/. FlashVM native adapters remain in ports/.
+Compiler toolchains/system headers and OS threading/math libraries are required.
 
-CMake registers every discovered regression/example entry point through a
-single helper, preserves assertions in Release, and sets a 30-second timeout.
-Rerun configuration after adding tests. `scripts/check.py` remains the Linux
-strict/sanitizer runner; SQLite is excluded, zlib and AGG are compiled from
-source. Sanitizer exception/LeakSanitizer limits are recorded in VALIDATION.
+CMake discovers test/example entry points, keeps assertions active in Release,
+and sets a 30-second timeout. Rerun configuration after adding a test source.
+`scripts/check.py` provides a Linux standalone strict/sanitizer build from the
+same DEFS.txt and vendor source lists. Sanitizer limits are recorded in
+[checkpoint validation](DEPENDENCY_CHECKPOINT.md).
 
-Only Linux execution is currently validated. Platform adapter selection and
-portable source do not establish Windows/macOS/Android readiness. Older
-validation reports remain historical; see `doc/validation/phase2-*` for this
-checkpoint. Tool binaries are not included in the source ZIP.
+Only Linux x86_64 execution is validated. Portable source/configuration does
+not establish Windows/macOS/Android readiness. FB/GLES/OGL/DX/SDL1/SDL2/SDL3,
+JIT and media are reserved keys; selecting them produces a configuration error.
