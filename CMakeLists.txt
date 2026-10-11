@@ -302,3 +302,9 @@ add_test(NAME flashvm_text_api COMMAND flashvm_text_api)
 add_executable(flashvm_example_text examples/embedding/text/main.c)
 target_link_libraries(flashvm_example_text flashvm)
 add_test(NAME flashvm_example_text COMMAND flashvm_example_text)
+
+# Self-contained C++98 hybrid table regression test.
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_hybrid_table tests/hybrid_table.cpp)
+  add_test(NAME flashvm_hybrid_table COMMAND flashvm_hybrid_table)
+endif()

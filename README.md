@@ -185,3 +185,8 @@ encoder, validation, offsets, and a deliberately limited byte-oriented regex
 engine. A compilable example is in `examples/embedding/text/`. Source for the
 regex subset lives under `extern/`; other optional dependencies are **not**
 yet vendored (see [extern/README.md](extern/README.md)).
+
+### Bundled dependencies and hybrid table
+
+See [External dependencies](doc/EXTERNAL_DEPENDENCIES.md) for exact bundled
+versus system-linked status, and the new standalone C++98 hybrid table.
