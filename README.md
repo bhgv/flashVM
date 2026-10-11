@@ -254,3 +254,7 @@ collection must be invoked only at explicit safe points. See
 [`doc/GARBAGE_COLLECTION.md`](doc/GARBAGE_COLLECTION.md) and
 [`examples/embedding/gc/`](examples/embedding/gc/).
 The script-level `gc.mode()` / `gc.state()` API is planned, not implemented.
+
+## GC API references (stages 49–68)
+
+See [GC safe points](doc/GC_SAFE_POINTS.md), [GC modes](doc/GC_MODES.md), [API index](doc/API_INDEX.md), and [GC troubleshooting](doc/GC_TROUBLESHOOTING.md). The collector is not yet safe to run inside active AVM1 frames.

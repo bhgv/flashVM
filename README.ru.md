@@ -155,3 +155,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 точках. См. [`doc/GARBAGE_COLLECTION.ru.md`](doc/GARBAGE_COLLECTION.ru.md)
 и [`examples/embedding/gc/`](examples/embedding/gc/).
 Объект ActionScript `gc` с методами `mode` и `state` пока только проектируется.
+
+## Документация GC (этапы 49–68)
+
+См. [безопасные точки](doc/GC_SAFE_POINTS.md), [режимы GC](doc/GC_MODES.ru.md), [указатель API](doc/API_INDEX.ru.md) и [диагностику](doc/GC_TROUBLESHOOTING.md). Сборку пока нельзя безопасно запускать внутри активных кадров AVM1.
