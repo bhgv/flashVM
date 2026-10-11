@@ -145,3 +145,13 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 `examples/embedding/channel_values`, `channel_cpp98` и
 `examples/extending/channel_worker`. Пока это нативные дескрипторы, **не**
 управляемые GC значения ActionScript.
+
+## Сборщик мусора (экспериментальный)
+
+`flashvm/gc.h` предоставляет сборщик mark-and-sweep для каждого контекста,
+удержание объектов из C, настройку частоты и однократную финализацию.
+Недостижимые **циклические ссылки** освобождаются. Корни стека AVM1 ещё
+не интегрированы, поэтому сборку следует запускать только в явно безопасных
+точках. См. [`doc/GARBAGE_COLLECTION.ru.md`](doc/GARBAGE_COLLECTION.ru.md)
+и [`examples/embedding/gc/`](examples/embedding/gc/).
+Объект ActionScript `gc` с методами `mode` и `state` пока только проектируется.

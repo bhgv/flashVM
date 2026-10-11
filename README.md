@@ -244,3 +244,13 @@ See [English API and limitations](doc/CHANNEL_VALUES.md),
 examples in `examples/embedding/channel_values`, `channel_cpp98`, and
 `examples/extending/channel_worker`. These are native handles, **not yet**
 GC-managed ActionScript channel values.
+
+## Garbage collection (experimental)
+
+`flashvm/gc.h` exposes a context-local mark-and-sweep collector, native roots,
+mode tuning and one-shot finalization. It can reclaim unreachable **cyclic**
+object graphs. It is not yet integrated with AVM1 execution stack roots, so
+collection must be invoked only at explicit safe points. See
+[`doc/GARBAGE_COLLECTION.md`](doc/GARBAGE_COLLECTION.md) and
+[`examples/embedding/gc/`](examples/embedding/gc/).
+The script-level `gc.mode()` / `gc.state()` API is planned, not implemented.
