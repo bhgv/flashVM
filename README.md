@@ -269,3 +269,9 @@ See [temporary root scopes](doc/GC_NATIVE_ROOTS.md) for C89 embedding, ownership
 
 See [GC callback safety](doc/GC_CALLBACK_SAFETY.md) for native-call
 collection guards, root ownership and the versioned C89 diagnostic API.
+
+### Automatic AVM1 GC safe points
+
+The interpreter polls GC between instructions, with live VM frame roots
+registered. See [GC safe points](doc/GC_AVM1_SAFE_POINTS.md) for native
+ownership rules and limitations.

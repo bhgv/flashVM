@@ -1,5 +1,6 @@
 #include "../core/runtime.hpp"
 #include "flashvm/avm1.h"
+#include "flashvm/gc.h"
 #include "../details/vector.hpp"
 #include "../details/string.hpp"
 #include <cstdio>
@@ -65,7 +66,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         if (actions.empty() || actions.back().op!=0 || pos!=size) return FVM_INVALID_ARGUMENT;
         while (pc<actions.size()) {
             const Action &a=actions[pc];
-            if (c->runtime->config.instruction_limit && ++steps>c->runtime->config.instruction_limit) return FVM_ERROR;
+            ++steps;
+            if (c->runtime->config.instruction_limit && steps>c->runtime->config.instruction_limit) return FVM_ERROR;
+            /* A bounded, deterministic safe point: all live AVM1 operands,
+               locals and receivers are registered by RootGuard. Never collect
+               in the middle of an opcode or while a native callback runs. */
+            if ((steps & 63UL)==1UL) {
+                FVM_Result gc_result=fvm_gc_step(c,0);
+                if (gc_result!=FVM_OK) return gc_result;
+            }
             if (a.op==0) return FVM_OK;
             if (a.op==0x3e) { /* Return */
                 if (stack.empty()) return FVM_ERROR;
