@@ -456,3 +456,11 @@ if(FVM_BUILD_TESTS)
   target_link_libraries(flashvm_channel_shared flashvm)
   add_test(NAME flashvm_channel_shared COMMAND flashvm_channel_shared)
 endif()
+
+# Owned channel handles (C89, no VM object-pointer sharing).
+target_sources(flashvm PRIVATE src/capi/channel_value_c.c)
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_channel_value tests/channel_value.c)
+  target_link_libraries(flashvm_channel_value flashvm)
+  add_test(NAME flashvm_channel_value COMMAND flashvm_channel_value)
+endif()
