@@ -15,6 +15,7 @@ struct FVM_Worker {
     FVM_PortSync *sync;
     int started;
     int finished;
+    int stop_requested;
 };
 static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src) {
     size_t len;
@@ -127,4 +128,37 @@ void fvm_worker_destroy(FVM_Worker *w) {
     free_value(&w->output);
     fvm_port_sync_destroy(w->sync);
     free(w);
+}
+
+FVM_Result fvm_worker_stop(FVM_Worker *w) {
+    if (!w) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(w->sync);
+    w->stop_requested = 1;
+    w->started = 1;
+    fvm_port_sync_signal_all(w->sync);
+    fvm_port_sync_unlock(w->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_worker_stop_requested(FVM_Worker *w, int *requested) {
+    if (!w || !requested) return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(w->sync);
+    *requested = w->stop_requested;
+    fvm_port_sync_unlock(w->sync);
+    return FVM_OK;
+}
+FVM_Result fvm_worker_join_all(FVM_Worker **workers,
+                                unsigned int count, FVM_Value *results) {
+    unsigned int i, j;
+    FVM_Result first = FVM_OK, r;
+    if (count && !workers) return FVM_INVALID_ARGUMENT;
+    for (i = 0; i < count; ++i) {
+        if (!workers[i]) return FVM_INVALID_ARGUMENT;
+        for (j = 0; j < i; ++j)
+            if (workers[i] == workers[j]) return FVM_INVALID_ARGUMENT;
+    }
+    for (i = 0; i < count; ++i) {
+        r = fvm_worker_join(workers[i], results ? &results[i] : 0);
+        if (first == FVM_OK && r != FVM_OK) first = r;
+    }
+    return first;
 }

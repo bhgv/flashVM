@@ -29,6 +29,19 @@ typedef enum FVM_WorkerState {
 FVM_API FVM_Result fvm_worker_state(FVM_Worker *, FVM_WorkerState *);
 /* Waits for completion; returned strings remain valid until destroy. */
 FVM_API FVM_Result fvm_worker_join(FVM_Worker *, FVM_Value *);
+/* Cooperative cancellation request. Never forcibly terminates an OS thread.
+ * Callback may poll fvm_worker_stop_requested() using its worker handle.
+ * For safe handle publication, use run_suspended(), then start().
+ * A suspended worker is started when stop is requested so it can exit.
+ */
+FVM_API FVM_Result fvm_worker_stop(FVM_Worker *worker);
+FVM_API FVM_Result fvm_worker_stop_requested(FVM_Worker *worker, int *requested);
+/* Wait for all workers. Null entries and duplicate handles are rejected.
+ * Results, if supplied, remain owned by their workers until destroy.
+ * Joins all entries even if an individual callback reports an error.
+ */
+FVM_API FVM_Result fvm_worker_join_all(FVM_Worker **workers,
+                                       unsigned int count, FVM_Value *results);
 /* Must only be called after join. */
 FVM_API void fvm_worker_destroy(FVM_Worker *);
 #ifdef __cplusplus

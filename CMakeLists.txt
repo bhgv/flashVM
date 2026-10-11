@@ -422,3 +422,10 @@ if(FVM_BUILD_EXAMPLES)
     add_test(NAME flashvm_embedding_worker_lifecycle COMMAND flashvm_embedding_worker_lifecycle)
   endif()
 endif()
+
+# Cooperative worker cancellation and multi-join (C89 API).
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_worker_stop tests/worker_stop.c)
+  target_link_libraries(flashvm_worker_stop flashvm)
+  add_test(NAME flashvm_worker_stop COMMAND flashvm_worker_stop)
+endif()

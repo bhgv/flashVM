@@ -222,3 +222,9 @@ See [worker API](doc/WORKERS.md) and [C89 example](examples/embedding/workers/).
 
 Worker lifecycle API (suspended start, state snapshots, join):
 [doc/WORKER_LIFECYCLE.md](doc/WORKER_LIFECYCLE.md).
+
+### Cooperative worker cancellation
+
+The portable C89 API supports cooperative worker stop requests and joining an
+array of workers. See [worker cancellation](doc/WORKER_CANCELLATION.md) and
+`examples/embedding/worker_stop/`. This is not yet the ActionScript `thread` API.
