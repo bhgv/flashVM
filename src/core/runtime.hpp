@@ -10,18 +10,28 @@
 struct FVM_Stack;
 struct FVM_Worker;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
-struct FVM_StackEntry {
-    FVM_StackCallbackInternal callback; void *userdata; FVM_Object *root;
-    FVM_StackEntry():callback(0),userdata(0),root(0) {}
+struct FVM_StackEntry
+{
+    FVM_StackCallbackInternal callback;
+    int (*cfunction)(FVM_Stack *);
+    void *userdata;
+    FVM_Object *root;
+    FVM_StackEntry() : callback(0), cfunction(0), userdata(0), root(0)
+    {
+    }
 };
-struct FVM_NativeEntry {
+struct FVM_NativeEntry
+{
     bool collector_entry;
     FVM_Object *root;
-    FVM_NativeEntry():collector_entry(false),root(0),callback(0),userdata(0) {}
+    FVM_NativeEntry() : collector_entry(false), root(0), callback(0), userdata(0)
+    {
+    }
     FVM_NativeFunction callback;
     void *userdata;
 };
-struct FVM_Object {
+struct FVM_Object
+{
     fvm_detail::map<fvm_detail::string, FVM_Value> properties;
     fvm_detail::map<unsigned long, FVM_Value> indexed;
     FVM_Object *metatable;
@@ -35,26 +45,37 @@ struct FVM_Object {
     bool resource_result_valid;
     FVM_Value resource_result;
     int resource_kind;
-    fvm_detail::map<fvm_detail::string,FVM_NativeEntry> methods;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry> methods;
     void *resource;
     void (*release_resource)(void *);
 };
-struct FVM_Runtime { FVM_Config config; };
-struct FVM_ScriptFunction {
+struct FVM_Runtime
+{
+    FVM_Config config;
+};
+struct FVM_ScriptFunction
+{
+    fvm_detail::vector<fvm_detail::string> constants;
     fvm_detail::vector<unsigned char> body;
     fvm_detail::vector<fvm_detail::string> parameters;
 };
-struct FVM_QueuedInput { FVM_InputEvent event; FVM_InputPhase phase; };
-struct FVM_GCRootFrame {
+struct FVM_QueuedInput
+{
+    FVM_InputEvent event;
+    FVM_InputPhase phase;
+};
+struct FVM_GCRootFrame
+{
     FVM_GCRootFrame *previous;
     fvm_detail::vector<FVM_Value> *stack;
-    fvm_detail::map<fvm_detail::string,FVM_Value> *locals;
+    fvm_detail::map<fvm_detail::string, FVM_Value> *locals;
     FVM_Object *receiver;
 };
-struct FVM_Context {
+struct FVM_Context
+{
     FVM_Worker *worker;
     FVM_Runtime *runtime;
-    fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
+    fvm_detail::map<fvm_detail::string, FVM_StackEntry> stack_functions;
     fvm_detail::vector<fvm_detail::vector<FVM_Value> *> gc_stacks;
     FVM_Object *global;
     fvm_detail::vector<FVM_Object *> objects;
@@ -78,5 +99,5 @@ struct FVM_Context {
     FVM_GCRootFrame *gc_frames;
     unsigned int gc_native_depth;
 };
-FVM_Result fvm_release_object_resource(FVM_Context *,FVM_Object *);
+FVM_Result fvm_release_object_resource(FVM_Context *, FVM_Object *);
 #endif

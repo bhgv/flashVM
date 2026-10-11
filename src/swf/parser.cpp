@@ -1,32 +1,137 @@
-#include "flashvm/swf.h"
+#include "decode.hpp"
 #include <cstring>
-static unsigned int read16(const unsigned char *p) { return (unsigned int)p[0] | ((unsigned int)p[1]<<8); }
-static unsigned long read32(const unsigned char *p) { return (unsigned long)p[0] | ((unsigned long)p[1]<<8) | ((unsigned long)p[2]<<16) | ((unsigned long)p[3]<<24); }
-extern "C" FVM_Result fvm_swf_inspect(const void *data, size_t size, FVM_SWFInfo *info) {
-    const unsigned char *p=(const unsigned char *)data;
-    size_t pos, rect_size;
-    unsigned long count=0, actions=0;
-    int ended=0;
-    if (!info || info->struct_size!=sizeof(*info) || !p || size<14) return FVM_INVALID_ARGUMENT;
-    if (p[0]!='F' || p[1]!='W' || p[2]!='S' || p[3]<1 || p[3]>8) return FVM_UNSUPPORTED;
-    if (read32(p+4)!=size) return FVM_INVALID_ARGUMENT;
-    rect_size=(5+4*(p[8]>>3)+7)/8;
-    if (rect_size>size-8 || size-8-rect_size<4) return FVM_INVALID_ARGUMENT;
-    pos=8+rect_size;
-    info->version=p[3]; info->declared_length=read32(p+4);
-    info->frame_rate_fixed8=read16(p+pos); info->frame_count=read16(p+pos+2);
-    pos+=4;
-    while (pos<size) {
-        unsigned int code; unsigned long len;
-        if (size-pos<2) return FVM_INVALID_ARGUMENT;
-        code=read16(p+pos)>>6; len=read16(p+pos)&63; pos+=2;
-        if (len==63) { if (size-pos<4) return FVM_INVALID_ARGUMENT; len=read32(p+pos); pos+=4; }
-        if (len>size-pos) return FVM_INVALID_ARGUMENT;
-        ++count; if (code==12) ++actions;
-        pos+=(size_t)len;
-        if (code==0) { ended=1; break; }
+#include <climits>
+#include "zlib.h"
+
+namespace
+{
+unsigned int read16(const unsigned char *p)
+{
+    return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
+}
+
+unsigned long read32(const unsigned char *p)
+{
+    return (unsigned long)p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
+           ((unsigned long)p[3] << 24);
+}
+
+FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
+{
+    size_t rect_size = (5 + 4 * (p[8] >> 3) + 7) / 8;
+    if ((p[8] >> 3) == 0 || rect_size > size - 8 || size - 8 - rect_size < 4)
+        return FVM_INVALID_ARGUMENT;
+
+    FVM_SWFInfo parsed;
+    std::memset(&parsed, 0, sizeof(parsed));
+    parsed.struct_size = sizeof(parsed);
+    parsed.version = p[3];
+    parsed.declared_length = read32(p + 4);
+    size_t pos = 8 + rect_size;
+    parsed.frame_rate_fixed8 = read16(p + pos);
+    parsed.frame_count = read16(p + pos + 2);
+    pos += 4;
+
+    while (pos < size)
+    {
+        if (size - pos < 2)
+            return FVM_INVALID_ARGUMENT;
+        unsigned int header = read16(p + pos);
+        unsigned int code = header >> 6;
+        unsigned long length = header & 63;
+        pos += 2;
+        if (length == 63)
+        {
+            if (size - pos < 4)
+                return FVM_INVALID_ARGUMENT;
+            length = read32(p + pos);
+            pos += 4;
+        }
+        if (length > size - pos)
+            return FVM_INVALID_ARGUMENT;
+        ++parsed.tag_count;
+        if (code == 12)
+            ++parsed.action_tag_count;
+        pos += (size_t)length;
+        if (code == 0)
+        {
+            /* End is a zero-length tag and must terminate the file. */
+            if (length != 0 || pos != size)
+                return FVM_INVALID_ARGUMENT;
+            *info = parsed;
+            return FVM_OK;
+        }
+        if (code == 1 && length != 0)
+            return FVM_INVALID_ARGUMENT;
     }
-    if (!ended || pos!=size) return FVM_INVALID_ARGUMENT;
-    info->tag_count=count; info->action_tag_count=actions;
-    return FVM_OK;
+    return FVM_INVALID_ARGUMENT;
+}
+} // namespace
+
+FVM_Result fvm_swf_decode(const void *data, size_t size, size_t limit,
+                          fvm_detail::vector<unsigned char> &bytes, FVM_SWFInfo *info)
+{
+    const unsigned char *p = (const unsigned char *)data;
+    if (!info || info->struct_size != sizeof(*info) || !p || size < 8)
+        return FVM_INVALID_ARGUMENT;
+    if (p[1] != 'W' || p[2] != 'S' || (p[0] != 'F' && p[0] != 'C') || p[3] < 1 || p[3] > 8)
+        return FVM_UNSUPPORTED;
+    if (p[0] == 'C' && p[3] < 6)
+        return FVM_INVALID_ARGUMENT;
+
+    unsigned long declared = read32(p + 4);
+    if (declared < 14)
+        return FVM_INVALID_ARGUMENT;
+    if (declared > limit || declared > (size_t)-1)
+        return FVM_OUT_OF_MEMORY;
+    if (p[0] == 'F' && declared != size)
+        return FVM_INVALID_ARGUMENT;
+
+    try
+    {
+        fvm_detail::vector<unsigned char> decoded;
+        decoded.resize((size_t)declared);
+        if (p[0] == 'F')
+        {
+            std::memcpy(&decoded[0], p, size);
+        }
+        else
+        {
+            /* A bounded single zlib stream: reject truncation, extra streams,
+             * trailing garbage and disagreement with SWF FileLength. */
+            if (size - 8 > UINT_MAX || declared - 8 > UINT_MAX)
+                return FVM_UNSUPPORTED;
+            std::memcpy(&decoded[0], p, 8);
+            decoded[0] = 'F';
+            z_stream stream;
+            std::memset(&stream, 0, sizeof(stream));
+            stream.next_in = (Bytef *)(p + 8);
+            stream.avail_in = (uInt)(size - 8);
+            stream.next_out = &decoded[8];
+            stream.avail_out = (uInt)(declared - 8);
+            int status = inflateInit(&stream);
+            if (status != Z_OK)
+                return status == Z_MEM_ERROR ? FVM_OUT_OF_MEMORY : FVM_ERROR;
+            status = inflate(&stream, Z_FINISH);
+            bool complete =
+                status == Z_STREAM_END && stream.avail_in == 0 && stream.total_out == declared - 8;
+            inflateEnd(&stream);
+            if (!complete)
+                return status == Z_MEM_ERROR ? FVM_OUT_OF_MEMORY : FVM_INVALID_ARGUMENT;
+        }
+        FVM_Result result = inspect_fws(&decoded[0], decoded.size(), info);
+        if (result == FVM_OK)
+            bytes.swap(decoded);
+        return result;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+extern "C" FVM_Result fvm_swf_inspect(const void *data, size_t size, FVM_SWFInfo *info)
+{
+    fvm_detail::vector<unsigned char> bytes;
+    return fvm_swf_decode(data, size, FVM_SWF_DEFAULT_LIMIT, bytes, info);
 }

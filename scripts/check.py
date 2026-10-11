@@ -3,7 +3,7 @@
 import argparse, concurrent.futures, pathlib, subprocess, sys, os, json
 p=argparse.ArgumentParser(); p.add_argument('--sanitize',action='store_true'); a=p.parse_args()
 root=pathlib.Path(__file__).resolve().parents[1]; out=root/('build-sanitize' if a.sanitize else 'build-check'); out.mkdir(exist_ok=True)
-flags=['-g','-O1','-Wall','-Wextra','-pedantic-errors','-Iinclude','-Iports','-Iextern/mini_regex','-pthread']
+flags=['-g','-O1','-Wall','-Wextra','-pedantic-errors','-Iinclude','-Iports','-Iextern/mini_regex','-Iexternal/zlib/upstream','-Iexternal/agg/upstream/include','-DFVM_HAS_AGG=1','-pthread']
 if a.sanitize:
  # This managed runtime has no /proc task access, so LeakSanitizer cannot run.
  os.environ['ASAN_OPTIONS']='detect_leaks=0:halt_on_error=1'
@@ -14,6 +14,8 @@ def run(cmd):
  if r.returncode: raise RuntimeError(' '.join(map(str,cmd))+'\n'+r.stdout)
  return r.stdout
 sources=list(root.glob('src/**/*.cpp'))+list(root.glob('src/**/*.c'))+list(root.glob('ports/linux/*.c'))+list(root.glob('extern/mini_regex/*.c'))
+sources += [root/'external/zlib/upstream'/n for n in ['adler32.c','crc32.c','deflate.c','trees.c','inflate.c','inftrees.c','inffast.c','zutil.c','compress.c','uncompr.c']]
+sources += list(root.glob('external/agg/upstream/src/*.cpp'))
 # SQLite is optional; this standalone runner exercises the dependency-free configuration.
 sources=[s for s in sources if s.name!='sqlite_c.cpp']
 def compile(s):

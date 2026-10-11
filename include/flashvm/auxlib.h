@@ -1,0 +1,36 @@
+#ifndef FLASHVM_AUXLIB_H
+#define FLASHVM_AUXLIB_H
+#include "stack.h"
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+    /* Lua-style callback: arguments start at 1, push results and return their
+     * count. This AVM1 bridge accepts zero or one result. Negative returns are
+     * FVM_Result errors. No longjmp is used across C++ frames. */
+    typedef int (*FVM_CFunction)(FVM_Stack *);
+    FVM_API FVM_Result fvm_stack_register_cfunction(FVM_Context *, const char *, FVM_CFunction,
+                                                    FVM_Object *);
+    FVM_API FVM_Context *fvm_stack_context(FVM_Stack *);
+    FVM_API FVM_Result fvm_stack_settop(FVM_Stack *, int);
+    FVM_API FVM_Result fvm_stack_pushvalue(FVM_Stack *, int);
+    FVM_API FVM_Result fvm_stack_remove(FVM_Stack *, int);
+    FVM_API FVM_Result fvm_stack_insert(FVM_Stack *, int);
+    FVM_API FVM_Result fvm_stack_replace(FVM_Stack *, int);
+    FVM_API FVM_Result fvm_stack_pushnumber(FVM_Stack *, double);
+    FVM_API FVM_Result fvm_stack_pushboolean(FVM_Stack *, int);
+    /* Copies a NUL-terminated UTF-8 string into context-owned storage. */
+    FVM_API FVM_Result fvm_stack_pushstring(FVM_Stack *, const char *);
+    FVM_API FVM_Result fvm_stack_pushundefined(FVM_Stack *);
+    FVM_API FVM_Result fvm_stack_checknumber(FVM_Stack *, int, double *);
+    FVM_API FVM_Result fvm_stack_checkstring(FVM_Stack *, int, const char **);
+    FVM_API FVM_Result fvm_stack_newtable(FVM_Stack *);
+    FVM_API FVM_Result fvm_stack_getfield(FVM_Stack *, int, const char *);
+    /* setfield consumes the top value only on success. */
+    FVM_API FVM_Result fvm_stack_setfield(FVM_Stack *, int, const char *);
+    FVM_API FVM_Result fvm_stack_getglobal(FVM_Stack *, const char *);
+    FVM_API FVM_Result fvm_stack_setglobal(FVM_Stack *, const char *);
+#ifdef __cplusplus
+}
+#endif
+#endif
