@@ -1,3 +1,5 @@
+> Current status: [ActionScript API](ACTIONSCRIPT_EXTENSIONS.md) and [ownership](CONCURRENCY_SAFETY.md). The text below is an earlier-stage design document; its limitations do not describe the current API.
+
 # Thread and channel API design (NOT implemented)
 
 This document describes proposed ActionScript extensions, not existing runtime features. The only implemented feature in this step is `fvm_meta_call`, which calls a native `__call` handler with `(owner, defining_metatable, indexed_argument_table)`. User arguments start at index zero.

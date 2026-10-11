@@ -1,3 +1,5 @@
+> Current status: [ActionScript API](ACTIONSCRIPT_EXTENSIONS.md) and [ownership](CONCURRENCY_SAFETY.md). The text below is an earlier-stage design document; its limitations do not describe the current API.
+
 # Native worker API (stage 28)
 
 `flashvm/worker.h` exposes a C89-compatible interface. C++98 callers can use the same ABI.

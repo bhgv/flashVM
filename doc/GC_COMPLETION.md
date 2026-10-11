@@ -39,3 +39,20 @@ covers AVM1 finalization and resurrection. Existing cycle, nested-root, AVM1 saf
 point and native reentry tests remain required. This is a stop-the-world object
 collector, not an incremental collector. Interned/copied strings still live until
 context teardown; string reclamation and allocation-failure injection remain open.
+
+## Additional native lifetime APIs
+
+`fvm_stack_register_rooted`, `fvm_callable_create_rooted` and
+`fvm_meta_register_rooted` trace their captured tables. Global stack registrations
+are unconditional roots; callable and metatable captures are conditional on the
+owning object being reachable. `gc_callback_captures` verifies all three.
+
+`flashvm/userdata.h` attaches a payload and a release callback to an ordinary
+object. `__gc` runs first and may resurrect it; release is deferred until actual
+reclamation. Release runs once, after tracing/resurrection decisions, while all
+objects still exist. Creating objects or changing pins in release callbacks is
+rejected; the callback must not resurrect or access already reclaimed objects.
+Exceptions from release are caught, collection reports an error and completes.
+`gc_userdata` covers resurrection, one-shot release, reentry rejection, diagnostics
+and teardown. Native resource payloads are not automatically scanned; store their
+object captures in traced properties.

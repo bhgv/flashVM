@@ -111,15 +111,15 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 ## Нативный `__call` (этап 26)
 
-`include/flashvm/meta_call.h` предоставляет `fvm_meta_call`: обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Потоки и каналы на уровне ActionScript **ещё не реализованы**; проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
+`include/flashvm/meta_call.h` предоставляет `fvm_meta_call`: обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Опциональные объекты потоков и каналов ActionScript реализованы через `fvm_extensions_install`; проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
 
 ### Внутренние каналы (этап 27)
 
-См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Запуск VM в потоках и операторы каналов ActionScript **пока не реализованы**.
+См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Потоки VM и методы каналов ActionScript доступны через `fvm_extensions_install`; нестандартные операторы языка пока отсутствуют.
 
 ### Нативные рабочие потоки
 
-См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` пока не реализован.
+См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` доступен после `fvm_extensions_install`; см. `doc/ACTIONSCRIPT_EXTENSIONS.ru.md`.
 
 Управление жизненным циклом потоков (отложенный запуск, состояния, ожидание):
 [doc/WORKER_LIFECYCLE.ru.md](doc/WORKER_LIFECYCLE.ru.md).
@@ -128,7 +128,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 Переносимый C89 API поддерживает запрос остановки потока и ожидание массива
 потоков. См. [документацию](doc/WORKER_CANCELLATION.ru.md) и
-`examples/embedding/worker_stop/`. Объект ActionScript `thread` ещё не реализован.
+`examples/embedding/worker_stop/`. Объект ActionScript `thread` доступен через `fvm_extensions_install`.
 
 ## Обмен сообщениями между потоками
 
@@ -175,3 +175,9 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 Интерпретатор проверяет GC между инструкциями при зарегистрированных корнях
 активных кадров. Подробнее: [безопасные точки GC](doc/GC_AVM1_SAFE_POINTS.ru.md).
+
+## Проверенное продолжение разработки
+
+[Расширения ActionScript](doc/ACTIONSCRIPT_EXTENSIONS.ru.md), [контракты GC](doc/GC_COMPLETION.ru.md), [владение потоками и каналами](doc/CONCURRENCY_SAFETY.ru.md), [результаты проверок](doc/VALIDATION.ru.md). Добавлены ограниченные проходы финализации, release userdata, корни захваченных нативными callback объектов, безопасный одновременный join, независимое владение строками сообщений, снимки циклических графов и опциональные объекты `gc`/`thread`/`channel`.
+
+Сборка по умолчанию не требует внешних системных библиотек. Опциональный системный SQLite теперь выключен; его можно включить явно. Новых сторонних зависимостей нет, исходники встроенного regex находятся в `extern/`. На Linux без CMake: `python3 scripts/check.py`; ASan/UBSan: добавить `--sanitize`. Ограничения LeakSanitizer и платформ указаны в отчёте.

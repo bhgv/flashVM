@@ -218,7 +218,7 @@ See [channels API](doc/CHANNELS.md) and [C89 example](examples/embedding/channel
 
 ### Native worker threads
 
-See [worker API](doc/WORKERS.md) and [C89 example](examples/embedding/workers/). Workers create isolated interpreter contexts through OS-specific `ports/` implementations. ActionScript `thread.run` is not implemented yet.
+See [worker API](doc/WORKERS.md) and [C89 example](examples/embedding/workers/). Workers create isolated interpreter contexts through OS-specific `ports/` implementations. Opt-in ActionScript `thread.run` is documented in [ActionScript extensions](doc/ACTIONSCRIPT_EXTENSIONS.md).
 
 Worker lifecycle API (suspended start, state snapshots, join):
 [doc/WORKER_LIFECYCLE.md](doc/WORKER_LIFECYCLE.md).
@@ -242,8 +242,7 @@ Shared channel ownership is documented in [doc/CHANNEL_OWNERSHIP.md](doc/CHANNEL
 See [English API and limitations](doc/CHANNEL_VALUES.md),
 [Russian API and limitations](doc/CHANNEL_VALUES.ru.md), and the C89/C++98
 examples in `examples/embedding/channel_values`, `channel_cpp98`, and
-`examples/extending/channel_worker`. These are native handles, **not yet**
-GC-managed ActionScript channel values.
+`examples/extending/channel_worker`. GC-managed ActionScript wrappers are available through `fvm_extensions_install` and `fvm_extensions_wrap_channel`.
 
 ## Garbage collection (experimental)
 
@@ -253,11 +252,11 @@ object graphs. It is not yet integrated with AVM1 execution stack roots, so
 collection must be invoked only at explicit safe points. See
 [`doc/GARBAGE_COLLECTION.md`](doc/GARBAGE_COLLECTION.md) and
 [`examples/embedding/gc/`](examples/embedding/gc/).
-The script-level `gc.mode()` / `gc.state()` API is planned, not implemented.
+The script-level `gc.mode()` / `gc.state()` API is installed by `fvm_extensions_install`.
 
 ## GC API references (stages 49–68)
 
-See [GC safe points](doc/GC_SAFE_POINTS.md), [GC modes](doc/GC_MODES.md), [API index](doc/API_INDEX.md), and [GC troubleshooting](doc/GC_TROUBLESHOOTING.md). The collector is not yet safe to run inside active AVM1 frames.
+See [GC safe points](doc/GC_SAFE_POINTS.md), [GC modes](doc/GC_MODES.md), [API index](doc/API_INDEX.md), and [GC troubleshooting](doc/GC_TROUBLESHOOTING.md). Active AVM1 frames are traced; automatic collection runs at instruction safe points.
 
 GC active-frame roots: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc/GC_ACTIVE_FRAMES.ru.md).
 
@@ -275,3 +274,9 @@ collection guards, root ownership and the versioned C89 diagnostic API.
 The interpreter polls GC between instructions, with live VM frame roots
 registered. See [GC safe points](doc/GC_AVM1_SAFE_POINTS.md) for native
 ownership rules and limitations.
+
+## Tested development update
+
+See [ActionScript extensions](doc/ACTIONSCRIPT_EXTENSIONS.md), [collector contracts](doc/GC_COMPLETION.md), [concurrency ownership](doc/CONCURRENCY_SAFETY.md), and [validation](doc/VALIDATION.md). The update adds bounded finalization, userdata release, native capture roots, concurrent join safety, owned channel messages, cyclic graph snapshots and opt-in `gc`/`thread`/`channel` objects. Default builds require no external system library; optional system SQLite is now OFF unless explicitly enabled. No new third-party dependency was introduced; bundled regex sources remain in `extern/`.
+
+Without CMake on Linux, run `python3 scripts/check.py`; add `--sanitize` for ASan/UBSan. See validation for LeakSanitizer and platform limits.
