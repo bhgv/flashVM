@@ -1,3 +1,13 @@
+# Dependency status update
+
+Bundled zlib and AGG sources now live in `external/`, as requested in the SWF 8
+phase. See `external/README.md`, dependency-specific provenance/license/patch
+notes and `doc/BUILD_PLATFORMS.md`. Both are compiled offline and tested on
+Linux in this phase. Cairo is not integrated; its C11 requirement and pixman
+transitive dependency still need resolution for strict C89/C++98.
+SQLite remains optional system linkage. Existing mini_regex stays in `extern/`.
+The earlier "no network access" statement below is historical, not current.
+
 # External dependencies and offline builds
 
 FlashVM aims to vendor verified upstream sources under `extern/`.

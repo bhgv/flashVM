@@ -1,3 +1,9 @@
+SWF 8 development checkpoint: bounded FWS/CWS loading, all AVM1 Push encodings,
+constant pools/four registers, Lua-inspired C callbacks and bundled zlib/AGG.
+This is still a partial VM, with no JIT or complete player. See
+[compatibility roadmap](doc/SWF8_ROADMAP.md), [loading](doc/SWF_LOADING.md),
+[extension API](doc/LUA_STYLE_API.md), [builds](doc/BUILD_PLATFORMS.md).
+
 # FlashVM
 
 Portable SWF 1-8 / AVM1 runtime project (early scaffold).

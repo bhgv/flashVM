@@ -1,3 +1,18 @@
+# SWF 8 development checkpoint validation
+
+2026-10-11: 94 tests/examples passed in strict Linux C89/C++98; 93 under
+ASan+UBSan and the container exception test under UBSan only. LeakSanitizer
+remains disabled by the managed runtime constraint documented below.
+CMake 3.31.10 Release/CTest passed all 94 tests/examples; the configuration
+without AGG/OS input-network/render jobs passed 90. Library-only minimal
+configuration built successfully. Enabling unavailable JIT was correctly
+rejected. Logs/manifests: `doc/validation/phase2-*`.
+
+Windows/macOS/Android and the six JIT targets were not validated. Cairo is
+not integrated. Full SWF 8 compatibility is not claimed; see SWF8_ROADMAP.
+Earlier evidence below is historical and its CMake-unavailable statement no
+longer describes this checkpoint.
+
 # Validation and remaining work
 
 ## Reproduce

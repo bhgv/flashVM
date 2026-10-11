@@ -1,3 +1,9 @@
+Этап разработки SWF 8: загрузка FWS/CWS с лимитами, все типы AVM1 Push,
+пулы/4 регистра, C callbacks по образцу Lua, исходники zlib/AGG.
+VM пока частичная; JIT и полный проигрыватель отсутствуют. См.
+[план совместимости](doc/SWF8_ROADMAP.ru.md), [загрузку](doc/SWF_LOADING.ru.md),
+[API расширений](doc/LUA_STYLE_API.ru.md), [сборку](doc/BUILD_PLATFORMS.ru.md).
+
 # FlashVM — документация на русском языке
 
 FlashVM — экспериментальная библиотека C++98 с публичным C89 API для SWF 1–8 и частичной реализации AVM1. **Это не готовый Flash Player.**

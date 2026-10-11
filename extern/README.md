@@ -1,3 +1,12 @@
+# Current dependency layout / Текущее размещение
+
+New zlib/AGG sources are bundled and built from `external/`; see its README.
+`extern/mini_regex` remains at its historical path. The text below describes
+an earlier checkpoint and is retained as historical context.
+
+Новые исходники zlib/AGG находятся в `external/`; старый mini_regex — в `extern/`.
+Нижеследующий текст относится к прежнему состоянию.
+
 # Bundled source dependencies / Внешние исходники
 
 `mini_regex/` is an original, small C89 regex subset shipped as source and

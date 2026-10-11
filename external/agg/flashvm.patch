@@ -1,0 +1,96 @@
+--- a/include/agg_config.h
++++ b/include/agg_config.h
+@@ -41,4 +41,9 @@
+ // This #define is used only for default rendering_buffer type,
+ // in short hand typedefs like pixfmt_rgba32.
+ 
++// FlashVM portability patch: only 8-bit RGBA and bounded coordinates are used.
++// Standard C++98 long is sufficient for this explicitly bounded backend.
++#define AGG_INT64 signed long
++#define AGG_INT64U unsigned long
++
+ #endif
+--- a/include/agg_rasterizer_cells_aa.h
++++ b/include/agg_rasterizer_cells_aa.h
+@@ -1,3 +1,4 @@
++// FlashVM patch: C++98 long arithmetic; caller bounds coordinates to +/-4096.
+ //----------------------------------------------------------------------------
+ // Anti-Grain Geometry - Version 2.4
+ // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
+@@ -220,7 +221,7 @@
+         int fx2 = x2 & poly_subpixel_mask;
+ 
+         int delta, p, first;
+-        long long dx;
++        long dx;
+         int incr, lift, mod, rem;
+ 
+         //trivial case. Happens often
+@@ -245,7 +246,7 @@
+         first = poly_subpixel_scale;
+         incr  = 1;
+ 
+-        dx = (long long)x2 - (long long)x1;
++        dx = (long)x2 - (long)x1;
+ 
+         if(dx < 0)
+         {
+@@ -320,17 +321,18 @@
+     {
+         enum dx_limit_e { dx_limit = 16384 << poly_subpixel_shift };
+ 
+-        long long dx = (long long)x2 - (long long)x1;
++        long dx = (long)x2 - (long)x1;
+ 
+         if(dx >= dx_limit || dx <= -dx_limit)
+         {
+-            int cx = (int)(((long long)x1 + (long long)x2) >> 1);
+-            int cy = (int)(((long long)y1 + (long long)y2) >> 1);
++            int cx = (int)(((long)x1 + (long)x2) >> 1);
++            int cy = (int)(((long)y1 + (long)y2) >> 1);
+             line(x1, y1, cx, cy);
+             line(cx, cy, x2, y2);
+-        }
+-
+-        long long dy = (long long)y2 - (long long)y1;
++            return;
++        }
++
++        long dy = (long)y2 - (long)y1;
+         int ex1 = x1 >> poly_subpixel_shift;
+         int ex2 = x2 >> poly_subpixel_shift;
+         int ey1 = y1 >> poly_subpixel_shift;
+@@ -340,7 +342,7 @@
+ 
+         int x_from, x_to;
+         int rem, mod, lift, delta, first, incr;
+-        long long p;
++        long p;
+ 
+         if(ex1 < m_min_x) m_min_x = ex1;
+         if(ex1 > m_max_x) m_max_x = ex1;
+--- a/include/agg_pixfmt_rgba.h
++++ b/include/agg_pixfmt_rgba.h
+@@ -1,3 +1,4 @@
++// FlashVM patch: remove trailing enum commas for strict C++98.
+ //----------------------------------------------------------------------------
+ // Anti-Grain Geometry - Version 2.4
+ // Copyright (C) 2002-2005 Maxim Shemanarev (http://www.antigrain.com)
+@@ -1517,7 +1518,7 @@
+         {
+             num_components = 4,
+             pix_step = 4,
+-            pix_width = sizeof(value_type) * pix_step,
++            pix_width = sizeof(value_type) * pix_step
+         };
+         struct pixel_type
+         {
+@@ -2195,7 +2196,7 @@
+         {
+             num_components = 4,
+             pix_step = 4,
+-            pix_width  = sizeof(value_type) * pix_step,
++            pix_width  = sizeof(value_type) * pix_step
+         };
+         struct pixel_type
+         {
