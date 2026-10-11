@@ -7,6 +7,7 @@
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
 #include "../details/vector.hpp"
+struct FVM_FontSource;
 struct FVM_Stack;
 struct FVM_Worker;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
@@ -30,9 +31,17 @@ struct FVM_NativeEntry
     FVM_NativeFunction callback;
     void *userdata;
 };
+struct FVM_AccessorEntry
+{
+    FVM_NativeFunction getter, setter;
+    void *userdata;
+    FVM_Object *root;
+    FVM_AccessorEntry() : getter(0), setter(0), userdata(0), root(0) {}
+};
 struct FVM_Object
 {
     fvm_detail::map<fvm_detail::string, FVM_Value> properties;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry> accessors;
     fvm_detail::map<unsigned long, FVM_Value> indexed;
     FVM_Object *metatable;
     FVM_Context *owner;
@@ -75,6 +84,9 @@ struct FVM_Context
 {
     FVM_Worker *worker;
     bool standard_library;
+    bool standard_text_library;
+    fvm_detail::map<fvm_detail::string, FVM_FontSource *> fonts;
+    fvm_detail::string default_font;
     unsigned long random_state;
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string, FVM_StackEntry> stack_functions;
@@ -83,6 +95,7 @@ struct FVM_Context
     fvm_detail::vector<FVM_Object *> objects;
     fvm_detail::vector<char *> strings;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry> functions;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry> constructors;
     fvm_detail::vector<unsigned char> swf_bytes;
     FVM_SWFInfo swf_info;
     bool swf_loaded;
@@ -101,5 +114,6 @@ struct FVM_Context
     FVM_GCRootFrame *gc_frames;
     unsigned int gc_native_depth;
 };
+void fvm_standard_text_cleanup(FVM_Context *);
 FVM_Result fvm_release_object_resource(FVM_Context *, FVM_Object *);
 #endif

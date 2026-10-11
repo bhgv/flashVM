@@ -17,6 +17,7 @@ static void mark_graph(FVM_Context *c, size_t newborn_start=(size_t)-1) {
     size_t i;
     fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator fn;
     for (fn=c->functions.begin();fn!=c->functions.end();++fn) mark_object(fn->second.root,pending);
+    for (fn=c->constructors.begin();fn!=c->constructors.end();++fn) mark_object(fn->second.root,pending);
     for (i=0;i<c->gc_stacks.size();++i)
         for (size_t j=0;j<c->gc_stacks[i]->size();++j) {
             const FVM_Value &v=(*c->gc_stacks[i])[j];
@@ -40,6 +41,8 @@ static void mark_graph(FVM_Context *c, size_t newborn_start=(size_t)-1) {
         FVM_Object *o=pending.back();pending.pop_back();
         if(o->resource_result_valid && o->resource_result.type==FVM_VALUE_OBJECT)mark_object(o->resource_result.object,pending);
         mark_object(o->callable.root,pending);
+        for (fvm_detail::map<fvm_detail::string,FVM_AccessorEntry>::iterator accessor=o->accessors.begin();
+             accessor!=o->accessors.end();++accessor) mark_object(accessor->second.root,pending);
         mark_object(o->prototype,pending);
         mark_object(o->metatable,pending);
         for(fn=o->methods.begin();fn!=o->methods.end();++fn) mark_object(fn->second.root,pending);

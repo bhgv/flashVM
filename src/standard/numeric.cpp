@@ -414,6 +414,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
     }
     for (size_t i = 0; i < 7; ++i)
         if (c->global->properties.find(names[i]) != c->global->properties.end() ||
+            c->global->accessors.find(names[i]) != c->global->accessors.end() ||
+            c->constructors.find(names[i]) != c->constructors.end() ||
             c->functions.find(names[i]) != c->functions.end() ||
             c->stack_functions.find(names[i]) != c->stack_functions.end() ||
             c->script_functions.find(names[i]) != c->script_functions.end())

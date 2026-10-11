@@ -1,0 +1,240 @@
+Internal ctest changing into directory: /workspace/scratch/9ba6567329fc/fonts-build-off
+Test project /workspace/scratch/9ba6567329fc/fonts-build-off
+        Start  51: flashvm_tests_input
+        Start  27: flashvm_tests_gc_callback_captures
+        Start   2: flashvm_tests_auxlib
+        Start  54: flashvm_tests_interpreter
+  1/117 Test  #51: flashvm_tests_input ..................................   Passed    0.00 sec
+        Start  97: flashvm_examples_embedding_input_queue_main
+  2/117 Test  #27: flashvm_tests_gc_callback_captures ...................   Passed    0.00 sec
+        Start  63: flashvm_tests_raster
+  3/117 Test   #2: flashvm_tests_auxlib .................................   Passed    0.00 sec
+        Start  15: flashvm_tests_channel_close_races
+  4/117 Test  #54: flashvm_tests_interpreter ............................   Passed    0.00 sec
+        Start   1: flashvm_tests_actionscript_extensions
+  5/117 Test  #97: flashvm_examples_embedding_input_queue_main ..........   Passed    0.01 sec
+  6/117 Test  #63: flashvm_tests_raster .................................   Passed    0.00 sec
+        Start  29: flashvm_tests_gc_deep_graph
+        Start  75: flashvm_tests_swf_compressed
+  7/117 Test  #75: flashvm_tests_swf_compressed .........................   Passed    0.00 sec
+        Start  84: flashvm_tests_worker_context
+  8/117 Test   #1: flashvm_tests_actionscript_extensions ................   Passed    0.01 sec
+        Start  58: flashvm_tests_metamethods
+  9/117 Test  #15: flashvm_tests_channel_close_races ....................   Passed    0.01 sec
+        Start  70: flashvm_tests_standard_numeric
+ 10/117 Test  #58: flashvm_tests_metamethods ............................   Passed    0.00 sec
+        Start  34: flashvm_tests_gc_native_reentry
+ 11/117 Test  #70: flashvm_tests_standard_numeric .......................   Passed    0.00 sec
+        Start   6: flashvm_tests_avm1_parameters
+ 12/117 Test  #84: flashvm_tests_worker_context .........................   Passed    0.01 sec
+        Start  86: flashvm_tests_worker_lifecycle
+ 13/117 Test  #34: flashvm_tests_gc_native_reentry ......................   Passed    0.00 sec
+        Start  40: flashvm_tests_gc_script_finalizer
+ 14/117 Test  #29: flashvm_tests_gc_deep_graph ..........................   Passed    0.02 sec
+ 15/117 Test   #6: flashvm_tests_avm1_parameters ........................   Passed    0.00 sec
+        Start  36: flashvm_tests_gc_nested_scopes
+        Start  18: flashvm_tests_channel_shared
+ 16/117 Test  #86: flashvm_tests_worker_lifecycle .......................   Passed    0.00 sec
+ 17/117 Test  #40: flashvm_tests_gc_script_finalizer ....................   Passed    0.00 sec
+        Start  85: flashvm_tests_worker_join_concurrent
+        Start  44: flashvm_tests_gesture_recognizer
+ 18/117 Test  #36: flashvm_tests_gc_nested_scopes .......................   Passed    0.01 sec
+ 19/117 Test  #18: flashvm_tests_channel_shared .........................   Passed    0.00 sec
+        Start  22: flashvm_tests_detail_string
+        Start  53: flashvm_tests_input_queue
+ 20/117 Test  #85: flashvm_tests_worker_join_concurrent .................   Passed    0.01 sec
+ 21/117 Test  #44: flashvm_tests_gesture_recognizer .....................   Passed    0.00 sec
+ 22/117 Test  #22: flashvm_tests_detail_string ..........................   Passed    0.00 sec
+        Start  89: flashvm_examples_embedding_channel_values_main
+        Start 116: flashvm_examples_extending_sqlite_main
+        Start  23: flashvm_tests_font_facade
+ 23/117 Test  #89: flashvm_examples_embedding_channel_values_main .......   Passed    0.00 sec
+        Start 108: flashvm_examples_embedding_worker_channels_main
+ 24/117 Test  #53: flashvm_tests_input_queue ............................   Passed    0.01 sec
+ 25/117 Test #116: flashvm_examples_extending_sqlite_main ...............   Passed    0.01 sec
+ 26/117 Test  #23: flashvm_tests_font_facade ............................   Passed    0.00 sec
+        Start  87: flashvm_tests_worker_stop
+        Start  64: flashvm_tests_raster_composite
+        Start 109: flashvm_examples_embedding_worker_lifecycle_main
+ 27/117 Test #108: flashvm_examples_embedding_worker_channels_main ......   Passed    0.01 sec
+        Start  91: flashvm_examples_embedding_cpp98_stack_main
+ 28/117 Test  #87: flashvm_tests_worker_stop ............................   Passed    0.00 sec
+ 29/117 Test  #64: flashvm_tests_raster_composite .......................   Passed    0.00 sec
+        Start 102: flashvm_examples_embedding_parallel_render_main
+        Start  39: flashvm_tests_gc_safe_points
+ 30/117 Test #109: flashvm_examples_embedding_worker_lifecycle_main .....   Passed    0.01 sec
+ 31/117 Test  #91: flashvm_examples_embedding_cpp98_stack_main ..........   Passed    0.00 sec
+        Start  42: flashvm_tests_gc_userdata
+        Start  31: flashvm_tests_gc_introspection
+ 32/117 Test #102: flashvm_examples_embedding_parallel_render_main ......   Passed    0.00 sec
+        Start  41: flashvm_tests_gc_stats
+ 33/117 Test  #39: flashvm_tests_gc_safe_points .........................   Passed    0.00 sec
+ 34/117 Test  #42: flashvm_tests_gc_userdata ............................   Passed    0.00 sec
+        Start  82: flashvm_tests_worker
+        Start  20: flashvm_tests_container_exceptions
+ 35/117 Test  #31: flashvm_tests_gc_introspection .......................   Passed    0.01 sec
+ 36/117 Test  #41: flashvm_tests_gc_stats ...............................   Passed    0.00 sec
+        Start   7: flashvm_tests_avm1_push_values
+        Start  24: flashvm_tests_gc
+ 37/117 Test  #82: flashvm_tests_worker .................................   Passed    0.00 sec
+        Start  73: flashvm_tests_svg_facade
+ 38/117 Test  #20: flashvm_tests_container_exceptions ...................   Passed    0.00 sec
+ 39/117 Test   #7: flashvm_tests_avm1_push_values .......................   Passed    0.00 sec
+        Start  67: flashvm_tests_sqlite
+        Start  61: flashvm_tests_os_ports
+ 40/117 Test  #24: flashvm_tests_gc .....................................   Passed    0.00 sec
+        Start  45: flashvm_tests_hybrid_table
+ 41/117 Test  #73: flashvm_tests_svg_facade .............................   Passed    0.00 sec
+        Start  50: flashvm_tests_image_codecs_svg
+ 42/117 Test  #61: flashvm_tests_os_ports ...............................   Passed    0.00 sec
+        Start  16: flashvm_tests_channel_graph_transfer
+ 43/117 Test  #45: flashvm_tests_hybrid_table ...........................   Passed    0.00 sec
+        Start  10: flashvm_tests_build_config
+ 44/117 Test  #67: flashvm_tests_sqlite .................................   Passed    0.01 sec
+        Start  95: flashvm_examples_embedding_image_codecs_main
+ 45/117 Test  #50: flashvm_tests_image_codecs_svg .......................   Passed    0.01 sec
+ 46/117 Test  #16: flashvm_tests_channel_graph_transfer .................   Passed    0.00 sec
+ 47/117 Test  #10: flashvm_tests_build_config ...........................   Passed    0.00 sec
+        Start  55: flashvm_tests_members
+        Start 113: flashvm_examples_extending_channel_worker_main
+        Start  35: flashvm_tests_gc_native_roots
+ 48/117 Test  #95: flashvm_examples_embedding_image_codecs_main .........   Passed    0.00 sec
+        Start  83: flashvm_tests_worker_channels
+ 49/117 Test  #55: flashvm_tests_members ................................   Passed    0.00 sec
+        Start  37: flashvm_tests_gc_resurrection
+ 50/117 Test #113: flashvm_examples_extending_channel_worker_main .......   Passed    0.00 sec
+ 51/117 Test  #35: flashvm_tests_gc_native_roots ........................   Passed    0.00 sec
+        Start  14: flashvm_tests_channel_capacity
+        Start  66: flashvm_tests_smoke
+ 52/117 Test  #83: flashvm_tests_worker_channels ........................   Passed    0.00 sec
+ 53/117 Test  #37: flashvm_tests_gc_resurrection ........................   Passed    0.00 sec
+        Start  38: flashvm_tests_gc_roots
+        Start  52: flashvm_tests_input_dispatch
+ 54/117 Test  #14: flashvm_tests_channel_capacity .......................   Passed    0.00 sec
+ 55/117 Test  #66: flashvm_tests_smoke ..................................   Passed    0.00 sec
+        Start  68: flashvm_tests_sqlite_bundled
+        Start  94: flashvm_examples_embedding_gesture_recognizer_main
+ 56/117 Test  #38: flashvm_tests_gc_roots ...............................   Passed    0.00 sec
+ 57/117 Test  #52: flashvm_tests_input_dispatch .........................   Passed    0.00 sec
+        Start  13: flashvm_tests_channel
+        Start  69: flashvm_tests_stack_api
+ 58/117 Test  #68: flashvm_tests_sqlite_bundled .........................   Passed    0.00 sec
+ 59/117 Test  #94: flashvm_examples_embedding_gesture_recognizer_main ...   Passed    0.00 sec
+        Start  21: flashvm_tests_cpp_embedding
+        Start  92: flashvm_examples_embedding_gc_main
+ 60/117 Test  #13: flashvm_tests_channel ................................   Passed    0.00 sec
+ 61/117 Test  #69: flashvm_tests_stack_api ..............................   Passed    0.00 sec
+        Start 115: flashvm_examples_extending_main
+        Start  60: flashvm_tests_objects
+ 62/117 Test  #21: flashvm_tests_cpp_embedding ..........................   Passed    0.00 sec
+ 63/117 Test  #92: flashvm_examples_embedding_gc_main ...................   Passed    0.00 sec
+        Start 110: flashvm_examples_embedding_worker_stop_main
+        Start  77: flashvm_tests_tables_debug
+ 64/117 Test #115: flashvm_examples_extending_main ......................   Passed    0.00 sec
+        Start 117: flashvm_examples_extending_stack_c_main
+ 65/117 Test  #60: flashvm_tests_objects ................................   Passed    0.00 sec
+ 66/117 Test #110: flashvm_examples_embedding_worker_stop_main ..........   Passed    0.00 sec
+        Start  93: flashvm_examples_embedding_gesture_dispatch_main
+        Start  32: flashvm_tests_gc_mode_errors
+ 67/117 Test  #77: flashvm_tests_tables_debug ...........................   Passed    0.00 sec
+ 68/117 Test #117: flashvm_examples_extending_stack_c_main ..............   Passed    0.00 sec
+        Start 112: flashvm_examples_extending_callable_objects_main
+        Start 103: flashvm_examples_embedding_prototypes_main
+ 69/117 Test  #93: flashvm_examples_embedding_gesture_dispatch_main .....   Passed    0.00 sec
+ 70/117 Test  #32: flashvm_tests_gc_mode_errors .........................   Passed    0.00 sec
+        Start  99: flashvm_examples_embedding_object_methods_main
+        Start  56: flashvm_tests_meta_call
+ 71/117 Test #112: flashvm_examples_extending_callable_objects_main .....   Passed    0.00 sec
+ 72/117 Test #103: flashvm_examples_embedding_prototypes_main ...........   Passed    0.00 sec
+        Start  26: flashvm_tests_gc_avm1_safe_point
+        Start   5: flashvm_tests_avm1_functions
+ 73/117 Test  #99: flashvm_examples_embedding_object_methods_main .......   Passed    0.00 sec
+ 74/117 Test  #56: flashvm_tests_meta_call ..............................   Passed    0.00 sec
+        Start 114: flashvm_examples_extending_lua_style_main
+        Start  28: flashvm_tests_gc_cycles
+ 75/117 Test  #26: flashvm_tests_gc_avm1_safe_point .....................   Passed    0.00 sec
+ 76/117 Test   #5: flashvm_tests_avm1_functions .........................   Passed    0.00 sec
+        Start   8: flashvm_tests_avm1_script_method
+        Start   9: flashvm_tests_avm1_stack
+ 77/117 Test #114: flashvm_examples_extending_lua_style_main ............   Passed    0.00 sec
+        Start  57: flashvm_tests_metamethod_tables
+ 78/117 Test  #28: flashvm_tests_gc_cycles ..............................   Passed    0.00 sec
+        Start  81: flashvm_tests_vector_paths
+ 79/117 Test   #8: flashvm_tests_avm1_script_method .....................   Passed    0.00 sec
+ 80/117 Test   #9: flashvm_tests_avm1_stack .............................   Passed    0.00 sec
+        Start 111: flashvm_examples_embedding_workers_main
+        Start  25: flashvm_tests_gc_api_stack_capture
+ 81/117 Test  #57: flashvm_tests_metamethod_tables ......................   Passed    0.00 sec
+ 82/117 Test  #81: flashvm_tests_vector_paths ...........................   Passed    0.00 sec
+        Start  62: flashvm_tests_prototypes
+        Start  74: flashvm_tests_swf
+ 83/117 Test #111: flashvm_examples_embedding_workers_main ..............   Passed    0.00 sec
+ 84/117 Test  #25: flashvm_tests_gc_api_stack_capture ...................   Passed    0.00 sec
+        Start  12: flashvm_tests_callable
+        Start  90: flashvm_examples_embedding_channels_main
+ 85/117 Test  #62: flashvm_tests_prototypes .............................   Passed    0.00 sec
+ 86/117 Test  #74: flashvm_tests_swf ....................................   Passed    0.00 sec
+        Start  76: flashvm_tests_swf_execute
+        Start 106: flashvm_examples_embedding_text_main
+ 87/117 Test  #12: flashvm_tests_callable ...............................   Passed    0.01 sec
+ 88/117 Test  #90: flashvm_examples_embedding_channels_main .............   Passed    0.00 sec
+        Start  49: flashvm_tests_image_codecs_png
+        Start  96: flashvm_examples_embedding_input_main
+ 89/117 Test  #76: flashvm_tests_swf_execute ............................   Passed    0.00 sec
+ 90/117 Test #106: flashvm_examples_embedding_text_main .................   Passed    0.00 sec
+        Start  46: flashvm_tests_image_codecs_cpp98
+        Start 105: flashvm_examples_embedding_tables_debug_main
+ 91/117 Test  #49: flashvm_tests_image_codecs_png .......................   Passed    0.00 sec
+ 92/117 Test  #96: flashvm_examples_embedding_input_main ................   Passed    0.00 sec
+        Start  33: flashvm_tests_gc_modes
+        Start  43: flashvm_tests_gc_validation
+ 93/117 Test  #46: flashvm_tests_image_codecs_cpp98 .....................   Passed    0.00 sec
+ 94/117 Test #105: flashvm_examples_embedding_tables_debug_main .........   Passed    0.00 sec
+        Start  30: flashvm_tests_gc_finalizer_snapshot
+        Start  98: flashvm_examples_embedding_main
+ 95/117 Test  #33: flashvm_tests_gc_modes ...............................   Passed    0.00 sec
+ 96/117 Test  #43: flashvm_tests_gc_validation ..........................   Passed    0.00 sec
+        Start  17: flashvm_tests_channel_owned
+        Start 100: flashvm_examples_embedding_objects_main
+ 97/117 Test  #30: flashvm_tests_gc_finalizer_snapshot ..................   Passed    0.00 sec
+ 98/117 Test  #98: flashvm_examples_embedding_main ......................   Passed    0.00 sec
+        Start  19: flashvm_tests_channel_value
+        Start   4: flashvm_tests_avm1_callmethod
+ 99/117 Test  #17: flashvm_tests_channel_owned ..........................   Passed    0.01 sec
+100/117 Test #100: flashvm_examples_embedding_objects_main ..............   Passed    0.01 sec
+        Start  79: flashvm_tests_text_layout
+        Start  59: flashvm_tests_native_properties
+101/117 Test  #19: flashvm_tests_channel_value ..........................   Passed    0.01 sec
+102/117 Test   #4: flashvm_tests_avm1_callmethod ........................   Passed    0.00 sec
+        Start  47: flashvm_tests_image_codecs_gif
+        Start  88: flashvm_examples_embedding_channel_cpp98_main
+103/117 Test  #79: flashvm_tests_text_layout ............................   Passed    0.00 sec
+104/117 Test  #59: flashvm_tests_native_properties ......................   Passed    0.00 sec
+105/117 Test  #47: flashvm_tests_image_codecs_gif .......................   Passed    0.00 sec
+        Start  80: flashvm_tests_text_layout_workers
+        Start  11: flashvm_tests_cairo_backend
+        Start 101: flashvm_examples_embedding_os_ports_main
+106/117 Test  #88: flashvm_examples_embedding_channel_cpp98_main ........   Passed    0.00 sec
+107/117 Test  #80: flashvm_tests_text_layout_workers ....................   Passed    0.00 sec
+108/117 Test  #11: flashvm_tests_cairo_backend ..........................   Passed    0.00 sec
+        Start  65: flashvm_tests_render_jobs
+        Start  48: flashvm_tests_image_codecs_jpeg
+        Start  78: flashvm_tests_text_api
+109/117 Test #101: flashvm_examples_embedding_os_ports_main .............   Passed    0.00 sec
+110/117 Test  #65: flashvm_tests_render_jobs ............................   Passed    0.00 sec
+111/117 Test  #48: flashvm_tests_image_codecs_jpeg ......................   Passed    0.00 sec
+        Start  71: flashvm_tests_standard_textfield
+        Start   3: flashvm_tests_avm1
+        Start  72: flashvm_tests_standard_textformat
+112/117 Test  #78: flashvm_tests_text_api ...............................   Passed    0.00 sec
+113/117 Test  #71: flashvm_tests_standard_textfield .....................   Passed    0.00 sec
+        Start 104: flashvm_examples_embedding_standard_text_main
+        Start 107: flashvm_examples_embedding_text_layout_main
+114/117 Test   #3: flashvm_tests_avm1 ...................................   Passed    0.00 sec
+115/117 Test  #72: flashvm_tests_standard_textformat ....................   Passed    0.00 sec
+116/117 Test #104: flashvm_examples_embedding_standard_text_main ........   Passed    0.00 sec
+117/117 Test #107: flashvm_examples_embedding_text_layout_main ..........   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 117
+
+Total Test time (real) =   0.16 sec

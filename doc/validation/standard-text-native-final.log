@@ -1,0 +1,1 @@
+PASS final native_properties.c: automatic AVM1 GC, constructor/accessor captures and replacement, C enum validation; ASan/UBSan

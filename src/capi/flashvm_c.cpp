@@ -46,11 +46,13 @@ extern "C"
         *out_context = 0;
         if (!runtime)
             return FVM_INVALID_ARGUMENT;
-        context = new (std::nothrow) FVM_Context;
+        try { context = new (std::nothrow) FVM_Context; }
+        catch (...) { return FVM_OUT_OF_MEMORY; }
         if (!context)
             return FVM_OUT_OF_MEMORY;
         context->worker = 0;
         context->standard_library = false;
+        context->standard_text_library = false;
         context->random_state = 1;
         context->runtime = runtime;
         context->global = 0;
@@ -88,6 +90,7 @@ extern "C"
             delete context->objects[i];
         for (size_t i = 0; i < context->strings.size(); ++i)
             delete[] context->strings[i];
+        fvm_standard_text_cleanup(context);
         delete context;
     }
     FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length)

@@ -7,7 +7,14 @@ static FVM_Result valid_value(FVM_Context *context, const FVM_Value *value)
 {
     if (!value)
         return FVM_INVALID_ARGUMENT;
-    if (value->type < FVM_VALUE_UNDEFINED || value->type > FVM_VALUE_OBJECT)
+    bool valid_type = false;
+    for (int i = FVM_VALUE_UNDEFINED; i <= FVM_VALUE_OBJECT; ++i)
+    {
+        FVM_ValueType candidate = (FVM_ValueType)i;
+        if (std::memcmp(&value->type, &candidate, sizeof(candidate)) == 0)
+            valid_type = true;
+    }
+    if (!valid_type)
         return FVM_INVALID_ARGUMENT;
     if (value->type == FVM_VALUE_OBJECT && (!value->object || value->object->owner != context))
         return FVM_INVALID_ARGUMENT;
@@ -140,7 +147,8 @@ extern "C"
     {
         if (!c || !o || o->owner != c || !name || !out)
             return FVM_INVALID_ARGUMENT;
-        *out = o->properties.find(name) != o->properties.end();
+        *out = o->properties.find(name) != o->properties.end() ||
+               o->accessors.find(name) != o->accessors.end();
         return FVM_OK;
     }
     /* AVM1 prototype lookup takes precedence over Lua-style __index fallback.
@@ -158,6 +166,24 @@ extern "C"
             {
                 *out = it->second;
                 return FVM_OK;
+            }
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+                o->accessors.find(name);
+            if (accessor != o->accessors.end())
+            {
+                FVM_AccessorEntry entry = accessor->second;
+                fvm_value_undefined(out);
+                if (!entry.getter)
+                    return FVM_OK;
+                try
+                {
+                    FVM_NativeCallGuard guard(c);
+                    return entry.getter(c, receiver, 0, 0, out, entry.userdata);
+                }
+                catch (...)
+                {
+                    return FVM_ERROR;
+                }
             }
             o = o->prototype;
         }
@@ -222,6 +248,37 @@ extern "C"
         FVM_Result r = copy_value(c, v, &copy);
         if (r != FVM_OK)
             return r;
+        /* Own data shadows inherited accessors. An own accessor always wins
+         * over prototype data, and setters bind the original receiver. */
+        FVM_Object *cursor = o;
+        unsigned int accessor_depth = 0;
+        while (cursor && accessor_depth++ < 1024)
+        {
+            if (cursor->properties.find(name) != cursor->properties.end())
+                break;
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator found =
+                cursor->accessors.find(name);
+            if (found != cursor->accessors.end())
+            {
+                FVM_AccessorEntry entry = found->second;
+                if (!entry.setter)
+                    return FVM_OK;
+                FVM_Value result;
+                fvm_value_undefined(&result);
+                try
+                {
+                    FVM_NativeCallGuard guard(c);
+                    return entry.setter(c, o, 1, &copy, &result, entry.userdata);
+                }
+                catch (...)
+                {
+                    return FVM_ERROR;
+                }
+            }
+            cursor = cursor->prototype;
+        }
+        if (accessor_depth > 1024)
+            return FVM_ERROR;
         /* An existing own property is always written directly. */
         if (o->properties.find(name) == o->properties.end())
         {
@@ -355,6 +412,89 @@ extern "C"
             }
             FVM_NativeCallGuard native_guard(c);
             return entry.callback(c, self, argc, argv, out, entry.userdata);
+        }
+        catch (...)
+        {
+            return FVM_ERROR;
+        }
+    }
+    FVM_Result fvm_object_define_accessor_rooted(FVM_Context *c, FVM_Object *object,
+                                                 const char *name, FVM_NativeFunction getter,
+                                                 FVM_NativeFunction setter, void *userdata,
+                                                 FVM_Object *root)
+    {
+        if (!c || !object || object->owner != c || !name || !*name || (!getter && !setter) ||
+            (root && root->owner != c) || c->destroying || c->gc_releasing ||
+            object->properties.find(name) != object->properties.end())
+            return FVM_INVALID_ARGUMENT;
+        FVM_AccessorEntry entry;
+        entry.getter = getter;
+        entry.setter = setter;
+        entry.userdata = userdata;
+        entry.root = root;
+        try
+        {
+            object->accessors[name] = entry;
+            return FVM_OK;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
+    }
+    FVM_Result fvm_register_constructor_rooted(FVM_Context *c, const char *name,
+                                               FVM_NativeFunction callback, void *userdata,
+                                               FVM_Object *root)
+    {
+        if (!c || !name || !*name || !callback || std::strcmp(name, "Object") == 0 ||
+            (root && root->owner != c) || c->destroying || c->gc_releasing)
+            return FVM_INVALID_ARGUMENT;
+        FVM_NativeEntry entry;
+        entry.callback = callback;
+        entry.userdata = userdata;
+        entry.root = root;
+        try
+        {
+            c->constructors[name] = entry;
+            return FVM_OK;
+        }
+        catch (...)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
+    }
+    FVM_Result fvm_construct(FVM_Context *c, const char *name, unsigned int argc,
+                             const FVM_Value *argv, FVM_Object **out)
+    {
+        if (!out)
+            return FVM_INVALID_ARGUMENT;
+        *out = 0;
+        if (!c || !name || (argc && !argv) || c->destroying || c->gc_releasing)
+            return FVM_INVALID_ARGUMENT;
+        for (unsigned int i = 0; i < argc; ++i)
+            if (valid_value(c, &argv[i]) != FVM_OK)
+                return FVM_INVALID_ARGUMENT;
+        if (std::strcmp(name, "Object") == 0)
+            return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
+            c->constructors.find(name);
+        if (found == c->constructors.end())
+            return FVM_UNSUPPORTED;
+        FVM_NativeEntry entry = found->second;
+        FVM_Value result;
+        fvm_value_undefined(&result);
+        try
+        {
+            FVM_NativeCallGuard guard(c);
+            FVM_Result status = entry.callback(c, c->global, argc, argv, &result, entry.userdata);
+            if (status != FVM_OK)
+                return status;
+            FVM_ValueType object_type = FVM_VALUE_OBJECT;
+            if (std::memcmp(&result.type, &object_type, sizeof(object_type)) != 0 ||
+                !result.object || result.object->owner != c)
+                return FVM_ERROR;
+            *out = result.object;
+            return FVM_OK;
         }
         catch (...)
         {

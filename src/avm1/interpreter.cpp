@@ -406,24 +406,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
             }
             else if (a.op == 0x40)
-            { /* NewObject: limited Object() constructor */
+            { /* NewObject: separate named native constructor registry. */
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
-                    return FVM_ERROR;
-                if (std::strcmp(stack.back().string, "Object") != 0 ||
-                    stack[stack.size() - 2].number != 0)
-                    return FVM_UNSUPPORTED;
-                FVM_Object *o = 0;
-                FVM_Result r = fvm_object_create(c, &o);
-                if (r != FVM_OK)
-                    return r;
-                stack.pop_back();
-                stack.pop_back();
-                FVM_Value v;
-                fvm_value_undefined(&v);
-                v.type = FVM_VALUE_OBJECT;
-                v.object = o;
-                stack.push_back(v);
+                    stack[stack.size() - 2].type != FVM_VALUE_NUMBER) return FVM_ERROR;
+                double count = stack[stack.size() - 2].number;
+                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
+                    count > stack.size() - 2) return FVM_ERROR;
+                unsigned int argc = (unsigned int)count;
+                fvm_detail::vector<FVM_Value> args(argc);
+                for (unsigned int i = 0; i < argc; ++i) args[i] = stack[stack.size() - 3 - i];
+                FVM_Object *object = 0;
+                FVM_Result result = fvm_construct(c, stack.back().string, argc, args.begin(), &object);
+                if (result != FVM_OK) return result;
+                stack.resize(stack.size() - argc - 2);
+                FVM_Value value; fvm_value_undefined(&value);
+                value.type = FVM_VALUE_OBJECT; value.object = object;
+                stack.push_back(value);
             }
             else if (a.op == 0x4e)
             { /* GetMember */

@@ -39,7 +39,7 @@ static FVM_Result snapshot(FVM_Context *c,const FVM_Value &v,Packet *p) {
     FVM_Result r=capture(c,v,p->value,seen);if(r!=FVM_OK)return r;
     for(size_t i=0;i<seen.size();++i) {
         FVM_Object *src=seen[i];Object dst;
-        if(src->release_resource || src->resource_kind || src->callable.callback || !src->metamethods.empty() || !src->methods.empty()) return FVM_UNSUPPORTED;
+        if(src->release_resource || src->resource_kind || src->callable.callback || !src->metamethods.empty() || !src->methods.empty() || !src->accessors.empty()) return FVM_UNSUPPORTED;
         r=identify(c,src->prototype,seen,&dst.prototype);if(r!=FVM_OK)return r;
         r=identify(c,src->metatable,seen,&dst.metatable);if(r!=FVM_OK)return r;
         fvm_detail::map<fvm_detail::string,FVM_Value>::iterator named;

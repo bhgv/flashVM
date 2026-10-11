@@ -35,6 +35,22 @@ FVM_API FVM_Result fvm_register_function_rooted(FVM_Context *, const char *, FVM
    This is an initial bridge; AVM1 function-valued properties are not supported. */
 FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int, const FVM_Value *, FVM_Value *);
 FVM_API FVM_Result fvm_call(FVM_Context *, const char *, unsigned int, const FVM_Value *, FVM_Value *);
+/* Named native construction bridge used by AVM1 ActionNewObject. Object is a
+ * reserved built-in (zero arguments). A callback must return a same-context
+ * object; arbitrary native functions are never treated as constructors.
+ * Registration replacement releases the previous capture root. */
+FVM_API FVM_Result fvm_register_constructor_rooted(FVM_Context *, const char *,
+    FVM_NativeFunction, void *, FVM_Object *root);
+FVM_API FVM_Result fvm_construct(FVM_Context *, const char *, unsigned int,
+    const FVM_Value *, FVM_Object **out);
+/* Native own accessor; getter receives zero arguments, setter one copied value.
+ * Missing getter -> undefined; missing setter -> ignored write. Callbacks bind
+ * the original receiver during prototype lookup. Capture root is GC-traced.
+ * Data-property conflicts reject registration; an accessor may be replaced.
+ * This does not implement AS property attributes/watch/enumeration. */
+FVM_API FVM_Result fvm_object_define_accessor_rooted(FVM_Context *, FVM_Object *,
+    const char *, FVM_NativeFunction getter, FVM_NativeFunction setter,
+    void *, FVM_Object *root);
 /* Returned strings and object pointers are borrowed, valid until context destruction.
    Object references cannot cross contexts. Not thread-safe. */
 #ifdef __cplusplus

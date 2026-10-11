@@ -1,3 +1,5 @@
+ActionScript text bridge: [English](doc/STANDARD_TEXT.md) / [Русский](doc/STANDARD_TEXT.ru.md).
+
 Text layout checkpoint: [English](doc/TEXT_LAYOUT.md) / [Русский](doc/TEXT_LAYOUT.ru.md).
 
 Font/vector checkpoint: bundled static FreeType 2.14.3, HarfBuzz 1.8.8,
