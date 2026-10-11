@@ -5,7 +5,7 @@ extern "C" {
 FVM_Result fvm_meta_register(FVM_Context *c,FVM_Object *m,const char *name,FVM_NativeFunction cb,void *user) {
     if (!c || !m || m->owner!=c || !name || !cb) return FVM_INVALID_ARGUMENT;
     if (std::strcmp(name,"__index") && std::strcmp(name,"__newindex") &&
-        std::strcmp(name,"__iterate") && std::strcmp(name,"__gc")) return FVM_UNSUPPORTED;
+        std::strcmp(name,"__iterate") && std::strcmp(name,"__gc") && std::strcmp(name,"__call")) return FVM_UNSUPPORTED;
     FVM_NativeEntry entry;entry.callback=cb;entry.userdata=user;
     try {m->metamethods[name]=entry;}catch(...){return FVM_OUT_OF_MEMORY;}
     return FVM_OK;

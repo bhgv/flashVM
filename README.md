@@ -207,3 +207,7 @@ See [callable API](doc/CALLABLE_OBJECTS.md) and
 [the C89 example](examples/extending/callable_objects/README.md).
 Native C callbacks can now be stored as context-owned object values and
 invoked through the C API. AVM1 script closures and `__call` are not yet implemented.
+
+## Native `__call` bridge (step 26)
+
+`include/flashvm/meta_call.h` provides `fvm_meta_call`: native metatable callbacks receive the owner, defining metatable, and a new indexed argument table. See `tests/meta_call.c`. The proposed thread/channel language extensions are **not implemented**; design notes: `doc/THREADS_CHANNELS.md` and `doc/THREADS_CHANNELS.ru.md`.

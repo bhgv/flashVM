@@ -348,3 +348,11 @@ if(FVM_BUILD_EXAMPLES)
     add_test(NAME flashvm_extending_callable COMMAND flashvm_extending_callable)
   endif()
 endif()
+
+# Lua-inspired __call bridge (C89 ABI, C++98 implementation).
+target_sources(flashvm PRIVATE src/capi/meta_call_c.cpp)
+if(FVM_BUILD_TESTS)
+  add_executable(flashvm_meta_call tests/meta_call.c)
+  target_link_libraries(flashvm_meta_call flashvm)
+  add_test(NAME flashvm_meta_call COMMAND flashvm_meta_call)
+endif()
