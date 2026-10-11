@@ -16,6 +16,8 @@ FVM_API FVM_Result fvm_gc_collect(FVM_Context *, unsigned long *reclaimed);
 FVM_API FVM_Result fvm_gc_pin(FVM_Context *, FVM_Object *);
 FVM_API FVM_Result fvm_gc_unpin(FVM_Context *, FVM_Object *);
 FVM_API FVM_Result fvm_gc_object_count(FVM_Context *, unsigned long *);
+/* Query the allocation threshold for automatic collection at a safe point. */
+FVM_API FVM_Result fvm_gc_threshold(FVM_Context *, unsigned long *threshold);
 /* Call at safe points. Never collect inside native callbacks. */
 FVM_API FVM_Result fvm_gc_step(FVM_Context *, unsigned long *reclaimed);
 #ifdef __cplusplus

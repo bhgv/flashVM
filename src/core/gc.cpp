@@ -81,12 +81,18 @@ FVM_Result fvm_gc_collect(FVM_Context *c,unsigned long *reclaimed) {
     c->gc_collecting=false;
     return FVM_OK;
 }
+FVM_Result fvm_gc_threshold(FVM_Context *c,unsigned long *threshold) {
+    if (!c || !threshold) return FVM_INVALID_ARGUMENT;
+    if (c->gc_mode==FVM_GC_SUSPENDED) { *threshold=ULONG_MAX;return FVM_OK; }
+    *threshold=(unsigned long)(1000-c->gc_mode*9);return FVM_OK;
+}
 FVM_Result fvm_gc_step(FVM_Context *c,unsigned long *reclaimed) {
     if (!c)return FVM_INVALID_ARGUMENT;
     if(reclaimed)*reclaimed=0;
     if(c->gc_mode==FVM_GC_SUSPENDED)return FVM_OK;
     /* The allocation threshold is monotonic with the tuning setting. */
-    unsigned long threshold=(unsigned long)(1000-c->gc_mode*9);
+    unsigned long threshold=0;
+    fvm_gc_threshold(c,&threshold);
     if(c->gc_allocations<threshold)return FVM_OK;
     return fvm_gc_collect(c,reclaimed);
 }
