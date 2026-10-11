@@ -8,6 +8,11 @@
 - The internal Git repository and delivered archive are authoritative. Update
   the remote mirror only on an explicit user command. Do not publish private
   stashes or rewrite existing history without explicit authorization.
+- Configure `origin` as `https://bhgv.pythonanywhere.com/git/FlashVM/`.
+  For authorized mirror updates use
+  `git -c http.postBuffer=67108864 push origin HEAD:master`, without force.
+  Afterwards fetch `origin master` and verify that the local HEAD is an ancestor
+  of `FETCH_HEAD`; report the verified server commit, not just the push exit code.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

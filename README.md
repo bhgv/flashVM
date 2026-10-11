@@ -2,9 +2,18 @@ Development version: **0.1** (see [VERSION.txt](VERSION.txt)). New commit subjec
 start with `v0.1 ` and an English description. This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 
+Mirror updates require an explicit user command. Use `origin` pointing to
+`https://bhgv.pythonanywhere.com/git/FlashVM/` and push with a 64 MiB HTTP buffer:
+`git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
+Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
+
 Версия разработки: **0.1** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
 начинаются с `v0.1 ` и описания на английском. Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
+
+Зеркало обновляется только по прямой команде пользователя. Для отправки используйте
+указанный выше `origin` и HTTP-буфер 64 МиБ, без принудительной перезаписи истории.
+После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
 
 ActionScript text bridge: [English](doc/STANDARD_TEXT.md) / [Русский](doc/STANDARD_TEXT.ru.md).
 
