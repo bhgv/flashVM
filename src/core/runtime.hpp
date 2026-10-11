@@ -1,6 +1,7 @@
 #ifndef FLASHVM_INTERNAL_RUNTIME_HPP
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
+#include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
 #include "flashvm/input_queue.h"
@@ -57,6 +58,8 @@ struct FVM_Object
     FVM_StackEntry callable;
     bool resource_result_valid;
     FVM_Value resource_result;
+    unsigned long resource_origin;
+    fvm_detail::string resource_path;
     int resource_kind;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry> methods;
     void *resource;
@@ -91,6 +94,10 @@ struct FVM_SourceLocation
 };
 struct FVM_Context
 {
+    bool exception_pending, fault_pending;
+    FVM_Value exception_value;
+    FVM_ExceptionInfo fault;
+    fvm_detail::string resource_receive_path;
     FVM_ResourceBroker *broker;
     unsigned long identity;
     unsigned long debug_line, debug_offset;

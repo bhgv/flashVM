@@ -57,6 +57,9 @@ extern "C"
         }
         if (!context)
             return FVM_OUT_OF_MEMORY;
+        context->exception_pending = context->fault_pending = false;
+        std::memset(&context->fault, 0, sizeof(context->fault));
+        fvm_value_undefined(&context->exception_value);
         context->broker = 0;
         context->identity = fvm_sync_next_identity();
         if (!context->identity)

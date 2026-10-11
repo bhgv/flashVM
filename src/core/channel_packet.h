@@ -10,6 +10,7 @@ extern "C"
                                               size_t, unsigned char **, size_t *, int);
     FVM_Result fvm_channel_create_remote(void *, FVM_RemoteChannelFn, void (*)(void *),
                                          const char *, FVM_Channel **);
+    const char *fvm_channel_file_path(FVM_Channel *);
     const char *fvm_channel_remote_address(FVM_Channel *);
     FVM_Result fvm_channel_is_stream(FVM_Channel *, int *);
     FVM_Result fvm_channel_stream_send(FVM_Context *, FVM_Channel *, const unsigned char *, size_t);

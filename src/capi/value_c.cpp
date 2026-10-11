@@ -1,5 +1,6 @@
 #include "../core/native_call_guard.hpp"
 #include "../core/runtime.hpp"
+#include "../core/exception_internal.hpp"
 #include "flashvm/stack.h"
 #include <cstring>
 #include <new>
@@ -136,6 +137,7 @@ extern "C"
         o->callable.userdata = 0;
         o->resource_result_valid = false;
         fvm_value_undefined(&o->resource_result);
+        o->resource_origin = 0;
         o->resource_kind = 0;
         o->resource = 0;
         o->release_resource = 0;
@@ -219,7 +221,9 @@ extern "C"
                 try
                 {
                     FVM_NativeCallGuard guard(c);
-                    return entry.getter(c, receiver, 0, 0, out, entry.userdata);
+                    fvm_resource_fault_begin(c);
+                    return fvm_exception_complete(
+                        c, receiver, entry.getter(c, receiver, 0, 0, out, entry.userdata));
                 }
                 catch (...)
                 {
@@ -427,6 +431,7 @@ extern "C"
                 return FVM_UNSUPPORTED;
             entry = it->second;
         }
+        fvm_resource_fault_begin(c);
         fvm_value_undefined(out);
         try
         {
@@ -452,10 +457,12 @@ extern "C"
                 } pop;
                 pop.c = c;
                 pop.f = &frame;
-                return entry.callback(c, self, argc, argv, out, entry.userdata);
+                return fvm_exception_complete(
+                    c, self, entry.callback(c, self, argc, argv, out, entry.userdata));
             }
             FVM_NativeCallGuard native_guard(c);
-            return entry.callback(c, self, argc, argv, out, entry.userdata);
+            return fvm_exception_complete(c, self,
+                                          entry.callback(c, self, argc, argv, out, entry.userdata));
         }
         catch (...)
         {
@@ -586,7 +593,10 @@ extern "C"
         try
         {
             FVM_NativeCallGuard native_guard(c);
-            return it->second.callback(c, c->global, argc, argv, out, it->second.userdata);
+            fvm_resource_fault_begin(c);
+            return fvm_exception_complete(
+                c, c->global,
+                it->second.callback(c, c->global, argc, argv, out, it->second.userdata));
         }
         catch (...)
         {

@@ -3,6 +3,7 @@
 #include "flashvm/mutex.h"
 #include "flashvm/capability.h"
 #include "../core/capability_internal.hpp"
+#include "../core/exception_internal.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/gc.h"
 #include "flashvm/avm1.h"
@@ -174,7 +175,12 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
                 break;
         } while (true);
         if (r == FVM_NOT_FOUND && stopped(c))
+        {
+            fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, fvm_channel_identity(ch),
+                               op < 2 ? "channel.send" : "channel.receive",
+                               fvm_channel_remote_address(ch));
             return FVM_ERROR;
+        }
         if (op == 1 && r == FVM_NOT_FOUND)
         {
             fvm_value_boolean(out, 0);
@@ -193,7 +199,11 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
             int file = 0;
             fvm_channel_is_file(ch, &file);
             if (r == FVM_NOT_FOUND && op == 2 && file)
+            {
+                fvm_resource_fault(c, FVM_RESOURCE_IO, fvm_channel_identity(ch), "channel.receive",
+                                   0);
                 return FVM_ERROR;
+            }
             if (r == FVM_NOT_FOUND && op == 2 && !stopped(c))
             {
                 if (!wait.record(c, ch, 0))
@@ -204,7 +214,12 @@ static FVM_Result channel_op(FVM_Context *c, FVM_Object *self, unsigned int n, c
                 break;
         } while (true);
         if (r == FVM_NOT_FOUND && stopped(c))
+        {
+            fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, fvm_channel_identity(ch),
+                               op < 2 ? "channel.send" : "channel.receive",
+                               fvm_channel_remote_address(ch));
             return FVM_ERROR;
+        }
         if (r == FVM_NOT_FOUND && op == 3)
         {
             fvm_value_undefined(out);
@@ -677,10 +692,14 @@ extern "C" FVM_Result fvm_extensions_wrap_channel(FVM_Context *c, FVM_Channel *c
     if (r != FVM_OK)
         return r;
     o->resource = ch;
+    o->resource_origin = c->identity;
+    const char *path = fvm_channel_file_path(ch);
     o->resource_kind = CHANNEL;
     o->release_resource = release_channel;
     try
     {
+        if (path)
+            o->resource_path = path;
         method(o, "send", ch_send, 0);
         method(o, "trySend", ch_try_send, 1);
         method(o, "receive", ch_receive, 2);
@@ -709,8 +728,11 @@ FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_
     if (n || s->resource_kind != 8 || !s->resource)
         return FVM_INVALID_ARGUMENT;
     int state = 0;
-    FVM_Result r = fvm_mutex_touch((FVM_Mutex *)s->resource, &state);
+    FVM_Result r = fvm_mutex_touch_context(c, (FVM_Mutex *)s->resource, &state);
     fvm_value_number(out, state);
+    if (r == FVM_ERROR)
+        fvm_resource_fault(c, FVM_RESOURCE_CLOSED, fvm_mutex_identity((FVM_Mutex *)s->resource),
+                           "mutex.touch", fvm_mutex_remote_address((FVM_Mutex *)s->resource));
     if (r == FVM_ERROR)
         fvm_debug_resource_error(c, fvm_mutex_identity((FVM_Mutex *)s->resource), "mutex.touch",
                                  fvm_mutex_remote_address((FVM_Mutex *)s->resource));

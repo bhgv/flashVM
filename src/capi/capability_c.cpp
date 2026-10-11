@@ -1,3 +1,4 @@
+#include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
 #include "flashvm/capability.h"
 #include "flashvm/worker.h"
@@ -183,6 +184,7 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
     FVM_PortSocket *socket = fvm_port_tcp_connect(r->host.c_str(), r->port);
     if (!socket)
     {
+        fvm_resource_fault(c, FVM_RESOURCE_UNREACHABLE, 0, "network.connect", r->uri.c_str());
         fvm_debug_resource_error(c, 0, "network.connect", r->uri.c_str());
         return FVM_ERROR;
     }
@@ -199,6 +201,8 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
                  : status == 5 ? FVM_NOT_FOUND
                  : status == 2 ? FVM_OUT_OF_MEMORY
                                : FVM_ERROR;
+        if (status >= FVM_RESOURCE_CLOSED && status <= FVM_RESOURCE_FAILURE)
+            fvm_resource_fault(c, status, 0, "network.request", r->uri.c_str());
         if (n > limit || (!output && n))
             ok = false;
         else if (n)
@@ -226,7 +230,11 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
         result = FVM_ERROR;
     }
     if (result == FVM_ERROR)
+    {
+        fvm_resource_fault(c, ok ? FVM_RESOURCE_FAILURE : FVM_RESOURCE_DISCONNECTED, 0,
+                           "network.request", r->uri.c_str());
         fvm_debug_resource_error(c, 0, "network.request", r->uri.c_str());
+    }
     return result;
 }
 FVM_Result mutex_request(void *raw, FVM_Context *c, int op, int *out)
@@ -275,8 +283,9 @@ FVM_Result closed(const Entry &e, int *out)
                        : fvm_channel_is_closed((FVM_Channel *)e.handle, out);
 }
 FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigned char *input,
-                    size_t size, unsigned char **output, size_t *length)
+                    size_t size, unsigned char **output, size_t *length, unsigned long &fault)
 {
+    fault = FVM_RESOURCE_STALE;
     Entry e;
     FVM_Context *c = 0;
     {
@@ -325,12 +334,18 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
             }
         }
     }
+    fault = FVM_RESOURCE_FAILURE;
+    if (c)
+        fvm_exception_clear(c);
     int state = 0;
     FVM_Result r = closed(e, &state);
     if (r != FVM_OK)
         return r;
     if (h[5] != 0 && state)
+    {
+        fault = FVM_RESOURCE_CLOSED;
         return FVM_ERROR;
+    }
     if (h[5] == 0 || (h[5] == 3 && e.kind == 8) || h[5] == 4 || (h[5] == 1 && e.kind == 8) ||
         (h[5] == 2 && e.kind == 8))
     {
@@ -351,7 +366,11 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
             state = 1;
         }
         if (r != FVM_OK)
+        {
+            if (c && c->fault_pending)
+                fault = c->fault.code;
             return r;
+        }
         *output = (unsigned char *)std::malloc(1);
         if (!*output)
             return FVM_OUT_OF_MEMORY;
@@ -395,6 +414,7 @@ void serve(void *arg)
         unsigned char h[112], response[8], *input = 0, *output = 0;
         size_t length = 0;
         FVM_Result result = FVM_ERROR;
+        unsigned long fault = FVM_RESOURCE_FAILURE;
         if (transfer(s, h, sizeof(h), false) && !std::memcmp(h, "FVMC", 4) && h[4] == 1 &&
             get(h + 108) <= limit)
         {
@@ -404,7 +424,7 @@ void serve(void *arg)
             {
                 try
                 {
-                    result = dispatch(b, h, input, size, &output, &length);
+                    result = dispatch(b, h, input, size, &output, &length, fault);
                 }
                 catch (...)
                 {
@@ -415,7 +435,7 @@ void serve(void *arg)
         put(response, result == FVM_OK              ? 0
                       : result == FVM_NOT_FOUND     ? 5
                       : result == FVM_OUT_OF_MEMORY ? 2
-                                                    : 1);
+                                                    : fault);
         put(response + 4, (unsigned long)length);
         if (transfer(s, response, 8, true) && length)
             transfer(s, output, length, true);
@@ -550,6 +570,9 @@ FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::stri
     FVM_Result r = closed(entry, &state);
     if (r != FVM_OK || state)
     {
+        fvm_resource_fault(c, state ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_DISCONNECTED, 0,
+                           "capability.export", "");
+        fvm_resource_fault_resource(c, entry.kind, entry.handle, o->resource_origin);
         fvm_debug_resource_error(c, 0, "capability.export", "");
         return FVM_ERROR;
     }
@@ -612,6 +635,8 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
         Lock guard(c->broker->sync);
         if (c->broker->stopped)
         {
+            fvm_resource_fault(c, FVM_RESOURCE_STALE, 0, "capability.import", uri);
+            fvm_resource_fault_resource(c, parsed.kind, 0, 0);
             fvm_debug_resource_error(c, 0, "capability.import", uri);
             return FVM_ERROR;
         }
@@ -624,6 +649,8 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
                 FVM_Result r = closed(e, &state);
                 if (r != FVM_OK || state)
                 {
+                    fvm_resource_fault(c, FVM_RESOURCE_CLOSED, 0, "capability.import", uri);
+                    fvm_resource_fault_resource(c, e.kind, e.handle, 0);
                     fvm_debug_resource_error(c, 0, "capability.import", uri);
                     return FVM_ERROR;
                 }
@@ -631,16 +658,25 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
                                    : fvm_extensions_wrap_channel(c, (FVM_Channel *)e.handle, out);
             }
         }
+        fvm_resource_fault(c, FVM_RESOURCE_STALE, 0, "capability.import", uri);
+        fvm_resource_fault_resource(c, parsed.kind, 0, 0);
         return FVM_ERROR;
     }
     unsigned char *data = 0;
     size_t length = 0;
     FVM_Result r = rpc(&parsed, c, 0, 0, 0, &data, &length);
     if (r == FVM_OK && (length != 1 || data[0]))
+    {
+        fvm_resource_fault(c, length == 1 ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_FAILURE, 0,
+                           "capability.import", uri);
         r = FVM_ERROR;
+    }
     std::free(data);
     if (r != FVM_OK)
+    {
+        fvm_resource_fault_resource(c, parsed.kind, 0, 0);
         return r;
+    }
     /* Repeated imports in an interpreter preserve proxy wrapper identity. */
     for (size_t i = 0; i < c->objects.size(); ++i)
     {

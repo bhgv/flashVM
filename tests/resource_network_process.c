@@ -1,3 +1,4 @@
+#include "flashvm/exception.h"
 #include "flashvm/capability.h"
 #include "flashvm/mutex.h"
 #include "flashvm/transfer.h"
@@ -102,7 +103,8 @@ int main(int argc, char **argv)
         reply_object = received.object;
         assert(fvm_set_global(context, "reply", &received) == FVM_OK);
         assert(fvm_object_call(context, lock, "touch", 0, 0, &result) == FVM_OK && result.boolean);
-        assert(fvm_object_call(context, lock, "reset", 0, 0, &result) == FVM_ERROR);
+        assert(fvm_object_call(context, lock, "reset", 0, 0, &result) == FVM_EXCEPTION);
+        assert(fvm_exception_clear(context) == FVM_OK);
         fvm_value_number(&value, 11);
         assert(fvm_channel_send_value(context, network, &value, 1) == FVM_OK);
         assert(fvm_object_call(context, lock, "set", 0, 0, &result) == FVM_OK);
@@ -115,7 +117,8 @@ int main(int argc, char **argv)
         assert(fvm_object_call(context, lock, "reset", 0, 0, &result) == FVM_OK);
         assert(fvm_object_call(context, reply_object, "receive", 0, 0, &received) == FVM_OK &&
                received.number == 55);
-        assert(fvm_object_call(context, lock, "touch", 0, 0, &result) == FVM_ERROR);
+        assert(fvm_object_call(context, lock, "touch", 0, 0, &result) == FVM_EXCEPTION);
+        assert(fvm_exception_clear(context) == FVM_OK);
         fvm_value_number(&value, 66);
         assert(fvm_channel_send_value(context, network, &value, 1) == FVM_OK);
         fvm_channel_release(file);

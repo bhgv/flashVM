@@ -798,6 +798,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             else
                 r = fvm_object_create(c, &o);
             require(r == FVM_OK, r);
+            if (src.kind == 4001 || src.kind == 4008)
+                o->resource_path = c->resource_receive_path;
             objects.push_back(o);
         }
         bool random = false;

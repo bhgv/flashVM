@@ -1,4 +1,5 @@
 #include "../core/runtime.hpp"
+#include "../core/exception_internal.hpp"
 #include "../core/channel_packet.h"
 #include "../core/transfer_resource.hpp"
 #include "../core/capability_internal.hpp"
@@ -20,6 +21,7 @@ struct Resource
 {
     int kind;
     void *handle;
+    unsigned long origin;
 };
 struct Packet;
 Packet *queued_packets = 0;
@@ -163,12 +165,16 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
                             : fvm_channel_is_closed((FVM_Channel *)o->resource, &closed);
     if (status != FVM_OK || closed)
     {
+        fvm_resource_fault(c, closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_DISCONNECTED, 0,
+                           "capability.send", 0);
+        fvm_resource_fault_resource(c, o->resource_kind, o->resource, o->resource_origin);
         fvm_debug_resource_error(c, 0, "capability.send", 0);
         return FVM_ERROR;
     }
     Resource resource;
     resource.kind = o->resource_kind;
     resource.handle = o->resource;
+    resource.origin = o->resource_origin;
     FVM_Result r = resource.kind == 8 ? fvm_mutex_retain((FVM_Mutex *)resource.handle)
                                       : fvm_channel_retain((FVM_Channel *)resource.handle);
     if (r != FVM_OK)
@@ -202,11 +208,17 @@ FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, uns
                                   : fvm_channel_is_closed((FVM_Channel *)r.handle, &closed);
     if (status != FVM_OK || closed)
     {
+        fvm_resource_fault(c, closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_DISCONNECTED, 0,
+                           "capability.receive", 0);
+        fvm_resource_fault_resource(c, kind, r.handle, r.origin);
         fvm_debug_resource_error(c, 0, "capability.receive", 0);
         return FVM_ERROR;
     }
-    return kind == 8 ? fvm_extensions_wrap_mutex(c, (FVM_Mutex *)r.handle, out)
-                     : fvm_extensions_wrap_channel(c, (FVM_Channel *)r.handle, out);
+    FVM_Result result = kind == 8 ? fvm_extensions_wrap_mutex(c, (FVM_Mutex *)r.handle, out)
+                                  : fvm_extensions_wrap_channel(c, (FVM_Channel *)r.handle, out);
+    if (result == FVM_OK && kind == 1)
+        (*out)->resource_origin = r.origin;
+    return result;
 }
 extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *channel,
                                              const FVM_Value *value, int blocking)
@@ -221,7 +233,13 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     {
         FVM_Result result = fvm_channel_send_primitive(channel, value, blocking);
         if (result == FVM_ERROR)
+        {
+            int closed = 0;
+            fvm_channel_is_closed(channel, &closed);
+            fvm_resource_fault(context, closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_FAILURE,
+                               fvm_channel_identity(channel), "channel.send", 0);
             fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.send", 0);
+        }
         return result;
     }
     Packet *packet = new (std::nothrow) Packet;
@@ -262,8 +280,19 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     if (file || result != FVM_OK)
         delete packet;
     if (result == FVM_ERROR)
+    {
+        int closed = 0;
+        if (!fvm_channel_remote_address(channel))
+            fvm_channel_is_closed(channel, &closed);
+        fvm_resource_fault(context,
+                           closed ? FVM_RESOURCE_CLOSED
+                           : file ? FVM_RESOURCE_IO
+                                  : FVM_RESOURCE_FAILURE,
+                           fvm_channel_identity(channel), "channel.send",
+                           fvm_channel_remote_address(channel));
         fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.send",
                                  fvm_channel_remote_address(channel));
+    }
     return result;
 }
 static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_Value *out,
@@ -283,21 +312,58 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
             return FVM_UNSUPPORTED;
         unsigned char *data = 0;
         size_t size = 0;
-        result = fvm_channel_stream_receive(context, channel, &data, &size, blocking);
-        if (result == FVM_OK)
-            result = fvm_value_deserialize(context, data, size, out);
-        fvm_serialized_free(data);
-        if (result == FVM_ERROR)
-            fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.receive",
-                                     fvm_channel_remote_address(channel));
-        return result;
+        try
+        {
+            struct PathScope
+            {
+                FVM_Context *context;
+                fvm_detail::string previous;
+                PathScope(FVM_Context *c, const char *path)
+                    : context(c), previous(c->resource_receive_path)
+                {
+                    if (path)
+                        c->resource_receive_path = path;
+                }
+                ~PathScope()
+                {
+                    context->resource_receive_path.swap(previous);
+                }
+            } provenance(context, fvm_channel_file_path(channel));
+            result = fvm_channel_stream_receive(context, channel, &data, &size, blocking);
+            if (result == FVM_OK)
+                result = fvm_value_deserialize(context, data, size, out);
+            fvm_serialized_free(data);
+            if (result == FVM_ERROR)
+            {
+                int closed = 0;
+                if (!fvm_channel_remote_address(channel))
+                    fvm_channel_is_closed(channel, &closed);
+                fvm_resource_fault(context, closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_IO,
+                                   fvm_channel_identity(channel), "channel.receive",
+                                   fvm_channel_remote_address(channel));
+                fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.receive",
+                                         fvm_channel_remote_address(channel));
+            }
+            return result;
+        }
+        catch (...)
+        {
+            fvm_serialized_free(data);
+            return FVM_OUT_OF_MEMORY;
+        }
     }
     result = peek ? fvm_channel_peek_mixed(channel, index, &value, &raw)
                   : fvm_channel_receive_mixed(channel, &value, &raw, blocking);
     if (result != FVM_OK)
     {
         if (result == FVM_ERROR)
+        {
+            int closed = 0;
+            fvm_channel_is_closed(channel, &closed);
+            fvm_resource_fault(context, closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_FAILURE,
+                               fvm_channel_identity(channel), "channel.receive", 0);
             fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.receive", 0);
+        }
         return result;
     }
     if (raw)

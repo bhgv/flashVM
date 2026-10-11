@@ -10,7 +10,9 @@ The descriptor `<"file", path, mode>` corresponds to `channel.create("file", pat
 
 Each handle has independent read and write positions. Reading starts at byte zero. A successfully sent message is flushed before send returns. Operations on one retained/shared handle are protected by its channel mutex. Independent handles/processes are not protected by that mutex: use a single shared writer handle. This adapter uses stdio/`long` positions; it does not promise files beyond `LONG_MAX` on platforms with 32-bit `long`. Flush is not a crash-atomic transaction or an fsync durability guarantee.
 
-`send`/`receive` and `trySend`/`tryReceive` use typed serialized records. At EOF, nonblocking receive returns `FVM_NOT_FOUND` (`tryReceive()` returns undefined); blocking receive returns `FVM_ERROR`. It never waits indefinitely for another process to append. Read/write permission errors and operations after close return errors. `available` checks for remaining bytes; it does not validate the next record. Queue capacity and pending-message count are unsupported for file channels.
+`send`/`receive` and `trySend`/`tryReceive` use typed serialized records. At EOF, nonblocking receive returns `FVM_NOT_FOUND` (`tryReceive()` returns undefined); blocking native receive returns `FVM_ERROR`; the AS wrapper throws `resource.io`
+(`FVM_EXCEPTION`). It never waits indefinitely for another process to append. Read/write permission errors and operations after close throw resource exceptions
+from AS methods; low-level native calls retain error statuses. See [exceptions](EXCEPTIONS.md). `available` checks for remaining bytes; it does not validate the next record. Queue capacity and pending-message count are unsupported for file channels.
 
 `fvm_channel_file_read` and `fvm_channel_file_write` provide raw byte access to ordinary files, including embedded NUL bytes. These operations use the same read/write positions. Do not interleave raw data and typed records unless the raw data forms complete records. The ActionScript bridge currently exposes typed messages only.
 

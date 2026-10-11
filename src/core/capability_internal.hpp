@@ -12,6 +12,7 @@ void fvm_debug_resource_error(FVM_Context *, unsigned long, const char *, const 
 typedef FVM_Result (*FVM_RemoteMutexFn)(void *, FVM_Context *, int, int *);
 FVM_Result fvm_mutex_create_remote(FVM_Context *, void *, FVM_RemoteMutexFn, void (*)(void *),
                                    const char *, FVM_Mutex **);
+FVM_Result fvm_mutex_touch_context(FVM_Context *, FVM_Mutex *, int *);
 const char *fvm_mutex_remote_address(FVM_Mutex *);
 #include "channel_packet.h"
 FVM_Result fvm_channel_send_wire(FVM_Channel *, const unsigned char *, size_t);

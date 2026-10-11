@@ -21,6 +21,8 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
 {
     fvm_detail::vector<FVM_Object *> pending;
     mark_object(c->global, pending);
+    if (c->exception_pending)
+        mark_value(c->exception_value, pending);
     fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator stack_fn;
     for (stack_fn = c->stack_functions.begin(); stack_fn != c->stack_functions.end(); ++stack_fn)
         mark_object(stack_fn->second.root, pending);

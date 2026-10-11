@@ -1,3 +1,5 @@
+#include "try_record.hpp"
+#include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
@@ -66,10 +68,21 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     }
     return fvm_value_string(value, copy);
 }
+struct Execution
+{
+    fvm_detail::vector<fvm_detail::string> constants;
+    fvm_detail::vector<FVM_Value> registers, stack;
+    unsigned long steps;
+    bool returned;
+    Execution() : steps(0), returned(false)
+    {
+    }
+};
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
-                          const fvm_detail::vector<fvm_detail::string> *inherited);
+                          const fvm_detail::vector<fvm_detail::string> *inherited,
+                          Execution *shared = 0, size_t base = 0, unsigned int depth = 0);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
 static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_ScriptFunction &fn,
@@ -162,12 +175,15 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
-                          const fvm_detail::vector<fvm_detail::string> *inherited)
+                          const fvm_detail::vector<fvm_detail::string> *inherited,
+                          Execution *shared, size_t base, unsigned int depth)
 {
-    fvm_detail::vector<fvm_detail::string> constants;
-    fvm_detail::vector<FVM_Value> registers;
+    Execution owned;
+    Execution &execution = shared ? *shared : owned;
+    fvm_detail::vector<fvm_detail::string> &constants = execution.constants;
+    fvm_detail::vector<FVM_Value> &registers = execution.registers;
+    fvm_detail::vector<FVM_Value> &stack = execution.stack;
     fvm_detail::vector<Action> actions;
-    fvm_detail::vector<FVM_Value> stack;
     /* Register live operand stack, lexical bindings and receiver as GC roots.
        The frame is popped on every return path, including exceptions. */
     struct RootGuard
@@ -195,18 +211,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         }
     } roots(c, &stack, locals, self, &registers);
     size_t pos = 0, pc = 0, i;
-    unsigned long steps = 0;
-    if (!c || (!data && size))
+    unsigned long &steps = execution.steps;
+    if (!c || (!data && size) || depth > 64)
         return FVM_INVALID_ARGUMENT;
-    if (returned)
+    if (returned && !shared)
         fvm_value_undefined(returned);
     try
     {
-        if (inherited)
-            constants = *inherited;
-        registers.resize(4);
-        for (size_t reg = 0; reg < registers.size(); ++reg)
-            fvm_value_undefined(&registers[reg]);
+        if (!shared)
+        {
+            if (inherited)
+                constants = *inherited;
+            registers.resize(4);
+            for (size_t reg = 0; reg < registers.size(); ++reg)
+                fvm_value_undefined(&registers[reg]);
+        }
         while (pos < size)
         {
             Action a;
@@ -224,18 +243,25 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.length > size - pos)
                     return FVM_INVALID_ARGUMENT;
                 pos += a.length;
+                if (a.op == 0x8f)
+                {
+                    FVM_TryRecord record;
+                    if (!fvm_try_record(data, size, a.payload, a.length, record))
+                        return FVM_INVALID_ARGUMENT;
+                    pos += record.sizes[0] + record.sizes[1] + record.sizes[2];
+                }
             }
             a.next = pos;
             actions.push_back(a);
             if (!a.op)
                 break;
         }
-        if (actions.empty() || actions.back().op != 0 || pos != size)
+        if ((!shared && (actions.empty() || actions.back().op != 0)) || pos != size)
             return FVM_INVALID_ARGUMENT;
         while (pc < actions.size())
         {
             const Action &a = actions[pc];
-            fvm_debug_update_location(c, (unsigned long)a.offset);
+            fvm_debug_update_location(c, (unsigned long)(base + a.offset));
             ++steps;
             if (c->runtime->config.instruction_limit &&
                 steps > c->runtime->config.instruction_limit)
@@ -261,7 +287,102 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 if (returned)
                     *returned = stack.back();
+                execution.returned = true;
                 return FVM_OK;
+            }
+            if (a.op == 0x2a)
+            { /* Throw: preserve the value while unwinding. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value value = stack.back();
+                FVM_Result result = fvm_exception_raise(c, &value);
+                stack.pop_back();
+                return result;
+            }
+            if (a.op == 0x8f)
+            {
+                FVM_TryRecord record;
+                if (!fvm_try_record(data, size, a.payload, a.length, record))
+                    return FVM_INVALID_ARGUMENT;
+                fvm_detail::vector<FVM_Value> baseline = stack;
+                RootGuard baseline_roots(c, &baseline, 0, 0, &registers);
+                FVM_Result result =
+                    execute(c, data + record.body, record.sizes[0], returned, locals, self, 0,
+                            &execution, base + record.body, depth + 1);
+                /* Values saved across catch/finally need roots independent of the
+                 * operand stack, which is restored during exception unwinding. */
+                fvm_detail::vector<FVM_Value> saved;
+                saved.resize(3);
+                for (size_t n = 0; n < saved.size(); ++n)
+                    fvm_value_undefined(&saved[n]);
+                RootGuard saved_roots(c, &saved, 0, 0, &registers);
+                if (result == FVM_EXCEPTION && (record.flags & 1))
+                {
+                    saved[0] = c->exception_value;
+                    stack = baseline;
+                    fvm_exception_clear(c);
+                    fvm_detail::map<fvm_detail::string, FVM_Value> top_catch;
+                    fvm_detail::map<fvm_detail::string, FVM_Value> *bindings =
+                        locals ? locals : &top_catch;
+                    bool had_binding = false;
+                    if (record.flags & 4)
+                    {
+                        if (record.reg >= registers.size())
+                            return FVM_INVALID_ARGUMENT;
+                        registers[record.reg] = saved[0];
+                    }
+                    else
+                    {
+                        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator old =
+                            bindings->find(record.name);
+                        had_binding = old != bindings->end();
+                        if (had_binding)
+                            saved[1] = old->second;
+                        (*bindings)[record.name] = saved[0];
+                    }
+                    result = execute(c, data + record.body + record.sizes[0], record.sizes[1],
+                                     returned, bindings, self, 0, &execution,
+                                     base + record.body + record.sizes[0], depth + 1);
+                    if (!(record.flags & 4))
+                    {
+                        if (had_binding)
+                            (*bindings)[record.name] = saved[1];
+                        else
+                            bindings->erase(record.name);
+                    }
+                }
+                if ((record.flags & 2) && (result == FVM_OK || result == FVM_EXCEPTION))
+                {
+                    bool was_return = execution.returned;
+                    bool was_exception = c->exception_pending;
+                    bool was_fault = c->fault_pending;
+                    FVM_ExceptionInfo fault = c->fault;
+                    if (returned)
+                        saved[1] = *returned;
+                    saved[2] = c->exception_value;
+                    execution.returned = false;
+                    fvm_exception_clear(c);
+                    size_t start = record.body + record.sizes[0] + record.sizes[1];
+                    FVM_Result final_result =
+                        execute(c, data + start, record.sizes[2], returned, locals, self, 0,
+                                &execution, base + start, depth + 1);
+                    if (final_result != FVM_OK || execution.returned)
+                        result = final_result;
+                    else
+                    {
+                        execution.returned = was_return;
+                        if (returned)
+                            *returned = saved[1];
+                        c->exception_pending = was_exception;
+                        c->exception_value = saved[2];
+                        c->fault_pending = was_fault;
+                        c->fault = fault;
+                    }
+                }
+                if (result != FVM_OK || execution.returned)
+                    return result;
+                ++pc;
+                continue;
             }
             if (a.op == 0x88)
             { /* ConstantPool: replace the current pool atomically. */
@@ -773,7 +894,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
     {
         return FVM_ERROR;
     }
-    return FVM_INVALID_ARGUMENT;
+    return shared ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
 } // namespace
 extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t size)

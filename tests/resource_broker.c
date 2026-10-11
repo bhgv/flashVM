@@ -1,3 +1,4 @@
+#include "flashvm/exception.h"
 #include "flashvm/capability.h"
 #include "flashvm/mutex.h"
 #include "flashvm/transfer.h"
@@ -59,7 +60,13 @@ int main(void)
     /* Calling the nonblocking C API on the imported handle is exercised by
        network-process tests; touch already probes the actual owner here. */
     assert(fvm_object_call(client, proxy, "touch", 0, 0, &value) == FVM_OK && value.boolean);
-    assert(fvm_object_call(client, proxy, "reset", 0, 0, &value) == FVM_ERROR);
+    assert(fvm_object_call(client, proxy, "reset", 0, 0, &value) == FVM_EXCEPTION);
+    {
+        FVM_ExceptionInfo fault;
+        assert(fvm_exception_info(client, &fault) == FVM_OK);
+        assert(fault.code == FVM_RESOURCE_NOT_OWNER);
+    }
+    assert(fvm_exception_clear(client) == FVM_OK);
     assert(fvm_mutex_reset(owner, mutex) == FVM_OK);
     assert(fvm_object_call(client, proxy, "set", 0, 0, &value) == FVM_OK);
     assert(fvm_mutex_touch(mutex, &state) == FVM_OK && state);
@@ -103,7 +110,8 @@ int main(void)
     assert(fvm_debug_set_location(client, "closed-resource.as", 42) == FVM_OK);
     assert(fvm_value_deserialize(client, bytes, length, &received) == FVM_ERROR);
     fvm_serialized_free(bytes);
-    assert(fvm_object_call(client, proxy, "touch", 0, 0, &value) == FVM_ERROR);
+    assert(fvm_object_call(client, proxy, "touch", 0, 0, &value) == FVM_EXCEPTION);
+    assert(fvm_exception_clear(client) == FVM_OK);
     assert(fvm_debug_resource_errors(errors, 64, &count, 1) == FVM_OK && count > 0);
     assert(errors[count - 1].line == 42 && !strcmp(errors[count - 1].source, "closed-resource.as"));
     assert(fvm_broker_import(second, mutex_uri, &alias) == FVM_ERROR);

@@ -1,3 +1,4 @@
+#include "flashvm/exception.h"
 #include "flashvm/transfer.h"
 #include "flashvm/serialization.h"
 #include "flashvm/standard.h"
@@ -83,7 +84,8 @@ int main(void)
     assert(fvm_value_string(args + 2, "w") == FVM_OK);
     assert(fvm_object_call(src, namespace_value.object, "create", 3, args, &copy) == FVM_OK);
     assert(fvm_object_call(src, copy.object, "send", 1, &value, &other) == FVM_OK);
-    assert(fvm_object_call(src, copy.object, "receive", 0, 0, &other) == FVM_ERROR);
+    assert(fvm_object_call(src, copy.object, "receive", 0, 0, &other) == FVM_EXCEPTION);
+    assert(fvm_exception_clear(src) == FVM_OK);
     assert(fvm_object_call(src, copy.object, "close", 0, 0, &other) == FVM_OK);
     fvm_context_destroy(src); /* File has no pointers into this destroyed context. */
     assert(fvm_channel_open_file(path, "r", &channel) == FVM_OK);

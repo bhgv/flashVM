@@ -1,31 +1,30 @@
-# Experimental AVM1 execution API
+# AVM1 execution API
 
-This is an intentionally narrow interpreter, not a complete Flash 8 runtime.
-The implementation is written in C++98; the API and tests use C89.
+FlashVM implements an AVM1 subset in C++98 with a C89 embedding API.
+It is not a complete Flash 8 runtime. FWS/CWS loading through SWF8, GC,
+prototypes, metatables, registered native methods and named script functions
+are available; display/timeline and JIT coverage remains incomplete.
 
-- `fvm_avm1_execute(context, data, size)` validates and executes one complete
-  AVM1 action stream, ending with opcode `0x00`.
-- `fvm_swf_execute_actions(context)` walks the top-level tags of an FWS SWF
-  previously loaded using `fvm_load_memory`, executing each `DoAction` tag
-  in file order. This does **not** implement frame timing or sprite actions.
-- `fvm_register_function(context, name, callback, userdata)` makes a C callback
-  available to AVM1 `CallFunction` by name. `fvm_get_global` and
-  `fvm_set_global` share the same global object as AVM1 variables.
+`fvm_avm1_execute` validates a complete action stream ending in End and executes
+it in the context. `fvm_swf_execute_actions` executes top-level DoAction tags of
+the loaded canonical FWS, not a full timeline/sprite event loop.
+`fvm_avm1_call` invokes a named function with rooted parameters and receiver.
+Native CallFunction callbacks, globals and AS properties share the context.
 
-Supported bytecode: End, Push (string, signed 32-bit integer, boolean, null,
-undefined), Pop, GetVariable, SetVariable, Add, Subtract, Multiply, Divide,
-Jump, If, and CallFunction. Branch targets must be instruction boundaries.
-A nonzero `FVM_Config.instruction_limit` bounds instruction execution.
+Tests under `tests/avm1*`, `tests/interpreter.c`, `tests/swf_execute.c` and
+`tests/actionscript*` describe supported operands and instructions: primitive
+Push values and constants, stack operations, variables, local definitions,
+properties, arithmetic, branches, native/script calls and returns. Unsupported
+instructions return FVM_UNSUPPORTED. Branches stay within the current action
+block and must target parsed instruction boundaries. Each function has its own
+instruction budget; nested try/catch/finally blocks share that budget.
 
-Limitations: no AVM1 prototype chain, lexical scope, user-defined functions,
-string coercion, double/float Push, ConstantPool, GetMember/SetMember,
-DoInitAction, nested sprites, display list, GC, JIT or SWF compression.
-There is no rollback on interpreter failure: previously set globals remain.
-The interpreter and host C API must not be called concurrently on a context.
+SWF7–8 ActionTry and ActionThrow support catch by name/register, propagation
+through function calls, finally on return and finally overrides. See
+[exception API and limits](EXCEPTIONS.md). Existing DefineFunction framing and
+four-register execution remain limited; DefineFunction2 is unsupported.
 
-See `tests/interpreter.c` and `tests/swf_execute.c` for executable C89
-examples demonstrating native callback invocation from AVM1 and SWF.
-
-Security note: this experimental runtime is not yet suitable for executing
-untrusted SWF. Set a finite instruction limit; memory and stack quotas are not
-yet enforced throughout the interpreter.
+The context and host APIs must not execute concurrently on one context. VM
+failure does not roll back globals already changed. Native allocation failures
+and unsupported bytecode are statuses, not AS exceptions. This checkpoint does
+not establish conformance or safety for arbitrary untrusted SWF.

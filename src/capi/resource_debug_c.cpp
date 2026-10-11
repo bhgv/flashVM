@@ -1,4 +1,5 @@
 #include "../core/capability_internal.hpp"
+#include "../core/exception_internal.hpp"
 #include "flashvm/debug.h"
 #include "../../ports/channel_sync.h"
 #include <cstring>
@@ -16,6 +17,7 @@ void copy(char *out, const char *s, size_t n)
 void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *operation,
                               const char *address)
 {
+    fvm_resource_fault(c, FVM_RESOURCE_FAILURE, id, operation, address);
     FVM_DebugResourceError event;
     std::memset(&event, 0, sizeof(event));
     event.resource = id;

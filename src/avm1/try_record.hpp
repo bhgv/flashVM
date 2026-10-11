@@ -1,0 +1,51 @@
+#ifndef FVM_TRY_RECORD_HPP
+#define FVM_TRY_RECORD_HPP
+#include <cstddef>
+/* ActionTry's length covers its header only. The three action blocks follow
+ * outside the record length, in try/catch/finally order. */
+struct FVM_TryRecord
+{
+    unsigned int flags, reg;
+    size_t sizes[3], body;
+    const char *name;
+};
+static bool fvm_try_record(const unsigned char *data, size_t size, size_t payload, size_t length,
+                           FVM_TryRecord &out)
+{
+    if (length < 8 || payload > size || length > size - payload)
+        return false;
+    const unsigned char *p = data + payload;
+    out.flags = p[0];
+    out.reg = 0;
+    out.name = 0;
+    if (out.flags & ~7U)
+        return false;
+    size_t total = 0;
+    for (unsigned int i = 0; i < 3; ++i)
+    {
+        out.sizes[i] = (size_t)p[1 + i * 2] | ((size_t)p[2 + i * 2] << 8);
+        total += out.sizes[i];
+    }
+    if (!(out.flags & 1) && out.sizes[1])
+        return false;
+    if (!(out.flags & 2) && out.sizes[2])
+        return false;
+    if (out.flags & 4)
+    {
+        if (length != 8)
+            return false;
+        out.reg = p[7];
+    }
+    else
+    {
+        size_t i = 7;
+        while (i < length && p[i])
+            ++i;
+        if (i + 1 != length)
+            return false;
+        out.name = (const char *)p + 7;
+    }
+    out.body = payload + length;
+    return total <= size - out.body;
+}
+#endif

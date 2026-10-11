@@ -23,6 +23,7 @@ struct FVM_Channel
     FVM_RemoteChannelFn remote_request;
     void (*remote_release)(void *);
     const char *remote_address;
+    char *file_path;
     FVM_PortFile *file;
     int file_channel;
     FVM_ChannelNode *head;
@@ -76,6 +77,13 @@ FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel
         fvm_channel_destroy(channel);
         return result;
     }
+    channel->file_path = (char *)malloc(strlen(path) + 1);
+    if (!channel->file_path)
+    {
+        fvm_channel_destroy(channel);
+        return FVM_OUT_OF_MEMORY;
+    }
+    strcpy(channel->file_path, path);
     channel->file_channel = 1;
     *out = channel;
     return FVM_OK;
@@ -294,6 +302,7 @@ void fvm_channel_release(FVM_Channel *c)
     if (c->remote_release)
         c->remote_release(c->remote);
     free(c->last_string);
+    free(c->file_path);
     fvm_port_sync_destroy(c->sync);
     free(c);
 }
@@ -770,4 +779,9 @@ FVM_Result fvm_channel_stream_receive(FVM_Context *context, FVM_Channel *c, unsi
     fvm_port_sync_unlock(c->sync);
     return closed ? FVM_ERROR
                   : c->remote_request(c->remote, context, 6, 0, 0, data, size, blocking);
+}
+
+const char *fvm_channel_file_path(FVM_Channel *c)
+{
+    return c ? c->file_path : 0;
 }

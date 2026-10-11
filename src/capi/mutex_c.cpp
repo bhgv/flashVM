@@ -1,4 +1,5 @@
 #include "../core/runtime.hpp"
+#include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
 #include "flashvm/mutex.h"
 #include "flashvm/debug.h"
@@ -346,6 +347,21 @@ extern "C" FVM_Result fvm_mutex_is_closed(FVM_Mutex *m, int *out)
         return m->request(m->remote, 0, 0, out);
     return FVM_OK;
 }
+FVM_Result fvm_mutex_touch_context(FVM_Context *c, FVM_Mutex *m, int *out)
+{
+    if (!c || !m || !out)
+        return FVM_INVALID_ARGUMENT;
+    {
+        RegistryGuard guard;
+        if (m->closed)
+        {
+            fvm_resource_fault(c, FVM_RESOURCE_CLOSED, fvm_mutex_identity(m), "mutex.touch",
+                               fvm_mutex_remote_address(m));
+            return FVM_ERROR;
+        }
+    }
+    return m->request ? m->request(m->remote, c, 3, out) : touch_impl(m, out);
+}
 extern "C" FVM_Result fvm_mutex_touch(FVM_Mutex *m, int *out)
 {
     if (!m || !out)
@@ -377,6 +393,8 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
                 fvm_worker_stop_requested(c->worker, &stop);
             if (stop)
             {
+                fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, m->identity, "mutex.set",
+                                   m->remote_address);
                 r = FVM_ERROR;
                 break;
             }
@@ -413,7 +431,18 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
         } while (r == FVM_NOT_FOUND && blocking);
     }
     if (r == FVM_ERROR)
+    {
+        unsigned long code = FVM_RESOURCE_FAILURE;
+        {
+            RegistryGuard guard;
+            if (m->closed)
+                code = FVM_RESOURCE_CLOSED;
+            else if (m->owner == c->identity)
+                code = FVM_RESOURCE_RECURSIVE;
+        }
+        fvm_resource_fault(c, code, m->identity, "mutex.set", m->remote_address);
         fvm_debug_resource_error(c, m->identity, "mutex.set", m->remote_address);
+    }
     return r;
 }
 extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
@@ -447,7 +476,15 @@ extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
         fvm_port_sync_unlock(m->remote_sync);
     }
     if (r == FVM_ERROR)
+    {
+        unsigned long code;
+        {
+            RegistryGuard guard;
+            code = m->closed ? FVM_RESOURCE_CLOSED : FVM_RESOURCE_NOT_OWNER;
+        }
+        fvm_resource_fault(c, code, m->identity, "mutex.reset", m->remote_address);
         fvm_debug_resource_error(c, m->identity, "mutex.reset", m->remote_address);
+    }
     return r;
 }
 extern "C" FVM_Result fvm_mutex_close(FVM_Mutex *m)

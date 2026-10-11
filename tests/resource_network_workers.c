@@ -104,7 +104,7 @@ int main(void)
         assert(fvm_worker_run(&config, work, &input, &shared, &workers[0]) == FVM_OK);
         assert(fvm_channel_receive(shared.ready, &result) == FVM_OK);
         assert(fvm_worker_stop(workers[0]) == FVM_OK);
-        assert(fvm_worker_join(workers[0], &result) == FVM_ERROR);
+        assert(fvm_worker_join(workers[0], &result) == (i == 1 ? FVM_EXCEPTION : FVM_ERROR));
         fvm_worker_destroy(workers[0]);
         assert(fvm_mutex_touch(mutex, &held) == FVM_OK && held);
     }
