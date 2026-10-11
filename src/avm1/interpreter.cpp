@@ -1,6 +1,6 @@
 #include "../core/runtime.hpp"
 #include "flashvm/avm1.h"
-#include <vector>
+#include "../details/vector.hpp"
 #include <string>
 #include <cstdio>
 #include <cstdlib>
@@ -11,14 +11,14 @@ namespace {
 struct Action { unsigned char op; size_t offset, next, payload, length; };
 static unsigned int u16(const unsigned char *p) { return (unsigned int)p[0] | ((unsigned int)p[1]<<8); }
 static unsigned long u32(const unsigned char *p) { return (unsigned long)p[0] | ((unsigned long)p[1]<<8) | ((unsigned long)p[2]<<16) | ((unsigned long)p[3]<<24); }
-static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, std::map<std::string, FVM_Value> *locals, FVM_Object *self);
+static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, fvm_detail::map<std::string, FVM_Value> *locals, FVM_Object *self);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
 static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn,
                               unsigned int argc, const FVM_Value *args,
                               FVM_Object *receiver, FVM_Value *result) {
     if (c->script_depth>=64) return FVM_ERROR;
-    std::map<std::string,FVM_Value> frame;
+    fvm_detail::map<std::string,FVM_Value> frame;
     try {
         for (size_t i=0;i<fn.parameters.size();++i) {
             FVM_Value value; fvm_value_undefined(&value);
@@ -31,9 +31,9 @@ static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn,
     --c->script_depth;
     return status;
 }
-static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, std::map<std::string, FVM_Value> *locals, FVM_Object *self) {
-    std::vector<Action> actions;
-    std::vector<FVM_Value> stack;
+static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, fvm_detail::map<std::string, FVM_Value> *locals, FVM_Object *self) {
+    fvm_detail::vector<Action> actions;
+    fvm_detail::vector<FVM_Value> stack;
     size_t pos=0, pc=0, i;
     unsigned long steps=0;
     if (!c || (!data && size)) return FVM_INVALID_ARGUMENT;
@@ -164,7 +164,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             } else if (a.op==0x1c) { /* GetVariable */
                 if (stack.empty() || stack.back().type!=FVM_VALUE_STRING) return FVM_ERROR;
                 FVM_Value v; FVM_Result r=FVM_OK;
-                std::map<std::string,FVM_Value>::iterator local=locals ? locals->find(stack.back().string) : std::map<std::string,FVM_Value>::iterator();
+                fvm_detail::map<std::string,FVM_Value>::iterator local=locals ? locals->find(stack.back().string) : fvm_detail::map<std::string,FVM_Value>::iterator();
                 if (locals && local!=locals->end()) v=local->second;
                 else if (self && std::strcmp(stack.back().string,"this")==0) {
                     fvm_value_undefined(&v); v.type=FVM_VALUE_OBJECT; v.object=self;
@@ -196,11 +196,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 double n=stack[stack.size()-3].number;
                 if (n<0 || n>65535 || n!=(unsigned int)n || stack.size()<(size_t)n+3) return FVM_ERROR;
                 unsigned int argc=(unsigned int)n;
-                std::vector<FVM_Value> args(argc);
+                fvm_detail::vector<FVM_Value> args(argc);
                 for (i=0;i<argc;++i) args[i]=stack[stack.size()-4-i];
                 FVM_Value result; fvm_value_undefined(&result);
                 FVM_Result r;
-                std::map<std::string, FVM_ScriptFunction>::const_iterator script=c->script_functions.find(name);
+                fvm_detail::map<std::string, FVM_ScriptFunction>::const_iterator script=c->script_functions.find(name);
                 if (script!=c->script_functions.end())
                     r=call_script(c,script->second,argc,argc?&args[0]:0,receiver,&result);
                 else r=fvm_object_call(c,receiver,name.c_str(),argc,argc?&args[0]:0,&result);
@@ -212,10 +212,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 double n=stack[stack.size()-2].number;
                 if (n<0 || n>65535 || n!=(unsigned int)n || stack.size()<(size_t)n+2) return FVM_ERROR;
                 unsigned int argc=(unsigned int)n;
-                std::vector<FVM_Value> args(argc);
+                fvm_detail::vector<FVM_Value> args(argc);
                 for (i=0;i<argc;++i) args[i]=stack[stack.size()-3-i];
                 FVM_Value result; FVM_Result r;
-                std::map<std::string, FVM_ScriptFunction>::const_iterator fn=c->script_functions.find(name);
+                fvm_detail::map<std::string, FVM_ScriptFunction>::const_iterator fn=c->script_functions.find(name);
                 if (fn!=c->script_functions.end()) {
                     r=call_script(c,fn->second,argc,argc?&args[0]:0,c->global,&result);
                 } else r=fvm_call(c,name.c_str(),argc,argc?&args[0]:0,&result);

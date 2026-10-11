@@ -168,3 +168,8 @@ first-class function properties and full Flash method lookup are pending.
 ## Table inspection (incremental)
 
 See `doc/TABLES_DEBUG.md` and `examples/embedding/tables_debug/` for C89 table and debugger inspection APIs. Lua-like function environments, metaprotocol and stepping are **not yet implemented**.
+
+### Internal containers and metatables
+
+See [custom containers and metatables](doc/CUSTOM_CONTAINERS.md) for the
+C++98 hash-table/vector implementation, C89 example and current limitations.

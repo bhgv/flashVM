@@ -5,8 +5,9 @@
 extern "C" {
 #endif
 /* Tables are VM-owned objects. Numeric slots and named slots are distinct.
-   Metatable fallback is used only when an own slot is absent; it is not yet
-   the full Lua __index/__newindex metamethod protocol. */
+   Named properties support table-valued __index and __newindex. Numeric
+   properties still use direct metatable fallback. Function-valued metamethods
+   and metatables on primitive values are not implemented yet. */
 FVM_API FVM_Result fvm_table_set_index(FVM_Context *, FVM_Object *, unsigned long, const FVM_Value *);
 FVM_API FVM_Result fvm_table_get_index(FVM_Context *, FVM_Object *, unsigned long, FVM_Value *);
 FVM_API FVM_Result fvm_table_set_metatable(FVM_Context *, FVM_Object *, FVM_Object *);

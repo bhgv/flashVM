@@ -30,17 +30,18 @@ FVM_Result fvm_table_set_index(FVM_Context *c,FVM_Object *o,unsigned long key,co
 FVM_Result fvm_table_get_index(FVM_Context *c,FVM_Object *o,unsigned long key,FVM_Value *out) {
     if (!valid(c,o) || !out) return FVM_INVALID_ARGUMENT;
     for (unsigned int depth=0;o && depth<1024;++depth) {
-        std::map<unsigned long,FVM_Value>::const_iterator it=o->indexed.find(key);
+        fvm_detail::map<unsigned long,FVM_Value>::const_iterator it=o->indexed.find(key);
         if (it!=o->indexed.end()) { *out=it->second; return FVM_OK; }
         o=o->metatable;
     }
     fvm_value_undefined(out); return FVM_OK;
 }
 FVM_Result fvm_table_set_metatable(FVM_Context *c,FVM_Object *o,FVM_Object *meta) {
-    FVM_Object *p; unsigned int depth=0;
     if (!valid(c,o) || (meta && !valid(c,meta))) return FVM_INVALID_ARGUMENT;
-    for (p=meta;p;p=p->metatable) { if (p==o || ++depth>1024) return FVM_INVALID_ARGUMENT; }
-    o->metatable=meta; return FVM_OK;
+    FVM_Object *cursor=meta;unsigned int depth=0;
+    while(cursor && depth++<1024) { if(cursor==o)return FVM_INVALID_ARGUMENT;cursor=cursor->metatable; }
+    if(cursor)return FVM_INVALID_ARGUMENT;
+    o->metatable=meta;return FVM_OK;
 }
 FVM_Result fvm_table_get_metatable(FVM_Context *c,FVM_Object *o,FVM_Object **out) {
     if (!valid(c,o) || !out) return FVM_INVALID_ARGUMENT;
@@ -56,13 +57,13 @@ FVM_Result fvm_table_indexed_count(FVM_Context *c,FVM_Object *o,size_t *out) {
 }
 FVM_Result fvm_table_named_at(FVM_Context *c,FVM_Object *o,size_t index,const char **name,FVM_Value *out) {
     if (!valid(c,o) || !name || !out || index>=o->properties.size()) return FVM_INVALID_ARGUMENT;
-    std::map<std::string,FVM_Value>::const_iterator it=o->properties.begin();
+    fvm_detail::map<std::string,FVM_Value>::const_iterator it=o->properties.begin();
     while(index--) ++it;
     *name=it->first.c_str(); *out=it->second; return FVM_OK;
 }
 FVM_Result fvm_table_indexed_at(FVM_Context *c,FVM_Object *o,size_t index,unsigned long *key,FVM_Value *out) {
     if (!valid(c,o) || !key || !out || index>=o->indexed.size()) return FVM_INVALID_ARGUMENT;
-    std::map<unsigned long,FVM_Value>::const_iterator it=o->indexed.begin();
+    fvm_detail::map<unsigned long,FVM_Value>::const_iterator it=o->indexed.begin();
     while(index--) ++it;
     *key=it->first; *out=it->second; return FVM_OK;
 }
@@ -80,7 +81,7 @@ FVM_Result fvm_debug_native_function_count(FVM_Context *c,size_t *out) {
 }
 FVM_Result fvm_debug_native_function_at(FVM_Context *c,size_t i,const char **out) {
     if (!c || !out || i>=c->functions.size()) return FVM_INVALID_ARGUMENT;
-    std::map<std::string,FVM_NativeEntry>::const_iterator it=c->functions.begin();
+    fvm_detail::map<std::string,FVM_NativeEntry>::const_iterator it=c->functions.begin();
     while(i--) ++it;
     *out=it->first.c_str(); return FVM_OK;
 }
@@ -90,7 +91,7 @@ FVM_Result fvm_debug_script_function_count(FVM_Context *c,size_t *out) {
 }
 FVM_Result fvm_debug_script_function_at(FVM_Context *c,size_t i,const char **out) {
     if (!c || !out || i>=c->script_functions.size()) return FVM_INVALID_ARGUMENT;
-    std::map<std::string,FVM_ScriptFunction>::const_iterator it=c->script_functions.begin();
+    fvm_detail::map<std::string,FVM_ScriptFunction>::const_iterator it=c->script_functions.begin();
     while(i--) ++it;
     *out=it->first.c_str(); return FVM_OK;
 }
