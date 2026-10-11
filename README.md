@@ -258,3 +258,5 @@ The script-level `gc.mode()` / `gc.state()` API is planned, not implemented.
 ## GC API references (stages 49–68)
 
 See [GC safe points](doc/GC_SAFE_POINTS.md), [GC modes](doc/GC_MODES.md), [API index](doc/API_INDEX.md), and [GC troubleshooting](doc/GC_TROUBLESHOOTING.md). The collector is not yet safe to run inside active AVM1 frames.
+
+GC active-frame roots: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc/GC_ACTIVE_FRAMES.ru.md).

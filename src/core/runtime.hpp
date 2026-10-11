@@ -31,6 +31,12 @@ struct FVM_ScriptFunction {
     fvm_detail::vector<fvm_detail::string> parameters;
 };
 struct FVM_QueuedInput { FVM_InputEvent event; FVM_InputPhase phase; };
+struct FVM_GCRootFrame {
+    FVM_GCRootFrame *previous;
+    fvm_detail::vector<FVM_Value> *stack;
+    fvm_detail::map<fvm_detail::string,FVM_Value> *locals;
+    FVM_Object *receiver;
+};
 struct FVM_Context {
     FVM_Runtime *runtime;
     fvm_detail::map<fvm_detail::string,FVM_StackEntry> stack_functions;
@@ -52,5 +58,7 @@ struct FVM_Context {
     int gc_mode;
     unsigned long gc_allocations;
     bool gc_collecting;
+    FVM_GCRootFrame *gc_frames;
+    unsigned int gc_native_depth;
 };
 #endif

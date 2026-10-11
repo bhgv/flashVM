@@ -15,6 +15,18 @@ static void mark_graph(FVM_Context *c) {
     size_t i;
     for (i=0;i<c->objects.size();++i)
         if (c->objects[i]->gc_pins) mark_object(c->objects[i],pending);
+    for (FVM_GCRootFrame *frame=c->gc_frames;frame;frame=frame->previous) {
+        mark_object(frame->receiver,pending);
+        if (frame->stack) for(size_t j=0;j<frame->stack->size();++j) {
+            const FVM_Value &v=(*frame->stack)[j];
+            if(v.type==FVM_VALUE_OBJECT) mark_object(v.object,pending);
+        }
+        if (frame->locals) {
+            fvm_detail::map<fvm_detail::string,FVM_Value>::iterator it;
+            for(it=frame->locals->begin();it!=frame->locals->end();++it)
+                if(it->second.type==FVM_VALUE_OBJECT) mark_object(it->second.object,pending);
+        }
+    }
     while (!pending.empty()) {
         FVM_Object *o=pending.back();pending.pop_back();
         mark_object(o->prototype,pending);
@@ -55,7 +67,7 @@ FVM_Result fvm_gc_object_count(FVM_Context *c,unsigned long *n) {
     *n=(unsigned long)c->objects.size();return FVM_OK;
 }
 FVM_Result fvm_gc_collect(FVM_Context *c,unsigned long *reclaimed) {
-    if (!c || c->gc_collecting) return FVM_INVALID_ARGUMENT;
+    if (!c || c->gc_collecting || c->gc_native_depth) return FVM_INVALID_ARGUMENT;
     if (reclaimed) *reclaimed=0;
     c->gc_collecting=true;
     size_t i;
@@ -96,6 +108,7 @@ FVM_Result fvm_gc_threshold(FVM_Context *c,unsigned long *threshold) {
 }
 FVM_Result fvm_gc_step(FVM_Context *c,unsigned long *reclaimed) {
     if (!c)return FVM_INVALID_ARGUMENT;
+    if (c->gc_native_depth) return FVM_OK;
     if(reclaimed)*reclaimed=0;
     if(c->gc_mode==FVM_GC_SUSPENDED)return FVM_OK;
     /* The allocation threshold is monotonic with the tuning setting. */

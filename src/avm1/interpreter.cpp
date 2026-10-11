@@ -34,6 +34,18 @@ static FVM_Result call_script(FVM_Context *c, const FVM_ScriptFunction &fn,
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size, FVM_Value *returned, fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self) {
     fvm_detail::vector<Action> actions;
     fvm_detail::vector<FVM_Value> stack;
+    /* Register live operand stack, lexical bindings and receiver as GC roots.
+       The frame is popped on every return path, including exceptions. */
+    struct RootGuard {
+        FVM_Context *context;
+        FVM_GCRootFrame frame;
+        RootGuard(FVM_Context *c, fvm_detail::vector<FVM_Value> *s,
+                  fvm_detail::map<fvm_detail::string,FVM_Value> *l, FVM_Object *r) : context(c) {
+            frame.previous=c->gc_frames; frame.stack=s; frame.locals=l; frame.receiver=r;
+            c->gc_frames=&frame;
+        }
+        ~RootGuard() { context->gc_frames=frame.previous; }
+    } roots(c,&stack,locals,self);
     size_t pos=0, pc=0, i;
     unsigned long steps=0;
     if (!c || (!data && size)) return FVM_INVALID_ARGUMENT;

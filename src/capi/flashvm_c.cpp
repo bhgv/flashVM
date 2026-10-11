@@ -37,6 +37,8 @@ FVM_Result fvm_context_create(FVM_Runtime *runtime, FVM_Context **out_context) {
     context->gc_mode = 0;
     context->gc_allocations = 0;
     context->gc_collecting = false;
+    context->gc_frames = 0;
+    context->gc_native_depth = 0;
     context->pumping_input = false;
     context->input_callback = 0;
     context->input_userdata = 0;

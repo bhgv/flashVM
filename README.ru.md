@@ -159,3 +159,5 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 ## Документация GC (этапы 49–68)
 
 См. [безопасные точки](doc/GC_SAFE_POINTS.md), [режимы GC](doc/GC_MODES.ru.md), [указатель API](doc/API_INDEX.ru.md) и [диагностику](doc/GC_TROUBLESHOOTING.md). Сборку пока нельзя безопасно запускать внутри активных кадров AVM1.
+
+Корни GC активных кадров: [English](doc/GC_ACTIVE_FRAMES.md) / [Русский](doc/GC_ACTIVE_FRAMES.ru.md).
