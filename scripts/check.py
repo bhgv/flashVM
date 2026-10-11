@@ -182,6 +182,11 @@ try:
         run(['timeout', '30', str(executable)])
         passed.append(str(source.relative_to(root)))
         print('PASS', source.relative_to(root), flush=True)
+    if 'OS_PORTS' in keys:
+        executable = output / 'tests_resource_network_process.c.test'
+        run([sys.executable, str(root / 'scripts/test_resource_process.py'), str(executable)])
+        passed.append('scripts/test_resource_process.py')
+        print('PASS independent TCP owner/client processes', flush=True)
     report = {'status': 'passed', 'tests': passed, 'count': len(passed), 'flags': flags,
               'compiler': run(['gcc', '--version']).splitlines()[0], 'sanitizers': args.sanitize,
               'address_excluded_tests': ['tests/container_exceptions.cpp'] if args.sanitize else [],

@@ -1,4 +1,5 @@
 #include "../core/runtime.hpp"
+#include "../core/capability_internal.hpp"
 #include "../swf/decode.hpp"
 #include <new>
 #include <cstring>
@@ -56,6 +57,7 @@ extern "C"
         }
         if (!context)
             return FVM_OUT_OF_MEMORY;
+        context->broker = 0;
         context->identity = fvm_sync_next_identity();
         if (!context->identity)
         {
@@ -106,6 +108,7 @@ extern "C"
         for (size_t i = 0; i < context->strings.size(); ++i)
             delete[] context->strings[i];
         fvm_standard_text_cleanup(context);
+        fvm_capability_context_cleanup(context);
         delete context;
     }
     FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length)

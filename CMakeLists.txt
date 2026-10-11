@@ -182,3 +182,13 @@ if(FVM_BUILD_TESTS)
   set_tests_properties(flashvm_tests_file_process_2_reader PROPERTIES
     FIXTURES_REQUIRED file_process_state)
 endif()
+
+if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS)
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(NAME flashvm_network_independent_processes
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_resource_process.py
+              $<TARGET_FILE:flashvm_tests_resource_network_process>)
+    set_tests_properties(flashvm_network_independent_processes PROPERTIES TIMEOUT 35)
+  endif()
+endif()

@@ -7,6 +7,7 @@
 #include "flashvm/gc.h"
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 int main(void)
 {
     FVM_Config cfg;
@@ -133,5 +134,6 @@ int main(void)
     fvm_channel_destroy(shared);
     fvm_channel_destroy(transport);
     fvm_runtime_destroy(rt);
+    remove("mutex-shared-reject.bin");
     return 0;
 }

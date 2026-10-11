@@ -1,4 +1,5 @@
 #include "../core/runtime.hpp"
+#include "../core/capability_internal.hpp"
 #include "flashvm/mutex.h"
 #include "flashvm/debug.h"
 #include "flashvm/worker.h"
@@ -17,6 +18,12 @@ struct MutexWait
 struct FVM_Mutex
 {
     unsigned long identity, origin, owner, references;
+    bool closed;
+    FVM_PortSync *remote_sync;
+    void *remote;
+    FVM_RemoteMutexFn request;
+    void (*release_remote)(void *);
+    const char *remote_address;
     unsigned long owner_line, owner_offset;
     char owner_source[256], owner_function[256];
     MutexWait *waiters;
@@ -47,6 +54,10 @@ void drop(FVM_Mutex *m)
     while (*link != m)
         link = &(*link)->next;
     *link = m->next;
+    if (m->release_remote)
+        m->release_remote(m->remote);
+    if (m->remote_sync)
+        fvm_port_sync_destroy(m->remote_sync);
     delete m;
 }
 unsigned long waiting_for(unsigned long context)
@@ -116,6 +127,12 @@ extern "C" FVM_Result fvm_mutex_create(FVM_Context *c, FVM_Mutex **out)
         delete m;
         return FVM_ERROR;
     }
+    m->remote_sync = 0;
+    m->closed = false;
+    m->remote = 0;
+    m->request = 0;
+    m->release_remote = 0;
+    m->remote_address = 0;
     m->identity = ++next_identity;
     m->origin = c->identity;
     m->owner = 0;
@@ -152,26 +169,28 @@ extern "C" unsigned long fvm_mutex_identity(FVM_Mutex *m)
 {
     return m ? m->identity : 0;
 }
-extern "C" FVM_Result fvm_mutex_touch(FVM_Mutex *m, int *out)
+static FVM_Result touch_impl(FVM_Mutex *m, int *out)
 {
     if (!m || !out)
         return FVM_INVALID_ARGUMENT;
     RegistryGuard guard;
+    if (m->closed)
+        return FVM_ERROR;
     *out = m->owner != 0;
     return FVM_OK;
 }
-extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
+static FVM_Result reset_impl(FVM_Context *c, FVM_Mutex *m)
 {
     if (!c || !m || c->destroying)
         return FVM_INVALID_ARGUMENT;
     RegistryGuard guard;
-    if (m->owner != c->identity)
+    if (m->closed || m->owner != c->identity)
         return FVM_ERROR;
     m->owner = 0;
     drop(m);
     return FVM_OK;
 }
-extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
+static FVM_Result set_impl(FVM_Context *c, FVM_Mutex *m, int blocking)
 {
     if (!c || !m || c->destroying)
         return FVM_INVALID_ARGUMENT;
@@ -183,7 +202,7 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
     std::strncpy(wait.source, c->debug_source.c_str(), sizeof(wait.source) - 1);
     std::strncpy(wait.function, c->debug_function.c_str(), sizeof(wait.function) - 1);
     fvm_port_registry_lock();
-    if (m->owner == c->identity)
+    if (m->closed || m->owner == c->identity)
     {
         fvm_port_registry_unlock();
         return FVM_ERROR;
@@ -202,7 +221,7 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
     wait.next = m->waiters;
     m->waiters = &wait;
     FVM_Result result = FVM_OK;
-    while (m->owner)
+    while (m->owner && !m->closed)
     {
         fvm_port_registry_unlock();
         int stop = 0;
@@ -217,6 +236,8 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
             break;
         }
     }
+    if (m->closed)
+        result = FVM_ERROR;
     MutexWait **link = &m->waiters;
     while (*link != &wait)
         link = &(*link)->next;
@@ -238,18 +259,229 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
 }
 void fvm_mutex_context_cleanup(FVM_Context *c)
 {
-    RegistryGuard guard;
-    FVM_Mutex *m = mutexes;
-    while (m)
+    /* Network cleanup must never run while holding the process registry lock. */
+    for (;;)
     {
-        FVM_Mutex *next = m->next;
-        if (m->owner == c->identity)
+        fvm_port_registry_lock();
+        FVM_Mutex *found = 0;
+        for (FVM_Mutex *m = mutexes; m; m = m->next)
+            if (m->owner == c->identity)
+            {
+                found = m;
+                break;
+            }
+        if (!found)
+        {
+            fvm_port_registry_unlock();
+            break;
+        }
+        if (found->references == ULONG_MAX)
+        {
+            fvm_port_registry_unlock();
+            break;
+        }
+        ++found->references; // Keep the operation alive even if close drops ownership.
+        fvm_port_registry_unlock();
+        if (found->remote_sync)
+            fvm_port_sync_lock(found->remote_sync);
+        {
+            RegistryGuard guard;
+            if (found->owner != c->identity)
+            {
+                if (found->remote_sync)
+                    fvm_port_sync_unlock(found->remote_sync);
+                drop(found);
+                continue;
+            }
+            found->owner = 0;
+        }
+        if (found->request)
+        {
+            int ignored = 0;
+            if (found->request(found->remote, c, 2, &ignored) != FVM_OK)
+                fvm_debug_resource_error(c, found->identity, "mutex.cleanup",
+                                         found->remote_address);
+        }
+        if (found->remote_sync)
+            fvm_port_sync_unlock(found->remote_sync);
+        fvm_port_registry_lock();
+        drop(found); // Ownership reference.
+        drop(found); // Cleanup operation reference.
+        fvm_port_registry_unlock();
+    }
+}
+FVM_Result fvm_mutex_create_remote(FVM_Context *c, void *remote, FVM_RemoteMutexFn request,
+                                   void (*destroy)(void *), const char *address, FVM_Mutex **out)
+{
+    FVM_PortSync *sync = fvm_port_sync_create();
+    if (!sync)
+        return FVM_OUT_OF_MEMORY;
+    FVM_Result r = fvm_mutex_create(c, out);
+    if (r == FVM_OK)
+    {
+        (*out)->remote_sync = sync;
+        (*out)->origin = 0;
+        (*out)->remote = remote;
+        (*out)->request = request;
+        (*out)->release_remote = destroy;
+        (*out)->remote_address = address;
+    }
+    else
+        fvm_port_sync_destroy(sync);
+    return r;
+}
+const char *fvm_mutex_remote_address(FVM_Mutex *m)
+{
+    return m ? m->remote_address : 0;
+}
+extern "C" FVM_Result fvm_mutex_is_closed(FVM_Mutex *m, int *out)
+{
+    if (!m || !out)
+        return FVM_INVALID_ARGUMENT;
+    {
+        RegistryGuard guard;
+        *out = m->closed;
+    }
+    if (!*out && m->request)
+        return m->request(m->remote, 0, 0, out);
+    return FVM_OK;
+}
+extern "C" FVM_Result fvm_mutex_touch(FVM_Mutex *m, int *out)
+{
+    if (!m || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (m->request)
+    {
+        {
+            RegistryGuard guard;
+            if (m->closed)
+                return FVM_ERROR;
+        }
+        return m->request(m->remote, 0, 3, out);
+    }
+    return touch_impl(m, out);
+}
+extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
+{
+    if (!c || !m || c->destroying)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result r;
+    if (!m->request)
+        r = set_impl(c, m, blocking);
+    else
+    {
+        do
+        {
+            int stop = 0, ignored = 0;
+            if (c->worker)
+                fvm_worker_stop_requested(c->worker, &stop);
+            if (stop)
+            {
+                r = FVM_ERROR;
+                break;
+            }
+            fvm_port_sync_lock(m->remote_sync);
+            {
+                RegistryGuard guard;
+                r = m->closed || m->owner == c->identity || m->references == ULONG_MAX ? FVM_ERROR
+                                                                                       : FVM_OK;
+                if (r == FVM_OK)
+                    ++m->references;
+            }
+            if (r == FVM_OK)
+            {
+                r = m->request(m->remote, c, 1, &ignored);
+                RegistryGuard guard;
+                if (r == FVM_OK)
+                {
+                    m->owner = c->identity;
+                    m->owner_line = c->debug_line;
+                    m->owner_offset = c->debug_offset;
+                    std::memset(m->owner_source, 0, sizeof(m->owner_source));
+                    std::memset(m->owner_function, 0, sizeof(m->owner_function));
+                    std::strncpy(m->owner_source, c->debug_source.c_str(),
+                                 sizeof(m->owner_source) - 1);
+                    std::strncpy(m->owner_function, c->debug_function.c_str(),
+                                 sizeof(m->owner_function) - 1);
+                }
+                else
+                    drop(m);
+            }
+            fvm_port_sync_unlock(m->remote_sync);
+            if (r == FVM_NOT_FOUND && blocking)
+                fvm_port_thread_sleep_us(1000);
+        } while (r == FVM_NOT_FOUND && blocking);
+    }
+    if (r == FVM_ERROR)
+        fvm_debug_resource_error(c, m->identity, "mutex.set", m->remote_address);
+    return r;
+}
+extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
+{
+    if (!c || !m || c->destroying)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result r;
+    if (!m->request)
+        r = reset_impl(c, m);
+    else
+    {
+        fvm_port_sync_lock(m->remote_sync);
+        int ignored = 0;
+        {
+            RegistryGuard guard;
+            if (m->closed || m->owner != c->identity)
+            {
+                r = FVM_ERROR;
+            }
+            else
+                r = FVM_OK;
+        }
+        if (r == FVM_OK)
+            r = m->request(m->remote, c, 2, &ignored);
+        if (r == FVM_OK)
+        {
+            RegistryGuard guard;
+            m->owner = 0;
+            drop(m);
+        }
+        fvm_port_sync_unlock(m->remote_sync);
+    }
+    if (r == FVM_ERROR)
+        fvm_debug_resource_error(c, m->identity, "mutex.reset", m->remote_address);
+    return r;
+}
+extern "C" FVM_Result fvm_mutex_close(FVM_Mutex *m)
+{
+    if (!m)
+        return FVM_INVALID_ARGUMENT;
+    if (m->remote_sync)
+        fvm_port_sync_lock(m->remote_sync);
+    FVM_Result result = FVM_OK;
+    bool already;
+    {
+        RegistryGuard guard;
+        already = m->closed;
+    }
+    if (!already && m->request)
+    {
+        int ignored = 0;
+        result = m->request(m->remote, 0, 4, &ignored);
+        if (result != FVM_OK)
+            fvm_debug_resource_error(0, m->identity, "mutex.close", m->remote_address);
+    }
+    if (result == FVM_OK)
+    {
+        RegistryGuard guard;
+        m->closed = true;
+        if (m->owner)
         {
             m->owner = 0;
             drop(m);
         }
-        m = next;
     }
+    if (m->remote_sync)
+        fvm_port_sync_unlock(m->remote_sync);
+    return result;
 }
 extern "C" FVM_Result fvm_debug_set_location(FVM_Context *c, const char *source, unsigned long line)
 {

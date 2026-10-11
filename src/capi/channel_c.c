@@ -19,6 +19,10 @@ struct FVM_Channel
 {
     unsigned long identity;
     FVM_PortSync *sync;
+    void *remote;
+    FVM_RemoteChannelFn remote_request;
+    void (*remote_release)(void *);
+    const char *remote_address;
     FVM_PortFile *file;
     int file_channel;
     FVM_ChannelNode *head;
@@ -80,7 +84,7 @@ FVM_Result fvm_channel_is_file(FVM_Channel *channel, int *out)
 {
     if (!channel || !out)
         return FVM_INVALID_ARGUMENT;
-    *out = channel->file_channel;
+    *out = channel->file_channel == 1;
     return FVM_OK;
 }
 FVM_Result fvm_channel_file_read(FVM_Channel *c, void *data, size_t size, size_t *read)
@@ -90,9 +94,9 @@ FVM_Result fvm_channel_file_read(FVM_Channel *c, void *data, size_t size, size_t
         return FVM_INVALID_ARGUMENT;
     *read = 0;
     fvm_port_sync_lock(c->sync);
-    result = !c->file_channel ? FVM_UNSUPPORTED
-             : c->closed      ? FVM_ERROR
-                              : fvm_port_file_read(c->file, data, size, read);
+    result = c->file_channel != 1 ? FVM_UNSUPPORTED
+             : c->closed          ? FVM_ERROR
+                                  : fvm_port_file_read(c->file, data, size, read);
     fvm_port_sync_unlock(c->sync);
     return result;
 }
@@ -102,9 +106,9 @@ FVM_Result fvm_channel_file_write(FVM_Channel *c, const void *data, size_t size)
     if (!c || (!data && size))
         return FVM_INVALID_ARGUMENT;
     fvm_port_sync_lock(c->sync);
-    result = !c->file_channel ? FVM_UNSUPPORTED
-             : c->closed      ? FVM_ERROR
-                              : fvm_port_file_write(c->file, data, size);
+    result = c->file_channel != 1 ? FVM_UNSUPPORTED
+             : c->closed          ? FVM_ERROR
+                                  : fvm_port_file_write(c->file, data, size);
     fvm_port_sync_unlock(c->sync);
     return result;
 }
@@ -112,6 +116,8 @@ FVM_Result fvm_channel_file_send_record(FVM_Channel *c, const unsigned char *dat
 {
     if (!data || size < 16 || size > 64UL * 1024 * 1024)
         return FVM_INVALID_ARGUMENT;
+    if (c && c->remote_request)
+        return fvm_channel_stream_send(0, c, data, size);
     return fvm_channel_file_write(c, data, size);
 }
 /* Lock held. Invalid/truncated records leave the read position unchanged;
@@ -171,6 +177,8 @@ FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data,
                                            int blocking)
 {
     FVM_Result result;
+    if (c && c->remote_request)
+        return fvm_channel_stream_receive(0, c, data, size, blocking);
     if (!c || !data || !size)
         return FVM_INVALID_ARGUMENT;
     *data = 0;
@@ -188,6 +196,23 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
     char *previous;
     FVM_Result result;
     fvm_value_undefined(out);
+    if (c->remote_request)
+    {
+        result = fvm_channel_stream_receive(0, c, &data, &size, blocking);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_serialization_decode_primitive(data, size, out);
+        free(data);
+        if (result == FVM_OK && borrowed)
+        {
+            fvm_port_sync_lock(c->sync);
+            previous = c->last_string;
+            c->last_string = out->type == FVM_VALUE_STRING ? (char *)out->string : 0;
+            free(previous);
+            fvm_port_sync_unlock(c->sync);
+        }
+        return result;
+    }
     fvm_port_sync_lock(c->sync);
     if (c->closed)
     {
@@ -216,6 +241,8 @@ void fvm_channel_close(FVM_Channel *c)
 {
     if (!c)
         return;
+    if (c->remote_request)
+        c->remote_request(c->remote, 0, 4, 0, 0, 0, 0, 0);
     fvm_port_sync_lock(c->sync);
     c->closed = 1;
     fvm_port_file_close(c->file);
@@ -264,6 +291,8 @@ void fvm_channel_release(FVM_Channel *c)
         n = next;
     }
     fvm_port_file_close(c->file);
+    if (c->remote_release)
+        c->remote_release(c->remote);
     free(c->last_string);
     fvm_port_sync_destroy(c->sync);
     free(c);
@@ -660,4 +689,85 @@ FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, 
 unsigned long fvm_channel_identity(FVM_Channel *c)
 {
     return c ? c->identity : 0;
+}
+
+FVM_Result fvm_channel_create_remote(void *remote, FVM_RemoteChannelFn request,
+                                     void (*release)(void *), const char *address,
+                                     FVM_Channel **out)
+{
+    FVM_Result r;
+    r = fvm_channel_create(out);
+    if (r == FVM_OK)
+    {
+        (*out)->remote = remote;
+        (*out)->remote_request = request;
+        (*out)->remote_release = release;
+        (*out)->remote_address = address;
+        (*out)->file_channel = 2;
+    }
+    return r;
+}
+const char *fvm_channel_remote_address(FVM_Channel *c)
+{
+    return c ? c->remote_address : 0;
+}
+FVM_Result fvm_channel_is_stream(FVM_Channel *c, int *out)
+{
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    *out = c->file_channel != 0;
+    return FVM_OK;
+}
+FVM_Result fvm_channel_is_closed(FVM_Channel *c, int *out)
+{
+    FVM_Result r;
+    unsigned char *data;
+    size_t size;
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    fvm_port_sync_lock(c->sync);
+    *out = c->closed;
+    fvm_port_sync_unlock(c->sync);
+    if (!*out && c->remote_request)
+    {
+        data = 0;
+        size = 0;
+        r = c->remote_request(c->remote, 0, 0, 0, 0, &data, &size, 0);
+        if (r == FVM_OK && size == 1)
+            *out = data[0] != 0;
+        else if (r == FVM_OK)
+            r = FVM_ERROR;
+        free(data);
+        return r;
+    }
+    return FVM_OK;
+}
+FVM_Result fvm_channel_stream_send(FVM_Context *context, FVM_Channel *c, const unsigned char *data,
+                                   size_t size)
+{
+    int closed;
+    if (!c || !data || size < 16 || size > 64UL * 1024 * 1024)
+        return FVM_INVALID_ARGUMENT;
+    if (!c->remote_request)
+        return fvm_channel_file_send_record(c, data, size);
+    fvm_port_sync_lock(c->sync);
+    closed = c->closed;
+    fvm_port_sync_unlock(c->sync);
+    return closed ? FVM_ERROR : c->remote_request(c->remote, context, 5, data, size, 0, 0, 0);
+}
+FVM_Result fvm_channel_stream_receive(FVM_Context *context, FVM_Channel *c, unsigned char **data,
+                                      size_t *size, int blocking)
+{
+    int closed;
+    if (!c || !data || !size)
+        return FVM_INVALID_ARGUMENT;
+    *data = 0;
+    *size = 0;
+    if (!c->remote_request)
+        return fvm_channel_file_receive_record(c, data, size, blocking);
+    fvm_port_sync_lock(c->sync);
+    closed = c->closed;
+    fvm_port_sync_unlock(c->sync);
+    return closed ? FVM_ERROR
+                  : c->remote_request(c->remote, context, 6, 0, 0, data, size, blocking);
 }

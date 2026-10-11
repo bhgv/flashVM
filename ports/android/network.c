@@ -7,43 +7,208 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <stdio.h>
-struct FVM_PortSocket { int fd; };
-FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port) {
+#include <sys/time.h>
+#include <sys/select.h>
+#include <errno.h>
+#include <fcntl.h>
+struct FVM_PortSocket
+{
+    int fd;
+};
+/* Socket connect is bounded independently of DNS resolution. Restore blocking
+   mode before returning; callers set their own send/receive timeouts. */
+static int bounded_connect(int fd, const struct sockaddr *address, socklen_t length)
+{
+    int flags, result, error;
+    socklen_t error_size;
+    fd_set writable;
+    struct timeval timeout;
+    flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+        return 0;
+    result = connect(fd, address, length);
+    if (result && errno == EINPROGRESS)
+    {
+        if (fd >= FD_SETSIZE)
+            return 0;
+        FD_ZERO(&writable);
+        FD_SET(fd, &writable);
+        timeout.tv_sec = 2;
+        timeout.tv_usec = 0;
+        result = select(fd + 1, NULL, &writable, NULL, &timeout);
+        error = 0;
+        error_size = sizeof(error);
+        if (result <= 0 || getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &error_size) || error)
+            return 0;
+    }
+    else if (result)
+        return 0;
+    return fcntl(fd, F_SETFL, flags) == 0;
+}
+FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
+{
     struct addrinfo hints, *addresses, *it;
     char service[8];
     int fd = -1;
     FVM_PortSocket *result;
-    if (!hostname || !port) return NULL;
+    if (!hostname || !port)
+        return NULL;
     sprintf(service, "%u", (unsigned int)port);
     memset(&hints, 0, sizeof(hints));
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_family = AF_UNSPEC;
-    if (getaddrinfo(hostname, service, &hints, &addresses) != 0) return NULL;
-    for (it = addresses; it; it = it->ai_next) {
+    if (getaddrinfo(hostname, service, &hints, &addresses) != 0)
+        return NULL;
+    for (it = addresses; it; it = it->ai_next)
+    {
         fd = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
-        if (fd < 0) continue;
-        if (connect(fd, it->ai_addr, it->ai_addrlen) == 0) break;
-        close(fd); fd = -1;
+        if (fd < 0)
+            continue;
+        if (bounded_connect(fd, it->ai_addr, it->ai_addrlen))
+            break;
+        close(fd);
+        fd = -1;
     }
     freeaddrinfo(addresses);
-    if (fd < 0) return NULL;
+    if (fd < 0)
+        return NULL;
     result = (FVM_PortSocket *)malloc(sizeof(*result));
-    if (!result) { close(fd); return NULL; }
+    if (!result)
+    {
+        close(fd);
+        return NULL;
+    }
     result->fd = fd;
     return result;
 }
-long fvm_port_socket_send(FVM_PortSocket *s, const void *p, size_t n) {
+long fvm_port_socket_send(FVM_PortSocket *s, const void *p, size_t n)
+{
     ssize_t r;
-    if (!s || (!p && n)) return -1;
-    r = send(s->fd, p, n, 0);
+    if (!s || (!p && n))
+        return -1;
+    do
+    {
+#ifdef MSG_NOSIGNAL
+        r = send(s->fd, p, n, MSG_NOSIGNAL);
+#else
+        r = send(s->fd, p, n, 0);
+#endif
+    } while (r < 0 && errno == EINTR);
     return r < 0 ? -1 : (long)r;
 }
-long fvm_port_socket_recv(FVM_PortSocket *s, void *p, size_t n) {
+long fvm_port_socket_recv(FVM_PortSocket *s, void *p, size_t n)
+{
     ssize_t r;
-    if (!s || (!p && n)) return -1;
-    r = recv(s->fd, p, n, 0);
+    if (!s || (!p && n))
+        return -1;
+    do
+    {
+        r = recv(s->fd, p, n, 0);
+    } while (r < 0 && errno == EINTR);
     return r < 0 ? -1 : (long)r;
 }
-void fvm_port_socket_close(FVM_PortSocket *s) {
-    if (s) { close(s->fd); free(s); }
+void fvm_port_socket_close(FVM_PortSocket *s)
+{
+    if (s)
+    {
+        close(s->fd);
+        free(s);
+    }
+}
+
+FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsigned short *actual)
+{
+    struct addrinfo hints, *addresses, *it;
+    struct sockaddr_storage bound;
+    socklen_t length;
+    FVM_PortSocket *result;
+    char service[8];
+    int fd, one;
+    if (!host || !actual)
+        return NULL;
+    sprintf(service, "%u", (unsigned int)port);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_family = AF_UNSPEC;
+    if (getaddrinfo(host, service, &hints, &addresses))
+        return NULL;
+    fd = -1;
+    one = 1;
+    for (it = addresses; it; it = it->ai_next)
+    {
+        fd = socket(it->ai_family, it->ai_socktype, it->ai_protocol);
+        if (fd < 0)
+            continue;
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+        if (!bind(fd, it->ai_addr, it->ai_addrlen) && !listen(fd, 32))
+            break;
+        close(fd);
+        fd = -1;
+    }
+    freeaddrinfo(addresses);
+    if (fd < 0)
+        return NULL;
+    length = sizeof(bound);
+    if (getsockname(fd, (struct sockaddr *)&bound, &length))
+    {
+        close(fd);
+        return NULL;
+    }
+    *actual = ntohs(bound.ss_family == AF_INET ? ((struct sockaddr_in *)&bound)->sin_port
+                                               : ((struct sockaddr_in6 *)&bound)->sin6_port);
+    result = (FVM_PortSocket *)malloc(sizeof(*result));
+    if (!result)
+    {
+        close(fd);
+        return NULL;
+    }
+    result->fd = fd;
+    return result;
+}
+FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
+{
+    fd_set readset;
+    struct timeval timeout;
+    int fd;
+    FVM_PortSocket *result;
+    if (!listener || listener->fd >= FD_SETSIZE)
+        return NULL;
+    FD_ZERO(&readset);
+    FD_SET(listener->fd, &readset);
+    timeout.tv_sec = (long)(ms / 1000);
+    timeout.tv_usec = (long)(ms % 1000) * 1000;
+    if (select(listener->fd + 1, &readset, NULL, NULL, &timeout) <= 0)
+        return NULL;
+    fd = accept(listener->fd, NULL, NULL);
+    if (fd < 0)
+        return NULL;
+    result = (FVM_PortSocket *)malloc(sizeof(*result));
+    if (!result)
+    {
+        close(fd);
+        return NULL;
+    }
+    result->fd = fd;
+    return result;
+}
+int fvm_port_socket_timeout(FVM_PortSocket *s, unsigned long ms)
+{
+    struct timeval timeout;
+    timeout.tv_sec = (long)(ms / 1000);
+    timeout.tv_usec = (long)(ms % 1000) * 1000;
+    return s && !setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) &&
+           !setsockopt(s->fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+}
+int fvm_port_secure_random(unsigned char *bytes, size_t size)
+{
+    FILE *file;
+    size_t count;
+    if (!bytes && size)
+        return 0;
+    file = fopen("/dev/urandom", "rb");
+    if (!file)
+        return 0;
+    count = fread(bytes, 1, size, file);
+    fclose(file);
+    return count == size;
 }

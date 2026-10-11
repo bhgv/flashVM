@@ -23,6 +23,7 @@ extern "C"
      * structured messages unless the bytes form complete serialized records. */
     FVM_API FVM_Result fvm_channel_file_read(FVM_Channel *, void *, size_t, size_t *);
     FVM_API FVM_Result fvm_channel_file_write(FVM_Channel *, const void *, size_t);
+    FVM_API FVM_Result fvm_channel_is_closed(FVM_Channel *, int *);
     FVM_API void fvm_channel_close(FVM_Channel *channel);
     /* Retain a shared handle before handing it to another owner or worker.
      * Each owner releases exactly once; destroy is an alias for release.

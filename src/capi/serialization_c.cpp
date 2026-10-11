@@ -1,5 +1,6 @@
 #include "../core/runtime.hpp"
 #include "../core/transfer_resource.hpp"
+#include "../core/capability_internal.hpp"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/serialization.h"
 #include "../standard/text_state.hpp"
@@ -73,8 +74,9 @@ struct Graph
 };
 bool known_kind(unsigned long kind)
 {
-    return kind == 3001 || kind == 3008 || kind == 0 || kind == 10 || kind == 20 || kind == 21 ||
-           kind == 1001 || kind == 1003 || kind == 1004 || kind == 1002;
+    return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
+           kind == 10 || kind == 20 || kind == 21 || kind == 1001 || kind == 1003 || kind == 1004 ||
+           kind == 1002;
 }
 size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Object *> &seen)
 {
@@ -173,12 +175,22 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         Object dst;
         if (src->resource_kind == 1 || src->resource_kind == 8)
         {
-            unsigned long token = 0;
-            FVM_Result result = fvm_transfer_capture_resource(c, src, &token);
+            FVM_Result result;
+            if (c->transfer_resources)
+            {
+                unsigned long token = 0;
+                result = fvm_transfer_capture_resource(c, src, &token);
+                dst.kind = 3000 + (unsigned long)src->resource_kind;
+                dst.state.type = FVM_VALUE_NUMBER;
+                dst.state.number = (double)token;
+            }
+            else
+            {
+                result = fvm_capability_export(c, src, dst.state.string);
+                dst.kind = 4000 + (unsigned long)src->resource_kind;
+                dst.state.type = FVM_VALUE_STRING;
+            }
             require(result == FVM_OK, result);
-            dst.kind = 3000 + (unsigned long)src->resource_kind;
-            dst.state.type = FVM_VALUE_NUMBER;
-            dst.state.number = (double)token;
             graph.objects.push_back(dst);
             continue;
         }
@@ -571,7 +583,9 @@ Graph read_graph(Reader &r)
             o.text = r.text_field();
         o.prototype = r.ref();
         o.metatable = r.ref();
-        if (o.kind == 20)
+        if (o.kind == 4001 || o.kind == 4008)
+            require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
+        else if (o.kind == 20)
             require(o.state.type == FVM_VALUE_BOOLEAN);
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
@@ -771,13 +785,15 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             FVM_Object *o = 0;
             const Object &src = g.objects[i];
             FVM_Result r;
-            if (src.kind == 3001 || src.kind == 3008)
+            if (src.kind == 3001 || src.kind == 3008 || src.kind == 4001 || src.kind == 4008)
             {
                 require(src.properties.empty() && src.indexed.empty() && src.methods.empty() &&
                         src.metamethods.empty() && src.accessors.empty() && src.prototype == none &&
                         src.metatable == none);
-                r = fvm_transfer_restore_resource(c, src.kind - 3000,
-                                                  (unsigned long)src.state.number, &o);
+                r = src.kind >= 4000
+                        ? fvm_capability_import(c, src.state.string.c_str(), src.kind - 4000, &o)
+                        : fvm_transfer_restore_resource(c, src.kind - 3000,
+                                                        (unsigned long)src.state.number, &o);
             }
             else
                 r = fvm_object_create(c, &o);
@@ -790,7 +806,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
         {
             const Object &src = g.objects[i];
             FVM_Object *dst = objects[i];
-            if (src.kind == 3001 || src.kind == 3008)
+            if (src.kind == 3001 || src.kind == 3008 || src.kind == 4001 || src.kind == 4008)
                 continue;
             dst->resource_kind = (int)src.kind;
             if (src.kind == 1002)

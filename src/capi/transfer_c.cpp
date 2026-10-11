@@ -1,15 +1,19 @@
 #include "../core/runtime.hpp"
 #include "../core/channel_packet.h"
 #include "../core/transfer_resource.hpp"
+#include "../core/capability_internal.hpp"
 #include "flashvm/extensions.h"
 #include "flashvm/mutex.h"
 #include "flashvm/debug.h"
 #include "../../ports/channel_sync.h"
+#include "../../ports/thread_port.h"
+#include "flashvm/worker.h"
 #include <climits>
 #include "flashvm/transfer.h"
 #include "flashvm/serialization.h"
 #include <new>
 #include <cstring>
+#include <cstdlib>
 namespace
 {
 struct Resource
@@ -153,6 +157,15 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
             *token = (unsigned long)i;
             return FVM_OK;
         }
+    int closed = 0;
+    FVM_Result status = o->resource_kind == 8
+                            ? fvm_mutex_is_closed((FVM_Mutex *)o->resource, &closed)
+                            : fvm_channel_is_closed((FVM_Channel *)o->resource, &closed);
+    if (status != FVM_OK || closed)
+    {
+        fvm_debug_resource_error(c, 0, "capability.send", 0);
+        return FVM_ERROR;
+    }
     Resource resource;
     resource.kind = o->resource_kind;
     resource.handle = o->resource;
@@ -184,6 +197,14 @@ FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, uns
     if (token >= p->resources.size() || kind != (unsigned long)p->resources[token].kind)
         return FVM_INVALID_ARGUMENT;
     Resource &r = p->resources[token];
+    int closed = 0;
+    FVM_Result status = kind == 8 ? fvm_mutex_is_closed((FVM_Mutex *)r.handle, &closed)
+                                  : fvm_channel_is_closed((FVM_Channel *)r.handle, &closed);
+    if (status != FVM_OK || closed)
+    {
+        fvm_debug_resource_error(c, 0, "capability.receive", 0);
+        return FVM_ERROR;
+    }
     return kind == 8 ? fvm_extensions_wrap_mutex(c, (FVM_Mutex *)r.handle, out)
                      : fvm_extensions_wrap_channel(c, (FVM_Channel *)r.handle, out);
 }
@@ -195,9 +216,14 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
         return FVM_INVALID_ARGUMENT;
     if (fvm_validate_value(context, value) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
-    fvm_channel_is_file(channel, &file);
+    fvm_channel_is_stream(channel, &file);
     if (!file && value->type != FVM_VALUE_OBJECT && !value->metatable)
-        return fvm_channel_send_primitive(channel, value, blocking);
+    {
+        FVM_Result result = fvm_channel_send_primitive(channel, value, blocking);
+        if (result == FVM_ERROR)
+            fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.send", 0);
+        return result;
+    }
     Packet *packet = new (std::nothrow) Packet;
     if (!packet)
         return FVM_OUT_OF_MEMORY;
@@ -209,7 +235,23 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     if (result == FVM_OK)
     {
         if (file)
-            result = fvm_channel_file_send_record(channel, packet->data, packet->size);
+        {
+            do
+            {
+                result = fvm_channel_stream_send(context, channel, packet->data, packet->size);
+                if (result != FVM_NOT_FOUND || !blocking)
+                    break;
+                int stop = 0;
+                if (context->worker)
+                    fvm_worker_stop_requested(context->worker, &stop);
+                if (stop)
+                {
+                    result = FVM_ERROR;
+                    break;
+                }
+                fvm_port_thread_sleep_us(1000);
+            } while (true);
+        }
         else
         {
             result = register_packet(packet, channel);
@@ -219,6 +261,9 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     }
     if (file || result != FVM_OK)
         delete packet;
+    if (result == FVM_ERROR)
+        fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.send",
+                                 fvm_channel_remote_address(channel));
     return result;
 }
 static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_Value *out,
@@ -231,23 +276,30 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
     if (!context || !channel || !out || context->destroying)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
-    fvm_channel_is_file(channel, &file);
+    fvm_channel_is_stream(channel, &file);
     if (file)
     {
         if (peek)
             return FVM_UNSUPPORTED;
         unsigned char *data = 0;
         size_t size = 0;
-        result = fvm_channel_file_receive_record(channel, &data, &size, blocking);
+        result = fvm_channel_stream_receive(context, channel, &data, &size, blocking);
         if (result == FVM_OK)
             result = fvm_value_deserialize(context, data, size, out);
         fvm_serialized_free(data);
+        if (result == FVM_ERROR)
+            fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.receive",
+                                     fvm_channel_remote_address(channel));
         return result;
     }
     result = peek ? fvm_channel_peek_mixed(channel, index, &value, &raw)
                   : fvm_channel_receive_mixed(channel, &value, &raw, blocking);
     if (result != FVM_OK)
+    {
+        if (result == FVM_ERROR)
+            fvm_debug_resource_error(context, fvm_channel_identity(channel), "channel.receive", 0);
         return result;
+    }
     if (raw)
     {
         Packet *packet = (Packet *)raw;
@@ -304,4 +356,71 @@ extern "C" FVM_Result fvm_debug_channel_message(FVM_Context *c, FVM_Channel *ch,
                                                 FVM_Value *out)
 {
     return receive_value(c, ch, out, 0, true, index);
+}
+
+FVM_Result fvm_channel_send_wire(FVM_Channel *channel, const unsigned char *data, size_t size)
+{
+    if (!data || size < 16 || size > 64UL * 1024 * 1024)
+        return FVM_INVALID_ARGUMENT;
+    Packet *p = new (std::nothrow) Packet;
+    if (!p)
+        return FVM_OUT_OF_MEMORY;
+    p->data = (unsigned char *)std::malloc(size);
+    if (!p->data)
+    {
+        delete p;
+        return FVM_OUT_OF_MEMORY;
+    }
+    std::memcpy(p->data, data, size);
+    p->size = size;
+    FVM_Result r = register_packet(p, channel);
+    if (r == FVM_OK)
+        r = fvm_channel_packet_send(channel, p, release, retain_packet, 0);
+    if (r != FVM_OK)
+        delete p;
+    return r;
+}
+FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned char **out,
+                                    size_t *size)
+{
+    void *raw = 0;
+    FVM_Value value;
+    *out = 0;
+    *size = 0;
+    FVM_Result r = fvm_channel_receive_mixed(ch, &value, &raw, 0);
+    if (r != FVM_OK)
+        return r;
+    if (!raw)
+    {
+        r = fvm_value_serialize(c, &value, out, size);
+        fvm_channel_message_release(&value);
+        return r;
+    }
+    Packet *p = (Packet *)raw;
+    unregister_packet(p);
+    if (p->resources.empty())
+    {
+        *out = (unsigned char *)std::malloc(p->size);
+        if (!*out)
+            r = FVM_OUT_OF_MEMORY;
+        else
+        {
+            std::memcpy(*out, p->data, p->size);
+            *size = p->size;
+        }
+    }
+    else
+    {
+        {
+            ResourceScope scope(c, p);
+            r = fvm_value_deserialize(c, p->data, p->size, &value);
+        }
+        if (r == FVM_OK)
+        {
+            ResourceScope scope(c, 0);
+            r = fvm_value_serialize(c, &value, out, size);
+        }
+    }
+    release(p);
+    return r;
 }

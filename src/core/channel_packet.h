@@ -5,6 +5,16 @@
 extern "C"
 {
 #endif
+    /* Remote operation codes: 0 status, 4 close, 5 send graph, 6 receive graph. */
+    typedef FVM_Result (*FVM_RemoteChannelFn)(void *, FVM_Context *, int, const unsigned char *,
+                                              size_t, unsigned char **, size_t *, int);
+    FVM_Result fvm_channel_create_remote(void *, FVM_RemoteChannelFn, void (*)(void *),
+                                         const char *, FVM_Channel **);
+    const char *fvm_channel_remote_address(FVM_Channel *);
+    FVM_Result fvm_channel_is_stream(FVM_Channel *, int *);
+    FVM_Result fvm_channel_stream_send(FVM_Context *, FVM_Channel *, const unsigned char *, size_t);
+    FVM_Result fvm_channel_stream_receive(FVM_Context *, FVM_Channel *, unsigned char **, size_t *,
+                                          int);
     unsigned long fvm_sync_next_identity(void);
     /* Internal in-process packets own no VM pointers. Send transfers ownership
        only on success; mixed receive transfers packet/string ownership. */

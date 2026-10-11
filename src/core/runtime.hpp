@@ -11,6 +11,7 @@ struct FVM_FontSource;
 struct FVM_Stack;
 struct FVM_Worker;
 struct FVM_Channel;
+struct FVM_ResourceBroker;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
 struct FVM_StackEntry
 {
@@ -90,6 +91,7 @@ struct FVM_SourceLocation
 };
 struct FVM_Context
 {
+    FVM_ResourceBroker *broker;
     unsigned long identity;
     unsigned long debug_line, debug_offset;
     fvm_detail::string debug_source, debug_function;

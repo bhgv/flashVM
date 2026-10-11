@@ -1,6 +1,8 @@
 #include "../core/runtime.hpp"
 #include "flashvm/extensions.h"
 #include "flashvm/mutex.h"
+#include "flashvm/capability.h"
+#include "../core/capability_internal.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/gc.h"
 #include "flashvm/avm1.h"
@@ -27,14 +29,15 @@ struct ScriptTask
 {
     unsigned long identity;
     FVM_Worker *handle;
+    FVM_ResourceBroker *broker;
     bool standard_library;
     fvm_detail::string name;
     fvm_detail::vector<FVM_SourceLocation> locations;
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> functions;
     FVM_Channel *shared, *input, *output;
     ScriptTask()
-        : identity(fvm_sync_next_identity()), handle(0), standard_library(false), shared(0),
-          input(0), output(0)
+        : identity(fvm_sync_next_identity()), handle(0), broker(0), standard_library(false),
+          shared(0), input(0), output(0)
     {
     }
 };
@@ -57,6 +60,8 @@ static void release_worker(void *p)
         fvm_channel_release(t->input);
     if (t->output)
         fvm_channel_release(t->output);
+    if (t->broker)
+        fvm_broker_release(t->broker);
     delete t;
 }
 static bool stopped(FVM_Context *c)
@@ -267,6 +272,9 @@ static FVM_Result create_channel(FVM_Context *c, FVM_Object *, unsigned int n, c
             return FVM_INVALID_ARGUMENT;
         r = fvm_channel_open_file(a[1].string, n == 3 ? a[2].string : 0, &ch);
     }
+    else if (n == 2 && a[0].type == FVM_VALUE_STRING && a[1].type == FVM_VALUE_STRING &&
+             a[0].string && a[1].string && !std::strcmp(a[0].string, "network"))
+        r = fvm_channel_open_network(c, a[1].string, &ch);
     else
     {
         if (n > 1 ||
@@ -410,6 +418,9 @@ static FVM_Result script_worker(FVM_Context *c, const FVM_Value *in, FVM_Value *
     ScriptTask *t = (ScriptTask *)ud;
     c->identity = t->identity;
     c->worker = t->handle;
+    FVM_Result binding = fvm_context_set_broker(c, t->broker);
+    if (binding != FVM_OK)
+        return binding;
     if (t->standard_library)
     {
         FVM_Result r = fvm_standard_install(c);
@@ -512,6 +523,16 @@ static FVM_Result run_worker(FVM_Context *c, unsigned int n, const FVM_Value *a,
     {
         release_worker(t);
         return r;
+    }
+    if (c->broker)
+    {
+        r = fvm_broker_retain(c->broker);
+        if (r != FVM_OK)
+        {
+            release_worker(t);
+            return r;
+        }
+        t->broker = c->broker;
     }
     r = fvm_worker_run_suspended(&c->runtime->config, script_worker, &in, t, &t->handle);
     if (r != FVM_OK)
@@ -682,7 +703,7 @@ void release_mutex(void *p)
 {
     fvm_mutex_release((FVM_Mutex *)p);
 }
-FVM_Result mutex_state(FVM_Context *, FVM_Object *s, unsigned int n, const FVM_Value *,
+FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                        FVM_Value *out, void *)
 {
     if (n || s->resource_kind != 8 || !s->resource)
@@ -690,6 +711,9 @@ FVM_Result mutex_state(FVM_Context *, FVM_Object *s, unsigned int n, const FVM_V
     int state = 0;
     FVM_Result r = fvm_mutex_touch((FVM_Mutex *)s->resource, &state);
     fvm_value_number(out, state);
+    if (r == FVM_ERROR)
+        fvm_debug_resource_error(c, fvm_mutex_identity((FVM_Mutex *)s->resource), "mutex.touch",
+                                 fvm_mutex_remote_address((FVM_Mutex *)s->resource));
     return r;
 }
 FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
@@ -697,6 +721,9 @@ FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM
 {
     if (n || s->resource_kind != 8 || !s->resource)
         return FVM_INVALID_ARGUMENT;
+    const char *address = fvm_mutex_remote_address((FVM_Mutex *)s->resource);
+    if (address)
+        return fvm_value_string(out, address);
     unsigned long origin = fvm_mutex_origin((FVM_Mutex *)s->resource);
     if (origin == c->identity)
         return fvm_value_string(out, "this");
@@ -719,6 +746,18 @@ FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_
         return FVM_INVALID_ARGUMENT;
     FVM_Result r = fvm_mutex_reset(c, (FVM_Mutex *)s->resource);
     fvm_value_boolean(out, r == FVM_OK);
+    return r;
+}
+FVM_Result mutex_close(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
+                       FVM_Value *out, void *)
+{
+    if (n || s->resource_kind != 8 || !s->resource)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result r = fvm_mutex_close((FVM_Mutex *)s->resource);
+    if (r == FVM_ERROR)
+        fvm_debug_resource_error(c, fvm_mutex_identity((FVM_Mutex *)s->resource), "mutex.close",
+                                 fvm_mutex_remote_address((FVM_Mutex *)s->resource));
+    fvm_value_undefined(out);
     return r;
 }
 FVM_Result mutex_touch(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
@@ -813,6 +852,7 @@ extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FV
         method(o, "set", mutex_set, 0);
         method(o, "reset", mutex_reset, 0);
         method(o, "touch", mutex_touch, 0);
+        method(o, "close", mutex_close, 0);
         r = fvm_object_define_accessor_rooted(c, o, "state", mutex_state, 0, 0, 0);
         if (r == FVM_OK)
             r = fvm_object_define_accessor_rooted(c, o, "origin", mutex_origin, 0, 0, 0);

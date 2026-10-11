@@ -1,5 +1,5 @@
-Development version: **0.6** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.6 ` and an English description. Increase the subversion before each
+Development version: **0.7** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.7 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.6** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.6 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.7** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.7 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -345,3 +345,6 @@ This checkpoint uses ABI 2; rebuild native clients. Test evidence and limitation
 Shared mutexes and channel debugging: [English](doc/MUTEX_CHANNEL_DEBUG.md) / [Русский](doc/MUTEX_CHANNEL_DEBUG.ru.md).
 
 Generated validation logs and summaries are excluded from Git. See [validation policy](doc/VALIDATION.md).
+
+Resource descriptors over files/TCP, API and remaining limitations: [RU/EN](doc/RESOURCE_TRANSPORT.md).
+Передача ресурсов через файлы/TCP, API и ограничения: [RU/EN](doc/RESOURCE_TRANSPORT.md).

@@ -46,6 +46,16 @@ extern "C"
     } FVM_DebugChannelWait;
     /* Active ActionScript send/receive waits, not inferred channel deadlocks. */
     FVM_API FVM_Result fvm_debug_channel_wait_snapshot(FVM_DebugChannelWait *, size_t, size_t *);
+    /* Bounded oldest-to-newest error intercept queue. Events copy locations and
+       addresses. Overflow drops oldest events; clear only after successful copy. */
+    typedef struct FVM_DebugResourceError
+    {
+        unsigned long context, resource, line, offset;
+        FVM_Result result;
+        char operation[32], address[256], source[256], function[256];
+    } FVM_DebugResourceError;
+    FVM_API FVM_Result fvm_debug_resource_errors(FVM_DebugResourceError *, size_t, size_t *,
+                                                 int clear);
     /* Snapshot-style inspection: borrowed handles; only call on the VM thread. */
     FVM_API FVM_Result fvm_debug_object_count(FVM_Context *, size_t *);
     FVM_API FVM_Result fvm_debug_object_at(FVM_Context *, size_t, FVM_Object **);

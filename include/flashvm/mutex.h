@@ -15,6 +15,8 @@ extern "C"
        Blocking acquisition cooperatively observes the bound worker's stop request. */
     FVM_API FVM_Result fvm_mutex_set(FVM_Context *, FVM_Mutex *, int blocking);
     FVM_API FVM_Result fvm_mutex_reset(FVM_Context *, FVM_Mutex *);
+    FVM_API FVM_Result fvm_mutex_close(FVM_Mutex *);
+    FVM_API FVM_Result fvm_mutex_is_closed(FVM_Mutex *, int *);
     FVM_API FVM_Result fvm_mutex_touch(FVM_Mutex *, int *);
     FVM_API unsigned long fvm_mutex_origin(FVM_Mutex *);
     FVM_API unsigned long fvm_mutex_identity(FVM_Mutex *);
