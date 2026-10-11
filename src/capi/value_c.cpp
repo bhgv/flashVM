@@ -1,3 +1,8 @@
+#include "../standard/function_state.hpp"
+#include "flashvm/function.h"
+#include "../standard/base_state.hpp"
+#include "flashvm/table.h"
+#include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
 #include "../core/runtime.hpp"
 #include "../core/exception_internal.hpp"
@@ -168,12 +173,15 @@ extern "C"
         if (!c || !o || o->owner != c || (proto && proto->owner != c))
             return FVM_INVALID_ARGUMENT;
         cursor = proto;
-        while (cursor)
+        unsigned int prototype_depth = 0;
+        while (cursor && prototype_depth++ < 1024)
         {
             if (cursor == o)
                 return FVM_INVALID_ARGUMENT;
             cursor = cursor->prototype;
         }
+        if (cursor)
+            return FVM_INVALID_ARGUMENT;
         o->prototype = proto;
         return FVM_OK;
     }
@@ -190,6 +198,12 @@ extern "C"
             return FVM_INVALID_ARGUMENT;
         try
         {
+            unsigned long index;
+            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+            {
+                *out = o->indexed.find(index) != o->indexed.end();
+                return FVM_OK;
+            }
             fvm_detail::string key(name);
             *out = o->properties.find(key) != o->properties.end() ||
                    o->accessors.find(key) != o->accessors.end() ||
@@ -212,6 +226,10 @@ extern "C"
         fvm_value_undefined(out);
         try
         {
+            unsigned long array_index;
+            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+                fvm_as_index(name, &array_index))
+                return fvm_table_get_index(c, o, array_index, out);
             while (o && depth++ < 1024)
             {
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
@@ -246,6 +264,10 @@ extern "C"
                         return FVM_ERROR;
                     }
                 }
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+                    o->methods.find(name);
+                if (method != o->methods.end())
+                    return fvm_function_wrap_entry(c, o, name, method->second, out);
                 o = o->prototype;
             }
             if (o)
@@ -273,10 +295,11 @@ extern "C"
                     try
                     {
                         FVM_NativeCallGuard native_guard(c);
-                        return fn->second.callback(c, receiver, 3, args, &result,
-                                                   fn->second.userdata) == FVM_OK
-                                   ? (*out = result, FVM_OK)
-                                   : FVM_ERROR;
+                        FVM_Result status =
+                            fn->second.callback(c, receiver, 3, args, &result, fn->second.userdata);
+                        if (status == FVM_OK)
+                            *out = result;
+                        return fvm_exception_complete(c, receiver, status);
                     }
                     catch (const std::bad_alloc &)
                     {
@@ -292,6 +315,17 @@ extern "C"
                     break;
                 if (m->second.type != FVM_VALUE_OBJECT || !m->second.object)
                     break;
+                if (m->second.object->invocable.callback)
+                {
+                    FVM_Value args[3];
+                    fvm_value_undefined(args);
+                    args[0].type = FVM_VALUE_OBJECT;
+                    args[0].object = receiver;
+                    args[1] = args[0];
+                    args[1].object = o->metatable;
+                    fvm_value_string(args + 2, name);
+                    return fvm_function_invoke(c, m->second.object, receiver, 3, args, out);
+                }
                 o = m->second.object;
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
                     o->properties.find(name);
@@ -317,6 +351,22 @@ extern "C"
         FVM_Value copy;
         unsigned int depth = 0;
         if (!c || !o || o->owner != c || !name)
+            return FVM_INVALID_ARGUMENT;
+        unsigned long array_index;
+        if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &array_index))
+            return fvm_table_set_index(c, o, array_index, v);
+        unsigned int flag_depth = 0;
+        FVM_Object *flag_cursor = o;
+        for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
+        {
+            unsigned int flags = 0;
+            FVM_Result flag_result = fvm_object_property_flags(c, flag_cursor, name, &flags);
+            if (flag_result != FVM_OK)
+                return flag_result;
+            if (flags & 4)
+                return FVM_OK;
+        }
+        if (flag_cursor)
             return FVM_INVALID_ARGUMENT;
         FVM_Result r = copy_value(c, v, &copy);
         if (r != FVM_OK)
@@ -385,6 +435,18 @@ extern "C"
                 if (m == o->metatable->properties.end() || m->second.type != FVM_VALUE_OBJECT ||
                     !m->second.object)
                     break;
+                if (m->second.object->invocable.callback)
+                {
+                    FVM_Value args[4], result;
+                    fvm_value_undefined(args);
+                    args[0].type = FVM_VALUE_OBJECT;
+                    args[0].object = o;
+                    args[1] = args[0];
+                    args[1].object = o->metatable;
+                    fvm_value_string(args + 2, name);
+                    args[3] = copy;
+                    return fvm_function_invoke(c, m->second.object, o, 4, args, &result);
+                }
                 o = m->second.object;
                 if (o->properties.find(name) != o->properties.end())
                     break;
@@ -404,7 +466,24 @@ extern "C"
     }
     FVM_Result fvm_get_global(FVM_Context *c, const char *name, FVM_Value *out)
     {
-        return c ? fvm_object_get(c, c->global, name, out) : FVM_INVALID_ARGUMENT;
+        if (!c)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Result result = fvm_object_get(c, c->global, name, out);
+        if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED)
+            return result;
+        try
+        {
+            if (c->global->properties.find(name) != c->global->properties.end())
+                return FVM_OK;
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
+                c->functions.find(name);
+            return fn == c->functions.end() ? FVM_OK
+                                            : fvm_function_wrap_entry(c, 0, name, fn->second, out);
+        }
+        catch (const std::bad_alloc &)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
     }
     FVM_Result fvm_set_global(FVM_Context *c, const char *name, const FVM_Value *v)
     {
@@ -450,6 +529,25 @@ extern "C"
         fvm_value_undefined(out);
         try
         {
+            FVM_Object *cursor = self;
+            unsigned int levels = 0;
+            while (cursor && levels++ < 1024)
+            {
+                if (cursor->properties.find(name) != cursor->properties.end() ||
+                    cursor->accessors.find(name) != cursor->accessors.end())
+                {
+                    FVM_Value member;
+                    FVM_Result r = fvm_object_get(c, self, name, &member);
+                    if (r != FVM_OK)
+                        return r;
+                    return member.type == FVM_VALUE_OBJECT
+                               ? fvm_function_invoke(c, member.object, self, argc, argv, out)
+                               : FVM_UNSUPPORTED;
+                }
+                if (cursor->methods.find(name) != cursor->methods.end())
+                    break;
+                cursor = cursor->prototype;
+            }
             FVM_NativeEntry entry;
             FVM_Result lookup = fvm_lookup_native_method(self, name, &entry);
             if (lookup != FVM_OK && lookup != FVM_NOT_FOUND)
@@ -584,14 +682,22 @@ extern "C"
         for (unsigned int i = 0; i < argc; ++i)
             if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        if (std::strcmp(name, "Object") == 0)
+        if (std::strcmp(name, "Object") == 0 && !c->standard_library)
             return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
         try
         {
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
                 c->constructors.find(name);
             if (found == c->constructors.end())
-                return FVM_UNSUPPORTED;
+            {
+                FVM_Value function;
+                FVM_Result r = fvm_get_global(c, name, &function);
+                if (r != FVM_OK)
+                    return r;
+                return function.type == FVM_VALUE_OBJECT
+                           ? fvm_function_construct(c, function.object, argc, argv, out)
+                           : FVM_UNSUPPORTED;
+            }
             FVM_NativeEntry entry = found->second;
             FVM_Value result;
             fvm_value_undefined(&result);

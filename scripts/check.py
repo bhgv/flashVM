@@ -73,7 +73,7 @@ def run(command):
 
 
 sources = (list(root.glob('src/**/*.cpp')) + list(root.glob('src/**/*.c')) +
-           [root / 'ports/file_port.c'] + list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
+           [root / 'ports/file_port.c', root / 'ports/calendar_port.c'] + list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
 sources += [root / 'external/zlib/upstream' / name for name in [
     'adler32.c', 'crc32.c', 'deflate.c', 'trees.c', 'inflate.c', 'inftrees.c',
     'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]
@@ -196,6 +196,15 @@ try:
          str(output / 'tests_error_transfer_process.c.test')])
     passed.append('scripts/test_error_process.py')
     print('PASS independent Error writer/reader processes', flush=True)
+    run([sys.executable, str(root / 'scripts/test_objects_process.py'), str(output / 'tests_objects_transfer_process.c.test')])
+    passed.append('scripts/test_objects_process.py')
+    if 'OS_PORTS' in keys:
+        run([sys.executable, str(root / 'scripts/test_objects_network.py'),
+             str(output / 'tests_objects_transfer_process.c.test')])
+        passed.append('scripts/test_objects_network.py')
+    run([sys.executable, str(root / 'scripts/test_date_timezones.py'),
+         str(output / 'tests_date_timezone.c.test')])
+    passed.append('scripts/test_date_timezones.py')
     report = {'status': 'passed', 'tests': passed, 'count': len(passed), 'flags': flags,
               'compiler': run(['gcc', '--version']).splitlines()[0], 'sanitizers': args.sanitize,
               'address_excluded_tests': ['tests/container_exceptions.cpp'] if args.sanitize else [],

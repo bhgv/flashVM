@@ -1,3 +1,5 @@
+> Historical checkpoint. Актуальные изменения v0.13: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
 # Native String checkpoint — v0.12
 
 The opt-in standard library now installs String constructor/prototype metadata.

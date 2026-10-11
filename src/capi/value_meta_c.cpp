@@ -2,6 +2,7 @@
 #include "../core/native_call_guard.hpp"
 #include "flashvm/metamethod.h"
 #include "flashvm/table.h"
+#include "flashvm/function.h"
 #include <new>
 
 extern "C" FVM_Result fvm_value_set_metatable(FVM_Context *context, FVM_Value *value,
@@ -42,9 +43,15 @@ extern "C" FVM_Result fvm_value_meta_invoke(FVM_Context *context, const FVM_Valu
         {
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator hook =
                 meta->metamethods.find(name);
-            if (hook == meta->metamethods.end())
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator script =
+                meta->properties.find(name);
+            FVM_Object *function = script != meta->properties.end() &&
+                                           script->second.type == FVM_VALUE_OBJECT &&
+                                           script->second.object->invocable.callback
+                                       ? script->second.object
+                                       : 0;
+            if (hook == meta->metamethods.end() && !function)
                 continue;
-            FVM_NativeEntry callback = hook->second;
             fvm_detail::vector<FVM_Value> parameters;
             parameters.push_back(owner);
             FVM_Value defining;
@@ -56,10 +63,19 @@ extern "C" FVM_Result fvm_value_meta_invoke(FVM_Context *context, const FVM_Valu
                 parameters.push_back(args[i]);
             FVM_Value result;
             fvm_value_undefined(&result);
-            FVM_NativeCallGuard guard(context);
-            FVM_Result status =
-                callback.callback(context, owner.type == FVM_VALUE_OBJECT ? owner.object : 0,
-                                  count + 2, &parameters[0], &result, callback.userdata);
+            FVM_Result status;
+            if (hook == meta->metamethods.end())
+                status = fvm_function_invoke(context, function,
+                                             owner.type == FVM_VALUE_OBJECT ? owner.object : 0,
+                                             count + 2, parameters.begin(), &result);
+            else
+            {
+                FVM_NativeEntry callback = hook->second;
+                FVM_NativeCallGuard guard(context);
+                status =
+                    callback.callback(context, owner.type == FVM_VALUE_OBJECT ? owner.object : 0,
+                                      count + 2, parameters.begin(), &result, callback.userdata);
+            }
             if (status == FVM_OK && fvm_validate_value(context, &result) != FVM_OK)
                 status = FVM_INVALID_ARGUMENT;
             if (status == FVM_OK)
@@ -89,6 +105,17 @@ extern "C" FVM_Result fvm_value_get_property(FVM_Context *context, const FVM_Val
     FVM_Result result = fvm_value_meta_invoke(context, value, "__index", 1, &key, out);
     if (result == FVM_NOT_FOUND)
     {
+        if (context->standard_library &&
+            (value->type == FVM_VALUE_STRING || value->type == FVM_VALUE_NUMBER ||
+             value->type == FVM_VALUE_BOOLEAN))
+        {
+            const char *type = value->type == FVM_VALUE_STRING    ? "String"
+                               : value->type == FVM_VALUE_BOOLEAN ? "Boolean"
+                                                                  : "Number";
+            FVM_Object *boxed = 0;
+            result = fvm_construct(context, type, 1, value, &boxed);
+            return result == FVM_OK ? fvm_object_get(context, boxed, name, out) : result;
+        }
         fvm_value_undefined(out);
         return FVM_OK;
     }

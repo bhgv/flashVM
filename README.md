@@ -1,5 +1,5 @@
-Development version: **0.12** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.12 ` and an English description. Increase the subversion before each
+Development version: **0.13** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.13 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.12** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.12 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.13** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.13 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -203,7 +203,8 @@ See [English and Russian render threading documentation](doc/RENDER_THREADS.md)
 and [the C89 example](examples/embedding/parallel_render/README.md).
 The native thread adapters are in `ports/windows`, `ports/linux`, `ports/mac`,
 and `ports/android`. **The current API executes host drawing jobs; full
-MovieClip rasterization is not yet implemented.**
+SWF display-list MovieClip rasterization is not yet implemented; v0.13 adds
+solid-vector rendering of host-authored MovieClip models.**
 
 См. [двуязычное описание](doc/RENDER_THREADS.md) и
 [пример C89](examples/embedding/parallel_render/README.md).
@@ -367,3 +368,10 @@ Resource descriptors over files/TCP, API and remaining limitations: [RU/EN](doc/
 
 Resource exceptions and SWF7–8 handlers / Исключения ресурсов и обработчики SWF7–8:
 [English](doc/EXCEPTIONS.md), [Русский](doc/EXCEPTIONS.ru.md).
+
+## Standard object graphs — v0.13 / Графы стандартных объектов
+
+See [English](doc/STANDARD_OBJECTS.md) and [русский](doc/STANDARD_OBJECTS.ru.md)
+for Object/Array/Date/Function, the host-authored MovieClip model, graph wire v2,
+queue/file/TCP acceptance tests and explicit remaining completion gates.
+This checkpoint does not certify complete simple types or MovieClip/SWF 8.

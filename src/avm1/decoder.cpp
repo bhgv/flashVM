@@ -1,3 +1,4 @@
+#include "function_record.hpp"
 #include "flashvm/avm1.h"
 #include "try_record.hpp"
 namespace
@@ -47,6 +48,16 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
                         return result;
                     pos += record.sizes[i];
                 }
+            }
+            else if (op == 0x9b)
+            {
+                FVM_FunctionRecord record;
+                if (!fvm_function_record(p, size, pos, len, record))
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Result result = inspect(p + record.body, record.size, info, true, depth + 1);
+                if (result != FVM_OK)
+                    return result;
+                pos = record.next;
             }
             else
                 pos += len;

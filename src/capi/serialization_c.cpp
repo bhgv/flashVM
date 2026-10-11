@@ -1,3 +1,7 @@
+#include "../standard/movieclip_state.hpp"
+#include "../standard/function_state.hpp"
+#include "../standard/date_state.hpp"
+#include "../standard/base_state.hpp"
 #include "flashvm/utf8.h"
 #include "../standard/string_state.hpp"
 #include "../standard/number_state.hpp"
@@ -12,6 +16,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <climits>
+#include <cmath>
 #include <limits>
 #include <new>
 
@@ -66,6 +71,9 @@ struct Object
     fvm_detail::map<fvm_detail::string, Value> properties;
     fvm_detail::map<unsigned long, Value> indexed;
     fvm_detail::map<fvm_detail::string, Callback> methods, metamethods;
+    fvm_detail::map<fvm_detail::string, unsigned int> attributes;
+    Callback invocable, constructable;
+    fvm_detail::map<fvm_detail::string, Value> method_values;
     fvm_detail::map<fvm_detail::string, Accessor> accessors;
     Object() : kind(0), prototype(none), metatable(none)
     {
@@ -80,8 +88,9 @@ bool known_kind(unsigned long kind)
 {
     return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
            kind == 10 || kind == 20 || kind == 21 || kind == 22 || kind == 23 || kind == 24 ||
-           kind == 25 || kind == 26 || kind == 27 || kind == 1001 || kind == 1003 || kind == 1004 ||
-           kind == 1002;
+           kind == 25 || kind == 26 || kind == 27 || kind == 28 || kind == 29 || kind == 30 ||
+           kind == 31 || kind == 34 || kind == 35 || kind == 32 || kind == 33 || kind == 36 ||
+           kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 || kind == 1002;
 }
 size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Object *> &seen)
 {
@@ -156,6 +165,14 @@ Callback capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata,
         dst.builtin = fvm_number_callback_id(fn);
     if (!dst.builtin)
         dst.builtin = fvm_string_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_base_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_date_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_function_callback_id(fn);
+    if (!dst.builtin)
+        dst.builtin = fvm_movieclip_callback_id(fn);
     if (selector)
         dst.name = selector;
     if (!dst.builtin)
@@ -211,18 +228,49 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                     !src->callable.callback,
                 FVM_UNSUPPORTED);
         dst.kind = (unsigned long)src->resource_kind;
+        dst.invocable = capture_callback(c, src->invocable.callback, src->invocable.userdata,
+                                         src->invocable.root, seen, budget);
+        dst.constructable =
+            capture_callback(c, src->constructable.callback, src->constructable.userdata,
+                             src->constructable.root, seen, budget);
+        for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator method =
+                 src->method_values.begin();
+             method != src->method_values.end(); ++method)
+        {
+            FVM_Value v;
+            fvm_value_undefined(&v);
+            v.type = FVM_VALUE_OBJECT;
+            v.object = method->second;
+            dst.method_values[method->first] = capture_value(c, v, seen, budget);
+            charge(budget, method->first.size() + 12);
+            ++entries;
+            require(entries <= max_entries, FVM_UNSUPPORTED);
+        }
+        dst.attributes = src->attributes;
+        for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
+                 dst.attributes.begin();
+             flag != dst.attributes.end(); ++flag)
+        {
+            require(flag->second <= 7);
+            charge(budget, flag->first.size() + 12);
+            ++entries;
+            require(entries <= max_entries, FVM_UNSUPPORTED);
+        }
         if (dst.kind == 1002)
         {
             charge(budget, fvm_textfield_snapshot_size(src));
             FVM_Result result = fvm_textfield_snapshot(src, dst.text);
             require(result == FVM_OK, result);
         }
-        if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26)
+        if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
+            dst.kind == 34 || dst.kind == 32 || dst.kind == 40)
         {
             require(src->resource_result_valid &&
                         src->resource_result.type == (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                                                      : dst.kind == 24 ? FVM_VALUE_NUMBER
-                                                                       : FVM_VALUE_STRING),
+                                                      : dst.kind == 26 ? FVM_VALUE_STRING
+                                                      : (dst.kind == 32 || dst.kind == 40)
+                                                          ? FVM_VALUE_OBJECT
+                                                          : FVM_VALUE_NUMBER),
                     FVM_UNSUPPORTED);
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
@@ -268,7 +316,9 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                  src->methods.begin();
              p != src->methods.end(); ++p)
         {
-            require(!p->second.collector_entry, FVM_UNSUPPORTED);
+            require(!p->second.collector_entry ||
+                        fvm_function_collector_callback(p->second.callback),
+                    FVM_UNSUPPORTED);
             dst.methods[p->first] = capture_callback(c, p->second.callback, p->second.userdata,
                                                      p->second.root, seen, budget);
         }
@@ -276,7 +326,9 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                  src->metamethods.begin();
              p != src->metamethods.end(); ++p)
         {
-            require(!p->second.collector_entry, FVM_UNSUPPORTED);
+            require(!p->second.collector_entry ||
+                        fvm_function_collector_callback(p->second.callback),
+                    FVM_UNSUPPORTED);
             dst.metamethods[p->first] = capture_callback(c, p->second.callback, p->second.userdata,
                                                          p->second.root, seen, budget);
         }
@@ -440,6 +492,22 @@ void write_graph(const Graph &g, Writer &w)
             w.callback(p->second.getter);
             w.callback(p->second.setter);
         }
+        w.u32((unsigned long)o.attributes.size());
+        for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator p = o.attributes.begin();
+             p != o.attributes.end(); ++p)
+        {
+            w.string(p->first);
+            w.u32(p->second);
+        }
+        w.callback(o.invocable);
+        w.callback(o.constructable);
+        w.u32((unsigned long)o.method_values.size());
+        for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.method_values.begin();
+             p != o.method_values.end(); ++p)
+        {
+            w.string(p->first);
+            w.value(p->second);
+        }
     }
 }
 struct Reader
@@ -580,7 +648,7 @@ void validate_callback(const Callback &v, size_t count)
 {
     validate_ref(v.root, count);
 }
-Graph read_graph(Reader &r)
+Graph read_graph(Reader &r, unsigned int version)
 {
     Graph g;
     g.value = r.value();
@@ -599,10 +667,12 @@ Graph read_graph(Reader &r)
         o.metatable = r.ref();
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
-        else if (o.kind == 20 || o.kind == 24 || o.kind == 26)
-            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
-                                     : o.kind == 24 ? FVM_VALUE_NUMBER
-                                                    : FVM_VALUE_STRING));
+        else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
+                 o.kind == 34 || o.kind == 40)
+            require(o.state.type == (o.kind == 20                     ? FVM_VALUE_BOOLEAN
+                                     : o.kind == 26                   ? FVM_VALUE_STRING
+                                     : (o.kind == 32 || o.kind == 40) ? FVM_VALUE_OBJECT
+                                                                      : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
@@ -659,6 +729,43 @@ Graph read_graph(Reader &r)
                     a.getter.root == a.setter.root);
             o.accessors[name] = a;
         }
+        if (version >= 2)
+        {
+            count = r.count();
+            for (size_t j = 0; j < count; ++j)
+            {
+                fvm_detail::string name = r.string();
+                unsigned long flags = r.u32();
+                require(flags <= 7 && o.attributes.find(name) == o.attributes.end());
+                o.attributes[name] = (unsigned int)flags;
+            }
+        }
+        if (version >= 2)
+        {
+            o.invocable = r.callback();
+            o.constructable = r.callback();
+            count = r.count();
+            for (size_t j = 0; j < count; ++j)
+            {
+                fvm_detail::string name = r.string();
+                Value method = r.value();
+                require(method.type == FVM_VALUE_OBJECT &&
+                        o.method_values.find(name) == o.method_values.end());
+                o.method_values[name] = method;
+            }
+        }
+        if (o.kind == 34)
+            require(o.state.number != o.state.number ||
+                    (std::fabs(o.state.number) <= 8640000000000000.0 &&
+                     o.state.number == std::floor(o.state.number)));
+        if (o.kind == 28)
+        {
+            require(o.state.number >= 0 && o.state.number <= 4294967295.0 &&
+                    o.state.number == std::floor(o.state.number));
+            for (fvm_detail::map<unsigned long, Value>::iterator slot = o.indexed.begin();
+                 slot != o.indexed.end(); ++slot)
+                require(slot->first < o.state.number);
+        }
         g.objects.push_back(o);
     }
     require(r.offset == r.size);
@@ -669,6 +776,11 @@ Graph read_graph(Reader &r)
         validate_ref(o.prototype, n);
         validate_ref(o.metatable, n);
         validate_value(o.state, n);
+        validate_callback(o.invocable, n);
+        validate_callback(o.constructable, n);
+        for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.method_values.begin();
+             p != o.method_values.end(); ++p)
+            validate_value(p->second, n);
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.properties.begin();
              p != o.properties.end(); ++p)
             validate_value(p->second, n);
@@ -698,11 +810,13 @@ Graph read_graph(Reader &r)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 1};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 2};
 Graph decode(const void *data, size_t size)
 {
     require(data && size >= 16 && size <= max_bytes);
-    require(!std::memcmp(data, magic, 8));
+    require(!std::memcmp(data, magic, 7));
+    unsigned int version = ((const unsigned char *)data)[7];
+    require(version == 1 || version == 2);
     Reader header(data, size);
     header.offset = 8;
     size_t body = (size_t)header.u32();
@@ -711,7 +825,7 @@ Graph decode(const void *data, size_t size)
     const unsigned char *bytes = (const unsigned char *)data + 16;
     require(crc == (unsigned long)crc32(0, bytes, (uInt)body));
     Reader reader(bytes, body);
-    return read_graph(reader);
+    return read_graph(reader, version);
 }
 void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size)
 {
@@ -777,6 +891,14 @@ FVM_NativeEntry restore_callback(FVM_Context *c, const Callback &src,
             dst.callback = fvm_number_callback_from_id(src.builtin);
         if (!dst.callback)
             dst.callback = fvm_string_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_base_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_date_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_function_callback_from_id(src.builtin);
+        if (!dst.callback)
+            dst.callback = fvm_movieclip_callback_from_id(src.builtin);
         require(dst.callback != 0, FVM_UNSUPPORTED);
     }
     else if (!src.name.empty())
@@ -795,6 +917,7 @@ FVM_NativeEntry restore_callback(FVM_Context *c, const Callback &src,
         dst.root = objects[src.root];
     if (src.root_userdata)
         dst.userdata = dst.root;
+    dst.collector_entry = fvm_function_collector_callback(dst.callback);
     return dst;
 }
 void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
@@ -842,7 +965,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 FVM_Result result = fvm_textfield_restore(c, dst, src.text);
                 require(result == FVM_OK, result);
             }
-            if (src.kind == 20 || src.kind == 24 || src.kind == 26)
+            if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
+                src.kind == 34 || src.kind == 32 || src.kind == 40)
             {
                 dst->resource_result_valid = true;
                 dst->resource_result = restore_value(c, src.state, objects);
@@ -854,6 +978,14 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 random = true;
                 random_state = state;
             }
+            dst->invocable = restore_callback(c, src.invocable, objects);
+            dst->constructable = restore_callback(c, src.constructable, objects);
+            dst->invocable.collector_entry =
+                fvm_function_collector_callback(dst->invocable.callback);
+            for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.method_values.begin();
+                 p != src.method_values.end(); ++p)
+                dst->method_values[p->first] = restore_value(c, p->second, objects).object;
+            dst->attributes = src.attributes;
             if (src.prototype != none)
                 dst->prototype = objects[src.prototype];
             if (src.metatable != none)

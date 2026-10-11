@@ -84,6 +84,22 @@ int main(void)
     number(c, s, "lastIndexOf", 1, args, 5);
     fvm_value_string(args, "!");
     text(c, s, "concat", 1, args, "A\320\221\360\237\230\200Z!");
+    fvm_value_string(args, "a,,b,");
+    assert(fvm_construct(c, "String", 1, args, &empty) == FVM_OK);
+    fvm_value_string(args, ",");
+    assert(fvm_object_call(c, empty, "split", 1, args, &out) == FVM_OK);
+    assert(fvm_object_call(c, out.object, "join", 0, 0, &out) == FVM_OK &&
+           !strcmp(out.string, "a,,b,"));
+    fvm_value_number(args + 1, 2);
+    assert(fvm_object_call(c, empty, "split", 2, args, &out) == FVM_OK);
+    assert(fvm_object_get(c, out.object, "length", &out) == FVM_OK && out.number == 2);
+    fvm_value_number(args + 1, 0);
+    assert(fvm_object_call(c, empty, "split", 2, args, &out) == FVM_OK);
+    assert(fvm_object_get(c, out.object, "length", &out) == FVM_OK && out.number == 0);
+    assert(fvm_object_call(c, s, "split", 0, 0, &out) == FVM_OK);
+    assert(fvm_object_get(c, out.object, "0", &out) == FVM_OK && !strcmp(out.string, sample));
+    fvm_value_string(args, "");
+    assert(fvm_object_call(c, s, "split", 1, args, &out) == FVM_UNSUPPORTED);
     fvm_value_number(args, 65);
     fvm_value_number(args + 1, 0xd83d);
     fvm_value_number(args + 2, 0xde00);

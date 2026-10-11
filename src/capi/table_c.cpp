@@ -1,3 +1,6 @@
+#include "../standard/base_state.hpp"
+#include "flashvm/property.h"
+#include <cstdio>
 #include "../core/runtime.hpp"
 #include "flashvm/table.h"
 #include "flashvm/debug.h"
@@ -41,12 +44,36 @@ extern "C"
         FVM_Result r;
         if (!valid(c, o))
             return FVM_INVALID_ARGUMENT;
+        if (o->resource_kind == 28 || o->resource_kind == 30)
+        {
+            if (key > 0xffffffffUL)
+                return FVM_INVALID_ARGUMENT;
+            char name[32];
+            std::sprintf(name, "%lu", key);
+            if (key == 0xffffffffUL)
+                return fvm_object_set(c, o, name, v);
+            unsigned int flags = 0;
+            FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
+            if (status != FVM_OK)
+                return status;
+            if (flags & 4)
+                return FVM_OK;
+            if (o->resource_kind == 28 && key >= o->resource_result.number)
+            {
+                status = fvm_object_property_flags(c, o, "length", &flags);
+                if (status != FVM_OK)
+                    return status;
+                if (flags & 4)
+                    return FVM_OK;
+            }
+        }
         r = store(c, v, &x);
         if (r != FVM_OK)
             return r;
         try
         {
             o->indexed[key] = x;
+            fvm_array_note_index(o, key);
         }
         catch (...)
         {
@@ -58,6 +85,31 @@ extern "C"
     {
         if (!valid(c, o) || !out)
             return FVM_INVALID_ARGUMENT;
+        if (o->resource_kind == 28 || o->resource_kind == 30)
+        {
+            if (key > 0xffffffffUL)
+                return FVM_INVALID_ARGUMENT;
+            if (key == 0xffffffffUL)
+            {
+                char name[32];
+                std::sprintf(name, "%lu", key);
+                return fvm_object_get(c, o, name, out);
+            }
+            FVM_Object *cursor = o;
+            unsigned int depth = 0;
+            while (cursor && depth++ < 1024)
+            {
+                fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.find(key);
+                if (i != cursor->indexed.end())
+                {
+                    *out = i->second;
+                    return FVM_OK;
+                }
+                cursor = cursor->prototype;
+            }
+            if (cursor)
+                return FVM_ERROR;
+        }
         for (unsigned int depth = 0; o && depth < 1024; ++depth)
         {
             fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.find(key);

@@ -1,3 +1,10 @@
+#include "function_record.hpp"
+#include "../standard/function_state.hpp"
+#include "../standard/base_state.hpp"
+#include "../standard/primitive_state.hpp"
+#include "flashvm/function.h"
+#include "../standard/string_order.hpp"
+#include "flashvm/property.h"
 #include "flashvm/standard.h"
 #include "try_record.hpp"
 #include "../core/exception_internal.hpp"
@@ -69,6 +76,79 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     }
     return fvm_value_string(value, copy);
 }
+static bool date_hint(const FVM_Value &value)
+{
+    return value.type == FVM_VALUE_OBJECT && value.object->resource_kind == 34;
+}
+static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
+{
+    if (a.type != b.type)
+        return false;
+    switch (a.type)
+    {
+    case FVM_VALUE_UNDEFINED:
+    case FVM_VALUE_NULL:
+        return true;
+    case FVM_VALUE_BOOLEAN:
+        return !!a.boolean == !!b.boolean;
+    case FVM_VALUE_NUMBER:
+        return a.number == b.number;
+    case FVM_VALUE_STRING:
+        return !std::strcmp(a.string, b.string);
+    case FVM_VALUE_OBJECT:
+        return a.object == b.object;
+    }
+    return false;
+}
+static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
+                        unsigned int depth = 0)
+{
+    if (depth > 8)
+        return FVM_ERROR;
+    if (a.type == b.type)
+    {
+        result = strict_equal(a, b);
+        return FVM_OK;
+    }
+    if ((a.type == FVM_VALUE_NULL && b.type == FVM_VALUE_UNDEFINED) ||
+        (b.type == FVM_VALUE_NULL && a.type == FVM_VALUE_UNDEFINED))
+    {
+        result = true;
+        return FVM_OK;
+    }
+    if (a.type == FVM_VALUE_BOOLEAN)
+    {
+        fvm_value_number(&a, a.boolean ? 1 : 0);
+        return equal(c, a, b, result, depth + 1);
+    }
+    if (b.type == FVM_VALUE_BOOLEAN)
+    {
+        fvm_value_number(&b, b.boolean ? 1 : 0);
+        return equal(c, a, b, result, depth + 1);
+    }
+    if ((a.type == FVM_VALUE_NUMBER && b.type == FVM_VALUE_STRING) ||
+        (b.type == FVM_VALUE_NUMBER && a.type == FVM_VALUE_STRING))
+    {
+        double x = 0, y = 0;
+        FVM_Result r = fvm_value_to_number(c, &a, &x);
+        if (r == FVM_OK)
+            r = fvm_value_to_number(c, &b, &y);
+        result = x == y;
+        return r;
+    }
+    if (a.type == FVM_VALUE_OBJECT && (b.type == FVM_VALUE_STRING || b.type == FVM_VALUE_NUMBER))
+    {
+        FVM_Result r = fvm_to_primitive(c, &a, date_hint(a), &a);
+        return r == FVM_OK ? equal(c, a, b, result, depth + 1) : r;
+    }
+    if (b.type == FVM_VALUE_OBJECT && (a.type == FVM_VALUE_STRING || a.type == FVM_VALUE_NUMBER))
+    {
+        FVM_Result r = fvm_to_primitive(c, &b, date_hint(b), &b);
+        return r == FVM_OK ? equal(c, a, b, result, depth + 1) : r;
+    }
+    result = false;
+    return FVM_OK;
+}
 struct Execution
 {
     fvm_detail::vector<fvm_detail::string> constants;
@@ -88,20 +168,60 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
  * even when the interpreter reports an error. */
 static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_ScriptFunction &fn,
                               unsigned int argc, const FVM_Value *args, FVM_Object *receiver,
-                              FVM_Value *result)
+                              FVM_Value *result, FVM_Object *closure = 0, FVM_Object *callee = 0)
 {
     if (c->script_depth >= 64)
         return FVM_ERROR;
-    fvm_detail::map<fvm_detail::string, FVM_Value> frame;
+    FVM_Object *activation = 0;
+    FVM_Result activation_result = fvm_object_create(c, &activation);
+    if (activation_result != FVM_OK)
+        return activation_result;
+    fvm_detail::map<fvm_detail::string, FVM_Value> &frame = activation->properties;
     try
     {
+        FVM_Object *arguments = 0;
+        FVM_Result stored = fvm_object_create(c, &arguments);
+        if (stored != FVM_OK)
+            return stored;
+        arguments->resource_kind = 30;
+        FVM_Value value;
+        fvm_value_number(&value, argc);
+        stored = fvm_object_set(c, arguments, "length", &value);
+        if (stored != FVM_OK)
+            return stored;
+        arguments->attributes["length"] = 1;
+        for (unsigned int i = 0; i < argc; ++i)
+        {
+            stored = fvm_table_set_index(c, arguments, i, args + i);
+            if (stored != FVM_OK)
+                return stored;
+        }
+        if (callee)
+        {
+            fvm_value_undefined(&value);
+            value.type = FVM_VALUE_OBJECT;
+            value.object = callee;
+            stored = fvm_object_set(c, arguments, "callee", &value);
+            if (stored != FVM_OK)
+                return stored;
+            arguments->attributes["callee"] = 1;
+        }
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = arguments;
+        stored = fvm_object_set(c, activation, "arguments", &value);
+        if (stored != FVM_OK)
+            return stored;
+        /* Explicit parameters can shadow the implicit arguments binding. */
         for (size_t i = 0; i < fn.parameters.size(); ++i)
         {
             FVM_Value value;
             fvm_value_undefined(&value);
             if (i < argc)
                 value = args[i];
-            frame[fn.parameters[i]] = value;
+            FVM_Result stored = fvm_object_set(c, activation, fn.parameters[i].c_str(), &value);
+            if (stored != FVM_OK)
+                return stored;
         }
     }
     catch (const std::bad_alloc &)
@@ -144,6 +264,19 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         c->debug_function = name;
         c->debug_line = 0;
         ++c->script_depth;
+        activation->prototype = closure;
+        c->lexical_scopes.push_back(activation);
+        struct PopScope
+        {
+            FVM_Context *c;
+            explicit PopScope(FVM_Context *context) : c(context)
+            {
+            }
+            ~PopScope()
+            {
+                c->lexical_scopes.pop_back();
+            }
+        } scope(c);
         status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame, receiver,
                          &snapshot.constants);
         --c->script_depth;
@@ -179,6 +312,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared, size_t base, unsigned int depth)
 {
+    /* Nested functions and native reentry consume the same outer instruction
+     * budget. Separate operand stacks must not reset this security boundary. */
+    struct BudgetGuard
+    {
+        FVM_Context *context;
+        explicit BudgetGuard(FVM_Context *c) : context(c)
+        {
+            if (!c->avm1_execution_depth)
+                c->avm1_steps = 0;
+            ++c->avm1_execution_depth;
+        }
+        ~BudgetGuard()
+        {
+            --context->avm1_execution_depth;
+        }
+    } budget(c);
     Execution owned;
     Execution &execution = shared ? *shared : owned;
     fvm_detail::vector<fvm_detail::string> &constants = execution.constants;
@@ -244,6 +393,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.length > size - pos)
                     return FVM_INVALID_ARGUMENT;
                 pos += a.length;
+                if (a.op == 0x9b)
+                {
+                    FVM_FunctionRecord record;
+                    if (!fvm_function_record(data, size, a.payload, a.length, record))
+                        return FVM_INVALID_ARGUMENT;
+                    pos = record.next;
+                }
                 if (a.op == 0x8f)
                 {
                     FVM_TryRecord record;
@@ -264,8 +420,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             const Action &a = actions[pc];
             fvm_debug_update_location(c, (unsigned long)(base + a.offset));
             ++steps;
+            if (c->avm1_steps == std::numeric_limits<unsigned long>::max())
+                return FVM_ERROR;
+            ++c->avm1_steps;
             if (c->runtime->config.instruction_limit &&
-                steps > c->runtime->config.instruction_limit)
+                c->avm1_steps > c->runtime->config.instruction_limit)
                 return FVM_ERROR;
             /* A bounded, deterministic safe point: all live AVM1 operands,
                locals and receivers are registered by RootGuard. Never collect
@@ -419,43 +578,52 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 registers[reg] = stack.back();
             }
             else if (a.op == 0x9b)
-            { /* DefineFunction: named, zero parameters */
-                size_t p = a.payload, end = p + a.length, start = p;
-                while (p < end && data[p])
-                    ++p;
-                if (p == end || p == start)
+            {
+                FVM_FunctionRecord record;
+                if (!fvm_function_record(data, size, a.payload, a.length, record))
                     return FVM_INVALID_ARGUMENT;
-                fvm_detail::string name((const char *)(data + start), p - start);
-                ++p;
-                if (end - p < 4)
-                    return FVM_INVALID_ARGUMENT;
-                unsigned int count = u16(data + p);
-                p += 2;
                 FVM_ScriptFunction fn;
                 fn.constants = constants;
-                unsigned int param;
-                for (param = 0; param < count; ++param)
+                fn.name = fvm_detail::string((const char *)data + record.name, record.name_size);
+                size_t p = record.parameters;
+                for (unsigned int parameter = 0; parameter < record.count; ++parameter)
                 {
                     size_t begin = p;
-                    while (p < end && data[p])
+                    while (data[p])
                         ++p;
-                    if (p == end)
-                        return FVM_INVALID_ARGUMENT;
                     fn.parameters.push_back(
-                        fvm_detail::string((const char *)(data + begin), p - begin));
+                        fvm_detail::string((const char *)data + begin, p - begin));
                     ++p;
                 }
-                if (end - p < 2)
-                    return FVM_INVALID_ARGUMENT;
-                unsigned int body_size = u16(data + p);
-                p += 2;
-                if (body_size != end - p)
-                    return FVM_INVALID_ARGUMENT;
-                fn.body.assign(data + p, data + end);
-                /* A function body can omit End; append one for the decoder. */
-                if (fn.body.empty() || fn.body.back() != 0)
+                fn.body.assign(data + record.body, data + record.body + record.size);
+                FVM_AVM1Info body_info;
+                body_info.struct_size = sizeof(body_info);
+                if (fvm_avm1_inspect(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
                     fn.body.push_back(0);
-                c->script_functions[name] = fn;
+                FVM_Object *object = 0;
+                FVM_Result r = fvm_function_make_script(
+                    c, fn, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), &object);
+                if (r != FVM_OK)
+                    return r;
+                FVM_Value value;
+                fvm_value_undefined(&value);
+                value.type = FVM_VALUE_OBJECT;
+                value.object = object;
+                if (record.name_size)
+                {
+                    fvm_detail::string name((const char *)data + record.name, record.name_size);
+                    c->script_functions[name] = fn;
+                    if (locals)
+                        (*locals)[name] = value;
+                    else
+                    {
+                        r = fvm_set_global(c, name.c_str(), &value);
+                        if (r != FVM_OK)
+                            return r;
+                    }
+                }
+                else
+                    stack.push_back(value);
             }
             else if (a.op == 0x96)
             { /* Push: strings, null, undefined, boolean, double, integer */
@@ -562,6 +730,52 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     stack.push_back(v);
                 }
             }
+            else if (a.op == 0x42 || a.op == 0x43)
+            {
+                if (stack.empty() || stack.back().type != FVM_VALUE_NUMBER)
+                    return FVM_ERROR;
+                double count = stack.back().number;
+                unsigned int width = a.op == 0x42 ? 1 : 2;
+                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
+                    count * width > stack.size() - 1)
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Object *object = 0;
+                FVM_Result r = FVM_OK;
+                if (a.op == 0x42)
+                {
+                    fvm_detail::vector<FVM_Value> values((size_t)count);
+                    for (size_t j = 0; j < values.size(); ++j)
+                        values[j] = stack[stack.size() - 2 - j];
+                    /* Array literals never interpret a numeric element as a length. */
+                    r = fvm_array_create_like(c, 0, (unsigned long)count, &object);
+                    for (size_t j = 0; r == FVM_OK && j < values.size(); ++j)
+                        r = fvm_table_set_index(c, object, (unsigned long)j, &values[j]);
+                }
+                else
+                {
+                    r = fvm_construct(c, "Object", 0, 0, &object);
+                    if (r == FVM_OK)
+                        for (unsigned int j = 0; j < (unsigned int)count; ++j)
+                        {
+                            FVM_Value value = stack[stack.size() - 2 - j * 2],
+                                      key = stack[stack.size() - 3 - j * 2], text;
+                            r = fvm_value_to_string(c, &key, &text);
+                            if (r != FVM_OK)
+                                break;
+                            r = fvm_object_set(c, object, text.string, &value);
+                            if (r != FVM_OK)
+                                break;
+                        }
+                }
+                if (r != FVM_OK)
+                    return r;
+                stack.resize(stack.size() - 1 - (size_t)count * width);
+                FVM_Value value;
+                fvm_value_undefined(&value);
+                value.type = FVM_VALUE_OBJECT;
+                value.object = object;
+                stack.push_back(value);
+            }
             else if (a.op == 0x54)
             { /* InstanceOf: native constructor metadata and prototype identity. */
                 if (stack.size() < 2)
@@ -573,6 +787,60 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return result;
                 stack.pop_back();
                 fvm_value_boolean(&stack.back(), matches);
+            }
+            else if (a.op == 0x04 || a.op == 0x05 || a.op == 0x06 || a.op == 0x07 || a.op == 0x81 ||
+                     a.op == 0x8c || a.op == 0x9f)
+            {
+                if (!self || self->resource_kind != 40)
+                    return FVM_UNSUPPORTED;
+                const char *method = a.op == 0x04   ? "nextFrame"
+                                     : a.op == 0x05 ? "prevFrame"
+                                     : a.op == 0x06 ? "play"
+                                                    : "stop";
+                FVM_Value frame, result;
+                unsigned int count = 0;
+                if (a.op == 0x81 || a.op == 0x8c || a.op == 0x9f)
+                {
+                    count = 1;
+                    bool playing = false;
+                    FVM_Object *state = self->resource_result.object;
+                    if (!self->resource_result_valid ||
+                        self->resource_result.type != FVM_VALUE_OBJECT || !state)
+                        return FVM_INVALID_ARGUMENT;
+                    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator play =
+                        state->properties.find("playing");
+                    if (play != state->properties.end())
+                        playing = play->second.number != 0;
+                    if (a.op == 0x81)
+                    {
+                        if (a.length != 2)
+                            return FVM_INVALID_ARGUMENT;
+                        fvm_value_number(&frame, u16(data + a.payload) + 1);
+                    }
+                    else if (a.op == 0x8c)
+                    {
+                        if (!a.length || !std::memchr(data + a.payload, 0, a.length))
+                            return FVM_INVALID_ARGUMENT;
+                        FVM_Result r = own_string(c, (const char *)data + a.payload, &frame);
+                        if (r != FVM_OK)
+                            return r;
+                    }
+                    else
+                    {
+                        if ((a.length != 1 && a.length != 3) || stack.empty() ||
+                            (data[a.payload] & ~3) || a.length != ((data[a.payload] & 2) ? 3U : 1U))
+                            return FVM_INVALID_ARGUMENT;
+                        frame = stack.back();
+                        stack.pop_back();
+                        playing = (data[a.payload] & 1) != 0;
+                        if ((data[a.payload] & 2) && frame.type == FVM_VALUE_NUMBER)
+                            frame.number += u16(data + a.payload + 1);
+                    }
+                    method = playing ? "gotoAndPlay" : "gotoAndStop";
+                }
+                FVM_Result r = fvm_object_call(c, self, method, count, count ? &frame : 0, &result);
+                if (r != FVM_OK)
+                    return r;
             }
             else if (a.op == 0x40)
             { /* NewObject: separate named native constructor registry. */
@@ -598,6 +866,117 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.type = FVM_VALUE_OBJECT;
                 value.object = object;
                 stack.push_back(value);
+            }
+            else if (a.op == 0x44 || a.op == 0x4a || a.op == 0x4b)
+            {
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value input = stack.back(), output;
+                FVM_Result r = FVM_OK;
+                if (a.op == 0x44)
+                {
+                    const char *types[] = {"undefined", "null",   "boolean",
+                                           "number",    "string", "object"};
+                    const char *name = types[input.type];
+                    if (input.type == FVM_VALUE_OBJECT)
+                        name = input.object->invocable.callback || input.object->callable.callback
+                                   ? "function"
+                               : input.object->resource_kind == 40 ? "movieclip"
+                                                                   : "object";
+                    r = fvm_value_string(&output, name);
+                }
+                else if (a.op == 0x4b)
+                    r = fvm_value_to_string(c, &input, &output);
+                else
+                {
+                    double number = 0;
+                    r = fvm_value_to_number(c, &input, &number);
+                    fvm_value_number(&output, number);
+                }
+                if (r != FVM_OK)
+                    return r;
+                stack.back() = output;
+            }
+            else if (a.op == 0x47 || a.op == 0x48 || a.op == 0x49 || a.op == 0x66)
+            {
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                FVM_Value left = stack[stack.size() - 2], right = stack.back(), output;
+                FVM_Result r = FVM_OK;
+                if (a.op != 0x66)
+                {
+                    const char *hook = a.op == 0x47 ? "__add" : a.op == 0x48 ? "__lt" : "__eq";
+                    FVM_Value operands[2] = {left, right};
+                    r = fvm_value_meta_invoke(c, operands, hook, 2, operands, &output);
+                    if (r == FVM_NOT_FOUND)
+                        r = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &output);
+                    if (r == FVM_OK)
+                    {
+                        if (a.op != 0x47)
+                            fvm_value_boolean(&output, truth(output));
+                        stack.pop_back();
+                        stack.back() = output;
+                        ++pc;
+                        continue;
+                    }
+                    if (r != FVM_NOT_FOUND)
+                        return r;
+                    r = FVM_OK;
+                }
+                if (a.op == 0x66 || a.op == 0x49)
+                {
+                    bool matches = false;
+                    r = a.op == 0x66 ? FVM_OK : equal(c, left, right, matches);
+                    if (a.op == 0x66)
+                        matches = strict_equal(left, right);
+                    fvm_value_boolean(&output, matches);
+                }
+                else
+                {
+                    r = fvm_to_primitive(c, &left, a.op == 0x47 && date_hint(left), &left);
+                    if (r == FVM_OK)
+                        r = fvm_to_primitive(c, &right, a.op == 0x47 && date_hint(right), &right);
+                    if (r == FVM_OK && a.op == 0x47 &&
+                        (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
+                    {
+                        FVM_Value x, y;
+                        r = fvm_value_to_string(c, &left, &x);
+                        if (r == FVM_OK)
+                            r = fvm_value_to_string(c, &right, &y);
+                        if (r == FVM_OK)
+                        {
+                            size_t first = std::strlen(x.string), last = std::strlen(y.string);
+                            if (first > (size_t)-1 - last - 1)
+                                return FVM_OUT_OF_MEMORY;
+                            fvm_detail::vector<char> text(first + last + 1);
+                            std::memcpy(text.begin(), x.string, first);
+                            std::memcpy(text.begin() + first, y.string, last + 1);
+                            r = own_string(c, text.begin(), &output);
+                        }
+                    }
+                    else if (r == FVM_OK && a.op == 0x48 && left.type == FVM_VALUE_STRING &&
+                             right.type == FVM_VALUE_STRING)
+                    {
+                        int order = 0;
+                        r = fvm_string_order(left.string, right.string, order);
+                        fvm_value_boolean(&output, order < 0);
+                    }
+                    else if (r == FVM_OK)
+                    {
+                        double x = 0, y = 0;
+                        r = fvm_value_to_number(c, &left, &x);
+                        if (r == FVM_OK)
+                            r = fvm_value_to_number(c, &right, &y);
+                        if (a.op == 0x47)
+                            fvm_value_number(&output, x + y);
+                        else
+                            fvm_value_boolean(&output, x < y);
+                    }
+                }
+                if (r != FVM_OK)
+                    return r;
+                stack.pop_back();
+                stack.back() = output;
             }
             else if (a.op == 0x4e)
             { /* GetMember */
@@ -743,7 +1122,32 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     v.object = self;
                 }
                 else
-                    r = fvm_get_global(c, stack.back().string, &v);
+                {
+                    /* An explicitly undefined binding still shadows outer scopes. */
+                    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
+                    unsigned int levels = 0;
+                    while (binding && levels++ < 1024 &&
+                           binding->properties.find(stack.back().string) ==
+                               binding->properties.end())
+                        binding = binding->prototype;
+                    if (binding && levels <= 1024)
+                        r = fvm_object_get(c, binding, stack.back().string, &v);
+                    else
+                    {
+                        FVM_Object *member = self && self != c->global ? self : 0;
+                        unsigned int depth = 0;
+                        while (member && depth++ < 1024 &&
+                               member->properties.find(stack.back().string) ==
+                                   member->properties.end() &&
+                               member->methods.find(stack.back().string) == member->methods.end() &&
+                               member->accessors.find(stack.back().string) ==
+                                   member->accessors.end())
+                            member = member->prototype;
+                        r = member && depth <= 1024
+                                ? fvm_object_get(c, self, stack.back().string, &v)
+                                : fvm_get_global(c, stack.back().string, &v);
+                    }
+                }
                 if (r != FVM_OK)
                     return r;
                 stack.back() = v;
@@ -757,7 +1161,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (locals && locals->find(name) != locals->end())
                     (*locals)[name] = stack.back();
                 else
-                    r = fvm_set_global(c, name.c_str(), &stack.back());
+                {
+                    FVM_Object *captured =
+                        c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back()->prototype;
+                    unsigned int levels = 0;
+                    while (captured && levels++ < 1024 &&
+                           captured->properties.find(name) == captured->properties.end())
+                        captured = captured->prototype;
+                    r = captured ? fvm_object_set(c, captured, name.c_str(), &stack.back())
+                        : self && self->resource_kind == 40
+                            ? fvm_object_set(c, self, name.c_str(), &stack.back())
+                            : fvm_set_global(c, name.c_str(), &stack.back());
+                }
                 if (r != FVM_OK)
                     return r;
                 stack.pop_back();
@@ -799,16 +1214,27 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.op == 0x0d)
                     v.number /= b.number;
             }
-            else if (a.op == 0x52)
+            else if (a.op == 0x52 || a.op == 0x53)
             { /* CallMethod: args, argc, receiver, method name */
                 if (stack.size() < 3 || stack.back().type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 2].type != FVM_VALUE_OBJECT ||
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
                 fvm_detail::string name = stack.back().string;
-                FVM_Object *receiver = stack[stack.size() - 2].object;
+                FVM_Value owner = stack[stack.size() - 2];
+                FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
+                if (!receiver)
+                {
+                    if (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED)
+                        return FVM_INVALID_ARGUMENT;
+                    const char *type = owner.type == FVM_VALUE_STRING    ? "String"
+                                       : owner.type == FVM_VALUE_BOOLEAN ? "Boolean"
+                                                                         : "Number";
+                    FVM_Result boxed = fvm_construct(c, type, 1, &owner, &receiver);
+                    if (boxed != FVM_OK)
+                        return boxed;
+                }
                 double n = stack[stack.size() - 3].number;
-                if (n < 0 || n > 65535 || n != (unsigned int)n || stack.size() < (size_t)n + 3)
+                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 3)
                     return FVM_ERROR;
                 unsigned int argc = (unsigned int)n;
                 fvm_detail::vector<FVM_Value> args(argc);
@@ -822,9 +1248,34 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_NativeEntry native_method;
                 FVM_Result lookup =
                     fvm_lookup_native_method(receiver, name.c_str(), &native_method);
-                if (lookup != FVM_OK && lookup != FVM_NOT_FOUND)
+                if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
                     return lookup;
-                if (lookup == FVM_NOT_FOUND && script != c->script_functions.end())
+                if (a.op == 0x53)
+                {
+                    FVM_Value function;
+                    r = name.empty() ? FVM_OK
+                                     : fvm_object_get(c, receiver, name.c_str(), &function);
+                    if (name.empty())
+                    {
+                        fvm_value_undefined(&function);
+                        function.type = FVM_VALUE_OBJECT;
+                        function.object = receiver;
+                    }
+                    if (r != FVM_OK)
+                        return r;
+                    if (function.type != FVM_VALUE_OBJECT)
+                        return FVM_INVALID_ARGUMENT;
+                    FVM_Object *instance = 0;
+                    r = fvm_function_construct(c, function.object, argc, args.begin(), &instance);
+                    if (r == FVM_OK)
+                    {
+                        result.type = FVM_VALUE_OBJECT;
+                        result.object = instance;
+                    }
+                }
+                else if (name.empty())
+                    r = fvm_function_invoke(c, receiver, self, argc, args.begin(), &result);
+                else if (lookup == FVM_NOT_FOUND && script != c->script_functions.end())
                     r = call_script(c, script->first.c_str(), script->second, argc,
                                     argc ? &args[0] : 0, receiver, &result);
                 else
@@ -842,7 +1293,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 fvm_detail::string name = stack.back().string;
                 double n = stack[stack.size() - 2].number;
-                if (n < 0 || n > 65535 || n != (unsigned int)n || stack.size() < (size_t)n + 2)
+                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 2)
                     return FVM_ERROR;
                 unsigned int argc = (unsigned int)n;
                 fvm_detail::vector<FVM_Value> args(argc);
@@ -852,13 +1303,27 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result r;
                 fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator fn =
                     c->script_functions.find(name);
-                if (fn != c->script_functions.end())
+                FVM_Value callable;
+                fvm_value_undefined(&callable);
+                if (locals)
                 {
-                    r = call_script(c, fn->first.c_str(), fn->second, argc, argc ? &args[0] : 0,
-                                    c->global, &result);
+                    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local =
+                        locals->find(name);
+                    if (local != locals->end())
+                        callable = local->second;
                 }
+                if (callable.type == FVM_VALUE_UNDEFINED && !c->lexical_scopes.empty())
+                    r = fvm_object_get(c, c->lexical_scopes.back(), name.c_str(), &callable);
+                if (callable.type == FVM_VALUE_UNDEFINED)
+                    r = fvm_get_global(c, name.c_str(), &callable);
+                if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
+                    r = fvm_function_invoke(c, callable.object, c->global, argc, args.begin(),
+                                            &result);
+                else if (fn != c->script_functions.end())
+                    r = call_script(c, fn->first.c_str(), fn->second, argc, args.begin(), c->global,
+                                    &result);
                 else
-                    r = fvm_call(c, name.c_str(), argc, argc ? &args[0] : 0, &result);
+                    r = fvm_call(c, name.c_str(), argc, args.begin(), &result);
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - argc - 2);
@@ -963,9 +1428,36 @@ extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object
     for (unsigned int i = 0; i < argc; ++i)
         if (fvm_validate_value(c, args + i) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
+    FVM_Value function;
+    FVM_Result lookup = fvm_get_global(c, name, &function);
+    if (lookup != FVM_OK)
+        return lookup;
+    if (function.type == FVM_VALUE_OBJECT && function.object->invocable.callback)
+        return fvm_function_invoke(c, function.object, self, argc, args, out);
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::iterator it =
         c->script_functions.find(name);
     if (it == c->script_functions.end())
         return FVM_NOT_FOUND;
     return call_script(c, name, it->second, argc, args, self ? self : c->global, out);
+}
+
+FVM_Result fvm_avm1_invoke_script(FVM_Context *c, const FVM_ScriptFunction &body,
+                                  FVM_Object *closure, FVM_Object *receiver, unsigned int argc,
+                                  const FVM_Value *args, FVM_Value *out, FVM_Object *callee)
+{
+    return call_script(c, body.name.empty() ? "<function>" : body.name.c_str(), body, argc, args,
+                       receiver ? receiver : c->global, out, closure, callee);
+}
+
+extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data, size_t size,
+                                                FVM_Object *receiver)
+{
+    if (!c || !receiver || receiver->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_AVM1Info info;
+    info.struct_size = sizeof(info);
+    FVM_Result r = fvm_avm1_inspect(data, size, &info);
+    if (r != FVM_OK)
+        return r;
+    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0);
 }

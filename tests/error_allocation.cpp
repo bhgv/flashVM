@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <new>
+#include <cstdio>
 static long allowance = -1;
 /* Inject a single allocation boundary through every VM new/new[] site. Both
  * allocation and deallocation use malloc/free so ASan can still observe them. */
@@ -68,7 +69,7 @@ int main()
     assert(fvm_config_init(&config) == FVM_OK);
     assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
     bool installed = false, constructed = false;
-    for (long failure = 0; failure < 512 && !installed; ++failure)
+    for (long failure = 0; failure < 2048 && !installed; ++failure)
     {
         FVM_Context *c = 0;
         FVM_Value value;
@@ -81,8 +82,10 @@ int main()
             installed = true;
         else
         {
-            const char *names[] = {"Math",       "Boolean", "Number", "Error",   "parseInt",
-                                   "parseFloat", "String",  "NaN",    "Infinity"};
+            const char *names[] = {"Math",     "Boolean",    "Number",        "Error",
+                                   "parseInt", "parseFloat", "String",        "NaN",
+                                   "Infinity", "Object",     "Array",         "Date",
+                                   "Function", "MovieClip",  "ASSetPropFlags"};
             for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
                 assert(fvm_get_global(c, names[i], &value) == FVM_OK &&
                        value.type == FVM_VALUE_UNDEFINED);
@@ -92,11 +95,14 @@ int main()
         fvm_context_destroy(c);
     }
     assert(installed);
-    const char *constructor_names[] = {"Error", "Number", "String"};
-    for (unsigned int constructor_index = 0; constructor_index < 3; ++constructor_index)
+    const char *constructor_names[] = {"Error", "Number",   "String",    "Object", "Array",
+                                       "Date",  "Function", "MovieClip", "Boolean"};
+    for (unsigned int constructor_index = 0;
+         constructor_index < sizeof(constructor_names) / sizeof(constructor_names[0]);
+         ++constructor_index)
     {
         constructed = false;
-        for (long failure = 0; failure < 64 && !constructed; ++failure)
+        for (long failure = 0; failure < 512 && !constructed; ++failure)
         {
             FVM_Context *c = 0;
             FVM_Object *error = 0;
@@ -104,10 +110,18 @@ int main()
             assert(fvm_context_create(runtime, &c) == FVM_OK);
             assert(fvm_standard_install(c) == FVM_OK);
             fvm_value_string(&message, "allocation checkpoint");
+            unsigned int argument_count = 1;
+            if (constructor_index == 3 || constructor_index == 6 || constructor_index == 7)
+                argument_count = 0;
+            if (constructor_index == 4 || constructor_index == 5)
+                fvm_value_number(&message, 3);
             allowance = failure;
-            FVM_Result result =
-                fvm_construct(c, constructor_names[constructor_index], 1, &message, &error);
+            FVM_Result result = fvm_construct(c, constructor_names[constructor_index],
+                                              argument_count, &message, &error);
             allowance = -1;
+            if (result != FVM_OK && result != FVM_OUT_OF_MEMORY)
+                std::fprintf(stderr, "constructor %s allocation %ld returned %d\n",
+                             constructor_names[constructor_index], failure, (int)result);
             assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
             if (result == FVM_OK)
             {
@@ -119,8 +133,8 @@ int main()
             {
                 assert(!error);
                 assert(fvm_gc_collect(c, 0) == FVM_OK);
-                assert(fvm_construct(c, constructor_names[constructor_index], 1, &message,
-                                     &error) == FVM_OK);
+                assert(fvm_construct(c, constructor_names[constructor_index], argument_count,
+                                     &message, &error) == FVM_OK);
             }
             fvm_context_destroy(c);
         }

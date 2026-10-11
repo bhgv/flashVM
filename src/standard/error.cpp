@@ -128,9 +128,9 @@ void fvm_error_attach(FVM_Context *c, FVM_Object *error)
 
 unsigned long fvm_error_callback_id(FVM_NativeFunction callback)
 {
-    return callback == error_string ? 301UL : 0UL;
+    return callback == error_string ? 301UL : callback == error_constructor ? 302UL : 0UL;
 }
 FVM_NativeFunction fvm_error_callback_from_id(unsigned long id)
 {
-    return id == 301 ? error_string : 0;
+    return id == 301 ? error_string : id == 302 ? error_constructor : 0;
 }

@@ -1,3 +1,5 @@
+> Historical checkpoint. Актуальные изменения v0.13: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
 # Number checkpoint — v0.10
 
 The opt-in standard library now installs native Number class/prototype metadata.

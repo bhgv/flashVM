@@ -160,9 +160,15 @@ FVM_Result fvm_number_validate(FVM_Context *c)
 }
 unsigned long fvm_number_callback_id(FVM_NativeFunction callback)
 {
-    return callback == number_value ? 401UL : callback == number_string ? 402UL : 0UL;
+    return callback == number_value         ? 401UL
+           : callback == number_string      ? 402UL
+           : callback == number_constructor ? 403UL
+                                            : 0UL;
 }
 FVM_NativeFunction fvm_number_callback_from_id(unsigned long id)
 {
-    return id == 401 ? number_value : id == 402 ? number_string : 0;
+    return id == 401   ? number_value
+           : id == 402 ? number_string
+           : id == 403 ? number_constructor
+                       : 0;
 }

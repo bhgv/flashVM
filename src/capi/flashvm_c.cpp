@@ -78,6 +78,9 @@ extern "C"
         context->swf_loaded = false;
         context->script_depth = 0;
         context->string_depth = 0;
+        context->primitive_depth = 0;
+        context->avm1_execution_depth = 0;
+        context->avm1_steps = 0;
         context->gc_mode = 0;
         context->gc_allocations = 0;
         context->gc_collecting = false;

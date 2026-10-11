@@ -1,3 +1,5 @@
+> Historical checkpoint. Актуальные изменения v0.13: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
 # Проверенный этап Number — v0.10
 
 Устанавливаемая стандартная библиотека теперь содержит метаданные нативного класса

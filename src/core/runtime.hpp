@@ -46,6 +46,7 @@ struct FVM_AccessorEntry
 struct FVM_Object
 {
     fvm_detail::map<fvm_detail::string, FVM_Value> properties;
+    fvm_detail::map<fvm_detail::string, unsigned int> attributes;
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry> accessors;
     fvm_detail::map<unsigned long, FVM_Value> indexed;
     FVM_Object *metatable;
@@ -56,6 +57,8 @@ struct FVM_Object
     bool gc_marked;
     unsigned long gc_pins;
     FVM_StackEntry callable;
+    FVM_NativeEntry invocable, constructable;
+    fvm_detail::map<fvm_detail::string, FVM_Object *> method_values;
     bool resource_result_valid;
     FVM_Value resource_result;
     unsigned long resource_origin;
@@ -71,6 +74,7 @@ struct FVM_Runtime
 };
 struct FVM_ScriptFunction
 {
+    fvm_detail::string name;
     fvm_detail::vector<fvm_detail::string> constants;
     fvm_detail::vector<unsigned char> body;
     fvm_detail::vector<fvm_detail::string> parameters;
@@ -106,6 +110,10 @@ struct FVM_Context
     void *transfer_resources;
     FVM_Worker *worker;
     bool standard_library;
+    unsigned int avm1_execution_depth;
+    unsigned long avm1_steps;
+    fvm_detail::map<fvm_detail::string, FVM_Object *> function_objects;
+    fvm_detail::vector<FVM_Object *> lexical_scopes;
     bool standard_text_library;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *> fonts;
     fvm_detail::string default_font;
@@ -130,6 +138,8 @@ struct FVM_Context
     fvm_detail::map<fvm_detail::string, FVM_ScriptFunction> script_functions;
     unsigned int script_depth;
     unsigned int string_depth;
+    unsigned int primitive_depth;
+    fvm_detail::vector<FVM_Object *> joining_arrays;
     int gc_mode;
     unsigned long gc_allocations;
     bool gc_collecting;

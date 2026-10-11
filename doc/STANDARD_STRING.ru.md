@@ -1,3 +1,5 @@
+> Historical checkpoint. Актуальные изменения v0.13: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
 # Проверенный этап нативного String — v0.12
 
 Стандартная библиотека теперь устанавливает метаданные конструктора и прототипа

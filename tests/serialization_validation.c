@@ -56,11 +56,11 @@ int main(void)
     }
     /* First record: kind, state(undefined+meta), prototype, meta, five counts.
        A valid first prototype must not lead to an unchecked second reference. */
-    assert(size == 103);
-    u32(data + 29 + 37 + 9, 100000);
+    assert(size == 171);
+    u32(data + 29 + 71 + 9, 100000);
     repair(data, size);
     assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_INVALID_ARGUMENT);
-    u32(data + 29 + 37 + 9, 0xffffffffUL);
+    u32(data + 29 + 71 + 9, 0xffffffffUL);
     /* First object -> itself is an invalid prototype cycle. */
     u32(data + 29 + 9, 0);
     repair(data, size);
@@ -68,6 +68,19 @@ int main(void)
     u32(data + 29 + 9, 1);
     repair(data, size);
     assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_OK);
+    /* A version-1 object record lacks attributes/function/cache trailers.
+     * Strip the two empty 34-byte trailers to form a genuine legacy graph. */
+    {
+        unsigned char legacy[103];
+        memcpy(legacy, data, 29);
+        memcpy(legacy + 29, data + 29, 37);
+        memcpy(legacy + 66, data + 100, 37);
+        legacy[7] = 1;
+        u32(legacy + 8, sizeof(legacy) - 16);
+        repair(legacy, sizeof(legacy));
+        assert(fvm_value_deserialize(dst, legacy, sizeof(legacy), &copy) == FVM_OK);
+        assert(copy.type == FVM_VALUE_OBJECT);
+    }
     fvm_serialized_free(data);
     /* Decode rollback does not keep partly allocated objects or invoke user code. */
     assert(fvm_serialization_register_callback(c, "test.noop", noop) == FVM_OK);

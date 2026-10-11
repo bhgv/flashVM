@@ -3,6 +3,7 @@
 #include "flashvm/metamethod.h"
 #include "flashvm/avm1.h"
 #include "flashvm/table.h"
+#include "flashvm/function.h"
 #include <cstring>
 extern "C"
 {
@@ -48,7 +49,9 @@ extern "C"
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator script =
             m->properties.find("__gc");
         if (it == m->metamethods.end() &&
-            (script == m->properties.end() || script->second.type != FVM_VALUE_STRING))
+            (script == m->properties.end() || (script->second.type != FVM_VALUE_STRING &&
+                                               (script->second.type != FVM_VALUE_OBJECT ||
+                                                !script->second.object->invocable.callback))))
             return FVM_OK;
         FVM_Value args[3], result;
         fvm_value_undefined(&args[0]);
@@ -59,7 +62,9 @@ extern "C"
         args[2] = args[0];
         fvm_value_undefined(&result);
         if (it == m->metamethods.end())
-            return fvm_avm1_call(c, script->second.string, o, 3, args, &result);
+            return script->second.type == FVM_VALUE_OBJECT
+                       ? fvm_function_invoke(c, script->second.object, o, 3, args, &result)
+                       : fvm_avm1_call(c, script->second.string, o, 3, args, &result);
         FVM_NativeEntry entry = it->second;
         try
         {

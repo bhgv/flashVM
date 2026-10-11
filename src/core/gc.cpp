@@ -21,6 +21,14 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
 {
     fvm_detail::vector<FVM_Object *> pending;
     mark_object(c->global, pending);
+    for (size_t j = 0; j < c->joining_arrays.size(); ++j)
+        mark_object(c->joining_arrays[j], pending);
+    for (size_t j = 0; j < c->lexical_scopes.size(); ++j)
+        mark_object(c->lexical_scopes[j], pending);
+    for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator f =
+             c->function_objects.begin();
+         f != c->function_objects.end(); ++f)
+        mark_object(f->second, pending);
     if (c->exception_pending)
         mark_value(c->exception_value, pending);
     fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator stack_fn;
@@ -64,6 +72,12 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
         if (o->resource_result_valid)
             mark_value(o->resource_result, pending);
         mark_object(o->callable.root, pending);
+        mark_object(o->invocable.root, pending);
+        mark_object(o->constructable.root, pending);
+        for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator f =
+                 o->method_values.begin();
+             f != o->method_values.end(); ++f)
+            mark_object(f->second, pending);
         for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
                  o->accessors.begin();
              accessor != o->accessors.end(); ++accessor)

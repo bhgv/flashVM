@@ -1,3 +1,8 @@
+#include "primitive_state.hpp"
+#include "movieclip_state.hpp"
+#include "function_state.hpp"
+#include "date_state.hpp"
+#include "base_state.hpp"
 #include "string_state.hpp"
 #include "global_parsing.hpp"
 #include "number_state.hpp"
@@ -374,7 +379,9 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     FVM_Object *klass = (FVM_Object *)userdata;
     FVM_Value prototype, value;
     FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
-    if (result != FVM_OK || prototype.type != FVM_VALUE_OBJECT)
+    if (result != FVM_OK)
+        return result;
+    if (prototype.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
     result = boolean_call(c, 0, n, args, &value, 0);
     if (result != FVM_OK)
@@ -429,10 +436,19 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
     for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
         if (callback == math_methods[i].callback)
             return 100 + (unsigned long)i;
+    if (callback == boolean_constructor)
+        return 3;
+    for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
+        if (callback == global_functions[i].callback)
+            return 150 + (unsigned long)i;
     return 0;
 }
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == 3)
+        return boolean_constructor;
+    if (id >= 150 && id < 150 + sizeof(global_functions) / sizeof(global_functions[0]))
+        return global_functions[id - 150].callback;
     if (id == 1)
         return boolean_value;
     if (id == 2)
@@ -467,28 +483,11 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
         *out = parse_number(value->string);
         return FVM_OK;
     case FVM_VALUE_OBJECT:
-        if (!value->object || value->object->owner != c)
-            return FVM_INVALID_ARGUMENT;
-        if (value->object->resource_kind == BOOLEAN_OBJECT &&
-            value->object->resource_result_valid &&
-            value->object->resource_result.type == FVM_VALUE_BOOLEAN)
-        {
-            *out = value->object->resource_result.boolean ? 1 : 0;
-            return FVM_OK;
-        }
-        if (value->object->resource_kind == 24 && value->object->resource_result_valid &&
-            value->object->resource_result.type == FVM_VALUE_NUMBER)
-        {
-            *out = value->object->resource_result.number;
-            return FVM_OK;
-        }
-        if (value->object->resource_kind == 26 && value->object->resource_result_valid &&
-            value->object->resource_result.type == FVM_VALUE_STRING)
-        {
-            *out = parse_number(value->object->resource_result.string);
-            return FVM_OK;
-        }
-        return FVM_UNSUPPORTED;
+    {
+        FVM_Value primitive;
+        FVM_Result r = fvm_to_primitive(c, value, false, &primitive);
+        return r == FVM_OK ? fvm_value_to_number(c, &primitive, out) : r;
+    }
     default:
         return FVM_INVALID_ARGUMENT;
     }
@@ -499,8 +498,10 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        const char *names[] = {"Math",     "Number", "Boolean",  "isNaN",      "isFinite", "NaN",
-                               "Infinity", "Error",  "parseInt", "parseFloat", "String"};
+        const char *names[] = {"Math",     "Number",   "Boolean", "isNaN",          "isFinite",
+                               "NaN",      "Infinity", "Error",   "parseInt",       "parseFloat",
+                               "String",   "Object",   "Array",   "ASSetPropFlags", "Date",
+                               "Function", "MovieClip"};
         if (c->standard_library)
         {
             FVM_Value math;
@@ -546,7 +547,19 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             if (error_result != FVM_OK)
                 return error_result;
             error_result = fvm_number_validate(c);
-            return error_result == FVM_OK ? fvm_string_validate(c) : error_result;
+            if (error_result != FVM_OK)
+                return error_result;
+            error_result = fvm_string_validate(c);
+            if (error_result != FVM_OK)
+                return error_result;
+            error_result = fvm_base_validate(c);
+            if (error_result != FVM_OK)
+                return error_result;
+            error_result = fvm_date_validate(c);
+            if (error_result != FVM_OK)
+                return error_result;
+            error_result = fvm_function_validate(c);
+            return error_result == FVM_OK ? fvm_movieclip_validate(c) : error_result;
         }
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             if (c->global->properties.find(names[i]) != c->global->properties.end() ||
@@ -633,6 +646,42 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         result = fvm_string_stage(c, globals, constructors);
         if (result != FVM_OK)
             return result;
+        result = fvm_date_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_function_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_movieclip_stage(c, globals, constructors);
+        if (result != FVM_OK)
+            return result;
+        result = fvm_base_stage(c, globals, constructors, functions);
+        if (result != FVM_OK)
+            return result;
+        FVM_Object *function_proto = globals["Function"].object->properties["prototype"].object;
+        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
+                 constructors.begin();
+             i != constructors.end(); ++i)
+            if (i->second.root &&
+                (i->first == "Object" || i->first == "Array" || i->first == "Boolean" ||
+                 i->first == "Number" || i->first == "String" || i->first == "Error" ||
+                 i->first == "Date" || i->first == "Function" || i->first == "MovieClip"))
+            {
+                FVM_Object *klass = i->second.root;
+                klass->constructable = i->second;
+                klass->invocable = i->second;
+                klass->prototype = function_proto;
+            }
+        for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = functions.begin();
+             i != functions.end(); ++i)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator g = globals.find(i->first);
+            if ((i->first == "Number" || i->first == "Boolean" || i->first == "String" ||
+                 i->first == "Object" || i->first == "Array") &&
+                g != globals.end() && g->second.type == FVM_VALUE_OBJECT &&
+                g->second.object->constructable.callback)
+                g->second.object->invocable = i->second;
+        }
         c->global->properties.swap(globals);
         c->functions.swap(functions);
         c->constructors.swap(constructors);

@@ -194,14 +194,16 @@ int main()
     assert(fvm_avm1_call(c, "stringResult", 0, 0, 0, &v) == FVM_OK);
     assert(std::strcmp(v.string, "worker string") == 0);
     assert(fvm_avm1_call(c, "localObject", 0, 0, 0, &v) == FVM_OK && v.type == FVM_VALUE_OBJECT);
-    assert(fvm_gc_collect(c, &freed) == FVM_OK && freed == 1);
+    /* Script activations are now heap objects so escaping closures keep their cells. */
+    assert(fvm_gc_collect(c, &freed) == FVM_OK && freed >= 1);
+    assert(fvm_gc_collect(c, &freed) == FVM_OK && freed == 0);
     assert(fvm_value_string(&args[0], "nestedJoin") == FVM_OK);
     fvm_value_undefined(&args[1]);
     args[2] = ch;
     assert(fvm_object_call(c, thread.object, "run", 3, args, &handle) == FVM_OK);
     assert(fvm_object_call(c, ch.object, "receive", 0, 0, &v) == FVM_OK && v.number == 1);
     assert(fvm_gc_collect(c, &freed) == FVM_OK &&
-           freed == 1); /* Stop nested join and child safely. */
+           freed >= 1); /* Stop nested join and child safely, also collect activations. */
     /* Object inputs and results are copied with cycle identity preserved. */
     FVM_Object *source = 0, *child = 0;
     FVM_Value source_value, child_value, result, back;

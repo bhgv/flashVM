@@ -109,7 +109,7 @@ int main(void)
     assert(fvm_gc_collect(c, 0) == FVM_OK);
     stringify(c, error, "custom message");
     assert(fvm_object_set(c, error, "message", &klass) == FVM_OK);
-    stringify(c, error, "[object Object]");
+    stringify(c, error, "[type Function]");
     /* Prototype and native constructor capture survive removing the global. */
     fvm_value_undefined(&value);
     assert(fvm_set_global(c, "Error", &value) == FVM_OK);

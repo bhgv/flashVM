@@ -49,21 +49,22 @@ extern "C"
     /* Define/replace an own native method. Capture is traced by GC. Own data or
      * accessor conflicts reject registration. Calls search up to 1024 prototype
      * objects, bind the original receiver, and copy the selected callback entry.
-     * Data/accessor properties shadow callbacks; callable properties are not yet
-     * dispatched. Replacing a callback drops its previous capture root. */
+     * Data/accessor properties shadow native callbacks; function-valued properties
+     * dispatch through the Function bridge. Replacing a callback drops its previous capture root.
+     */
     FVM_API FVM_Result fvm_object_define_method_rooted(FVM_Context *, FVM_Object *, const char *,
                                                        FVM_NativeFunction, void *,
                                                        FVM_Object *root);
-    /* Call a native method through the prototype chain, binding self to receiver.
-       This is an initial bridge; AVM1 function-valued properties are not supported. */
+    /* Call a native or script function-valued method through the prototype chain,
+       binding self to the original receiver. */
     FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int,
                                        const FVM_Value *, FVM_Value *);
     FVM_API FVM_Result fvm_call(FVM_Context *, const char *, unsigned int, const FVM_Value *,
                                 FVM_Value *);
-    /* Named native construction bridge used by AVM1 ActionNewObject. Object is a
-     * reserved built-in (zero arguments). A callback must return a same-context
-     * object; arbitrary native functions are never treated as constructors.
-     * Registration replacement releases the previous capture root. */
+    /* Named native construction bridge used by AVM1 ActionNewObject. Without standard installation
+     * Object is a reserved zero-argument built-in; installed constructors use their AS APIs. A
+     * callback must return a same-context object; arbitrary native functions are never treated as
+     * constructors. Registration replacement releases the previous capture root. */
     FVM_API FVM_Result fvm_register_constructor_rooted(FVM_Context *, const char *,
                                                        FVM_NativeFunction, void *,
                                                        FVM_Object *root);
@@ -73,7 +74,7 @@ extern "C"
      * Missing getter -> undefined; missing setter -> ignored write. Callbacks bind
      * the original receiver during prototype lookup. Capture root is GC-traced.
      * Data-property conflicts reject registration; an accessor may be replaced.
-     * This does not implement AS property attributes/watch/enumeration. */
+     * Property flags are exposed in property.h; watch hooks are not implemented. */
     FVM_API FVM_Result fvm_object_define_accessor_rooted(FVM_Context *, FVM_Object *, const char *,
                                                          FVM_NativeFunction getter,
                                                          FVM_NativeFunction setter, void *,

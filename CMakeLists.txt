@@ -26,7 +26,7 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
-  ports/file_port.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
+  ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)
@@ -200,4 +200,25 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_error_process.py
             $<TARGET_FILE:flashvm_tests_error_transfer_process>)
   set_tests_properties(flashvm_error_independent_processes PROPERTIES TIMEOUT 60)
+endif()
+
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
+  add_test(NAME flashvm_objects_independent_processes
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_objects_process.py
+            $<TARGET_FILE:flashvm_tests_objects_transfer_process>)
+  set_tests_properties(flashvm_objects_independent_processes PROPERTIES TIMEOUT 90)
+  if(FVM_ENABLE_OS_PORTS)
+    add_test(NAME flashvm_objects_network_processes
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_objects_network.py
+              $<TARGET_FILE:flashvm_tests_objects_transfer_process>)
+    set_tests_properties(flashvm_objects_network_processes PROPERTIES TIMEOUT 60)
+  endif()
+endif()
+
+# POSIX TZ rule strings are a libc calendar-port check, not cross-platform proof.
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND UNIX)
+  add_test(NAME flashvm_date_timezone_profiles
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_date_timezones.py
+            $<TARGET_FILE:flashvm_tests_date_timezone>)
+  set_tests_properties(flashvm_date_timezone_profiles PROPERTIES TIMEOUT 60)
 endif()

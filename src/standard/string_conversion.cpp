@@ -1,3 +1,4 @@
+#include "primitive_state.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
 #include <cstdio>
@@ -213,27 +214,9 @@ extern "C" FVM_Result fvm_value_to_string(FVM_Context *c, const FVM_Value *input
         if (value.type != FVM_VALUE_OBJECT)
             return primitive_string(c, value, out);
         ConversionScope scope(c, value);
-        const char *methods[] = {"toString", "valueOf"};
-        bool called = false;
-        for (size_t i = 0; i < 2; ++i)
-        {
-            FVM_NativeEntry entry;
-            FVM_Result status = fvm_lookup_native_method(value.object, methods[i], &entry);
-            if (status == FVM_NOT_FOUND)
-                continue;
-            if (status != FVM_OK)
-                return status;
-            called = true;
-            FVM_Value result;
-            status = fvm_object_call(c, value.object, methods[i], 0, 0, &result);
-            if (status != FVM_OK)
-                return status;
-            if (fvm_validate_value(c, &result) != FVM_OK)
-                return FVM_INVALID_ARGUMENT;
-            if (result.type != FVM_VALUE_OBJECT)
-                return primitive_string(c, result, out);
-        }
-        return called ? FVM_UNSUPPORTED : fvm_value_string(out, "[object Object]");
+        FVM_Value primitive;
+        FVM_Result status = fvm_to_primitive(c, &value, true, &primitive);
+        return status == FVM_OK ? primitive_string(c, primitive, out) : status;
     }
     catch (...)
     {

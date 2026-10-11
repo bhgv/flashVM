@@ -1,3 +1,4 @@
+#include "flashvm/function.h"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/stack.h"
 #include "flashvm/auxlib.h"
@@ -201,7 +202,7 @@ extern "C"
     {
         if (!c || !obj || !out || obj->owner != c)
             return FVM_INVALID_ARGUMENT;
-        *out = obj->callable.callback != 0;
+        *out = obj->callable.callback != 0 || obj->invocable.callback != 0;
         return FVM_OK;
     }
     FVM_Result fvm_callable_invoke(FVM_Context *c, FVM_Object *obj, unsigned int argc,
@@ -212,6 +213,8 @@ extern "C"
         unsigned int i;
         if (!c || !obj || !out || obj->owner != c || (argc && !args))
             return FVM_INVALID_ARGUMENT;
+        if (obj->invocable.callback)
+            return fvm_function_invoke(c, obj, 0, argc, args, out);
         FVM_StackEntry entry = obj->callable;
         if (!entry.callback)
             return FVM_UNSUPPORTED;

@@ -7,7 +7,8 @@ extern "C"
 #endif
     /* Native metamethod callbacks receive the context and positional values:
      * [0] owner table, [1] defining metatable, followed by operation arguments.
-     * This is an additive C89 API; script-function values are not yet supported.
+     * This is an additive C89 API; first-class functions stored in metatable
+     * properties use the same positional argument convention.
      * A callback may be shared by multiple tables through a shared metatable.
      */
     FVM_API FVM_Result fvm_meta_register(FVM_Context *, FVM_Object *metatable, const char *method,

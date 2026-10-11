@@ -1,4 +1,6 @@
 #include "string_state.hpp"
+#include "base_state.hpp"
+#include "flashvm/table.h"
 #include "flashvm/standard.h"
 #include "flashvm/utf8.h"
 #include <cmath>
@@ -321,16 +323,106 @@ FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, cons
     }
     return encode(c, units, 0, units.size(), out);
 }
+FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a,
+                 FVM_Value *out, void *)
+{
+    Units input, separator;
+    FVM_Result r = receiver(c, self, input);
+    if (r != FVM_OK)
+        return r;
+    unsigned long limit = 0xffffffffUL;
+    if (n > 1 && a[1].type != FVM_VALUE_UNDEFINED)
+    {
+        double value = 0;
+        r = fvm_value_to_number(c, a + 1, &value);
+        if (r != FVM_OK)
+            return r;
+        if (!(value == value) || value == std::numeric_limits<double>::infinity() ||
+            value == -std::numeric_limits<double>::infinity())
+            value = 0;
+        value = std::fmod(value < 0 ? -std::floor(-value) : std::floor(value), 4294967296.0);
+        if (value < 0)
+            value += 4294967296.0;
+        limit = (unsigned long)value;
+    }
+    bool absent = !n || a[0].type == FVM_VALUE_UNDEFINED;
+    if (!absent)
+    {
+        FVM_Value text;
+        r = fvm_value_to_string(c, a, &text);
+        if (r == FVM_OK)
+            r = decode(text.string, separator);
+        if (r != FVM_OK)
+            return r;
+    }
+    FVM_Object *result = 0;
+    r = fvm_array_create_like(c, 0, 0, &result);
+    if (r != FVM_OK)
+        return r;
+    unsigned long count = 0;
+    size_t start = 0;
+    /* Walk UTF-16 boundaries, retaining empty fields for nonempty separators. */
+    for (size_t position = 0; count < limit && position <= input.size();)
+    {
+        size_t end = position;
+        bool matched = false;
+        if (absent)
+        {
+            end = input.size();
+            matched = true;
+        }
+        else if (separator.empty())
+        {
+            if (position == input.size())
+                break;
+            end = position + 1;
+            matched = true;
+        }
+        else if (position == input.size())
+            matched = true;
+        else if (separator.size() <= input.size() - position)
+        {
+            matched = true;
+            for (size_t j = 0; j < separator.size(); ++j)
+                if (separator[j] != input[position + j])
+                {
+                    matched = false;
+                    break;
+                }
+        }
+        if (!matched)
+        {
+            ++position;
+            continue;
+        }
+        if (count >= 65536)
+            return FVM_OUT_OF_MEMORY;
+        FVM_Value part;
+        r = encode(c, input, start, end, &part);
+        if (r == FVM_OK)
+            r = fvm_table_set_index(c, result, count++, &part);
+        if (r != FVM_OK)
+            return r;
+        if (absent || position == input.size())
+            break;
+        position = separator.empty() ? end : position + separator.size();
+        start = position;
+    }
+    fvm_value_undefined(out);
+    out->type = FVM_VALUE_OBJECT;
+    out->object = result;
+    return FVM_OK;
+}
 struct Method
 {
     const char *name;
     FVM_NativeFunction callback;
 };
-const Method methods[] = {{"valueOf", value},          {"toString", value},
-                          {"charAt", char_at},         {"charCodeAt", char_code},
-                          {"substring", substring},    {"slice", slice},
-                          {"substr", substr},          {"indexOf", index_of},
-                          {"lastIndexOf", last_index}, {"concat", concat}};
+const Method methods[] = {
+    {"valueOf", value},        {"toString", value},      {"charAt", char_at},
+    {"charCodeAt", char_code}, {"substring", substring}, {"slice", slice},
+    {"substr", substr},        {"indexOf", index_of},    {"lastIndexOf", last_index},
+    {"concat", concat},        {"split", split}};
 void attach_length(FVM_Object *object)
 {
     FVM_AccessorEntry accessor;
@@ -438,6 +530,8 @@ FVM_Result fvm_string_validate(FVM_Context *c)
 }
 unsigned long fvm_string_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == constructor)
+        return 503;
     if (callback == length)
         return 501;
     if (callback == from_char_code)
@@ -449,6 +543,8 @@ unsigned long fvm_string_callback_id(FVM_NativeFunction callback)
 }
 FVM_NativeFunction fvm_string_callback_from_id(unsigned long id)
 {
+    if (id == 503)
+        return constructor;
     if (id == 501)
         return length;
     if (id == 502)

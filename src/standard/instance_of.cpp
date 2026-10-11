@@ -13,7 +13,9 @@ extern "C" FVM_Result fvm_value_instance_of(FVM_Context *c, const FVM_Value *val
     /* Class objects are currently native metadata, not first-class AS functions.
      * Ordinary objects with a property named prototype are not constructors. */
     int kind = constructor->object->resource_kind;
-    if (kind != 21 && kind != 23 && kind != 25 && kind != 27 && kind != 1003 && kind != 1004)
+    if (kind != 21 && kind != 23 && kind != 25 && kind != 27 && kind != 29 && kind != 31 &&
+        kind != 35 && kind != 33 && kind != 32 && kind != 36 && kind != 41 && kind != 1003 &&
+        kind != 1004)
         return FVM_UNSUPPORTED;
     try
     {

@@ -1,3 +1,5 @@
+> Historical checkpoint. Актуальные изменения v0.13: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
 # AVM1 script functions (experimental)
 
 This milestone adds a deliberately limited execution path for named AVM1 `DefineFunction` (0x9B), `CallFunction` (0x3D), and `Return` (0x3E).
