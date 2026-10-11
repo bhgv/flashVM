@@ -1,4 +1,6 @@
-# Development 0.3 checkpoint: file channels, graph codecs and value metadata
+# Development 0.4 checkpoint: file channels, graph codecs and value metadata
+
+Version 0.4 normalizes trailing whitespace in saved validation logs and finalizes the release metadata; VM code and the recorded test results are unchanged from the functional v0.3 commit.
 
 This checkpoint adds a concrete, tested subset of the requested serialization and metadata work. It does not complete the Flash object catalogue. Commit subject: `v0.3 Add persistent file channels and serializable value metatables`. Base internal commit: `8918bc1371cb2e51cf8d902a133abc80962b8b92`. ABI changes from 1 to 2; native clients must rebuild. The mirror was not updated in this step.
 
@@ -36,4 +38,4 @@ Reproduction: configure a fresh build with `cmake -S . -B build-file-agg`, build
 
 MovieClip and much of the SWF <=8 standard object catalogue are not implemented. All-object serialization therefore remains unfinished. Live worker/channel resources, extension namespaces, arbitrary userdata, stack callables and AVM1 function/closure environments lack portable codecs. Standalone TextFormat measurement still needs destination font registration. Destination TextField requires opting into its text bridge. ActionScript workers do not automatically install the text bridge or application callback registries. Generic hooks exist but are not integrated into every opcode/coercion; primitive copies have no individual `__gc` identity. Extended `<...>` literals and custom channel operators still need a compiler. Crash-atomic file transactions, inter-process writer locking and large-file adapters remain future work. Native Windows/macOS/Android execution, full Flash compatibility and requested multi-architecture JIT are not certified by these Linux tests.
 
-The delivered filename is `FlashVM-with-history-v0.3.zip`. It contains tracked sources, static dependency sources, documentation/tests and the full internal `.git`, including existing private stash history. It contains no rebuilt binaries. Archive verification checks ZIP CRC, an extracted clean checkout, matching HEAD, full Git object integrity, stash presence and vendored source checks.
+The delivered filename is `FlashVM-with-history-v0.4.zip`. It contains tracked sources, static dependency sources, documentation/tests and the full internal `.git`, including existing private stash history. It contains no rebuilt binaries. Archive verification checks ZIP CRC, an extracted clean checkout, matching HEAD, full Git object integrity, stash presence and vendored source checks.

@@ -33,7 +33,7 @@ WRITE of size 24 at 0x7ffca93d7c90 thread T0
     #10 0x404134  (/proc/self/exe+0x404134) (BuildId: 546e947d1ed6e37a3c363946bc8ada24de277271)
 
 Address 0x7ffca93d7c90 is a wild pointer inside of access range of size 0x000000000018.
-SUMMARY: AddressSanitizer: stack-buffer-overflow (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d) 
+SUMMARY: AddressSanitizer: stack-buffer-overflow (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d)
 Shadow bytes around the buggy address:
   0x7ffca93d7a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   0x7ffca93d7a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -48,7 +48,7 @@ Shadow bytes around the buggy address:
   0x7ffca93d7f00: f2 f2 f8 f2 f2 f2 f8 f2 f2 f2 f8 f2 f2 f2 f8 f2
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
-  Partially addressable: 01 02 03 04 05 06 07 
+  Partially addressable: 01 02 03 04 05 06 07
   Heap left redzone:       fa
   Freed heap region:       fd
   Stack left redzone:      f1
@@ -66,4 +66,3 @@ Shadow byte legend (one shadow byte represents 8 application bytes):
   Left alloca redzone:     ca
   Right alloca redzone:    cb
 ==1391==ABORTING
-

@@ -16,7 +16,7 @@ WRITE of size 24 at 0x7ffd44384b70 thread T0
     #7 0x401274  (/proc/self/exe+0x401274) (BuildId: 974c1d9ce57b08308fd55db516f07d3861495520)
 
 Address 0x7ffd44384b70 is a wild pointer inside of access range of size 0x000000000018.
-SUMMARY: AddressSanitizer: stack-buffer-underflow (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d) 
+SUMMARY: AddressSanitizer: stack-buffer-underflow (/lib/x86_64-linux-gnu/libasan.so.8+0x8074e) (BuildId: 0241d5a774aeb1d6babd9f68d743bdcf31b4a97d)
 Shadow bytes around the buggy address:
   0x7ffd44384880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   0x7ffd44384900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -31,7 +31,7 @@ Shadow bytes around the buggy address:
   0x7ffd44384d80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
-  Partially addressable: 01 02 03 04 05 06 07 
+  Partially addressable: 01 02 03 04 05 06 07
   Heap left redzone:       fa
   Freed heap region:       fd
   Stack left redzone:      f1
