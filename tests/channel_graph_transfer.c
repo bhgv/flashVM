@@ -2,8 +2,10 @@
 #include "flashvm/gc.h"
 #include "flashvm/table.h"
 #include "flashvm/metamethod.h"
+#include "flashvm/userdata.h"
 #include <assert.h>
 #include <string.h>
+static void null_release(void *ud) {assert(!ud);}
 static FVM_Result native(FVM_Context *c,FVM_Object *s,unsigned int n,const FVM_Value *a,FVM_Value *out,void *u) {
     (void)c;(void)s;(void)n;(void)a;(void)u;fvm_value_undefined(out);return FVM_OK;
 }
@@ -41,6 +43,9 @@ int main(void) {
     assert(fvm_table_set_metatable(dst,a,m)==FVM_OK);
     root.object=a;assert(fvm_channel_send_value(dst,ch,&root,0)==FVM_UNSUPPORTED);
     assert(fvm_channel_pending(ch,&pending)==FVM_OK && pending==0);
+    assert(fvm_object_create(dst,&a)==FVM_OK);
+    assert(fvm_userdata_attach(dst,a,0,null_release)==FVM_OK);
+    root.object=a;assert(fvm_channel_send_value(dst,ch,&root,0)==FVM_UNSUPPORTED);
     fvm_value_number(&v,42);assert(fvm_channel_send_value(dst,ch,&v,0)==FVM_OK);
     fvm_channel_close(ch);assert(fvm_channel_receive_value(dst,ch,&v,1)==FVM_OK && v.number==42);
     assert(fvm_channel_receive_value(dst,ch,&v,0)==FVM_ERROR);

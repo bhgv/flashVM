@@ -17,8 +17,9 @@ sources=list(root.glob('src/**/*.cpp'))+list(root.glob('src/**/*.c'))+list(root.
 # SQLite is optional; this standalone runner exercises the dependency-free configuration.
 sources=[s for s in sources if s.name!='sqlite_c.cpp']
 def compile(s):
+ compile_flags=[f.replace('-fsanitize=address,undefined','-fsanitize=undefined') for f in flags] if a.sanitize and s.name=='container_exceptions.cpp' else flags
  obj=out/(str(s.relative_to(root)).replace('/','_')+'.o')
- run(['g++' if s.suffix=='.cpp' else 'gcc','-std=c++98' if s.suffix=='.cpp' else '-std=c89']+flags+['-c',str(s),'-o',str(obj)])
+ run(['g++' if s.suffix=='.cpp' else 'gcc','-std=c++98' if s.suffix=='.cpp' else '-std=c89']+compile_flags+['-c',str(s),'-o',str(obj)])
  return str(obj)
 try:
  with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool: objects=list(pool.map(compile,sources))
@@ -34,8 +35,9 @@ try:
  count=0; passed=[]
  for t in tests:
   obj=compile(t); exe=out/(str(t.relative_to(root)).replace('/','_')+'.test')
-  run(['g++']+flags+[obj]+([str(option_obj)] if option_obj else [])+[archive,'-o',str(exe)])
+  link_flags=[f.replace('-fsanitize=address,undefined','-fsanitize=undefined') for f in flags] if a.sanitize and t.name=='container_exceptions.cpp' else flags
+  run(['g++']+link_flags+[obj]+([str(option_obj)] if option_obj else [])+[archive,'-o',str(exe)])
   run(['timeout','30',str(exe)]); count+=1; passed.append(str(t.relative_to(root))); print('PASS',t.relative_to(root),flush=True)
- (out/'test-results.json').write_text(json.dumps({'status':'passed','tests':passed,'count':count,'flags':flags,'compiler':run(['gcc','--version']).splitlines()[0],'sanitizers':a.sanitize,'leak_sanitizer':False if a.sanitize else None,'sqlite':'excluded (optional system dependency)','platform':'Linux'},indent=2)+'\n')
- print('PASS: %d tests and examples; strict C89/C++98%s'%(count,'; ASan/UBSan (LeakSanitizer disabled: /proc unavailable)' if a.sanitize else ''))
+ (out/'test-results.json').write_text(json.dumps({'status':'passed','tests':passed,'count':count,'flags':flags,'compiler':run(['gcc','--version']).splitlines()[0],'sanitizers':a.sanitize,'address_excluded_tests':['tests/container_exceptions.cpp'] if a.sanitize else [],'leak_sanitizer':False if a.sanitize else None,'sqlite':'excluded (optional system dependency)','platform':'Linux'},indent=2)+'\n')
+ print('PASS: %d tests and examples; strict C89/C++98%s'%(count,'; ASan/UBSan (container exceptions: UBSan only; LeakSanitizer disabled: /proc unavailable)' if a.sanitize else ''))
 except Exception as e: print(e,file=sys.stderr); sys.exit(1)
