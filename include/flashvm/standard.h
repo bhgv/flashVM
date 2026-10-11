@@ -6,7 +6,7 @@ extern "C"
 {
 #endif
     /* Install the initial numeric standard library: Math, Number/Boolean conversion,
-     * boxed Number, Boolean and Error constructors/prototypes, isNaN/isFinite, NaN and Infinity.
+     * boxed Number, Boolean and Error constructors/prototypes, isNaN/isFinite, parseInt/parseFloat, String conversion, NaN and Infinity.
      * This is not the complete AS1/AS2 library.
      * Existing bindings are preserved: conflicting names reject installation. */
     FVM_API FVM_Result fvm_standard_install(FVM_Context *);

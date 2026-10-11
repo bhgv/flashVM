@@ -1,3 +1,4 @@
+#include "global_parsing.hpp"
 #include "number_state.hpp"
 #include "error_state.hpp"
 #include "../core/runtime.hpp"
@@ -413,7 +414,10 @@ FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM
 const Method global_functions[] = {{"Number", number_call},
                                    {"Boolean", boolean_call},
                                    {"isNaN", isnan_call},
-                                   {"isFinite", isfinite_call}};
+                                   {"isFinite", isfinite_call},
+                                   {"parseInt", fvm_builtin_parse_int},
+                                   {"parseFloat", fvm_builtin_parse_float},
+                                   {"String", fvm_builtin_string}};
 } // namespace
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
@@ -488,8 +492,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        const char *names[] = {"Math",     "Number", "Boolean",  "isNaN",
-                               "isFinite", "NaN",    "Infinity", "Error"};
+        const char *names[] = {"Math",     "Number", "Boolean",  "isNaN",      "isFinite", "NaN",
+                               "Infinity", "Error",  "parseInt", "parseFloat", "String"};
         if (c->standard_library)
         {
             FVM_Value math;
@@ -505,7 +509,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                     it->second.callback != math_methods[i].callback)
                     return FVM_INVALID_ARGUMENT;
             }
-            for (size_t i = 0; i < 4; ++i)
+            for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
             {
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     c->functions.find(global_functions[i].name);
@@ -577,7 +581,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         globals["NaN"] = value;
         fvm_value_number(&value, infinity());
         globals["Infinity"] = value;
-        for (size_t i = 0; i < 4; ++i)
+        for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
         {
             FVM_NativeEntry entry;
             entry.callback = global_functions[i].callback;

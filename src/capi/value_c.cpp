@@ -599,17 +599,23 @@ extern "C"
         for (i = 0; i < argc; ++i)
             if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it = c->functions.find(name);
-        if (it == c->functions.end())
-            return fvm_stack_call(c, name, argc, argv, out);
         fvm_value_undefined(out);
         try
         {
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                c->functions.find(name);
+            if (it == c->functions.end())
+                return fvm_stack_call(c, name, argc, argv, out);
+            fvm_value_undefined(out);
             FVM_NativeCallGuard native_guard(c);
             fvm_resource_fault_begin(c);
             return fvm_exception_complete(
                 c, c->global,
                 it->second.callback(c, c->global, argc, argv, out, it->second.userdata));
+        }
+        catch (const std::bad_alloc &)
+        {
+            return FVM_OUT_OF_MEMORY;
         }
         catch (...)
         {

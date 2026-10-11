@@ -81,7 +81,8 @@ int main()
             installed = true;
         else
         {
-            const char *names[] = {"Math", "Boolean", "Number", "Error", "NaN", "Infinity"};
+            const char *names[] = {"Math",       "Boolean", "Number", "Error",   "parseInt",
+                                   "parseFloat", "String",  "NaN",    "Infinity"};
             for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
                 assert(fvm_get_global(c, names[i], &value) == FVM_OK &&
                        value.type == FVM_VALUE_UNDEFINED);
@@ -147,5 +148,27 @@ int main()
         fvm_context_destroy(c);
     }
     assert(materialized);
+    const char *parsers[] = {"parseInt", "parseFloat", "String"};
+    for (unsigned int parser = 0; parser < 3; ++parser)
+    {
+        FVM_Context *c = 0;
+        FVM_Value input, output;
+        assert(fvm_context_create(runtime, &c) == FVM_OK);
+        assert(fvm_standard_install(c) == FVM_OK);
+        fvm_value_string(&input, "123.5tail");
+        bool completed = false;
+        for (long failure = 0; failure < 64 && !completed; ++failure)
+        {
+            allowance = failure;
+            FVM_Result result = fvm_call(c, parsers[parser], 1, &input, &output);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            completed = result == FVM_OK;
+            if (!completed)
+                assert(output.type == FVM_VALUE_UNDEFINED);
+        }
+        assert(completed);
+        fvm_context_destroy(c);
+    }
     fvm_runtime_destroy(runtime);
 }

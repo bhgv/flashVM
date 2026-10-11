@@ -1,5 +1,5 @@
-Development version: **0.10** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.10 ` and an English description. Increase the subversion before each
+Development version: **0.11** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.11 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.10** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.10 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.11** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.11 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -18,6 +18,10 @@ Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FE
 Зеркало обновляется только по прямой команде пользователя. Для отправки используйте
 указанный выше `origin` и HTTP-буфер 64 МиБ, без принудительной перезаписи истории.
 После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
+
+Global conversion checkpoint: parseInt/parseFloat prefix parsing and String(),
+with C/AVM1 calls and allocation-failure tests. See [English](doc/GLOBAL_PARSING.md) /
+[Русский](doc/GLOBAL_PARSING.ru.md).
 
 Number checkpoint: boxed constructor, constants, valueOf/toString, integer radix
 formatting and graph transfer. See [English](doc/STANDARD_NUMBER.md) /
