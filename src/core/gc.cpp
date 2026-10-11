@@ -42,6 +42,10 @@ FVM_Result fvm_gc_pin(FVM_Context *c,FVM_Object *o) {
     if (!c || !o || o->owner!=c || o->gc_pins==ULONG_MAX) return FVM_INVALID_ARGUMENT;
     ++o->gc_pins;return FVM_OK;
 }
+FVM_Result fvm_gc_pin_count(FVM_Context *c,FVM_Object *o,unsigned long *count) {
+    if (!c || !o || !count || o->owner!=c) return FVM_INVALID_ARGUMENT;
+    *count=o->gc_pins;return FVM_OK;
+}
 FVM_Result fvm_gc_unpin(FVM_Context *c,FVM_Object *o) {
     if (!c || !o || o->owner!=c || !o->gc_pins) return FVM_INVALID_ARGUMENT;
     --o->gc_pins;return FVM_OK;

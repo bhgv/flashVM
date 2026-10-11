@@ -14,6 +14,7 @@ FVM_API FVM_Result fvm_gc_state(FVM_Context *, int *mode);
 FVM_API FVM_Result fvm_gc_collect(FVM_Context *, unsigned long *reclaimed);
 /* Pin an object while its pointer is held by native code. */
 FVM_API FVM_Result fvm_gc_pin(FVM_Context *, FVM_Object *);
+FVM_API FVM_Result fvm_gc_pin_count(FVM_Context *, FVM_Object *, unsigned long *count);
 FVM_API FVM_Result fvm_gc_unpin(FVM_Context *, FVM_Object *);
 FVM_API FVM_Result fvm_gc_object_count(FVM_Context *, unsigned long *);
 /* Number of object allocations since the last successful collection. */
