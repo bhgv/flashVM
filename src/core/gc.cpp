@@ -106,6 +106,18 @@ FVM_Result fvm_gc_threshold(FVM_Context *c,unsigned long *threshold) {
     if (c->gc_mode==FVM_GC_SUSPENDED) { *threshold=ULONG_MAX;return FVM_OK; }
     *threshold=(unsigned long)(1000-c->gc_mode*9);return FVM_OK;
 }
+FVM_Result fvm_gc_stats(FVM_Context *c,FVM_GCStats *out) {
+    if (!c || !out || out->struct_size!=sizeof(FVM_GCStats)) return FVM_INVALID_ARGUMENT;
+    out->live_objects=(unsigned long)c->objects.size();
+    out->pinned_objects=0;
+    for(size_t i=0;i<c->objects.size();++i)
+        if(c->objects[i]->gc_pins) ++out->pinned_objects;
+    out->pending_allocations=c->gc_allocations;
+    out->mode=c->gc_mode;
+    out->collecting=c->gc_collecting ? 1 : 0;
+    out->native_depth=c->gc_native_depth;
+    return fvm_gc_threshold(c,&out->threshold);
+}
 FVM_Result fvm_gc_step(FVM_Context *c,unsigned long *reclaimed) {
     if (!c)return FVM_INVALID_ARGUMENT;
     if(reclaimed)*reclaimed=0;
