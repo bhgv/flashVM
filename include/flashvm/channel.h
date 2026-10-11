@@ -25,6 +25,12 @@ FVM_API FVM_Result fvm_channel_try_receive(FVM_Channel *channel, FVM_Value *out_
 /* Nonblocking: available=0 means no message; a closed channel may still
  * contain unread messages. */
 FVM_API FVM_Result fvm_channel_available(FVM_Channel *channel, int *available);
+/* Queue capacity: 0 means unbounded (default). When full, send blocks until
+ * a receiver removes an item or the channel is closed. Change capacity only
+ * when no concurrent operations are active. Existing queued items are kept. */
+FVM_API FVM_Result fvm_channel_set_capacity(FVM_Channel *channel, size_t capacity);
+/* Snapshot of queued messages; safe during concurrent send/receive. */
+FVM_API FVM_Result fvm_channel_pending(FVM_Channel *channel, size_t *pending);
 #ifdef __cplusplus
 }
 #endif

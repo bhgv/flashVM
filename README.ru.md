@@ -133,3 +133,5 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 ## Обмен сообщениями между потоками
 
 Рабочий пример C89 находится в [`examples/embedding/worker_channels/`](examples/embedding/worker_channels/). В [`doc/WORKER_CHANNELS.ru.md`](doc/WORKER_CHANNELS.ru.md) описаны блокирующее и неблокирующее чтение, время жизни строк, порядок остановки и ограничения.
+
+Ограниченные очереди каналов и блокировка при заполнении: см. [doc/CHANNEL_CAPACITY.ru.md](doc/CHANNEL_CAPACITY.ru.md).
