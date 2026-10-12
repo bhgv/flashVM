@@ -170,3 +170,62 @@ FVM_Result fvm_bitmap_flood_fill(FVM_Context *c, FVM_Object *self, unsigned n,
     target->pixels.swap(pixels);
     return FVM_OK;
 }
+
+/* [GC:] Scan a protected native bitmap and allocate an independent Rectangle from captured classes.
+ */
+FVM_Result fvm_bitmap_color_bounds(FVM_Context *c, FVM_Object *self, unsigned n,
+                                   const FVM_Value *args, FVM_Value *out, void *u)
+{
+    /* [GC:] Retain source and lexical Rectangle factories during coercion and result construction.
+     */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_undefined(out);
+    FVM_BitmapState *target = fvm_bitmap_pixels(self);
+    if (!target || target->disposed)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    double input_mask = 0, input_color = 0;
+    FVM_Result r = number(c, n, args, 0, input_mask);
+    if (r == FVM_OK)
+        r = number(c, n, args, 1, input_color);
+    if (r != FVM_OK)
+        return r;
+    target = fvm_bitmap_pixels(self);
+    if (!target || target->disposed)
+        return FVM_INVALID_ARGUMENT;
+    unsigned long mask = color_word(input_mask), color = color_word(input_color);
+    bool find =
+        n < 3 || args[2].type == FVM_VALUE_OBJECT ||
+        (args[2].type == FVM_VALUE_BOOLEAN && args[2].boolean) ||
+        (args[2].type == FVM_VALUE_NUMBER && args[2].number && args[2].number == args[2].number) ||
+        (args[2].type == FVM_VALUE_STRING && fvm_value_string_size(args + 2));
+    bool any = false;
+    unsigned left = target->width, top = target->height, right = 0, bottom = 0;
+    for (unsigned y = 0; y < target->height; ++y)
+        for (unsigned x = 0; x < target->width; ++x)
+            if (((pixel_word(target->pixels, (size_t)y * target->width + x) & mask) == color) ==
+                find)
+            {
+                any = true;
+                if (x < left)
+                    left = x;
+                if (y < top)
+                    top = y;
+                if (x + 1 > right)
+                    right = x + 1;
+                if (y + 1 > bottom)
+                    bottom = y + 1;
+            }
+    const char *const names[] = {"x", "y", "width", "height"};
+    FVM_Value values[4];
+    fvm_value_number(values, any ? left : 0);
+    fvm_value_number(values + 1, any ? top : 0);
+    fvm_value_number(values + 2, any ? right - left : 0);
+    fvm_value_number(values + 3, any ? bottom - top : 0);
+    /* [GC:] Reuse the Rectangle class retained by this bitmap's imported callback capture. */
+    FVM_Object *klass = 0;
+    r = captured_class(c, u, "Rectangle", klass);
+    return r == FVM_OK ? create(c, klass, FVM_GEOMETRY_RECTANGLE, names, 4, values, 0, out) : r;
+}

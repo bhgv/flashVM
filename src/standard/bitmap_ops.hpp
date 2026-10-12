@@ -5,4 +5,7 @@
 /* [GC:] Fill one four-connected pixel component in temporary storage before atomic publication. */
 FVM_Result fvm_bitmap_flood_fill(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                  FVM_Value *, void *);
+/* [GC:] Return a typed Rectangle enclosing matching or nonmatching masked ARGB pixels. */
+FVM_Result fvm_bitmap_color_bounds(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                                   FVM_Value *, void *);
 #endif

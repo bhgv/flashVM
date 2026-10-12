@@ -134,3 +134,9 @@ Alpha/erase coverage has explicit pixel and allocation-failure coverage; all dra
 Scanline floodFill проверен на ARGB/4-connectivity, bounded scratch, coercion/disposal, GC/queue и later-stack OOM rollback/balance. [BITMAP_FLOOD_FILL.md](BITMAP_FLOOD_FILL.md) содержит RU/EN ограничения; полная Flash-сверка и этап 4 открыты.
 
 Backend-independent connected fills have bounded-memory and failure-path coverage; full Flash conformance remains open.
+
+## v0.53: getColorBoundsRect
+
+Проверены ARGB masks/matching, boundaries/default/inverse/empty cases, captured Rectangle и queue/GC/OOM/balance. RU/EN: [BITMAP_COLOR_BOUNDS.md](BITMAP_COLOR_BOUNDS.md). Premultiplied/Flash сверка и этап 4 открыты.
+
+Masked color bounds and transported result factories have explicit edge/failure coverage; stage 4 remains open.

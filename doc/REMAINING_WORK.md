@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.52 / Remaining work after v0.52
+# Оставшаяся работа после v0.53 / Remaining work after v0.53
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -86,3 +86,7 @@ v0.51 adds alpha/erase geometry coverage and one-pass getter evaluation; complet
 В v0.52 проверен backend-independent scanline floodFill, scratch budget, reentrant disposal, GC/queue и allocation rollback/balance (BITMAP_FLOOD_FILL.md).
 
 v0.52 checks transactional bounded floodFill; exact coercion/alpha conformance and remaining stage 4 APIs remain open.
+
+В v0.53 проверен getColorBoundsRect с typed captured Rectangle, masked matching, GC/queue и OOM/balance (BITMAP_COLOR_BOUNDS.md).
+
+v0.53 checks masked color bounds and captured Rectangle factories; exact Flash conformance and remaining APIs remain open.
