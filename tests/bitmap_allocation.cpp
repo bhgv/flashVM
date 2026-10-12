@@ -71,6 +71,8 @@ int main() {
     }
     assert(success);success=false;FVM_Value shift[2];fvm_value_number(shift,1);fvm_value_number(shift+1,0);
     for(long failure=0;failure<2048 && !success;++failure){FVM_Value out;allowance=failure;FVM_Result r=fvm_object_call(c,source,"scroll",2,shift,&out);allowance=-1;assert(r==FVM_OK || r==FVM_OUT_OF_MEMORY);success=r==FVM_OK;assert(read(c,source,0,0)==0x80443322);assert(read(c,source,1,0)==0x80443322);}
+    assert(success);double region[]={0,0,2,1},location[]={1,0};FVM_Object *rect=make(c,"flash.geom.Rectangle",4,region),*point=make(c,"flash.geom.Point",2,location);FVM_Value channel_args[5];channel_args[0]=ref(source);channel_args[1]=ref(rect);channel_args[2]=ref(point);fvm_value_number(channel_args+3,1);fvm_value_number(channel_args+4,1);success=false;
+    for(long failure=0;failure<2048 && !success;++failure){FVM_Value out;allowance=failure;FVM_Result r=fvm_object_call(c,source,"copyChannel",5,channel_args,&out);allowance=-1;assert(r==FVM_OK || r==FVM_OUT_OF_MEMORY);success=r==FVM_OK;assert(read(c,source,0,0)==0x80443322);assert(read(c,source,1,0)==0x80443322);}
     assert(success);FVM_Value packet=ref(source);unsigned char *blob=0;size_t size=0;assert(fvm_value_serialize(c,&packet,&blob,&size)==FVM_OK);success=false;
     for(long failure=0;failure<20000 && !success;++failure) {
       FVM_Value restored;allowance=failure;FVM_Result r=fvm_value_deserialize(other,blob,size,&restored);allowance=-1;

@@ -3,7 +3,7 @@
 Реализован класс `flash.display.BitmapData`: ограниченные размеры 1–2880,
 прозрачные/непрозрачные буферы, width/height/transparent/rectangle только для
 чтения, clone, dispose, getPixel, getPixel32, setPixel, setPixel32, fillRect,
-scroll и colorTransform. getPixel32 возвращает знаковое Int32; значения цветов
+scroll, colorTransform и copyChannel. getPixel32 возвращает знаковое Int32; значения цветов
 при записи преобразуются в Uint32. setPixel сохраняет альфа-канал. scroll
 сохраняет края вне области переноса; перекрывающиеся пиксели читаются из снимка.
 colorTransform применяет восемь нативных каналов к пересечению прямоугольника
@@ -33,7 +33,7 @@ beginBitmapFill, фильтры, сетевые/AVM1 проверки и пол�
 
 The native flash.display.BitmapData class currently implements bounded dimensions,
 read-only size/transparency/rectangle, clone, dispose, pixel access, fillRect,
-scroll and colorTransform. getPixel32 returns signed Int32; setters wrap input
+scroll, colorTransform and copyChannel. getPixel32 returns signed Int32; setters wrap input
 colors to Uint32. setPixel preserves alpha. Scroll uses an allocation-before-write
 snapshot to avoid overlap smearing and preserves exposed edges. Color transforms
 clip their rectangle, clamp channels and retain opaque alpha.
@@ -48,3 +48,25 @@ This is a subset. Straight RGBA storage does not yet establish Flash premultipli
 rounding conformance. Remaining pixel methods, drawing/resource loading, bitmap
 fills/attachment, filters, network/AVM1 coverage and full reference acceptance are
 open. Stage 4 remains open.
+
+## copyChannel
+
+Каналы задаются масками 1 (R), 2 (G), 4 (B), 8 (alpha). Области источника и
+назначения отсекаются совместно, сохраняя относительное смещение. Снимок
+выбранного канала предотвращает размазывание при перекрытии. Запись alpha
+непрозрачного назначения ничего не меняет. Перед изменением выделяется
+временный буфер; отказ выделения сохраняет исходные пиксели. Проверки включены
+в standard_bitmap и bitmap_allocation. Дробные координаты и точные правила
+преобразования каналов Flash ещё требуют эталонной сверки.
+
+Channel masks select red (1), green (2), blue (4), alpha (8). Joint clipping
+preserves source/destination alignment; a selected-channel snapshot prevents
+overlap smearing. Opaque destination alpha is unchanged. Allocation failure
+precedes pixel mutation. Fractional coordinates and Flash conversion rules
+remain subject to reference conformance.
+
+Пока поддерживаются только одиночные маски каналов 1/2/4/8. Комбинации
+масок, допускаемые документацией Flash, требуют отдельной сверки и реализации;
+в текущем подмножестве другие значения ничего не меняют.
+Only single-channel masks are implemented. Combined masks documented by Flash
+remain open; other values currently leave the destination unchanged.

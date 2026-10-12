@@ -102,6 +102,23 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned n, const FVM_Value
     }
     return attach(c, (FVM_Object *)u, s, out);
 }
+/* Map public BitmapDataChannel bit flags to native RGBA byte offsets. */
+int channel_index(unsigned long channel)
+{
+    switch (channel)
+    {
+    case 1:
+        return 0;
+    case 2:
+        return 1;
+    case 4:
+        return 2;
+    case 8:
+        return 3;
+    default:
+        return -1;
+    }
+}
 /* Return immutable size/transparency properties or a typed independent Rectangle. */
 template <unsigned Property>
 /* Read one BitmapData property, returning -1 for disposed/native-invalid receivers. */
@@ -170,6 +187,81 @@ FVM_Result method(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value 
         s->pixels.swap(empty);
         s->width = s->height = 0;
         s->disposed = true;
+        return FVM_OK;
+    }
+    if (Operation == 9)
+    {
+        FVM_Object *source = 0, *rect = 0, *point = 0;
+        FVM_Result r = object_argument(c, n, args, 0, source);
+        if (r == FVM_OK)
+            r = object_argument(c, n, args, 1, rect);
+        const char *rect_names[] = {"x", "y", "width", "height"};
+        const char *point_names[] = {"x", "y"};
+        double box[4], destination[2], from = 0, to = 0;
+        if (r == FVM_OK)
+            r = numbers(c, rect, rect_names, 4, box);
+        if (r == FVM_OK)
+            r = object_argument(c, n, args, 2, point);
+        if (r == FVM_OK)
+            r = numbers(c, point, point_names, 2, destination);
+        if (r == FVM_OK)
+            r = numeric_argument(c, n, args, 3, from);
+        if (r == FVM_OK)
+            r = numeric_argument(c, n, args, 4, to);
+        if (r != FVM_OK)
+            return r;
+        FVM_BitmapState *input = state(source);
+        if (!input || input->disposed || s->disposed)
+        {
+            fvm_value_number(out, -1);
+            return FVM_OK;
+        }
+        int source_channel = channel_index(word(from)), dest_channel = channel_index(word(to));
+        if (source_channel < 0 || dest_channel < 0 || (!s->transparent && dest_channel == 3))
+            return FVM_OK;
+        /* Bound coordinates before integer conversion and clip in source-relative space. */
+        for (unsigned i = 0; i < 4; ++i)
+            if (!(box[i] >= -2147483648.0 && box[i] <= 2147483647.0))
+                return FVM_OK;
+        for (unsigned i = 0; i < 2; ++i)
+            if (!(destination[i] >= -2147483648.0 && destination[i] <= 2147483647.0))
+                return FVM_OK;
+        double sx = std::floor(box[0]), sy = std::floor(box[1]);
+        double dx = std::floor(destination[0]), dy = std::floor(destination[1]);
+        double left = 0, top = 0, right = std::floor(box[2]), bottom = std::floor(box[3]);
+        if (left < -sx)
+            left = -sx;
+        if (left < -dx)
+            left = -dx;
+        if (top < -sy)
+            top = -sy;
+        if (top < -dy)
+            top = -dy;
+        if (right > input->width - sx)
+            right = input->width - sx;
+        if (right > s->width - dx)
+            right = s->width - dx;
+        if (bottom > input->height - sy)
+            bottom = input->height - sy;
+        if (bottom > s->height - dy)
+            bottom = s->height - dy;
+        if (!(left < right && top < bottom))
+            return FVM_OK;
+        /* Snapshot only the selected channel. This also makes overlapping self-copy atomic on OOM.
+         */
+        unsigned width = (unsigned)(right - left), height = (unsigned)(bottom - top);
+        fvm_detail::vector<unsigned char> selected((size_t)width * height);
+        for (unsigned y = 0; y < height; ++y)
+            for (unsigned x = 0; x < width; ++x)
+                selected[(size_t)y * width + x] =
+                    input
+                        ->pixels[((size_t)(sy + top + y) * input->width + (size_t)(sx + left + x)) *
+                                     4 +
+                                 source_channel];
+        for (unsigned y = 0; y < height; ++y)
+            for (unsigned x = 0; x < width; ++x)
+                s->pixels[((size_t)(dy + top + y) * s->width + (size_t)(dx + left + x)) * 4 +
+                          dest_channel] = selected[(size_t)y * width + x];
         return FVM_OK;
     }
     if (Operation == 8)
@@ -328,10 +420,11 @@ FVM_Result method(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value 
 }
 const char *const properties[] = {"width", "height", "transparent", "rectangle"};
 const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>};
-const char *const methods[] = {"clone",      "dispose",  "getPixel", "getPixel32",    "setPixel",
-                               "setPixel32", "fillRect", "scroll",   "colorTransform"};
+const char *const methods[] = {"clone",          "dispose",    "getPixel", "getPixel32",
+                               "setPixel",       "setPixel32", "fillRect", "scroll",
+                               "colorTransform", "copyChannel"};
 const FVM_NativeFunction callbacks[] = {method<0>, method<1>, method<2>, method<3>, method<4>,
-                                        method<5>, method<6>, method<7>, method<8>};
+                                        method<5>, method<6>, method<7>, method<8>, method<9>};
 } // namespace
 /* [GC:] Install an unpublished display namespace and bitmap class with retained rectangle/clone
  * factories. */
@@ -376,7 +469,7 @@ FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindi
     bindings->properties["BitmapData"] = managed(klass);
     /* [GC:] The staged flash namespace owns the display namespace. */
     flash->properties["display"] = managed(display);
-    for (unsigned i = 0; i < 9; ++i)
+    for (unsigned i = 0; i < 10; ++i)
     {
         entry.callback = callbacks[i];
         /* [GC:] Method userdata aliases retained class factories. */
@@ -417,7 +510,7 @@ unsigned long fvm_bitmap_callback_id(FVM_NativeFunction fn)
 {
     if (fn == constructor)
         return 1500;
-    for (unsigned i = 0; i < 9; ++i)
+    for (unsigned i = 0; i < 10; ++i)
         if (fn == callbacks[i])
             return 1510 + i;
     for (unsigned i = 0; i < 4; ++i)
@@ -430,7 +523,7 @@ FVM_NativeFunction fvm_bitmap_callback_from_id(unsigned long id)
 {
     if (id == 1500)
         return constructor;
-    if (id >= 1510 && id < 1519)
+    if (id >= 1510 && id < 1520)
         return callbacks[id - 1510];
     if (id >= 1530 && id < 1534)
         return getters[id - 1530];

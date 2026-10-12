@@ -33,3 +33,11 @@ open; no full BitmapData, rendering or media compatibility is claimed.
 
 Реализован перечисленный набор BitmapData; остаются premultiplied rounding,
 остальные операции, интеграция сцены/заливок и полная приёмка.
+
+## v0.38 BitmapData.copyChannel
+
+Implemented selected-channel copying with joint source/destination clipping,
+overlap snapshots, opaque-alpha preservation and allocation-before-mutation.
+standard_bitmap and bitmap_allocation cover the operation.
+Реализировано копирование отдельного канала с отсечением и независимым снимком;
+полная совместимость BitmapData и этап 4 остаются открытыми.
