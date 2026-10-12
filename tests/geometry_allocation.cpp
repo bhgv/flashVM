@@ -74,6 +74,17 @@ int main() {
         if(success) { near(get(c,out.object,"x"),3); assert(out.object!=p); }
         near(get(c,p,"x"),3); near(get(c,p,"y"),4); assert(fvm_gc_collect(c,0)==FVM_OK);
     }
+    assert(success);
+    FVM_Value text; fvm_value_string(&text,"prefix"); assert(fvm_object_set(c,p,"x",&text)==FVM_OK);
+    FVM_Value operand=ref(p); success=false;
+    for(long failure=0;failure<2048 && !success;++failure) {
+        FVM_Value out; allowance=failure;
+        FVM_Result r=fvm_object_call(c,p,"add",1,&operand,&out); allowance=-1;
+        assert(r==FVM_OK || r==FVM_OUT_OF_MEMORY); success=r==FVM_OK;
+        if(success) { FVM_Value joined; assert(fvm_object_get(c,out.object,"x",&joined)==FVM_OK); assert(std::strcmp(joined.string,"prefixprefix")==0); }
+        FVM_Value original; assert(fvm_object_get(c,p,"x",&original)==FVM_OK); assert(std::strcmp(original.string,"prefix")==0);
+        assert(fvm_gc_collect(c,0)==FVM_OK);
+    }
     assert(success); fvm_context_destroy(c);
     success=false;
     for(long failure=0;failure<20000 && !success;++failure) {

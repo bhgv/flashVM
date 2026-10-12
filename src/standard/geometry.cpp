@@ -79,6 +79,58 @@ FVM_Result numeric_argument(FVM_Context *c, unsigned int argc, const FVM_Value *
     return fvm_value_to_number(c, &value, &out);
 }
 
+/* Apply AS2 addition after left-to-right primitive conversion, preserving counted strings. */
+FVM_Result add(FVM_Context *c, const FVM_Value &left, const FVM_Value &right, FVM_Value *out)
+{
+    FVM_Value a, b;
+    bool left_date =
+        left.type == FVM_VALUE_OBJECT && left.object && left.object->resource_kind == 34;
+    bool right_date =
+        right.type == FVM_VALUE_OBJECT && right.object && right.object->resource_kind == 34;
+    FVM_Result r = fvm_to_primitive(c, &left, left_date, &a);
+    if (r == FVM_OK)
+        r = fvm_to_primitive(c, &right, right_date, &b);
+    if (r != FVM_OK)
+        return r;
+    if (a.type == FVM_VALUE_STRING || b.type == FVM_VALUE_STRING)
+    {
+        FVM_Value first, last;
+        r = fvm_value_to_string(c, &a, &first);
+        if (r == FVM_OK)
+            r = fvm_value_to_string(c, &b, &last);
+        if (r != FVM_OK)
+            return r;
+        size_t n = fvm_value_string_size(&first), m = fvm_value_string_size(&last);
+        if (n > (size_t)-1 - m - 1)
+            return FVM_OUT_OF_MEMORY;
+        fvm_detail::vector<char> bytes(n + m + 1);
+        std::memcpy(bytes.begin(), first.string, n);
+        std::memcpy(bytes.begin() + n, last.string, m);
+        bytes[n + m] = 0;
+        FVM_Value temporary;
+        fvm_value_string_bytes(&temporary, bytes.begin(), n + m);
+        /* [GC:] Own the concatenated byte sequence before releasing the temporary vector. */
+        return fvm_value_to_string(c, &temporary, out);
+    }
+    double x = 0, y = 0;
+    r = fvm_value_to_number(c, &a, &x);
+    if (r == FVM_OK)
+        r = fvm_value_to_number(c, &b, &y);
+    if (r == FVM_OK)
+        fvm_value_number(out, x + y);
+    return r;
+}
+
+/* Update one coordinate with AS2 +=, completing its write before reading the next coordinate. */
+FVM_Result offset(FVM_Context *c, FVM_Object *self, const char *name, const FVM_Value &increment)
+{
+    FVM_Value previous, result;
+    FVM_Result r = fvm_object_get(c, self, name, &previous);
+    if (r == FVM_OK)
+        r = add(c, previous, increment, &result);
+    return r == FVM_OK ? fvm_object_set(c, self, name, &result) : r;
+}
+
 /* Follow a point/matrix-shaped argument after verifying its context. */
 FVM_Result object_argument(FVM_Context *c, unsigned int argc, const FVM_Value *args,
                            unsigned int index, FVM_Object *&out)
@@ -252,35 +304,48 @@ FVM_Result point_clone(FVM_Context *c, FVM_Object *self, unsigned int, const FVM
     return r == FVM_OK ? new_point(c, userdata, values, out) : r;
 }
 
-/* Add or subtract another point's numeric coordinates without mutating either input. */
+/* Add/subtract y before x through public getters and AS2 conversion rules. */
 FVM_Result point_binary(FVM_Context *c, FVM_Object *self, unsigned int argc, const FVM_Value *args,
-                        FVM_Value *out, void *userdata, double sign)
+                        FVM_Value *out, void *userdata, bool addition)
 {
     FVM_Object *other = 0;
     FVM_Result r = object_argument(c, argc, args, 0, other);
-    double a[2], b[2];
-    if (r == FVM_OK)
-        r = numbers(c, self, point_names, 2, a);
-    if (r == FVM_OK)
-        r = numbers(c, other, point_names, 2, b);
-    if (r != FVM_OK)
-        return r;
-    FVM_Value values[] = {scalar(a[0] + sign * b[0]), scalar(a[1] + sign * b[1])};
-    return new_point(c, userdata, values, out);
+    FVM_Value values[2];
+    for (unsigned int axis = 2; axis && r == FVM_OK; --axis)
+    {
+        FVM_Value left, right;
+        r = fvm_object_get(c, self, point_names[axis - 1], &left);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, other, point_names[axis - 1], &right);
+        if (r != FVM_OK)
+            break;
+        if (addition)
+            r = add(c, left, right, values + axis - 1);
+        else
+        {
+            double x = 0, y = 0;
+            r = fvm_value_to_number(c, &left, &x);
+            if (r == FVM_OK)
+                r = fvm_value_to_number(c, &right, &y);
+            if (r == FVM_OK)
+                fvm_value_number(values + axis - 1, x - y);
+        }
+    }
+    return r == FVM_OK ? new_point(c, userdata, values, out) : r;
 }
 
-/* Return the numeric vector sum as a new Point. */
+/* Return a new Point using string concatenation or numeric addition for each coordinate. */
 FVM_Result point_add(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
                      FVM_Value *v, void *u)
 {
-    return point_binary(c, s, n, a, v, u, 1);
+    return point_binary(c, s, n, a, v, u, true);
 }
 
-/* Return the numeric vector difference as a new Point. */
+/* Return the numeric coordinate difference in a separate Point. */
 FVM_Result point_subtract(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
                           FVM_Value *v, void *u)
 {
-    return point_binary(c, s, n, a, v, u, -1);
+    return point_binary(c, s, n, a, v, u, false);
 }
 
 /* Compare coordinate values, returning false for a nonobject argument. */
@@ -312,41 +377,46 @@ FVM_Result point_equals(FVM_Context *c, FVM_Object *self, unsigned int argc, con
     return r;
 }
 
-/* Normalize a nonzero vector through public setters; zero vectors retain their coordinates. */
+/* Normalize through the dynamic length property and assign x before reading y. */
 FVM_Result point_normalize(FVM_Context *c, FVM_Object *self, unsigned int argc,
                            const FVM_Value *args, FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
-    double p[2], desired = 0;
-    FVM_Result r = numbers(c, self, point_names, 2, p);
+    FVM_Value length_value;
+    double length = 0, desired = 0;
+    FVM_Result r = fvm_object_get(c, self, "length", &length_value);
     if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 0, desired);
+        r = fvm_value_to_number(c, &length_value, &length);
+    if (r != FVM_OK || length <= 0)
+        return r;
+    r = numeric_argument(c, argc, args, 0, desired);
     if (r != FVM_OK)
         return r;
-    double length = std::sqrt(p[0] * p[0] + p[1] * p[1]);
-    if (length == 0)
-        return FVM_OK;
-    p[0] *= desired / length;
-    p[1] *= desired / length;
-    return write(c, self, point_names, 2, p);
+    double scale = desired / length;
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        FVM_Value coordinate;
+        double number = 0;
+        r = fvm_object_get(c, self, point_names[i], &coordinate);
+        if (r == FVM_OK)
+            r = fvm_value_to_number(c, &coordinate, &number);
+        if (r != FVM_OK)
+            return r;
+        coordinate = scalar(number * scale);
+        r = fvm_object_set(c, self, point_names[i], &coordinate);
+        if (r != FVM_OK)
+            return r;
+    }
+    return FVM_OK;
 }
 
-/* Offset the point's numeric coordinates through ordinary setter/watch dispatch. */
+/* Offset x then y, using AS2 += and completing each public write in order. */
 FVM_Result point_offset(FVM_Context *c, FVM_Object *self, unsigned int argc, const FVM_Value *args,
                         FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
-    double p[2], dx = 0, dy = 0;
-    FVM_Result r = numbers(c, self, point_names, 2, p);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 0, dx);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 1, dy);
-    if (r != FVM_OK)
-        return r;
-    p[0] += dx;
-    p[1] += dy;
-    return write(c, self, point_names, 2, p);
+    FVM_Result r = offset(c, self, "x", argument(argc, args, 0));
+    return r == FVM_OK ? offset(c, self, "y", argument(argc, args, 1)) : r;
 }
 
 /* Format Point's public coordinate values in the documented x/y layout. */
@@ -371,7 +441,7 @@ FVM_Result point_distance(FVM_Context *c, FVM_Object *, unsigned int argc, const
     return fvm_object_get(c, difference.object, "length", out);
 }
 
-/* Return a numeric interpolation, with f=1 selecting the first point and f=0 the second. */
+/* Interpolate y before x, preserving AS2 addition when the second coordinate is a string. */
 FVM_Result point_interpolate(FVM_Context *c, FVM_Object *, unsigned int argc, const FVM_Value *args,
                              FVM_Value *out, void *userdata)
 {
@@ -379,17 +449,27 @@ FVM_Result point_interpolate(FVM_Context *c, FVM_Object *, unsigned int argc, co
     FVM_Result r = object_argument(c, argc, args, 0, first);
     if (r == FVM_OK)
         r = object_argument(c, argc, args, 1, second);
-    double a[2], b[2], f = 0;
-    if (r == FVM_OK)
-        r = numbers(c, first, point_names, 2, a);
-    if (r == FVM_OK)
-        r = numbers(c, second, point_names, 2, b);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 2, f);
-    if (r != FVM_OK)
-        return r;
-    FVM_Value values[] = {scalar(b[0] + (a[0] - b[0]) * f), scalar(b[1] + (a[1] - b[1]) * f)};
-    return new_point(c, userdata, values, out);
+    FVM_Value values[2];
+    for (unsigned int axis = 2; axis && r == FVM_OK; --axis)
+    {
+        const char *name = point_names[axis - 1];
+        FVM_Value base, left, right;
+        r = fvm_object_get(c, second, name, &base);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, first, name, &left);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, second, name, &right);
+        double a = 0, b = 0, factor = 0;
+        if (r == FVM_OK)
+            r = fvm_value_to_number(c, &left, &a);
+        if (r == FVM_OK)
+            r = fvm_value_to_number(c, &right, &b);
+        if (r == FVM_OK)
+            r = numeric_argument(c, argc, args, 2, factor);
+        if (r == FVM_OK)
+            r = add(c, base, scalar((a - b) * factor), values + axis - 1);
+    }
+    return r == FVM_OK ? new_point(c, userdata, values, out) : r;
 }
 
 /* Convert length/angle in radians to a typed Cartesian Point. */
@@ -481,7 +561,7 @@ FVM_Result matrix_delta(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM
 /* Invert finite/skewed matrices; singular skewed matrices become identity and zero scales become
  * infinity. */
 FVM_Result matrix_invert(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
-                         FVM_Value *out, void *)
+                         FVM_Value *out, void *userdata)
 {
     fvm_value_undefined(out);
     double m[6];
@@ -498,12 +578,37 @@ FVM_Result matrix_invert(FVM_Context *c, FVM_Object *self, unsigned int, const F
     }
     double determinant = m[0] * m[3] - m[1] * m[2];
     if (determinant == 0)
-        return matrix_identity(c, self, 0, 0, out, 0);
+        return fvm_object_call(c, self, "identity", 0, 0, out);
     double values[] = {
         m[3] / determinant, -m[1] / determinant, -m[2] / determinant, m[0] / determinant, 0, 0};
-    values[4] = -(values[0] * m[4] + values[2] * m[5]);
-    values[5] = -(values[1] * m[4] + values[3] * m[5]);
-    return write(c, self, matrix_names, 6, values);
+    r = write(c, self, matrix_names, 4, values);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value coordinates[2];
+    const char *names[] = {"tx", "ty"};
+    r = fields(c, self, names, 2, coordinates);
+    FVM_Value point, transformed;
+    if (r == FVM_OK)
+        r = new_point(c, userdata, coordinates, &point);
+    if (r == FVM_OK)
+        r = fvm_object_call(c, self, "deltaTransformPoint", 1, &point, &transformed);
+    if (r != FVM_OK || transformed.type != FVM_VALUE_OBJECT || !transformed.object)
+        return r != FVM_OK ? r : FVM_INVALID_ARGUMENT;
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        FVM_Value coordinate;
+        double number = 0;
+        r = fvm_object_get(c, transformed.object, point_names[i], &coordinate);
+        if (r == FVM_OK)
+            r = fvm_value_to_number(c, &coordinate, &number);
+        if (r != FVM_OK)
+            return r;
+        coordinate = scalar(-number);
+        r = fvm_object_set(c, self, names[i], &coordinate);
+        if (r != FVM_OK)
+            return r;
+    }
+    return FVM_OK;
 }
 
 /* Rotate by radians through the public concat method, preserving overrides of that method. */
@@ -541,22 +646,13 @@ FVM_Result matrix_scale(FVM_Context *c, FVM_Object *self, unsigned int argc, con
     return write(c, self, matrix_names, 6, m);
 }
 
-/* Translate numeric coordinates while leaving the linear part untouched. */
+/* Translate tx then ty using AS2 += without touching the linear matrix fields. */
 FVM_Result matrix_translate(FVM_Context *c, FVM_Object *self, unsigned int argc,
                             const FVM_Value *args, FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
-    double m[6], x = 0, y = 0;
-    FVM_Result r = numbers(c, self, matrix_names, 6, m);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 0, x);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 1, y);
-    if (r != FVM_OK)
-        return r;
-    FVM_Value tx = scalar(m[4] + x), ty = scalar(m[5] + y);
-    r = fvm_object_set(c, self, "tx", &tx);
-    return r == FVM_OK ? fvm_object_set(c, self, "ty", &ty) : r;
+    FVM_Result r = offset(c, self, "tx", argument(argc, args, 0));
+    return r == FVM_OK ? offset(c, self, "ty", argument(argc, args, 1)) : r;
 }
 
 /* Build a box through public identity/rotate/scale methods, retaining override dispatch. */
@@ -578,25 +674,32 @@ FVM_Result matrix_box(FVM_Context *c, FVM_Object *self, unsigned int argc, const
     return r == FVM_OK ? fvm_object_set(c, self, "ty", &ty) : r;
 }
 
-/* Create the normalized-gradient mapping through public createBox with the documented default
- * rotation. */
+/* Build gradient-box arguments in reverse evaluation order, preserving string translation. */
 FVM_Result matrix_gradient_box(FVM_Context *c, FVM_Object *self, unsigned int argc,
                                const FVM_Value *args, FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
-    double width = 0, height = 0, tx = 0, ty = 0;
-    FVM_Result r = numeric_argument(c, argc, args, 0, width);
-    if (r == FVM_OK)
-        r = numeric_argument(c, argc, args, 1, height);
-    if (r == FVM_OK && argc > 3)
-        r = numeric_argument(c, argc, args, 3, tx);
-    if (r == FVM_OK && argc > 4)
-        r = numeric_argument(c, argc, args, 4, ty);
-    if (r != FVM_OK)
-        return r;
-    FVM_Value values[] = {scalar(width / 1638.4), scalar(height / 1638.4),
-                          argc > 2 ? args[2] : scalar(0), scalar(tx + width / 2),
-                          scalar(ty + height / 2)};
+    FVM_Value values[5];
+    values[2] = argc > 2 ? args[2] : scalar(0);
+    for (unsigned int axis = 2; axis; --axis)
+    {
+        double dimension = 0;
+        FVM_Result r = numeric_argument(c, argc, args, axis - 1, dimension);
+        if (r != FVM_OK)
+            return r;
+        FVM_Value translation = argc > axis + 2 ? args[axis + 2] : scalar(0);
+        r = add(c, translation, scalar(dimension / 2), values + axis + 2);
+        if (r != FVM_OK)
+            return r;
+    }
+    for (unsigned int axis = 2; axis; --axis)
+    {
+        double dimension = 0;
+        FVM_Result r = numeric_argument(c, argc, args, axis - 1, dimension);
+        if (r != FVM_OK)
+            return r;
+        values[axis - 1] = scalar(dimension / 1638.4);
+    }
     FVM_Value ignored;
     return fvm_object_call(c, self, "createBox", 5, values, &ignored);
 }

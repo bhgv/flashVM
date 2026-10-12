@@ -28,11 +28,11 @@ createGradientBox, восстановление Point/Matrix через очер
 частично опубликованного namespace и сохранность исходной точки.
 
 Ограничения: это не завершение этапов 1–4. Пока нет полной проверки поведения
-геометрических методов в эталонном Flash Player. Арифметика add/offset/translate
-и interpolate пока числовая; конкатенация строк через AS-оператор + и точный
-порядок вызовов пользовательских getter/valueOf требуют отдельной реализации.
-Переопределения Math.sin/cos/sqrt и deltaTransformPoint внутри invert ещё не
-учитываются. Сетевой транспорт этих новых типов требует отдельного теста.
+геометрических методов в эталонном Flash Player. В v0.33 добавлена строковая арифметика add/offset/translate, interpolate и
+createGradientBox. Порядок getter/setter проверен для add и offset; normalize
+читает публичную length, invert вызывает публичный deltaTransformPoint.
+Полный порядок всех getter/valueOf, абстрактное сравнение equals и
+переопределения Math.sin/cos/sqrt ещё требуют проверки/реализации. Сетевой транспорт этих новых типов требует отдельного теста.
 Остальные flash.geom классы и полная интеграция Transform остаются открытыми.
 
 ## English
@@ -52,8 +52,10 @@ receiving context. Allocation injection covers clone and atomic standard-library
 namespace publication. Tests cover restored graph collection and method calls.
 
 This is a compatibility checkpoint, not completion of any roadmap stage.
-String addition, observable getter/coercion order, overridden Math functions and
-invert's overridden deltaTransformPoint dispatch still need conformance work.
+v0.33 adds AS2 string addition to add/offset/translate, interpolate and
+createGradientBox. normalize reads dynamic length and skewed invert dispatches
+through public deltaTransformPoint. Remaining conformance work includes full
+getter/coercion order, equals abstract comparison and overridden Math functions.
 Network transport needs dedicated coverage. Other flash.geom classes and full
 Transform integration remain open. No complete Flash Player equivalence is claimed.
 
@@ -72,3 +74,27 @@ All four Linux profiles passed. The extended numeric tests were rebuilt and
 rerun in each profile. The strict language/sanitizer run passed 184 programs,
 with the explicitly stated instrumentation limitations above. No other platform
 or complete Flash Player conformance is certified. Generated logs stay outside Git.
+
+
+## Диспетчеризация v0.33 / Dispatch checkpoint
+
+geometry_dispatch.cpp проверяет конкатенацию строк и сохранение NUL, порядок
+чтения y/x при add и записи x/y при offset, динамическую length при normalize,
+переопределение deltaTransformPoint при invert и строковые координаты
+interpolate/createGradientBox. geometry_allocation.cpp дополнен перебором
+отказов памяти для add со строковым результатом и сохранности исходной точки.
+
+The dispatch regression covers string/NUL addition, public getter/setter order,
+dynamic normalize length, overridden inverse translation and string interpolation/
+gradient-box translations. Allocation injection additionally covers string-valued
+Point.add while retaining the original coordinates on failure.
+
+Проверки v0.33: headless — 188 (четыре BAD_COMMAND из-за прав исполнения
+успешно повторены), AGG/Cairo — по 198, portable — 179; все выполненные тесты
+прошли. Strict C89/C++98 с ASan/UBSan — 185 тестов/примеров; ограничения
+инструментирования совпадают с описанными для v0.32. Полная сверка Flash
+и реальные сборки других ОС остаются открытыми.
+
+v0.33 validation passed 188 headless cases (four permission-related launch
+failures passed on retry), 198 per graphical profile, 179 portable and 185
+strict-language/sanitizer programs. The v0.32 instrumentation limitations apply.
