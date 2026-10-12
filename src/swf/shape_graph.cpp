@@ -62,10 +62,48 @@ FVM_Result gradient(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *
     }
     return FVM_OK;
 }
+/* [GC:] Bind one decoded bitmap style to the existing dictionary bitmap identity. */
+FVM_Result bitmap(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *part,
+                  FVM_Object *definitions)
+{
+    if (!definitions || definitions->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<unsigned long, FVM_Value>::iterator found =
+        definitions->indexed.find(paint.bitmap_id);
+    if (found == definitions->indexed.end() || found->second.type != FVM_VALUE_OBJECT)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator source =
+        found->second.object->properties.find("bitmap_data");
+    if (source == found->second.object->properties.end() ||
+        source->second.type != FVM_VALUE_OBJECT || !source->second.object ||
+        source->second.object->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] The enclosing native barrier protects the unpublished bitmap style. */
+    FVM_Object *record = 0;
+    /* [GC:] Allocate a scalar matrix/flags descriptor retaining its source bitmap. */
+    FVM_Result r = fvm_object_create(c, &record);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Reuse source identity across all fills referring to this character. */
+    record->properties["source"] = source->second;
+    record->properties["xx"] = number(paint.bitmap_matrix.xx);
+    record->properties["yx"] = number(paint.bitmap_matrix.yx);
+    record->properties["xy"] = number(paint.bitmap_matrix.xy);
+    record->properties["yy"] = number(paint.bitmap_matrix.yy);
+    record->properties["x0"] = number(paint.bitmap_matrix.x0);
+    record->properties["y0"] = number(paint.bitmap_matrix.y0);
+    record->properties["repeat"] =
+        number(paint.bitmap_type == 0x40 || paint.bitmap_type == 0x42 ? 1 : 0);
+    record->properties["smoothing"] = number(paint.bitmap_type < 0x42 ? 1 : 0);
+    /* [GC:] The paint owns the completed descriptor before the next path is constructed. */
+    part->properties["bitmap"] = object(record);
+    return FVM_OK;
+}
 } // namespace
 
 /* [GC:] Construct all paints and commands before returning a publishable immutable definition. */
-FVM_Result fvm_swf_shape_build(FVM_Context *c, const FVM_SWFShape &shape, FVM_Object **out)
+FVM_Result fvm_swf_shape_build(FVM_Context *c, const FVM_SWFShape &shape, FVM_Object **out,
+                               FVM_Object *bitmap_definitions)
 {
     if (!c || !out || !shape.id)
         return FVM_INVALID_ARGUMENT;
@@ -116,6 +154,12 @@ FVM_Result fvm_swf_shape_build(FVM_Context *c, const FVM_SWFShape &shape, FVM_Ob
         if (paint.gradient_type)
         {
             r = gradient(c, paint, part);
+            if (r != FVM_OK)
+                return r;
+        }
+        if (paint.bitmap_type)
+        {
+            r = bitmap(c, paint, part, bitmap_definitions);
             if (r != FVM_OK)
                 return r;
         }

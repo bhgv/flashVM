@@ -3,6 +3,8 @@
 #include "decode.hpp"
 #include "reader.hpp"
 #include "shape_graph.hpp"
+#include "bitmap.hpp"
+#include "../standard/bitmap_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/movieclip.h"
@@ -136,6 +138,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                             fvm_detail::vector<Timeline> *sprites,
                             fvm_detail::vector<Export> *exports,
                             fvm_detail::vector<FVM_SWFShape> *shapes,
+                            fvm_detail::vector<FVM_SWFBitmap> *bitmaps, size_t bitmap_limit,
                             fvm_detail::map<unsigned long, bool> &known)
 {
     if (!timeline.frames)
@@ -165,9 +168,28 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         if (tag == 0)
             return count == 0 && at == end && frame == timeline.frames + 1 ? FVM_OK
                                                                            : FVM_INVALID_ARGUMENT;
-        if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32))
+        if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32 ||
+                         tag == 20 || tag == 36))
             return FVM_INVALID_ARGUMENT;
-        if ((tag == 2 || tag == 22 || tag == 32) && shapes)
+        if ((tag == 20 || tag == 36) && bitmaps)
+        {
+            if (version < (tag == 20 ? 2U : 3U))
+                return FVM_INVALID_ARGUMENT;
+            size_t used = 0;
+            for (size_t i = 0; i < bitmaps->size(); ++i)
+                used += (*bitmaps)[i].pixels.size();
+            if (used >= bitmap_limit)
+                return FVM_OUT_OF_MEMORY;
+            FVM_SWFBitmap bitmap;
+            FVM_Result r = fvm_swf_read_bitmap(p + at, count, tag, bitmap_limit - used, bitmap);
+            if (r != FVM_OK)
+                return r;
+            if (known.find(bitmap.id) != known.end())
+                return FVM_INVALID_ARGUMENT;
+            bitmaps->push_back(bitmap);
+            known[bitmap.id] = true;
+        }
+        else if ((tag == 2 || tag == 22 || tag == 32) && shapes)
         {
             if ((tag == 22 && version < 2) || (tag == 32 && version < 3))
                 return FVM_INVALID_ARGUMENT;
@@ -175,6 +197,18 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             FVM_Result r = fvm_swf_read_shape(p + at, count, tag, shape);
             if (r != FVM_OK)
                 return r;
+            for (size_t i = 0; i < shape.paints.size(); ++i)
+                if (shape.paints[i].bitmap_type)
+                {
+                    if (version < 8 && shape.paints[i].bitmap_type >= 0x42)
+                        return FVM_INVALID_ARGUMENT;
+                    bool found = false;
+                    for (size_t j = 0; bitmaps && j < bitmaps->size(); ++j)
+                        if ((*bitmaps)[j].id == shape.paints[i].bitmap_id)
+                            found = true;
+                    if (!found)
+                        return FVM_INVALID_ARGUMENT;
+                }
             if (known.find(shape.id) != known.end())
                 return FVM_INVALID_ARGUMENT;
             shapes->push_back(shape);
@@ -191,8 +225,8 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 return FVM_INVALID_ARGUMENT;
             if (known.find(sprite.id) != known.end())
                 return FVM_INVALID_ARGUMENT;
-            FVM_Result r =
-                inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, 0, known);
+            FVM_Result r = inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, 0, 0,
+                                            bitmap_limit, known);
             if (r != FVM_OK)
                 return r;
             sprites->push_back(sprite);
@@ -446,7 +480,8 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
 FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char> &bytes,
                          const fvm_detail::vector<Timeline> &sprites,
                          const fvm_detail::vector<Export> &exports,
-                         const fvm_detail::vector<FVM_SWFShape> &shapes, FVM_Object *clip)
+                         const fvm_detail::vector<FVM_SWFShape> &shapes,
+                         const fvm_detail::vector<FVM_SWFBitmap> &bitmaps, FVM_Object *clip)
 {
     FVM_Object *library = 0, *definitions = 0, *names = 0;
     FVM_Result r = fvm_object_create(c, &library);
@@ -472,10 +507,66 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
         definition->properties["id"] = id;
         definitions->indexed[sprites[i].id] = managed(definition);
     }
+    for (size_t i = 0; i < bitmaps.size(); ++i)
+    {
+        /* [GC:] Allocate the dictionary holder before linking bitmap identity into shape fills. */
+        FVM_Object *definition = 0;
+        r = fvm_object_create(c, &definition);
+        if (r != FVM_OK)
+            return r;
+        FVM_Value pixels;
+        r = fvm_bitmap_create_pixels(c, bitmaps[i].width, bitmaps[i].height, bitmaps[i].transparent,
+                                     bitmaps[i].pixels, &pixels);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] The dictionary owns the decoded bitmap before any fills reference it. */
+        definition->properties["bitmap_data"] = pixels;
+        /* [GC:] Retain each resource holder while constructing its optional direct-display
+         * geometry. */
+        definitions->indexed[bitmaps[i].id] = managed(definition);
+        FVM_SWFShape geometry;
+        geometry.id = bitmaps[i].id;
+        geometry.bounds.x_min = geometry.bounds.y_min = 0;
+        geometry.bounds.x_max = bitmaps[i].width;
+        geometry.bounds.y_max = bitmaps[i].height;
+        FVM_SWFShapePaint paint;
+        paint.bitmap_id = bitmaps[i].id;
+        paint.bitmap_type = 0x41;
+        const double xy[] = {0,
+                             0,
+                             (double)bitmaps[i].width,
+                             0,
+                             (double)bitmaps[i].width,
+                             (double)bitmaps[i].height,
+                             0,
+                             (double)bitmaps[i].height};
+        for (unsigned j = 0; j < 8; j += 2)
+        {
+            FVM_PathCommand command;
+            std::memset(&command, 0, sizeof(command));
+            command.verb = j ? FVM_PATH_LINE : FVM_PATH_MOVE;
+            command.x[0] = xy[j];
+            command.y[0] = xy[j + 1];
+            paint.commands.push_back(command);
+        }
+        FVM_PathCommand close;
+        std::memset(&close, 0, sizeof(close));
+        close.verb = FVM_PATH_CLOSE;
+        paint.commands.push_back(close);
+        geometry.paints.push_back(paint);
+        r = fvm_swf_shape_build(c, geometry, &definition, definitions);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Keep the resource bitmap accessible independently of its static paint descriptor.
+         */
+        definition->properties["bitmap_data"] = pixels;
+        /* [GC:] Publish the complete static definition with the same bitmap resource identity. */
+        definitions->indexed[bitmaps[i].id] = managed(definition);
+    }
     for (size_t i = 0; i < shapes.size(); ++i)
     {
         FVM_Object *definition = 0;
-        r = fvm_swf_shape_build(c, shapes[i], &definition);
+        r = fvm_swf_shape_build(c, shapes[i], &definition, definitions);
         if (r != FVM_OK)
             return r;
         /* [GC:] The dictionary owns the managed solid vector resource. */
@@ -555,10 +646,11 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         fvm_detail::vector<Timeline> sprites;
         fvm_detail::vector<Export> exports;
         fvm_detail::vector<FVM_SWFShape> shapes;
+        fvm_detail::vector<FVM_SWFBitmap> bitmaps;
         size_t start = 8 + (5 + 4 * (bytes[8] >> 3) + 7) / 8 + 4;
         fvm_detail::map<unsigned long, bool> known;
         r = inspect_timeline(bytes, start, bytes.size(), info.version, main_timeline, &sprites,
-                             &exports, &shapes, known);
+                             &exports, &shapes, &bitmaps, limit, known);
         if (r != FVM_OK)
             return r;
 
@@ -568,7 +660,7 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         r = fvm_movieclip_create(c, name, info.frame_count, &clip);
         if (r != FVM_OK)
             return r;
-        r = build_library(c, bytes, sprites, exports, shapes, clip);
+        r = build_library(c, bytes, sprites, exports, shapes, bitmaps, clip);
         if (r != FVM_OK)
             return r;
         /* [GC:] The root frame controls refer to the same dictionary identities as sprites. */

@@ -86,3 +86,9 @@ publication to preserve old nodes on OOM. movieclip_attach_bitmap and its
 allocation suite cover pixels, visibility through depth APIs, queue/file, GC
 and imported methods. See MOVIECLIP_ATTACH_BITMAP.md for remaining conformance
 limits. SWF resources, complete graphics/text/media and stage 4 remain open.
+
+## v0.45: lossless SWF bitmaps
+
+Проверены DefineBitsLossless/2, форматы RGB555/XRGB/ARGB и палитры, bitmap-заливки Shape1/2/3, GC/перенос и отказы памяти. Ограничения и RU/EN описание: [SWF_LOSSLESS_BITMAPS.md](SWF_LOSSLESS_BITMAPS.md). Этап 4 открыт.
+
+Lossless tags and bitmap shape fills have format, rendering, GC/transport and allocation-failure coverage. JPEG resources and the rest of stage 4 remain open.

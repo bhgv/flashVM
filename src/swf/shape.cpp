@@ -94,6 +94,19 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
             if (r != FVM_OK)
                 return r;
         }
+        else if (type >= 0x40 && type <= 0x43)
+        {
+            paint.bitmap_type = (unsigned int)type;
+            paint.bitmap_id = (unsigned int)reader.integer(2);
+            if (!paint.bitmap_id || !fvm_swf_read_matrix(reader, paint.bitmap_matrix))
+                return FVM_INVALID_ARGUMENT;
+            /* Bitmap scales map pixel coordinates into SWF twips; translation is already in pixels.
+             */
+            paint.bitmap_matrix.xx /= 20;
+            paint.bitmap_matrix.yx /= 20;
+            paint.bitmap_matrix.xy /= 20;
+            paint.bitmap_matrix.yy /= 20;
+        }
         else
             return FVM_UNSUPPORTED;
         fills.push_back(paint);

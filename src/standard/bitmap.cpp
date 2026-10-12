@@ -440,6 +440,56 @@ FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)
 {
     return state(object);
 }
+/* [GC:] Build a resource bitmap with independent pixels and optional installed class identity. */
+FVM_Result fvm_bitmap_create_pixels(FVM_Context *c, unsigned width, unsigned height,
+                                    bool transparent,
+                                    const fvm_detail::vector<unsigned char> &pixels, FVM_Value *out)
+{
+    if (!c || !out || !width || !height || width > 2880 || height > 2880 ||
+        pixels.size() != (size_t)width * height * 4)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_undefined(out);
+    /* [GC:] Protect the unpublished bitmap and any borrowed class/prototype factory. */
+    FVM_NativeCallGuard guard(c);
+    FVM_Object *klass = 0;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator registered =
+        c->constructors.find("flash.display.BitmapData");
+    if (registered != c->constructors.end() && registered->second.callback == constructor)
+        /* [GC:] The trusted constructor capture retains the original native bitmap class. */
+        klass = registered->second.root;
+    FVM_BitmapState *storage = new FVM_BitmapState;
+    try
+    {
+        storage->width = width;
+        storage->height = height;
+        storage->transparent = transparent;
+        storage->disposed = false;
+        storage->pixels = pixels;
+    }
+    catch (...)
+    {
+        delete storage;
+        throw;
+    }
+    if (klass)
+        return attach(c, klass, storage, out);
+    /* [GC:] Basic contexts can render a private bitmap even without installed script classes. */
+    FVM_Object *object = 0;
+    FVM_Result result = fvm_object_create(c, &object);
+    if (result != FVM_OK)
+    {
+        delete storage;
+        return result;
+    }
+    object->resource_kind = bitmap_kind;
+    /* [GC:] Transfer native pixel ownership only after the managed resource exists. */
+    object->resource = storage;
+    /* [GC:] Native pixel cleanup remains independent of script finalizers. */
+    object->release_resource = release;
+    /* [GC:] Return the completed managed edge for resource-dictionary adoption. */
+    *out = managed(object);
+    return FVM_OK;
+}
 /* [GC:] Install an unpublished display namespace and bitmap class with retained rectangle/clone
  * factories. */
 FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindings,

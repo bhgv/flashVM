@@ -26,12 +26,19 @@ struct FVM_SWFShapePaint
     unsigned int gradient_type; /* Zero for solid, 0x10 for linear, 0x12 for radial. */
     FVM_Affine gradient_matrix; /* Maps SWF gradient coordinates in pixels to shape-local pixels. */
     fvm_detail::vector<FVM_SWFGradientStop>
-        stops;   /* Owned sorted control points for a gradient fill. */
-    bool stroke; /* Distinguishes a zero-width hairline from a fill. */
+        stops;                /* Owned sorted control points for a gradient fill. */
+    unsigned int bitmap_type; /* Zero or bitmap fill style 0x40..0x43. */
+    unsigned int bitmap_id;   /* Referenced bitmap character ID, zero for non-bitmap paints. */
+    FVM_Affine bitmap_matrix; /* Maps source pixel coordinates to shape-local pixels. */
+    bool stroke;              /* Distinguishes a zero-width hairline from a fill. */
     fvm_detail::vector<FVM_PathCommand> commands; /* Owned vector commands in pixel coordinates. */
     /* Initialize a fully opaque solid fill with no geometry. */
-    FVM_SWFShapePaint() : rgb(0), alpha(100), width(0), gradient_type(0), stroke(false)
+    FVM_SWFShapePaint()
+        : rgb(0), alpha(100), width(0), gradient_type(0), bitmap_type(0), bitmap_id(0),
+          stroke(false)
     {
+        bitmap_matrix.xx = bitmap_matrix.yy = 1;
+        bitmap_matrix.xy = bitmap_matrix.yx = bitmap_matrix.x0 = bitmap_matrix.y0 = 0;
         gradient_matrix.xx = gradient_matrix.yy = 1;
         gradient_matrix.xy = gradient_matrix.yx = gradient_matrix.x0 = gradient_matrix.y0 = 0;
     }

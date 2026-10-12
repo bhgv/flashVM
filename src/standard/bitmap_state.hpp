@@ -23,6 +23,10 @@ FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *);
  */
 FVM_Result fvm_bitmap_copy_pixels(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                   FVM_Value *, void *);
+/* [GC:] Copy decoded RGBA into native bitmap storage, retaining an installed trusted class when
+ * available. */
+FVM_Result fvm_bitmap_create_pixels(FVM_Context *, unsigned, unsigned, bool,
+                                    const fvm_detail::vector<unsigned char> &, FVM_Value *);
 /* [GC:] Stage BitmapData under flash.display and retain geometry factory classes. */
 FVM_Result fvm_bitmap_stage(FVM_Context *, FVM_Object *, FVM_Object *, FVM_Object *, FVM_Object *,
                             fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);

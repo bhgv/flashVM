@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.44 / Remaining work after v0.44
+# Оставшаяся работа после v0.45 / Remaining work after v0.45
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -53,3 +53,7 @@ Stage 4 also requires completing geometry conformance and real SWF/reference,
 rendering/media, GC/allocation-failure and queue/file/network acceptance tests.
 The next concrete task is BitmapData and bitmap fills. No completion percentage,
 deadline or readiness is implied by the current version or test counts.
+
+В v0.45 проверены DefineBitsLossless/2 и bitmap-заливки Shape1/2/3; JPEG-теги и loadBitmap/draw остаются открытыми (SWF_LOSSLESS_BITMAPS.md).
+
+v0.45 checks lossless SWF resources and Shape1/2/3 bitmap fills; JPEG tags and loadBitmap/draw remain open.
