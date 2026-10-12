@@ -35,3 +35,19 @@ trace(tint.rgb);
 var tintCopy:ColorTransform = new ColorTransform(tint.redMultiplier, tint.greenMultiplier, tint.blueMultiplier, tint.alphaMultiplier, tint.redOffset, tint.greenOffset, tint.blueOffset, tint.alphaOffset);
 /* Печатаем все множители и смещения независимой копии. */
 trace(tintCopy.toString());
+/* Подключаем Transform для доступа к матрице и цвету существующего MovieClip. */
+import flash.geom.Transform;
+/* Создаём пустой клип на свободной глубине текущего экземпляра. */
+var sample:MovieClip = this.createEmptyMovieClip("geometrySample", this.getNextHighestDepth());
+/* Получаем обёртку, связанную с живым клипом; она не копирует сам клип. */
+var live:Transform = sample.transform;
+/* Берём независимый снимок локальной матрицы клипа. */
+var pose:Matrix = live.matrix;
+/* Меняем только снимок: сам клип пока остаётся на прежнем месте. */
+pose.translate(10, 20);
+/* Присваиваем изменённый снимок обратно и переносим клип. */
+live.matrix = pose;
+/* Применяем цветовые параметры; дальнейшие изменения tintCopy не изменят клип. */
+live.colorTransform = tintCopy;
+/* Печатаем матрицу с учётом всех родителей клипа. */
+trace(live.concatenatedMatrix);

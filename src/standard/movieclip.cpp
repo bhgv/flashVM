@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_scene.hpp"
+#include "transform_scene.hpp"
 #include "gradient.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
@@ -1970,7 +1971,8 @@ FVM_Result display_color(FVM_Context *c, FVM_Object *o, FVM_Object *data, const 
     FVM_Result r = numeric(c, o, "_alpha", alpha);
     if (r != FVM_OK)
         return r;
-    local.multiply[3] = alpha < 0 ? 0 : alpha > 100 ? 1 : alpha / 100;
+    /* Preserve the affine alpha coefficient; clamp the final rendered channel instead. */
+    local.multiply[3] = alpha / 100;
     if (data->properties.find("swf_color") != data->properties.end())
     {
         FVM_Object *record = 0;
@@ -2652,6 +2654,91 @@ extern "C" FVM_Result fvm_movieclip_set_matrix(FVM_Context *c, FVM_Object *o,
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Query a clip's accumulated matrix under a barrier protecting display-list references. */
+FVM_Result fvm_transform_scene_matrix(FVM_Context *c, FVM_Object *o, FVM_Affine *out)
+{
+    if (!c || !o || o->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Protect the parent graph while public coordinate conversions execute. */
+    FVM_NativeCallGuard guard(c);
+    return matrix(c, o, *out);
+}
+
+/* Query local or inherited color terms in the same order used by subtree rendering. */
+FVM_Result fvm_transform_scene_color(FVM_Context *c, FVM_Object *o, bool world, double *out)
+{
+    if (!c || !o || o->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Retain display/color records while getters and parent traversal can execute. */
+    FVM_NativeCallGuard guard(c);
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    ColorAffine inherited, result;
+    if (r == FVM_OK && world)
+        r = ancestor_color(c, o, inherited);
+    if (r == FVM_OK)
+        r = display_color(c, o, data, inherited, result);
+    if (r == FVM_OK)
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            out[i] = result.multiply[i];
+            out[i + 4] = result.add[i];
+        }
+    return r;
+}
+
+/* Publish copied RGBA terms and _alpha together, preserving old state on allocation failure. */
+FVM_Result fvm_transform_scene_set_color(FVM_Context *c, FVM_Object *o, const double *values)
+{
+    if (!c || !o || o->owner != c || !values)
+        return FVM_INVALID_ARGUMENT;
+    for (unsigned int i = 0; i < 8; ++i)
+        if (values[i] != values[i] || std::fabs(values[i]) > DBL_MAX ||
+            (i == 3 && std::fabs(values[i]) > DBL_MAX / 100))
+            return FVM_INVALID_ARGUMENT;
+    /* [GC:] Protect unpublished color records and both staged property maps. */
+    FVM_NativeCallGuard guard(c);
+    FVM_Object *data = 0, *record = 0;
+    FVM_Result r = state(o, data);
+    if (r == FVM_OK)
+        /* [GC:] Allocate independent numeric storage instead of retaining the source
+         * ColorTransform. */
+        r = fvm_object_create(c, &record);
+    if (r != FVM_OK)
+        return r;
+    const char *names[] = {"rm", "gm", "bm", "am", "ra", "ga", "ba", "aa"};
+    for (unsigned int i = 0; i < 8; ++i)
+        record->properties[names[i]] = number(values[i]);
+    /* [GC:] Stage public properties and preserve every existing managed edge. */
+    fvm_detail::map<fvm_detail::string, FVM_Value> properties = o->properties;
+    /* [GC:] Stage private display properties before publishing the new color edge. */
+    fvm_detail::map<fvm_detail::string, FVM_Value> private_state = data->properties;
+    properties["_alpha"] = number(values[3] * 100);
+    /* [GC:] The staged private map retains the independent color record. */
+    private_state["swf_color"] = object(record);
+    /* [GC:] Commit both complete maps using nonallocating swaps. */
+    o->properties.swap(properties);
+    /* [GC:] Publish the matching private color graph after the corresponding numeric properties. */
+    data->properties.swap(private_state);
+    return FVM_OK;
+}
+
+/* Query world-space stroked vector bounds without requiring an invertible display matrix. */
+FVM_Result fvm_transform_scene_bounds(FVM_Context *c, FVM_Object *o, FVM_PathBounds *out)
+{
+    if (!c || !o || o->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Protect child/path records during recursive bounds computation. */
+    FVM_NativeCallGuard guard(c);
+    FVM_PathBounds result;
+    std::memset(&result, 0, sizeof(result));
+    bool any = false;
+    FVM_Result r = bounds(c, o, identity(), true, result, any, 0);
+    if (r == FVM_OK)
+        *out = result;
+    return r;
 }
 
 /* [GC:] Define movieclip frame. */

@@ -14,7 +14,10 @@ enum FVM_GeometryKind
     FVM_GEOMETRY_RECTANGLE_CLASS = 47, /* Callable Rectangle constructor. */
     FVM_GEOMETRY_COLOR_TRANSFORM =
         48, /* Native numeric color channels stored in a traced state object. */
-    FVM_GEOMETRY_COLOR_TRANSFORM_CLASS = 49 /* Callable ColorTransform constructor. */
+    FVM_GEOMETRY_COLOR_TRANSFORM_CLASS = 49, /* Callable ColorTransform constructor. */
+    FVM_GEOMETRY_TRANSFORM =
+        50, /* Native scene-transform reference with traced MovieClip storage. */
+    FVM_GEOMETRY_TRANSFORM_CLASS = 51 /* Callable Transform constructor. */
 };
 
 /* [GC:] Stage flash.geom namespace/classes in unpublished standard-library maps. */

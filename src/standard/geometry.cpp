@@ -2,6 +2,7 @@
 #include "geometry_support.hpp"
 #include "rectangle_state.hpp"
 #include "color_transform_state.hpp"
+#include "transform_state.hpp"
 #include "primitive_state.hpp"
 #include "inheritance.hpp"
 #include "../core/native_call_guard.hpp"
@@ -851,8 +852,18 @@ FVM_Result fvm_geometry_stage(FVM_Context *c, Properties &globals,
                                   constructors);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Complete snapshot-producing Transform captures before publishing the geometry
+     * namespace. */
+    r = fvm_transform_stage(c, geometry, bindings, object_proto, function_proto, constructors);
+    if (r != FVM_OK)
+        return r;
     /* [GC:] Publish staged namespace edges only after all method/constructor records exist. */
     flash->properties["geom"] = managed(geometry);
+    /* [GC:] Bind MovieClip.transform only after its captured geometry constructor graph exists. */
+    FVM_Object *clip_proto = own_object(c, globals["MovieClip"].object, "prototype");
+    r = fvm_transform_install_movieclip(c, clip_proto, flash);
+    if (r != FVM_OK)
+        return r;
     /* [GC:] The staged global map owns the complete geometry namespace before installer
      * publication. */
     globals["flash"] = managed(flash);
@@ -871,7 +882,8 @@ FVM_Result fvm_geometry_validate(FVM_Context *c)
                    matrix->resource_kind == FVM_GEOMETRY_MATRIX_CLASS &&
                    point->constructable.callback == point_constructor &&
                    matrix->constructable.callback == matrix_constructor &&
-                   fvm_rectangle_validate(c, geometry) && fvm_color_transform_validate(c, geometry)
+                   fvm_rectangle_validate(c, geometry) &&
+                   fvm_color_transform_validate(c, geometry) && fvm_transform_validate(c, geometry)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
@@ -895,7 +907,10 @@ unsigned long fvm_geometry_callback_id(FVM_NativeFunction callback)
         if (callback == matrix_methods[i].callback)
             return 1130 + (unsigned long)i;
     unsigned long rectangle_id = fvm_rectangle_callback_id(callback);
-    return rectangle_id ? rectangle_id : fvm_color_transform_callback_id(callback);
+    if (rectangle_id)
+        return rectangle_id;
+    unsigned long color_id = fvm_color_transform_callback_id(callback);
+    return color_id ? color_id : fvm_transform_callback_id(callback);
 }
 
 /* Restore geometry callbacks without accepting an unknown or conflicting identifier. */
@@ -914,5 +929,8 @@ FVM_NativeFunction fvm_geometry_callback_from_id(unsigned long id)
     if (id >= 1130 && id < 1130 + sizeof(matrix_methods) / sizeof(matrix_methods[0]))
         return matrix_methods[id - 1130].callback;
     FVM_NativeFunction rectangle = fvm_rectangle_callback_from_id(id);
-    return rectangle ? rectangle : fvm_color_transform_callback_from_id(id);
+    if (rectangle)
+        return rectangle;
+    FVM_NativeFunction color = fvm_color_transform_callback_from_id(id);
+    return color ? color : fvm_transform_callback_from_id(id);
 }

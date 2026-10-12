@@ -9,10 +9,12 @@
 #include <new>
 #include <cstdio>
 static long allowance = -1;
+static long allocation_count = 0;
 /* Inject a single allocation boundary through every VM new/new[] site. Both
  * allocation and deallocation use malloc/free so ASan can still observe them. */
 void *operator new(std::size_t size) throw(std::bad_alloc)
 {
+    ++allocation_count;
     if (allowance == 0)
         throw std::bad_alloc();
     if (allowance > 0)
@@ -70,8 +72,15 @@ int main()
     FVM_Runtime *runtime = 0;
     assert(fvm_config_init(&config) == FVM_OK);
     assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
+    FVM_Context *baseline = 0;
+    assert(fvm_context_create(runtime, &baseline) == FVM_OK);
+    long before_install = allocation_count;
+    assert(fvm_standard_install(baseline) == FVM_OK);
+    long install_allocations = allocation_count - before_install;
+    assert(install_allocations > 0 && install_allocations < 20000);
+    fvm_context_destroy(baseline);
     bool installed = false, constructed = false;
-    for (long failure = 0; failure < 2048 && !installed; ++failure)
+    for (long failure = 0; failure <= install_allocations && !installed; ++failure)
     {
         FVM_Context *c = 0;
         FVM_Value value;
@@ -87,7 +96,7 @@ int main()
             const char *names[] = {"Math",     "Boolean",    "Number",        "Error",
                                    "parseInt", "parseFloat", "String",        "NaN",
                                    "Infinity", "Object",     "Array",         "Date",
-                                   "Function", "MovieClip",  "ASSetPropFlags"};
+                                   "Function", "MovieClip",  "ASSetPropFlags", "flash"};
             for (unsigned int i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
                 assert(fvm_get_global(c, names[i], &value) == FVM_OK &&
                        value.type == FVM_VALUE_UNDEFINED);

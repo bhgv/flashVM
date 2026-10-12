@@ -132,7 +132,7 @@ bool known_kind(unsigned long kind)
            kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
            kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
-           kind == 47 || kind == 48 || kind == 49;
+           kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51;
 }
 
 /* Compute and return identify. */
@@ -399,15 +399,17 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(result == FVM_OK, result);
         }
         if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
-            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 || dst.kind == 48)
+            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 ||
+            dst.kind == 48 || dst.kind == 50)
         {
             require(src->resource_result_valid &&
-                        src->resource_result.type == (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                                                      : dst.kind == 26 ? FVM_VALUE_STRING
-                                                      : (dst.kind == 32 || dst.kind == 37 ||
-                                                         dst.kind == 40 || dst.kind == 48)
-                                                          ? FVM_VALUE_OBJECT
-                                                          : FVM_VALUE_NUMBER),
+                        src->resource_result.type ==
+                            (dst.kind == 20   ? FVM_VALUE_BOOLEAN
+                             : dst.kind == 26 ? FVM_VALUE_STRING
+                             : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40 ||
+                                dst.kind == 48 || dst.kind == 50)
+                                 ? FVM_VALUE_OBJECT
+                                 : FVM_VALUE_NUMBER),
                     FVM_UNSUPPORTED);
             if (dst.kind == 48)
             {
@@ -977,13 +979,13 @@ Graph read_graph(Reader &r, unsigned int version)
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
-                 o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48)
-            require(o.state.type ==
-                    (o.kind == 20   ? FVM_VALUE_BOOLEAN
-                     : o.kind == 26 ? FVM_VALUE_STRING
-                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 || o.kind == 48)
-                         ? FVM_VALUE_OBJECT
-                         : FVM_VALUE_NUMBER));
+                 o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48 || o.kind == 50)
+            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
+                                     : o.kind == 26 ? FVM_VALUE_STRING
+                                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 ||
+                                        o.kind == 48 || o.kind == 50)
+                                         ? FVM_VALUE_OBJECT
+                                         : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
@@ -1178,6 +1180,28 @@ Graph read_graph(Reader &r, unsigned int version)
             require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
                     entry->second.metatable == none);
         }
+    }
+    /* [GC:] Transform private state contains only an optional reference to an actual MovieClip. */
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Object &transform = g.objects[i];
+        if (transform.kind != 50)
+            continue;
+        require(transform.state.type == FVM_VALUE_OBJECT && transform.state.object != none);
+        const Object &data = g.objects[transform.state.object];
+        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+                data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 1 &&
+                data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
+                data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                !data.invocable.builtin && data.invocable.name.empty() &&
+                !data.constructable.builtin && data.constructable.name.empty());
+        fvm_detail::map<fvm_detail::string, Value>::const_iterator reference =
+            data.properties.find("clip");
+        require(reference != data.properties.end() && reference->second.metatable == none &&
+                (reference->second.type == FVM_VALUE_UNDEFINED ||
+                 (reference->second.type == FVM_VALUE_OBJECT && reference->second.object != none &&
+                  g.objects[reference->second.object].kind == 40)));
     }
     /* Superclass facade metadata is a private receiver/depth record, never executable data. */
     for (size_t i = 0; i < n; ++i)
@@ -1482,7 +1506,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
-                src.kind == 48)
+                src.kind == 48 || src.kind == 50)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
