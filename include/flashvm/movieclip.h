@@ -14,9 +14,11 @@ extern "C"
     /* Create movieclip. */
     FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
                                             FVM_Object **);
-    /* Import root DoAction/FrameLabel timelines from FWS/CWS SWF 1..8.
-       Unsupported scene/resource tags return FVM_UNSUPPORTED; no actions run during loading.
-       On failure *out is null. The returned clip must be rooted by its host owner. */
+    /* Import root/sprite DoAction/FrameLabel timelines and ExportAssets from SWF 1..8.
+       FWS/CWS decoding is bounded; unimplemented scene/resource tags return FVM_UNSUPPORTED.
+       Loading runs no actions. Exported sprites can be instantiated through attachMovie.
+       On failure *out is null. [GC:] The returned clip and resource library must be rooted by their
+       host owner. */
     FVM_API FVM_Result fvm_movieclip_load_swf(FVM_Context *, const void *data, size_t size,
                                               const char *name, FVM_Object **out);
     /* Copy a validated AVM1 frame action and optional label. Frames start at 1. */

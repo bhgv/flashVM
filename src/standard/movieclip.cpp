@@ -5,6 +5,9 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "function_state.hpp"
+#include "base_state.hpp"
+#include "../core/call_scope.hpp"
+#include "flashvm/property.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -368,33 +371,14 @@ FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *
     return fvm_value_to_string(c, &v, out);
 }
 
-/* Create child. */
-FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
-                        FVM_Value *out, void *)
+/* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
+FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, unsigned long depth)
 {
-    if (n < 2)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
     r = private_object(data, "children", children);
-    if (r != FVM_OK)
-        return r;
-    FVM_Value name;
-    r = fvm_value_to_string(c, a, &name);
-    if (r != FVM_OK)
-        return r;
-    double depth = 0;
-    r = args(c, n, a, 1, 0, depth);
-    if (r != FVM_OK)
-        return r;
-    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
-        return FVM_INVALID_ARGUMENT;
-    FVM_Object *child = 0;
-    r = make(c, name.string, 1, o->prototype, &child);
     if (r != FVM_OK)
         return r;
     FVM_Object *child_data = child->resource_result.object;
@@ -423,8 +407,8 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
         }
     }
     next[(unsigned long)depth] = object(child);
-    if (props.find(name.string) == props.end())
-        props[name.string] = object(child);
+    if (props.find(name) == props.end())
+        props[name] = object(child);
     if (replaced)
     {
         FVM_Object *old_data = 0;
@@ -438,6 +422,193 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     /* Computation / Вычисление и обновление состояния. */
     children->indexed.swap(next);
     o->properties.swap(props);
+    return FVM_OK;
+}
+
+/* Validate counted string arguments before using the current NUL-terminated name model. */
+FVM_Result clip_name(FVM_Context *c, const FVM_Value *input, FVM_Value &name)
+{
+    FVM_Result r = fvm_value_to_string(c, input, &name);
+    if (r != FVM_OK)
+        return r;
+    return std::memchr(name.string, 0, fvm_string_size(name)) ? FVM_INVALID_ARGUMENT : FVM_OK;
+}
+
+/* Create an empty child while retaining its parent's optional SWF resource library. */
+FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
+                        FVM_Value *out, void *)
+{
+    if (n < 2)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value name;
+    r = clip_name(c, a, name);
+    if (r != FVM_OK)
+        return r;
+    double depth = 0;
+    r = args(c, n, a, 1, 0, depth);
+    if (r != FVM_OK)
+        return r;
+    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *child = 0, *proto = o->prototype;
+    FVM_Value library;
+    bool imported = field(data, "library", library) == FVM_OK;
+    if (imported)
+    {
+        if (library.type != FVM_VALUE_OBJECT || !library.object)
+            return FVM_INVALID_ARGUMENT;
+        r = private_object(library.object, "prototype", proto);
+        if (r != FVM_OK)
+            return r;
+    }
+    /* [GC:] Native dispatch protects the new child before its parent edge is installed. */
+    r = make(c, name.string, 1, proto, &child);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Empty descendants retain the library so attachMovie can resolve linkage names. */
+    if (imported)
+        child->resource_result.object->properties["library"] = library;
+    r = publish_child(o, child, name.string, (unsigned long)depth);
+    if (r == FVM_OK)
+        *out = object(child);
+    return r;
+}
+
+/* Copy enumerable initObject properties, invoking getters/setters on their actual receivers. */
+FVM_Result initialize_child(FVM_Context *c, FVM_Object *child, const FVM_Value &initial)
+{
+    if (initial.type != FVM_VALUE_OBJECT)
+        return FVM_OK;
+    FVM_Object *keys = 0;
+    FVM_Result r = fvm_object_enumerate(c, initial.object, 1, &keys);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] The native-call barrier retains this temporary key snapshot across accessor calls. */
+    Slots snapshot = keys->indexed;
+    for (Slots::iterator i = snapshot.begin(); i != snapshot.end(); ++i)
+    {
+        if (i->second.type != FVM_VALUE_STRING ||
+            std::memchr(i->second.string, 0, fvm_string_size(i->second)))
+            return FVM_INVALID_ARGUMENT;
+        FVM_Value value;
+        r = fvm_object_get(c, initial.object, i->second.string, &value);
+        if (r == FVM_OK)
+            r = fvm_object_set(c, child, i->second.string, &value);
+        if (r != FVM_OK)
+            return r;
+    }
+    return FVM_OK;
+}
+
+/* Attach an exported sprite with independent playback and optional registered class/initObject. */
+FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
+                        FVM_Value *out, void *)
+{
+    fvm_value_undefined(out);
+    if (n < 3)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0, *library = 0, *names = 0;
+    FVM_Result r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    if (data->properties.find("library") == data->properties.end())
+        return FVM_OK;
+    r = private_object(data, "library", library);
+    if (r != FVM_OK)
+        return r;
+    r = private_object(library, "exports", names);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value linkage, name;
+    r = clip_name(c, a, linkage);
+    if (r == FVM_OK)
+        r = clip_name(c, a + 1, name);
+    if (r != FVM_OK)
+        return r;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
+        names->properties.find(linkage.string);
+    if (entry == names->properties.end())
+        return FVM_OK;
+    if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *definition = entry->second.object, *frames = 0;
+    unsigned long total = 0;
+    r = integer_field(definition, "total", 65535, total);
+    if (r == FVM_OK)
+        r = private_object(definition, "frames", frames);
+    if (r != FVM_OK || !total)
+        return FVM_INVALID_ARGUMENT;
+    double depth = 0;
+    r = args(c, n, a, 2, 0, depth);
+    if (r != FVM_OK)
+        return r;
+    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+        return FVM_INVALID_ARGUMENT;
+
+    FVM_Object *proto = 0, *classes = 0, *constructor = 0;
+    r = private_object(library, "prototype", proto);
+    if (r != FVM_OK)
+        return r;
+    r = fvm_base_class_registry(c, &classes);
+    if (r == FVM_NOT_FOUND)
+    {
+        r = library->properties.find("classes") == library->properties.end()
+                ? FVM_OK
+                : private_object(library, "classes", classes);
+    }
+    if (r != FVM_OK)
+        return r;
+    if (classes)
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered =
+            classes->properties.find(linkage.string);
+        if (registered != classes->properties.end())
+        {
+            if (registered->second.type != FVM_VALUE_OBJECT ||
+                !registered->second.object->invocable.callback)
+                return FVM_INVALID_ARGUMENT;
+            constructor = registered->second.object;
+            FVM_Value prototype;
+            r = fvm_object_get(c, constructor, "prototype", &prototype);
+            if (r != FVM_OK)
+                return r;
+            if (prototype.type != FVM_VALUE_OBJECT)
+                return FVM_INVALID_ARGUMENT;
+            proto = prototype.object;
+        }
+    }
+    FVM_Object *child = 0, *child_frames = 0;
+    r = make(c, name.string, (unsigned int)total, proto, &child);
+    if (r != FVM_OK)
+        return r;
+    r = private_object(child->resource_result.object, "frames", child_frames);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Only immutable frame records are shared; each child owns its mutable frame table. */
+    child_frames->indexed = frames->indexed;
+    child->resource_result.object->properties["library"] = object(library);
+    r = publish_child(o, child, name.string, (unsigned long)depth);
+    if (r != FVM_OK)
+        return r;
+    if (n > 3)
+    {
+        r = initialize_child(c, child, a[3]);
+        if (r != FVM_OK)
+            return r;
+    }
+    if (constructor)
+    {
+        /* [GC:] Retain defining-constructor metadata for super and restore it after exceptions. */
+        FVM_CallScope scope(c, constructor, constructor, proto);
+        FVM_Value ignored;
+        r = fvm_function_invoke(c, constructor, child, 0, 0, &ignored);
+        if (r != FVM_OK)
+            return r;
+    }
     *out = object(child);
     return FVM_OK;
 }
@@ -1649,7 +1820,8 @@ const Method methods[] = {{"toString", target},
                           {"clear", clear},
                           {"getBounds", bounds_method},
                           {"getRect", rect_method},
-                          {"hitTest", hit}};
+                          {"hitTest", hit},
+                          {"attachMovie", attach_movie}};
 } // namespace
 /* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,

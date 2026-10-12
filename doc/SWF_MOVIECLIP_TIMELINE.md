@@ -1,6 +1,7 @@
 # SWF root action timelines / Корневые таймлайны действий SWF
 
 Development checkpoint v0.24; roadmap stage 3 remains open.
+The v0.25 extension adds sprite/linkage resources: [RU/EN](SWF_SPRITE_RESOURCES.md).
 
 ## English
 
