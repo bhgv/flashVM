@@ -144,6 +144,21 @@ int main()
     fvm_value_number(&out, 81);
     assert(fvm_object_set(c, property_object, "answer", &out) == FVM_OK);
     assert(fvm_object_get(c, property_object, "answer", &out) == FVM_OK && out.number == 81);
+    /* Canonical numeric properties use the same getter/setter bridge as names. */
+    fvm_value_string(descriptor_args, "0");
+    assert(fvm_object_call(c, property_object, "addProperty", 3, descriptor_args, &out) == FVM_OK &&
+           out.boolean);
+    fvm_value_number(&out, 81);
+    assert(fvm_object_set(c, property_object, "0", &out) == FVM_OK);
+    assert(fvm_object_get(c, property_object, "0", &out) == FVM_OK && out.number == 81);
+    int own = 0;
+    assert(fvm_object_has_own(c, property_object, "0", &own) == FVM_OK && own);
+    assert(fvm_object_call(c, property_object, "hasOwnProperty", 1, descriptor_args, &out) ==
+               FVM_OK &&
+           out.boolean);
+    assert(fvm_object_call(c, property_object, "isPropertyEnumerable", 1, descriptor_args, &out) ==
+               FVM_OK &&
+           out.boolean);
     object_value(&out, property_object);
     assert(fvm_object_set(c, fn, "accessor", &out) == FVM_OK);
     /* A one-element literal may contain any number, including a negative one. */
@@ -173,6 +188,21 @@ int main()
     fvm_value_number(&out, 82);
     assert(fvm_object_set(other, property_object, "answer", &out) == FVM_OK);
     assert(fvm_object_get(other, property_object, "answer", &out) == FVM_OK && out.number == 82);
+    /* Portable call/apply boxing uses captured classes, without receiver globals. */
+    object_value(&value, identity);
+    assert(fvm_channel_send_value(c, ch, &value, 0) == FVM_OK);
+    assert(fvm_channel_receive_value(other, ch, &copy, 0) == FVM_OK);
+    fvm_value_number(args, 17);
+    fvm_value_undefined(args + 1);
+    args[1].type = FVM_VALUE_NULL;
+    assert(fvm_object_call(other, copy.object, "apply", 2, args, &out) == FVM_OK &&
+           out.type == FVM_VALUE_OBJECT);
+    assert(fvm_object_call(other, out.object, "valueOf", 0, 0, &out) == FVM_OK && out.number == 17);
+    fvm_value_string(args, "portable this");
+    assert(fvm_object_call(other, copy.object, "call", 1, args, &out) == FVM_OK &&
+           out.type == FVM_VALUE_OBJECT);
+    assert(fvm_object_call(other, out.object, "valueOf", 0, 0, &out) == FVM_OK &&
+           !std::strcmp(out.string, "portable this"));
     assert(fvm_get_global(c, "Math", &klass) == FVM_OK);
     assert(fvm_object_get(c, klass.object, "abs", &method) == FVM_OK);
     assert(fvm_channel_send_value(c, ch, &method, 0) == FVM_OK);

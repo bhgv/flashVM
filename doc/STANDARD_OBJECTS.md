@@ -1,4 +1,4 @@
-# Standard object graph checkpoint — v0.13
+# Standard object graph checkpoint — v0.14
 
 This checkpoint expands the opt-in standard library and its graph channel format.
 It does **not** certify completion of all simple types, MovieClip, or SWF 8.
@@ -77,10 +77,11 @@ This is a host-authored display model, **not playback of a complete SWF display 
 
 ## Graph and lifetime contract
 
-Queue, file and broker TCP channels use the same value graph snapshot. Version 2
+Queue, file and broker TCP channels use the same value graph snapshot. Version 3
+adds watch handlers and their captures; readers accept versions 1, 2 and 3. Version 2
 adds property attributes, invocable/constructable entries and cached method
-function identities. The reader accepts genuine version-1 records too; version-1
-readers cannot read version 2. Dates, arrays, first-class functions and MovieClip
+function identities. Compatibility tests include genuine version-1 and version-2 records; older
+readers cannot read version 3. Dates, arrays, first-class functions and MovieClip
 have explicit serialized state. Graph cycles/aliases and imported prototypes are
 preserved. Import does not install global constructors or merge another context's
 class identity. Mutex/channel capabilities still refer to their authority rather
@@ -108,8 +109,7 @@ Remaining gates before the requested completion:
 - String's NUL-terminated scalar UTF-8 ABI cannot retain embedded NUL or lone
   UTF-16 surrogates; Unicode case mapping and complete SWF-version semantics
   remain pending. split with an empty separator can therefore reject a cut pair.
-- Object.watch/unwatch/registerClass and general property enumeration remain
-  unfinished. Borrowed Array methods, inherited sparse slots and mixed-type sort
+- Object.registerClass remains unfinished. Borrowed Array methods, inherited sparse slots and mixed-type sort
   compatibility need further acceptance coverage.
 - DefineFunction2/register preloads, complete arguments aliasing, interfaces and
   complete AVM1 control/coercion semantics remain unfinished.

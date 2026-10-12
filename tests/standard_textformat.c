@@ -2,6 +2,8 @@
 #include "flashvm/standard.h"
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
+#include "flashvm/function.h"
+#include "flashvm/transfer.h"
 #include "fixtures/font_data.h"
 #include <assert.h>
 #include <string.h>
@@ -42,6 +44,19 @@ int main(void)
     assert(fvm_get_global(c, "fmt", &v) == FVM_OK && v.type == FVM_VALUE_OBJECT);
     fmt = v.object;
     assert(get_number(c, fmt, "size") == 40 && get_number(c, fmt, "color") == 0xff0000);
+    {
+        FVM_Value klass, restored;
+        FVM_Channel *channel = 0;
+        FVM_Object *created = 0;
+        assert(fvm_get_global(c, "TextFormat", &klass) == FVM_OK);
+        assert(fvm_channel_create(&channel) == FVM_OK);
+        assert(fvm_channel_send_value(c, channel, &klass, 0) == FVM_OK);
+        assert(fvm_channel_receive_value(other, channel, &restored, 0) == FVM_OK);
+        assert(fvm_function_construct(other, restored.object, 0, 0, &created) == FVM_OK);
+        assert(fvm_object_get(other, created, "font", &out) == FVM_OK &&
+               out.type == FVM_VALUE_NULL);
+        fvm_channel_destroy(channel);
+    }
     assert(fvm_construct(c, "TextFormat", 0, 0, &empty) == FVM_OK);
     assert(fvm_gc_pin(c, empty) == FVM_OK);
     assert(fvm_object_get(c, empty, "font", &v) == FVM_OK && v.type == FVM_VALUE_NULL);

@@ -659,6 +659,23 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         if (result != FVM_OK)
             return result;
         FVM_Object *function_proto = globals["Function"].object->properties["prototype"].object;
+        /* Function.call/apply retain their actual boxing classes in the graph.
+         * A restored function can therefore box this without global installation. */
+        FVM_Object *boxing = 0;
+        result = fvm_object_create(c, &boxing);
+        if (result != FVM_OK)
+            return result;
+        const char *box_names[] = {"Number", "Boolean", "String"};
+        for (size_t i = 0; i < 3; ++i)
+            boxing->properties[box_names[i]] = globals[box_names[i]];
+        const char *call_names[] = {"call", "apply"};
+        for (size_t i = 0; i < 2; ++i)
+        {
+            FVM_NativeEntry &entry = function_proto->methods.find(call_names[i])->second;
+            entry.root = boxing;
+            entry.userdata = boxing;
+        }
+
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
                  constructors.begin();
              i != constructors.end(); ++i)
@@ -682,10 +699,38 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 g->second.object->constructable.callback)
                 g->second.object->invocable = i->second;
         }
+        /* Prepare all lookups before publication: map key construction may
+         * allocate. Post-publication links below are pointer assignments only. */
+        FVM_Object *text_classes[2] = {0, 0}, *text_prototypes[2] = {0, 0};
+        const char *text_names[] = {"TextFormat", "TextField"};
+        FVM_Object *object_proto =
+            constructors.find("Object")->second.root->properties.find("prototype")->second.object;
+        for (size_t i = 0; i < 2; ++i)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator text =
+                globals.find(text_names[i]);
+            if (text != globals.end() && text->second.type == FVM_VALUE_OBJECT &&
+                text->second.object->resource_kind == (i == 0 ? 1003 : 1004))
+            {
+                text_classes[i] = text->second.object;
+                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator prototype =
+                    text_classes[i]->properties.find("prototype");
+                if (prototype != text_classes[i]->properties.end() &&
+                    prototype->second.type == FVM_VALUE_OBJECT)
+                    text_prototypes[i] = prototype->second.object;
+            }
+        }
         c->global->properties.swap(globals);
         c->functions.swap(functions);
         c->constructors.swap(constructors);
         c->standard_library = true;
+        for (size_t i = 0; i < 2; ++i)
+        {
+            if (text_classes[i] && !text_classes[i]->prototype)
+                text_classes[i]->prototype = function_proto;
+            if (text_prototypes[i] && !text_prototypes[i]->prototype)
+                text_prototypes[i]->prototype = object_proto;
+        }
         return FVM_OK;
     }
     catch (...)

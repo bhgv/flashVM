@@ -149,6 +149,66 @@ static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
     result = false;
     return FVM_OK;
 }
+static FVM_Result lookup_variable(FVM_Context *c,
+                                  fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
+                                  FVM_Object *self, const char *name, FVM_Value *out,
+                                  bool *defined = 0, FVM_Object **call_receiver = 0)
+{
+    if (defined)
+        *defined = true;
+    if (call_receiver)
+        *call_receiver = c->global;
+    if (locals)
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local = locals->find(name);
+        if (local != locals->end())
+        {
+            *out = local->second;
+            return FVM_OK;
+        }
+    }
+    if (self && !std::strcmp(name, "this"))
+    {
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = self;
+        return FVM_OK;
+    }
+    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
+    unsigned int depth = 0;
+    while (binding && depth++ < 1024)
+    {
+        if (binding->properties.find(name) != binding->properties.end())
+            return fvm_object_get(c, binding, name, out);
+        binding = binding->prototype;
+    }
+    if (binding)
+        return FVM_ERROR;
+    binding = self && self != c->global ? self : 0;
+    depth = 0;
+    while (binding && depth++ < 1024)
+    {
+        if (binding->properties.find(name) != binding->properties.end() ||
+            binding->methods.find(name) != binding->methods.end() ||
+            binding->accessors.find(name) != binding->accessors.end())
+        {
+            if (call_receiver)
+                *call_receiver = self;
+            return fvm_object_get(c, self, name, out);
+        }
+        binding = binding->prototype;
+    }
+    if (binding)
+        return FVM_ERROR;
+    FVM_Result r = fvm_get_global(c, name, out);
+    if (r == FVM_OK && defined && out->type == FVM_VALUE_UNDEFINED)
+    {
+        int own = 0;
+        r = fvm_object_has_own(c, c->global, name, &own);
+        *defined = own != 0;
+    }
+    return r;
+}
 struct Execution
 {
     fvm_detail::vector<fvm_detail::string> constants;
@@ -856,8 +916,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 for (unsigned int i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - 3 - i];
                 FVM_Object *object = 0;
+                FVM_Value constructor;
+                bool defined = false;
                 FVM_Result result =
-                    fvm_construct(c, stack.back().string, argc, args.begin(), &object);
+                    lookup_variable(c, locals, self, stack.back().string, &constructor, &defined);
+                if (result == FVM_OK)
+                    result = defined ? constructor.type == FVM_VALUE_OBJECT
+                                           ? fvm_function_construct(c, constructor.object, argc,
+                                                                    args.begin(), &object)
+                                           : FVM_UNSUPPORTED
+                                     : fvm_construct(c, stack.back().string, argc, args.begin(),
+                                                     &object);
                 if (result != FVM_OK)
                     return result;
                 stack.resize(stack.size() - argc - 2);
@@ -866,6 +935,34 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.type = FVM_VALUE_OBJECT;
                 value.object = object;
                 stack.push_back(value);
+            }
+            else if (a.op == 0x46 || a.op == 0x55)
+            {
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value target = stack.back();
+                FVM_Result r = FVM_OK;
+                if (a.op == 0x46)
+                {
+                    if (target.type != FVM_VALUE_STRING)
+                        return FVM_INVALID_ARGUMENT;
+                    r = lookup_variable(c, locals, self, target.string, &target);
+                }
+                if (r != FVM_OK)
+                    return r;
+                if (target.type != FVM_VALUE_OBJECT)
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Object *keys = 0;
+                r = fvm_object_enumerate(c, target.object, 1, &keys);
+                if (r != FVM_OK)
+                    return r;
+                stack.pop_back();
+                FVM_Value end;
+                fvm_value_undefined(&end);
+                end.type = FVM_VALUE_NULL;
+                stack.push_back(end);
+                for (size_t i = keys->indexed.size(); i > 0; --i)
+                    stack.push_back(keys->indexed.find((unsigned long)i - 1)->second);
             }
             else if (a.op == 0x44 || a.op == 0x4a || a.op == 0x4b)
             {
@@ -979,42 +1076,48 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.back() = output;
             }
             else if (a.op == 0x4e)
-            { /* GetMember */
+            {
                 if (stack.size() < 2)
                     return FVM_ERROR;
+                FVM_Value key, value;
                 const FVM_Value &owner = stack[stack.size() - 2];
-                const FVM_Value &key = stack.back();
-                FVM_Value v;
+                const FVM_Value &member = stack.back();
                 FVM_Result r;
-                if (key.type == FVM_VALUE_STRING)
-                    r = fvm_value_get_property(c, &owner, key.string, &v);
-                else if (owner.type == FVM_VALUE_OBJECT && key.type == FVM_VALUE_NUMBER &&
-                         key.number >= 0 && key.number <= 4294967295.0 &&
-                         key.number == std::floor(key.number))
-                    r = fvm_table_get_index(c, owner.object, (unsigned long)key.number, &v);
+                /* Legacy native tables expose numeric slots through the indexed API. */
+                if (owner.type == FVM_VALUE_OBJECT && member.type == FVM_VALUE_NUMBER &&
+                    member.number >= 0 && member.number <= 4294967295.0 &&
+                    member.number == std::floor(member.number))
+                    r = fvm_table_get_index(c, owner.object, (unsigned long)member.number, &value);
                 else
-                    return FVM_ERROR;
+                {
+                    r = fvm_value_to_string(c, &member, &key);
+                    if (r == FVM_OK)
+                        r = fvm_value_get_property(c, &owner, key.string, &value);
+                }
                 if (r != FVM_OK)
                     return r;
                 stack.pop_back();
-                stack.back() = v;
+                stack.back() = value;
             }
             else if (a.op == 0x4f)
-            { /* SetMember */
+            {
                 if (stack.size() < 3)
                     return FVM_ERROR;
+                FVM_Value key;
                 const FVM_Value &owner = stack[stack.size() - 3];
-                const FVM_Value &key = stack[stack.size() - 2];
+                const FVM_Value &member = stack[stack.size() - 2];
                 FVM_Result r;
-                if (key.type == FVM_VALUE_STRING)
-                    r = fvm_value_set_property(c, &owner, key.string, &stack.back());
-                else if (owner.type == FVM_VALUE_OBJECT && key.type == FVM_VALUE_NUMBER &&
-                         key.number >= 0 && key.number <= 4294967295.0 &&
-                         key.number == std::floor(key.number))
-                    r = fvm_table_set_index(c, owner.object, (unsigned long)key.number,
+                if (owner.type == FVM_VALUE_OBJECT && member.type == FVM_VALUE_NUMBER &&
+                    member.number >= 0 && member.number <= 4294967295.0 &&
+                    member.number == std::floor(member.number))
+                    r = fvm_table_set_index(c, owner.object, (unsigned long)member.number,
                                             &stack.back());
                 else
-                    return FVM_ERROR;
+                {
+                    r = fvm_value_to_string(c, &member, &key);
+                    if (r == FVM_OK)
+                        r = fvm_value_set_property(c, &owner, key.string, &stack.back());
+                }
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - 3);
@@ -1105,52 +1208,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - (a.op == 0x3c ? 2 : 1));
             }
             else if (a.op == 0x1c)
-            { /* GetVariable */
+            {
                 if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                FVM_Value v;
-                FVM_Result r = FVM_OK;
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local =
-                    locals ? locals->find(stack.back().string)
-                           : fvm_detail::map<fvm_detail::string, FVM_Value>::iterator();
-                if (locals && local != locals->end())
-                    v = local->second;
-                else if (self && std::strcmp(stack.back().string, "this") == 0)
-                {
-                    fvm_value_undefined(&v);
-                    v.type = FVM_VALUE_OBJECT;
-                    v.object = self;
-                }
-                else
-                {
-                    /* An explicitly undefined binding still shadows outer scopes. */
-                    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
-                    unsigned int levels = 0;
-                    while (binding && levels++ < 1024 &&
-                           binding->properties.find(stack.back().string) ==
-                               binding->properties.end())
-                        binding = binding->prototype;
-                    if (binding && levels <= 1024)
-                        r = fvm_object_get(c, binding, stack.back().string, &v);
-                    else
-                    {
-                        FVM_Object *member = self && self != c->global ? self : 0;
-                        unsigned int depth = 0;
-                        while (member && depth++ < 1024 &&
-                               member->properties.find(stack.back().string) ==
-                                   member->properties.end() &&
-                               member->methods.find(stack.back().string) == member->methods.end() &&
-                               member->accessors.find(stack.back().string) ==
-                                   member->accessors.end())
-                            member = member->prototype;
-                        r = member && depth <= 1024
-                                ? fvm_object_get(c, self, stack.back().string, &v)
-                                : fvm_get_global(c, stack.back().string, &v);
-                    }
-                }
+                FVM_Value value;
+                FVM_Result r = lookup_variable(c, locals, self, stack.back().string, &value);
                 if (r != FVM_OK)
                     return r;
-                stack.back() = v;
+                stack.back() = value;
             }
             else if (a.op == 0x1d)
             { /* SetVariable: name, value */
@@ -1216,10 +1281,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x52 || a.op == 0x53)
             { /* CallMethod: args, argc, receiver, method name */
-                if (stack.size() < 3 || stack.back().type != FVM_VALUE_STRING ||
+                if (stack.size() < 3 ||
+                    (stack.back().type != FVM_VALUE_STRING && stack.back().type != FVM_VALUE_NULL &&
+                     stack.back().type != FVM_VALUE_UNDEFINED) ||
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
-                fvm_detail::string name = stack.back().string;
+                fvm_detail::string name =
+                    stack.back().type == FVM_VALUE_STRING ? stack.back().string : "";
                 FVM_Value owner = stack[stack.size() - 2];
                 FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
                 if (!receiver)
@@ -1305,20 +1373,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     c->script_functions.find(name);
                 FVM_Value callable;
                 fvm_value_undefined(&callable);
-                if (locals)
-                {
-                    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local =
-                        locals->find(name);
-                    if (local != locals->end())
-                        callable = local->second;
-                }
-                if (callable.type == FVM_VALUE_UNDEFINED && !c->lexical_scopes.empty())
-                    r = fvm_object_get(c, c->lexical_scopes.back(), name.c_str(), &callable);
-                if (callable.type == FVM_VALUE_UNDEFINED)
-                    r = fvm_get_global(c, name.c_str(), &callable);
+                bool defined = false;
+                FVM_Object *call_receiver = c->global;
+                r = lookup_variable(c, locals, self, name.c_str(), &callable, &defined,
+                                    &call_receiver);
+                if (r != FVM_OK)
+                    return r;
                 if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
-                    r = fvm_function_invoke(c, callable.object, c->global, argc, args.begin(),
+                    r = fvm_function_invoke(c, callable.object, call_receiver, argc, args.begin(),
                                             &result);
+                else if (defined)
+                    r = FVM_UNSUPPORTED;
                 else if (fn != c->script_functions.end())
                     r = call_script(c, fn->first.c_str(), fn->second, argc, args.begin(), c->global,
                                     &result);

@@ -5,6 +5,8 @@
 #include "flashvm/table.h"
 #include "flashvm/function.h"
 #include <cstring>
+#include <cstdio>
+#include <new>
 extern "C"
 {
     FVM_Result fvm_meta_register(FVM_Context *c, FVM_Object *m, const char *name,
@@ -76,8 +78,8 @@ extern "C"
             return FVM_ERROR;
         }
     }
-    FVM_Result fvm_meta_iterate(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value *key,
-                                FVM_Value *value)
+    static FVM_Result iterate(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value *key,
+                              FVM_Value *value)
     {
         if (!c || !o || o->owner != c || !key || !value)
             return FVM_INVALID_ARGUMENT;
@@ -108,27 +110,64 @@ extern "C"
                 }
             }
         }
-        /* Default iteration: indexed entries followed by named entries. */
-        if (index < o->indexed.size())
+        /* Default own iteration keeps numeric keys and skips DONT_ENUM slots. */
+        unsigned long position = 0;
+        for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = o->indexed.begin();
+             i != o->indexed.end(); ++i)
         {
-            fvm_detail::map<unsigned long, FVM_Value>::iterator it = o->indexed.begin();
-            while (index--)
-                ++it;
-            fvm_value_number(key, (double)it->first);
-            *value = it->second;
-            return FVM_OK;
+            char name[32];
+            std::sprintf(name, "%lu", i->first);
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
+                o->attributes.find(name);
+            if (flag != o->attributes.end() && (flag->second & 1))
+                continue;
+            if (position++ == index)
+            {
+                fvm_value_number(key, (double)i->first);
+                *value = i->second;
+                return FVM_OK;
+            }
         }
-        index -= (unsigned long)o->indexed.size();
-        if (index < o->properties.size())
+        for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.begin();
+             i != o->properties.end(); ++i)
         {
-            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = o->properties.begin();
-            while (index--)
-                ++it;
-            fvm_value_string(key, it->first.c_str());
-            *value = it->second;
-            return FVM_OK;
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
+                o->attributes.find(i->first);
+            if (flag != o->attributes.end() && (flag->second & 1))
+                continue;
+            if (position++ == index)
+            {
+                fvm_value_string(key, i->first.c_str());
+                *value = i->second;
+                return FVM_OK;
+            }
         }
         return FVM_OK;
+    }
+}
+
+extern "C" FVM_Result fvm_meta_iterate(FVM_Context *c, FVM_Object *o, unsigned long index,
+                                       FVM_Value *key, FVM_Value *value)
+{
+    try
+    {
+        return iterate(c, o, index, key, value);
+    }
+    catch (const std::bad_alloc &)
+    {
+        if (key)
+            fvm_value_undefined(key);
+        if (value)
+            fvm_value_undefined(value);
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        if (key)
+            fvm_value_undefined(key);
+        if (value)
+            fvm_value_undefined(value);
+        return FVM_ERROR;
     }
 }
 

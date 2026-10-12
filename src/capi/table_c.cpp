@@ -1,4 +1,5 @@
 #include "../standard/base_state.hpp"
+#include "../core/property_watch.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
 #include "../core/runtime.hpp"
@@ -37,12 +38,12 @@ static FVM_Result store(FVM_Context *c, const FVM_Value *v, FVM_Value *out)
 }
 extern "C"
 {
-    FVM_Result fvm_table_set_index(FVM_Context *c, FVM_Object *o, unsigned long key,
-                                   const FVM_Value *v)
+    static FVM_Result set_index(FVM_Context *c, FVM_Object *o, unsigned long key,
+                                const FVM_Value *v)
     {
         FVM_Value x;
         FVM_Result r;
-        if (!valid(c, o))
+        if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
         if (o->resource_kind == 28 || o->resource_kind == 30)
         {
@@ -67,7 +68,31 @@ extern "C"
                     return FVM_OK;
             }
         }
-        r = store(c, v, &x);
+        if (o->resource_kind == 28 || o->resource_kind == 30)
+        {
+            char name[32];
+            std::sprintf(name, "%lu", key);
+            FVM_Object *cursor = o;
+            unsigned int depth = 0;
+            while (cursor && depth++ < 1024)
+            {
+                if (cursor->indexed.find(key) != cursor->indexed.end() ||
+                    cursor->properties.find(name) != cursor->properties.end())
+                    break;
+                if (cursor->accessors.find(name) != cursor->accessors.end())
+                    return fvm_object_set_no_index(c, o, name, v);
+                cursor = cursor->prototype;
+            }
+            if (cursor && depth > 1024)
+                return FVM_ERROR;
+        }
+        char watched_name[32];
+        std::sprintf(watched_name, "%lu", key);
+        FVM_Value watched;
+        r = fvm_property_watch_prepare(c, o, watched_name, v, &watched);
+        if (r != FVM_OK)
+            return r;
+        r = store(c, &watched, &x);
         if (r != FVM_OK)
             return r;
         try
@@ -81,12 +106,16 @@ extern "C"
         }
         return FVM_OK;
     }
-    FVM_Result fvm_table_get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
+    static FVM_Result get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
     {
         if (!valid(c, o) || !out)
             return FVM_INVALID_ARGUMENT;
-        if (o->resource_kind == 28 || o->resource_kind == 30)
+        FVM_Object *receiver = o;
+        bool standard_indices = o->resource_kind == 28 || o->resource_kind == 30;
+        if (standard_indices)
         {
+            char name[32];
+            std::sprintf(name, "%lu", key);
             if (key > 0xffffffffUL)
                 return FVM_INVALID_ARGUMENT;
             if (key == 0xffffffffUL)
@@ -105,6 +134,10 @@ extern "C"
                     *out = i->second;
                     return FVM_OK;
                 }
+                if (cursor->properties.find(name) != cursor->properties.end() ||
+                    cursor->accessors.find(name) != cursor->accessors.end() ||
+                    cursor->methods.find(name) != cursor->methods.end())
+                    return fvm_object_get_no_index(c, receiver, name, out);
                 cursor = cursor->prototype;
             }
             if (cursor)
@@ -120,8 +153,50 @@ extern "C"
             }
             o = o->metatable;
         }
+        if (standard_indices)
+        {
+            char name[32];
+            std::sprintf(name, "%lu", key);
+            return fvm_object_get_no_index(c, receiver, name, out);
+        }
         fvm_value_undefined(out);
         return FVM_OK;
+    }
+    FVM_Result fvm_table_set_index(FVM_Context *c, FVM_Object *o, unsigned long key,
+                                   const FVM_Value *v)
+    {
+        try
+        {
+            return set_index(c, o, key, v);
+        }
+        catch (const std::bad_alloc &)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
+        catch (...)
+        {
+            return FVM_ERROR;
+        }
+    }
+    FVM_Result fvm_table_get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)
+    {
+        if (!out)
+            return FVM_INVALID_ARGUMENT;
+        fvm_value_undefined(out);
+        try
+        {
+            return get_index(c, o, key, out);
+        }
+        catch (const std::bad_alloc &)
+        {
+            fvm_value_undefined(out);
+            return FVM_OUT_OF_MEMORY;
+        }
+        catch (...)
+        {
+            fvm_value_undefined(out);
+            return FVM_ERROR;
+        }
     }
     FVM_Result fvm_table_set_metatable(FVM_Context *c, FVM_Object *o, FVM_Object *meta)
     {

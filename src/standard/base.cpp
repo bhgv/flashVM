@@ -1,4 +1,6 @@
 #include "base_state.hpp"
+#include "../core/native_call_guard.hpp"
+#include "../core/property_watch.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/table.h"
@@ -52,8 +54,35 @@ FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
 }
 /* Apply indexed writes/deletes to a staged snapshot. Attributes belong to
  * destination properties, not to values moved by reverse/splice/sort. */
-void commit_slots(FVM_Object *o, Slots &next, unsigned long length)
+FVM_Result commit_slots(FVM_Context *c, FVM_Object *o, Slots &next, unsigned long length,
+                        unsigned long write_begin = 0, unsigned long write_end = 0,
+                        bool skip_middle = false)
 {
+    if (!o->watchers.empty())
+        for (Slots::iterator i = next.begin(); i != next.end(); ++i)
+        {
+            if (i->first < write_begin || i->first >= write_end ||
+                (skip_middle && i->first == length / 2))
+                continue;
+            char name[32];
+            std::sprintf(name, "%lu", i->first);
+            unsigned int flags = 0;
+            FVM_Result r = fvm_object_property_flags(c, o, name, &flags);
+            if (r != FVM_OK)
+                return r;
+            if (flags & 4)
+                continue;
+            r = fvm_object_property_flags(c, o, "length", &flags);
+            if (r != FVM_OK)
+                return r;
+            if ((flags & 4) && i->first >= size(o))
+                continue;
+            FVM_Value watched;
+            r = fvm_property_watch_prepare(c, o, name, &i->second, &watched);
+            if (r != FVM_OK)
+                return r;
+            i->second = watched;
+        }
     fvm_detail::map<fvm_detail::string, unsigned int> attributes = o->attributes;
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator length_flag =
         attributes.find("length");
@@ -89,6 +118,7 @@ void commit_slots(FVM_Object *o, Slots &next, unsigned long length)
     o->indexed.swap(next);
     o->attributes.swap(attributes);
     o->resource_result.number = length;
+    return FVM_OK;
 }
 FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
@@ -118,7 +148,9 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         if (i->first < (unsigned long)length)
             kept[i->first] = i->second;
-    commit_slots(o, kept, (unsigned long)length);
+    r = commit_slots(c, o, kept, (unsigned long)length);
+    if (r != FVM_OK)
+        return r;
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -151,17 +183,10 @@ FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     FVM_Result r = fvm_value_to_string(c, n ? a : &absent, &key);
     if (r != FVM_OK)
         return r;
-    unsigned long index;
     int has = 0;
-    if ((o->resource_kind == ARRAY_OBJECT || o->resource_kind == OBJECT_OBJECT) &&
-        fvm_as_index(key.string, &index))
-        has = o->indexed.find(index) != o->indexed.end();
-    else
-    {
-        r = fvm_object_has_own(c, o, key.string, &has);
-        if (r != FVM_OK)
-            return r;
-    }
+    r = fvm_object_has_own(c, o, key.string, &has);
+    if (r != FVM_OK)
+        return r;
     fvm_value_boolean(out, has);
     return FVM_OK;
 }
@@ -404,7 +429,9 @@ FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
             return r;
         next[old + i] = v;
     }
-    commit_slots(o, next, old + n);
+    FVM_Result committed = commit_slots(c, o, next, old + n, old, old + n);
+    if (committed != FVM_OK)
+        return committed;
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
@@ -422,7 +449,9 @@ FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, F
         return r;
     Slots next = o->indexed;
     next.erase(old - 1);
-    commit_slots(o, next, old - 1);
+    FVM_Result committed = commit_slots(c, o, next, old - 1);
+    if (committed != FVM_OK)
+        return committed;
     return FVM_OK;
 }
 FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
@@ -442,7 +471,9 @@ FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         if (i->first > 0)
             next[i->first - 1] = i->second;
-    commit_slots(o, next, old - 1);
+    FVM_Result committed = commit_slots(c, o, next, old - 1, 0, old - 1);
+    if (committed != FVM_OK)
+        return committed;
     *out = first;
     return FVM_OK;
 }
@@ -465,11 +496,13 @@ FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
             return r;
         next[i] = v;
     }
-    commit_slots(o, next, old + n);
+    FVM_Result committed = commit_slots(c, o, next, old + n, 0, old + n);
+    if (committed != FVM_OK)
+        return committed;
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
-FVM_Result reverse(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                    void *)
 {
     if (!array(o))
@@ -478,7 +511,9 @@ FVM_Result reverse(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *
     unsigned long length = size(o);
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         next[length - i->first - 1] = i->second;
-    commit_slots(o, next, length);
+    FVM_Result committed = commit_slots(c, o, next, length, 0, length, (length & 1) != 0);
+    if (committed != FVM_OK)
+        return committed;
     return object_value(0, o, 0, 0, out, 0);
 }
 FVM_Result index_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i,
@@ -573,7 +608,11 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
             return r;
         next[start + i] = v;
     }
-    commit_slots(o, next, length - deleted + added);
+    FVM_Result committed =
+        commit_slots(c, o, next, length - deleted + added, start,
+                     added == deleted ? start + added : length - deleted + added);
+    if (committed != FVM_OK)
+        return committed;
     return object_value(c, removed, 0, 0, out, 0);
 }
 FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
@@ -927,7 +966,9 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
             }
         return object_value(c, indices, 0, 0, out, 0);
     }
-    commit_slots(o, reordered, length);
+    FVM_Result committed = commit_slots(c, o, reordered, length, 0, length);
+    if (committed != FVM_OK)
+        return committed;
     if (spec)
     {
         fvm_value_undefined(out);
@@ -1054,9 +1095,43 @@ FVM_Result add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, co
     /* Allocate before removing a data property so allocation failure preserves it. */
     receiver->accessors[name] = entry;
     receiver->properties.erase(name);
+    if (receiver->resource_kind == OBJECT_OBJECT && fvm_as_index(name, &index))
+        receiver->indexed.erase(index);
     receiver->methods.erase(name);
     receiver->method_values.erase(name);
     fvm_value_boolean(out, 1);
+    return FVM_OK;
+}
+FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_Value *a,
+                 FVM_Value *out, void *)
+{
+    fvm_value_boolean(out, 0);
+    if (n < 2 || a[0].type != FVM_VALUE_STRING || !*a[0].string || a[1].type != FVM_VALUE_OBJECT ||
+        !a[1].object->invocable.callback || !fvm_property_watchable(object, a[0].string))
+        return FVM_OK;
+    FVM_Object *descriptor = 0;
+    FVM_Result r = fvm_object_create(c, &descriptor);
+    if (r != FVM_OK)
+        return r;
+    r = fvm_object_set(c, descriptor, "handler", a + 1);
+    FVM_Value undefined;
+    fvm_value_undefined(&undefined);
+    if (r == FVM_OK)
+        r = fvm_object_set(c, descriptor, "userData", n > 2 ? a + 2 : &undefined);
+    if (r != FVM_OK)
+        return r;
+    object->watchers[a[0].string] = descriptor;
+    fvm_value_boolean(out, 1);
+    return FVM_OK;
+}
+FVM_Result unwatch(FVM_Context *, FVM_Object *object, unsigned int n, const FVM_Value *a,
+                   FVM_Value *out, void *)
+{
+    bool present = n && a[0].type == FVM_VALUE_STRING &&
+                   object->watchers.find(a[0].string) != object->watchers.end();
+    if (present)
+        object->watchers.erase(a[0].string);
+    fvm_value_boolean(out, present);
     return FVM_OK;
 }
 struct Method
@@ -1071,7 +1146,9 @@ const Method object_methods[] = {{"valueOf", object_value},
                                  {"propertyIsEnumerable", enumerable},
                                  {"isPropertyEnumerable", enumerable},
                                  {"isPrototypeOf", is_prototype},
-                                 {"addProperty", add_property}};
+                                 {"addProperty", add_property},
+                                 {"watch", watch},
+                                 {"unwatch", unwatch}};
 const Method array_methods[] = {
     {"push", push},       {"pop", pop},       {"shift", shift},         {"unshift", unshift},
     {"reverse", reverse}, {"slice", slice},   {"splice", splice},       {"concat", concat},
@@ -1102,6 +1179,12 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
 FVM_Result fvm_array_create_like(FVM_Context *c, FVM_Object *source, unsigned long length,
                                  FVM_Object **out)
 {
+    if (!c || !out || (source && source->owner != c))
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    /* Prototype getters are user code. Defer GC until this not-yet-published
+     * object, and any enclosing function being built, enter VM roots. */
+    FVM_NativeCallGuard construction(c);
     FVM_Result r = fvm_object_create(c, out);
     if (r != FVM_OK)
         return r;

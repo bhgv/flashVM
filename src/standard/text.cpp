@@ -345,7 +345,9 @@ static FVM_Result format_constructor(FVM_Context *c, FVM_Object *, unsigned int 
     FVM_Object *klass = (FVM_Object *)userdata, *object = 0;
     FVM_Value prototype;
     FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
-    if (result != FVM_OK || prototype.type != FVM_VALUE_OBJECT)
+    if (result != FVM_OK)
+        return result;
+    if (prototype.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
     result = create_format(c, prototype.object, n, args, &object);
     if (result == FVM_OK)
@@ -675,6 +677,8 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
 } // namespace
 unsigned long fvm_text_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == format_constructor)
+        return 206;
     if (callback == get_extent)
         return 200;
     if (callback == field_method)
@@ -691,6 +695,8 @@ unsigned long fvm_text_callback_id(FVM_NativeFunction callback)
 }
 FVM_NativeFunction fvm_text_callback_from_id(unsigned long id)
 {
+    if (id == 206)
+        return format_constructor;
     if (id == 200)
         return get_extent;
     if (id == 201)
@@ -748,8 +754,10 @@ extern "C" FVM_Result fvm_standard_text_install(FVM_Context *c)
             FVM_Value v;
             object_value(&v, prototypes[i]);
             classes[i]->properties["prototype"] = v;
+            classes[i]->attributes["prototype"] = 3;
             object_value(&v, classes[i]);
             prototypes[i]->properties["constructor"] = v;
+            prototypes[i]->attributes["constructor"] = 1;
             globals[names[i]] = v;
         }
         FVM_NativeEntry ctor;
@@ -757,6 +765,38 @@ extern "C" FVM_Result fvm_standard_text_install(FVM_Context *c)
         ctor.userdata = classes[0];
         ctor.root = classes[0];
         constructors["TextFormat"] = ctor;
+        classes[0]->constructable = ctor;
+        classes[0]->invocable = ctor;
+        FVM_NativeEntry field_constructor;
+        field_constructor.callback = unsupported;
+        classes[1]->invocable = field_constructor;
+        classes[1]->constructable = field_constructor;
+        if (c->standard_library)
+        {
+            FVM_Value function, object;
+            FVM_Result result = fvm_get_global(c, "Function", &function);
+            if (result == FVM_OK)
+                result = fvm_get_global(c, "Object", &object);
+            if (result != FVM_OK)
+                return result;
+            if (function.type != FVM_VALUE_OBJECT || object.type != FVM_VALUE_OBJECT)
+                return FVM_INVALID_ARGUMENT;
+            FVM_Value function_proto, object_proto;
+            result = fvm_object_get(c, function.object, "prototype", &function_proto);
+            if (result == FVM_OK)
+                result = fvm_object_get(c, object.object, "prototype", &object_proto);
+            if (result != FVM_OK)
+                return result;
+            if (function_proto.type != FVM_VALUE_OBJECT || object_proto.type != FVM_VALUE_OBJECT)
+                return FVM_INVALID_ARGUMENT;
+            for (size_t i = 0; i < 2; ++i)
+            {
+                classes[i]->prototype = function_proto.object;
+                prototypes[i]->prototype = object_proto.object;
+                classes[i]->attributes["prototype"] = 3;
+                prototypes[i]->attributes["constructor"] = 1;
+            }
+        }
         c->global->properties.swap(globals);
         c->constructors.swap(constructors);
         c->standard_text_library = true;

@@ -107,6 +107,8 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
 {
     if (!frames || frames > 65535)
         return FVM_INVALID_ARGUMENT;
+    /* Custom prototype setters must not collect a partially constructed tree. */
+    FVM_NativeCallGuard construction(c);
     FVM_Object *o = 0, *data = 0, *children = 0, *paths = 0, *timeline = 0;
     FVM_Result r = fvm_object_create(c, &o);
     if (r != FVM_OK)

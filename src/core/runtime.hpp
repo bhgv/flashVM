@@ -59,6 +59,7 @@ struct FVM_Object
     FVM_StackEntry callable;
     FVM_NativeEntry invocable, constructable;
     fvm_detail::map<fvm_detail::string, FVM_Object *> method_values;
+    fvm_detail::map<fvm_detail::string, FVM_Object *> watchers;
     bool resource_result_valid;
     FVM_Value resource_result;
     unsigned long resource_origin;
@@ -114,6 +115,7 @@ struct FVM_Context
     unsigned long avm1_steps;
     fvm_detail::map<fvm_detail::string, FVM_Object *> function_objects;
     fvm_detail::vector<FVM_Object *> lexical_scopes;
+    fvm_detail::vector<FVM_Object *> watch_running;
     bool standard_text_library;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *> fonts;
     fvm_detail::string default_font;
@@ -163,4 +165,9 @@ unsigned long fvm_text_callback_id(FVM_NativeFunction);
 FVM_NativeFunction fvm_text_callback_from_id(unsigned long);
 FVM_Result fvm_release_object_resource(FVM_Context *, FVM_Object *);
 FVM_Result fvm_validate_value(FVM_Context *, const FVM_Value *);
+/* Named lookup without the canonical-index bridge prevents recursive aliasing
+ * when indexed access encounters a named getter/setter or metatable hook. */
+FVM_Result fvm_object_get_no_index(FVM_Context *, FVM_Object *, const char *, FVM_Value *);
+FVM_Result fvm_object_set_no_index(FVM_Context *, FVM_Object *, const char *, const FVM_Value *);
+
 #endif

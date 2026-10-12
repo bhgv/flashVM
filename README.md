@@ -1,5 +1,5 @@
-Development version: **0.13** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.13 ` and an English description. Increase the subversion before each
+Development version: **0.14** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.14 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -10,7 +10,7 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
 Версия разработки: **0.13** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.13 ` и описания на английском. Перед каждым коммитом повышается
+начинаются с `v0.14 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -375,3 +375,5 @@ See [English](doc/STANDARD_OBJECTS.md) and [русский](doc/STANDARD_OBJECTS
 for Object/Array/Date/Function, the host-authored MovieClip model, graph wire v2,
 queue/file/TCP acceptance tests and explicit remaining completion gates.
 This checkpoint does not certify complete simple types or MovieClip/SWF 8.
+
+Property watches and enumeration / Наблюдение и перечисление: [documentation](doc/PROPERTY_WATCH.md).

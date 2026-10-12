@@ -25,6 +25,8 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
         mark_object(c->joining_arrays[j], pending);
     for (size_t j = 0; j < c->lexical_scopes.size(); ++j)
         mark_object(c->lexical_scopes[j], pending);
+    for (size_t j = 0; j < c->watch_running.size(); ++j)
+        mark_object(c->watch_running[j], pending);
     for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator f =
              c->function_objects.begin();
          f != c->function_objects.end(); ++f)
@@ -78,6 +80,9 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
                  o->method_values.begin();
              f != o->method_values.end(); ++f)
             mark_object(f->second, pending);
+        for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator watcher =
+                 o->watchers.begin(); watcher != o->watchers.end(); ++watcher)
+            mark_object(watcher->second, pending);
         for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
                  o->accessors.begin();
              accessor != o->accessors.end(); ++accessor)

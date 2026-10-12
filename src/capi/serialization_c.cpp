@@ -73,7 +73,7 @@ struct Object
     fvm_detail::map<fvm_detail::string, Callback> methods, metamethods;
     fvm_detail::map<fvm_detail::string, unsigned int> attributes;
     Callback invocable, constructable;
-    fvm_detail::map<fvm_detail::string, Value> method_values;
+    fvm_detail::map<fvm_detail::string, Value> method_values, watchers;
     fvm_detail::map<fvm_detail::string, Accessor> accessors;
     Object() : kind(0), prototype(none), metatable(none)
     {
@@ -203,6 +203,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         Object dst;
         if (src->resource_kind == 1 || src->resource_kind == 8)
         {
+            require(src->watchers.empty(), FVM_UNSUPPORTED);
             FVM_Result result;
             if (c->transfer_resources)
             {
@@ -245,6 +246,18 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             charge(budget, method->first.size() + 12);
             ++entries;
             require(entries <= max_entries, FVM_UNSUPPORTED);
+        }
+        for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator watcher =
+                 src->watchers.begin();
+             watcher != src->watchers.end(); ++watcher)
+        {
+            FVM_Value descriptor;
+            fvm_value_undefined(&descriptor);
+            descriptor.type = FVM_VALUE_OBJECT;
+            descriptor.object = watcher->second;
+            dst.watchers[watcher->first] = capture_value(c, descriptor, seen, budget);
+            charge(budget, watcher->first.size() + 12);
+            require(++entries <= max_entries, FVM_UNSUPPORTED);
         }
         dst.attributes = src->attributes;
         for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
@@ -508,6 +521,13 @@ void write_graph(const Graph &g, Writer &w)
             w.string(p->first);
             w.value(p->second);
         }
+        w.u32((unsigned long)o.watchers.size());
+        for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.watchers.begin();
+             p != o.watchers.end(); ++p)
+        {
+            w.string(p->first);
+            w.value(p->second);
+        }
     }
 }
 struct Reader
@@ -754,6 +774,18 @@ Graph read_graph(Reader &r, unsigned int version)
                 o.method_values[name] = method;
             }
         }
+        if (version >= 3)
+        {
+            count = r.count();
+            for (size_t j = 0; j < count; ++j)
+            {
+                fvm_detail::string name = r.string();
+                Value descriptor = r.value();
+                require(!name.empty() && descriptor.type == FVM_VALUE_OBJECT &&
+                        o.watchers.find(name) == o.watchers.end());
+                o.watchers[name] = descriptor;
+            }
+        }
         if (o.kind == 34)
             require(o.state.number != o.state.number ||
                     (std::fabs(o.state.number) <= 8640000000000000.0 &&
@@ -781,6 +813,9 @@ Graph read_graph(Reader &r, unsigned int version)
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.method_values.begin();
              p != o.method_values.end(); ++p)
             validate_value(p->second, n);
+        for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.watchers.begin();
+             p != o.watchers.end(); ++p)
+            validate_value(p->second, n);
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.properties.begin();
              p != o.properties.end(); ++p)
             validate_value(p->second, n);
@@ -800,6 +835,23 @@ Graph read_graph(Reader &r, unsigned int version)
             validate_callback(p->second.setter, n);
         }
     }
+    /* Watch descriptors are private data records, never opaque host pointers. */
+    for (size_t i = 0; i < n; ++i)
+        for (fvm_detail::map<fvm_detail::string, Value>::iterator watcher =
+                 g.objects[i].watchers.begin();
+             watcher != g.objects[i].watchers.end(); ++watcher)
+        {
+            const Object &descriptor = g.objects[watcher->second.object];
+            require(descriptor.kind == 0 && descriptor.prototype == none &&
+                    descriptor.metatable == none);
+            fvm_detail::map<fvm_detail::string, Value>::iterator handler =
+                descriptor.properties.find("handler");
+            require(handler != descriptor.properties.end() &&
+                    handler->second.type == FVM_VALUE_OBJECT);
+            const Object &function = g.objects[handler->second.object];
+            require(function.invocable.builtin || !function.invocable.name.empty());
+            require(descriptor.properties.find("userData") != descriptor.properties.end());
+        }
     /* Validate every edge before following any prototype chain. */
     for (size_t i = 0; i < n; ++i)
     {
@@ -810,13 +862,13 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 2};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 3};
 Graph decode(const void *data, size_t size)
 {
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version == 1 || version == 2);
+    require(version >= 1 && version <= 3);
     Reader header(data, size);
     header.offset = 8;
     size_t body = (size_t)header.u32();
@@ -985,6 +1037,9 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.method_values.begin();
                  p != src.method_values.end(); ++p)
                 dst->method_values[p->first] = restore_value(c, p->second, objects).object;
+            for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.watchers.begin();
+                 p != src.watchers.end(); ++p)
+                dst->watchers[p->first] = restore_value(c, p->second, objects).object;
             dst->attributes = src.attributes;
             if (src.prototype != none)
                 dst->prototype = objects[src.prototype];

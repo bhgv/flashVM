@@ -5,7 +5,7 @@
 - `include/flashvm/table.h`: indexed elements and metatables.
 - `include/flashvm/channel.h`: raw channel transport.
 - `include/flashvm/transfer.h`: graph send/receive across queue/file/TCP channels.
-- `include/flashvm/property.h`: property flags and deletion.
+- `include/flashvm/property.h`: property flags, deletion and enumerable-name snapshots.
 - `include/flashvm/function.h`: first-class native/AVM1 functions, invoke/construct.
 - `include/flashvm/movieclip.h`: host-authored clip frames and vector rendering.
 - `include/flashvm/standard.h`: standard installation and primitive conversion.

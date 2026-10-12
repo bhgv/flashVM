@@ -2,6 +2,8 @@
 #include "flashvm/gc.h"
 #include "flashvm/exception.h"
 #include "flashvm/mutex.h"
+#include "flashvm/property.h"
+#include "flashvm/metamethod.h"
 #include <cassert>
 #include <cstdlib>
 #include <new>
@@ -226,6 +228,44 @@ int main()
             completed = result == FVM_OK;
             if (!completed)
                 assert(output.type == FVM_VALUE_UNDEFINED);
+        }
+        assert(completed);
+        fvm_context_destroy(c);
+    }
+    {
+        FVM_Context *c = 0;
+        FVM_Object *object = 0;
+        FVM_Value value;
+        assert(fvm_context_create(runtime, &c) == FVM_OK);
+        assert(fvm_standard_install(c) == FVM_OK);
+        assert(fvm_construct(c, "Object", 0, 0, &object) == FVM_OK);
+        fvm_value_number(&value, 9);
+        assert(fvm_object_set(c, object, "a_long_property_name_to_require_allocation", &value) ==
+               FVM_OK);
+        bool completed = false;
+        for (long failure = 0; failure < 512 && !completed; ++failure)
+        {
+            FVM_Object *keys = 0;
+            allowance = failure;
+            FVM_Result result = fvm_object_enumerate(c, object, 1, &keys);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            completed = result == FVM_OK;
+            if (!completed)
+                assert(!keys);
+        }
+        assert(completed);
+        completed = false;
+        for (long failure = 0; failure < 64 && !completed; ++failure)
+        {
+            FVM_Value key, entry;
+            allowance = failure;
+            FVM_Result result = fvm_meta_iterate(c, object, 0, &key, &entry);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            completed = result == FVM_OK;
+            if (!completed)
+                assert(key.type == FVM_VALUE_UNDEFINED && entry.type == FVM_VALUE_UNDEFINED);
         }
         assert(completed);
         fvm_context_destroy(c);

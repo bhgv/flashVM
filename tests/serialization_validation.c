@@ -56,11 +56,11 @@ int main(void)
     }
     /* First record: kind, state(undefined+meta), prototype, meta, five counts.
        A valid first prototype must not lead to an unchecked second reference. */
-    assert(size == 171);
-    u32(data + 29 + 71 + 9, 100000);
+    assert(size == 179);
+    u32(data + 29 + 75 + 9, 100000);
     repair(data, size);
     assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_INVALID_ARGUMENT);
-    u32(data + 29 + 71 + 9, 0xffffffffUL);
+    u32(data + 29 + 75 + 9, 0xffffffffUL);
     /* First object -> itself is an invalid prototype cycle. */
     u32(data + 29 + 9, 0);
     repair(data, size);
@@ -69,17 +69,27 @@ int main(void)
     repair(data, size);
     assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_OK);
     /* A version-1 object record lacks attributes/function/cache trailers.
-     * Strip the two empty 34-byte trailers to form a genuine legacy graph. */
+     * Strip the two empty 38-byte trailers to form a genuine legacy graph. */
     {
         unsigned char legacy[103];
         memcpy(legacy, data, 29);
         memcpy(legacy + 29, data + 29, 37);
-        memcpy(legacy + 66, data + 100, 37);
+        memcpy(legacy + 66, data + 104, 37);
         legacy[7] = 1;
         u32(legacy + 8, sizeof(legacy) - 16);
         repair(legacy, sizeof(legacy));
         assert(fvm_value_deserialize(dst, legacy, sizeof(legacy), &copy) == FVM_OK);
         assert(copy.type == FVM_VALUE_OBJECT);
+    }
+    {
+        unsigned char previous[171];
+        memcpy(previous, data, 29);
+        memcpy(previous + 29, data + 29, 71);
+        memcpy(previous + 100, data + 104, 71);
+        previous[7] = 2;
+        u32(previous + 8, sizeof(previous) - 16);
+        repair(previous, sizeof(previous));
+        assert(fvm_value_deserialize(dst, previous, sizeof(previous), &copy) == FVM_OK);
     }
     fvm_serialized_free(data);
     /* Decode rollback does not keep partly allocated objects or invoke user code. */

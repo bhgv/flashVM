@@ -178,6 +178,31 @@ int main()
         assert(fvm_object_get(c, v.object, "n", &v) == FVM_OK && v.number == 19);
     }
     {
+        /* Negative numeric members are names, not unsigned table indices. */
+        Bytes write;
+        global(write, "holder");
+        integer(write, 0xffffffffUL);
+        integer(write, 55);
+        write.push_back(0x4f);
+        global(write, "holder");
+        integer(write, 0xffffffffUL);
+        write.push_back(0x4e);
+        v = run(c, write);
+        assert(v.type == FVM_VALUE_NUMBER && v.number == 55);
+        object(c, "direct", ctor);
+        Bytes call;
+        integer(call, 23);
+        integer(call, 1);
+        global(call, "direct");
+        call.push_back(0x96);
+        call.push_back(1);
+        call.push_back(0);
+        call.push_back(3); /* Undefined method invokes the function itself. */
+        call.push_back(0x52);
+        v = run(c, call);
+        assert(v.type == FVM_VALUE_UNDEFINED);
+    }
+    {
         fvm_value_number(&v, std::numeric_limits<double>::quiet_NaN());
         assert(fvm_set_global(c, "nan", &v) == FVM_OK);
         Bytes b;

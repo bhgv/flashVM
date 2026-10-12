@@ -16,6 +16,9 @@
   `git -c http.postBuffer=67108864 push origin HEAD:master`, without force.
   Afterwards fetch `origin master` and verify that the local HEAD is an ancestor
   of `FETCH_HEAD`; report the verified server commit, not just the push exit code.
+  Standing user authorization on 2026-10-12: update the mirror after every new
+  commit until the user gives another instruction. This supersedes the earlier
+  per-update restriction while active; the internal repository stays primary.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

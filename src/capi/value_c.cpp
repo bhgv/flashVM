@@ -1,6 +1,7 @@
 #include "../standard/function_state.hpp"
 #include "flashvm/function.h"
 #include "../standard/base_state.hpp"
+#include "../core/property_watch.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
@@ -85,6 +86,254 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const char *name, FVM_Na
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
+{
+    FVM_Object *receiver = o;
+    unsigned int depth = 0;
+    if (!c || !o || o->owner != c || !name || !out)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_undefined(out);
+    try
+    {
+        while (o && depth++ < 1024)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = o->properties.find(name);
+            if (it != o->properties.end())
+            {
+                *out = it->second;
+                return FVM_OK;
+            }
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+                o->accessors.find(name);
+            if (accessor != o->accessors.end())
+            {
+                FVM_AccessorEntry entry = accessor->second;
+                fvm_value_undefined(out);
+                if (!entry.getter)
+                    return FVM_OK;
+                try
+                {
+                    FVM_NativeCallGuard guard(c);
+                    fvm_resource_fault_begin(c);
+                    return fvm_exception_complete(
+                        c, receiver, entry.getter(c, receiver, 0, 0, out, entry.userdata));
+                }
+                catch (const std::bad_alloc &)
+                {
+                    fvm_value_undefined(out);
+                    return FVM_OUT_OF_MEMORY;
+                }
+                catch (...)
+                {
+                    return FVM_ERROR;
+                }
+            }
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+                o->methods.find(name);
+            if (method != o->methods.end())
+                return fvm_function_wrap_entry(c, o, name, method->second, out);
+            o = o->prototype;
+        }
+        if (o)
+            return FVM_ERROR;
+        o = receiver;
+        for (depth = 0; o && depth < 1024; ++depth)
+        {
+            if (!o->metatable)
+                break;
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator m =
+                o->metatable->properties.find("__index");
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
+                o->metatable->metamethods.find("__index");
+            if (fn != o->metatable->metamethods.end())
+            {
+                FVM_Value args[3];
+                FVM_Value result;
+                fvm_value_undefined(&args[0]);
+                args[0].type = FVM_VALUE_OBJECT;
+                args[0].object = receiver;
+                args[1] = args[0];
+                args[1].object = o->metatable;
+                fvm_value_string(&args[2], name);
+                fvm_value_undefined(&result);
+                try
+                {
+                    FVM_NativeCallGuard native_guard(c);
+                    FVM_Result status =
+                        fn->second.callback(c, receiver, 3, args, &result, fn->second.userdata);
+                    if (status == FVM_OK)
+                        *out = result;
+                    return fvm_exception_complete(c, receiver, status);
+                }
+                catch (const std::bad_alloc &)
+                {
+                    fvm_value_undefined(out);
+                    return FVM_OUT_OF_MEMORY;
+                }
+                catch (...)
+                {
+                    return FVM_ERROR;
+                }
+            }
+            if (m == o->metatable->properties.end())
+                break;
+            if (m->second.type != FVM_VALUE_OBJECT || !m->second.object)
+                break;
+            if (m->second.object->invocable.callback)
+            {
+                FVM_Value args[3];
+                fvm_value_undefined(args);
+                args[0].type = FVM_VALUE_OBJECT;
+                args[0].object = receiver;
+                args[1] = args[0];
+                args[1].object = o->metatable;
+                fvm_value_string(args + 2, name);
+                return fvm_function_invoke(c, m->second.object, receiver, 3, args, out);
+            }
+            o = m->second.object;
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = o->properties.find(name);
+            if (it != o->properties.end())
+            {
+                *out = it->second;
+                return FVM_OK;
+            }
+        }
+        if (depth == 1024)
+            return FVM_ERROR;
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        fvm_value_undefined(out);
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *name,
+                                   const FVM_Value *v)
+{
+    FVM_Value copy;
+    unsigned int depth = 0;
+    if (!c || !o || o->owner != c || !name || fvm_validate_value(c, v) != FVM_OK)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int flag_depth = 0;
+    FVM_Object *flag_cursor = o;
+    for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
+    {
+        unsigned int flags = 0;
+        FVM_Result flag_result = fvm_object_property_flags(c, flag_cursor, name, &flags);
+        if (flag_result != FVM_OK)
+            return flag_result;
+        if (flags & 4)
+            return FVM_OK;
+    }
+    if (flag_cursor)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value watched;
+    FVM_Result r = fvm_property_watch_prepare(c, o, name, v, &watched);
+    if (r != FVM_OK)
+        return r;
+    r = copy_value(c, &watched, &copy);
+    if (r != FVM_OK)
+        return r;
+    /* Own data shadows inherited accessors. An own accessor always wins
+     * over prototype data, and setters bind the original receiver. */
+    FVM_Object *cursor = o;
+    unsigned int accessor_depth = 0;
+    while (cursor && accessor_depth++ < 1024)
+    {
+        if (cursor->properties.find(name) != cursor->properties.end())
+            break;
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator found =
+            cursor->accessors.find(name);
+        if (found != cursor->accessors.end())
+        {
+            FVM_AccessorEntry entry = found->second;
+            if (!entry.setter)
+                return FVM_OK;
+            FVM_Value result;
+            fvm_value_undefined(&result);
+            try
+            {
+                FVM_NativeCallGuard guard(c);
+                return fvm_exception_complete(
+                    c, o, entry.setter(c, o, 1, &copy, &result, entry.userdata));
+            }
+            catch (const std::bad_alloc &)
+            {
+                return FVM_OUT_OF_MEMORY;
+            }
+            catch (...)
+            {
+                return FVM_ERROR;
+            }
+        }
+        cursor = cursor->prototype;
+    }
+    if (accessor_depth > 1024)
+        return FVM_ERROR;
+    /* An existing own property is always written directly. */
+    if (o->properties.find(name) == o->properties.end())
+    {
+        while (o->metatable && depth++ < 1024)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator m =
+                o->metatable->properties.find("__newindex");
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
+                o->metatable->metamethods.find("__newindex");
+            if (fn != o->metatable->metamethods.end())
+            {
+                FVM_Value args[4], result;
+                fvm_value_undefined(&args[0]);
+                args[0].type = FVM_VALUE_OBJECT;
+                args[0].object = o;
+                args[1] = args[0];
+                args[1].object = o->metatable;
+                fvm_value_string(&args[2], name);
+                args[3] = copy;
+                fvm_value_undefined(&result);
+                try
+                {
+                    FVM_NativeCallGuard native_guard(c);
+                    return fn->second.callback(c, o, 4, args, &result, fn->second.userdata);
+                }
+                catch (...)
+                {
+                    return FVM_ERROR;
+                }
+            }
+            if (m == o->metatable->properties.end() || m->second.type != FVM_VALUE_OBJECT ||
+                !m->second.object)
+                break;
+            if (m->second.object->invocable.callback)
+            {
+                FVM_Value args[4], result;
+                fvm_value_undefined(args);
+                args[0].type = FVM_VALUE_OBJECT;
+                args[0].object = o;
+                args[1] = args[0];
+                args[1].object = o->metatable;
+                fvm_value_string(args + 2, name);
+                args[3] = copy;
+                return fvm_function_invoke(c, m->second.object, o, 4, args, &result);
+            }
+            o = m->second.object;
+            if (o->properties.find(name) != o->properties.end())
+                break;
+        }
+        if (depth >= 1024)
+            return FVM_ERROR;
+    }
+    try
+    {
+        o->properties[name] = copy;
+    }
+    catch (...)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    return FVM_OK;
 }
 extern "C"
 {
@@ -201,8 +450,11 @@ extern "C"
             unsigned long index;
             if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
             {
-                *out = o->indexed.find(index) != o->indexed.end();
-                return FVM_OK;
+                if (o->indexed.find(index) != o->indexed.end())
+                {
+                    *out = 1;
+                    return FVM_OK;
+                }
             }
             fvm_detail::string key(name);
             *out = o->properties.find(key) != o->properties.end() ||
@@ -216,253 +468,49 @@ extern "C"
         }
     }
     /* AVM1 prototype lookup takes precedence over Lua-style __index fallback.
-     * Only table-valued metamethods are supported at this stage. */
+     * Native/function-valued hooks and table-valued fallbacks are supported. */
     FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
     {
-        FVM_Object *receiver = o;
-        unsigned int depth = 0;
         if (!c || !o || o->owner != c || !name || !out)
             return FVM_INVALID_ARGUMENT;
         fvm_value_undefined(out);
         try
         {
-            unsigned long array_index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
-                fvm_as_index(name, &array_index))
-                return fvm_table_get_index(c, o, array_index, out);
-            while (o && depth++ < 1024)
-            {
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
-                    o->properties.find(name);
-                if (it != o->properties.end())
-                {
-                    *out = it->second;
-                    return FVM_OK;
-                }
-                fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
-                    o->accessors.find(name);
-                if (accessor != o->accessors.end())
-                {
-                    FVM_AccessorEntry entry = accessor->second;
-                    fvm_value_undefined(out);
-                    if (!entry.getter)
-                        return FVM_OK;
-                    try
-                    {
-                        FVM_NativeCallGuard guard(c);
-                        fvm_resource_fault_begin(c);
-                        return fvm_exception_complete(
-                            c, receiver, entry.getter(c, receiver, 0, 0, out, entry.userdata));
-                    }
-                    catch (const std::bad_alloc &)
-                    {
-                        fvm_value_undefined(out);
-                        return FVM_OUT_OF_MEMORY;
-                    }
-                    catch (...)
-                    {
-                        return FVM_ERROR;
-                    }
-                }
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
-                    o->methods.find(name);
-                if (method != o->methods.end())
-                    return fvm_function_wrap_entry(c, o, name, method->second, out);
-                o = o->prototype;
-            }
-            if (o)
-                return FVM_ERROR;
-            o = receiver;
-            for (depth = 0; o && depth < 1024; ++depth)
-            {
-                if (!o->metatable)
-                    break;
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator m =
-                    o->metatable->properties.find("__index");
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
-                    o->metatable->metamethods.find("__index");
-                if (fn != o->metatable->metamethods.end())
-                {
-                    FVM_Value args[3];
-                    FVM_Value result;
-                    fvm_value_undefined(&args[0]);
-                    args[0].type = FVM_VALUE_OBJECT;
-                    args[0].object = receiver;
-                    args[1] = args[0];
-                    args[1].object = o->metatable;
-                    fvm_value_string(&args[2], name);
-                    fvm_value_undefined(&result);
-                    try
-                    {
-                        FVM_NativeCallGuard native_guard(c);
-                        FVM_Result status =
-                            fn->second.callback(c, receiver, 3, args, &result, fn->second.userdata);
-                        if (status == FVM_OK)
-                            *out = result;
-                        return fvm_exception_complete(c, receiver, status);
-                    }
-                    catch (const std::bad_alloc &)
-                    {
-                        fvm_value_undefined(out);
-                        return FVM_OUT_OF_MEMORY;
-                    }
-                    catch (...)
-                    {
-                        return FVM_ERROR;
-                    }
-                }
-                if (m == o->metatable->properties.end())
-                    break;
-                if (m->second.type != FVM_VALUE_OBJECT || !m->second.object)
-                    break;
-                if (m->second.object->invocable.callback)
-                {
-                    FVM_Value args[3];
-                    fvm_value_undefined(args);
-                    args[0].type = FVM_VALUE_OBJECT;
-                    args[0].object = receiver;
-                    args[1] = args[0];
-                    args[1].object = o->metatable;
-                    fvm_value_string(args + 2, name);
-                    return fvm_function_invoke(c, m->second.object, receiver, 3, args, out);
-                }
-                o = m->second.object;
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
-                    o->properties.find(name);
-                if (it != o->properties.end())
-                {
-                    *out = it->second;
-                    return FVM_OK;
-                }
-            }
-            if (depth == 1024)
-                return FVM_ERROR;
-            fvm_value_undefined(out);
-            return FVM_OK;
+            unsigned long index;
+            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+                return fvm_table_get_index(c, o, index, out);
+            return fvm_object_get_no_index(c, o, name, out);
         }
         catch (const std::bad_alloc &)
         {
             fvm_value_undefined(out);
             return FVM_OUT_OF_MEMORY;
         }
+        catch (...)
+        {
+            fvm_value_undefined(out);
+            return FVM_ERROR;
+        }
     }
     FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const FVM_Value *v)
     {
-        FVM_Value copy;
-        unsigned int depth = 0;
-        if (!c || !o || o->owner != c || !name)
+        if (!c || !o || o->owner != c || !name || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
-        unsigned long array_index;
-        if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &array_index))
-            return fvm_table_set_index(c, o, array_index, v);
-        unsigned int flag_depth = 0;
-        FVM_Object *flag_cursor = o;
-        for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
-        {
-            unsigned int flags = 0;
-            FVM_Result flag_result = fvm_object_property_flags(c, flag_cursor, name, &flags);
-            if (flag_result != FVM_OK)
-                return flag_result;
-            if (flags & 4)
-                return FVM_OK;
-        }
-        if (flag_cursor)
-            return FVM_INVALID_ARGUMENT;
-        FVM_Result r = copy_value(c, v, &copy);
-        if (r != FVM_OK)
-            return r;
-        /* Own data shadows inherited accessors. An own accessor always wins
-         * over prototype data, and setters bind the original receiver. */
-        FVM_Object *cursor = o;
-        unsigned int accessor_depth = 0;
-        while (cursor && accessor_depth++ < 1024)
-        {
-            if (cursor->properties.find(name) != cursor->properties.end())
-                break;
-            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator found =
-                cursor->accessors.find(name);
-            if (found != cursor->accessors.end())
-            {
-                FVM_AccessorEntry entry = found->second;
-                if (!entry.setter)
-                    return FVM_OK;
-                FVM_Value result;
-                fvm_value_undefined(&result);
-                try
-                {
-                    FVM_NativeCallGuard guard(c);
-                    return entry.setter(c, o, 1, &copy, &result, entry.userdata);
-                }
-                catch (...)
-                {
-                    return FVM_ERROR;
-                }
-            }
-            cursor = cursor->prototype;
-        }
-        if (accessor_depth > 1024)
-            return FVM_ERROR;
-        /* An existing own property is always written directly. */
-        if (o->properties.find(name) == o->properties.end())
-        {
-            while (o->metatable && depth++ < 1024)
-            {
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator m =
-                    o->metatable->properties.find("__newindex");
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
-                    o->metatable->metamethods.find("__newindex");
-                if (fn != o->metatable->metamethods.end())
-                {
-                    FVM_Value args[4], result;
-                    fvm_value_undefined(&args[0]);
-                    args[0].type = FVM_VALUE_OBJECT;
-                    args[0].object = o;
-                    args[1] = args[0];
-                    args[1].object = o->metatable;
-                    fvm_value_string(&args[2], name);
-                    args[3] = copy;
-                    fvm_value_undefined(&result);
-                    try
-                    {
-                        FVM_NativeCallGuard native_guard(c);
-                        return fn->second.callback(c, o, 4, args, &result, fn->second.userdata);
-                    }
-                    catch (...)
-                    {
-                        return FVM_ERROR;
-                    }
-                }
-                if (m == o->metatable->properties.end() || m->second.type != FVM_VALUE_OBJECT ||
-                    !m->second.object)
-                    break;
-                if (m->second.object->invocable.callback)
-                {
-                    FVM_Value args[4], result;
-                    fvm_value_undefined(args);
-                    args[0].type = FVM_VALUE_OBJECT;
-                    args[0].object = o;
-                    args[1] = args[0];
-                    args[1].object = o->metatable;
-                    fvm_value_string(args + 2, name);
-                    args[3] = copy;
-                    return fvm_function_invoke(c, m->second.object, o, 4, args, &result);
-                }
-                o = m->second.object;
-                if (o->properties.find(name) != o->properties.end())
-                    break;
-            }
-            if (depth >= 1024)
-                return FVM_ERROR;
-        }
         try
         {
-            o->properties[name] = copy;
+            unsigned long index;
+            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+                return fvm_table_set_index(c, o, index, v);
+            return fvm_object_set_no_index(c, o, name, v);
         }
-        catch (...)
+        catch (const std::bad_alloc &)
         {
             return FVM_OUT_OF_MEMORY;
         }
-        return FVM_OK;
+        catch (...)
+        {
+            return FVM_ERROR;
+        }
     }
     FVM_Result fvm_get_global(FVM_Context *c, const char *name, FVM_Value *out)
     {

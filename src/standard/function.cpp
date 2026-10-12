@@ -49,34 +49,47 @@ FVM_Result function_text(FVM_Context *, FVM_Object *, unsigned int, const FVM_Va
 {
     return fvm_value_string(out, "[type Function]");
 }
+FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bundle,
+                        FVM_Object **out)
+{
+    const char *type = value->type == FVM_VALUE_STRING    ? "String"
+                       : value->type == FVM_VALUE_BOOLEAN ? "Boolean"
+                                                          : "Number";
+    if (bundle)
+    {
+        FVM_Value constructor;
+        FVM_Result r = fvm_object_get(c, bundle, type, &constructor);
+        if (r != FVM_OK)
+            return r;
+        if (constructor.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        return fvm_function_construct(c, constructor.object, 1, value, out);
+    }
+    /* Older wire prototypes did not capture the boxing constructors. */
+    return fvm_construct(c, type, 1, value, out);
+}
 FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                void *)
+                void *userdata)
 {
     FVM_Object *receiver = n && a[0].type == FVM_VALUE_OBJECT ? a[0].object : c->global;
     if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED &&
         a[0].type != FVM_VALUE_NULL)
     {
-        const char *type = a[0].type == FVM_VALUE_STRING    ? "String"
-                           : a[0].type == FVM_VALUE_BOOLEAN ? "Boolean"
-                                                            : "Number";
-        FVM_Result r = fvm_construct(c, type, 1, a, &receiver);
+        FVM_Result r = box_receiver(c, a, (FVM_Object *)userdata, &receiver);
         if (r != FVM_OK)
             return r;
     }
     return fvm_function_invoke(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
 }
 FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                 void *)
+                 void *userdata)
 {
     FVM_Object *receiver = n && a[0].type == FVM_VALUE_OBJECT ? a[0].object : c->global;
     /* apply and call use the same primitive receiver boxing rules. */
     if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED &&
         a[0].type != FVM_VALUE_NULL)
     {
-        const char *type = a[0].type == FVM_VALUE_STRING    ? "String"
-                           : a[0].type == FVM_VALUE_BOOLEAN ? "Boolean"
-                                                            : "Number";
-        FVM_Result r = fvm_construct(c, type, 1, a, &receiver);
+        FVM_Result r = box_receiver(c, a, (FVM_Object *)userdata, &receiver);
         if (r != FVM_OK)
             return r;
     }

@@ -74,6 +74,9 @@ static void check(FVM_Context *c, FVM_Object *root)
     assert(fvm_object_get(c, root, "self", &out) == FVM_OK && out.object == root);
     assert(fvm_object_get(c, root, "undefined", &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
     assert(fvm_object_get(c, root, "null", &out) == FVM_OK && out.type == FVM_VALUE_NULL);
+    fvm_value_number(&out, 1);
+    assert(fvm_object_set(c, root, "watched", &out) == FVM_OK);
+    assert(fvm_object_get(c, root, "watched", &out) == FVM_OK && out.number == 42);
 }
 static void write_file(const char *path)
 {
@@ -115,6 +118,10 @@ static void write_file(const char *path)
            FVM_OK);
     v.object = o;
     assert(fvm_object_set(c, root, "function", &v) == FVM_OK);
+    fvm_value_string(args, "watched");
+    args[1] = v;
+    assert(fvm_object_call(c, root, "watch", 2, args, &out) == FVM_OK && out.boolean);
+
     assert(fvm_movieclip_create(c, "root", 5, &o) == FVM_OK);
     v.object = o;
     assert(fvm_object_set(c, root, "movie", &v) == FVM_OK);
