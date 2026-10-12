@@ -8,6 +8,7 @@
 #include "transform_scene.hpp"
 #include "gradient.hpp"
 #include "bitmap_fill.hpp"
+#include "bitmap_state.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
@@ -533,17 +534,21 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
     next[key] = object(child);
     if (!static_art(child) && props.find(name) == props.end())
         props[name] = object(child);
-    if (replaced)
+    /* [GC:] Stage detachment before publishing anything; OOM must preserve the old child graph. */
+    FVM_Object *old_data = 0;
+    Properties detached;
+    if (replaced && state(replaced, old_data) == FVM_OK)
     {
-        FVM_Object *old_data = 0;
-        if (state(replaced, old_data) == FVM_OK)
-        {
-            old_data->properties["parent"] = object(0);
-            old_data->properties["playing"] = number(0);
-        }
+        /* [GC:] Copy the previous node's retained links before dropping its parent edge. */
+        detached = old_data->properties;
+        /* [GC:] The detached node no longer owns its former parent through this edge. */
+        detached["parent"] = object(0);
+        detached["playing"] = number(0);
     }
 
-    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] All following swaps publish prepared ownership maps without allocating. */
+    if (old_data)
+        old_data->properties.swap(detached);
     children->indexed.swap(next);
     o->properties.swap(props);
     return FVM_OK;
@@ -2252,6 +2257,25 @@ FVM_RasterColor color(double rgb, double alpha, const ColorAffine &transform)
     return result;
 }
 
+/* Apply render-only bitmap position snapping without modifying script-visible transforms. */
+FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
+{
+    Properties::iterator i = data->properties.find("bitmap_attachment");
+    if (i == data->properties.end())
+        return FVM_OK;
+    if (i->second.type != FVM_VALUE_NUMBER ||
+        !(i->second.number == 0 || i->second.number == 1 || i->second.number == 2))
+        return FVM_INVALID_ARGUMENT;
+    bool snap = i->second.number == 1 || (i->second.number == 0 && world.xx == 1 && world.yy == 1 &&
+                                          world.xy == 0 && world.yx == 0);
+    if (snap)
+    {
+        world.x0 = std::floor(world.x0 + 0.5);
+        world.y0 = std::floor(world.y0 + 0.5);
+    }
+    return FVM_OK;
+}
+
 /* Render the current value. */
 FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                   const ColorAffine &parent_color, unsigned int depth)
@@ -2282,6 +2306,9 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         return r;
     FVM_Affine world;
     r = matrix(c, o, world);
+    if (r != FVM_OK)
+        return r;
+    r = bitmap_snap(data, world);
     if (r != FVM_OK)
         return r;
     for (Slots::iterator i = paths->indexed.begin(); i != paths->indexed.end(); ++i)
@@ -2499,6 +2526,82 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Val
     return r;
 }
 
+/* [GC:] Attach a live bitmap as a hidden static display node at the requested signed depth. */
+FVM_Result attach_bitmap(FVM_Context *c, FVM_Object *parent_clip, unsigned n,
+                         const FVM_Value *args_in, FVM_Value *out, void *)
+{
+    fvm_value_undefined(out);
+    if (n < 2 || args_in[0].type != FVM_VALUE_OBJECT || !args_in[0].object ||
+        args_in[0].object->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Keep the texture, parent and unpublished node alive across coercions and allocations.
+     */
+    FVM_NativeCallGuard guard(c);
+    double depth = 0;
+    FVM_Result r = args(c, n, args_in, 1, 0, depth);
+    if (r != FVM_OK)
+        return r;
+    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+        return FVM_INVALID_ARGUMENT;
+    unsigned snapping = 0;
+    if (n > 2 && args_in[2].type != FVM_VALUE_UNDEFINED)
+    {
+        FVM_Value mode;
+        r = fvm_value_to_string(c, args_in + 2, &mode);
+        if (r != FVM_OK)
+            return r;
+        size_t length = fvm_string_size(mode);
+        if (length == 6 && !std::memcmp(mode.string, "always", 6))
+            snapping = 1;
+        else if (length == 5 && !std::memcmp(mode.string, "never", 5))
+            snapping = 2;
+        else if (!(length == 4 && !std::memcmp(mode.string, "auto", 4)))
+            return FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Resolve the texture after user-controlled option/depth coercions can dispose it. */
+    FVM_BitmapState *pixels = fvm_bitmap_pixels(args_in[0].object);
+    if (!pixels || pixels->disposed)
+        return FVM_INVALID_ARGUMENT;
+    unsigned width = pixels->width, height = pixels->height;
+    bool smoothing = n > 3 && shape_flag(args_in[3]);
+    /* [GC:] The unpublished static node inherits the parent's transported MovieClip prototype. */
+    FVM_Object *node = 0;
+    r = make(c, "", 1, parent_clip->prototype, &node);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] The node owns its private state even before the parent's child table adopts it. */
+    FVM_Object *data = node->resource_result.object;
+    data->properties["static_art"] = number(1);
+    data->properties["bitmap_attachment"] = number(snapping);
+    data->properties["playing"] = number(0);
+    FVM_Value fill_args[4];
+    /* [GC:] Supply the same managed source instance rather than copying its pixel allocation. */
+    fill_args[0] = args_in[0];
+    fvm_value_undefined(fill_args + 1);
+    fvm_value_boolean(fill_args + 2, 0);
+    fvm_value_boolean(fill_args + 3, smoothing);
+    FVM_Value result;
+    r = fvm_movieclip_bitmap_begin(c, node, 4, fill_args, &result, 0);
+    if (r != FVM_OK)
+        return r;
+    const double vertices[] = {
+        0, 0, (double)width, 0, (double)width, (double)height, 0, (double)height, 0, 0};
+    for (unsigned i = 0; i < 10; i += 2)
+    {
+        FVM_Value vertex[2];
+        fvm_value_number(vertex, vertices[i]);
+        fvm_value_number(vertex + 1, vertices[i + 1]);
+        r = drawing(c, node, 2, vertex, &result, i ? FVM_PATH_LINE : FVM_PATH_MOVE);
+        if (r != FVM_OK)
+            return r;
+    }
+    r = end_fill(c, node, 0, 0, &result, 0);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Publish only the fully constructed hidden node, replacing the old depth atomically. */
+    return publish_child(parent_clip, node, "", (long)depth);
+}
+
 /* Define Method struct and its representation. */
 struct Method
 {
@@ -2533,7 +2636,8 @@ const Method methods[] = {{"toString", target},
                           {"attachMovie", attach_movie},
                           {"duplicateMovieClip", duplicate_movie},
                           {"beginGradientFill", fvm_movieclip_gradient_begin},
-                          {"beginBitmapFill", fvm_movieclip_bitmap_begin}};
+                          {"beginBitmapFill", fvm_movieclip_bitmap_begin},
+                          {"attachBitmap", attach_bitmap}};
 } // namespace
 
 /* [GC:] Expose the validated managed state without publishing a new host ownership claim. */

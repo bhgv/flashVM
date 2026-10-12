@@ -77,3 +77,12 @@ color transforms and graph transfer. Duplication shares texture identity while
 copying geometry. Native path RAII and marked AGG exception-safety corrections
 handle injected allocation failures. See MOVIECLIP_BITMAP_FILL.md for named tests
 and remaining resource/filter/text/media limits. Полный этап 4 остаётся открытым.
+
+## v0.44 Hidden bitmap attachments
+
+attachBitmap implements live hidden display nodes, depth replacement, render-only
+auto/always/never snapping and smoothing. Child detachment is staged before
+publication to preserve old nodes on OOM. movieclip_attach_bitmap and its
+allocation suite cover pixels, visibility through depth APIs, queue/file, GC
+and imported methods. See MOVIECLIP_ATTACH_BITMAP.md for remaining conformance
+limits. SWF resources, complete graphics/text/media and stage 4 remain open.
