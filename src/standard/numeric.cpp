@@ -617,7 +617,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "flash",
                                "flash.geom.Point",
                                "flash.geom.Matrix",
-                               "flash.geom.Rectangle"};
+                               "flash.geom.Rectangle",
+                               "flash.geom.ColorTransform"};
         if (c->standard_library)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {

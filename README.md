@@ -1,5 +1,5 @@
-Development version: **0.34** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.34 ` and an English description. Increase the subversion before each
+Development version: **0.35** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.35 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.34** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.34 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.35** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.35 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -427,3 +427,6 @@ factory roots and queue/file transport. See [RU/EN scope and limitations](doc/GE
 
 Rectangle checkpoint: bounds, derived Point properties, AVM1 construction and
 queue/file/loopback TCP transport. See [RU/EN scope](doc/RECTANGLE.md).
+
+ColorTransform checkpoint: native numeric channels, RGB, concatenation, private
+state validation and graph transport. See [RU/EN scope](doc/COLOR_TRANSFORM.md).

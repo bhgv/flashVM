@@ -33,8 +33,8 @@ createGradientBox. Порядок getter/setter проверен для add и o
 читает публичную length, invert вызывает публичный deltaTransformPoint.
 Полный порядок всех getter/valueOf, абстрактное сравнение equals и
 переопределения Math.sin/cos/sqrt ещё требуют проверки/реализации. Сетевой транспорт этих новых типов требует отдельного теста.
-Rectangle добавлен в v0.34; см. RECTANGLE.md. ColorTransform и полная
-интеграция Transform остаются открытыми.
+Rectangle добавлен в v0.34; см. RECTANGLE.md. ColorTransform добавлен в v0.35 (COLOR_TRANSFORM.md); полная
+интеграция Transform остаётся открытой.
 
 ## English
 
@@ -57,8 +57,8 @@ v0.33 adds AS2 string addition to add/offset/translate, interpolate and
 createGradientBox. normalize reads dynamic length and skewed invert dispatches
 through public deltaTransformPoint. Remaining conformance work includes full
 getter/coercion order, equals abstract comparison and overridden Math functions.
-Network transport needs dedicated coverage. Rectangle is added in v0.34 (RECTANGLE.md). ColorTransform and full
-Transform integration remain open. No complete Flash Player equivalence is claimed.
+Network transport needs dedicated coverage. Rectangle is added in v0.34 (RECTANGLE.md). ColorTransform is added in v0.35 (COLOR_TRANSFORM.md); full
+Transform integration remains open. No complete Flash Player equivalence is claimed.
 
 ## Проверенная контрольная точка v0.32 / Validation checkpoint
 

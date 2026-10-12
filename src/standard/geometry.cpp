@@ -1,6 +1,7 @@
 /* FlashVM: portable managed flash.geom.Point and flash.geom.Matrix numeric operations. */
 #include "geometry_support.hpp"
 #include "rectangle_state.hpp"
+#include "color_transform_state.hpp"
 #include "primitive_state.hpp"
 #include "inheritance.hpp"
 #include "../core/native_call_guard.hpp"
@@ -845,6 +846,11 @@ FVM_Result fvm_geometry_stage(FVM_Context *c, Properties &globals,
     r = fvm_rectangle_stage(c, geometry, bindings, object_proto, function_proto, constructors);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Add native color classes to the same staged factory capture graph. */
+    r = fvm_color_transform_stage(c, geometry, bindings, object_proto, function_proto,
+                                  constructors);
+    if (r != FVM_OK)
+        return r;
     /* [GC:] Publish staged namespace edges only after all method/constructor records exist. */
     flash->properties["geom"] = managed(geometry);
     /* [GC:] The staged global map owns the complete geometry namespace before installer
@@ -865,7 +871,7 @@ FVM_Result fvm_geometry_validate(FVM_Context *c)
                    matrix->resource_kind == FVM_GEOMETRY_MATRIX_CLASS &&
                    point->constructable.callback == point_constructor &&
                    matrix->constructable.callback == matrix_constructor &&
-                   fvm_rectangle_validate(c, geometry)
+                   fvm_rectangle_validate(c, geometry) && fvm_color_transform_validate(c, geometry)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
@@ -888,7 +894,8 @@ unsigned long fvm_geometry_callback_id(FVM_NativeFunction callback)
     for (size_t i = 0; i < sizeof(matrix_methods) / sizeof(matrix_methods[0]); ++i)
         if (callback == matrix_methods[i].callback)
             return 1130 + (unsigned long)i;
-    return fvm_rectangle_callback_id(callback);
+    unsigned long rectangle_id = fvm_rectangle_callback_id(callback);
+    return rectangle_id ? rectangle_id : fvm_color_transform_callback_id(callback);
 }
 
 /* Restore geometry callbacks without accepting an unknown or conflicting identifier. */
@@ -906,5 +913,6 @@ FVM_NativeFunction fvm_geometry_callback_from_id(unsigned long id)
         return point_static[id - 1120].callback;
     if (id >= 1130 && id < 1130 + sizeof(matrix_methods) / sizeof(matrix_methods[0]))
         return matrix_methods[id - 1130].callback;
-    return fvm_rectangle_callback_from_id(id);
+    FVM_NativeFunction rectangle = fvm_rectangle_callback_from_id(id);
+    return rectangle ? rectangle : fvm_color_transform_callback_from_id(id);
 }

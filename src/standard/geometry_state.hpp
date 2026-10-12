@@ -1,4 +1,4 @@
-/* FlashVM: native Point/Matrix classes, namespace installation and stable graph callbacks. */
+/* FlashVM: managed geometry class kinds, namespace installation and stable graph callbacks. */
 #ifndef FVM_GEOMETRY_STATE_HPP
 #define FVM_GEOMETRY_STATE_HPP /* Include guard for geometry class integration. */
 #include "../core/runtime.hpp"
@@ -11,7 +11,10 @@ enum FVM_GeometryKind
     FVM_GEOMETRY_POINT_CLASS = 44,  /* Callable Point constructor. */
     FVM_GEOMETRY_MATRIX_CLASS = 45, /* Callable Matrix constructor. */
     FVM_GEOMETRY_RECTANGLE = 46,    /* Rectangle instance with ordinary coordinate/extent fields. */
-    FVM_GEOMETRY_RECTANGLE_CLASS = 47 /* Callable Rectangle constructor. */
+    FVM_GEOMETRY_RECTANGLE_CLASS = 47, /* Callable Rectangle constructor. */
+    FVM_GEOMETRY_COLOR_TRANSFORM =
+        48, /* Native numeric color channels stored in a traced state object. */
+    FVM_GEOMETRY_COLOR_TRANSFORM_CLASS = 49 /* Callable ColorTransform constructor. */
 };
 
 /* [GC:] Stage flash.geom namespace/classes in unpublished standard-library maps. */

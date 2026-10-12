@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../standard/geometry_state.hpp"
+#include "../standard/color_transform_state.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
 #include "../standard/base_state.hpp"
@@ -131,7 +132,7 @@ bool known_kind(unsigned long kind)
            kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
            kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
-           kind == 47;
+           kind == 47 || kind == 48 || kind == 49;
 }
 
 /* Compute and return identify. */
@@ -398,16 +399,22 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(result == FVM_OK, result);
         }
         if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
-            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40)
+            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 || dst.kind == 48)
         {
             require(src->resource_result_valid &&
-                        src->resource_result.type ==
-                            (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                             : dst.kind == 26 ? FVM_VALUE_STRING
-                             : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40)
-                                 ? FVM_VALUE_OBJECT
-                                 : FVM_VALUE_NUMBER),
+                        src->resource_result.type == (dst.kind == 20   ? FVM_VALUE_BOOLEAN
+                                                      : dst.kind == 26 ? FVM_VALUE_STRING
+                                                      : (dst.kind == 32 || dst.kind == 37 ||
+                                                         dst.kind == 40 || dst.kind == 48)
+                                                          ? FVM_VALUE_OBJECT
+                                                          : FVM_VALUE_NUMBER),
                     FVM_UNSUPPORTED);
+            if (dst.kind == 48)
+            {
+                double native_channels[8];
+                /* [GC:] Reject malformed private color storage before capturing its owned graph. */
+                require(fvm_color_transform_values(c, src, native_channels), FVM_UNSUPPORTED);
+            }
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
         else if (dst.kind == 10)
@@ -970,12 +977,13 @@ Graph read_graph(Reader &r, unsigned int version)
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
-                 o.kind == 34 || o.kind == 37 || o.kind == 40)
-            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
-                                     : o.kind == 26 ? FVM_VALUE_STRING
-                                     : (o.kind == 32 || o.kind == 37 || o.kind == 40)
-                                         ? FVM_VALUE_OBJECT
-                                         : FVM_VALUE_NUMBER));
+                 o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48)
+            require(o.state.type ==
+                    (o.kind == 20   ? FVM_VALUE_BOOLEAN
+                     : o.kind == 26 ? FVM_VALUE_STRING
+                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 || o.kind == 48)
+                         ? FVM_VALUE_OBJECT
+                         : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
@@ -1143,6 +1151,32 @@ Graph read_graph(Reader &r, unsigned int version)
         {
             validate_callback(p->second.getter, n);
             validate_callback(p->second.setter, n);
+        }
+    }
+    /* [GC:] Private ColorTransform storage is numeric data, never a callback/prototype graph. */
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Object &color = g.objects[i];
+        if (color.kind != 48)
+            continue;
+        require(color.state.type == FVM_VALUE_OBJECT && color.state.object != none);
+        const Object &data = g.objects[color.state.object];
+        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+                data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 8 &&
+                data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
+                data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                !data.invocable.builtin && data.invocable.name.empty() &&
+                !data.constructable.builtin && data.constructable.name.empty());
+        const char *names[] = {"redMultiplier",   "greenMultiplier", "blueMultiplier",
+                               "alphaMultiplier", "redOffset",       "greenOffset",
+                               "blueOffset",      "alphaOffset"};
+        for (unsigned int channel = 0; channel < 8; ++channel)
+        {
+            fvm_detail::map<fvm_detail::string, Value>::const_iterator entry =
+                data.properties.find(names[channel]);
+            require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
+                    entry->second.metatable == none);
         }
     }
     /* Superclass facade metadata is a private receiver/depth record, never executable data. */
@@ -1447,7 +1481,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40)
+                src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
+                src.kind == 48)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

@@ -23,3 +23,15 @@ trace(region.bottomRight);
 region.inflate(2, 3);
 /* Печатаем новые начало и размер: (x=8, y=17, w=34, h=46). */
 trace(region.toString());
+/* Подключаем ColorTransform для изменения числовых цветовых каналов. */
+import flash.geom.ColorTransform;
+/* Создаём преобразование с единичными множителями и нулевыми смещениями. */
+var tint:ColorTransform = new ColorTransform();
+/* Задаём постоянный RGB-цвет: множители RGB становятся нулевыми, alpha сохраняется. */
+tint.rgb = 0x336699;
+/* Печатаем числовое упакованное значение RGB — 3368601. */
+trace(tint.rgb);
+/* Копируем все восемь каналов через документированную сигнатуру AS2-конструктора. */
+var tintCopy:ColorTransform = new ColorTransform(tint.redMultiplier, tint.greenMultiplier, tint.blueMultiplier, tint.alphaMultiplier, tint.redOffset, tint.greenOffset, tint.blueOffset, tint.alphaOffset);
+/* Печатаем все множители и смещения независимой копии. */
+trace(tintCopy.toString());
