@@ -18,4 +18,7 @@ struct FVM_SWFBitmap
 };
 /* Decode tag 20/36 into a bounded bitmap; malformed streams leave output unchanged. */
 FVM_Result fvm_swf_read_bitmap(const unsigned char *, size_t, unsigned, size_t, FVM_SWFBitmap &);
+/* Decode JPEG2/3 resources and optional exact zlib alpha into a bounded bitmap. */
+FVM_Result fvm_swf_read_jpeg(const unsigned char *, size_t, unsigned, unsigned, size_t,
+                             FVM_SWFBitmap &);
 #endif

@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.45 / Remaining work after v0.45
+# Оставшаяся работа после v0.46 / Remaining work after v0.46
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -57,3 +57,7 @@ deadline or readiness is implied by the current version or test counts.
 В v0.45 проверены DefineBitsLossless/2 и bitmap-заливки Shape1/2/3; JPEG-теги и loadBitmap/draw остаются открытыми (SWF_LOSSLESS_BITMAPS.md).
 
 v0.45 checks lossless SWF resources and Shape1/2/3 bitmap fills; JPEG tags and loadBitmap/draw remain open.
+
+В v0.46 подключены JPEG2/3 через bounded C89/libjpeg адаптер; legacy JPEG tables, embedded PNG/GIF и CMYK открыты (SWF_JPEG_BITMAPS.md).
+
+v0.46 imports JPEG2/3 through a bounded C89 libjpeg bridge; legacy tables, embedded PNG/GIF and CMYK remain open.

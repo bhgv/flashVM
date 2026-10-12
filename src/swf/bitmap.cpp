@@ -1,6 +1,9 @@
 /* FlashVM: strict size-bounded lossless SWF bitmap decoding with palette/15-bit/ARGB layouts. */
 #include "bitmap.hpp"
 #include "zlib.h"
+#include "../capi/swf_jpeg_internal.h"
+#include <cstdlib>
+#include <cstring>
 #include <climits>
 #include <new>
 
@@ -105,6 +108,80 @@ FVM_Result fvm_swf_read_bitmap(const unsigned char *bytes, size_t size, unsigned
     }
     catch (const std::bad_alloc &)
     {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Decode a bounded JPEG and optional premultiplied alpha without publishing partial resources. */
+FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned tag,
+                             unsigned version, size_t limit, FVM_SWFBitmap &out)
+{
+    if (!bytes || (tag != 21 && tag != 35) || size <= (tag == 35 ? 6U : 2U) ||
+        version < (tag == 35 ? 3U : 2U) || !word(bytes))
+        return FVM_INVALID_ARGUMENT;
+    size_t header = tag == 35 ? 6 : 2;
+    size_t image_size = tag == 35 ? (size_t)bytes[2] | ((size_t)bytes[3] << 8) |
+                                        ((size_t)bytes[4] << 16) | ((size_t)bytes[5] << 24)
+                                  : size - header;
+    if (!image_size || image_size > size - header)
+        return FVM_INVALID_ARGUMENT;
+    size_t alpha_at = header + image_size;
+    const unsigned char *image = bytes + header;
+    const unsigned char legacy[] = {255, 217, 255, 216};
+    if (version < 8 && image_size >= 6 && !std::memcmp(image, legacy, sizeof(legacy)))
+    {
+        image += 4;
+        image_size -= 4;
+    }
+    if (image_size >= 3 && image[0] == 137 && image[1] == 80 && image[2] == 78)
+        return version < 8 ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    if (image_size >= 3 && !std::memcmp(image, "GIF", 3))
+        return version < 8 ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    FVM_SWFBitmap result;
+    unsigned char *pixels = 0;
+    FVM_Result status =
+        fvm_swf_decode_jpeg(image, image_size, limit, &result.width, &result.height, &pixels);
+    if (status != FVM_OK)
+        return status;
+    try
+    {
+        result.id = word(bytes);
+        result.transparent = tag == 35;
+        size_t count = (size_t)result.width * result.height;
+        result.pixels.resize(count * 4);
+        std::memcpy(result.pixels.begin(), pixels, count * 4);
+        std::free(pixels);
+        pixels = 0;
+        if (tag == 35)
+        {
+            if (alpha_at >= size || size - alpha_at > ULONG_MAX)
+                return FVM_INVALID_ARGUMENT;
+            fvm_detail::vector<unsigned char> alpha(count);
+            uLongf decoded = (uLongf)count;
+            uLong consumed = (uLong)(size - alpha_at);
+            int z = uncompress2(alpha.begin(), &decoded, bytes + alpha_at, &consumed);
+            if (z == Z_MEM_ERROR)
+                return FVM_OUT_OF_MEMORY;
+            if (z != Z_OK || decoded != count || consumed != size - alpha_at)
+                return FVM_INVALID_ARGUMENT;
+            for (size_t i = 0; i < count; ++i)
+            {
+                unsigned char *p = result.pixels.begin() + i * 4;
+                p[3] = alpha[i];
+                for (unsigned j = 0; j < 3; ++j)
+                    p[j] = straight(p[j], p[3]);
+            }
+        }
+        out.id = result.id;
+        out.width = result.width;
+        out.height = result.height;
+        out.transparent = result.transparent;
+        out.pixels.swap(result.pixels);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        std::free(pixels);
         return FVM_OUT_OF_MEMORY;
     }
 }

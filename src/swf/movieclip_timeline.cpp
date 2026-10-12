@@ -169,11 +169,11 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             return count == 0 && at == end && frame == timeline.frames + 1 ? FVM_OK
                                                                            : FVM_INVALID_ARGUMENT;
         if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32 ||
-                         tag == 20 || tag == 36))
+                         tag == 20 || tag == 36 || tag == 21 || tag == 35))
             return FVM_INVALID_ARGUMENT;
-        if ((tag == 20 || tag == 36) && bitmaps)
+        if ((tag == 20 || tag == 36 || tag == 21 || tag == 35) && bitmaps)
         {
-            if (version < (tag == 20 ? 2U : 3U))
+            if (version < (tag == 20 || tag == 21 ? 2U : 3U))
                 return FVM_INVALID_ARGUMENT;
             size_t used = 0;
             for (size_t i = 0; i < bitmaps->size(); ++i)
@@ -181,7 +181,10 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             if (used >= bitmap_limit)
                 return FVM_OUT_OF_MEMORY;
             FVM_SWFBitmap bitmap;
-            FVM_Result r = fvm_swf_read_bitmap(p + at, count, tag, bitmap_limit - used, bitmap);
+            FVM_Result r =
+                tag == 21 || tag == 35
+                    ? fvm_swf_read_jpeg(p + at, count, tag, version, bitmap_limit - used, bitmap)
+                    : fvm_swf_read_bitmap(p + at, count, tag, bitmap_limit - used, bitmap);
             if (r != FVM_OK)
                 return r;
             if (known.find(bitmap.id) != known.end())
