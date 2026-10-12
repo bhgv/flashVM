@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.55 / Remaining work after v0.55
+# Оставшаяся работа после v0.56 / Remaining work after v0.56
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -98,3 +98,6 @@ v0.54 checks masked threshold operations and common region snapshots; exact Flas
 В v0.55 проверен per-channel merge с aligned snapshot, weights/rounding, aliases, GC/queue и OOM/balance (BITMAP_MERGE.md).
 
 v0.55 checks channel merging; exact premultiplied/coercion conformance and remaining APIs remain open.
+
+В v0.56 проверен paletteMap: cached palettes, modulo-32 sums, source aliases, GC и OOM rollback (BITMAP_PALETTE_MAP.md).
+v0.56 checks palette mapping; exact historical Flash coercion and premultiplied storage remain open.

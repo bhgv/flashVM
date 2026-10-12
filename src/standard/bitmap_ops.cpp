@@ -1,4 +1,4 @@
-/* FlashVM: bounded logical bitmap fills, masked bounds, threshold tests and channel merging. */
+/* FlashVM: bounded bitmap fills, masked bounds/tests, channel merging and palette remapping. */
 #include "bitmap_ops.hpp"
 #include "bitmap_state.hpp"
 #include "bitmap_region.hpp"
@@ -359,6 +359,101 @@ FVM_Result fvm_bitmap_merge(FVM_Context *c, FVM_Object *self, unsigned n, const 
                                                 256);
             if (!target->transparent)
                 dest[3] = 255;
+        }
+    return FVM_OK;
+}
+
+/* [GC:] Cache supplied public color tables before snapshotting and remapping source channel values.
+ */
+FVM_Result fvm_bitmap_palette_map(FVM_Context *c, FVM_Object *self, unsigned n,
+                                  const FVM_Value *args, FVM_Value *out, void *)
+{
+    /* [GC:] Protect source/destination and palette objects while indexed getters may run scripts.
+     */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_undefined(out);
+    FVM_BitmapRegion region;
+    FVM_Result r = fvm_bitmap_region_read(c, n, args, region);
+    if (r != FVM_OK)
+        return r;
+    bool supplied[4] = {false, false, false, false}, any = false;
+    for (unsigned channel = 0; channel < 4; ++channel)
+    {
+        supplied[channel] = n > channel + 3 && args[channel + 3].type != FVM_VALUE_NULL &&
+                            args[channel + 3].type != FVM_VALUE_UNDEFINED;
+        any = any || supplied[channel];
+    }
+    size_t cache_bytes = any ? 1024 * sizeof(unsigned long) : 0;
+    unsigned long limit = c->runtime->config.memory_limit_bytes;
+    if (limit && cache_bytes > limit)
+        return FVM_OUT_OF_MEMORY;
+    fvm_detail::vector<unsigned long> table;
+    if (any)
+        table.resize(1024);
+    for (unsigned channel = 0; channel < 4; ++channel)
+    {
+        if (!supplied[channel])
+            continue;
+        FVM_Object *array = 0;
+        r = fvm_geometry_detail::object_argument(c, n, args, channel + 3, array);
+        if (r != FVM_OK)
+            return r;
+        for (unsigned index = 0; index < 256; ++index)
+        {
+            char key[4];
+            unsigned position = 0;
+            if (index >= 100)
+                key[position++] = (char)('0' + index / 100);
+            if (index >= 10)
+                key[position++] = (char)('0' + (index / 10) % 10);
+            key[position++] = (char)('0' + index % 10);
+            key[position] = 0;
+            FVM_Value value;
+            double number = 0;
+            r = fvm_object_get(c, array, key, &value);
+            if (r == FVM_OK)
+                r = fvm_value_to_number(c, &value, &number);
+            if (r != FVM_OK)
+                return r;
+            table[channel * 256 + index] =
+                number == number && std::fabs(number) <= std::numeric_limits<double>::max()
+                    ? color_word(number)
+                    : 0;
+        }
+    }
+    FVM_BitmapState *target = 0, *input = 0;
+    r = fvm_bitmap_region_clip(self, region, target, input);
+    if (r != FVM_OK)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    if (!region.width || !region.height)
+        return FVM_OK;
+    size_t snapshot_bytes = (size_t)region.width * region.height * 4;
+    if (limit && (snapshot_bytes > limit || cache_bytes > limit - snapshot_bytes))
+        return FVM_OUT_OF_MEMORY;
+    fvm_detail::vector<unsigned char> pixels;
+    r = fvm_bitmap_region_snapshot(c, region, input, pixels);
+    if (r != FVM_OK)
+        return r;
+    const unsigned shifts[] = {16, 8, 0, 24};
+    for (unsigned y = 0; y < region.height; ++y)
+        for (unsigned x = 0; x < region.width; ++x)
+        {
+            const unsigned char *source = pixels.begin() + ((size_t)y * region.width + x) * 4;
+            unsigned long color = 0;
+            for (unsigned channel = 0; channel < 4; ++channel)
+            {
+                unsigned long value = supplied[channel]
+                                          ? table[channel * 256 + source[channel]]
+                                          : (unsigned long)source[channel] << shifts[channel];
+                color = (color + value) & 0xffffffffUL;
+            }
+            if (!target->transparent)
+                color |= 0xff000000UL;
+            write_pixel(target->pixels, (size_t)(region.dy + y) * target->width + region.dx + x,
+                        color);
         }
     return FVM_OK;
 }

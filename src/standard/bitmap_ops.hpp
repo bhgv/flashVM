@@ -14,4 +14,8 @@ FVM_Result fvm_bitmap_threshold(FVM_Context *, FVM_Object *, unsigned, const FVM
 /* [GC:] Merge a copied source region with independently bounded per-channel destination weights. */
 FVM_Result fvm_bitmap_merge(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *,
                             void *);
+/* [GC:] Remap copied source channels through cached public palette entries before pixel
+ * publication. */
+FVM_Result fvm_bitmap_palette_map(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                                  FVM_Value *, void *);
 #endif
