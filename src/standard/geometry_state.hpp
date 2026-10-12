@@ -6,10 +6,12 @@
 /* Managed object kinds; no native backend handles are stored by these geometry objects. */
 enum FVM_GeometryKind
 {
-    FVM_GEOMETRY_POINT = 42,       /* Point instance with ordinary x/y properties. */
-    FVM_GEOMETRY_MATRIX = 43,      /* Matrix instance with ordinary affine properties. */
-    FVM_GEOMETRY_POINT_CLASS = 44, /* Callable Point constructor. */
-    FVM_GEOMETRY_MATRIX_CLASS = 45 /* Callable Matrix constructor. */
+    FVM_GEOMETRY_POINT = 42,        /* Point instance with ordinary x/y properties. */
+    FVM_GEOMETRY_MATRIX = 43,       /* Matrix instance with ordinary affine properties. */
+    FVM_GEOMETRY_POINT_CLASS = 44,  /* Callable Point constructor. */
+    FVM_GEOMETRY_MATRIX_CLASS = 45, /* Callable Matrix constructor. */
+    FVM_GEOMETRY_RECTANGLE = 46,    /* Rectangle instance with ordinary coordinate/extent fields. */
+    FVM_GEOMETRY_RECTANGLE_CLASS = 47 /* Callable Rectangle constructor. */
 };
 
 /* [GC:] Stage flash.geom namespace/classes in unpublished standard-library maps. */

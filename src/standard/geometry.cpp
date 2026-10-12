@@ -1,5 +1,6 @@
 /* FlashVM: portable managed flash.geom.Point and flash.geom.Matrix numeric operations. */
-#include "geometry_state.hpp"
+#include "geometry_support.hpp"
+#include "rectangle_state.hpp"
 #include "primitive_state.hpp"
 #include "inheritance.hpp"
 #include "../core/native_call_guard.hpp"
@@ -7,9 +8,8 @@
 #include <cmath>
 #include <cstring>
 
-namespace
+namespace fvm_geometry_detail
 {
-typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
 const char *const point_names[] = {"x", "y"};
 const char *const matrix_names[] = {"a", "b", "c", "d", "tx", "ty"};
 
@@ -237,7 +237,7 @@ FVM_Result matrix_constructor(FVM_Context *c, FVM_Object *, unsigned int argc,
 /* Apply public numeric writes in the required order, allowing watch/accessor/metatable callbacks.
  */
 FVM_Result write(FVM_Context *c, FVM_Object *self, const char *const *names, unsigned int count,
-                 const double *values, const unsigned int *order = 0)
+                 const double *values, const unsigned int *order)
 {
     for (unsigned int i = 0; i < count; ++i)
     {
@@ -765,7 +765,8 @@ FVM_Object *own_object(FVM_Context *c, FVM_Object *o, const char *key)
                ? i->second.object
                : 0;
 }
-} // namespace
+} // namespace fvm_geometry_detail
+using namespace fvm_geometry_detail;
 
 /* [GC:] Stage a complete namespace graph before the standard installer publishes its maps. */
 FVM_Result fvm_geometry_stage(FVM_Context *c, Properties &globals,
@@ -840,6 +841,10 @@ FVM_Result fvm_geometry_stage(FVM_Context *c, Properties &globals,
     length.getter = point_length;
     prototypes[0]->accessors["length"] = length;
     prototypes[0]->attributes["length"] = 7;
+    /* [GC:] Extend the same retained factory graph with Rectangle before namespace publication. */
+    r = fvm_rectangle_stage(c, geometry, bindings, object_proto, function_proto, constructors);
+    if (r != FVM_OK)
+        return r;
     /* [GC:] Publish staged namespace edges only after all method/constructor records exist. */
     flash->properties["geom"] = managed(geometry);
     /* [GC:] The staged global map owns the complete geometry namespace before installer
@@ -859,7 +864,8 @@ FVM_Result fvm_geometry_validate(FVM_Context *c)
     return point && matrix && point->resource_kind == FVM_GEOMETRY_POINT_CLASS &&
                    matrix->resource_kind == FVM_GEOMETRY_MATRIX_CLASS &&
                    point->constructable.callback == point_constructor &&
-                   matrix->constructable.callback == matrix_constructor
+                   matrix->constructable.callback == matrix_constructor &&
+                   fvm_rectangle_validate(c, geometry)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
@@ -882,7 +888,7 @@ unsigned long fvm_geometry_callback_id(FVM_NativeFunction callback)
     for (size_t i = 0; i < sizeof(matrix_methods) / sizeof(matrix_methods[0]); ++i)
         if (callback == matrix_methods[i].callback)
             return 1130 + (unsigned long)i;
-    return 0;
+    return fvm_rectangle_callback_id(callback);
 }
 
 /* Restore geometry callbacks without accepting an unknown or conflicting identifier. */
@@ -900,5 +906,5 @@ FVM_NativeFunction fvm_geometry_callback_from_id(unsigned long id)
         return point_static[id - 1120].callback;
     if (id >= 1130 && id < 1130 + sizeof(matrix_methods) / sizeof(matrix_methods[0]))
         return matrix_methods[id - 1130].callback;
-    return 0;
+    return fvm_rectangle_callback_from_id(id);
 }

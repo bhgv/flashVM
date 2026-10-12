@@ -130,7 +130,8 @@ bool known_kind(unsigned long kind)
            kind == 25 || kind == 26 || kind == 27 || kind == 28 || kind == 29 || kind == 30 ||
            kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
-           kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45;
+           kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
+           kind == 47;
 }
 
 /* Compute and return identify. */
