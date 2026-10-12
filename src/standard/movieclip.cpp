@@ -1486,7 +1486,28 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
     return FVM_OK;
 }
 
-/* Compute and return advance. */
+/* Decode one stored action block and execute it with this MovieClip as receiver. */
+FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &code)
+{
+    if (code.type != FVM_VALUE_STRING)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::vector<unsigned char> bytes;
+    size_t size = fvm_string_size(code);
+    if (size % 2 || size > 131072)
+        return FVM_INVALID_ARGUMENT;
+    for (size_t i = 0; i < size; i += 2)
+    {
+        unsigned int a = code.string[i] >= 'a' ? code.string[i] - 'a' + 10 : code.string[i] - '0';
+        unsigned int b =
+            code.string[i + 1] >= 'a' ? code.string[i + 1] - 'a' + 10 : code.string[i + 1] - '0';
+        if (a > 15 || b > 15)
+            return FVM_INVALID_ARGUMENT;
+        bytes.push_back((unsigned char)(a * 16 + b));
+    }
+    return fvm_avm1_execute_receiver(c, bytes.begin(), bytes.size(), o);
+}
+
+/* Advance one timeline tick, execute its independent action blocks, then visit children. */
 FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
 {
     if (depth > 64)
@@ -1532,21 +1553,24 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
             r = field(entry->second.object, "code", code);
             if (r != FVM_OK || code.type != FVM_VALUE_STRING)
                 return FVM_INVALID_ARGUMENT;
-            fvm_detail::vector<unsigned char> bytes;
-            size_t size = fvm_string_size(code);
-            if (size % 2)
-                return FVM_INVALID_ARGUMENT;
-            for (size_t i = 0; i < size; i += 2)
+            FVM_Value segments;
+            r = field(entry->second.object, "segments", segments);
+            if (r == FVM_OK && segments.type == FVM_VALUE_OBJECT)
             {
-                unsigned int a = code.string[i] >= 'a' ? code.string[i] - 'a' + 10
-                                                       : code.string[i] - '0',
-                             b = code.string[i + 1] >= 'a' ? code.string[i + 1] - 'a' + 10
-                                                           : code.string[i + 1] - '0';
-                if (a > 15 || b > 15)
-                    return FVM_INVALID_ARGUMENT;
-                bytes.push_back((unsigned char)(a * 16 + b));
+                /* [GC:] Copy the managed block values before script callbacks can change state. */
+                Slots blocks = segments.object->indexed;
+                for (Slots::iterator i = blocks.begin(); i != blocks.end(); ++i)
+                {
+                    r = execute_frame_block(c, o, i->second);
+                    if (r != FVM_OK)
+                        return r;
+                }
             }
-            r = fvm_avm1_execute_receiver(c, bytes.begin(), bytes.size(), o);
+            else if (entry->second.object->properties.find("segments") ==
+                     entry->second.object->properties.end())
+                r = execute_frame_block(c, o, code);
+            else
+                return FVM_INVALID_ARGUMENT;
             if (r != FVM_OK)
                 return r;
         }
