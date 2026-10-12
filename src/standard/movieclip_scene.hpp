@@ -12,6 +12,8 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *, FVM_Object *parent, FVM_Obj
                                       FVM_Object **out);
 /* Update only explicitly present placement fields on an existing instance. */
 FVM_Result fvm_movieclip_scene_update(FVM_Context *, FVM_Object *, FVM_Object *placement);
+/* Replace static vector resources in place without exchanging a MovieClip timeline. */
+FVM_Result fvm_movieclip_scene_replace(FVM_Context *, FVM_Object *, FVM_Object *placement);
 /* Force removal by the timeline, including authored depths, and stop the detached instance. */
 FVM_Result fvm_movieclip_scene_remove(FVM_Context *, FVM_Object *);
 /* Apply this frame's controls, reconstructing the display state on jumps and loop boundaries. */

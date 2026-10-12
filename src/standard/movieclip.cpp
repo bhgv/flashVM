@@ -76,6 +76,23 @@ FVM_Result field(FVM_Object *o, const char *name, FVM_Value &out)
     return FVM_OK;
 }
 
+/* Distinguish internal static display nodes from script-visible MovieClip instances. */
+bool static_art(FVM_Object *o)
+{
+    FVM_Object *data = 0;
+    FVM_Value value;
+    return state(o, data) == FVM_OK && field(data, "static_art", value) == FVM_OK &&
+           value.type == FVM_VALUE_NUMBER && value.number == 1;
+}
+
+/* Identify a solid-shape definition without interpreting an absent legacy kind marker. */
+bool shape_symbol(FVM_Object *o)
+{
+    FVM_Value value;
+    return o && field(o, "kind", value) == FVM_OK && value.type == FVM_VALUE_NUMBER &&
+           value.number == 2;
+}
+
 /* Compute and return numeric. */
 FVM_Result numeric(FVM_Context *c, FVM_Object *o, const char *name, double &out)
 {
@@ -489,7 +506,7 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
         }
     }
     next[key] = object(child);
-    if (props.find(name) == props.end())
+    if (!static_art(child) && props.find(name) == props.end())
         props[name] = object(child);
     if (replaced)
     {
@@ -678,6 +695,8 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *definition = entry->second.object, *frames = 0;
+    if (shape_symbol(definition))
+        return FVM_OK;
     unsigned long total = 0;
     r = integer_field(definition, "total", 65535, total);
     if (r == FVM_OK)
@@ -972,7 +991,8 @@ FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Val
     if (r != FVM_OK)
         return r;
     Slots::iterator i = children->indexed.find(key);
-    if (i == children->indexed.end())
+    if (i == children->indexed.end() ||
+        (i->second.type == FVM_VALUE_OBJECT && static_art(i->second.object)))
         fvm_value_undefined(out);
     else
         *out = i->second;
@@ -1671,12 +1691,12 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
         }
         FVM_Object *data = entry->second.object;
         unsigned long verb = 0;
-        r = integer_field(data, "verb", FVM_PATH_QUADRATIC, verb);
-        if (r != FVM_OK)
+        r = integer_field(data, "verb", FVM_PATH_CLOSE, verb);
+        if (r != FVM_OK || verb == FVM_PATH_CUBIC)
         {
             fvm_path_destroy(*out);
             *out = 0;
-            return r;
+            return FVM_INVALID_ARGUMENT;
         }
         FVM_PathCommand cmd;
         std::memset(&cmd, 0, sizeof(cmd));
@@ -1756,7 +1776,7 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
             r = numeric(c, i->second.object, "width", width);
             if (r != FVM_OK)
                 return r;
-            double scale = std::sqrt(world.xx * world.xx + world.yx * world.yx);
+            double scale = vector_length(world.xx, world.yx);
             double other = std::sqrt(world.xy * world.xy + world.yy * world.yy);
             if (other > scale)
                 scale = other;
@@ -2028,7 +2048,12 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
             if (r == FVM_OK)
                 r = numeric(c, part, "alpha", a);
             if (r == FVM_OK)
-                r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, 0);
+            {
+                FVM_Value rule;
+                int even_odd = field(part, "even_odd", rule) == FVM_OK &&
+                               rule.type == FVM_VALUE_NUMBER && rule.number != 0;
+                r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, even_odd);
+            }
         }
         if (r == FVM_OK && stroke)
         {
@@ -2037,9 +2062,10 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 r = numeric(c, part, "lineAlpha", a);
             if (r == FVM_OK)
                 r = numeric(c, part, "width", width);
-            double scale = std::sqrt(world.xx * world.xx + world.yx * world.yx);
+            double scale = vector_length(world.xx, world.yx);
             if (r == FVM_OK)
-                r = fvm_path_draw(p, surface, color(rgb, a, transform), width * scale, 0);
+                r = fvm_path_draw(p, surface, color(rgb, a, transform), width ? width * scale : 1,
+                                  0);
         }
         fvm_path_destroy(p);
         if (r != FVM_OK)
@@ -2096,6 +2122,8 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
 /* Advance one timeline tick, execute its independent action blocks, then visit children. */
 FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
 {
+    if (static_art(o))
+        return FVM_OK;
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
 
@@ -2314,7 +2342,7 @@ FVM_Result fvm_movieclip_scene_update(FVM_Context *c, FVM_Object *o, FVM_Object 
     }
     if (placement->properties.find("ratio") != placement->properties.end())
         data->properties["ratio"] = placement->properties["ratio"];
-    if (placement->properties.find("name") != placement->properties.end())
+    if (!static_art(o) && placement->properties.find("name") != placement->properties.end())
     {
         FVM_Value name = placement->properties["name"];
         if (name.type != FVM_VALUE_STRING || std::memchr(name.string, 0, fvm_string_size(name)))
@@ -2378,7 +2406,8 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     if (r != FVM_OK)
         return r;
     FVM_Value linkage;
-    bool exported = symbol->properties.find("linkage") != symbol->properties.end();
+    bool art = shape_symbol(symbol);
+    bool exported = !art && symbol->properties.find("linkage") != symbol->properties.end();
     if (exported)
     {
         r = field(symbol, "linkage", linkage);
@@ -2389,7 +2418,9 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
             return r;
     }
     FVM_Value name;
-    if (placement->properties.find("name") != placement->properties.end())
+    if (art)
+        fvm_value_string(&name, "");
+    else if (placement->properties.find("name") != placement->properties.end())
     {
         r = field(placement, "name", name);
         if (r != FVM_OK || name.type != FVM_VALUE_STRING)
@@ -2411,7 +2442,7 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
             return r;
     }
     FVM_Object *child = 0, *child_frames = 0;
-    r = make(c, name.string, (unsigned int)total, proto, &child);
+    r = make(c, name.string, (unsigned int)total, art ? 0 : proto, &child);
     if (r == FVM_OK)
         r = private_object(child->resource_result.object, "frames", child_frames);
     if (r != FVM_OK)
@@ -2422,6 +2453,17 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     data->properties["library"] = object(library);
     data->properties["scene_symbol"] = object(symbol);
     data->properties["scene_token"] = number(token);
+    if (art)
+    {
+        FVM_Object *paths = 0;
+        r = private_object(symbol, "paths", paths);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Static nodes retain immutable contours through their source definition. */
+        data->properties["paths"] = object(paths);
+        data->properties["static_art"] = number(1);
+        data->properties["playing"] = number(0);
+    }
     if (exported)
     {
         r = fvm_object_set(c, data, "linkage", &linkage);
@@ -2438,6 +2480,40 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     if (r == FVM_OK)
         *out = child;
     return r;
+}
+
+/* Replace static art in place; a MovieClip retains its original character and timeline. */
+FVM_Result fvm_movieclip_scene_replace(FVM_Context *c, FVM_Object *o, FVM_Object *placement)
+{
+    if (!c || !o || o->owner != c || !placement || placement->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    if (static_art(o))
+    {
+        FVM_Object *symbol = 0, *paths = 0;
+        FVM_Result r = private_object(placement, "symbol", symbol);
+        if (r != FVM_OK)
+            return r;
+        if (shape_symbol(symbol))
+        {
+            r = private_object(symbol, "paths", paths);
+            if (r != FVM_OK)
+                return r;
+            FVM_Value token;
+            r = field(placement, "token", token);
+            if (r != FVM_OK)
+                return r;
+            FVM_Object *data = o->resource_result.object;
+            /* [GC:] Stage the resource edges before publishing the replacement geometry. */
+            fvm_detail::map<fvm_detail::string, FVM_Value> next = data->properties;
+            /* [GC:] Adopt the new immutable path collection while retaining display identity. */
+            next["paths"] = object(paths);
+            /* [GC:] Keep the new definition reachable for later rewind and graph transport. */
+            next["scene_symbol"] = object(symbol);
+            next["scene_token"] = token;
+            data->properties.swap(next);
+        }
+    }
+    return fvm_movieclip_scene_update(c, o, placement);
 }
 
 /* Remove an authored instance through the same validated parent/depth unlink operation. */

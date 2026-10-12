@@ -92,7 +92,7 @@ int main()
     assert(fvm_movieclip_load_swf(c, swf.begin(), swf.size() - 1, "bad", &bad) == FVM_INVALID_ARGUMENT && !bad);
     Bytes wrong = movie(tags, 3);
     assert(fvm_movieclip_load_swf(c, wrong.begin(), wrong.size(), "bad", &bad) == FVM_INVALID_ARGUMENT && !bad);
-    Bytes scene; tag(scene, 2, empty); tag(scene, 1, empty); tag(scene, 0, empty); wrong = movie(scene, 1);
+    Bytes scene; tag(scene, 83, empty); tag(scene, 1, empty); tag(scene, 0, empty); wrong = movie(scene, 1);
     assert(fvm_movieclip_load_swf(c, wrong.begin(), wrong.size(), "bad", &bad) == FVM_UNSUPPORTED && !bad);
     Bytes malformed, missing_label; missing_label.push_back('x');
     tag(malformed, 43, missing_label); tag(malformed, 1, empty); tag(malformed, 0, empty); wrong = movie(malformed, 1);

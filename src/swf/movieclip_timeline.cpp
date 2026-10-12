@@ -2,6 +2,7 @@
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "decode.hpp"
 #include "reader.hpp"
+#include "shape_graph.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/movieclip.h"
@@ -134,6 +135,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                             unsigned int version, Timeline &timeline,
                             fvm_detail::vector<Timeline> *sprites,
                             fvm_detail::vector<Export> *exports,
+                            fvm_detail::vector<FVM_SWFShape> *shapes,
                             fvm_detail::map<unsigned long, bool> &known)
 {
     if (!timeline.frames)
@@ -163,9 +165,22 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         if (tag == 0)
             return count == 0 && at == end && frame == timeline.frames + 1 ? FVM_OK
                                                                            : FVM_INVALID_ARGUMENT;
-        if (!sprites && (tag == 39 || tag == 56))
+        if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32))
             return FVM_INVALID_ARGUMENT;
-        if (tag == 39 && sprites)
+        if ((tag == 2 || tag == 22 || tag == 32) && shapes)
+        {
+            if ((tag == 22 && version < 2) || (tag == 32 && version < 3))
+                return FVM_INVALID_ARGUMENT;
+            FVM_SWFShape shape;
+            FVM_Result r = fvm_swf_read_shape(p + at, count, tag, shape);
+            if (r != FVM_OK)
+                return r;
+            if (known.find(shape.id) != known.end())
+                return FVM_INVALID_ARGUMENT;
+            shapes->push_back(shape);
+            known[shape.id] = true;
+        }
+        else if (tag == 39 && sprites)
         {
             if (version < 3 || count < 6)
                 return FVM_INVALID_ARGUMENT;
@@ -174,11 +189,10 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             sprite.frames = (unsigned int)little(p + at + 2, 2);
             if (!sprite.id)
                 return FVM_INVALID_ARGUMENT;
-            for (size_t i = 0; i < sprites->size(); ++i)
-                if ((*sprites)[i].id == sprite.id)
-                    return FVM_INVALID_ARGUMENT;
+            if (known.find(sprite.id) != known.end())
+                return FVM_INVALID_ARGUMENT;
             FVM_Result r =
-                inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, known);
+                inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, 0, known);
             if (r != FVM_OK)
                 return r;
             sprites->push_back(sprite);
@@ -203,11 +217,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                     return FVM_INVALID_ARGUMENT;
                 asset.name = (const char *)(p + pos);
                 pos = (size_t)(zero - p) + 1;
-                bool found = false;
-                for (size_t j = 0; j < sprites->size(); ++j)
-                    if ((*sprites)[j].id == asset.id)
-                        found = true;
-                if (!found)
+                if (known.find(asset.id) == known.end())
                     return FVM_INVALID_ARGUMENT;
                 exports->push_back(asset);
             }
@@ -435,7 +445,8 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
 /* [GC:] Build immutable sprite definitions and a live linkage/class library for instances. */
 FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char> &bytes,
                          const fvm_detail::vector<Timeline> &sprites,
-                         const fvm_detail::vector<Export> &exports, FVM_Object *clip)
+                         const fvm_detail::vector<Export> &exports,
+                         const fvm_detail::vector<FVM_SWFShape> &shapes, FVM_Object *clip)
 {
     FVM_Object *library = 0, *definitions = 0, *names = 0;
     FVM_Result r = fvm_object_create(c, &library);
@@ -460,6 +471,15 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
         definition->properties["total"] = total;
         definition->properties["id"] = id;
         definitions->indexed[sprites[i].id] = managed(definition);
+    }
+    for (size_t i = 0; i < shapes.size(); ++i)
+    {
+        FVM_Object *definition = 0;
+        r = fvm_swf_shape_build(c, shapes[i], &definition);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] The dictionary owns the managed solid vector resource. */
+        definitions->indexed[shapes[i].id] = managed(definition);
     }
     for (size_t i = 0; i < sprites.size(); ++i)
     {
@@ -534,10 +554,11 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         main_timeline.frames = info.frame_count;
         fvm_detail::vector<Timeline> sprites;
         fvm_detail::vector<Export> exports;
+        fvm_detail::vector<FVM_SWFShape> shapes;
         size_t start = 8 + (5 + 4 * (bytes[8] >> 3) + 7) / 8 + 4;
         fvm_detail::map<unsigned long, bool> known;
         r = inspect_timeline(bytes, start, bytes.size(), info.version, main_timeline, &sprites,
-                             &exports, known);
+                             &exports, &shapes, known);
         if (r != FVM_OK)
             return r;
 
@@ -547,7 +568,7 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         r = fvm_movieclip_create(c, name, info.frame_count, &clip);
         if (r != FVM_OK)
             return r;
-        r = build_library(c, bytes, sprites, exports, clip);
+        r = build_library(c, bytes, sprites, exports, shapes, clip);
         if (r != FVM_OK)
             return r;
         /* [GC:] The root frame controls refer to the same dictionary identities as sprites. */

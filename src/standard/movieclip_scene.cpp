@@ -53,16 +53,6 @@ FVM_Value number(double value)
     return result;
 }
 
-/* [GC:] Construct an edge to an object protected by the scene's native-call barrier. */
-FVM_Value managed(FVM_Object *object)
-{
-    FVM_Value value;
-    fvm_value_undefined(&value);
-    value.type = FVM_VALUE_OBJECT;
-    value.object = object;
-    return value;
-}
-
 /* Find the current live instance at a raw SWF depth in an already normalized table. */
 FVM_Object *child(FVM_Object *children, unsigned long depth)
 {
@@ -170,11 +160,19 @@ FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, FVM_O
         properties.erase("name");
         FVM_Object *update = 0;
         r = record(c, properties, &update);
-        return r == FVM_OK ? fvm_movieclip_scene_update(c, old, update) : r;
+        return r == FVM_OK ? fvm_movieclip_scene_replace(c, old, update) : r;
     }
     FVM_Object *placement = 0, *instance = 0;
     r = record(c, properties, &placement);
     return r == FVM_OK ? fvm_movieclip_scene_insert(c, parent, placement, &instance) : r;
+}
+
+/* Test the resource kind without adding properties to an immutable definition. */
+bool shape_symbol(FVM_Object *symbol)
+{
+    FVM_Value kind;
+    return symbol && field(symbol, "kind", kind) == FVM_OK && kind.type == FVM_VALUE_NUMBER &&
+           kind.number == 2;
 }
 
 /* Compose authored controls without running constructors or any skipped frame actions. */
@@ -217,10 +215,13 @@ FVM_Result accumulate(FVM_Context *c, FVM_Object *control, Display &display)
     if (r != FVM_OK)
         return r;
     Properties &target = display[depth];
+    bool replace_shape = (flags & 3) == 3 && shape_symbol(target["symbol"].object) &&
+                         shape_symbol(projected["symbol"].object);
     for (Properties::iterator i = projected.begin(); i != projected.end(); ++i)
     {
-        if ((flags & 1) && (i->first == "token" || i->first == "character" ||
-                            i->first == "symbol" || i->first == "name"))
+        if ((flags & 1) && (i->first == "name" ||
+                            (!replace_shape && (i->first == "token" || i->first == "character" ||
+                                                i->first == "symbol"))))
             continue;
         target[i->first] = i->second;
     }

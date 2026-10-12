@@ -11,10 +11,10 @@
 #include <cstdio>
 #include <cstring>
 typedef fvm_detail::vector<unsigned char> Bytes;
-static void u16(Bytes &b, unsigned int n) { b.push_back((unsigned char)n); b.push_back((unsigned char)(n >> 8)); }
-static void u32(Bytes &b, unsigned long n) { for (int i = 0; i < 4; ++i) { b.push_back((unsigned char)n); n >>= 8; } }
-static void text(Bytes &b, const char *s) { do { b.push_back((unsigned char)*s); } while (*s++); }
-static void tag(Bytes &b, unsigned int code, const Bytes &data)
+static inline void u16(Bytes &b, unsigned int n) { b.push_back((unsigned char)n); b.push_back((unsigned char)(n >> 8)); }
+static inline void u32(Bytes &b, unsigned long n) { for (int i = 0; i < 4; ++i) { b.push_back((unsigned char)n); n >>= 8; } }
+static inline void text(Bytes &b, const char *s) { do { b.push_back((unsigned char)*s); } while (*s++); }
+static inline void tag(Bytes &b, unsigned int code, const Bytes &data)
 {
     if (data.size() < 63) u16(b, (code << 6) | (unsigned int)data.size());
     else { u16(b, (code << 6) | 63); u32(b, (unsigned long)data.size()); }
@@ -31,20 +31,20 @@ struct Bits {
         }
     }
 };
-static void append(Bytes &b, const Bytes &a) { for (size_t i = 0; i < a.size(); ++i) b.push_back(a[i]); }
-static Bytes matrix(long x, long y, bool skew = false)
+static inline void append(Bytes &b, const Bytes &a) { for (size_t i = 0; i < a.size(); ++i) b.push_back(a[i]); }
+static inline Bytes matrix(long x, long y, bool skew = false)
 {
     Bits bits; bits.put(0, 1); bits.put(skew ? 1 : 0, 1);
     if (skew) { bits.put(18, 5); bits.put(32768, 18); bits.put((unsigned long)-65536, 18); }
     bits.put(16, 5); bits.put((unsigned long)x, 16); bits.put((unsigned long)y, 16); return bits.b;
 }
-static Bytes color()
+static inline Bytes color()
 {
     Bits bits; bits.put(1, 1); bits.put(1, 1); bits.put(10, 4);
     bits.put(0, 10); bits.put(0, 10); bits.put(0, 10); bits.put(128, 10);
     bits.put(0, 10); bits.put(255, 10); bits.put(0, 10); bits.put(0, 10); return bits.b;
 }
-static Bytes place(unsigned int flags, unsigned int depth, unsigned int id, long x, long y,
+static inline Bytes place(unsigned int flags, unsigned int depth, unsigned int id, long x, long y,
                    const char *name = 0, bool skew = false)
 {
     Bytes b; b.push_back((unsigned char)flags); u16(b, depth);
@@ -55,55 +55,55 @@ static Bytes place(unsigned int flags, unsigned int depth, unsigned int id, long
     if (flags & 32) text(b, name ? name : "actor");
     return b;
 }
-static Bytes action(unsigned int n)
+static inline Bytes action(unsigned int n)
 {
     Bytes b; b.push_back(0x96); u16(b, 6); b.push_back(0); text(b, "this"); b.push_back(0x1c);
     b.push_back(0x96); u16(b, 6); b.push_back(0); text(b, "seen");
     b.push_back(0x96); u16(b, 5); b.push_back(7); u32(b, n); b.push_back(0x4f); b.push_back(0); return b;
 }
-static void definition(Bytes &tags)
+static inline void definition(Bytes &tags)
 {
     Bytes b, empty; u16(b, 7); u16(b, 3);
     for (unsigned int i = 1; i <= 3; ++i) { tag(b, 12, action(i * 11)); tag(b, 1, empty); }
     tag(b, 0, empty); tag(tags, 39, b);
 }
-static Bytes movie(const Bytes &tags, unsigned int frames)
+static inline Bytes movie(const Bytes &tags, unsigned int frames)
 {
     Bytes b; b.push_back('F'); b.push_back('W'); b.push_back('S'); b.push_back(8);
     u32(b, (unsigned long)tags.size() + 14); b.push_back(8); b.push_back(0); u16(b, 12 * 256); u16(b, frames);
     append(b, tags); return b;
 }
-static FVM_Object *load(FVM_Context *c, const Bytes &tags, unsigned int frames)
+static inline FVM_Object *load(FVM_Context *c, const Bytes &tags, unsigned int frames)
 {
     Bytes b = movie(tags, frames); FVM_Object *o = 0;
     FVM_Result r = fvm_movieclip_load_swf(c, b.begin(), b.size(), "root", &o);
     if (r != FVM_OK) std::fprintf(stderr, "load: %d\n", (int)r);
     assert(r == FVM_OK && o); assert(fvm_gc_pin(c, o) == FVM_OK); return o;
 }
-static FVM_Value get(FVM_Context *c, FVM_Object *o, const char *key)
+static inline FVM_Value get(FVM_Context *c, FVM_Object *o, const char *key)
 {
     FVM_Value v; assert(fvm_object_get(c, o, key, &v) == FVM_OK); return v;
 }
-static void num(FVM_Context *c, FVM_Object *o, const char *key, double n)
+static inline void num(FVM_Context *c, FVM_Object *o, const char *key, double n)
 {
     FVM_Value v = get(c, o, key);
     if (v.type != FVM_VALUE_NUMBER || std::fabs(v.number - n) > 1e-9) std::fprintf(stderr, "%s = %g wanted %g\n", key, v.number, n);
     assert(v.type == FVM_VALUE_NUMBER && std::fabs(v.number - n) < 1e-9);
 }
-static void tick(FVM_Context *c, FVM_Object *o) { assert(fvm_movieclip_advance(c, o, 1) == FVM_OK); }
-static void seek(FVM_Context *c, FVM_Object *o, unsigned int frame)
+static inline void tick(FVM_Context *c, FVM_Object *o) { assert(fvm_movieclip_advance(c, o, 1) == FVM_OK); }
+static inline void seek(FVM_Context *c, FVM_Object *o, unsigned int frame)
 {
     FVM_Value v, out; fvm_value_number(&v, frame);
     assert(fvm_object_call(c, o, "gotoAndStop", 1, &v, &out) == FVM_OK); tick(c, o);
 }
-static void pose(FVM_Context *c, FVM_Object *o, double x, double y, bool skew = false)
+static inline void pose(FVM_Context *c, FVM_Object *o, double x, double y, bool skew = false)
 {
     FVM_Affine m; assert(fvm_movieclip_get_matrix(c, o, &m) == FVM_OK);
     assert(std::fabs(m.xx - 1) < 1e-9 && std::fabs(m.yy - 1) < 1e-9);
     assert(std::fabs(m.yx - (skew ? 0.5 : 0)) < 1e-9 && std::fabs(m.xy - (skew ? -1 : 0)) < 1e-9);
     assert(std::fabs(m.x0 - x) < 1e-9 && std::fabs(m.y0 - y) < 1e-9);
 }
-static void readers()
+static inline void readers()
 {
     const unsigned char extremes[] = {0x80, 0, 0, 0, 0x7f, 0xff, 0xff, 0xff};
     FVM_SWFReader r(extremes, sizeof(extremes)); assert(r.signed_bits(32) == (-2147483647L - 1));
@@ -118,7 +118,7 @@ static void readers()
     assert(color_value.multiply[3] == 0.5 && color_value.add[1] == 255);
     FVM_SWFReader bad_string(extremes + 4, 4); fvm_detail::string s; assert(!bad_string.string(s));
 }
-static void rectangle(FVM_Context *c, FVM_Object *o)
+static inline void rectangle(FVM_Context *c, FVM_Object *o)
 {
     FVM_Value a[2], out; fvm_value_number(a, 0xff0000);
     assert(fvm_object_call(c, o, "beginFill", 1, a, &out) == FVM_OK);
@@ -129,7 +129,7 @@ static void rectangle(FVM_Context *c, FVM_Object *o)
     }
     assert(fvm_object_call(c, o, "endFill", 0, 0, &out) == FVM_OK);
 }
-static void matrices(FVM_Context *c)
+static inline void matrices(FVM_Context *c)
 {
     FVM_Object *o = 0; assert(fvm_movieclip_create(c, "matrix", 1, &o) == FVM_OK);
     assert(fvm_gc_pin(c, o) == FVM_OK);
@@ -154,7 +154,7 @@ static void matrices(FVM_Context *c)
     assert(fvm_object_call(c, o, "beginFill", 1, &v, &out) == FVM_OK);
     fvm_value_number(&v, -1e200); assert(fvm_object_call(c, o, "beginFill", 1, &v, &out) == FVM_OK);
 }
-static FVM_Result constructor(FVM_Context *c, FVM_Object *self, unsigned int argc,
+static inline FVM_Result constructor(FVM_Context *c, FVM_Object *self, unsigned int argc,
                               const FVM_Value *, FVM_Value *out, void *userdata)
 {
     assert(argc == 0); ++*(unsigned int *)userdata;
