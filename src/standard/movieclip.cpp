@@ -8,6 +8,7 @@
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
 #include "flashvm/property.h"
+#include "flashvm/serialization.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -504,6 +505,66 @@ FVM_Result initialize_child(FVM_Context *c, FVM_Object *child, const FVM_Value &
     return FVM_OK;
 }
 
+/* Resolve a sprite's class from the current context or its transported live registry. */
+FVM_Result sprite_class(FVM_Context *c, FVM_Object *library, const char *linkage,
+                        FVM_Object *&proto, FVM_Object *&constructor)
+{
+    FVM_Object *classes = 0;
+    constructor = 0;
+    FVM_Result r = private_object(library, "prototype", proto);
+    if (r != FVM_OK)
+        return r;
+    r = fvm_base_class_registry(c, &classes);
+    if (r == FVM_NOT_FOUND)
+    {
+        r = library->properties.find("classes") == library->properties.end()
+                ? FVM_OK
+                : private_object(library, "classes", classes);
+    }
+    if (r != FVM_OK)
+        return r;
+    if (classes)
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered =
+            classes->properties.find(linkage);
+        if (registered != classes->properties.end())
+        {
+            if (registered->second.type != FVM_VALUE_OBJECT ||
+                !registered->second.object->invocable.callback)
+                return FVM_INVALID_ARGUMENT;
+            constructor = registered->second.object;
+            FVM_Value prototype;
+            r = fvm_object_get(c, constructor, "prototype", &prototype);
+            if (r != FVM_OK)
+                return r;
+            if (prototype.type != FVM_VALUE_OBJECT)
+                return FVM_INVALID_ARGUMENT;
+            proto = prototype.object;
+        }
+    }
+    return FVM_OK;
+}
+
+/* Initialize a published instance, then call its class constructor without replacing the clip. */
+FVM_Result finish_instance(FVM_Context *c, FVM_Object *child, FVM_Object *constructor,
+                           const FVM_Value *initial, FVM_Value *out)
+{
+    FVM_Result r = initial ? initialize_child(c, child, *initial) : FVM_OK;
+    if (r != FVM_OK)
+        return r;
+    if (constructor)
+    {
+        /* [GC:] Retain constructor/owner metadata across super calls and exception unwinding. */
+        FVM_CallScope scope(c, constructor, constructor, child->prototype);
+        FVM_Value ignored;
+        r = fvm_function_invoke(c, constructor, child, 0, 0, &ignored);
+        if (r != FVM_OK)
+            return r;
+    }
+    *out = object(child);
+    return FVM_OK;
+}
+
 /* Attach an exported sprite with independent playback and optional registered class/initObject. */
 FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
@@ -549,38 +610,10 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
 
-    FVM_Object *proto = 0, *classes = 0, *constructor = 0;
-    r = private_object(library, "prototype", proto);
+    FVM_Object *proto = 0, *constructor = 0;
+    r = sprite_class(c, library, linkage.string, proto, constructor);
     if (r != FVM_OK)
         return r;
-    r = fvm_base_class_registry(c, &classes);
-    if (r == FVM_NOT_FOUND)
-    {
-        r = library->properties.find("classes") == library->properties.end()
-                ? FVM_OK
-                : private_object(library, "classes", classes);
-    }
-    if (r != FVM_OK)
-        return r;
-    if (classes)
-    {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered =
-            classes->properties.find(linkage.string);
-        if (registered != classes->properties.end())
-        {
-            if (registered->second.type != FVM_VALUE_OBJECT ||
-                !registered->second.object->invocable.callback)
-                return FVM_INVALID_ARGUMENT;
-            constructor = registered->second.object;
-            FVM_Value prototype;
-            r = fvm_object_get(c, constructor, "prototype", &prototype);
-            if (r != FVM_OK)
-                return r;
-            if (prototype.type != FVM_VALUE_OBJECT)
-                return FVM_INVALID_ARGUMENT;
-            proto = prototype.object;
-        }
-    }
     FVM_Object *child = 0, *child_frames = 0;
     r = make(c, name.string, (unsigned int)total, proto, &child);
     if (r != FVM_OK)
@@ -591,26 +624,148 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     /* [GC:] Only immutable frame records are shared; each child owns its mutable frame table. */
     child_frames->indexed = frames->indexed;
     child->resource_result.object->properties["library"] = object(library);
+    r = fvm_object_set(c, child->resource_result.object, "linkage", &linkage);
+    if (r != FVM_OK)
+        return r;
     r = publish_child(o, child, name.string, (unsigned long)depth);
     if (r != FVM_OK)
         return r;
-    if (n > 3)
+    return finish_instance(c, child, constructor, n > 3 ? a + 3 : 0, out);
+}
+
+/* [GC:] Deep-copy drawing paths and their active-path alias without retaining source geometry. */
+FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destination)
+{
+    FVM_Object *bundle = 0;
+    FVM_Result r = fvm_object_create(c, &bundle);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value paths, active;
+    r = field(source, "paths", paths);
+    if (r == FVM_OK)
+        r = field(source, "active", active);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] One snapshot preserves aliases between the path table and its active path. */
+    bundle->properties["paths"] = paths;
+    bundle->properties["active"] = active;
+    FVM_Value value = object(bundle), restored;
+    unsigned char *bytes = 0;
+    size_t size = 0;
+    r = fvm_value_serialize(c, &value, &bytes, &size);
+    if (r != FVM_OK)
+        return r;
+    r = fvm_value_deserialize(c, bytes, size, &restored);
+    fvm_serialized_free(bytes);
+    if (r != FVM_OK)
+        return r;
+    r = field(restored.object, "paths", paths);
+    if (r == FVM_OK)
+        r = field(restored.object, "active", active);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] The new instance owns the cloned geometry and the matching active-path edge. */
+    destination->properties["paths"] = paths;
+    destination->properties["active"] = active;
+    const char *styles[] = {"cx",     "cy",    "fill",    "rgb",      "alpha",
+                            "stroke", "width", "lineRgb", "lineAlpha"};
+    for (size_t i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
     {
-        r = initialize_child(c, child, a[3]);
+        r = field(source, styles[i], value);
         if (r != FVM_OK)
             return r;
+        destination->properties[styles[i]] = value;
     }
-    if (constructor)
-    {
-        /* [GC:] Retain defining-constructor metadata for super and restore it after exceptions. */
-        FVM_CallScope scope(c, constructor, constructor, proto);
-        FVM_Value ignored;
-        r = fvm_function_invoke(c, constructor, child, 0, 0, &ignored);
-        if (r != FVM_OK)
-            return r;
-    }
-    *out = object(child);
     return FVM_OK;
+}
+
+/* Duplicate a sibling at frame 1 with copied display/drawing state and fresh dynamic properties. */
+FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
+                           FVM_Value *out, void *)
+{
+    fvm_value_undefined(out);
+    if (n < 2)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    FVM_Object *p = parent(o);
+    if (!p)
+        return FVM_OK;
+    FVM_Value name;
+    r = clip_name(c, a, name);
+    if (r != FVM_OK)
+        return r;
+    double depth = 0;
+    r = args(c, n, a, 1, 0, depth);
+    if (r != FVM_OK)
+        return r;
+    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+        return FVM_INVALID_ARGUMENT;
+    unsigned long total = 0;
+    FVM_Object *frames = 0;
+    r = integer_field(data, "total", 65535, total);
+    if (r == FVM_OK)
+        r = private_object(data, "frames", frames);
+    if (r != FVM_OK || !total)
+        return FVM_INVALID_ARGUMENT;
+
+    FVM_Object *proto = o->prototype, *constructor = 0, *library = 0;
+    FVM_Value linkage;
+    bool imported = data->properties.find("library") != data->properties.end();
+    bool has_linkage = data->properties.find("linkage") != data->properties.end();
+    if (imported)
+    {
+        r = private_object(data, "library", library);
+        if (r != FVM_OK)
+            return r;
+    }
+    if (has_linkage)
+    {
+        r = field(data, "linkage", linkage);
+        if (r != FVM_OK || !library || linkage.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+        r = sprite_class(c, library, linkage.string, proto, constructor);
+        if (r != FVM_OK)
+            return r;
+    }
+    FVM_Object *child = 0, *child_frames = 0;
+    r = make(c, name.string, (unsigned int)total, proto, &child);
+    if (r != FVM_OK)
+        return r;
+    r = private_object(child->resource_result.object, "frames", child_frames);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Frame definitions remain shared, while the duplicate owns its replaceable table. */
+    child_frames->indexed = frames->indexed;
+    /* [GC:] Retain the resource library for future descendant attachments and serialization. */
+    if (library)
+        child->resource_result.object->properties["library"] = object(library);
+    if (has_linkage)
+    {
+        r = fvm_object_set(c, child->resource_result.object, "linkage", &linkage);
+        if (r != FVM_OK)
+            return r;
+    }
+    const char *display[] = {"_x",     "_y",       "_xscale", "_yscale",      "_rotation",
+                             "_alpha", "_visible", "enabled", "useHandCursor"};
+    for (size_t i = 0; i < sizeof(display) / sizeof(display[0]); ++i)
+    {
+        FVM_Value value;
+        r = fvm_object_get(c, o, display[i], &value);
+        if (r == FVM_OK)
+            r = fvm_object_set(c, child, display[i], &value);
+        if (r != FVM_OK)
+            return r;
+    }
+    r = copy_drawing(c, data, child->resource_result.object);
+    if (r != FVM_OK)
+        return r;
+    r = publish_child(p, child, name.string, (unsigned long)depth);
+    if (r != FVM_OK)
+        return r;
+    return finish_instance(c, child, constructor, n > 2 ? a + 2 : 0, out);
 }
 
 /* Remove the current value. */
@@ -1821,7 +1976,8 @@ const Method methods[] = {{"toString", target},
                           {"getBounds", bounds_method},
                           {"getRect", rect_method},
                           {"hitTest", hit},
-                          {"attachMovie", attach_movie}};
+                          {"attachMovie", attach_movie},
+                          {"duplicateMovieClip", duplicate_movie}};
 } // namespace
 /* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,

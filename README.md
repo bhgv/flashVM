@@ -1,5 +1,5 @@
-Development version: **0.25** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.25 ` and an English description. Increase the subversion before each
+Development version: **0.26** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.26 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.25** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.25 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.26** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.26 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -402,7 +402,10 @@ Superclass checkpoint: named/preloaded super, receiver-preserving constructor an
 method calls, live prototype depth and graph transport. See [English / Русский](doc/AVM1_SUPER.md).
 
 SWF root action timeline checkpoint: [RU/EN](doc/SWF_MOVIECLIP_TIMELINE.md).
-FWS/CWS frame actions and labels are imported into MovieClip; scene/resource tags remain unsupported by this importer.
+FWS/CWS frame actions and labels are imported into MovieClip; unimplemented scene/resource tags are rejected explicitly by this importer.
 
 Sprite linkage checkpoint: [RU/EN](doc/SWF_SPRITE_RESOURCES.md).
 DefineSprite/ExportAssets and attachMovie preserve independent instance timelines and a managed resource library.
+
+MovieClip duplication checkpoint: [RU/EN](doc/MOVIECLIP_DUPLICATE.md).
+Duplicates reset playback, retain resource linkage and own an independent copy of vector drawing state.

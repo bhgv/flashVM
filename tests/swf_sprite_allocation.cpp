@@ -102,6 +102,29 @@ int main()
         else assert(child.type == FVM_VALUE_OBJECT);
     }
     assert(attached);
+    FVM_Value child; assert(fvm_object_get(c, root, "child", &child) == FVM_OK);
+    FVM_Object *source = child.object;
+    fvm_value_number(args, 0xff0000);
+    assert(fvm_object_call(c, source, "beginFill", 1, args, &out) == FVM_OK);
+    fvm_value_number(args, 0); fvm_value_number(args + 1, 0);
+    assert(fvm_object_call(c, source, "moveTo", 2, args, &out) == FVM_OK);
+    fvm_value_number(args, 10); fvm_value_number(args + 1, 10);
+    assert(fvm_object_call(c, source, "lineTo", 2, args, &out) == FVM_OK);
+    fvm_value_string(args, "duplicate"); fvm_value_number(args + 1, 2);
+    bool duplicated = false;
+    for (long failure = 0; failure < 2048 && !duplicated; ++failure)
+    {
+        allowance = failure;
+        FVM_Result result = fvm_object_call(c, source, "duplicateMovieClip", 2, args, &out);
+        allowance = -1;
+        assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+        duplicated = result == FVM_OK;
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
+        FVM_Value copy; assert(fvm_object_get(c, root, "duplicate", &copy) == FVM_OK);
+        if (!duplicated) assert(copy.type == FVM_VALUE_UNDEFINED);
+        else assert(copy.type == FVM_VALUE_OBJECT);
+    }
+    assert(duplicated);
     assert(fvm_movieclip_advance(c, root, 1) == FVM_OK);
     fvm_context_destroy(c); fvm_runtime_destroy(rt); return 0;
 }

@@ -113,6 +113,11 @@ int main()
     assert(fvm_movieclip_advance(c, root, 1) == FVM_OK); number(c, a, "seen", 11); number(c, b, "seen", 11);
     FVM_Value out; assert(fvm_object_call(c, a, "stop", 0, 0, &out) == FVM_OK);
     assert(fvm_movieclip_advance(c, root, 1) == FVM_OK); number(c, a, "seen", 11); number(c, b, "seen", 22);
+    FVM_Value duplicate_args[3]; fvm_value_string(duplicate_args, "spriteDuplicate"); fvm_value_number(duplicate_args + 1, 23);
+    assert(fvm_object_call(c, b, "duplicateMovieClip", 2, duplicate_args, &out) == FVM_OK && out.type == FVM_VALUE_OBJECT);
+    FVM_Object *sprite_copy = out.object; number(c, sprite_copy, "_currentframe", 1);
+    assert(get(c, sprite_copy, "seen").type == FVM_VALUE_UNDEFINED);
+    assert(fvm_movieclip_advance(c, sprite_copy, 1) == FVM_OK); number(c, sprite_copy, "seen", 11); number(c, b, "seen", 22);
     Bytes changed = action(99); assert(fvm_movieclip_define_frame(c, a, 2, "second", changed.begin(), changed.size()) == FVM_OK);
     FVM_Value frame; fvm_value_string(&frame, "second"); assert(fvm_object_call(c, a, "gotoAndStop", 1, &frame, &out) == FVM_OK);
     assert(fvm_movieclip_advance(c, a, 1) == FVM_OK); number(c, a, "seen", 99);
@@ -137,6 +142,11 @@ int main()
     number(c, custom, "seed", 31); number(c, custom, "observed", 31); number(c, custom, "inherited", 12);
     assert(get(c, custom, "createdParent").object == root); assert(get(c, custom, "hidden").type == FVM_VALUE_UNDEFINED);
     assert(get(c, custom, "seen").type == FVM_VALUE_UNDEFINED);
+    fvm_value_string(duplicate_args, "customDuplicate"); fvm_value_number(duplicate_args + 1, 24);
+    fvm_value_undefined(duplicate_args + 2); duplicate_args[2].type = FVM_VALUE_OBJECT; duplicate_args[2].object = initial;
+    assert(fvm_object_call(c, custom, "duplicateMovieClip", 3, duplicate_args, &out) == FVM_OK);
+    FVM_Object *custom_copy = out.object; number(c, custom_copy, "observed", 31);
+    assert(get(c, custom_copy, "createdParent").object == root);
     assert(fvm_gc_collect(c, 0) == FVM_OK);
     FVM_Channel *ch = 0; assert(fvm_channel_create(&ch) == FVM_OK); fvm_value_undefined(&value); value.type = FVM_VALUE_OBJECT; value.object = root;
     assert(fvm_channel_send_value(c, ch, &value, 0) == FVM_OK); assert(fvm_channel_receive_value(other, ch, &out, 0) == FVM_OK);
@@ -146,6 +156,10 @@ int main()
     FVM_Object *copy_child = attach(other, copy, "Hero", "newRemote", 10, copy_init); assert(copy_child);
     number(other, copy_child, "observed", 52); assert(get(other, copy_child, "createdParent").object == copy);
     assert(fvm_movieclip_advance(other, copy_child, 1) == FVM_OK); number(other, copy_child, "seen", 11);
+    fvm_value_string(duplicate_args, "restoredDuplicate"); fvm_value_number(duplicate_args + 1, 25);
+    duplicate_args[2].object = copy_init;
+    assert(fvm_object_call(other, copy_child, "duplicateMovieClip", 3, duplicate_args, &out) == FVM_OK);
+    number(other, out.object, "observed", 52);
     fvm_value_undefined(&value); value.type = FVM_VALUE_OBJECT; value.object = root;
     unsigned char *snapshot = 0; size_t snapshot_size = 0;
     assert(fvm_value_serialize(c, &value, &snapshot, &snapshot_size) == FVM_OK);
