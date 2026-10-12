@@ -1,5 +1,5 @@
-Development version: **0.29** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.29 ` and an English description. Increase the subversion before each
+Development version: **0.30** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.30 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -9,8 +9,8 @@ Mirror updates require an explicit user command. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.29** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.29 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.30** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.30 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -417,3 +417,5 @@ SWF placement/removal and affine/color checkpoint: [RU/EN](doc/SWF_SCENE_CONTROL
 Sprite controls are supported; full SWF resource/display-list compatibility remains open.
 
 Solid DefineShape/2/3 resource checkpoint: [RU/EN](doc/SWF_SOLID_SHAPES.md).
+
+Linear/radial SWF and native-vector gradient checkpoint: [RU/EN](doc/SWF_GRADIENTS.md).

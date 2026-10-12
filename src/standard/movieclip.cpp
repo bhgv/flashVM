@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_scene.hpp"
+#include "gradient.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
@@ -2052,7 +2053,11 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 FVM_Value rule;
                 int even_odd = field(part, "even_odd", rule) == FVM_OK &&
                                rule.type == FVM_VALUE_NUMBER && rule.number != 0;
-                r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, even_odd);
+                if (part->properties.find("gradient") != part->properties.end())
+                    r = fvm_movieclip_gradient_draw(c, part, world, p, surface, transform.multiply,
+                                                    transform.add, even_odd);
+                else
+                    r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, even_odd);
             }
         }
         if (r == FVM_OK && stroke)

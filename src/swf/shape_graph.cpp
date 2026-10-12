@@ -21,6 +21,47 @@ FVM_Value object(FVM_Object *o)
     value.object = o;
     return value;
 }
+/* [GC:] Encode a copied gradient ramp as ordinary graph edges owned by its paint. */
+FVM_Result gradient(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *part)
+{
+    /* [GC:] Hold temporary descriptors under the outer definition-construction barrier. */
+    FVM_Object *record = 0, *stops = 0;
+    /* [GC:] Allocate the gradient's immutable matrix and mode descriptor. */
+    FVM_Result r = fvm_object_create(c, &record);
+    if (r == FVM_OK)
+        /* [GC:] Allocate the ordered control-point collection. */
+        r = fvm_object_create(c, &stops);
+    if (r != FVM_OK)
+        return r;
+    record->properties["type"] = number(paint.gradient_type == 0x10 ? 0 : 1);
+    record->properties["xx"] = number(paint.gradient_matrix.xx);
+    record->properties["yx"] = number(paint.gradient_matrix.yx);
+    record->properties["xy"] = number(paint.gradient_matrix.xy);
+    record->properties["yy"] = number(paint.gradient_matrix.yy);
+    record->properties["x0"] = number(paint.gradient_matrix.x0);
+    record->properties["y0"] = number(paint.gradient_matrix.y0);
+    /* [GC:] The descriptor retains its stop table before any stops are allocated. */
+    record->properties["stops"] = object(stops);
+    /* [GC:] The vector paint owns its complete gradient description. */
+    part->properties["gradient"] = object(record);
+    for (size_t i = 0; i < paint.stops.size(); ++i)
+    {
+        /* [GC:] Hold the newly created stop until its ordered table adopts it. */
+        FVM_Object *stop = 0;
+        /* [GC:] Allocate one scalar-only gradient control point. */
+        r = fvm_object_create(c, &stop);
+        if (r != FVM_OK)
+            return r;
+        stop->properties["ratio"] = number(paint.stops[i].ratio);
+        stop->properties["r"] = number(paint.stops[i].color.r);
+        stop->properties["g"] = number(paint.stops[i].color.g);
+        stop->properties["b"] = number(paint.stops[i].color.b);
+        stop->properties["a"] = number(paint.stops[i].color.a);
+        /* [GC:] Publish this stop's edge before constructing the following stop. */
+        stops->indexed[(unsigned long)i] = object(stop);
+    }
+    return FVM_OK;
+}
 } // namespace
 
 /* [GC:] Construct all paints and commands before returning a publishable immutable definition. */
@@ -72,6 +113,12 @@ FVM_Result fvm_swf_shape_build(FVM_Context *c, const FVM_SWFShape &shape, FVM_Ob
         part->properties["alpha"] = part->properties["lineAlpha"] = number(paint.alpha);
         part->properties["width"] = number(paint.width);
         part->properties["even_odd"] = number(1);
+        if (paint.gradient_type)
+        {
+            r = gradient(c, paint, part);
+            if (r != FVM_OK)
+                return r;
+        }
         /* [GC:] Each paint owns its commands, and the collection owns every paint. */
         part->properties["commands"] = object(commands);
         /* [GC:] Publish the new paint before creating any of its command records. */

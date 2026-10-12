@@ -1,20 +1,39 @@
 /* FlashVM: owned decoded SWF solid-shape contours, independent of backend pointers. */
 #ifndef FVM_SWF_SHAPE_HPP
 #define FVM_SWF_SHAPE_HPP /* Include guard for decoded shape resources. */
-#include "flashvm/path.h"
+#include "flashvm/gradient.h"
 #include "../details/vector.hpp"
+
+/* One SWF gradient control point retaining its original byte ratio and straight RGBA. */
+struct FVM_SWFGradientStop
+{
+    unsigned int ratio;    /* Ordered position from zero to 255. */
+    FVM_RasterColor color; /* Red/green/blue/alpha bytes copied from the SWF record. */
+    /* Initialize an opaque black control point at the start of the ramp. */
+    FVM_SWFGradientStop() : ratio(0)
+    {
+        color.r = color.g = color.b = 0;
+        color.a = 255;
+    }
+};
 
 /* One solid fill or stroke, retaining separate contours and quadratic control points. */
 struct FVM_SWFShapePaint
 {
-    unsigned long rgb; /* Packed red/green/blue color. */
-    double alpha;      /* Opacity percentage for the common MovieClip renderer. */
-    double width;      /* Pixel stroke width; zero selects a fill. */
-    bool stroke;       /* Distinguishes a zero-width hairline from a fill. */
+    unsigned long rgb;          /* Packed red/green/blue color. */
+    double alpha;               /* Opacity percentage for the common MovieClip renderer. */
+    double width;               /* Pixel stroke width; zero selects a fill. */
+    unsigned int gradient_type; /* Zero for solid, 0x10 for linear, 0x12 for radial. */
+    FVM_Affine gradient_matrix; /* Maps SWF gradient coordinates in pixels to shape-local pixels. */
+    fvm_detail::vector<FVM_SWFGradientStop>
+        stops;   /* Owned sorted control points for a gradient fill. */
+    bool stroke; /* Distinguishes a zero-width hairline from a fill. */
     fvm_detail::vector<FVM_PathCommand> commands; /* Owned vector commands in pixel coordinates. */
     /* Initialize a fully opaque solid fill with no geometry. */
-    FVM_SWFShapePaint() : rgb(0), alpha(100), width(0), stroke(false)
+    FVM_SWFShapePaint() : rgb(0), alpha(100), width(0), gradient_type(0), stroke(false)
     {
+        gradient_matrix.xx = gradient_matrix.yy = 1;
+        gradient_matrix.xy = gradient_matrix.yx = gradient_matrix.x0 = gradient_matrix.y0 = 0;
     }
 };
 

@@ -39,6 +39,30 @@ bool color(FVM_SWFReader &reader, bool rgba, FVM_SWFShapePaint &paint)
     return reader.good();
 }
 
+/* Read legacy pad/RGB gradient records; Shape1/2/3 reserve mode bits and allow at most eight stops.
+ */
+FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &paint)
+{
+    if (!fvm_swf_read_matrix(reader, paint.gradient_matrix))
+        return FVM_INVALID_ARGUMENT;
+    unsigned long header = reader.integer(1);
+    if (!reader.good() || header < 1 || header > 8)
+        return FVM_INVALID_ARGUMENT;
+    for (unsigned long i = 0; i < header; ++i)
+    {
+        FVM_SWFGradientStop stop;
+        stop.ratio = (unsigned int)reader.integer(1);
+        stop.color.r = (unsigned char)reader.integer(1);
+        stop.color.g = (unsigned char)reader.integer(1);
+        stop.color.b = (unsigned char)reader.integer(1);
+        stop.color.a = tag == 32 ? (unsigned char)reader.integer(1) : 255;
+        if (!reader.good() || (i && stop.ratio < paint.stops[i - 1].ratio))
+            return FVM_INVALID_ARGUMENT;
+        paint.stops.push_back(stop);
+    }
+    return FVM_OK;
+}
+
 /* Decode a style bank, appending it while retaining previously referenced global styles. */
 FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
                   fvm_detail::vector<FVM_SWFShapePaint> &fills,
@@ -57,11 +81,21 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         unsigned long type = reader.integer(1);
         if (!reader.good())
             return FVM_INVALID_ARGUMENT;
-        if (type != 0)
-            return FVM_UNSUPPORTED;
         FVM_SWFShapePaint paint;
-        if (!color(reader, tag == 32, paint))
-            return FVM_INVALID_ARGUMENT;
+        if (type == 0)
+        {
+            if (!color(reader, tag == 32, paint))
+                return FVM_INVALID_ARGUMENT;
+        }
+        else if (type == 0x10 || type == 0x12)
+        {
+            paint.gradient_type = (unsigned int)type;
+            FVM_Result r = gradient(reader, tag, paint);
+            if (r != FVM_OK)
+                return r;
+        }
+        else
+            return FVM_UNSUPPORTED;
         fills.push_back(paint);
     }
     line_count = reader.integer(1);
