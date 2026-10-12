@@ -1,4 +1,4 @@
-/* FlashVM: BitmapData pixel access, independent cloning, disposal and clipped rectangular fills. */
+/* FlashVM: BitmapData pixel storage, exported resource loading, cloning and clipped pixel operations. */
 #include "bitmap_state.hpp"
 #include "color_transform_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -102,6 +102,97 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned n, const FVM_Value
     }
     return attach(c, (FVM_Object *)u, s, out);
 }
+/* [GC:] Borrow a private owned graph edge without invoking script getters or retaining pointers. */
+FVM_Object *owned_edge(FVM_Context *c, FVM_Object *owner, const char *name)
+{
+    if (!owner || owner->owner != c)
+        return 0;
+    Properties::iterator found = owner->properties.find(name);
+    return found != owner->properties.end() && found->second.type == FVM_VALUE_OBJECT &&
+                   found->second.object && found->second.object->owner == c
+               ? found->second.object
+               : 0;
+}
+
+/* [GC:] Find the nearest retained AVM1 MovieClip receiver, falling back to host-bound _root. */
+FVM_Result resource_clip(FVM_Context *c, FVM_Object *&clip)
+{
+    clip = 0;
+    /* [GC:] Active AVM1 frames retain receivers while this native callback borrows their identity.
+     */
+    for (FVM_GCRootFrame *frame = c->gc_frames; frame; frame = frame->previous)
+        /* [GC:] The selected receiver already belongs to the active traced call chain. */
+        if (frame->receiver && frame->receiver->owner == c && frame->receiver->resource_kind == 40)
+        {
+            /* [GC:] Borrow the current clip only while the enclosing native barrier remains active.
+             */
+            clip = frame->receiver;
+            return FVM_OK;
+        }
+    /* [GC:] Hold the global root value under the active native collector barrier. */
+    FVM_Value root;
+    /* [GC:] Global bindings retain a host-selected fallback movie resource scope. */
+    FVM_Result r = fvm_get_global(c, "_root", &root);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Select only a context-owned MovieClip retained through the global root edge. */
+    if (root.type == FVM_VALUE_OBJECT && root.object && root.object->owner == c &&
+        /* [GC:] Reject non-clip objects as resource scopes. */
+        root.object->resource_kind == 40)
+        /* [GC:] Borrow its identity until native callback completion. */
+        clip = root.object;
+    return FVM_OK;
+}
+
+/* [GC:] Copy one exported dictionary bitmap through the calling class's retained prototype. */
+FVM_Result load_bitmap(FVM_Context *c, FVM_Object *, unsigned n, const FVM_Value *args,
+                       FVM_Value *out, void *u)
+{
+    /* [GC:] Keep the caller's resource graph and imported factory class alive during coercion/copy.
+     */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_undefined(out);
+    out->type = FVM_VALUE_NULL;
+    FVM_Value name, input = argument(n, args, 0);
+    FVM_Result r = fvm_value_to_string(c, &input, &name);
+    if (r != FVM_OK)
+        return r;
+    FVM_Object *clip = 0;
+    r = resource_clip(c, clip);
+    if (r != FVM_OK || !clip)
+        return r;
+    if (!clip->resource_result_valid || clip->resource_result.type != FVM_VALUE_OBJECT)
+        return FVM_OK;
+    /* [GC:] Traverse only dictionary edges retained by the selected live clip. */
+    FVM_Object *library = owned_edge(c, clip->resource_result.object, "library");
+    /* [GC:] Linkage exports retain their resource definitions. */
+    FVM_Object *exports = owned_edge(c, library, "exports");
+    if (!exports)
+        return FVM_OK;
+    fvm_detail::string key(name.string, fvm_value_string_size(&name));
+    Properties::iterator exported = exports->properties.find(key);
+    if (exported == exports->properties.end() || exported->second.type != FVM_VALUE_OBJECT)
+        return FVM_OK;
+    /* [GC:] The resource definition retains its original native bitmap pixels. */
+    FVM_Object *bitmap = owned_edge(c, exported->second.object, "bitmap_data");
+    FVM_BitmapState *source = state(bitmap);
+    if (!source || source->disposed)
+        return FVM_OK;
+    /* [GC:] Allocate independently owned pixels; mutating the result never changes dictionary art.
+     */
+    FVM_BitmapState *copy = new FVM_BitmapState;
+    try
+    {
+        *copy = *source;
+    }
+    catch (...)
+    {
+        delete copy;
+        throw;
+    }
+    return attach(c, (FVM_Object *)u, copy, out);
+}
+
 /* Map public BitmapDataChannel bit flags to native RGBA byte offsets. */
 int channel_index(unsigned long channel)
 {
@@ -526,6 +617,11 @@ FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindi
     /* [GC:] Keep constructor class/prototype alive through native entries. */
     entry.root = klass;
     klass->constructable = klass->invocable = entry;
+    entry.callback = load_bitmap;
+    /* [GC:] Static loads retain this class/prototype, including after graph transport. */
+    klass->methods["loadBitmap"] = entry;
+    klass->attributes["loadBitmap"] = 3;
+    entry.callback = constructor;
     constructors["flash.display.BitmapData"] = entry;
     /* [GC:] Namespace and factory captures retain the bitmap class. */
     display->properties["BitmapData"] = managed(klass);
@@ -574,6 +670,8 @@ unsigned long fvm_bitmap_callback_id(FVM_NativeFunction fn)
 {
     if (fn == constructor)
         return 1500;
+    if (fn == load_bitmap)
+        return 1501;
     for (unsigned i = 0; i < 11; ++i)
         if (fn == callbacks[i])
             return 1510 + i;
@@ -587,6 +685,8 @@ FVM_NativeFunction fvm_bitmap_callback_from_id(unsigned long id)
 {
     if (id == 1500)
         return constructor;
+    if (id == 1501)
+        return load_bitmap;
     if (id >= 1510 && id < 1521)
         return callbacks[id - 1510];
     if (id >= 1530 && id < 1534)

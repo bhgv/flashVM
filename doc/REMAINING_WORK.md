@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.48 / Remaining work after v0.48
+# Оставшаяся работа после v0.49 / Remaining work after v0.49
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -39,7 +39,7 @@
 
 Проверенные новые части: Number power-of-two formatting (v0.39), числовые/битовые
 Action-коды (v0.40), векторный shape hitTest (v0.41), copyPixels (v0.42), beginBitmapFill и sampler (v0.43).
-Следующая задача пункта 4: loadBitmap/draw и оставшиеся BitmapData операции. Версия и число тестов
+Следующая задача пункта 4: draw и оставшиеся BitmapData операции; полная scope семантика loadBitmap ещё требует сверки. Версия и число тестов
 не означают завершения пункта. Технические результаты хранятся отдельно от Git.
 
 ## English
@@ -70,3 +70,7 @@ v0.47 checks SWF 8 PNG and full-canvas single-frame GIF89a resources; legacy JPE
 В v0.48 проверены DefineBits/JPEGTables и размещение bitmap в SWF 1..8 (SWF_JPEG_TABLES.md); несовпадения/recovery и точная alpha/color семантика открыты.
 
 v0.48 checks shared JPEG tables and bitmap placement across SWF 1..8; exact recovery/color conformance remains open.
+
+В v0.49 проверен static loadBitmap с независимыми копиями и AVM1/global resource scopes, GC/OOM и queue/file/TCP (BITMAP_LOAD_RESOURCE.md).
+
+v0.49 checks static loadBitmap copies, current/global resource scope, GC/OOM and queue/file/TCP; full reference scope conformance remains open.
