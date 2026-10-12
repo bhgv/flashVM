@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "primitive_state.hpp"
 #include "movieclip_state.hpp"
+#include "geometry_state.hpp"
 #include "function_state.hpp"
 #include "date_state.hpp"
 #include "base_state.hpp"
@@ -596,10 +597,26 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        const char *names[] = {"Math",     "Number",   "Boolean", "isNaN",          "isFinite",
-                               "NaN",      "Infinity", "Error",   "parseInt",       "parseFloat",
-                               "String",   "Object",   "Array",   "ASSetPropFlags", "Date",
-                               "Function", "MovieClip"};
+        const char *names[] = {"Math",
+                               "Number",
+                               "Boolean",
+                               "isNaN",
+                               "isFinite",
+                               "NaN",
+                               "Infinity",
+                               "Error",
+                               "parseInt",
+                               "parseFloat",
+                               "String",
+                               "Object",
+                               "Array",
+                               "ASSetPropFlags",
+                               "Date",
+                               "Function",
+                               "MovieClip",
+                               "flash",
+                               "flash.geom.Point",
+                               "flash.geom.Matrix"};
         if (c->standard_library)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
@@ -714,7 +731,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_function_validate(c);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return error_result == FVM_OK ? fvm_movieclip_validate(c) : error_result;
+            if (error_result == FVM_OK)
+                error_result = fvm_movieclip_validate(c);
+            return error_result == FVM_OK ? fvm_geometry_validate(c) : error_result;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
@@ -813,6 +832,10 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         if (result != FVM_OK)
             return result;
         result = fvm_base_stage(c, globals, constructors, functions);
+        if (result != FVM_OK)
+            return result;
+        /* [GC:] Stage geometry namespace/captures before standard globals are published. */
+        result = fvm_geometry_stage(c, globals, constructors);
         if (result != FVM_OK)
             return result;
         FVM_Object *function_proto = globals["Function"].object->properties["prototype"].object;

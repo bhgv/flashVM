@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "../standard/movieclip_state.hpp"
+#include "../standard/geometry_state.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
 #include "../standard/base_state.hpp"
@@ -129,7 +130,7 @@ bool known_kind(unsigned long kind)
            kind == 25 || kind == 26 || kind == 27 || kind == 28 || kind == 29 || kind == 30 ||
            kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
-           kind == 1002;
+           kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45;
 }
 
 /* Compute and return identify. */
@@ -265,6 +266,10 @@ capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata, FVM_Obje
     if (!dst.builtin)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_movieclip_callback_id(fn);
+    /* [GC:] Identify geometry factories whose class captures travel in the same object graph. */
+    if (!dst.builtin)
+        /* [GC:] Preserve the stable native callback identifier rather than a process address. */
+        dst.builtin = fvm_geometry_callback_id(fn);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (selector)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1330,6 +1335,11 @@ restore_callback(FVM_Context *c, const Callback &src,
         if (!dst.callback)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_movieclip_callback_from_id(src.builtin);
+        /* [GC:] Restore geometry callbacks before their captured class roots are rebound. */
+        if (!dst.callback)
+            /* [GC:] Resolve the native implementation associated with the transported root graph.
+             */
+            dst.callback = fvm_geometry_callback_from_id(src.builtin);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(dst.callback != 0, FVM_UNSUPPORTED);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
