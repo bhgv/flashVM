@@ -2,6 +2,8 @@
  */
 #include "bitmap_ops.hpp"
 #include "bitmap_state.hpp"
+#include "bitmap_region.hpp"
+#include <cstring>
 #include "../core/native_call_guard.hpp"
 #include "flashvm/standard.h"
 #include <cmath>
@@ -228,4 +230,84 @@ FVM_Result fvm_bitmap_color_bounds(FVM_Context *c, FVM_Object *self, unsigned n,
     FVM_Object *klass = 0;
     r = captured_class(c, u, "Rectangle", klass);
     return r == FVM_OK ? create(c, klass, FVM_GEOMETRY_RECTANGLE, names, 4, values, 0, out) : r;
+}
+
+/* [GC:] Evaluate masked unsigned comparisons over a copied region before allocation-free writes. */
+FVM_Result fvm_bitmap_threshold(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value *args,
+                                FVM_Value *out, void *)
+{
+    /* [GC:] Retain receiver, source and argument callbacks throughout region and option coercion.
+     */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_number(out, 0);
+    FVM_BitmapRegion region;
+    FVM_Result r = fvm_bitmap_region_read(c, n, args, region);
+    FVM_Value operation, input_operation = fvm_geometry_detail::argument(n, args, 3);
+    if (r == FVM_OK)
+        r = fvm_value_to_string(c, &input_operation, &operation);
+    if (r != FVM_OK)
+        return r;
+    const char *const operators[] = {"<", "<=", ">", ">=", "==", "!="};
+    unsigned comparison = 6;
+    for (unsigned i = 0; i < 6; ++i)
+        if (fvm_value_string_size(&operation) == std::strlen(operators[i]) &&
+            !std::memcmp(operation.string, operators[i], std::strlen(operators[i])))
+            comparison = i;
+    if (comparison == 6)
+        return FVM_INVALID_ARGUMENT;
+    double threshold_number = 0, color_number = 0, mask_number = 4294967295.0;
+    r = number(c, n, args, 4, threshold_number);
+    if (r == FVM_OK && n > 5)
+        r = number(c, n, args, 5, color_number);
+    if (r == FVM_OK && n > 6)
+        r = number(c, n, args, 6, mask_number);
+    if (r != FVM_OK)
+        return r;
+    FVM_BitmapState *target = 0, *input = 0;
+    r = fvm_bitmap_region_clip(self, region, target, input);
+    if (r != FVM_OK)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    if (!region.width || !region.height)
+        return FVM_OK;
+    unsigned long mask = color_word(mask_number), threshold = color_word(threshold_number) & mask;
+    unsigned long replacement = color_word(color_number);
+    if (!target->transparent)
+        replacement |= 0xff000000UL;
+    bool copy =
+        n > 7 &&
+        (args[7].type == FVM_VALUE_OBJECT ||
+         (args[7].type == FVM_VALUE_BOOLEAN && args[7].boolean) ||
+         (args[7].type == FVM_VALUE_NUMBER && args[7].number && args[7].number == args[7].number) ||
+         (args[7].type == FVM_VALUE_STRING && fvm_value_string_size(args + 7)));
+    fvm_detail::vector<unsigned char> pixels;
+    r = fvm_bitmap_region_snapshot(c, region, input, pixels);
+    if (r != FVM_OK)
+        return r;
+    unsigned passed = 0;
+    for (unsigned y = 0; y < region.height; ++y)
+        for (unsigned x = 0; x < region.width; ++x)
+        {
+            size_t index = (size_t)y * region.width + x;
+            unsigned long source = pixel_word(pixels, index), tested = source & mask;
+            bool match = comparison == 0   ? tested < threshold
+                         : comparison == 1 ? tested <= threshold
+                         : comparison == 2 ? tested > threshold
+                         : comparison == 3 ? tested >= threshold
+                         : comparison == 4 ? tested == threshold
+                                           : tested != threshold;
+            if (!match && !copy)
+                continue;
+            if (match)
+                ++passed;
+            unsigned long color = match ? replacement : source;
+            if (!target->transparent)
+                color |= 0xff000000UL;
+            write_pixel(target->pixels, (size_t)(region.dy + y) * target->width + region.dx + x,
+                        color);
+        }
+    fvm_value_number(out, passed);
+    return FVM_OK;
 }

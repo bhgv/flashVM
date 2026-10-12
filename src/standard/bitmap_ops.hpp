@@ -8,4 +8,7 @@ FVM_Result fvm_bitmap_flood_fill(FVM_Context *, FVM_Object *, unsigned, const FV
 /* [GC:] Return a typed Rectangle enclosing matching or nonmatching masked ARGB pixels. */
 FVM_Result fvm_bitmap_color_bounds(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                    FVM_Value *, void *);
+/* [GC:] Replace matching masked pixels or copy unmatched source pixels from a clipped snapshot. */
+FVM_Result fvm_bitmap_threshold(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                                FVM_Value *, void *);
 #endif

@@ -140,3 +140,9 @@ Backend-independent connected fills have bounded-memory and failure-path coverag
 Проверены ARGB masks/matching, boundaries/default/inverse/empty cases, captured Rectangle и queue/GC/OOM/balance. RU/EN: [BITMAP_COLOR_BOUNDS.md](BITMAP_COLOR_BOUNDS.md). Premultiplied/Flash сверка и этап 4 открыты.
 
 Masked color bounds and transported result factories have explicit edge/failure coverage; stage 4 remains open.
+
+## v0.54: threshold
+
+Проверены unsigned masked comparisons, copy/defaults/opaque alpha, shared clipping/snapshot, self alias, GC/queue и OOM/balance. RU/EN: [BITMAP_THRESHOLD.md](BITMAP_THRESHOLD.md). Fractional/premultiplied/Flash сверка и этап 4 открыты.
+
+Threshold and aligned region snapshots have explicit edge/transport/failure coverage; complete Flash conformance remains open.

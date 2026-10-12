@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.53 / Remaining work after v0.53
+# Оставшаяся работа после v0.54 / Remaining work after v0.54
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -90,3 +90,7 @@ v0.52 checks transactional bounded floodFill; exact coercion/alpha conformance a
 В v0.53 проверен getColorBoundsRect с typed captured Rectangle, masked matching, GC/queue и OOM/balance (BITMAP_COLOR_BOUNDS.md).
 
 v0.53 checks masked color bounds and captured Rectangle factories; exact Flash conformance and remaining APIs remain open.
+
+В v0.54 проверены unsigned threshold, copySource, shared aligned clipping/snapshot, aliases, GC/queue и OOM/balance (BITMAP_THRESHOLD.md).
+
+v0.54 checks masked threshold operations and common region snapshots; exact Flash conformance and remaining APIs remain open.
