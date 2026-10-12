@@ -11,4 +11,7 @@ FVM_Result fvm_bitmap_color_bounds(FVM_Context *, FVM_Object *, unsigned, const 
 /* [GC:] Replace matching masked pixels or copy unmatched source pixels from a clipped snapshot. */
 FVM_Result fvm_bitmap_threshold(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                 FVM_Value *, void *);
+/* [GC:] Merge a copied source region with independently bounded per-channel destination weights. */
+FVM_Result fvm_bitmap_merge(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *,
+                            void *);
 #endif

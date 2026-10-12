@@ -146,3 +146,9 @@ Masked color bounds and transported result factories have explicit edge/failure 
 Проверены unsigned masked comparisons, copy/defaults/opaque alpha, shared clipping/snapshot, self alias, GC/queue и OOM/balance. RU/EN: [BITMAP_THRESHOLD.md](BITMAP_THRESHOLD.md). Fractional/premultiplied/Flash сверка и этап 4 открыты.
 
 Threshold and aligned region snapshots have explicit edge/transport/failure coverage; complete Flash conformance remains open.
+
+## v0.55: merge
+
+Per-channel merge: проверены weights/rounding/clamps, opaque alpha, overlap, budgets, GC/queue и OOM/balance. RU/EN: [BITMAP_MERGE.md](BITMAP_MERGE.md). Полная Flash/premultiplied сверка и этап 4 открыты.
+
+Channel merging has fixed-vector/alias/transport/failure coverage; complete reference conformance remains open.

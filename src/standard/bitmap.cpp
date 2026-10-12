@@ -517,7 +517,8 @@ const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>};
 const char *const methods[] = {
     "clone",      "dispose",  "getPixel",  "getPixel32",         "setPixel",
     "setPixel32", "fillRect", "scroll",    "colorTransform",     "copyChannel",
-    "copyPixels", "draw",     "floodFill", "getColorBoundsRect", "threshold"};
+    "copyPixels", "draw",     "floodFill", "getColorBoundsRect", "threshold",
+    "merge"};
 const FVM_NativeFunction callbacks[] = {method<0>,
                                         method<1>,
                                         method<2>,
@@ -532,7 +533,8 @@ const FVM_NativeFunction callbacks[] = {method<0>,
                                         fvm_bitmap_draw,
                                         fvm_bitmap_flood_fill,
                                         fvm_bitmap_color_bounds,
-                                        fvm_bitmap_threshold};
+                                        fvm_bitmap_threshold,
+                                        fvm_bitmap_merge};
 } // namespace
 /* [GC:] Borrow the native pixel allocation only when its internal ownership callback matches. */
 FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)

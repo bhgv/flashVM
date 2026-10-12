@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.54 / Remaining work after v0.54
+# Оставшаяся работа после v0.55 / Remaining work after v0.55
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -94,3 +94,7 @@ v0.53 checks masked color bounds and captured Rectangle factories; exact Flash c
 В v0.54 проверены unsigned threshold, copySource, shared aligned clipping/snapshot, aliases, GC/queue и OOM/balance (BITMAP_THRESHOLD.md).
 
 v0.54 checks masked threshold operations and common region snapshots; exact Flash conformance and remaining APIs remain open.
+
+В v0.55 проверен per-channel merge с aligned snapshot, weights/rounding, aliases, GC/queue и OOM/balance (BITMAP_MERGE.md).
+
+v0.55 checks channel merging; exact premultiplied/coercion conformance and remaining APIs remain open.

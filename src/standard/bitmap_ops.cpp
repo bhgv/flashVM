@@ -1,5 +1,4 @@
-/* FlashVM: transactional four-connected scanline flood filling with a bounded pending-span stack.
- */
+/* FlashVM: bounded logical bitmap fills, masked bounds, threshold tests and channel merging. */
 #include "bitmap_ops.hpp"
 #include "bitmap_state.hpp"
 #include "bitmap_region.hpp"
@@ -309,5 +308,57 @@ FVM_Result fvm_bitmap_threshold(FVM_Context *c, FVM_Object *self, unsigned n, co
                         color);
         }
     fvm_value_number(out, passed);
+    return FVM_OK;
+}
+
+/* [GC:] Blend copied source channels into destination pixels after all coercion and allocations
+ * finish. */
+FVM_Result fvm_bitmap_merge(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value *args,
+                            FVM_Value *out, void *)
+{
+    /* [GC:] Protect receiver/source and any public region or coefficient conversion callbacks. */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_undefined(out);
+    FVM_BitmapRegion region;
+    FVM_Result r = fvm_bitmap_region_read(c, n, args, region);
+    unsigned multipliers[4];
+    bool any = false;
+    for (unsigned i = 0; r == FVM_OK && i < 4; ++i)
+    {
+        double value = 0;
+        r = number(c, n, args, i + 3, value);
+        if (r != FVM_OK)
+            return r;
+        multipliers[i] = value <= 0 ? 0 : value >= 256 ? 256 : (unsigned)std::floor(value);
+        any = any || multipliers[i] != 0;
+    }
+    if (r != FVM_OK)
+        return r;
+    FVM_BitmapState *target = 0, *input = 0;
+    r = fvm_bitmap_region_clip(self, region, target, input);
+    if (r != FVM_OK)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    if (!any || !region.width || !region.height)
+        return FVM_OK;
+    fvm_detail::vector<unsigned char> pixels;
+    r = fvm_bitmap_region_snapshot(c, region, input, pixels);
+    if (r != FVM_OK)
+        return r;
+    for (unsigned y = 0; y < region.height; ++y)
+        for (unsigned x = 0; x < region.width; ++x)
+        {
+            const unsigned char *source = pixels.begin() + ((size_t)y * region.width + x) * 4;
+            unsigned char *dest = target->pixels.begin() +
+                                  ((size_t)(region.dy + y) * target->width + region.dx + x) * 4;
+            for (unsigned channel = 0; channel < 4; ++channel)
+                dest[channel] = (unsigned char)((source[channel] * multipliers[channel] +
+                                                 dest[channel] * (256 - multipliers[channel])) /
+                                                256);
+            if (!target->transparent)
+                dest[3] = 255;
+        }
     return FVM_OK;
 }
