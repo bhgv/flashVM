@@ -5,6 +5,8 @@
 #include "../core/string_internal.hpp"
 #include "function_state.hpp"
 #include "../avm1/function_record.hpp"
+#include "../core/call_scope.hpp"
+#include "super.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -1025,6 +1027,8 @@ extern "C" FVM_Result fvm_function_construct(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value result;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        /* [GC:] Retain constructor identity and restore the caller mode on every exit. */
+        FVM_CallScope constructor_scope(c, fn, fn, instance->prototype);
         r = fvm_function_invoke(c, fn, instance, n, a, &result);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
@@ -1050,21 +1054,23 @@ extern "C" FVM_Result fvm_function_construct(
 /* Map a native function callback to its stable serialization identifier. */
 unsigned long fvm_function_callback_id(FVM_NativeFunction cb)
 {
-    return cb == script          ? 800
-           : cb == call          ? 801
-           : cb == apply         ? 802
-           : cb == function_text ? 803
-           : cb == empty         ? 804
-           : cb == constructor   ? 805
-           : cb == argument_get  ? 806
-           : cb == argument_set  ? 807
-                                 : 0;
+    return cb == fvm_super_callback() ? 808
+           : cb == script             ? 800
+           : cb == call               ? 801
+           : cb == apply              ? 802
+           : cb == function_text      ? 803
+           : cb == empty              ? 804
+           : cb == constructor        ? 805
+           : cb == argument_get       ? 806
+           : cb == argument_set       ? 807
+                                      : 0;
 }
 
 /* Restore a native function callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
 {
-    return id == 800   ? script
+    return id == 808   ? fvm_super_callback()
+           : id == 800 ? script
            : id == 801 ? call
            : id == 802 ? apply
            : id == 803 ? function_text
@@ -1078,7 +1084,7 @@ FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
 /* Compute and return function collector callback. */
 bool fvm_function_collector_callback(FVM_NativeFunction cb)
 {
-    return cb == script || cb == call || cb == apply;
+    return cb == script || cb == call || cb == apply || cb == fvm_super_callback();
 }
 
 /* [GC:] Link an arguments index to an activation using a traced accessor descriptor. */

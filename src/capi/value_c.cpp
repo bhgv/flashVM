@@ -15,6 +15,8 @@
 #include <cstring>
 #include "../core/string_internal.hpp"
 #include <new>
+#include "../core/call_scope.hpp"
+#include "../standard/super.hpp"
 /* Validate value. */
 FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
 {
@@ -99,14 +101,14 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const char *name, FVM_Na
     }
 }
 
-/* Read object no index. */
-FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
+/* Read a selected prototype chain with a separate accessor receiver. */
+FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiver,
+                               const char *name, FVM_Value *out, bool allow_meta)
 {
 
     /* Initialization / Инициализация локального состояния. */
-    FVM_Object *receiver = o;
     unsigned int depth = 0;
-    if (!c || !o || o->owner != c || !name || !out)
+    if (!c || !o || o->owner != c || !receiver || receiver->owner != c || !name || !out)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
     try
@@ -199,6 +201,8 @@ FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *na
         }
         if (o)
             return FVM_ERROR;
+        if (!allow_meta)
+            return FVM_OK;
         o = receiver;
         for (depth = 0; o && depth < 1024; ++depth)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -343,8 +347,15 @@ FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *na
 }
 
 /* Update object no index. */
-FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *name,
-                                   const FVM_Value *v)
+/* Read an ordinary property chain using its original receiver and metadata fallbacks. */
+FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
+{
+    return fvm_object_get_from(c, o, o, name, out, true);
+}
+
+/* Write an ordinary property using accessors, attributes and metadata hooks. */
+FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const char *name,
+                               const FVM_Value *v, bool allow_meta)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -355,7 +366,7 @@ FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *na
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
-    FVM_Object *flag_cursor = o;
+    FVM_Object *flag_cursor = start;
     for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
     {
         unsigned int flags = 0;
@@ -369,6 +380,15 @@ FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *na
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
+    if (start != o)
+    {
+        unsigned int own_flags = 0;
+        FVM_Result flag_result = fvm_object_property_flags(c, o, name, &own_flags);
+        if (flag_result != FVM_OK)
+            return flag_result;
+        if (own_flags & 4)
+            return FVM_OK;
+    }
     FVM_Value watched;
     FVM_Result r = fvm_property_watch_prepare(c, o, name, v, &watched);
     if (r != FVM_OK)
@@ -380,7 +400,7 @@ FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *na
     /* Initialization / Инициализация локального состояния. */
     /* Own data shadows inherited accessors. An own accessor always wins
      * over prototype data, and setters bind the original receiver. */
-    FVM_Object *cursor = o;
+    FVM_Object *cursor = start;
     unsigned int accessor_depth = 0;
     while (cursor && accessor_depth++ < 1024)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -447,7 +467,7 @@ FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *na
     if (accessor_depth > 1024)
         return FVM_ERROR;
     /* An existing own property is always written directly. */
-    if (o->properties.find(name) == o->properties.end())
+    if (allow_meta && o->properties.find(name) == o->properties.end())
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -561,6 +581,13 @@ FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *na
     }
     return FVM_OK;
 }
+/* Write an ordinary property through the receiver's complete property chain. */
+FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *name,
+                                   const FVM_Value *value)
+{
+    return fvm_object_set_from(c, o, o, name, value, true);
+}
+
 extern "C"
 {
     /* Initialize every value field to the undefined representation. */
@@ -763,6 +790,8 @@ extern "C"
         fvm_value_undefined(out);
         try
         {
+            if (o->resource_kind == 37)
+                return fvm_super_get(c, o, name, out);
             unsigned long index;
             if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
                 return fvm_table_get_index(c, o, index, out);
@@ -786,6 +815,8 @@ extern "C"
             return FVM_INVALID_ARGUMENT;
         try
         {
+            if (o->resource_kind == 37)
+                return fvm_super_set(c, o, name, v);
             unsigned long index;
             if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
                 return fvm_table_set_index(c, o, index, v);
@@ -886,6 +917,8 @@ extern "C"
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            if (self->resource_kind == 37)
+                return fvm_super_method(c, self, name, argc, argv, out);
             FVM_Object *cursor = self;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             unsigned int levels = 0;
@@ -908,13 +941,11 @@ extern "C"
                         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                         return r;
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return member.type == FVM_VALUE_OBJECT
-                               /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                                  объектов. */
-                               ? fvm_function_invoke(c, member.object, self, argc, argv, out)
-                               /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                                  объектов. */
-                               : FVM_UNSUPPORTED;
+                    if (member.type != FVM_VALUE_OBJECT)
+                        return FVM_UNSUPPORTED;
+                    /* [GC:] Retain the selected method owner for nested superclass dispatch. */
+                    FVM_CallScope scope(c, 0, member.object, cursor);
+                    return fvm_function_invoke(c, member.object, self, argc, argv, out);
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */

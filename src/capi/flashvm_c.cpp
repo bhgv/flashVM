@@ -143,6 +143,9 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->avm1_steps = 0;
         /* [GC:] Работаем с выбранным режимом планирования сборки. */
+        /* [GC:] No constructor/method invocation is active in a new context. */
+        context->calling_constructor = context->calling_function = context->calling_owner = 0;
+        /* [GC:] Start with the default collector scheduling mode. */
         context->gc_mode = 0;
         /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */
         context->gc_allocations = 0;

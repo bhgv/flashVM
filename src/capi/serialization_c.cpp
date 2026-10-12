@@ -127,8 +127,9 @@ bool known_kind(unsigned long kind)
     return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
            kind == 10 || kind == 20 || kind == 21 || kind == 22 || kind == 23 || kind == 24 ||
            kind == 25 || kind == 26 || kind == 27 || kind == 28 || kind == 29 || kind == 30 ||
-           kind == 31 || kind == 34 || kind == 35 || kind == 32 || kind == 33 || kind == 36 ||
-           kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 || kind == 1002;
+           kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
+           kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
+           kind == 1002;
 }
 
 /* Compute and return identify. */
@@ -391,14 +392,15 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(result == FVM_OK, result);
         }
         if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
-            dst.kind == 34 || dst.kind == 32 || dst.kind == 40)
+            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40)
         {
             require(src->resource_result_valid &&
-                        src->resource_result.type == (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                                                      : dst.kind == 26 ? FVM_VALUE_STRING
-                                                      : (dst.kind == 32 || dst.kind == 40)
-                                                          ? FVM_VALUE_OBJECT
-                                                          : FVM_VALUE_NUMBER),
+                        src->resource_result.type ==
+                            (dst.kind == 20   ? FVM_VALUE_BOOLEAN
+                             : dst.kind == 26 ? FVM_VALUE_STRING
+                             : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40)
+                                 ? FVM_VALUE_OBJECT
+                                 : FVM_VALUE_NUMBER),
                     FVM_UNSUPPORTED);
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
@@ -962,11 +964,12 @@ Graph read_graph(Reader &r, unsigned int version)
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
-                 o.kind == 34 || o.kind == 40)
-            require(o.state.type == (o.kind == 20                     ? FVM_VALUE_BOOLEAN
-                                     : o.kind == 26                   ? FVM_VALUE_STRING
-                                     : (o.kind == 32 || o.kind == 40) ? FVM_VALUE_OBJECT
-                                                                      : FVM_VALUE_NUMBER));
+                 o.kind == 34 || o.kind == 37 || o.kind == 40)
+            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
+                                     : o.kind == 26 ? FVM_VALUE_STRING
+                                     : (o.kind == 32 || o.kind == 37 || o.kind == 40)
+                                         ? FVM_VALUE_OBJECT
+                                         : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
@@ -1136,6 +1139,33 @@ Graph read_graph(Reader &r, unsigned int version)
             validate_callback(p->second.setter, n);
         }
     }
+    /* Superclass facade metadata is a private receiver/depth record, never executable data. */
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Object &facade = g.objects[i];
+        if (facade.kind != 37)
+            continue;
+        require(facade.invocable.builtin == 808 && facade.invocable.name.empty() &&
+                /* [GC:] The callback capture must retain exactly this facade identity. */
+                facade.invocable.root == i && facade.invocable.root_userdata);
+        const Object &data = g.objects[facade.state.object];
+        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+                data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 2 &&
+                data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
+                data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                !data.invocable.builtin && data.invocable.name.empty() &&
+                !data.constructable.builtin && data.constructable.name.empty());
+        fvm_detail::map<fvm_detail::string, Value>::iterator receiver =
+            data.properties.find("receiver");
+        fvm_detail::map<fvm_detail::string, Value>::iterator depth = data.properties.find("depth");
+        require(receiver != data.properties.end() && receiver->second.type == FVM_VALUE_OBJECT &&
+                receiver->second.object != i && receiver->second.metatable == none);
+        require(depth != data.properties.end() && depth->second.type == FVM_VALUE_NUMBER &&
+                depth->second.metatable == none && depth->second.number >= 0 &&
+                depth->second.number <= 1024 &&
+                depth->second.number == std::floor(depth->second.number));
+    }
     /* Watch descriptors are private data records, never opaque host pointers. */
     for (size_t i = 0; i < n; ++i)
         for (fvm_detail::map<fvm_detail::string, Value>::iterator watcher =
@@ -1163,7 +1193,7 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 6};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 7};
 
 /* Decode the current value. */
 Graph decode(const void *data, size_t size)
@@ -1173,7 +1203,7 @@ Graph decode(const void *data, size_t size)
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 6);
+    require(version >= 1 && version <= 7);
     Reader header(data, size);
     header.offset = 8;
 
@@ -1406,7 +1436,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                src.kind == 34 || src.kind == 32 || src.kind == 40)
+                src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

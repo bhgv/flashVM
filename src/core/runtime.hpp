@@ -192,6 +192,9 @@ struct FVM_Context
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
+    FVM_Object *calling_constructor; /* [GC:] Constructor identity of the current call mode. */
+    FVM_Object *calling_function;    /* [GC:] Function whose selected method owner is recorded. */
+    FVM_Object *calling_owner; /* [GC:] Prototype or object that supplied the current method. */
     bool exception_pending /* Whether an ActionScript exception is awaiting handling. */,
         /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
         fault_pending;         /* Whether structured resource fault information is pending. */

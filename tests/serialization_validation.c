@@ -110,6 +110,9 @@ int main(void)
             assert(fvm_value_deserialize(dst, previous, sizeof(previous), &copy) == FVM_OK);
         }
     }
+    data[7] = 6;
+    assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_OK);
+    data[7] = 7;
     fvm_serialized_free(data);
     /* Decode rollback does not keep partly allocated objects or invoke user code. */
     assert(fvm_serialization_register_callback(c, "test.noop", noop) == FVM_OK);

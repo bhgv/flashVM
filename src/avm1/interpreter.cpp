@@ -5,6 +5,7 @@
 #include "function_record.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/inheritance.hpp"
+#include "../standard/super.hpp"
 #include "../standard/base_state.hpp"
 #include "../standard/primitive_state.hpp"
 #include "flashvm/function.h"
@@ -279,8 +280,6 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
 
     /* Initialization / Инициализация локального состояния. */
 
-    if (fn.function2 && (fn.flags & 16))
-        return FVM_UNSUPPORTED;
     Execution execution;
     try
     {
@@ -357,6 +356,16 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
             /* [GC:] Retain this value while subsequent call setup may execute script code. */
             constructing.push_back(capture);
         }
+        FVM_Value implicit_super;
+        fvm_value_undefined(&implicit_super);
+        if (!fn.function2 || !(fn.flags & 32) || (fn.flags & 16))
+        {
+            FVM_Result made = fvm_super_create(c, callee, receiver, &implicit_super);
+            if (made != FVM_OK)
+                return made;
+            /* [GC:] Retain the facade while the rest of the activation is constructed. */
+            constructing.push_back(implicit_super);
+        }
         FVM_Object *arguments = 0;
         FVM_Result stored = fvm_object_create(c, &arguments);
         if (stored != FVM_OK)
@@ -410,13 +419,12 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
             stored = fvm_object_set(c, activation, "this", &named_this);
             if (stored != FVM_OK)
                 return stored;
-            if (fn.function2)
-            {
-                fvm_value_undefined(&named_this);
-                stored = fvm_object_set(c, activation, "super", &named_this);
-                if (stored != FVM_OK)
-                    return stored;
-            }
+            FVM_Value named_super = implicit_super;
+            if (fn.function2 && (fn.flags & 32))
+                fvm_value_undefined(&named_super);
+            stored = fvm_object_set(c, activation, "super", &named_super);
+            if (stored != FVM_OK)
+                return stored;
         }
         for (size_t i = 0; i < fn.parameters.size(); ++i)
         {
@@ -442,6 +450,7 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
             common[0].type = FVM_VALUE_OBJECT;
             common[0].object = receiver ? receiver : c->global;
             common[1] = implicit_arguments;
+            common[2] = implicit_super;
             if (receiver && (fn.flags & 64))
             {
                 stored = fvm_object_get(c, receiver, "_root", common + 3);
@@ -1747,7 +1756,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 else if (name.empty())
                     r = fvm_function_invoke(c, receiver, self, argc, args.begin(), &result);
-                else if (lookup == FVM_NOT_FOUND && script != c->script_functions.end())
+                else if (receiver->resource_kind != 37 && lookup == FVM_NOT_FOUND &&
+                         script != c->script_functions.end())
                     r = call_script(c, script->first.c_str(), script->second, argc,
                                     argc ? &args[0] : 0, receiver, &result);
                 else

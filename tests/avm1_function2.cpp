@@ -268,7 +268,8 @@ int main()
         reg(body, 1);
         end(body);
         fn = define(c, 1, 16, 0, 0, 0, body);
-        assert(fvm_function_invoke(c, fn, self, 0, 0, &out) == FVM_UNSUPPORTED);
+        assert(fvm_function_invoke(c, fn, self, 0, 0, &out) == FVM_OK &&
+               out.type == FVM_VALUE_UNDEFINED);
     }
     assert(fvm_gc_unpin(c, self) == FVM_OK);
     fvm_channel_destroy(channel);

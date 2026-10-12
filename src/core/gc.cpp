@@ -53,6 +53,12 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
     fvm_detail::vector<FVM_Object *> pending;
     /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
     mark_object(c->global, pending);
+    /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
+    mark_object(c->calling_constructor, pending);
+    /* [GC:] Retain the function used to resolve the current method owner. */
+    mark_object(c->calling_function, pending);
+    /* [GC:] Retain a prototype that callbacks may detach during execution. */
+    mark_object(c->calling_owner, pending);
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t j = 0; j < c->joining_arrays.size(); ++j)
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
