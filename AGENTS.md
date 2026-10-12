@@ -31,6 +31,9 @@
   sources in `external/`.
 - Write readable code with useful comments, verify affected builds and tests,
   and document supported behavior and remaining limitations in Russian and English.
+- In C examples, explain purpose, API semantics, ownership and cleanup with
+  concise comments. Use readable C89 declarations and the project brace style;
+  avoid comments that merely repeat the syntax.
 
 - Never commit generated build/test logs, validation JSON summaries, copied build
   profiles, or source-hash dumps. Keep them outside the repository or in ignored
