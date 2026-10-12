@@ -189,3 +189,95 @@ FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned t
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Normalize a single JPEG table stream, validating marker framing before retaining bytes. */
+FVM_Result fvm_swf_read_jpeg_tables(const unsigned char *bytes, size_t size, unsigned version,
+                                    fvm_detail::vector<unsigned char> &out)
+{
+    const unsigned char legacy[] = {255, 217, 255, 216};
+    if (!bytes || !version)
+        return FVM_INVALID_ARGUMENT;
+    if (version < 8 && size >= 8 && !std::memcmp(bytes, legacy, sizeof(legacy)))
+    {
+        bytes += 4;
+        size -= 4;
+    }
+    if (size < 4 || bytes[0] != 255 || bytes[1] != 216)
+        return FVM_INVALID_ARGUMENT;
+    size_t at = 2;
+    while (at < size)
+    {
+        if (size - at < 2 || bytes[at++] != 255)
+            return FVM_INVALID_ARGUMENT;
+        while (at < size && bytes[at] == 255)
+            ++at;
+        if (at == size)
+            return FVM_INVALID_ARGUMENT;
+        unsigned marker = bytes[at++];
+        if (marker == 217)
+        {
+            if (at != size)
+                return FVM_INVALID_ARGUMENT;
+            try
+            {
+                fvm_detail::vector<unsigned char> table(size);
+                std::memcpy(table.begin(), bytes, size);
+                out.swap(table);
+                return FVM_OK;
+            }
+            catch (const std::bad_alloc &)
+            {
+                return FVM_OUT_OF_MEMORY;
+            }
+        }
+        if (marker != 219 && marker != 196 && marker != 204 && marker != 221 && marker != 254 &&
+            !(marker >= 224 && marker <= 239))
+            return FVM_UNSUPPORTED;
+        if (size - at < 2)
+            return FVM_INVALID_ARGUMENT;
+        size_t length = ((size_t)bytes[at] << 8) | bytes[at + 1];
+        if (length < 2 || length > size - at || (marker == 221 && length != 4))
+            return FVM_INVALID_ARGUMENT;
+        at += length;
+    }
+    return FVM_INVALID_ARGUMENT;
+}
+
+/* Join separately framed tables and image segments into one private complete JPEG stream. */
+FVM_Result fvm_swf_read_legacy_jpeg(const unsigned char *bytes, size_t size,
+                                    const fvm_detail::vector<unsigned char> &tables,
+                                    unsigned version, size_t limit, FVM_SWFBitmap &out)
+{
+    if (!bytes || !version || size < 6 || !word(bytes) || tables.size() < 4)
+        return FVM_INVALID_ARGUMENT;
+    unsigned id = word(bytes);
+    bytes += 2;
+    size -= 2;
+    const unsigned char legacy[] = {255, 217, 255, 216};
+    if (version < 8 && size >= 8 && !std::memcmp(bytes, legacy, sizeof(legacy)))
+    {
+        bytes += 4;
+        size -= 4;
+    }
+    if (size < 4 || bytes[0] != 255 || bytes[1] != 216 || bytes[size - 2] != 255 ||
+        bytes[size - 1] != 217 || tables[0] != 255 || tables[1] != 216 ||
+        tables[tables.size() - 2] != 255 || tables[tables.size() - 1] != 217)
+        return FVM_INVALID_ARGUMENT;
+    if (size > (size_t)-1 - tables.size())
+        return FVM_OUT_OF_MEMORY;
+    try
+    {
+        size_t joined_size = tables.size() + size - 2;
+        fvm_detail::vector<unsigned char> joined(joined_size);
+        joined[0] = (unsigned char)id;
+        joined[1] = (unsigned char)(id >> 8);
+        std::memcpy(joined.begin() + 2, tables.begin(), tables.size() - 2);
+        std::memcpy(joined.begin() + tables.size(), bytes + 2, size - 2);
+        return fvm_swf_read_jpeg(joined.begin(), joined.size(), 21, version < 2 ? 2 : version,
+                                 limit, out);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}

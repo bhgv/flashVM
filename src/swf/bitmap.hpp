@@ -21,4 +21,11 @@ FVM_Result fvm_swf_read_bitmap(const unsigned char *, size_t, unsigned, size_t, 
 /* Decode JPEG2/3 resources and optional exact zlib alpha into a bounded bitmap. */
 FVM_Result fvm_swf_read_jpeg(const unsigned char *, size_t, unsigned, unsigned, size_t,
                              FVM_SWFBitmap &);
+/* Normalize one complete JPEG Tables/Misc stream without accepting image markers. */
+FVM_Result fvm_swf_read_jpeg_tables(const unsigned char *, size_t, unsigned,
+                                    fvm_detail::vector<unsigned char> &);
+/* Join abbreviated DefineBits data to validated shared tables before bounded JPEG decoding. */
+FVM_Result fvm_swf_read_legacy_jpeg(const unsigned char *, size_t,
+                                    const fvm_detail::vector<unsigned char> &, unsigned, size_t,
+                                    FVM_SWFBitmap &);
 #endif
