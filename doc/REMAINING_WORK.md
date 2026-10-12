@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.51 / Remaining work after v0.51
+# Оставшаяся работа после v0.52 / Remaining work after v0.52
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -82,3 +82,7 @@ v0.50 checks draw with 12 blend modes; alpha/erase coverage and exact grouping/r
 В v0.51 добавлено geometry coverage для alpha/erase draw, AA/holes/strokes и single getter read. Все 14 draw IDs реализованы в описанной модели; полная Flash/group/filter сверка остаётся открытой.
 
 v0.51 adds alpha/erase geometry coverage and one-pass getter evaluation; complete Flash/group/filter conformance remains open.
+
+В v0.52 проверен backend-independent scanline floodFill, scratch budget, reentrant disposal, GC/queue и allocation rollback/balance (BITMAP_FLOOD_FILL.md).
+
+v0.52 checks transactional bounded floodFill; exact coercion/alpha conformance and remaining stage 4 APIs remain open.

@@ -1,0 +1,8 @@
+/* FlashVM: bounded logical BitmapData pixel operations independent of graphics backends. */
+#ifndef FVM_BITMAP_OPS_HPP
+#define FVM_BITMAP_OPS_HPP /* Include guard for logical bitmap operations. */
+#include "../core/runtime.hpp"
+/* [GC:] Fill one four-connected pixel component in temporary storage before atomic publication. */
+FVM_Result fvm_bitmap_flood_fill(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                                 FVM_Value *, void *);
+#endif
