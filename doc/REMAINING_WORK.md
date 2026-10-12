@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.58 / Remaining work after v0.58
+# Оставшаяся работа после v0.59 / Remaining work after v0.59
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -107,3 +107,6 @@ v0.57 checks pixel hit testing; reference coercion/accessor compatibility remain
 
 В v0.58 подключены BitmapFilter/ColorMatrixFilter, matrix snapshots/clone и BitmapData.applyFilter/generateFilterRect для color matrix; остальные фильтры и MovieClip.filters открыты (COLOR_MATRIX_FILTER.md).
 v0.58 adds the first filter classes and color matrix bitmap application; remaining filters and scene filter rendering stay open.
+
+В v0.59 подключён ConvolutionFilter: native options/matrix copies, whole-source halo sampling, edge replacement, preserveAlpha, transport и OOM (CONVOLUTION_FILTER.md).
+v0.59 adds convolution filtering; remaining filters, scene rendering and exact Flash conformance remain open.

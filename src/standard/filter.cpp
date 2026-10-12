@@ -1,6 +1,7 @@
 /* FlashVM: BitmapFilter and ColorMatrixFilter classes, atomic matrix copies and bitmap filtering.
  */
 #include "filter_state.hpp"
+#include "convolution.hpp"
 #include "bitmap_region.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -261,7 +262,7 @@ FVM_Result fvm_filter_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindi
     prototypes[1]->attributes["matrix"] = 3;
     /* [GC:] Publish the complete filter namespace into the staged flash graph. */
     flash->properties["filters"] = managed(space);
-    return FVM_OK;
+    return fvm_convolution_stage(c, space, bindings, function_proto, constructors);
 }
 /* Validate class identities without firing getters or changing namespace state. */
 bool fvm_filter_validate(FVM_Context *c, FVM_Object *flash)
@@ -271,7 +272,8 @@ bool fvm_filter_validate(FVM_Context *c, FVM_Object *flash)
     return base && matrix && base->resource_kind == FVM_BITMAP_FILTER_CLASS &&
            matrix->resource_kind == FVM_COLOR_MATRIX_FILTER_CLASS &&
            base->constructable.callback == base_constructor &&
-           matrix->constructable.callback == matrix_constructor;
+           matrix->constructable.callback == matrix_constructor &&
+           fvm_convolution_validate(c, space);
 }
 /* Identify a native filter callback independently of process addresses. */
 unsigned long fvm_filter_callback_id(FVM_NativeFunction fn)
@@ -279,13 +281,14 @@ unsigned long fvm_filter_callback_id(FVM_NativeFunction fn)
     for (unsigned i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); ++i)
         if (fn == callbacks[i])
             return 1600 + i;
-    return 0;
+    return fvm_convolution_callback_id(fn);
 }
 /* Restore only an append-only filter callback known to this implementation. */
 FVM_NativeFunction fvm_filter_callback_from_id(unsigned long id)
 {
-    return id >= 1600 && id < 1600 + sizeof(callbacks) / sizeof(callbacks[0]) ? callbacks[id - 1600]
-                                                                              : 0;
+    if (id >= 1600 && id < 1600 + sizeof(callbacks) / sizeof(callbacks[0]))
+        return callbacks[id - 1600];
+    return fvm_convolution_callback_from_id(id);
 }
 /* [GC:] Apply native color coefficients only after geometry coercion and a complete source
  * snapshot. */
@@ -303,6 +306,9 @@ FVM_Result fvm_bitmap_apply_filter(FVM_Context *c, FVM_Object *self, unsigned n,
         r = object_argument(c, n, args, 3, filter);
     if (r != FVM_OK)
         return r;
+    FVM_Convolution convolution;
+    if (fvm_convolution_values(c, filter, convolution))
+        return fvm_convolution_apply(c, self, region, convolution, out);
     double matrix[20];
     if (!fvm_filter_matrix(c, filter, matrix))
         return FVM_UNSUPPORTED;
@@ -361,7 +367,9 @@ FVM_Result fvm_bitmap_filter_rect(FVM_Context *c, FVM_Object *self, unsigned n,
     if (r != FVM_OK)
         return r;
     double coefficients[20];
-    if (!fvm_filter_matrix(c, filter, coefficients))
+    FVM_Convolution convolution;
+    if (!fvm_filter_matrix(c, filter, coefficients) &&
+        !fvm_convolution_values(c, filter, convolution))
         return FVM_UNSUPPORTED;
     const char *const names[] = {"x", "y", "width", "height"};
     double box[4] = {0, 0, 0, 0};

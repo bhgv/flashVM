@@ -159,7 +159,8 @@ function(fvm_add_program source)
   if(FVM_BUILD_TESTS)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
-    if(target STREQUAL "flashvm_tests_color_matrix_filter_allocation")
+    if(target STREQUAL "flashvm_tests_color_matrix_filter_allocation" OR
+       target STREQUAL "flashvm_tests_convolution_filter_allocation")
       # Exhaustive graph reconstruction failures run longer under ASan/UBSan.
       set_tests_properties(${target} PROPERTIES TIMEOUT 180)
     endif()

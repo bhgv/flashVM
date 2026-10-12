@@ -1,5 +1,8 @@
 # BitmapFilter / ColorMatrixFilter
 
+Текущая версия v0.59 также поддерживает [ConvolutionFilter](CONVOLUTION_FILTER.md).
+The v0.58 evidence below describes the first filter checkpoint.
+
 ## Русский
 
 v0.58 добавляет flash.filters.BitmapFilter и flash.filters.ColorMatrixFilter.
@@ -17,7 +20,7 @@ getter side effects сохраняются. Текущая защитная гр
 ±1 000 000; NaN/infinity/missing entries отклоняются. Полная Flash coercion
 семантика и внепороговые коэффициенты ещё требуют эталонной проверки.
 
-BitmapData.applyFilter поддерживает только ColorMatrixFilter. Геометрия и
+В v0.58 BitmapData.applyFilter поддерживал только ColorMatrixFilter. Геометрия и
 source/destination clipping описаны в BITMAP_THRESHOLD.md. Весь source ROI
 сначала копируется, затем вычисляется dot product строки матрицы и straight
 RGBA pixel, прибавляется offset, результат ограничивается 0..255 и округляется
@@ -60,7 +63,7 @@ then atomically installs independent private numeric storage. Allocation failure
 preserve the old matrix; getter side effects remain. Current safety bounds are
 ±1,000,000 per coefficient; missing/NaN/infinite entries are rejected.
 
-BitmapData.applyFilter currently supports ColorMatrixFilter only. It snapshots
+The v0.58 BitmapData.applyFilter supported ColorMatrixFilter only. It snapshots
 the aligned source ROI before writing, computes straight RGBA dot products plus
 offsets, clamps to bytes and rounds to the nearest integer. Opaque alpha stays
 255 and zero alpha clears output RGB. No callbacks/allocations occur after the

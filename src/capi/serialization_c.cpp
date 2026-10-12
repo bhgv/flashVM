@@ -7,6 +7,7 @@
 #include "../standard/geometry_state.hpp"
 #include "../standard/color_transform_state.hpp"
 #include "../standard/filter_state.hpp"
+#include "../standard/convolution.hpp"
 #include "../standard/bitmap_state.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
@@ -135,7 +136,8 @@ bool known_kind(unsigned long kind)
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
            kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
            kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51 || kind == 52 ||
-           kind == 53 || kind == 54 || kind == 55 || kind == 56 || kind == 57;
+           kind == 53 || kind == 54 || kind == 55 || kind == 56 || kind == 57 || kind == 58 ||
+           kind == 59;
 }
 
 /* Compute and return identify. */
@@ -411,17 +413,18 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         }
         if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
             dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 ||
-            dst.kind == 48 || dst.kind == 50 || dst.kind == 54)
+            dst.kind == 48 || dst.kind == 50 || (dst.kind == 54 || dst.kind == 58))
         {
-            require(src->resource_result_valid &&
-                        src->resource_result.type ==
-                            (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                             : dst.kind == 26 ? FVM_VALUE_STRING
-                             : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40 ||
-                                dst.kind == 48 || dst.kind == 50 || dst.kind == 54)
-                                 ? FVM_VALUE_OBJECT
-                                 : FVM_VALUE_NUMBER),
-                    FVM_UNSUPPORTED);
+            require(
+                src->resource_result_valid &&
+                    src->resource_result.type ==
+                        (dst.kind == 20   ? FVM_VALUE_BOOLEAN
+                         : dst.kind == 26 ? FVM_VALUE_STRING
+                         : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40 || dst.kind == 48 ||
+                            dst.kind == 50 || (dst.kind == 54 || dst.kind == 58))
+                             ? FVM_VALUE_OBJECT
+                             : FVM_VALUE_NUMBER),
+                FVM_UNSUPPORTED);
             if (dst.kind == 48)
             {
                 double native_channels[8];
@@ -433,6 +436,13 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                 double coefficients[20];
                 /* [GC:] Reject invalid private filter storage before capturing its managed edge. */
                 require(fvm_filter_matrix(c, src, coefficients), FVM_UNSUPPORTED);
+            }
+            if (dst.kind == 58)
+            {
+                FVM_Convolution convolution;
+                /* [GC:] Reject malformed convolution data before capturing its managed private
+                 * edge. */
+                require(fvm_convolution_values(c, src, convolution), FVM_UNSUPPORTED);
             }
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
@@ -1000,13 +1010,14 @@ Graph read_graph(Reader &r, unsigned int version)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
                  o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48 || o.kind == 50 ||
-                 o.kind == 54)
-            require(o.state.type == (o.kind == 20   ? FVM_VALUE_BOOLEAN
-                                     : o.kind == 26 ? FVM_VALUE_STRING
-                                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 ||
-                                        o.kind == 48 || o.kind == 50 || o.kind == 54)
-                                         ? FVM_VALUE_OBJECT
-                                         : FVM_VALUE_NUMBER));
+                 (o.kind == 54 || o.kind == 58))
+            require(o.state.type ==
+                    (o.kind == 20   ? FVM_VALUE_BOOLEAN
+                     : o.kind == 26 ? FVM_VALUE_STRING
+                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 || o.kind == 48 ||
+                        o.kind == 50 || (o.kind == 54 || o.kind == 58))
+                         ? FVM_VALUE_OBJECT
+                         : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
@@ -1206,6 +1217,61 @@ Graph read_graph(Reader &r, unsigned int version)
                     entry->second.metatable == none);
             if (color.kind == 54)
                 require(entry->second.number >= -1000000.0 && entry->second.number <= 1000000.0);
+        }
+    }
+    /* [GC:] Convolution records contain bounded numeric options and a detached coefficient
+     * sequence. */
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Object &filter = g.objects[i];
+        if (filter.kind != 58)
+            continue;
+        require(filter.state.type == FVM_VALUE_OBJECT && filter.state.object != none);
+        const Object &data = g.objects[filter.state.object];
+        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+                data.state.type == FVM_VALUE_UNDEFINED && data.indexed.empty() &&
+                data.methods.empty() && data.metamethods.empty() && data.accessors.empty() &&
+                data.method_values.empty() && data.watchers.empty() && data.attributes.empty() &&
+                data.implemented_interfaces.empty() && !data.invocable.builtin &&
+                data.invocable.name.empty() && !data.constructable.builtin &&
+                data.constructable.name.empty());
+        const char *names[] = {"matrixX", "matrixY", "divisor", "bias",  "preserveAlpha",
+                               "clamp",   "color",   "alpha",   "length"};
+        double parameters[9];
+        for (unsigned index = 0; index < 9; ++index)
+        {
+            fvm_detail::map<fvm_detail::string, Value>::const_iterator entry =
+                data.properties.find(names[index]);
+            require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
+                    entry->second.metatable == none);
+            parameters[index] = entry->second.number;
+            require(parameters[index] >= (index == 2 || index == 3 ? -1000000.0 : 0) &&
+                    parameters[index] <= (index == 6 ? 16777215.0 : 1000000.0));
+        }
+        for (unsigned index = 0; index < 2; ++index)
+            require(parameters[index] <= 15 && parameters[index] == std::floor(parameters[index]));
+        require((parameters[4] == 0 || parameters[4] == 1) &&
+                (parameters[5] == 0 || parameters[5] == 1) &&
+                parameters[6] == std::floor(parameters[6]) && parameters[7] <= 1 &&
+                parameters[8] <= 225 && parameters[8] == std::floor(parameters[8]) &&
+                parameters[8] >= parameters[0] * parameters[1]);
+        unsigned length = (unsigned)parameters[8];
+        require(data.properties.size() == 9 + length);
+        for (unsigned index = 0; index < length; ++index)
+        {
+            char text[4];
+            unsigned position = 0;
+            if (index >= 100)
+                text[position++] = (char)('0' + index / 100);
+            if (index >= 10)
+                text[position++] = (char)('0' + (index / 10) % 10);
+            text[position++] = (char)('0' + index % 10);
+            text[position] = 0;
+            fvm_detail::map<fvm_detail::string, Value>::const_iterator entry =
+                data.properties.find(text);
+            require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
+                    entry->second.metatable == none && entry->second.number >= -1000000.0 &&
+                    entry->second.number <= 1000000.0);
         }
     }
     /* [GC:] Transform private state contains only an optional reference to an actual MovieClip. */
@@ -1539,7 +1605,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
-                src.kind == 48 || src.kind == 50 || src.kind == 54)
+                src.kind == 48 || src.kind == 50 || (src.kind == 54 || src.kind == 58))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
