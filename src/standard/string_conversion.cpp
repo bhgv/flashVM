@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: string conversion.
+ * File: src/standard/string_conversion.cpp.
+ */
+
 #include "primitive_state.hpp"
 #include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
@@ -11,6 +15,7 @@
 
 namespace
 {
+/* Compute and return owned string. */
 FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
                         size_t length = (size_t)-1)
 {
@@ -19,6 +24,8 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
         return FVM_OUT_OF_MEMORY;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memcpy(copy, text, length);
     copy[length] = 0;
     try
@@ -33,6 +40,7 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
     return fvm_value_string_bytes(out, copy, length);
 }
 
+/* Compute and return number string. */
 FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
 {
     if (number != number)
@@ -43,6 +51,7 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
         number == -std::numeric_limits<double>::infinity())
         return fvm_value_string(out, number < 0 ? "-Infinity" : "Infinity");
 
+    /* Initialization / Инициализация локального состояния. */
     char candidate[128];
     const char *point = std::localeconv()->decimal_point;
     if (!point || std::strlen(point) > 16)
@@ -65,10 +74,14 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
     }
     if (!roundtrip)
         return FVM_UNSUPPORTED;
+
+    /* Initialization / Инициализация локального состояния. */
     const char *p = candidate;
     bool negative = *p == '-';
     if (negative)
         ++p;
+
+    /* Initialization / Инициализация локального состояния. */
     char digits[32];
     size_t count = 0;
     int position = 0;
@@ -110,6 +123,7 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
     while (count > 1 && digits[count - 1] == '0')
         --count;
 
+    /* Initialization / Инициализация локального состояния. */
     /* AS decimal notation uses fixed form from 1e-6 through values below 1e21.
      * Bounds include the largest fixed expansion plus a terminator. */
     char text[128];
@@ -157,6 +171,7 @@ FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
     return owned_string(c, text, out);
 }
 
+/* Compute and return primitive string. */
 FVM_Result primitive_string(FVM_Context *c, const FVM_Value &value, FVM_Value *out)
 {
     switch (value.type)
@@ -176,54 +191,112 @@ FVM_Result primitive_string(FVM_Context *c, const FVM_Value &value, FVM_Value *o
     }
 }
 
+/* Define ConversionScope struct and its representation. */
+/* [GC:] Объявляем представление состояния сборщика или корней. */
 struct ConversionScope
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Context *context;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::vector<FVM_Value> values;
+    /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
     FVM_GCRootFrame frame;
+    /* Initialize Conversion Scope and its owned state. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     ConversionScope(FVM_Context *c, const FVM_Value &value) : context(c)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         values.push_back(value);
+        /* [GC:] Сохраняем предыдущий корень для восстановления цепочки после выхода. */
         frame.previous = c->gc_frames;
+        /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
         frame.stack = &values;
+        /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
         frame.locals = 0;
+        /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
         frame.receiver = 0;
+        /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
         c->gc_frames = &frame;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ++c->string_depth;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* Release the resources owned by this ConversionScope instance. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     ~ConversionScope()
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         --context->string_depth;
+        /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
         context->gc_frames = frame.previous;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 };
 } // namespace
 
+/* Compute and return value to string. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result fvm_value_to_string(FVM_Context *c, const FVM_Value *input, FVM_Value *out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     /* Permit in-place conversion without erasing the input before validation. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value value;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&value);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (input)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         value = *input;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(out);
+    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
     if (!c || !input || c->destroying || c->gc_releasing || fvm_validate_value(c, &value) != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (c->string_depth >= 64)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_UNSUPPORTED;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (value.type != FVM_VALUE_OBJECT)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return primitive_string(c, value, out);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ConversionScope scope(c, value);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value primitive;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result status = fvm_to_primitive(c, &value, true, &primitive);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return status == FVM_OK ? primitive_string(c, primitive, out) : status;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }

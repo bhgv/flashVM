@@ -1,6 +1,17 @@
+/* FlashVM: Embedding/ActionScript tutorial: example.
+ * File: examples/embedding/function_parameters/example.as.
+ */
+
 // ActionScript 1/2: named functions with parameters.
 // This subset is executable by the current FlashVM AVM1 interpreter.
-function echo(n) {
+/* Implement echo for this subsystem. */
+/* Объявляем функцию или назначаем обработчик события. */
+function echo(n)
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return n;
+    /* Завершаем текущий блок или описание объекта. */
 }
+/* Объявляем result и сохраняем начальное значение. */
 var result = echo(42);

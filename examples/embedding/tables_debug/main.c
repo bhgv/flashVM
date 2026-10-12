@@ -1,20 +1,72 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/tables_debug/main.c.
+ */
+
 /* C89 embedding example: named and numeric table slots + inspection. */
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/debug.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
-int main(void) {
-    FVM_Config cfg; FVM_Runtime *rt=0; FVM_Context *vm=0;
-    FVM_Object *table=0; FVM_Value v; size_t count=0;
-    if (fvm_config_init(&cfg)!=FVM_OK ||
-        fvm_runtime_create(&cfg,&rt)!=FVM_OK ||
-        fvm_context_create(rt,&vm)!=FVM_OK) return 1;
-    if (fvm_object_create(vm,&table)!=FVM_OK) return 2;
-    fvm_value_number(&v,42);
-    if (fvm_object_set(vm,table,"answer",&v)!=FVM_OK ||
-        fvm_table_set_index(vm,table,0,&v)!=FVM_OK) return 3;
-    if (fvm_table_named_count(vm,table,&count)!=FVM_OK) return 4;
-    printf("Named variables: %lu\n",(unsigned long)count);
-    if (fvm_debug_object_count(vm,&count)!=FVM_OK) return 5;
-    printf("Allocated objects: %lu\n",(unsigned long)count);
-    fvm_context_destroy(vm); fvm_runtime_destroy(rt);
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config cfg;
+    /* Сохраняем вычисленное значение: FVM_Runtime *rt. */
+    FVM_Runtime *rt = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *vm. */
+    FVM_Context *vm = 0;
+    /* Сохраняем вычисленное значение: FVM_Object *table. */
+    FVM_Object *table = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value v;
+    /* Сохраняем вычисленное значение: size_t count. */
+    size_t count = 0;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &rt) != FVM_OK ||
+        /* Создаём отдельный контекст интерпретатора в среде выполнения. */
+        fvm_context_create(rt, &vm) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_create(vm, &table) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 2;
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&v, 42);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_set(vm, table, "answer", &v) != FVM_OK ||
+        /* Выполняем вызов fvm_table_set_index с указанными аргументами. */
+        fvm_table_set_index(vm, table, 0, &v) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 3;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_table_named_count(vm, table, &count) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 4;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("Named variables: %lu\n", (unsigned long)count);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_debug_object_count(vm, &count) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 5;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("Allocated objects: %lu\n", (unsigned long)count);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(vm);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(rt);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

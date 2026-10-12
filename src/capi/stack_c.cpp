@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: stack.
+ * File: src/capi/stack_c.cpp.
+ */
+
 #include "flashvm/function.h"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/stack.h"
@@ -7,58 +11,99 @@
 #include "../core/runtime.hpp"
 #include <new>
 #include <cstring>
+/* Define FVM_Stack struct and its representation. */
 struct FVM_Stack
 {
     FVM_Context *context;
     fvm_detail::vector<FVM_Value> values;
 };
+
+/* Compute and return valid. */
 static int valid(FVM_Context *c, const FVM_Value *v)
 {
     return fvm_validate_value(c, v) == FVM_OK;
 }
 extern "C"
 {
+    /* Create stack. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result fvm_stack_create(FVM_Context *c, FVM_Stack **out)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!c || !out)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         *out = new (std::nothrow) FVM_Stack;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!*out)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OUT_OF_MEMORY;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         (*out)->context = c;
+        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         try
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Регистрируем временный стек значений среди корней контекста. */
             c->gc_stacks.push_back(&(*out)->values);
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         catch (...)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
             delete *out;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             *out = 0;
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OUT_OF_MEMORY;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* Destroy stack. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     void fvm_stack_destroy(FVM_Stack *s)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!s)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (size_t i = 0; i < s->context->gc_stacks.size(); ++i)
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (s->context->gc_stacks[i] == &s->values)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Регистрируем временный стек значений среди корней контекста. */
                 s->context->gc_stacks.erase(s->context->gc_stacks.begin() + i);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 break;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+        /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
         delete s;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* Compute and return stack size. */
     unsigned int fvm_stack_size(const FVM_Stack *s)
     {
         return s ? (unsigned int)s->values.size() : 0;
     }
+    /* Read stack. */
     FVM_Result fvm_stack_get(const FVM_Stack *s, int index, FVM_Value *out)
     {
         long n, pos;
         if (!s || !out || index == 0)
             return FVM_INVALID_ARGUMENT;
+
+        /* Computation / Вычисление и обновление состояния. */
         n = (long)s->values.size();
         pos = index > 0 ? (long)index - 1 : n + (long)index;
         if (pos < 0 || pos >= n)
@@ -66,6 +111,7 @@ extern "C"
         *out = s->values[(size_t)pos];
         return FVM_OK;
     }
+    /* Push stack. */
     FVM_Result fvm_stack_push(FVM_Stack *s, const FVM_Value *v)
     {
         if (!s || !valid(s->context, v))
@@ -80,6 +126,7 @@ extern "C"
         }
         return FVM_OK;
     }
+    /* Pop stack. */
     FVM_Result fvm_stack_pop(FVM_Stack *s, unsigned int count)
     {
         if (!s || count > s->values.size())
@@ -88,18 +135,22 @@ extern "C"
             s->values.pop_back();
         return FVM_OK;
     }
+    /* Clear stack. */
     FVM_Result fvm_stack_clear(FVM_Stack *s)
     {
         if (!s)
             return FVM_INVALID_ARGUMENT;
         return fvm_stack_pop(s, (unsigned int)s->values.size());
     }
+    /* Register stack. */
     FVM_Result fvm_stack_register(FVM_Context *c, const char *name, FVM_StackFunction cb,
                                   void *user)
     {
         FVM_StackEntry e;
         if (!c || !name || !*name || !cb)
             return FVM_INVALID_ARGUMENT;
+
+        /* Computation / Вычисление и обновление состояния. */
         e.callback = cb;
         e.userdata = user;
         try
@@ -112,77 +163,173 @@ extern "C"
         }
         return FVM_OK;
     }
-    FVM_Result fvm_stack_call(FVM_Context *c, const char *name, unsigned int argc,
-                              const FVM_Value *args, FVM_Value *out)
+    /* Call stack. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Result
+    fvm_stack_call(FVM_Context *c, const char *name, unsigned int argc,
+                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                   const FVM_Value *args, FVM_Value *out)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+        /* Initialization / Инициализация локального состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Stack *s = 0;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         unsigned int i;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!c || !name || !out || (argc && !args))
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator it =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->stack_functions.find(name);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (it == c->stack_functions.end())
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_UNSUPPORTED;
+
+        /* Initialization / Инициализация локального состояния. */
         /* Copy the entry before user code can replace its registration. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_StackEntry entry = it->second;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_stack_create(c, &s);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (i = 0; i < argc; ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             r = fvm_stack_push(s, &args[i]);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 break;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r == FVM_OK)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
             try
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
+                 * сборщик. */
+                /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
+                 * сборщик. */
                 FVM_NativeCallGuard native_guard(c);
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (entry.cfunction)
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     int count = entry.cfunction(s);
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (count < 0)
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         r = (FVM_Result)count;
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     else if (count > 1 || (size_t)count > s->values.size())
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         r = FVM_ERROR;
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     else if (count == 0)
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         s->values.clear();
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     else
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                     {
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         FVM_Value value = s->values.back();
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         s->values.clear();
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         s->values.push_back(value);
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
                     }
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 else
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     r = entry.callback(c, s, entry.userdata);
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
             catch (...)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = FVM_ERROR;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r == FVM_OK)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (s->values.size() > 1)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = FVM_ERROR;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             else if (s->values.size() == 1)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 *out = s->values[0];
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             else
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_value_undefined(out);
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_stack_destroy(s);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 }
 
 extern "C"
 {
+    /* Create callable. */
     FVM_Result fvm_callable_create(FVM_Context *c, FVM_StackFunction cb, void *user,
                                    FVM_Object **out)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Object *obj = 0;
         FVM_StackEntry entry;
         FVM_Result r;
@@ -192,12 +339,15 @@ extern "C"
         r = fvm_object_create(c, &obj);
         if (r != FVM_OK)
             return r;
+
+        /* Computation / Вычисление и обновление состояния. */
         entry.callback = cb;
         entry.userdata = user;
         obj->callable = entry;
         *out = obj;
         return FVM_OK;
     }
+    /* Test whether callable. */
     FVM_Result fvm_callable_is(FVM_Context *c, FVM_Object *obj, int *out)
     {
         if (!c || !obj || !out || obj->owner != c)
@@ -205,78 +355,159 @@ extern "C"
         *out = obj->callable.callback != 0 || obj->invocable.callback != 0;
         return FVM_OK;
     }
-    FVM_Result fvm_callable_invoke(FVM_Context *c, FVM_Object *obj, unsigned int argc,
-                                   const FVM_Value *args, FVM_Value *out)
+    /* Invoke callable. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Result fvm_callable_invoke(
+        FVM_Context *c, FVM_Object *obj, unsigned int argc,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        const FVM_Value *args, FVM_Value *out)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+        /* Initialization / Инициализация локального состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Stack *stack = 0;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         unsigned int i;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!c || !obj || !out || obj->owner != c || (argc && !args))
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (obj->invocable.callback)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return fvm_function_invoke(c, obj, 0, argc, args, out);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_StackEntry entry = obj->callable;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!entry.callback)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_UNSUPPORTED;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_stack_create(c, &stack);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (i = 0; i < argc; ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             r = fvm_stack_push(stack, &args[i]);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 break;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r == FVM_OK)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
             try
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
+                 * сборщик. */
+                /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
+                 * сборщик. */
                 FVM_NativeCallGuard native_guard(c);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = entry.callback(c, stack, entry.userdata);
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
             catch (...)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = FVM_ERROR;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r == FVM_OK)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (stack->values.size() > 1)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = FVM_ERROR;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             else if (stack->values.size() == 1)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 *out = stack->values[0];
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             else
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_value_undefined(out);
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_stack_destroy(stack);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 }
 
-extern "C" FVM_Result fvm_stack_register_rooted(FVM_Context *c, const char *name,
-                                                FVM_StackFunction cb, void *ud, FVM_Object *root)
+/* [GC:] Register stack rooted. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result fvm_stack_register_rooted(
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Context *c, const char *name,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_StackFunction cb, void *ud, FVM_Object *root)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || (root && root->owner != c))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_stack_register(c, name, cb, ud);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r == FVM_OK)
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         c->stack_functions.find(name)->second.root = root;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return r;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-extern "C" FVM_Result fvm_callable_create_rooted(FVM_Context *c, FVM_StackFunction cb, void *ud,
-                                                 FVM_Object *root, FVM_Object **out)
+
+/* [GC:] Create callable rooted. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result fvm_callable_create_rooted(
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Context *c, FVM_StackFunction cb, void *ud,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Object *root, FVM_Object **out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || (root && root->owner != c))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_callable_create(c, cb, ud, out);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r == FVM_OK)
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         (*out)->callable.root = root;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return r;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
 namespace
 {
 /* Convert signed public indices without overflowing on INT_MIN. */
+/* Read position of stack. */
 FVM_Result stack_position(FVM_Stack *stack, int index, size_t *position)
 {
     if (!stack || !position || index == 0)
@@ -297,34 +528,61 @@ FVM_Result stack_position(FVM_Stack *stack, int index, size_t *position)
 
 extern "C"
 {
+    /* Compute and return stack context. */
     FVM_Context *fvm_stack_context(FVM_Stack *stack)
     {
         return stack ? stack->context : 0;
     }
 
-    FVM_Result fvm_stack_register_cfunction(FVM_Context *context, const char *name,
-                                            FVM_CFunction callback, FVM_Object *root)
+    /* Register stack cfunction. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Result fvm_stack_register_cfunction(
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Context *context, const char *name,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_CFunction callback, FVM_Object *root)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!context || !name || !*name || !callback || (root && root->owner != context))
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_StackEntry entry;
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         entry.cfunction = callback;
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         entry.root = root;
+        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         try
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             context->stack_functions[name] = entry;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         catch (...)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OUT_OF_MEMORY;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 
+    /* Compute and return stack settop. */
     FVM_Result fvm_stack_settop(FVM_Stack *stack, int index)
     {
         if (!stack)
             return FVM_INVALID_ARGUMENT;
+
+        /* Initialization / Инициализация локального состояния. */
         size_t count = stack->values.size();
         size_t target;
         if (index >= 0)
@@ -356,15 +614,21 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Compute and return stack pushvalue. */
     FVM_Result fvm_stack_pushvalue(FVM_Stack *stack, int index)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         FVM_Result result = fvm_stack_get(stack, index, &value);
         return result == FVM_OK ? fvm_stack_push(stack, &value) : result;
     }
 
+    /* Remove stack. */
     FVM_Result fvm_stack_remove(FVM_Stack *stack, int index)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         size_t position;
         FVM_Result result = stack_position(stack, index, &position);
         if (result != FVM_OK)
@@ -373,8 +637,11 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Insert stack. */
     FVM_Result fvm_stack_insert(FVM_Stack *stack, int index)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         size_t position;
         FVM_Result result = stack_position(stack, index, &position);
         if (result != FVM_OK)
@@ -386,38 +653,53 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Compute and return stack replace. */
     FVM_Result fvm_stack_replace(FVM_Stack *stack, int index)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         size_t position;
         FVM_Result result = stack_position(stack, index, &position);
         if (result != FVM_OK)
             return result;
+
+        /* Computation / Вычисление и обновление состояния. */
         stack->values[position] = stack->values.back();
         stack->values.pop_back();
         return FVM_OK;
     }
 
+    /* Compute and return stack pushnumber. */
     FVM_Result fvm_stack_pushnumber(FVM_Stack *stack, double number)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         fvm_value_number(&value, number);
         return fvm_stack_push(stack, &value);
     }
 
+    /* Compute and return stack pushboolean. */
     FVM_Result fvm_stack_pushboolean(FVM_Stack *stack, int boolean)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         fvm_value_boolean(&value, boolean);
         return fvm_stack_push(stack, &value);
     }
 
+    /* Compute and return stack pushundefined. */
     FVM_Result fvm_stack_pushundefined(FVM_Stack *stack)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         fvm_value_undefined(&value);
         return fvm_stack_push(stack, &value);
     }
 
+    /* Compute and return stack pushstring. */
     FVM_Result fvm_stack_pushstring(FVM_Stack *stack, const char *text)
     {
         if (!stack || !text)
@@ -438,11 +720,14 @@ extern "C"
             delete[] copy;
             return FVM_OUT_OF_MEMORY;
         }
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         fvm_value_string(&value, copy);
         return fvm_stack_push(stack, &value);
     }
 
+    /* Compute and return stack checknumber. */
     FVM_Result fvm_stack_checknumber(FVM_Stack *stack, int index, double *out)
     {
         FVM_Value value;
@@ -457,6 +742,7 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Compute and return stack checkstring. */
     FVM_Result fvm_stack_checkstring(FVM_Stack *stack, int index, const char **out)
     {
         FVM_Value value;
@@ -471,23 +757,33 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Compute and return stack newtable. */
     FVM_Result fvm_stack_newtable(FVM_Stack *stack)
     {
         if (!stack)
             return FVM_INVALID_ARGUMENT;
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Object *object = 0;
         FVM_Result result = fvm_object_create(stack->context, &object);
         if (result != FVM_OK)
             return result;
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         fvm_value_undefined(&value);
+
+        /* Computation / Вычисление и обновление состояния. */
         value.type = FVM_VALUE_OBJECT;
         value.object = object;
         return fvm_stack_push(stack, &value);
     }
 
+    /* Compute and return stack getfield. */
     FVM_Result fvm_stack_getfield(FVM_Stack *stack, int index, const char *name)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value object, value;
         FVM_Result result = fvm_stack_get(stack, index, &object);
         if (result != FVM_OK)
@@ -498,8 +794,11 @@ extern "C"
         return result == FVM_OK ? fvm_stack_push(stack, &value) : result;
     }
 
+    /* Compute and return stack setfield. */
     FVM_Result fvm_stack_setfield(FVM_Stack *stack, int index, const char *name)
     {
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value object;
         FVM_Result result = fvm_stack_get(stack, index, &object);
         if (result != FVM_OK)
@@ -512,15 +811,19 @@ extern "C"
         return result;
     }
 
+    /* Compute and return stack getglobal. */
     FVM_Result fvm_stack_getglobal(FVM_Stack *stack, const char *name)
     {
         if (!stack || !name)
             return FVM_INVALID_ARGUMENT;
+
+        /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
         FVM_Result result = fvm_get_global(stack->context, name, &value);
         return result == FVM_OK ? fvm_stack_push(stack, &value) : result;
     }
 
+    /* Compute and return stack setglobal. */
     FVM_Result fvm_stack_setglobal(FVM_Stack *stack, const char *name)
     {
         if (!stack || !name || stack->values.empty())

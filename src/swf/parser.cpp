@@ -1,3 +1,7 @@
+/* FlashVM: SWF file parsing and model access: parser.
+ * File: src/swf/parser.cpp.
+ */
+
 #include "decode.hpp"
 #include <cstring>
 #include <climits>
@@ -5,17 +9,20 @@
 
 namespace
 {
+/* Compute and return read16. */
 unsigned int read16(const unsigned char *p)
 {
     return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
 }
 
+/* Compute and return read32. */
 unsigned long read32(const unsigned char *p)
 {
     return (unsigned long)p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
            ((unsigned long)p[3] << 24);
 }
 
+/* Compute and return inspect fws. */
 FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
 {
     size_t rect_size = (5 + 4 * (p[8] >> 3) + 7) / 8;
@@ -23,11 +30,15 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
         return FVM_INVALID_ARGUMENT;
 
     FVM_SWFInfo parsed;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&parsed, 0, sizeof(parsed));
     parsed.struct_size = sizeof(parsed);
     parsed.version = p[3];
     parsed.declared_length = read32(p + 4);
     size_t pos = 8 + rect_size;
+
+    /* Computation / Вычисление и обновление состояния. */
     parsed.frame_rate_fixed8 = read16(p + pos);
     parsed.frame_count = read16(p + pos + 2);
     pos += 4;
@@ -68,6 +79,7 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
 }
 } // namespace
 
+/* Decode swf. */
 FVM_Result fvm_swf_decode(const void *data, size_t size, size_t limit,
                           fvm_detail::vector<unsigned char> &bytes, FVM_SWFInfo *info)
 {
@@ -130,6 +142,7 @@ FVM_Result fvm_swf_decode(const void *data, size_t size, size_t limit,
     }
 }
 
+/* Compute and return swf inspect. */
 extern "C" FVM_Result fvm_swf_inspect(const void *data, size_t size, FVM_SWFInfo *info)
 {
     fvm_detail::vector<unsigned char> bytes;

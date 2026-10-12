@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: string.
+ * File: src/standard/string.cpp.
+ */
+
 #include "string_state.hpp"
 #include "../core/string_internal.hpp"
 #include "../../external/unicode/case_table.hpp"
@@ -10,16 +14,21 @@
 #include <limits>
 namespace
 {
+/* Define anonymous enum and its representation. */
 enum
 {
     STRING_OBJECT = 26,
     STRING_CLASS = 27
 };
 typedef fvm_detail::vector<unsigned int> Units;
+
+/* Decode the current value. */
 FVM_Result decode(const FVM_Value &text, Units &units)
 {
     return fvm_string_units(text, units);
 }
+
+/* Encode the current value. */
 FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, FVM_Value *out)
 {
     fvm_detail::vector<char> text;
@@ -41,6 +50,8 @@ FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, 
     fvm_value_string_bytes(&temporary, text.begin(), length);
     return fvm_value_to_string(c, &temporary, out);
 }
+
+/* Compute and return value. */
 FVM_Result value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *, FVM_Value *out,
                  void *)
 {
@@ -50,8 +61,12 @@ FVM_Result value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value
     *out = self->resource_result;
     return FVM_OK;
 }
+
+/* Compute and return receiver. */
 FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value text;
     FVM_Result result;
     if (self->resource_kind == STRING_OBJECT)
@@ -66,6 +81,8 @@ FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
     }
     return result == FVM_OK ? decode(text, units) : result;
 }
+
+/* Compute and return argument. */
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double fallback, double &number)
 {
@@ -85,6 +102,8 @@ FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, u
         number = -std::floor(-number);
     return FVM_OK;
 }
+
+/* Compute and return clamp. */
 size_t clamp(double number, size_t length, bool relative)
 {
     if (relative && number < 0)
@@ -95,9 +114,13 @@ size_t clamp(double number, size_t length, bool relative)
         return length;
     return (size_t)number;
 }
+
+/* Compute and return length. */
 FVM_Result length(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value text;
     FVM_Result result = value(c, self, 0, 0, &text, 0);
     if (result != FVM_OK)
@@ -108,9 +131,13 @@ FVM_Result length(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Valu
         fvm_value_number(out, (double)units.size());
     return result;
 }
+
+/* Compute and return character. */
 FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                      FVM_Value *out, bool code)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units units;
     FVM_Result result = receiver(c, self, units);
     if (result != FVM_OK)
@@ -135,19 +162,27 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
     }
     return encode(c, units, i, i + 1, out);
 }
+
+/* Compute and return char at. */
 FVM_Result char_at(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *o,
                    void *)
 {
     return character(c, s, n, a, o, false);
 }
+
+/* Compute and return char code. */
 FVM_Result char_code(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
                      FVM_Value *o, void *)
 {
     return character(c, s, n, a, o, true);
 }
+
+/* Compute and return portion. */
 FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                    FVM_Value *out, int mode)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units units;
     FVM_Result result = receiver(c, self, units);
     if (result != FVM_OK)
@@ -175,28 +210,40 @@ FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const F
         end = start;
     return encode(c, units, start, end, out);
 }
+
+/* Compute and return substring. */
 FVM_Result substring(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
                      FVM_Value *o, void *)
 {
     return portion(c, s, n, a, o, 0);
 }
+
+/* Copy the selected Array range, preserving absent indexed properties. */
 FVM_Result slice(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *o,
                  void *)
 {
     return portion(c, s, n, a, o, 1);
 }
+
+/* Compute and return substr. */
 FVM_Result substr(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *o,
                   void *)
 {
     return portion(c, s, n, a, o, 2);
 }
+
+/* Compute and return search. */
 FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                   FVM_Value *out, bool backwards)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units haystack, needle;
     FVM_Result result = receiver(c, self, haystack);
     if (result != FVM_OK)
         return result;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value absent, text;
     fvm_value_undefined(&absent);
     result = fvm_value_to_string(c, count ? args : &absent, &text);
@@ -256,19 +303,27 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     fvm_value_number(out, -1);
     return FVM_OK;
 }
+
+/* Compute and return index of. */
 FVM_Result index_of(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *o,
                     void *)
 {
     return search(c, s, n, a, o, false);
 }
+
+/* Compute and return last index. */
 FVM_Result last_index(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a,
                       FVM_Value *o, void *)
 {
     return search(c, s, n, a, o, true);
 }
+
+/* Concatenate Array arguments and append non-Array arguments as single values. */
 FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                   FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units joined;
     FVM_Result result = receiver(c, self, joined);
     if (result != FVM_OK)
@@ -285,6 +340,8 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     }
     return encode(c, joined, 0, joined.size(), out);
 }
+
+/* Resolve from char code. */
 FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                           FVM_Value *out, void *)
 {
@@ -304,9 +361,13 @@ FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, cons
     }
     return encode(c, units, 0, units.size(), out);
 }
+
+/* Compute and return split. */
 FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *a,
                  FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units input, separator;
     FVM_Result r = receiver(c, self, input);
     if (r != FVM_OK)
@@ -340,6 +401,8 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     r = fvm_array_create_like(c, 0, 0, &result);
     if (r != FVM_OK)
         return r;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long count = 0;
     size_t start = 0;
     /* Walk UTF-16 boundaries, retaining empty fields for nonempty separators. */
@@ -390,10 +453,14 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         start = position;
     }
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = result;
     return FVM_OK;
 }
+
+/* Compute and return in ranges. */
 template <size_t N> bool in_ranges(unsigned long cp, const FVM_CaseRange (&ranges)[N])
 {
     size_t first = 0, last = N;
@@ -409,8 +476,12 @@ template <size_t N> bool in_ranges(unsigned long cp, const FVM_CaseRange (&range
     }
     return false;
 }
+
+/* Compute and return case text. */
 FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units units;
     FVM_Result r = decode(text, units);
     if (r != FVM_OK)
@@ -424,6 +495,8 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
             cp = 0x10000 + ((cp - 0xd800) << 10) + units[++i] - 0xdc00;
         scalars.push_back(cp);
     }
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<char> bytes;
     bool preceding_cased = false;
     for (size_t i = 0; i < scalars.size(); ++i)
@@ -472,9 +545,13 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
     r = fvm_value_string_bytes(&temporary, bytes.begin(), size);
     return r == FVM_OK ? fvm_value_to_string(c, &temporary, out) : r;
 }
+
+/* Compute and return lower case. */
 FVM_Result lower_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
                       FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units units;
     FVM_Result r = receiver(c, o, units);
     FVM_Value text;
@@ -482,9 +559,13 @@ FVM_Result lower_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Val
         r = encode(c, units, 0, units.size(), &text);
     return r == FVM_OK ? case_text(c, text, out, false) : r;
 }
+
+/* Compute and return upper case. */
 FVM_Result upper_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
                       FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Units units;
     FVM_Result r = receiver(c, o, units);
     FVM_Value text;
@@ -492,6 +573,8 @@ FVM_Result upper_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Val
         r = encode(c, units, 0, units.size(), &text);
     return r == FVM_OK ? case_text(c, text, out, true) : r;
 }
+
+/* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
@@ -503,15 +586,23 @@ const Method methods[] = {
     {"substr", substr},         {"indexOf", index_of},    {"lastIndexOf", last_index},
     {"concat", concat},         {"split", split},         {"toLowerCase", lower_case},
     {"toUpperCase", upper_case}};
+
+/* Implement attach length for this subsystem. */
 void attach_length(FVM_Object *object)
 {
     FVM_AccessorEntry accessor;
+
+    /* Computation / Вычисление и обновление состояния. */
     accessor.getter = length;
     object->accessors["length"] = accessor;
 }
+
+/* Compute and return constructor. */
 FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                        FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value text, prototype;
     FVM_Result result = count ? fvm_value_to_string(c, args, &text) : fvm_value_string(&text, "");
     if (result != FVM_OK)
@@ -525,21 +616,28 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
         return result;
     if (prototype.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *object = 0;
     result = fvm_object_create(c, &object);
     if (result != FVM_OK)
         return result;
+
+    /* Computation / Вычисление и обновление состояния. */
     object->resource_kind = STRING_OBJECT;
     object->resource_result_valid = true;
     object->resource_result = text;
     object->prototype = prototype.object;
     attach_length(object);
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = object;
     return FVM_OK;
 }
 } // namespace
+/* Compute and return string case. */
 FVM_Result fvm_string_case(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper)
 {
     try
@@ -551,74 +649,160 @@ FVM_Result fvm_string_case(FVM_Context *c, const FVM_Value &text, FVM_Value *out
         return FVM_OUT_OF_MEMORY;
     }
 }
-FVM_Result fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
-                            fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+
+/* Build constructor and prototype for string. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_Result
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *klass = 0, *prototype = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result result = fvm_object_create(c, &klass);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (result != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return result;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     result = fvm_object_create(c, &prototype);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (result != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return result;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = STRING_CLASS;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->resource_kind = STRING_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->resource_result_valid = true;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_string(&prototype->resource_result, "");
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     attach_length(prototype);
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value object;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&object);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     object.type = FVM_VALUE_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     object.object = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     globals["String"] = object;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->properties["constructor"] = object;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     object.object = prototype;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->properties["prototype"] = object;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeEntry entry;
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         entry.callback = methods[i].callback;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         prototype->methods[methods[i].name] = entry;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.callback = from_char_code;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["fromCharCode"] = entry;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.callback = constructor;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     entry.root = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.userdata = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["String"] = entry;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Validate string. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_string_validate(FVM_Context *c)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value klass, prototype;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (fvm_get_global(c, "String", &klass) != FVM_OK || klass.type != FVM_VALUE_OBJECT ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         klass.object->resource_kind != STRING_CLASS ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_object_get(c, klass.object, "prototype", &prototype) != FVM_OK ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         prototype.type != FVM_VALUE_OBJECT || prototype.object->resource_kind != STRING_OBJECT)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->constructors.find("String");
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (ctor == c->constructors.end() || ctor->second.callback != constructor ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ctor->second.root != klass.object || ctor->second.userdata != klass.object)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_NativeEntry entry;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_lookup_native_method(prototype.object, methods[i].name, &entry) != FVM_OK ||
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             entry.callback != methods[i].callback)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeEntry static_method;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (fvm_lookup_native_method(klass.object, "fromCharCode", &static_method) != FVM_OK ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         static_method.callback != from_char_code)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         prototype.object->accessors.find("length");
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (accessor == prototype.object->accessors.end() || accessor->second.getter != length ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         accessor->second.setter)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Map a native string callback to its stable serialization identifier. */
 unsigned long fvm_string_callback_id(FVM_NativeFunction callback)
 {
     if (callback == constructor)
@@ -632,6 +816,8 @@ unsigned long fvm_string_callback_id(FVM_NativeFunction callback)
             return 510 + (unsigned long)i;
     return 0;
 }
+
+/* Restore a native string callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_string_callback_from_id(unsigned long id)
 {
     if (id == 503)

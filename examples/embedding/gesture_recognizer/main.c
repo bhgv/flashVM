@@ -1,29 +1,103 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/gesture_recognizer/main.c.
+ */
+
 /* C89 example: host delivers touch samples to FlashVM. */
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/gesture_recognizer.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
-static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event,
-                       FVM_InputPhase phase, FVM_MouseButton button, void *user) {
-    (void)ctx; (void)phase; (void)user;
-    printf("gesture=%d fingers=%u mapped_mouse=%d\n",
-           (int)event->gesture, event->fingers, (int)button);
+/* Implement on gesture for this subsystem. */
+/* Выполняем вызов on_gesture с указанными аргументами. */
+static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputPhase phase,
+                       /* Продолжаем объявление или выражение с указанными параметрами. */
+                       FVM_MouseButton button, void *user)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)ctx;
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)phase;
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)user;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("gesture=%d fingers=%u mapped_mouse=%d\n", (int)event->gesture, event->fingers,
+           /* Завершаем выражение с указанным значением или аргументами. */
+           (int)button);
+    /* Завершаем текущий блок или описание объекта. */
 }
-int main(void) {
-    FVM_Config config; FVM_Runtime *runtime=0; FVM_Context *context=0;
-    FVM_GestureRecognizer recognizer; FVM_InputRule rule; int dispatched=0;
-    if (fvm_config_init(&config)!=FVM_OK ||
-        fvm_runtime_create(&config,&runtime)!=FVM_OK) return 1;
-    if (fvm_context_create(runtime,&context)!=FVM_OK) {
-        fvm_runtime_destroy(runtime); return 1;
+
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config config;
+    /* Сохраняем вычисленное значение: FVM_Runtime *runtime. */
+    FVM_Runtime *runtime = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *context. */
+    FVM_Context *context = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_GestureRecognizer recognizer;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_InputRule rule;
+    /* Сохраняем вычисленное значение: int dispatched. */
+    int dispatched = 0;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_config_init(&config) != FVM_OK || fvm_runtime_create(&config, &runtime) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_context_create(runtime, &context) != FVM_OK)
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Освобождаем среду выполнения после завершения работы контекстов. */
+        fvm_runtime_destroy(runtime);
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+        /* Завершаем текущий блок или описание объекта. */
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     /* Two-finger tap behaves like a right mouse click. */
-    rule.struct_size=sizeof(rule); rule.gesture=FVM_GESTURE_TAP;
-    rule.fingers=2; rule.direction=0; rule.button=FVM_MOUSE_RIGHT;
-    fvm_input_set_rule(context,&rule);
-    fvm_input_set_callback(context,on_gesture,0);
-    recognizer.struct_size=sizeof(recognizer);
+    /* Выполняем вызов sizeof с указанными аргументами. */
+    rule.struct_size = sizeof(rule);
+    /* Сохраняем вычисленное значение: rule.gesture. */
+    rule.gesture = FVM_GESTURE_TAP;
+    /* Сохраняем вычисленное значение: rule.fingers. */
+    rule.fingers = 2;
+    /* Сохраняем вычисленное значение: rule.direction. */
+    rule.direction = 0;
+    /* Сохраняем вычисленное значение: rule.button. */
+    rule.button = FVM_MOUSE_RIGHT;
+    /* Выполняем вызов fvm_input_set_rule с указанными аргументами. */
+    fvm_input_set_rule(context, &rule);
+    /* Выполняем вызов fvm_input_set_callback с указанными аргументами. */
+    fvm_input_set_callback(context, on_gesture, 0);
+    /* Выполняем вызов sizeof с указанными аргументами. */
+    recognizer.struct_size = sizeof(recognizer);
+    /* Выполняем вызов fvm_gesture_recognizer_init с указанными аргументами. */
     fvm_gesture_recognizer_init(&recognizer);
-    fvm_gesture_recognizer_feed(context,&recognizer,FVM_TOUCH_BEGIN,2,10,20,100,&dispatched);
-    fvm_gesture_recognizer_feed(context,&recognizer,FVM_TOUCH_END,0,11,20,160,&dispatched);
-    fvm_context_destroy(context); fvm_runtime_destroy(runtime);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Выполняем вызов fvm_gesture_recognizer_feed с указанными аргументами. */
+    fvm_gesture_recognizer_feed(context, &recognizer, FVM_TOUCH_BEGIN, 2, 10, 20, 100, &dispatched);
+    /* Выполняем вызов fvm_gesture_recognizer_feed с указанными аргументами. */
+    fvm_gesture_recognizer_feed(context, &recognizer, FVM_TOUCH_END, 0, 11, 20, 160, &dispatched);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(context);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(runtime);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return dispatched ? 0 : 1;
+    /* Завершаем текущий блок или описание объекта. */
 }

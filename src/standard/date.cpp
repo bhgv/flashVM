@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: date.
+ * File: src/standard/date.cpp.
+ */
+
 #include "date_state.hpp"
 #include "flashvm/standard.h"
 #include "../../ports/clock_port.h"
@@ -6,31 +10,44 @@
 #include <limits>
 namespace
 {
+/* Define anonymous enum and its representation. */
 enum
 {
     DATE_OBJECT = 34,
     DATE_CLASS = 35
 };
+
+/* Define Fields struct and its representation. */
 struct Fields
 {
     double year, month, day, hour, minute, second, ms, weekday;
 };
+
+/* Compute and return invalid. */
 double invalid()
 {
     return std::numeric_limits<double>::quiet_NaN();
 }
+
+/* Compute and return finite. */
 bool finite(double v)
 {
     return v == v && std::fabs(v) != std::numeric_limits<double>::infinity();
 }
+
+/* Compute and return integer. */
 double integer(double v)
 {
     return v < 0 ? -std::floor(-v) : std::floor(v);
 }
+
+/* Compute and return clip. */
 double clip(double v)
 {
     return !finite(v) || std::fabs(v) > 8640000000000000.0 ? invalid() : integer(v);
 }
+
+/* Compute and return days. */
 double days(double year, double month, double day)
 {
     double normalized = year + std::floor(month / 12);
@@ -39,19 +56,27 @@ double days(double year, double month, double day)
         return invalid();
     long y = (long)normalized;
     y -= month <= 1;
+
+    /* Initialization / Инициализация локального состояния. */
     double era = std::floor((double)y / 400);
     long yoe = y - (long)(era * 400);
     long mp = (long)month + (month > 1 ? -2 : 10);
     double doy = (153 * mp + 2) / 5 + day - 1;
     return era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
 }
+
+/* Compute and return make. */
 double make(const Fields &f)
 {
     return days(f.year, f.month, f.day) * 86400000 + f.hour * 3600000 + f.minute * 60000 +
            f.second * 1000 + f.ms;
 }
+
+/* Compute and return split. */
 Fields split(double time)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Fields f;
     double day = std::floor(time / 86400000);
     long z = (long)day + 719468;
@@ -59,10 +84,14 @@ Fields split(double time)
     long doe = z - era * 146097, yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
     long y = yoe + era * 400, doy = doe - (365 * yoe + yoe / 4 - yoe / 100),
          mp = (5 * doy + 2) / 153;
+
+    /* Computation / Вычисление и обновление состояния. */
     f.day = doy - (153 * mp + 2) / 5 + 1;
     f.month = mp + (mp < 10 ? 2 : -10);
     f.year = y + (f.month <= 1);
     double rest = time - day * 86400000;
+
+    /* Computation / Вычисление и обновление состояния. */
     f.hour = std::floor(rest / 3600000);
     rest -= f.hour * 3600000;
     f.minute = std::floor(rest / 60000);
@@ -74,11 +103,15 @@ Fields split(double time)
         f.weekday += 7;
     return f;
 }
+
+/* Compute and return date. */
 bool date(FVM_Object *o)
 {
     return o && o->resource_kind == DATE_OBJECT && o->resource_result_valid &&
            o->resource_result.type == FVM_VALUE_NUMBER;
 }
+
+/* Compute and return number arg. */
 FVM_Result number_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i,
                       double fallback, double &v)
 {
@@ -92,6 +125,8 @@ FVM_Result number_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsign
         v = integer(v);
     return r;
 }
+
+/* Compute and return value. */
 FVM_Result value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                  void *)
 {
@@ -100,6 +135,8 @@ FVM_Result value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     *out = o->resource_result;
     return FVM_OK;
 }
+
+/* Read the current value. */
 FVM_Result get(FVM_Context *, FVM_Object *o, FVM_Value *out, int field, bool utc)
 {
     if (!date(o))
@@ -113,6 +150,8 @@ FVM_Result get(FVM_Context *, FVM_Object *o, FVM_Value *out, int field, bool utc
     double east = 0;
     if (!utc && !fvm_port_calendar_offset(t, &east))
         return FVM_UNSUPPORTED;
+
+    /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
     double v = field == 0   ? f.year
                : field == 1 ? f.month
@@ -136,14 +175,20 @@ FVM_Result get(FVM_Context *, FVM_Object *o, FVM_Value *out, int field, bool utc
 GET(get_year, 0, false)
 GET(get_month, 1, false)
 GET(get_date, 2, false)
-GET(get_hours, 3, false) GET(get_minutes, 4, false) GET(get_seconds, 5, false)
-    GET(get_milliseconds, 6, false) GET(get_day, 7, false) GET(get_old_year, 8, false)
-        GET(get_offset, 9, false) GET(get_utc_year, 0, true) GET(get_utc_month, 1, true)
-            GET(get_utc_date, 2, true) GET(get_utc_hours, 3, true) GET(get_utc_minutes, 4, true)
-                GET(get_utc_seconds, 5, true) GET(get_utc_ms, 6, true) GET(get_utc_day, 7, true)
-                    GET(get_utc_old_year, 8, true)
+GET(get_hours, 3, false)
+GET(get_minutes, 4, false)
+GET(get_seconds, 5, false)
+GET(get_milliseconds, 6, false)
+GET(get_day, 7, false)
+GET(get_old_year, 8, false)
+GET(get_offset, 9, false)
+GET(get_utc_year, 0, true)
+GET(get_utc_month, 1, true) GET(get_utc_date, 2, true) GET(get_utc_hours, 3, true)
+    GET(get_utc_minutes, 4, true) GET(get_utc_seconds, 5, true) GET(get_utc_ms, 6, true)
+        GET(get_utc_day, 7, true) GET(get_utc_old_year, 8, true)
 #undef GET
-                        FVM_Result normalized_utc(const Fields &input, double &out)
+    /* Compute and return normalized utc. */
+    FVM_Result normalized_utc(const Fields &input, double &out)
 {
     double local = make(input);
     if (!finite(local) || std::fabs(local) > 8640000000000000.0)
@@ -157,11 +202,15 @@ GET(get_hours, 3, false) GET(get_minutes, 4, false) GET(get_seconds, 5, false)
     out = clip(out);
     return FVM_OK;
 }
+
+/* Update the current value. */
 FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                int field, bool utc)
 {
     if (!date(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double t = o->resource_result.number, east = 0;
     bool valid = finite(t);
     if (!valid && field != 0 && field != 8)
@@ -173,6 +222,8 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         t = 0;
     if (valid && !utc && !fvm_port_calendar_offset(t, &east))
         return FVM_UNSUPPORTED;
+
+    /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
     double *slots[] = {&f.year, &f.month, &f.day, &f.hour, &f.minute, &f.second, &f.ms};
     unsigned int start = field == 8 ? 0 : (unsigned int)field;
@@ -200,6 +251,8 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
             v += 1900;
         *slots[start + i] = v;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     double result = 0;
     FVM_Result r = FVM_OK;
     if (utc)
@@ -208,6 +261,8 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         r = normalized_utc(f, result);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     o->resource_result.number = result;
     *out = o->resource_result;
     return FVM_OK;
@@ -221,16 +276,25 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
 SET(set_year, 0, false)
 SET(set_month, 1, false)
 SET(set_date, 2, false)
-SET(set_hours, 3, false) SET(set_minutes, 4, false) SET(set_seconds, 5, false)
-    SET(set_milliseconds, 6, false) SET(set_old_year, 8, false) SET(set_utc_year, 0, true)
-        SET(set_utc_month, 1, true) SET(set_utc_date, 2, true) SET(set_utc_hours, 3, true)
-            SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5, true) SET(set_utc_ms, 6, true)
+SET(set_hours, 3, false)
+SET(set_minutes, 4, false)
+SET(set_seconds, 5, false)
+SET(set_milliseconds, 6, false)
+SET(set_old_year, 8, false)
+SET(set_utc_year, 0, true)
+SET(set_utc_month, 1, true)
+SET(set_utc_date, 2, true)
+SET(set_utc_hours, 3, true) SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5, true)
+    SET(set_utc_ms, 6, true)
 #undef SET
-                FVM_Result set_time(FVM_Context *c, FVM_Object *o, unsigned int n,
-                                    const FVM_Value *a, FVM_Value *out, void *)
+    /* Update time. */
+    FVM_Result set_time(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
+                        FVM_Value *out, void *)
 {
     if (!date(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double t = invalid();
     FVM_Result r = n ? fvm_value_to_number(c, a, &t) : FVM_OK;
     if (r == FVM_OK)
@@ -240,6 +304,8 @@ SET(set_hours, 3, false) SET(set_minutes, 4, false) SET(set_seconds, 5, false)
     }
     return r;
 }
+
+/* Compute and return text. */
 FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                 void *)
 {
@@ -251,6 +317,8 @@ FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, 
     double east = 0;
     if (!fvm_port_calendar_offset(t, &east))
         return FVM_UNSUPPORTED;
+
+    /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
     const char *week[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -261,13 +329,19 @@ FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, 
                  week[(unsigned int)f.weekday], months[(unsigned int)f.month], (int)f.day,
                  (int)f.hour, (int)f.minute, (int)f.second, east < 0 ? '-' : '+', offset / 60,
                  offset % 60, (long)f.year);
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_string(&v, buffer);
     return fvm_value_to_string(c, &v, out);
 }
+
+/* Compute and return components. */
 FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, bool local,
                       double &out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Fields f;
     double *fields[] = {&f.year, &f.month, &f.day, &f.hour, &f.minute, &f.second, &f.ms};
     double defaults[] = {invalid(), invalid(), 1, 0, 0, 0, 0};
@@ -289,18 +363,26 @@ FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, boo
     out = clip(make(f));
     return FVM_OK;
 }
+
+/* Compute and return utc. */
 FVM_Result utc(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args, FVM_Value *out,
                void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double t = 0;
     FVM_Result r = components(c, n, args, false, t);
     if (r == FVM_OK)
         fvm_value_number(out, t);
     return r;
 }
+
+/* Compute and return constructor. */
 FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                        FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double t = 0;
     FVM_Result r = FVM_OK;
     if (!n)
@@ -324,19 +406,27 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
         return r;
     if (proto.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *o = 0;
     r = fvm_object_create(c, &o);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     o->resource_kind = DATE_OBJECT;
     o->resource_result_valid = true;
     fvm_value_number(&o->resource_result, t);
     o->prototype = proto.object;
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
 }
+
+/* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
@@ -381,42 +471,93 @@ const Method methods[] = {{"getTime", value},
                           {"setUTCSeconds", set_utc_seconds},
                           {"setUTCMilliseconds", set_utc_ms}};
 } // namespace
-FVM_Result fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
-                          fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+/* Build constructor and prototype for date. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_Result
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
+               /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *klass = 0, *proto = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, &klass);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &proto);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = DATE_CLASS;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     proto->resource_kind = DATE_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     proto->resource_result_valid = true;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_number(&proto->resource_result, invalid());
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&v);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.type = FVM_VALUE_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     globals["Date"] = v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     proto->properties["constructor"] = v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = proto;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->properties["prototype"] = v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeEntry e;
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         e.callback = methods[i].callback;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->methods[methods[i].name] = e;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = utc;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["UTC"] = e;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = constructor;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     e.root = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.userdata = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["Date"] = e;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Validate date. */
 FVM_Result fvm_date_validate(FVM_Context *c)
 {
     FVM_Value v;
@@ -425,6 +566,8 @@ FVM_Result fvm_date_validate(FVM_Context *c)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
+
+/* Map a native date callback to its stable serialization identifier. */
 unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 {
     if (callback == constructor)
@@ -436,6 +579,8 @@ unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
             return 700 + (unsigned long)i;
     return 0;
 }
+
+/* Restore a native date callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_date_callback_from_id(unsigned long id)
 {
     if (id == 751)

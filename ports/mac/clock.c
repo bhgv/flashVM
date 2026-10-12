@@ -1,5 +1,10 @@
+/* FlashVM: Portable platform adapter interface or implementation: clock.
+ * File: ports/mac/clock.c.
+ */
+
 #include "../clock_port.h"
 #include <sys/time.h>
+/* Compute and return port clock ms. */
 int fvm_port_clock_ms(double *out)
 {
     struct timeval time;

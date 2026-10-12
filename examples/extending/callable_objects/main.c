@@ -1,34 +1,117 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/extending/callable_objects/main.c.
+ */
+
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/callable.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <assert.h>
-static FVM_Result add(FVM_Context *ctx,FVM_Stack *s,void *ud) {
-    FVM_Value a,b,out;
-    (void)ctx; (void)ud;
-    if(fvm_stack_size(s)!=2) return FVM_INVALID_ARGUMENT;
-    if(fvm_stack_get(s,1,&a)!=FVM_OK || fvm_stack_get(s,2,&b)!=FVM_OK)
+/* Add the current value. */
+/* Выполняем вызов add с указанными аргументами. */
+static FVM_Result add(FVM_Context *ctx, FVM_Stack *s, void *ud)
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value a, b, out;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)ctx;
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)ud;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_stack_size(s) != 2)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return FVM_INVALID_ARGUMENT;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_stack_get(s, 1, &a) != FVM_OK || fvm_stack_get(s, 2, &b) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return FVM_ERROR;
-    if(a.type!=FVM_VALUE_NUMBER || b.type!=FVM_VALUE_NUMBER) return FVM_ERROR;
-    fvm_value_number(&out,a.number+b.number);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (a.type != FVM_VALUE_NUMBER || b.type != FVM_VALUE_NUMBER)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return FVM_ERROR;
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&out, a.number + b.number);
+    /* Выполняем вызов fvm_stack_clear с указанными аргументами. */
     fvm_stack_clear(s);
-    return fvm_stack_push(s,&out);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return fvm_stack_push(s, &out);
+    /* Завершаем текущий блок или описание объекта. */
 }
-int main(void) {
-    FVM_Config cfg; FVM_Runtime *rt=0;
+
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config cfg;
+    /* Сохраняем вычисленное значение: FVM_Runtime *rt. */
+    FVM_Runtime *rt = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Context *ctx;
-    FVM_Object *fn,*obj;
-    FVM_Value args[2],prop,result;
-    int yes=0;
-    assert(fvm_config_init(&cfg)==FVM_OK); assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
-    ctx=0; assert(fvm_context_create(rt,&ctx)==FVM_OK);
-    assert(fvm_callable_create(ctx,add,0,&fn)==FVM_OK);
-    assert(fvm_callable_is(ctx,fn,&yes)==FVM_OK && yes);
-    assert(fvm_object_create(ctx,&obj)==FVM_OK);
-    fvm_value_undefined(&prop); prop.type=FVM_VALUE_OBJECT; prop.object=fn;
-    assert(fvm_object_set(ctx,obj,"add",&prop)==FVM_OK);
-    assert(fvm_object_get(ctx,obj,"add",&prop)==FVM_OK);
-    fvm_value_number(&args[0],19); fvm_value_number(&args[1],23);
-    assert(fvm_callable_invoke(ctx,prop.object,2,args,&result)==FVM_OK);
-    assert(result.type==FVM_VALUE_NUMBER && result.number==42);
-    assert(fvm_callable_invoke(ctx,obj,0,0,&result)==FVM_UNSUPPORTED);
-    fvm_context_destroy(ctx); fvm_runtime_destroy(rt);
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Object *fn, *obj;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value args[2], prop, result;
+    /* Сохраняем вычисленное значение: int yes. */
+    int yes = 0;
+    /* Инициализируем настройки безопасными значениями по умолчанию. Проверяем успешность вызова. */
+    assert(fvm_config_init(&cfg) == FVM_OK);
+    /* Создаём среду выполнения; её необходимо освободить после контекстов. Проверяем успешность
+     * вызова. */
+    assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
+    /* Сохраняем вычисленное значение: ctx. */
+    ctx = 0;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Создаём отдельный контекст интерпретатора в среде выполнения. Проверяем успешность вызова. */
+    assert(fvm_context_create(rt, &ctx) == FVM_OK);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_callable_create(ctx, add, 0, &fn) == FVM_OK);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_callable_is(ctx, fn, &yes) == FVM_OK && yes);
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Создаём управляемый объект в указанном контексте. Проверяем успешность вызова. */
+    assert(fvm_object_create(ctx, &obj) == FVM_OK);
+    /* Сбрасываем все поля значения в состояние undefined. */
+    fvm_value_undefined(&prop);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Сохраняем вычисленное значение: prop.type. */
+    prop.type = FVM_VALUE_OBJECT;
+    /* Сохраняем вычисленное значение: prop.object. */
+    prop.object = fn;
+    /* Записываем свойство объекта; значение сохраняется в его графе. Проверяем успешность вызова.
+     */
+    assert(fvm_object_set(ctx, obj, "add", &prop) == FVM_OK);
+    /* Читаем свойство объекта, включая поиск по прототипу. Проверяем успешность вызова. */
+    assert(fvm_object_get(ctx, obj, "add", &prop) == FVM_OK);
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&args[0], 19);
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&args[1], 23);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_callable_invoke(ctx, prop.object, 2, args, &result) == FVM_OK);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(result.type == FVM_VALUE_NUMBER && result.number == 42);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_callable_invoke(ctx, obj, 0, 0, &result) == FVM_UNSUPPORTED);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(ctx);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(rt);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

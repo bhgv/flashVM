@@ -1,22 +1,88 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/extending/stack_c/main.c.
+ */
+
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/stack.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <assert.h>
-static FVM_Result sum(FVM_Context *ctx,FVM_Stack *s,void *user) {
-    FVM_Value a,b,result;
-    (void)ctx;(void)user;
-    if(fvm_stack_size(s)!=2 || fvm_stack_get(s,1,&a)!=FVM_OK || fvm_stack_get(s,-1,&b)!=FVM_OK) return FVM_ERROR;
-    if(a.type!=FVM_VALUE_NUMBER || b.type!=FVM_VALUE_NUMBER) return FVM_ERROR;
-    fvm_value_number(&result,a.number+b.number);
-    if(fvm_stack_clear(s)!=FVM_OK) return FVM_ERROR;
-    return fvm_stack_push(s,&result);
+/* Compute and return sum. */
+/* Выполняем вызов sum с указанными аргументами. */
+static FVM_Result sum(FVM_Context *ctx, FVM_Stack *s, void *user)
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value a, b, result;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)ctx;
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)user;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_stack_size(s) != 2 || fvm_stack_get(s, 1, &a) != FVM_OK ||
+        /* Выполняем вызов fvm_stack_get с указанными аргументами. */
+        fvm_stack_get(s, -1, &b) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return FVM_ERROR;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (a.type != FVM_VALUE_NUMBER || b.type != FVM_VALUE_NUMBER)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return FVM_ERROR;
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&result, a.number + b.number);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_stack_clear(s) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return FVM_ERROR;
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return fvm_stack_push(s, &result);
+    /* Завершаем текущий блок или описание объекта. */
 }
-int main(void) {
-    FVM_Config cfg; FVM_Runtime *rt=0; FVM_Context *ctx=0; FVM_Value args[2],out;
-    assert(fvm_config_init(&cfg)==FVM_OK);
-    assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
-    assert(fvm_context_create(rt,&ctx)==FVM_OK);
-    assert(fvm_stack_register(ctx,"sum",sum,0)==FVM_OK);
-    fvm_value_number(&args[0],19); fvm_value_number(&args[1],23);
-    assert(fvm_stack_call(ctx,"sum",2,args,&out)==FVM_OK);
-    assert(out.type==FVM_VALUE_NUMBER && out.number==42);
-    fvm_context_destroy(ctx);fvm_runtime_destroy(rt);return 0;
+
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config cfg;
+    /* Сохраняем вычисленное значение: FVM_Runtime *rt. */
+    FVM_Runtime *rt = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *ctx. */
+    FVM_Context *ctx = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value args[2], out;
+    /* Инициализируем настройки безопасными значениями по умолчанию. Проверяем успешность вызова. */
+    assert(fvm_config_init(&cfg) == FVM_OK);
+    /* Создаём среду выполнения; её необходимо освободить после контекстов. Проверяем успешность
+     * вызова. */
+    assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
+    /* Создаём отдельный контекст интерпретатора в среде выполнения. Проверяем успешность вызова. */
+    assert(fvm_context_create(rt, &ctx) == FVM_OK);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_stack_register(ctx, "sum", sum, 0) == FVM_OK);
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&args[0], 19);
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&args[1], 23);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(fvm_stack_call(ctx, "sum", 2, args, &out) == FVM_OK);
+    /* Выполняем вызов assert с указанными аргументами. */
+    assert(out.type == FVM_VALUE_NUMBER && out.number == 42);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(ctx);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(rt);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

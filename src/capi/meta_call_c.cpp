@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: meta call.
+ * File: src/capi/meta_call_c.cpp.
+ */
+
 #include "../core/native_call_guard.hpp"
 #include "flashvm/meta_call.h"
 #include "flashvm/table.h"
@@ -6,39 +10,114 @@
 #include <limits.h>
 
 /* This bridge deliberately does not alter AVM1 bytecode semantics yet. */
-extern "C" FVM_Result fvm_meta_call(FVM_Context *context, FVM_Object *owner,
-    unsigned int count, const FVM_Value *arguments, FVM_Value *result)
+/* Call meta. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result
+fvm_meta_call(FVM_Context *context, FVM_Object *owner, unsigned int count,
+              /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+              const FVM_Value *arguments, FVM_Value *result)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *meta = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *list = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value params[3];
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value entry;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result status;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned int i;
-    if (!context || !owner || !result || (count && !arguments) ||
-        owner->owner != context) return FVM_INVALID_ARGUMENT;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (!context || !owner || !result || (count && !arguments) || owner->owner != context)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(result);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     status = fvm_table_get_metatable(context, owner, &meta);
-    if (status != FVM_OK) return status;
-    if (!meta) return FVM_UNSUPPORTED;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (status != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return status;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (!meta)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_UNSUPPORTED;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     status = fvm_object_create(context, &list);
-    if (status != FVM_OK) return status;
-    for (i = 0; i < count; ++i) {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (status != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return status;
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
+    for (i = 0; i < count; ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         status = fvm_table_set_index(context, list, (unsigned long)i, &arguments[i]);
-        if (status != FVM_OK) return status;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+        if (status != FVM_OK)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            return status;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&params[0]);
-    params[0].type = FVM_VALUE_OBJECT; params[0].object = owner;
-    params[1] = params[0]; params[1].object = meta;
-    params[2] = params[0]; params[2].object = list;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[0].type = FVM_VALUE_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[0].object = owner;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[1] = params[0];
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[1].object = meta;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[2] = params[0];
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    params[2].object = list;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     status = fvm_object_get(context, meta, "__call", &entry);
-    if (status != FVM_OK) return status;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (status != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return status;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (entry.type == FVM_VALUE_OBJECT && entry.object)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return fvm_callable_invoke(context, entry.object, 3, params, result);
     /* Legacy native callbacks registered on the metatable are supported too. */
-    fvm_detail::map<fvm_detail::string,FVM_NativeEntry>::iterator it =
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         meta->metamethods.find("__call");
-    if (it == meta->metamethods.end()) return FVM_UNSUPPORTED;
-    try { FVM_NativeCallGuard native_guard(context); return it->second.callback(context, owner, 3, params, result, it->second.userdata); }
-    catch (...) { return FVM_ERROR; }
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (it == meta->metamethods.end())
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_UNSUPPORTED;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
+    try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
+        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
+        FVM_NativeCallGuard native_guard(context);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return it->second.callback(context, owner, 3, params, result, it->second.userdata);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
+    catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_ERROR;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }

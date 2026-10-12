@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: movieclip.
+ * File: src/standard/movieclip.cpp.
+ */
+
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "function_state.hpp"
@@ -14,26 +18,39 @@
 #include <new>
 namespace
 {
+/* Define anonymous enum and its representation. */
 enum
 {
     CLIP = 40,
     CLIP_CLASS = 41
 };
 typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
+
+/* Compute and return object. */
 FVM_Value object(FVM_Object *o)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_undefined(&v);
+
+    /* Computation / Вычисление и обновление состояния. */
     v.type = o ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
     v.object = o;
     return v;
 }
+
+/* Compute and return number. */
 FVM_Value number(double n)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_number(&v, n);
     return v;
 }
+
+/* Compute and return state. */
 FVM_Result state(FVM_Object *o, FVM_Object *&out)
 {
     if (!o || o->resource_kind != CLIP || !o->resource_result_valid ||
@@ -42,6 +59,8 @@ FVM_Result state(FVM_Object *o, FVM_Object *&out)
     out = o->resource_result.object;
     return FVM_OK;
 }
+
+/* Compute and return field. */
 FVM_Result field(FVM_Object *o, const char *name, FVM_Value &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.find(name);
@@ -50,8 +69,12 @@ FVM_Result field(FVM_Object *o, const char *name, FVM_Value &out)
     out = i->second;
     return FVM_OK;
 }
+
+/* Compute and return numeric. */
 FVM_Result numeric(FVM_Context *c, FVM_Object *o, const char *name, double &out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     FVM_Result r = fvm_object_get(c, o, name, &v);
     if (r != FVM_OK)
@@ -61,6 +84,8 @@ FVM_Result numeric(FVM_Context *c, FVM_Object *o, const char *name, double &out)
            : out == out && std::fabs(out) <= 16777215 ? FVM_OK
                                                       : FVM_INVALID_ARGUMENT;
 }
+
+/* Compute and return args. */
 FVM_Result args(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i, double fallback,
                 double &out)
 {
@@ -74,8 +99,12 @@ FVM_Result args(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int
            : out == out && std::fabs(out) <= 16777215 ? FVM_OK
                                                       : FVM_INVALID_ARGUMENT;
 }
+
+/* Compute and return private object. */
 FVM_Result private_object(FVM_Object *data, const char *name, FVM_Object *&out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     FVM_Result r = field(data, name, v);
     if (r != FVM_OK || v.type != FVM_VALUE_OBJECT)
@@ -83,8 +112,12 @@ FVM_Result private_object(FVM_Object *data, const char *name, FVM_Object *&out)
     out = v.object;
     return FVM_OK;
 }
+
+/* Compute and return parent. */
 FVM_Object *parent(FVM_Object *o)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Value v;
     if (state(o, data) != FVM_OK || field(data, "parent", v) != FVM_OK ||
@@ -92,9 +125,13 @@ FVM_Object *parent(FVM_Object *o)
         return 0;
     return v.object;
 }
+
+/* Compute and return integer field. */
 FVM_Result integer_field(FVM_Object *data, const char *name, unsigned long limit,
                          unsigned long &out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     FVM_Result r = field(data, name, v);
     if (r != FVM_OK || v.type != FVM_VALUE_NUMBER || !(v.number >= 0 && v.number <= limit) ||
@@ -103,78 +140,159 @@ FVM_Result integer_field(FVM_Object *data, const char *name, unsigned long limit
     out = (unsigned long)v.number;
     return FVM_OK;
 }
+
+/* Compute and return make. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Object *proto,
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Object **out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!frames || frames > 65535)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     /* Custom prototype setters must not collect a partially constructed tree. */
+    /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
     FVM_NativeCallGuard construction(c);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *o = 0, *data = 0, *children = 0, *paths = 0, *timeline = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, &o);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &data);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &children);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &paths);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_create(c, &timeline);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->resource_kind = CLIP;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->prototype = proto;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->resource_result_valid = true;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->resource_result = object(data);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["parent"] = object(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["children"] = object(children);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["paths"] = object(paths);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["frames"] = object(timeline);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["frame"] = number(1);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["total"] = number(frames);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["playing"] = number(1);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["entered"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["depth"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["cx"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["cy"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["fill"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["rgb"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["alpha"] = number(100);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["stroke"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["width"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["lineRgb"] = number(0);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["lineAlpha"] = number(100);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["active"] = object(0);
-    const char *keys[] = {"_x",     "_y",       "_xscale", "_yscale",      "_rotation",
-                          "_alpha", "_visible", "enabled", "useHandCursor"};
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    const char *keys[] = {
+        "_x", "_y", "_xscale", "_yscale", "_rotation",
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        "_alpha", "_visible", "enabled", "useHandCursor"};
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const double defaults[] = {0, 0, 100, 100, 0, 100, 1, 1, 1};
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < 9; ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->properties[keys[i]] = number(defaults[i]);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->attributes[keys[i]] = 1;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value text;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_string(&text, name);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_set(c, o, "_name", &text);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->attributes["_name"] = 1;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = o;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Read parent. */
 FVM_Result parent_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                       void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r == FVM_OK)
         *out = object(parent(o));
     return r;
 }
+
+/* [GC:] Read root. */
 FVM_Result root_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                     void *)
 {
@@ -189,23 +307,35 @@ FVM_Result root_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value 
     *out = object(o);
     return FVM_OK;
 }
+
+/* [GC:] Read frame. */
 FVM_Result frame_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                      void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     return r == FVM_OK ? field(data, "frame", *out) : r;
 }
+
+/* Read total. */
 FVM_Result total_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                      void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     return r == FVM_OK ? field(data, "total", *out) : r;
 }
+
+/* Compute and return target. */
 FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<fvm_detail::string> names;
     unsigned int depth = 0;
     while (o && depth++ < 1024)
@@ -231,15 +361,21 @@ FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *
             text.push_back(names[i - 1][j]);
     }
     text.push_back(0);
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_string(&v, text.begin());
     return fvm_value_to_string(c, &v, out);
 }
+
+/* Create child. */
 FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
 {
     if (n < 2)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -262,8 +398,12 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     if (r != FVM_OK)
         return r;
     FVM_Object *child_data = child->resource_result.object;
+
+    /* Computation / Вычисление и обновление состояния. */
     child_data->properties["parent"] = object(o);
     child_data->properties["depth"] = number(depth);
+
+    /* Initialization / Инициализация локального состояния. */
     Slots next = children->indexed;
     fvm_detail::map<fvm_detail::string, FVM_Value> props = o->properties;
     Slots::iterator old = children->indexed.find((unsigned long)depth);
@@ -294,14 +434,20 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
             old_data->properties["playing"] = number(0);
         }
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     children->indexed.swap(next);
     o->properties.swap(props);
     *out = object(child);
     return FVM_OK;
 }
+
+/* Remove the current value. */
 FVM_Result remove(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -332,21 +478,31 @@ FVM_Result remove(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
                 p->properties.erase(name.string);
         }
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["parent"] = object(0);
     data->properties["playing"] = number(0);
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Read depth. */
 FVM_Result get_depth(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                      void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     return r == FVM_OK ? field(data, "depth", *out) : r;
 }
+
+/* Compute and return next depth. */
 FVM_Result next_depth(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                       void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -365,9 +521,13 @@ FVM_Result next_depth(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Valu
     fvm_value_number(out, next);
     return FVM_OK;
 }
+
+/* Compute and return at depth. */
 FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                     FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -386,11 +546,15 @@ FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Val
         *out = i->second;
     return FVM_OK;
 }
+
+/* Exchange depths. */
 FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                        FVM_Value *out, void *)
 {
     if (!n || !parent(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *pd = 0, *children = 0, *other = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -435,6 +599,8 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
         }
     }
     Slots next = children->indexed;
+
+    /* Computation / Вычисление и обновление состояния. */
     next.erase(old);
     next[(unsigned long)desired] = object(o);
     if (other && other != o)
@@ -447,21 +613,31 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
             return r;
         od->properties["depth"] = number(old);
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["depth"] = number(desired);
     children->indexed.swap(next);
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return identity. */
 FVM_Affine identity()
 {
     FVM_Affine m;
+
+    /* Computation / Вычисление и обновление состояния. */
     m.xx = m.yy = 1;
     m.xy = m.yx = m.x0 = m.y0 = 0;
     return m;
 }
+
+/* Compute and return multiply. */
 FVM_Affine multiply(const FVM_Affine &a, const FVM_Affine &b)
 {
     FVM_Affine m;
+
+    /* Computation / Вычисление и обновление состояния. */
     m.xx = a.xx * b.xx + a.xy * b.yx;
     m.xy = a.xx * b.xy + a.xy * b.yy;
     m.yx = a.yx * b.xx + a.yy * b.yx;
@@ -470,6 +646,8 @@ FVM_Affine multiply(const FVM_Affine &a, const FVM_Affine &b)
     m.y0 = a.yx * b.x0 + a.yy * b.y0 + a.y0;
     return m;
 }
+
+/* Compute and return matrix. */
 FVM_Result matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
 {
     out = identity();
@@ -505,12 +683,16 @@ FVM_Result matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
     }
     return o ? FVM_INVALID_ARGUMENT : FVM_OK;
 }
+
+/* Compute and return invert. */
 bool invert(FVM_Affine &m)
 {
     double d = m.xx * m.yy - m.xy * m.yx;
     if (d == 0 || d != d)
         return false;
     FVM_Affine old = m;
+
+    /* Computation / Вычисление и обновление состояния. */
     m.xx = old.yy / d;
     m.xy = -old.xy / d;
     m.yx = -old.yx / d;
@@ -519,6 +701,8 @@ bool invert(FVM_Affine &m)
     m.y0 = -(m.yx * old.x0 + m.yy * old.y0);
     return true;
 }
+
+/* Compute and return point. */
 FVM_Result point(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  bool reverse)
 {
@@ -527,6 +711,8 @@ FVM_Result point(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
     FVM_Object *data = 0;
     if (state(o, data) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double x = 0, y = 0;
     FVM_Result r = numeric(c, a[0].object, "x", x);
     if (r != FVM_OK)
@@ -544,23 +730,33 @@ FVM_Result point(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
     r = fvm_object_set(c, a[0].object, "x", &v);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     v = number(m.yx * x + m.yy * y + m.y0);
     r = fvm_object_set(c, a[0].object, "y", &v);
     fvm_value_undefined(out);
     return r;
 }
+
+/* Compute and return local global. */
 FVM_Result local_global(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *v, void *)
 {
     return point(c, o, n, a, v, false);
 }
+
+/* Compute and return global local. */
 FVM_Result global_local(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *v, void *)
 {
     return point(c, o, n, a, v, true);
 }
+
+/* Compute and return playing. */
 FVM_Result playing(FVM_Context *, FVM_Object *o, FVM_Value *out, bool enabled)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -569,21 +765,29 @@ FVM_Result playing(FVM_Context *, FVM_Object *o, FVM_Value *out, bool enabled)
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return play. */
 FVM_Result play(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *v,
                 void *)
 {
     return playing(c, o, v, true);
 }
+
+/* Compute and return stop. */
 FVM_Result stop(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *v,
                 void *)
 {
     return playing(c, o, v, false);
 }
+
+/* Compute and return seek. */
 FVM_Result seek(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 bool play)
 {
     if (!n)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *frames = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -626,24 +830,34 @@ FVM_Result seek(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
         if (desired > total)
             desired = total;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["frame"] = number(desired);
     data->properties["playing"] = number(play ? 1 : 0);
     data->properties["entered"] = number(0);
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return goto play. */
 FVM_Result goto_play(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                      FVM_Value *v, void *)
 {
     return seek(c, o, n, a, v, true);
 }
+
+/* Compute and return goto stop. */
 FVM_Result goto_stop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                      FVM_Value *v, void *)
 {
     return seek(c, o, n, a, v, false);
 }
+
+/* Compute and return step. */
 FVM_Result step(FVM_Context *c, FVM_Object *o, FVM_Value *out, int delta)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -655,19 +869,27 @@ FVM_Result step(FVM_Context *c, FVM_Object *o, FVM_Value *out, int delta)
     FVM_Value a = number((double)frame + delta);
     return seek(c, o, 1, &a, out, false);
 }
+
+/* Compute and return next. */
 FVM_Result next(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *v,
                 void *)
 {
     return step(c, o, v, 1);
 }
+
+/* Compute and return previous. */
 FVM_Result previous(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *v,
                     void *)
 {
     return step(c, o, v, -1);
 }
+
+/* Fill the current value. */
 FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -679,6 +901,8 @@ FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     r = args(c, n, a, 1, 100, alpha);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["fill"] = number(1);
     data->properties["rgb"] = number(std::fmod(std::floor(rgb) + 16777216.0, 16777216.0));
     data->properties["alpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
@@ -686,21 +910,31 @@ FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Fill end. */
 FVM_Result end_fill(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                     void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["fill"] = number(0);
     data->properties["active"] = object(0);
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return line style. */
 FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -715,6 +949,8 @@ FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     r = args(c, n, a, 2, 100, alpha);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     data->properties["stroke"] = number(n ? 1 : 0);
     data->properties["width"] = number(width ? width : 1);
     data->properties["lineRgb"] = number(std::fmod(std::floor(rgb) + 16777216.0, 16777216.0));
@@ -723,12 +959,16 @@ FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return drawing. */
 FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, int verb)
 {
     unsigned int count = verb == FVM_PATH_QUADRATIC ? 4 : 2;
     if (n < count)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *paths = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -786,10 +1026,14 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     }
     if (commands->indexed.size() >= 65536 || paths->indexed.size() >= 4096)
         return FVM_OUT_OF_MEMORY;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *command = 0;
     r = fvm_object_create(c, &command);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     command->properties["verb"] = number(verb);
     command->properties["x0"] = number(values[0]);
     command->properties["y0"] = number(values[1]);
@@ -807,30 +1051,42 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         paths->indexed.swap(additions);
         data->properties["active"] = object(part);
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     commands->indexed.swap(appended);
     data->properties["cx"] = number(values[count - 2]);
     data->properties["cy"] = number(values[count - 1]);
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return move to. */
 FVM_Result move_to(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *v,
                    void *)
 {
     return drawing(c, o, n, a, v, FVM_PATH_MOVE);
 }
+
+/* Compute and return line to. */
 FVM_Result line_to(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *v,
                    void *)
 {
     return drawing(c, o, n, a, v, FVM_PATH_LINE);
 }
+
+/* Compute and return curve to. */
 FVM_Result curve_to(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *v,
                     void *)
 {
     return drawing(c, o, n, a, v, FVM_PATH_QUADRATIC);
 }
+
+/* Clear the current value. */
 FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                  void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *paths = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -838,6 +1094,8 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     r = private_object(data, "paths", paths);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     paths->indexed.clear();
     data->properties["active"] = object(0);
     data->properties["cx"] = number(0);
@@ -845,8 +1103,12 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Compute and return path. */
 FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_Path **out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *commands = 0;
     FVM_Result r = private_object(part, "commands", commands);
     if (r != FVM_OK)
@@ -854,13 +1116,16 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
     r = fvm_path_create(out);
     if (r != FVM_OK)
         return r;
+    /* Define Guard struct and its representation. */
     struct Guard
     {
         FVM_Path **path;
         bool active;
+        /* Initialize Guard and its owned state. */
         explicit Guard(FVM_Path **p) : path(p), active(true)
         {
         }
+        /* Release the resources owned by this Guard instance. */
         ~Guard()
         {
             if (active && *path)
@@ -919,11 +1184,15 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
         guard.active = false;
     return r;
 }
+
+/* Compute and return bounds. */
 FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool stroke,
                   FVM_PathBounds &out, bool &any, unsigned int depth)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *paths = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -999,9 +1268,13 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
     }
     return FVM_OK;
 }
+
+/* Read bounds. */
 FVM_Result get_bounds(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, bool stroke)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Affine coordinate = identity();
     FVM_Result r = FVM_OK;
     if (n && a[0].type == FVM_VALUE_OBJECT)
@@ -1026,10 +1299,14 @@ FVM_Result get_bounds(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     r = bounds(c, o, coordinate, stroke, b, any, 0);
     if (r != FVM_OK)
         return r;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *result = 0;
     r = fvm_object_create(c, &result);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     result->properties["xMin"] = number(b.x_min);
     result->properties["yMin"] = number(b.y_min);
     result->properties["xMax"] = number(b.x_max);
@@ -1037,21 +1314,29 @@ FVM_Result get_bounds(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     *out = object(result);
     return FVM_OK;
 }
+
+/* Compute and return bounds method. */
 FVM_Result bounds_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                          FVM_Value *v, void *)
 {
     return get_bounds(c, o, n, a, v, true);
 }
+
+/* Compute and return rect method. */
 FVM_Result rect_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                        FVM_Value *v, void *)
 {
     return get_bounds(c, o, n, a, v, false);
 }
+
+/* Compute and return hit. */
 FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
 {
     FVM_PathBounds b;
     std::memset(&b, 0, sizeof(b));
+
+    /* Initialization / Инициализация локального состояния. */
     bool any = false;
     FVM_Result r = bounds(c, o, identity(), true, b, any, 0);
     if (r != FVM_OK)
@@ -1087,21 +1372,31 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     fvm_value_boolean(out, yes);
     return FVM_OK;
 }
+
+/* Compute and return color. */
 FVM_RasterColor color(double rgb, double alpha)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long packed = (unsigned long)rgb;
     FVM_RasterColor c;
+
+    /* Computation / Вычисление и обновление состояния. */
     c.r = (unsigned char)(packed >> 16);
     c.g = (unsigned char)(packed >> 8);
     c.b = (unsigned char)packed;
     c.a = (unsigned char)(alpha * 255 / 100 + 0.5);
     return c;
 }
+
+/* Render the current value. */
 FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, double opacity,
                   unsigned int depth)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *paths = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -1115,6 +1410,8 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
     r = numeric(c, o, "_alpha", alpha);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     opacity *= alpha < 0 ? 0 : alpha > 100 ? 1 : alpha / 100;
     r = private_object(data, "paths", paths);
     if (r != FVM_OK)
@@ -1188,10 +1485,14 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
     }
     return FVM_OK;
 }
+
+/* Compute and return advance. */
 FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *frames = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -1210,6 +1511,8 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     if (r != FVM_OK || !total || current < 1 || current > total)
         return FVM_INVALID_ARGUMENT;
     FVM_Value entered, playing;
+
+    /* Computation / Вычисление и обновление состояния. */
     field(data, "entered", entered);
     field(data, "playing", playing);
     if (!entered.number || playing.number)
@@ -1272,9 +1575,13 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     }
     return FVM_OK;
 }
+
+/* Compute and return constructor. */
 FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
                        FVM_Value *out, void *ud)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value proto;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
     if (r != FVM_OK)
@@ -1287,6 +1594,8 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Val
         *out = object(o);
     return r;
 }
+
+/* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
@@ -1318,6 +1627,7 @@ const Method methods[] = {{"toString", target},
                           {"getRect", rect_method},
                           {"hitTest", hit}};
 } // namespace
+/* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,
                                            FVM_Object **out)
 {
@@ -1347,6 +1657,8 @@ extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, uns
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* [GC:] Define movieclip frame. */
 extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, unsigned int frame,
                                                  const char *label, const void *actions,
                                                  size_t size)
@@ -1403,79 +1715,174 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Compute and return movieclip advance. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 extern "C" FVM_Result fvm_movieclip_advance(FVM_Context *c, FVM_Object *o, unsigned int ticks)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !o || o->owner != c || ticks > 65536)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (unsigned int i = 0; i < ticks; ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result r = advance(c, o, 0);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return r;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-extern "C" FVM_Result fvm_movieclip_render(FVM_Context *c, FVM_Object *o,
-                                           FVM_RasterSurface *surface)
+
+/* Render movieclip. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result fvm_movieclip_render(
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Context *c, FVM_Object *o,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_RasterSurface *surface)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !o || o->owner != c || !surface)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return render(c, o, surface, 1, 0);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-FVM_Result fvm_movieclip_stage(FVM_Context *c,
-                               fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
-                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+
+/* Build constructor and prototype for movieclip. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_Result
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+fvm_movieclip_stage(FVM_Context *c,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *klass = 0, *proto = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, &klass);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = make(c, "", 1, 0, &proto);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = CLIP_CLASS;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v = object(klass);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     globals["MovieClip"] = v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     proto->properties["constructor"] = v;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->properties["prototype"] = object(proto);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeEntry e;
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         e.callback = methods[i].callback;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->methods[methods[i].name] = e;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    const char *keys[] = {"_parent",      "_root",         "_currentframe",
-                          "_totalframes", "_framesloaded", "_target"};
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    const char *keys[] = {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        "_parent", "_root", "_currentframe",
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        "_totalframes", "_framesloaded", "_target"};
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeFunction getters[] = {parent_get, root_get, frame_get, total_get, total_get, target};
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < 6; ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_AccessorEntry a;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         a.getter = getters[i];
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->accessors[keys[i]] = a;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->attributes[keys[i]] = 3;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = constructor;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     e.root = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.userdata = klass;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["MovieClip"] = e;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Validate movieclip. */
 FVM_Result fvm_movieclip_validate(FVM_Context *c)
 {
     FVM_Value v;
@@ -1484,6 +1891,8 @@ FVM_Result fvm_movieclip_validate(FVM_Context *c)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
+
+/* Map a native movieclip callback to its stable serialization identifier. */
 unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
 {
     if (cb == constructor)
@@ -1501,6 +1910,8 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
             return 1010 + (unsigned long)i;
     return 0;
 }
+
+/* Restore a native movieclip callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
 {
     if (id == 1000)

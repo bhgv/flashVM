@@ -1,19 +1,92 @@
+/* FlashVM: C embedding API: userdata.
+ * File: src/capi/userdata_c.cpp.
+ */
+
 #include "../core/runtime.hpp"
 #include "flashvm/userdata.h"
-extern "C" FVM_Result fvm_userdata_attach(FVM_Context *c,FVM_Object *o,void *data,FVM_UserdataRelease release) {
-    if(!c || !o || o->owner!=c || !release || o->release_resource || c->destroying || c->gc_releasing) return FVM_INVALID_ARGUMENT;
-    o->resource_kind=6;o->resource=data;o->release_resource=release;return FVM_OK;
+/* Compute and return userdata attach. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+fvm_userdata_attach(FVM_Context *c, FVM_Object *o, void *data,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    FVM_UserdataRelease release)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+{
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (!c || !o || o->owner != c || !release || o->release_resource || c->destroying ||
+        /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
+        c->gc_releasing)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    o->resource_kind = 6;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    o->resource = data;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    o->release_resource = release;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-extern "C" FVM_Result fvm_userdata_get(FVM_Context *c,FVM_Object *o,void **out) {
-    if(!c || !o || o->owner!=c || !out || o->resource_kind!=6) return FVM_INVALID_ARGUMENT;
-    *out=o->resource;return FVM_OK;
+
+/* Read userdata. */
+extern "C" FVM_Result fvm_userdata_get(FVM_Context *c, FVM_Object *o, void **out)
+{
+    if (!c || !o || o->owner != c || !out || o->resource_kind != 6)
+        return FVM_INVALID_ARGUMENT;
+    *out = o->resource;
+    return FVM_OK;
 }
-FVM_Result fvm_release_object_resource(FVM_Context *c,FVM_Object *o) {
-    if(!o->release_resource) return FVM_OK;
-    void (*release)(void *)=o->release_resource;void *data=o->resource;
-    o->release_resource=0;o->resource=0;
-    bool old=c->gc_releasing;c->gc_releasing=true;
-    FVM_Result r=FVM_OK;
-    try {release(data);}catch(...){r=FVM_ERROR;}
-    c->gc_releasing=old;return r;
+
+/* Release object resource. */
+/* [GC:] Освобождаем ресурс объекта до удаления его записи из кучи. */
+FVM_Result fvm_release_object_resource(FVM_Context *c, FVM_Object *o)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+{
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    if (!o->release_resource)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    void (*release)(void *) = o->release_resource;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    void *data = o->resource;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    o->release_resource = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    o->resource = 0;
+    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
+    bool old = c->gc_releasing;
+    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
+    c->gc_releasing = true;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Result r = FVM_OK;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
+    try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        release(data);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
+    catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        r = FVM_ERROR;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    }
+    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
+    c->gc_releasing = old;
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    return r;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }

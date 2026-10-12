@@ -1,26 +1,69 @@
+/* FlashVM: Embedding/ActionScript tutorial: resource exceptions.
+ * File: examples/actionscript/resource_exceptions.as.
+ */
+
 // SWF 7/8 ActionScript example. Install FlashVM extension namespaces first.
 // Пример SWF 7/8: приложение должно сначала установить расширения FlashVM.
+/* Объявляем lock и сохраняем начальное значение. */
 var lock = mutex.new();
+/* Объявляем acquired и сохраняем начальное значение. */
 var acquired = false;
-try {
+/* Начинаем блок, исключения которого будут обработаны ниже. */
+try
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Выполняем вызов lock.set с указанными аргументами. */
     lock.set();
+    /* Сохраняем вычисленное значение: acquired. */
     acquired = true;
     // Work with the shared resource / Работа с общим ресурсом.
-} catch (failure) {
-    trace(failure.code + ": " + failure.message);
-    trace(failure.context.transport);
-    trace(failure.context.path);
-    trace(failure.context.address);
-} finally {
-    if (acquired) {
-        lock.reset();
-    }
+    /* Завершаем текущий блок или описание объекта. */
 }
+/* Обрабатываем исключение из предыдущего блока. */
+catch (failure)
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Выполняем вызов trace с указанными аргументами. */
+    trace(failure.code + ": " + failure.message);
+    /* Выполняем вызов trace с указанными аргументами. */
+    trace(failure.context.transport);
+    /* Выполняем вызов trace с указанными аргументами. */
+    trace(failure.context.path);
+    /* Выполняем вызов trace с указанными аргументами. */
+    trace(failure.context.address);
+    /* Завершаем текущий блок или описание объекта. */
+}
+/* Продолжаем объявление или выражение с указанными параметрами. */
+finally
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (acquired)
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Выполняем вызов lock.reset с указанными аргументами. */
+        lock.reset();
+        /* Завершаем текущий блок или описание объекта. */
+    }
+    /* Завершаем текущий блок или описание объекта. */
+}
+/* Выполняем вызов lock.close с указанными аргументами. */
 lock.close();
-try {
+/* Начинаем блок, исключения которого будут обработаны ниже. */
+try
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Выполняем вызов lock.touch с указанными аргументами. */
     lock.touch();
-} catch (closed) {
+    /* Завершаем текущий блок или описание объекта. */
+}
+/* Обрабатываем исключение из предыдущего блока. */
+catch (closed)
+/* Начинаем блок инструкций или описание объекта. */
+{
     // 1001 = resource.closed. Catching leaves a copied debugger event.
     // Перехват не удаляет копию события из очереди отладчика.
+    /* Выполняем вызов trace с указанными аргументами. */
     trace(closed.code);
+    /* Завершаем текущий блок или описание объекта. */
 }

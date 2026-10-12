@@ -1,7 +1,16 @@
+/* FlashVM: Embedding/ActionScript tutorial: channel.
+ * File: examples/embedding/channels/channel.as.
+ */
+
 // Proposed FlashVM ActionScript extension; NOT YET IMPLEMENTED.
 // Планируемое расширение ActionScript; ПОКА НЕ РЕАЛИЗОВАНО.
+/* Объявляем channel и сохраняем начальное значение. */
 var channel = <>;
-channel <- 42;
+/* Завершаем выражение с указанным значением или аргументами. */
+channel < -42;
+/* Объявляем received и сохраняем начальное значение. */
 var received;
-received <- channel;
+/* Завершаем выражение с указанным значением или аргументами. */
+received < -channel;
+/* Выполняем вызов trace с указанными аргументами. */
 trace(received);

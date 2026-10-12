@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: base.
+ * File: src/standard/base.cpp.
+ */
+
 #include "string_state.hpp"
 #include "array_generic.hpp"
 #include "base_state.hpp"
@@ -15,6 +19,7 @@
 #include <limits>
 namespace
 {
+/* Define anonymous enum and its representation. */
 enum
 {
     ARRAY_OBJECT = 28,
@@ -23,6 +28,8 @@ enum
     OBJECT_CLASS = 31
 };
 typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
+
+/* Compute and return owned. */
 FVM_Result owned(FVM_Context *c, const FVM_Value &src, FVM_Value &dst)
 {
     if (src.type != FVM_VALUE_STRING)
@@ -35,10 +42,14 @@ FVM_Result owned(FVM_Context *c, const FVM_Value &src, FVM_Value &dst)
         dst.metatable = src.metatable;
     return r;
 }
+
+/* Return the number of stored elements. */
 unsigned long size(FVM_Object *o)
 {
     return (unsigned long)o->resource_result.number;
 }
+
+/* Compute and return array. */
 bool array(FVM_Object *o)
 {
     return o && o->resource_kind == ARRAY_OBJECT && o->resource_result_valid &&
@@ -46,6 +57,8 @@ bool array(FVM_Object *o)
            o->resource_result.number <= 4294967295.0 &&
            o->resource_result.number == std::floor(o->resource_result.number);
 }
+
+/* Validate and apply an Array length update, removing truncated entries. */
 FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
                         FVM_Value *out, void *)
 {
@@ -54,8 +67,10 @@ FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
     fvm_value_number(out, size(o));
     return FVM_OK;
 }
+
 /* Apply indexed writes/deletes to a staged snapshot. Attributes belong to
  * destination properties, not to values moved by reverse/splice/sort. */
+/* Compute and return commit slots. */
 FVM_Result commit_slots(FVM_Context *c, FVM_Object *o, Slots &next, unsigned long length,
                         unsigned long write_begin = 0, unsigned long write_end = 0,
                         bool skip_middle = false)
@@ -85,6 +100,8 @@ FVM_Result commit_slots(FVM_Context *c, FVM_Object *o, Slots &next, unsigned lon
                 return r;
             i->second = watched;
         }
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_detail::map<fvm_detail::string, unsigned int> attributes = o->attributes;
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator length_flag =
         attributes.find("length");
@@ -117,16 +134,22 @@ FVM_Result commit_slots(FVM_Context *c, FVM_Object *o, Slots &next, unsigned lon
         else if (write == next.end())
             attributes.erase(name);
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     o->indexed.swap(next);
     o->attributes.swap(attributes);
     o->resource_result.number = length;
     return FVM_OK;
 }
+
+/* Resize array. */
 FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
 {
     if (!array(o) || n != 1)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double length = 0;
     FVM_Result r = fvm_value_to_number(c, a, &length);
     if (r != FVM_OK)
@@ -156,30 +179,44 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Recognize an accessor associated with the Array length property. */
 void length_accessor(FVM_Object *o)
 {
     FVM_AccessorEntry a;
+
+    /* Computation / Вычисление и обновление состояния. */
     a.getter = array_length;
     a.setter = array_resize;
     o->accessors["length"] = a;
     o->attributes["length"] = 3;
 }
+
+/* Return the receiver for Object.prototype.valueOf. */
 FVM_Result object_value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
                         FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
 }
+
+/* Implement the default Object.prototype.toString representation. */
 FVM_Result object_string(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
     return fvm_value_string(out, "[object Object]");
 }
+
+/* Implement Object.prototype.hasOwnProperty. */
 FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value absent, key;
     fvm_value_undefined(&absent);
     FVM_Result r = fvm_value_to_string(c, n ? a : &absent, &key);
@@ -192,12 +229,16 @@ FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     fvm_value_boolean(out, has);
     return FVM_OK;
 }
+
+/* Check the own property enumeration attribute. */
 FVM_Result enumerable(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, void *)
 {
     FVM_Result r = object_own(c, o, n, a, out, 0);
     if (r != FVM_OK || !out->boolean)
         return r;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value missing, key;
     fvm_value_undefined(&missing);
     r = fvm_value_to_string(c, n ? a : &missing, &key);
@@ -209,6 +250,8 @@ FVM_Result enumerable(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
         fvm_value_boolean(out, !(flags & 1));
     return r;
 }
+
+/* Read prototype. */
 FVM_Result prototype_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
@@ -222,6 +265,8 @@ FVM_Result prototype_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_V
         out->type = FVM_VALUE_NULL;
     return FVM_OK;
 }
+
+/* Update prototype. */
 FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                          FVM_Value *out, void *)
 {
@@ -235,11 +280,15 @@ FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FV
     fvm_value_undefined(out);
     return r;
 }
+
+/* Update flags. */
 FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, void *)
 {
     if (n < 3 || args[0].type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double set = 0, clear = 0;
     FVM_Result r = fvm_value_to_number(c, args + 2, &set);
     if (r != FVM_OK)
@@ -253,6 +302,8 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     if (set != set || clear != clear || set < 0 || clear < 0 || set > 7 || clear > 7 ||
         set != std::floor(set) || clear != std::floor(clear))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *o = args[0].object;
     fvm_detail::vector<fvm_detail::string> names;
     if (args[1].type == FVM_VALUE_NULL || args[1].type == FVM_VALUE_UNDEFINED)
@@ -311,6 +362,8 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     fvm_value_undefined(out);
     return FVM_OK;
 }
+
+/* Test whether prototype. */
 FVM_Result is_prototype(FVM_Context *, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
 {
@@ -334,6 +387,8 @@ FVM_Result is_prototype(FVM_Context *, FVM_Object *o, unsigned int n, const FVM_
     fvm_value_boolean(out, yes);
     return FVM_OK;
 }
+
+/* Create or return an Object according to constructor conversion rules. */
 FVM_Result object_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                               FVM_Value *out, void *ud)
 {
@@ -356,31 +411,45 @@ FVM_Result object_constructor(FVM_Context *c, FVM_Object *, unsigned int n, cons
         out->object = o;
         return FVM_OK;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value proto;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
     if (r != FVM_OK)
         return r;
     if (proto.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *o = 0;
     r = fvm_object_create(c, &o);
     if (r != FVM_OK)
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
     o->resource_kind = OBJECT_OBJECT;
     o->prototype = proto.object;
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
 }
+
+/* Call object. */
 FVM_Result object_call(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                        FVM_Value *out, void *ud)
 {
     return object_constructor(c, o, n, a, out, ud);
 }
+
+/* Construct an Array from its length or supplied element values. */
 FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                              FVM_Value *out, void *ud)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value proto;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
     if (r != FVM_OK)
@@ -410,10 +479,14 @@ FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const
             o->indexed[i] = v;
         }
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
 }
+
+/* Push the current value. */
 FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
@@ -440,6 +513,8 @@ FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
+
+/* Pop the current value. */
 FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
 {
@@ -448,6 +523,8 @@ FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long old = size(o);
     fvm_value_undefined(out);
     if (!old)
@@ -462,6 +539,8 @@ FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         return committed;
     return FVM_OK;
 }
+
+/* Remove the first Array element and shift remaining indexed properties. */
 FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
@@ -470,10 +549,14 @@ FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long old = size(o);
     fvm_value_undefined(out);
     if (!old)
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value first;
     FVM_Result r = fvm_table_get_index(c, o, 0, &first);
     if (r != FVM_OK)
@@ -488,6 +571,8 @@ FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
     *out = first;
     return FVM_OK;
 }
+
+/* Prepend elements and shift existing Array indexed properties. */
 FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
@@ -516,6 +601,8 @@ FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
+
+/* Reverse Array indexed positions while preserving holes. */
 FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
@@ -524,6 +611,8 @@ FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     Slots next;
     unsigned long length = size(o);
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
@@ -533,6 +622,8 @@ FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         return committed;
     return object_value(0, o, 0, 0, out, 0);
 }
+
+/* Compute and return index arg. */
 FVM_Result index_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i,
                      double fallback, double &v)
 {
@@ -548,6 +639,8 @@ FVM_Result index_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigne
         v = v < 0 ? -std::floor(-v) : std::floor(v);
     return r;
 }
+
+/* Compute and return bound. */
 unsigned long bound(double v, unsigned long length)
 {
     if (v < 0)
@@ -558,6 +651,8 @@ unsigned long bound(double v, unsigned long length)
         return length;
     return (unsigned long)v;
 }
+
+/* Copy the selected Array range, preserving absent indexed properties. */
 FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
@@ -566,6 +661,8 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     double first = 0, last = 0;
     unsigned long length = size(o);
     FVM_Result r = index_arg(c, n, a, 0, 0, first);
@@ -586,6 +683,8 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
             copy->indexed[i->first - start] = i->second;
     return object_value(c, copy, 0, 0, out, 0);
 }
+
+/* Remove and insert an Array range and return the removed elements. */
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
@@ -594,6 +693,8 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long length = size(o);
     double first = 0, remove = 0;
     FVM_Result r = index_arg(c, n, a, 0, 0, first);
@@ -603,6 +704,8 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     r = index_arg(c, n, a, 1, length - start, remove);
     if (r != FVM_OK)
         return r;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long deleted = remove <= 0                ? 0
                             : remove >= length - start ? length - start
                                                        : (unsigned long)remove;
@@ -638,6 +741,8 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         return committed;
     return object_value(c, removed, 0, 0, out, 0);
 }
+
+/* Concatenate Array arguments and append non-Array arguments as single values. */
 FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
@@ -646,6 +751,8 @@ FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *copy = 0;
     FVM_Result r = fvm_array_create_like(c, o, size(o), &copy);
     if (r != FVM_OK)
@@ -677,6 +784,8 @@ FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     copy->resource_result.number = length;
     return object_value(c, copy, 0, 0, out, 0);
 }
+
+/* Join the current value. */
 FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
@@ -689,12 +798,17 @@ FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
         if (c->joining_arrays[i] == o)
             return fvm_value_string(out, "");
     c->joining_arrays.push_back(o);
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Define PopJoin struct and its representation. */
     struct PopJoin
     {
         FVM_Context *context;
+        /* Pop Join. */
         explicit PopJoin(FVM_Context *c) : context(c)
         {
         }
+        /* Release the resources owned by this PopJoin instance. */
         ~PopJoin()
         {
             context->joining_arrays.pop_back();
@@ -703,6 +817,8 @@ FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     unsigned long length = size(o);
     if (length > 65536)
         return FVM_OUT_OF_MEMORY;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value separator;
     FVM_Result r = n && a[0].type != FVM_VALUE_UNDEFINED ? fvm_value_to_string(c, a, &separator)
                                                          : fvm_value_string(&separator, ",");
@@ -733,20 +849,27 @@ FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     fvm_value_string_bytes(&text, bytes.begin(), bytes.size() - 1);
     return fvm_value_to_string(c, &text, out);
 }
+
+/* Define SortSpec struct and its representation. */
 struct SortSpec
 {
     fvm_detail::vector<fvm_detail::string> fields;
     fvm_detail::vector<unsigned int> flags;
 };
+
+/* Define SortKey struct and its representation. */
 struct SortKey
 {
     fvm_detail::string text;
     double number;
     bool numeric;
+    /* Sort Key. */
     SortKey() : number(0), numeric(false)
     {
     }
 };
+
+/* Define SortItem struct and its representation. */
 struct SortItem
 {
     FVM_Value value;
@@ -754,11 +877,14 @@ struct SortItem
     fvm_detail::string key;
     double number;
     fvm_detail::vector<SortKey> keys;
+    /* Sort Item. */
     SortItem() : index(0), number(0)
     {
         fvm_value_undefined(&value);
     }
 };
+
+/* Compare the current value. */
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
 {
@@ -817,6 +943,8 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
         order = -order;
     return FVM_OK;
 }
+
+/* Sort impl. */
 FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, const SortSpec *spec)
 {
@@ -825,6 +953,8 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     unsigned long length = size(o);
     if (length > 65536)
         return FVM_OUT_OF_MEMORY;
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned int flags = 0;
     FVM_Object *callback = 0;
     if (!spec && n && args[0].type == FVM_VALUE_OBJECT)
@@ -999,6 +1129,8 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     }
     return object_value(c, o, 0, 0, out, 0);
 }
+
+/* Sort the current value. */
 FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
@@ -1007,6 +1139,8 @@ FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
 
     return sort_impl(c, o, n, a, out, 0);
 }
+
+/* Sort on. */
 FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
@@ -1015,6 +1149,8 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
 
     if (!n)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     SortSpec spec;
     unsigned long count =
         a[0].type == FVM_VALUE_OBJECT && array(a[0].object) ? size(a[0].object) : 1;
@@ -1058,13 +1194,19 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     }
     return sort_impl(c, o, 0, 0, out, &spec);
 }
+
+/* Register class. */
 FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                           FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_value_boolean(out, 0);
     FVM_Object *registry = (FVM_Object *)userdata;
     if (!registry || registry->owner != c || n < 2)
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value name;
     FVM_Result r = fvm_value_to_string(c, a, &name);
     if (r != FVM_OK)
@@ -1086,9 +1228,12 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
 }
 /* The descriptor is a traced object, not a host pointer: getter and setter
  * closures remain live and travel with the property through graph channels. */
+/* Read script property. */
 FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned int,
                                const FVM_Value *, FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value function;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)userdata, "get", &function);
     if (r != FVM_OK)
@@ -1100,9 +1245,13 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
     }
     return fvm_function_invoke(c, function.object, receiver, 0, 0, out);
 }
+
+/* Update script property. */
 FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned int n,
                                const FVM_Value *args, FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value function;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)userdata, "set", &function);
     if (r != FVM_OK)
@@ -1114,49 +1263,102 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
     }
     return fvm_function_invoke(c, function.object, receiver, n, args, out);
 }
-FVM_Result add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Value *args,
-                        FVM_Value *out, void *)
+/* Add property. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_Result
+add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Value *args,
+             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+             FVM_Value *out, void *)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_boolean(out, 0);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (n < 3 || args[0].type != FVM_VALUE_STRING || !*args[0].string ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         args[1].type != FVM_VALUE_OBJECT || !args[1].object->invocable.callback ||
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         (args[2].type != FVM_VALUE_NULL &&
+         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
          (args[2].type != FVM_VALUE_OBJECT || !args[2].object->invocable.callback)))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const char *name = args[0].string;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         receiver->attributes.find(name);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (flag != receiver->attributes.end() && (flag->second & FVM_PROPERTY_DONT_DELETE))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned long index;
     /* Numeric Array slots and its length use the dedicated indexed contract. */
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (receiver->resource_kind == ARRAY_OBJECT &&
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         (fvm_as_index(name, &index) || !std::strcmp(name, "length")))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *descriptor = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, &descriptor);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_set(c, descriptor, "get", args + 1);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r == FVM_OK)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_object_set(c, descriptor, "set", args + 2);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_AccessorEntry entry;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.getter = script_property_get;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.setter = args[2].type == FVM_VALUE_NULL ? 0 : script_property_set;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     entry.root = descriptor;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.userdata = descriptor;
     /* Allocate before removing a data property so allocation failure preserves it. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->accessors[name] = entry;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->properties.erase(name);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (receiver->resource_kind == OBJECT_OBJECT && fvm_as_index(name, &index))
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         receiver->indexed.erase(index);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->methods.erase(name);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->method_values.erase(name);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_boolean(out, 1);
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Register a callable property watcher on the receiver. */
 FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_Value *a,
                  FVM_Value *out, void *)
 {
@@ -1164,11 +1366,15 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
     if (n < 2 || a[0].type != FVM_VALUE_STRING || !*a[0].string || a[1].type != FVM_VALUE_OBJECT ||
         !a[1].object->invocable.callback || !fvm_property_watchable(object, a[0].string))
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *descriptor = 0;
     FVM_Result r = fvm_object_create(c, &descriptor);
     if (r != FVM_OK)
         return r;
     r = fvm_object_set(c, descriptor, "handler", a + 1);
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value undefined;
     fvm_value_undefined(&undefined);
     if (r == FVM_OK)
@@ -1179,6 +1385,8 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
     fvm_value_boolean(out, 1);
     return FVM_OK;
 }
+
+/* Remove the registered watcher for a property. */
 FVM_Result unwatch(FVM_Context *, FVM_Object *object, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
@@ -1189,6 +1397,8 @@ FVM_Result unwatch(FVM_Context *, FVM_Object *object, unsigned int n, const FVM_
     fvm_value_boolean(out, present);
     return FVM_OK;
 }
+
+/* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
@@ -1210,6 +1420,7 @@ const Method array_methods[] = {
     {"join", join},       {"toString", join}, {"toLocaleString", join}, {"sort", sort},
     {"sortOn", sort_on}};
 } // namespace
+/* Compute and return as index. */
 bool fvm_as_index(const char *name, unsigned long *out)
 {
     if (!name || !*name || (*name == '0' && name[1]))
@@ -1226,58 +1437,110 @@ bool fvm_as_index(const char *name, unsigned long *out)
     *out = (unsigned long)value;
     return true;
 }
+
+/* Update Array length after writing an indexed property. */
 void fvm_array_note_index(FVM_Object *o, unsigned long key)
 {
     if (array(o) && key < 0xffffffffUL && key >= size(o))
         o->resource_result.number = (double)key + 1;
 }
-FVM_Result fvm_array_create_like(FVM_Context *c, FVM_Object *source, unsigned long length,
-                                 FVM_Object **out)
+
+/* Create array like. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_Result fvm_array_create_like(
+    FVM_Context *c, FVM_Object *source, unsigned long length,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Object **out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !out || (source && source->owner != c))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = 0;
     /* Prototype getters are user code. Defer GC until this not-yet-published
      * object, and any enclosing function being built, enter VM roots. */
+    /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
     FVM_NativeCallGuard construction(c);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, out);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     (*out)->resource_kind = ARRAY_OBJECT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     (*out)->resource_result_valid = true;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_number(&(*out)->resource_result, length);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     (*out)->prototype = source ? source->prototype : 0;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!source)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->constructors.find("Array");
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (ctor != c->constructors.end() && ctor->second.root)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value prototype;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             r = fvm_object_get(c, ctor->second.root, "prototype", &prototype);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return r;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (prototype.type == FVM_VALUE_OBJECT)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 (*out)->prototype = prototype.object;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* Imported methods may create arrays in a context without globals.
          * Such results still provide the native Array API and wire callbacks. */
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!(*out)->prototype)
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_NativeEntry entry;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 entry.callback = array_methods[i].callback;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 (*out)->methods[array_methods[i].name] = entry;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 (*out)->attributes[array_methods[i].name] = 1;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     length_accessor(*out);
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Build constructor and prototype for base. */
 FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *object_class = 0, *object_proto = 0, *array_class = 0, *array_proto = 0;
     FVM_Result r = fvm_object_create(c, &object_class);
     if (r != FVM_OK)
@@ -1291,6 +1554,8 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     r = fvm_array_create_like(c, 0, 0, &array_proto);
     if (r != FVM_OK)
         return r;
+
+    /* Initialization / Инициализация локального состояния. */
     /* A normal traced record retains registered constructors and travels with
      * the static registerClass function. No opaque host-side registry is used. */
     FVM_Object *registry = 0;
@@ -1298,7 +1563,10 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     if (r != FVM_OK)
         return r;
     FVM_NativeEntry registry_entry;
+
+    /* Computation / Вычисление и обновление состояния. */
     registry_entry.callback = register_class;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     registry_entry.root = registry;
     registry_entry.userdata = registry;
     object_class->methods["registerClass"] = registry_entry;
@@ -1308,8 +1576,12 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     array_proto->prototype = object_proto;
     object_class->prototype = object_proto;
     array_class->prototype = object_proto;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_undefined(&v);
+
+    /* Computation / Вычисление и обновление состояния. */
     v.type = FVM_VALUE_OBJECT;
     v.object = object_proto;
     object_class->properties["prototype"] = v;
@@ -1339,23 +1611,31 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
         fvm_value_number(&v, (double)(1UL << i));
         array_class->properties[flags[i]] = v;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     entry.callback = object_constructor;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     entry.root = object_class;
     entry.userdata = object_class;
     constructors["Object"] = entry;
     entry.callback = object_call;
     functions["Object"] = entry;
     entry.callback = array_constructor;
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     entry.root = array_class;
     entry.userdata = array_class;
     constructors["Array"] = entry;
     functions["Array"] = entry;
     FVM_AccessorEntry proto_accessor;
+
+    /* Computation / Вычисление и обновление состояния. */
     proto_accessor.getter = prototype_get;
     proto_accessor.setter = prototype_set;
     object_proto->accessors["__proto__"] = proto_accessor;
     object_proto->attributes["__proto__"] = 3;
     FVM_NativeEntry flags_entry;
+
+    /* Computation / Вычисление и обновление состояния. */
     flags_entry.callback = set_flags;
     functions["ASSetPropFlags"] = flags_entry;
     /* Only new built-in classes may be linked/flagged. Existing user globals
@@ -1389,23 +1669,46 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     }
     return FVM_OK;
 }
+
+/* Validate base. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_base_validate(FVM_Context *c)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+
+    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const char *names[] = {"Object", "Array"};
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const int kinds[] = {OBJECT_CLASS, ARRAY_CLASS};
+    /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < 2; ++i)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value v;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_get_global(c, names[i], &v) != FVM_OK || v.type != FVM_VALUE_OBJECT ||
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             v.object->resource_kind != kinds[i])
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->constructors.find(names[i]);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (ctor == c->constructors.end() || ctor->second.root != v.object)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Map a native base callback to its stable serialization identifier. */
 unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 {
     if (callback == register_class)
@@ -1438,6 +1741,8 @@ unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
             return 630 + (unsigned long)i;
     return 0;
 }
+
+/* Restore a native base callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
 {
     if (id == 626)
@@ -1469,32 +1774,61 @@ FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
                : 0;
 }
 
+/* Compute and return base class registry. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_base_class_registry(FVM_Context *c, FVM_Object **out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !out)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = 0;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value object;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Result r = fvm_get_global(c, "Object", &object);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (object.type != FVM_VALUE_OBJECT || object.object->resource_kind != OBJECT_CLASS)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_NOT_FOUND;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator entry =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             object.object->methods.find("registerClass");
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (entry == object.object->methods.end() || entry->second.callback != register_class ||
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             !entry->second.root || entry->second.root != entry->second.userdata)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_NOT_FOUND;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         *out = entry->second.root;
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const std::bad_alloc &)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Compute and return registered class. */
 extern "C" FVM_Result fvm_registered_class(FVM_Context *c, const char *name, FVM_Object **out)
 {
     if (!out)

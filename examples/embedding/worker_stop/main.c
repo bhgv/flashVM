@@ -1,35 +1,96 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/worker_stop/main.c.
+ */
+
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/worker.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <assert.h>
 
-typedef struct WorkerData { FVM_Worker *handle; } WorkerData;
-static FVM_Result callback(FVM_Context *ctx, const FVM_Value *input,
-                           FVM_Value *result, void *userdata) {
+/* Define WorkerData struct and its representation. */
+/* Объявляем тип, используемый в этом примере. */
+typedef struct WorkerData
+/* Начинаем блок инструкций или описание объекта. */
+{
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Worker *handle;
+    /* Завершаем выражение с указанным значением или аргументами. */
+} WorkerData;
+
+/* Compute and return callback. */
+/* Выполняем вызов callback с указанными аргументами. */
+static FVM_Result callback(FVM_Context *ctx, const FVM_Value *input, FVM_Value *result,
+                           /* Продолжаем объявление или выражение с указанными параметрами. */
+                           void *userdata)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Сохраняем вычисленное значение: WorkerData *data. */
     WorkerData *data = (WorkerData *)userdata;
+    /* Сохраняем вычисленное значение: int stop. */
     int stop = 0;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Завершаем выражение с указанным значением или аргументами. */
     (void)ctx;
+    /* Выполняем вызов assert с указанными аргументами. */
     assert(fvm_worker_stop_requested(data->handle, &stop) == FVM_OK);
+    /* Записываем числовое значение и соответствующий тег типа. */
     fvm_value_number(result, input->number + (stop ? 1 : 0));
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return FVM_OK;
+    /* Завершаем текущий блок или описание объекта. */
 }
-int main(void) {
+
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Config cfg;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Worker *workers[2];
+    /* Завершаем выражение с указанным значением или аргументами. */
     WorkerData data[2];
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Value input, outputs[2];
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     unsigned int i;
+    /* Инициализируем настройки безопасными значениями по умолчанию. Проверяем успешность вызова. */
     assert(fvm_config_init(&cfg) == FVM_OK);
+    /* Записываем числовое значение и соответствующий тег типа. */
     fvm_value_number(&input, 41);
-    for (i = 0; i < 2; ++i) {
+    /* Организуем повторение операций до выполнения условия завершения. */
+    for (i = 0; i < 2; ++i)
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Сохраняем вычисленное значение: data[i].handle. */
         data[i].handle = 0;
-        assert(fvm_worker_run_suspended(&cfg, callback, &input, &data[i],
-                                        &workers[i]) == FVM_OK);
+        /* Выполняем вызов assert с указанными аргументами. */
+        assert(fvm_worker_run_suspended(&cfg, callback, &input, &data[i], &workers[i]) == FVM_OK);
+        /* Сохраняем вычисленное значение: data[i].handle. */
         data[i].handle = workers[i];
+        /* Выполняем вызов assert с указанными аргументами. */
         assert(fvm_worker_stop(workers[i]) == FVM_OK);
+        /* Завершаем текущий блок или описание объекта. */
     }
+    /* Выполняем вызов assert с указанными аргументами. */
     assert(fvm_worker_join_all(workers, 2, outputs) == FVM_OK);
-    for (i = 0; i < 2; ++i) {
+    /* Организуем повторение операций до выполнения условия завершения. */
+    for (i = 0; i < 2; ++i)
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Выполняем вызов assert с указанными аргументами. */
         assert(outputs[i].type == FVM_VALUE_NUMBER && outputs[i].number == 42);
+        /* Освобождаем объект рабочего потока после завершения его работы. */
         fvm_worker_destroy(workers[i]);
+        /* Завершаем текущий блок или описание объекта. */
     }
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

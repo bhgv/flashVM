@@ -1,3 +1,7 @@
+/* FlashVM: Rendering jobs and drawing integration: raster.
+ * File: src/render/raster_c.cpp.
+ */
+
 #include "flashvm/raster.h"
 #include <climits>
 #ifdef FVM_HAS_AGG
@@ -18,6 +22,7 @@ typedef char FVM_CairoWordMustBe32Bits[sizeof(unsigned int) == 4 ? 1 : -1];
 
 /* Cairo uses native-endian premultiplied ARGB32. The public FlashVM
  * surface remains straight-alpha RGBA8 on every platform. */
+/* Compute and return cairo pixel. */
 static unsigned int cairo_pixel(const unsigned char *rgba)
 {
     unsigned int a = rgba[3];
@@ -25,6 +30,7 @@ static unsigned int cairo_pixel(const unsigned char *rgba)
            ((rgba[2] * a + 127) / 255);
 }
 
+/* Fill cairo. */
 static FVM_Result cairo_fill(FVM_RasterSurface *surface, const FVM_RasterPoint *points,
                              size_t count, FVM_RasterColor color)
 {
@@ -36,6 +42,8 @@ static FVM_Result cairo_fill(FVM_RasterSurface *surface, const FVM_RasterPoint *
         cairo_surface_destroy(image);
         return FVM_OUT_OF_MEMORY;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char *data = cairo_image_surface_get_data(image);
     int stride = cairo_image_surface_get_stride(image);
     for (unsigned int y = 0; y < surface->height; ++y)
@@ -46,11 +54,15 @@ static FVM_Result cairo_fill(FVM_RasterSurface *surface, const FVM_RasterPoint *
         }
     cairo_surface_mark_dirty(image);
     cairo_t *context = cairo_create(image);
+
+    /* Computation / Вычисление и обновление состояния. */
     cairo_set_source_rgba(context, color.r / 255.0, color.g / 255.0, color.b / 255.0,
                           color.a / 255.0);
     cairo_move_to(context, points[0].x, points[0].y);
     for (size_t i = 1; i < count; ++i)
         cairo_line_to(context, points[i].x, points[i].y);
+
+    /* Computation / Вычисление и обновление состояния. */
     cairo_close_path(context);
     cairo_fill(context);
     cairo_status_t status = cairo_status(context);
@@ -84,6 +96,7 @@ static FVM_Result cairo_fill(FVM_RasterSurface *surface, const FVM_RasterPoint *
 }
 #endif
 
+/* Fill raster polygon. */
 extern "C" FVM_Result fvm_raster_fill_polygon(FVM_RasterSurface *surface,
                                               const FVM_RasterPoint *points, size_t count,
                                               FVM_RasterColor color)

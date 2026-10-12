@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: numeric.
+ * File: src/standard/numeric.cpp.
+ */
+
 #include "../core/string_internal.hpp"
 #include "primitive_state.hpp"
 #include "movieclip_state.hpp"
@@ -16,23 +20,32 @@
 
 namespace
 {
+/* Define anonymous enum and its representation. */
 enum
 {
     BOOLEAN_OBJECT = 20,
     BOOLEAN_CLASS = 21
 };
+
+/* Construct a quiet not-a-number value using the portable numeric helper. */
 double nan_value()
 {
     return std::numeric_limits<double>::quiet_NaN();
 }
+
+/* Construct signed infinity using the portable numeric helper. */
 double infinity()
 {
     return std::numeric_limits<double>::infinity();
 }
+
+/* Recognize the whitespace accepted by numeric string conversion. */
 bool whitespace(unsigned char c)
 {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f';
 }
+
+/* Decode an ASCII hexadecimal digit, or report an invalid character. */
 int hex_digit(unsigned char c)
 {
     if (c >= '0' && c <= '9')
@@ -45,6 +58,7 @@ int hex_digit(unsigned char c)
 }
 /* This bounded parser accepts decimal/hexadecimal primitive numeric strings.
  * It deliberately does not delegate syntax or decimal separators to locale. */
+/* Parse number. */
 double parse_number(const char *text)
 {
     const unsigned char *p = (const unsigned char *)text;
@@ -80,6 +94,8 @@ double parse_number(const char *text)
             ++p;
         return !digits || *p ? nan_value() : value;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     double value = 0;
     unsigned int significant = 0;
     long fraction = 0, dropped = 0;
@@ -160,10 +176,14 @@ double parse_number(const char *text)
     }
     return negative ? -value : value;
 }
+
+/* Detect a zero with the IEEE negative sign bit. */
 bool negative_zero(double value)
 {
     return value == 0 && 1.0 / value < 0;
 }
+
+/* Compute and return argument. */
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double *out)
 {
@@ -175,6 +195,7 @@ FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, u
     return fvm_value_to_number(c, &args[index], out);
 }
 
+/* Define Operation enum and its representation. */
 enum Operation
 {
     ABS,
@@ -196,6 +217,8 @@ enum Operation
     SQRT,
     TAN
 };
+
+/* Coerce arguments and execute the selected built-in Math operation. */
 FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *args, FVM_Value *out,
                           Operation op)
 {
@@ -303,25 +326,44 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
     {                                                                                              \
         return math_operation(c, n, a, o, operation);                                              \
     }
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_abs, ABS)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_acos, ACOS)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_asin, ASIN)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_atan, ATAN)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_atan2, ATAN2)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_ceil, CEIL)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_cos, COS)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_exp, EXP)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_floor, FLOOR)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_log, LOG)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_max, MAX)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_min, MIN)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_pow, POW)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_random, RANDOM)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_round, ROUND)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_sin, SIN)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_sqrt, SQRT)
+/* Dispatch this Math operation through the shared numeric implementation. */
 MATH_WRAPPER(math_tan, TAN)
 #undef MATH_WRAPPER
+/* Define Method struct and its representation. */
 struct Method
 {
     const char *name;
@@ -333,15 +375,21 @@ const Method math_methods[] = {{"abs", math_abs},   {"acos", math_acos},     {"a
                                {"log", math_log},   {"max", math_max},       {"min", math_min},
                                {"pow", math_pow},   {"random", math_random}, {"round", math_round},
                                {"sin", math_sin},   {"sqrt", math_sqrt},     {"tan", math_tan}};
+
+/* Implement the Number() global conversion call. */
 FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                        FVM_Value *o, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double number = 0;
     FVM_Result result = n ? fvm_value_to_number(c, &a[0], &number) : FVM_OK;
     if (result == FVM_OK)
         fvm_value_number(o, number);
     return result;
 }
+
+/* Implement the Boolean() global conversion call. */
 FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_Value *a,
                         FVM_Value *o, void *)
 {
@@ -356,6 +404,8 @@ FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_V
     fvm_value_boolean(o, truth);
     return FVM_OK;
 }
+
+/* Unbox the receiver for Boolean.prototype.valueOf. */
 FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
@@ -365,18 +415,26 @@ FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const F
     *out = self->resource_result;
     return FVM_OK;
 }
+
+/* Format a Boolean receiver as the strings true or false. */
 FVM_Result boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Value *args,
                           FVM_Value *out, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value value;
     FVM_Result result = boolean_value(c, self, n, args, &value, 0);
     if (result != FVM_OK)
         return result;
     return fvm_value_string(out, value.boolean ? "true" : "false");
 }
+
+/* Create a boxed Boolean instance with its native value state. */
 FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
                                FVM_Value *out, void *userdata)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *klass = (FVM_Object *)userdata;
     FVM_Value prototype, value;
     FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
@@ -387,10 +445,14 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     result = boolean_call(c, 0, n, args, &value, 0);
     if (result != FVM_OK)
         return result;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *object = 0;
     result = fvm_object_create(c, &object);
     if (result != FVM_OK)
         return result;
+
+    /* Computation / Вычисление и обновление состояния. */
     /* The wrapped primitive is inaccessible to ordinary property assignments.
      * Prototype links and the constructor capture are traced by the existing GC. */
     object->resource_kind = BOOLEAN_OBJECT;
@@ -398,22 +460,32 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     object->resource_result_valid = true;
     object->prototype = prototype.object;
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = object;
     return FVM_OK;
 }
+
+/* Coerce the argument to Number and test whether it is NaN. */
 FVM_Result isnan_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                       FVM_Value *o, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double number;
     FVM_Result result = argument(c, n, a, 0, &number);
     if (result == FVM_OK)
         fvm_value_boolean(o, number != number);
     return result;
 }
+
+/* Coerce the argument to Number and test whether it is finite. */
 FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                          FVM_Value *o, void *)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double number;
     FVM_Result result = argument(c, n, a, 0, &number);
     if (result == FVM_OK)
@@ -428,6 +500,7 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"parseFloat", fvm_builtin_parse_float},
                                    {"String", fvm_builtin_string}};
 } // namespace
+/* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
     if (callback == boolean_value)
@@ -444,6 +517,8 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
             return 150 + (unsigned long)i;
     return 0;
 }
+
+/* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
     if (id == 3)
@@ -458,6 +533,8 @@ FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
         return math_methods[id - 100].callback;
     return 0;
 }
+
+/* Coerce an ActionScript value to Number using its primitive representation. */
 extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value, double *out)
 {
     if (!c || !value || !out)
@@ -510,8 +587,11 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
         return FVM_INVALID_ARGUMENT;
     }
 }
+
+/* Install the supported standard constructors and global numeric functions. */
 extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
 {
+    /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
     if (!c || c->destroying || c->gc_collecting)
         return FVM_INVALID_ARGUMENT;
     try
@@ -521,63 +601,121 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "String",   "Object",   "Array",   "ASSetPropFlags", "Date",
                                "Function", "MovieClip"};
         if (c->standard_library)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value math;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result result = fvm_get_global(c, "Math", &math);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (result != FVM_OK || math.type != FVM_VALUE_OBJECT ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 math.object->resource_kind != 10)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     math.object->methods.find(math_methods[i].name);
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (it == math.object->methods.end() ||
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     it->second.callback != math_methods[i].callback)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_INVALID_ARGUMENT;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     c->functions.find(global_functions[i].name);
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (it == c->functions.end() || it->second.callback != global_functions[i].callback)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_INVALID_ARGUMENT;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value boolean_class, prototype;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (fvm_get_global(c, "Boolean", &boolean_class) != FVM_OK ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 boolean_class.type != FVM_VALUE_OBJECT ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 boolean_class.object->resource_kind != BOOLEAN_CLASS ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_object_get(c, boolean_class.object, "prototype", &prototype) != FVM_OK ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 prototype.type != FVM_VALUE_OBJECT ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 prototype.object->resource_kind != BOOLEAN_OBJECT)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 c->constructors.find("Boolean");
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (ctor == c->constructors.end() || ctor->second.callback != boolean_constructor ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 ctor->second.root != boolean_class.object)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_NativeEntry method;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (fvm_lookup_native_method(prototype.object, "valueOf", &method) != FVM_OK ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 method.callback != boolean_value ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_lookup_native_method(prototype.object, "toString", &method) != FVM_OK ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 method.callback != boolean_string)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Result error_result = fvm_error_validate(c);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_number_validate(c);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_string_validate(c);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_base_validate(c);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_date_validate(c);
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (error_result != FVM_OK)
+                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return error_result;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             error_result = fvm_function_validate(c);
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return error_result == FVM_OK ? fvm_movieclip_validate(c) : error_result;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
             if (c->global->properties.find(names[i]) != c->global->properties.end() ||
@@ -649,6 +787,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         FVM_NativeEntry constructor, method;
         constructor.callback = boolean_constructor;
         constructor.userdata = boolean_class;
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         constructor.root = boolean_class;
         constructors["Boolean"] = constructor;
         method.callback = boolean_value;
@@ -688,24 +827,36 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             boxing->properties[box_names[i]] = globals[box_names[i]];
         const char *call_names[] = {"call", "apply"};
         for (size_t i = 0; i < 2; ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_NativeEntry &entry = function_proto->methods.find(call_names[i])->second;
+            /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
             entry.root = boxing;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             entry.userdata = boxing;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
 
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
                  constructors.begin();
              i != constructors.end(); ++i)
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (i->second.root &&
                 (i->first == "Object" || i->first == "Array" || i->first == "Boolean" ||
                  i->first == "Number" || i->first == "String" || i->first == "Error" ||
                  i->first == "Date" || i->first == "Function" || i->first == "MovieClip"))
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Object *klass = i->second.root;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 klass->constructable = i->second;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 klass->invocable = i->second;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 klass->prototype = function_proto;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = functions.begin();
              i != functions.end(); ++i)
@@ -721,7 +872,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
          * allocate. Post-publication links below are pointer assignments only. */
         FVM_Object *text_classes[2] = {0, 0}, *text_prototypes[2] = {0, 0};
         const char *text_names[] = {"TextFormat", "TextField"};
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *object_proto =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             constructors.find("Object")->second.root->properties.find("prototype")->second.object;
         for (size_t i = 0; i < 2; ++i)
         {

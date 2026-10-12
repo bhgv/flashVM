@@ -1,9 +1,14 @@
+/* FlashVM: C embedding API: text layout.
+ * File: src/capi/text_layout_c.cpp.
+ */
+
 #include "flashvm/text_layout.h"
 #include "font_internal.hpp"
 #include "../details/vector.hpp"
 #include <cstring>
 #include <new>
 
+/* Define FVM_TextLayout struct and its representation. */
 struct FVM_TextLayout
 {
     fvm_detail::vector<FVM_TextLayoutLine> lines;
@@ -11,10 +16,12 @@ struct FVM_TextLayout
     fvm_detail::vector<FVM_Path *> outlines;
     FVM_TextLayoutMetrics metrics;
     FVM_Path *path;
+    /* Initialize Text Layout and its owned state. */
     FVM_TextLayout() : path(0)
     {
         std::memset(&metrics, 0, sizeof(metrics));
     }
+    /* Release the resources owned by this FVM_TextLayout instance. */
     ~FVM_TextLayout()
     {
         for (size_t i = 0; i < outlines.size(); ++i)
@@ -24,25 +31,33 @@ struct FVM_TextLayout
 };
 /* Small ownership guards keep partial layout failures and allocation exceptions
  * from leaking a glyph, shaping buffer or unfinished result. */
+/* Define PathOwner struct and its representation. */
 struct PathOwner
 {
     FVM_Path *value;
+    /* Initialize Path Owner and its owned state. */
     PathOwner() : value(0)
     {
     }
+    /* Release the resources owned by this PathOwner instance. */
     ~PathOwner()
     {
         fvm_path_destroy(value);
     }
 
   private:
+    /* Initialize Path Owner and its owned state. */
     PathOwner(const PathOwner &);
     PathOwner &operator=(const PathOwner &);
 };
+
+/* Copy path. */
 static FVM_Result copy_path(const FVM_Path *source, const FVM_Affine *matrix, FVM_Path **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     *out = 0;
     PathOwner copy;
     FVM_Result result = fvm_path_create(&copy.value);
@@ -55,10 +70,14 @@ static FVM_Result copy_path(const FVM_Path *source, const FVM_Affine *matrix, FV
     }
     return result;
 }
+
+/* Destroy text layout. */
 extern "C" void fvm_text_layout_destroy(FVM_TextLayout *layout)
 {
     delete layout;
 }
+
+/* Compute and return text layout metrics. */
 extern "C" FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *layout,
                                               FVM_TextLayoutMetrics *out)
 {
@@ -67,6 +86,8 @@ extern "C" FVM_Result fvm_text_layout_metrics(const FVM_TextLayout *layout,
     *out = layout->metrics;
     return FVM_OK;
 }
+
+/* Compute and return text layout line. */
 extern "C" FVM_Result fvm_text_layout_line(const FVM_TextLayout *layout, size_t index,
                                            FVM_TextLayoutLine *out)
 {
@@ -75,6 +96,8 @@ extern "C" FVM_Result fvm_text_layout_line(const FVM_TextLayout *layout, size_t 
     *out = layout->lines[index];
     return FVM_OK;
 }
+
+/* Compute and return text layout glyph. */
 extern "C" FVM_Result fvm_text_layout_glyph(const FVM_TextLayout *layout, size_t index,
                                             FVM_TextLayoutGlyph *out)
 {
@@ -83,6 +106,8 @@ extern "C" FVM_Result fvm_text_layout_glyph(const FVM_TextLayout *layout, size_t
     *out = layout->glyphs[index];
     return FVM_OK;
 }
+
+/* Compute and return text layout path. */
 extern "C" FVM_Result fvm_text_layout_path(const FVM_TextLayout *layout, FVM_Path **out)
 {
     if (!out)
@@ -90,6 +115,8 @@ extern "C" FVM_Result fvm_text_layout_path(const FVM_TextLayout *layout, FVM_Pat
     *out = 0;
     return layout ? copy_path(layout->path, 0, out) : FVM_INVALID_ARGUMENT;
 }
+
+/* Compute and return text layout glyph path. */
 extern "C" FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *layout, size_t index,
                                                  FVM_Path **out)
 {
@@ -98,6 +125,8 @@ extern "C" FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *layout, s
     *out = 0;
     if (!layout || index >= layout->glyphs.size())
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     const FVM_TextLayoutGlyph &g = layout->glyphs[index];
     FVM_Affine matrix = {1, 0, 0, 1, g.x, g.y};
     return copy_path(layout->outlines[index], &matrix, out);
@@ -107,36 +136,47 @@ extern "C" FVM_Result fvm_text_layout_glyph_path(const FVM_TextLayout *layout, s
 #include "graphemebreak.h"
 #include "fribidi.h"
 
+/* Define RunOwner struct and its representation. */
 struct RunOwner
 {
     FVM_TextRun *value;
+    /* Run Owner. */
     RunOwner() : value(0)
     {
     }
+    /* Release the resources owned by this RunOwner instance. */
     ~RunOwner()
     {
         fvm_text_run_destroy(value);
     }
 
   private:
+    /* Run Owner. */
     RunOwner(const RunOwner &);
     RunOwner &operator=(const RunOwner &);
 };
+
+/* Define LayoutOwner struct and its representation. */
 struct LayoutOwner
 {
     FVM_TextLayout *value;
+    /* Initialize Layout Owner and its owned state. */
     LayoutOwner() : value(0)
     {
     }
+    /* Release the resources owned by this LayoutOwner instance. */
     ~LayoutOwner()
     {
         delete value;
     }
 
   private:
+    /* Initialize Layout Owner and its owned state. */
     LayoutOwner(const LayoutOwner &);
     LayoutOwner &operator=(const LayoutOwner &);
 };
+
+/* Define Paragraph struct and its representation. */
 struct Paragraph
 {
     fvm_detail::vector<FriBidiChar> chars;
@@ -146,12 +186,15 @@ struct Paragraph
     fvm_detail::vector<size_t> bytes;
     FriBidiParType base;
 };
+
+/* Compute and return separator. */
 static bool separator(unsigned int c)
 {
     return c == 10 || c == 13 || c == 11 || c == 12 || c == 0x85 || c == 0x2028 || c == 0x2029;
 }
 /* Strict decoder: rejects overlong sequences, surrogates and truncated scalars.
  * Byte boundaries are retained, never inferred from shaped glyph counts. */
+/* Decode the current value. */
 static FVM_Result decode(const char *text, size_t size, fvm_detail::vector<FriBidiChar> &chars,
                          fvm_detail::vector<size_t> &bytes)
 {
@@ -202,21 +245,29 @@ static FVM_Result decode(const char *text, size_t size, fvm_detail::vector<FriBi
     bytes.push_back(size);
     return FVM_OK;
 }
+
+/* Compute and return weak script. */
 static bool weak_script(hb_script_t script)
 {
     return script == HB_SCRIPT_COMMON || script == HB_SCRIPT_INHERITED ||
            script == HB_SCRIPT_UNKNOWN;
 }
+
+/* Initialize paragraph. */
 static FVM_Result paragraph_init(Paragraph &p, const fvm_detail::vector<FriBidiChar> &chars,
                                  const fvm_detail::vector<size_t> &bytes, size_t start, size_t end,
                                  FVM_TextDirection direction)
 {
     size_t count = end - start;
+
+    /* Computation / Вычисление и обновление состояния. */
     p.chars.resize(count);
     p.types.resize(count);
     p.levels.resize(count);
     p.scripts.resize(count);
     p.bytes.resize(count + 1);
+
+    /* Initialization / Инициализация локального состояния. */
     hb_unicode_funcs_t *unicode = hb_unicode_funcs_get_default();
     hb_script_t previous = HB_SCRIPT_COMMON;
     for (size_t i = 0; i < count; ++i)
@@ -240,6 +291,8 @@ static FVM_Result paragraph_init(Paragraph &p, const fvm_detail::vector<FriBidiC
         else
             next = p.scripts[i - 1];
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     p.bytes[count] = bytes[end];
     p.base = direction == FVM_TEXT_AUTO  ? FRIBIDI_PAR_ON
              : direction == FVM_TEXT_RTL ? FRIBIDI_PAR_RTL
@@ -251,6 +304,8 @@ static FVM_Result paragraph_init(Paragraph &p, const fvm_detail::vector<FriBidiC
         return FVM_OK;
     }
     fvm_detail::vector<FriBidiBracketType> brackets(count);
+
+    /* Computation / Вычисление и обновление состояния. */
     fribidi_get_bidi_types(p.chars.begin(), (FriBidiStrIndex)count, p.types.begin());
     fribidi_get_bracket_types(p.chars.begin(), (FriBidiStrIndex)count, p.types.begin(),
                               brackets.begin());
@@ -259,6 +314,8 @@ static FVM_Result paragraph_init(Paragraph &p, const fvm_detail::vector<FriBidiC
         return FVM_OUT_OF_MEMORY;
     return FVM_OK;
 }
+
+/* Define Segment struct and its representation. */
 struct Segment
 {
     size_t start, end, rank;
@@ -266,10 +323,13 @@ struct Segment
 };
 /* Reorder whole shaped segments rather than codepoints or individual glyphs:
  * combining marks and ligature clusters keep HarfBuzz's within-run ordering. */
+/* Compute and return shape line. */
 static FVM_Result shape_line(FVM_Font *font, const char *text, const char *language,
                              const Paragraph &p, size_t start, size_t end, size_t &budget,
                              fvm_detail::vector<FVM_TextLayoutGlyph> &glyphs, double &advance)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     glyphs.clear();
     advance = 0;
     if (start == end)
@@ -277,6 +337,8 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
     if (end - start > budget)
         return FVM_UNSUPPORTED;
     budget -= end - start;
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<FriBidiLevel> levels = p.levels;
     fvm_detail::vector<FriBidiStrIndex> map(p.chars.size());
     for (size_t i = 0; i < map.size(); ++i)
@@ -345,11 +407,15 @@ static FVM_Result shape_line(FVM_Font *font, const char *text, const char *langu
     }
     return FVM_OK;
 }
+
+/* Compute and return allowed. */
 static bool allowed(const fvm_detail::vector<char> &breaks, const Paragraph &p, size_t end)
 {
     return end == p.chars.size() || breaks[p.bytes[end] - 1] == LINEBREAK_ALLOWBREAK ||
            breaks[p.bytes[end] - 1] == LINEBREAK_MUSTBREAK;
 }
+
+/* Compute and return choose line. */
 static FVM_Result choose_line(FVM_Font *font, const char *text, const char *language,
                               const Paragraph &p, size_t start, double width,
                               const fvm_detail::vector<char> &line,
@@ -358,6 +424,8 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
     end = p.chars.size();
     if (!width || start == end)
         return FVM_OK;
+
+    /* Initialization / Инициализация локального состояния. */
     size_t last = start, first_overflow = end;
     fvm_detail::vector<FVM_TextLayoutGlyph> trial;
     for (size_t candidate = start + 1; candidate <= p.chars.size(); ++candidate)
@@ -403,11 +471,15 @@ static FVM_Result choose_line(FVM_Font *font, const char *text, const char *lang
     end = last == start ? first_overflow : last;
     return FVM_OK;
 }
+
+/* Append line. */
 static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char *text,
                               const FVM_TextLayoutOptions &options, const FVM_FontMetrics &metrics,
                               const Paragraph &p, size_t start, size_t end, size_t next,
                               size_t &budget)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_detail::vector<FVM_TextLayoutGlyph> glyphs;
     double advance;
     FVM_Result result =
@@ -415,6 +487,8 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
     if (result != FVM_OK)
         return result;
     FVM_TextLayoutLine line;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&line, 0, sizeof(line));
     line.byte_start = p.bytes[start];
     line.byte_end = p.bytes[end];
@@ -458,6 +532,7 @@ static FVM_Result append_line(FVM_TextLayout &layout, FVM_Font *font, const char
 }
 /* A C caller can supply an out-of-range enum representation. Inspect its bytes
  * before any C++ scalar load, which would itself be undefined for that value. */
+/* Compute and return valid option enums. */
 static bool valid_option_enums(const FVM_TextLayoutOptions *options)
 {
     bool direction = false, alignment = false;
@@ -475,6 +550,8 @@ static bool valid_option_enums(const FVM_TextLayoutOptions *options)
     }
     return direction && alignment;
 }
+
+/* Create text layout. */
 extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, size_t size,
                                              const FVM_TextLayoutOptions *provided,
                                              FVM_TextLayout **out)
@@ -581,6 +658,7 @@ extern "C" FVM_Result fvm_text_layout_create(FVM_Font *font, const char *text, s
     }
 }
 #else
+/* Create text layout. */
 extern "C" FVM_Result fvm_text_layout_create(FVM_Font *, const char *, size_t,
                                              const FVM_TextLayoutOptions *, FVM_TextLayout **out)
 {

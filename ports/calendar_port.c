@@ -1,3 +1,7 @@
+/* FlashVM: Portable platform adapter interface or implementation: calendar port.
+ * File: ports/calendar_port.c.
+ */
+
 #include "clock_port.h"
 #include "channel_sync.h"
 #include <time.h>
@@ -6,8 +10,11 @@
 #include <string.h>
 /* libc's calendar functions can share static storage. Serialize them at the
  * platform boundary, copy results immediately, and reject unsafe time_t casts. */
+/* Compute and return stamp. */
 static int stamp(double seconds, time_t *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double bound = 1;
     size_t bits = sizeof(time_t) * CHAR_BIT;
     size_t i;
@@ -19,10 +26,16 @@ static int stamp(double seconds, time_t *out)
     *out = (time_t)seconds;
     return 1;
 }
+
+/* Compute and return day number. */
 static double day_number(int year, int month, int day)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     double era;
     int yoe, mp, doy;
+
+    /* Computation / Вычисление и обновление состояния. */
     year -= month <= 1;
     era = floor((double)year / 400);
     yoe = year - (int)(era * 400);
@@ -30,13 +43,19 @@ static double day_number(int year, int month, int day)
     doy = (153 * mp + 2) / 5 + day - 1;
     return era * 146097 + (yoe * 365 + yoe / 4 - yoe / 100 + doy) - 719468;
 }
+
+/* Compute and return port calendar offset. */
 int fvm_port_calendar_offset(double utc_ms, double *east)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     time_t value;
     struct tm *p, local;
     double local_seconds;
     if (!east || !stamp(floor(utc_ms / 1000), &value))
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_registry_lock();
     p = localtime(&value);
     if (p)
@@ -44,14 +63,20 @@ int fvm_port_calendar_offset(double utc_ms, double *east)
     fvm_port_registry_unlock();
     if (!p)
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     local_seconds = day_number(local.tm_year + 1900, local.tm_mon, local.tm_mday) * 86400 +
                     local.tm_hour * 3600 + local.tm_min * 60 + local.tm_sec;
     *east = (local_seconds - floor(utc_ms / 1000)) / 60;
     return 1;
 }
+
+/* Compute and return port calendar utc. */
 int fvm_port_calendar_utc(double year, double month, double day, double hour, double minute,
                           double second, double millisecond, double *utc_ms)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     struct tm local, *check;
     time_t value;
     double residual;
@@ -60,6 +85,8 @@ int fvm_port_calendar_utc(double year, double month, double day, double hour, do
         day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 ||
         second > 59 || millisecond < 0 || millisecond >= 1000)
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     memset(&local, 0, sizeof(local));
     local.tm_year = (int)year - 1900;
     local.tm_mon = (int)month;
@@ -79,6 +106,8 @@ int fvm_port_calendar_utc(double year, double month, double day, double hour, do
     fvm_port_registry_unlock();
     if (!ok)
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     residual = millisecond;
     *utc_ms = (double)value * 1000 + residual;
     return 1;

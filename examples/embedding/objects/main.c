@@ -1,15 +1,72 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/objects/main.c.
+ */
+
 /* C89: create an AVM1 object and expose it to scripts through globals. */
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/value.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
-int main(void) {
- FVM_Config cfg;FVM_Runtime *r=0;FVM_Context *c=0;FVM_Object *o=0;FVM_Value v;
- if(fvm_config_init(&cfg)!=FVM_OK || fvm_runtime_create(&cfg,&r)!=FVM_OK || fvm_context_create(r,&c)!=FVM_OK) return 1;
- if(fvm_object_create(c,&o)!=FVM_OK) return 2;
- fvm_value_number(&v,123);
- if(fvm_object_set(c,o,"score",&v)!=FVM_OK) return 3;
- fvm_value_undefined(&v);v.type=FVM_VALUE_OBJECT;v.object=o;
- if(fvm_set_global(c,"gameState",&v)!=FVM_OK) return 4;
- if(fvm_object_get(c,o,"score",&v)!=FVM_OK || v.number!=123) return 5;
- printf("gameState.score = %.0f\n",v.number);
- fvm_context_destroy(c);fvm_runtime_destroy(r);return 0;
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config cfg;
+    /* Сохраняем вычисленное значение: FVM_Runtime *r. */
+    FVM_Runtime *r = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *c. */
+    FVM_Context *c = 0;
+    /* Сохраняем вычисленное значение: FVM_Object *o. */
+    FVM_Object *o = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value v;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &r) != FVM_OK ||
+        /* Создаём отдельный контекст интерпретатора в среде выполнения. */
+        fvm_context_create(r, &c) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_create(c, &o) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 2;
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&v, 123);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_set(c, o, "score", &v) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 3;
+    /* Сбрасываем все поля значения в состояние undefined. */
+    fvm_value_undefined(&v);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Сохраняем вычисленное значение: v.type. */
+    v.type = FVM_VALUE_OBJECT;
+    /* Сохраняем вычисленное значение: v.object. */
+    v.object = o;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_set_global(c, "gameState", &v) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 4;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_get(c, o, "score", &v) != FVM_OK || v.number != 123)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 5;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("gameState.score = %.0f\n", v.number);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(c);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(r);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

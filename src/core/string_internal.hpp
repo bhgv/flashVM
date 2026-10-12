@@ -1,15 +1,22 @@
+/* FlashVM: Interpreter state, object lifetimes and shared runtime helpers: string internal.
+ * File: src/core/string_internal.hpp.
+ */
+
 #ifndef FVM_CORE_STRING_INTERNAL_HPP
+/* Define FVM CORE STRING INTERNAL HPP constant or compilation switch. */
 #define FVM_CORE_STRING_INTERNAL_HPP
 #include "flashvm/value.h"
 #include "flashvm/utf8.h"
 #include "../details/vector.hpp"
 #include <cstring>
+/* Compute and return string size. */
 inline size_t fvm_string_size(const FVM_Value &v)
 {
     return v.string_size == (size_t)-1 ? std::strlen(v.string) : v.string_size;
 }
 /* WTF-8 preserves lone UTF-16 surrogates. The public UTF-8 scalar codec remains
  * strict; only the VM string representation accepts these three-byte units. */
+/* Read string. */
 inline FVM_Result fvm_string_read(const char *s, size_t n, size_t &at, unsigned long &cp)
 {
     if (at < n && n - at >= 3 && (unsigned char)s[at] == 0xed && (unsigned char)s[at + 1] >= 0xa0 &&
@@ -22,6 +29,8 @@ inline FVM_Result fvm_string_read(const char *s, size_t n, size_t &at, unsigned 
     }
     return fvm_utf8_read(s, n, &at, &cp) == FVM_UTF8_OK ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
+
+/* Compute and return string units. */
 inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<unsigned int> &units)
 {
     if (value.type != FVM_VALUE_STRING || !value.string)
@@ -44,8 +53,12 @@ inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<un
     }
     return FVM_OK;
 }
+
+/* Append string. */
 inline FVM_Result fvm_string_append(unsigned long cp, fvm_detail::vector<char> &bytes)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     char raw[4];
     size_t n = 0;
     if (cp >= 0xd800 && cp <= 0xdfff)

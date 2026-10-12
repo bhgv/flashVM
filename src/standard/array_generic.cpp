@@ -1,3 +1,7 @@
+/* FlashVM: Built-in ActionScript objects: array generic.
+ * File: src/standard/array_generic.cpp.
+ */
+
 #include "array_generic.hpp"
 #include "base_state.hpp"
 #include "../core/string_internal.hpp"
@@ -10,8 +14,11 @@
 #include <new>
 namespace
 {
+/* Compute and return length. */
 FVM_Result length(FVM_Context *c, FVM_Object *o, unsigned long &out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value value;
     FVM_Result r = fvm_object_get(c, o, "length", &value);
     double n = 0;
@@ -27,6 +34,8 @@ FVM_Result length(FVM_Context *c, FVM_Object *o, unsigned long &out)
     out = (unsigned long)n;
     return FVM_OK;
 }
+
+/* Read the current value. */
 FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &out, bool &present)
 {
     char key[32];
@@ -53,6 +62,7 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
     }
     return cursor ? FVM_ERROR : FVM_OK;
 }
+/* Write the current value. */
 FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value *value)
 {
     char key[32];
@@ -62,19 +72,29 @@ FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_V
     int deleted = 0;
     return fvm_object_delete(c, o, key, &deleted);
 }
+
+/* Resize the current value. */
 FVM_Result resize(FVM_Context *c, FVM_Object *o, unsigned long count)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value value;
     fvm_value_number(&value, (double)count);
     return fvm_object_set(c, o, "length", &value);
 }
+
+/* Compute and return move. */
 FVM_Result move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long to)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value value;
     bool present;
     FVM_Result r = get(c, o, from, value, present);
     return r == FVM_OK ? write(c, o, to, present ? &value : 0) : r;
 }
+
+/* Compute and return integer. */
 FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int index,
                    double fallback, double &out)
 {
@@ -92,18 +112,26 @@ FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned 
         out = out < 0 ? -std::floor(-out) : std::floor(out);
     return FVM_OK;
 }
+
+/* Compute and return bound. */
 unsigned long bound(double n, unsigned long count)
 {
     if (n < 0)
         n += count;
     return n <= 0 ? 0 : n >= count ? count : (unsigned long)n;
 }
+
+/* Implement object for this subsystem. */
 void object(FVM_Value *out, FVM_Object *o)
 {
     fvm_value_undefined(out);
+
+    /* Computation / Вычисление и обновление состояния. */
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
 }
+
+/* Run the current value. */
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {
@@ -119,6 +147,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         status = fvm_table_set_index(c, snapshot, 0, &receiver);
         return status == FVM_OK ? fast(c, snapshot, n, a, out, 0) : status;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned long count = 0;
     FVM_Result r = length(c, o, count);
     if (r != FVM_OK)
@@ -265,9 +295,11 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             if (c->joining_arrays[i] == o)
                 return fvm_value_string(out, "");
         c->joining_arrays.push_back(o);
+        /* Define Pop struct and its representation. */
         struct Pop
         {
             FVM_Context *c;
+            /* Release the resources owned by this Pop instance. */
             ~Pop()
             {
                 c->joining_arrays.pop_back();
@@ -346,6 +378,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     return r;
 }
 } // namespace
+/* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
     if (!o || o->resource_kind != 28)
@@ -379,6 +412,8 @@ bool fvm_array_needs_generic(FVM_Object *o)
     }
     return o != 0;
 }
+
+/* Compute and return array generic. */
 FVM_Result fvm_array_generic(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                              const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {

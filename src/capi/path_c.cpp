@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: path.
+ * File: src/capi/path_c.cpp.
+ */
+
 #include "flashvm/path.h"
 #include "../details/vector.hpp"
 #include <cmath>
@@ -15,22 +19,30 @@
 #elif defined(FVM_HAS_CAIRO)
 #include "cairo.h"
 #endif
+/* Define FVM_Path struct and its representation. */
 struct FVM_Path
 {
     fvm_detail::vector<FVM_PathCommand> commands;
     bool open;
+    /* Initialize Path and its owned state. */
     FVM_Path() : open(false)
     {
     }
 };
+
+/* Compute and return points. */
 static unsigned int points(FVM_PathVerb v)
 {
     return v == FVM_PATH_CLOSE ? 0 : v == FVM_PATH_CUBIC ? 3 : v == FVM_PATH_QUADRATIC ? 2 : 1;
 }
+
+/* Compute and return coordinate. */
 static bool coordinate(double x)
 {
     return x >= -1000000 && x <= 1000000;
 }
+
+/* Create path. */
 extern "C" FVM_Result fvm_path_create(FVM_Path **out)
 {
     if (!out)
@@ -38,14 +50,20 @@ extern "C" FVM_Result fvm_path_create(FVM_Path **out)
     *out = new (std::nothrow) FVM_Path;
     return *out ? FVM_OK : FVM_OUT_OF_MEMORY;
 }
+
+/* Destroy path. */
 extern "C" void fvm_path_destroy(FVM_Path *p)
 {
     delete p;
 }
+
+/* Count path. */
 extern "C" size_t fvm_path_count(const FVM_Path *p)
 {
     return p ? p->commands.size() : 0;
 }
+
+/* Read path. */
 extern "C" FVM_Result fvm_path_get(const FVM_Path *p, size_t i, FVM_PathCommand *out)
 {
     if (!p || !out || i >= p->commands.size())
@@ -53,6 +71,7 @@ extern "C" FVM_Result fvm_path_get(const FVM_Path *p, size_t i, FVM_PathCommand 
     *out = p->commands[i];
     return FVM_OK;
 }
+/* Add path. */
 extern "C" FVM_Result fvm_path_add(FVM_Path *p, const FVM_PathCommand *c)
 {
     if (!p || !c || c->verb < FVM_PATH_MOVE || c->verb > FVM_PATH_CLOSE ||
@@ -62,6 +81,8 @@ extern "C" FVM_Result fvm_path_add(FVM_Path *p, const FVM_PathCommand *c)
         if (!coordinate(c->x[i]) || !coordinate(c->y[i]))
             return FVM_INVALID_ARGUMENT;
     FVM_PathCommand copy;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&copy, 0, sizeof(copy));
     copy.verb = c->verb;
     for (unsigned int i = 0; i < points(c->verb); ++i)
@@ -80,15 +101,21 @@ extern "C" FVM_Result fvm_path_add(FVM_Path *p, const FVM_PathCommand *c)
     p->open = c->verb != FVM_PATH_CLOSE;
     return FVM_OK;
 }
+
+/* Update path point. */
 extern "C" FVM_Result fvm_path_set_point(FVM_Path *p, size_t i, unsigned int n, double x, double y)
 {
     if (!p || i >= p->commands.size() || n >= points(p->commands[i].verb) || !coordinate(x) ||
         !coordinate(y))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     p->commands[i].x[n] = x;
     p->commands[i].y[n] = y;
     return FVM_OK;
 }
+
+/* Compute and return transform command. */
 static bool transform_command(FVM_PathCommand &c, const FVM_Affine *m)
 {
     if (!m)
@@ -104,11 +131,15 @@ static bool transform_command(FVM_PathCommand &c, const FVM_Affine *m)
     }
     return true;
 }
+
+/* Compute and return valid matrix. */
 static bool valid_matrix(const FVM_Affine *m)
 {
     return m && coordinate(m->xx) && coordinate(m->xy) && coordinate(m->yx) && coordinate(m->yy) &&
            coordinate(m->x0) && coordinate(m->y0);
 }
+
+/* Compute and return path transform. */
 extern "C" FVM_Result fvm_path_transform(FVM_Path *p, const FVM_Affine *m)
 {
     if (!p || !valid_matrix(m))
@@ -127,6 +158,8 @@ extern "C" FVM_Result fvm_path_transform(FVM_Path *p, const FVM_Affine *m)
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Append path. */
 extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const FVM_Affine *m)
 {
     if (!p || !source || (m && !valid_matrix(m)) ||
@@ -152,6 +185,8 @@ extern "C" FVM_Result fvm_path_append(FVM_Path *p, const FVM_Path *source, const
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Implement extent for this subsystem. */
 static void extent(double v, double &low, double &high)
 {
     if (v < low)
@@ -159,16 +194,22 @@ static void extent(double v, double &low, double &high)
     if (v > high)
         high = v;
 }
+
+/* Compute and return bezier. */
 static double bezier(double p0, double p1, double p2, double p3, double t, bool cubic)
 {
     double s = 1 - t;
     return cubic ? s * s * s * p0 + 3 * s * s * t * p1 + 3 * s * t * t * p2 + t * t * t * p3
                  : s * s * p0 + 2 * s * t * p1 + t * t * p2;
 }
+
+/* Implement curve bounds for this subsystem. */
 static void curve_bounds(double p0, double p1, double p2, double p3, bool cubic, double &low,
                          double &high)
 {
     extent(cubic ? p3 : p2, low, high);
+
+    /* Initialization / Инициализация локального состояния. */
     double a = cubic ? -p0 + 3 * p1 - 3 * p2 + p3 : 0;
     double b = cubic ? 2 * (p0 - 2 * p1 + p2) : p0 - 2 * p1 + p2;
     double c = p1 - p0;
@@ -198,10 +239,14 @@ static void curve_bounds(double p0, double p1, double p2, double p3, bool cubic,
         if (roots[i] > 0 && roots[i] < 1)
             extent(bezier(p0, p1, p2, p3, roots[i], cubic), low, high);
 }
+
+/* Compute and return path bounds. */
 extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
 {
     if (!p || !out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_PathBounds box = {0, 0, 0, 0};
     double x = 0, y = 0, sx = 0, sy = 0;
     bool first = true;
@@ -242,12 +287,15 @@ extern "C" FVM_Result fvm_path_bounds(const FVM_Path *p, FVM_PathBounds *out)
     *out = box;
     return FVM_OK;
 }
+
+/* Compute and return valid surface. */
 static bool valid_surface(const FVM_RasterSurface *s)
 {
     return s && s->pixels && s->width && s->height && s->width <= 4096 && s->height <= 4096 &&
            s->stride >= (size_t)s->width * 4 && s->stride <= (size_t)INT_MAX / s->height;
 }
 #ifdef FVM_HAS_CAIRO
+/* Compute and return packed pixel. */
 static unsigned int packed_pixel(const unsigned char *p)
 {
     unsigned int a = p[3];
@@ -255,6 +303,7 @@ static unsigned int packed_pixel(const unsigned char *p)
            ((p[2] * a + 127) / 255);
 }
 #endif
+/* Draw path. */
 extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
                                     double width, int even_odd)
 {
@@ -417,17 +466,23 @@ extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM
     return FVM_UNSUPPORTED;
 #endif
 }
+
+/* Compute and return path mask. */
 extern "C" FVM_Result fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst,
                                     const FVM_RasterSurface *src, int even_odd)
 {
     if (!valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
         src->height != dst->height)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     size_t size = (size_t)dst->width * dst->height * 4;
     unsigned char *mask = new (std::nothrow) unsigned char[size];
     if (!mask)
         return FVM_OUT_OF_MEMORY;
     std::memset(mask, 0, size);
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_RasterSurface s = {mask, dst->width, dst->height, (size_t)dst->width * 4};
     FVM_RasterColor white = {255, 255, 255, 255};
     FVM_Result result = fvm_path_draw(p, &s, white, 0, even_odd);

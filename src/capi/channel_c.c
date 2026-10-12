@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: channel.
+ * File: src/capi/channel_c.c.
+ */
+
 #include "flashvm/channel.h"
 #include "flashvm/debug.h"
 #include "../core/channel_packet.h"
@@ -6,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+/* Define FVM_ChannelNode struct and its representation. */
 typedef struct FVM_ChannelNode
 {
     void *packet;
@@ -15,6 +20,8 @@ typedef struct FVM_ChannelNode
     char *owned_string;
     struct FVM_ChannelNode *next;
 } FVM_ChannelNode;
+
+/* Define FVM_Channel struct and its representation. */
 struct FVM_Channel
 {
     unsigned long identity;
@@ -35,11 +42,15 @@ struct FVM_Channel
     size_t capacity;
     size_t references;
 };
+
+/* Create channel. */
 FVM_Result fvm_channel_create(FVM_Channel **out)
 {
     FVM_Channel *c;
     if (!out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *out = 0;
     c = (FVM_Channel *)calloc(1, sizeof(*c));
     if (!c)
@@ -57,12 +68,18 @@ FVM_Result fvm_channel_create(FVM_Channel **out)
         free(c);
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     c->references = 1;
     *out = c;
     return FVM_OK;
 }
+
+/* Open channel file. */
 FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel **out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Channel *channel;
     FVM_Result result;
     if (!out)
@@ -83,11 +100,15 @@ FVM_Result fvm_channel_open_file(const char *path, const char *mode, FVM_Channel
         fvm_channel_destroy(channel);
         return FVM_OUT_OF_MEMORY;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     strcpy(channel->file_path, path);
     channel->file_channel = 1;
     *out = channel;
     return FVM_OK;
 }
+
+/* Test whether channel file. */
 FVM_Result fvm_channel_is_file(FVM_Channel *channel, int *out)
 {
     if (!channel || !out)
@@ -95,11 +116,15 @@ FVM_Result fvm_channel_is_file(FVM_Channel *channel, int *out)
     *out = channel->file_channel == 1;
     return FVM_OK;
 }
+
+/* Read channel file. */
 FVM_Result fvm_channel_file_read(FVM_Channel *c, void *data, size_t size, size_t *read)
 {
     FVM_Result result;
     if (!c || !read || (!data && size))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *read = 0;
     fvm_port_sync_lock(c->sync);
     result = c->file_channel != 1 ? FVM_UNSUPPORTED
@@ -108,11 +133,14 @@ FVM_Result fvm_channel_file_read(FVM_Channel *c, void *data, size_t size, size_t
     fvm_port_sync_unlock(c->sync);
     return result;
 }
+/* Write channel file. */
 FVM_Result fvm_channel_file_write(FVM_Channel *c, const void *data, size_t size)
 {
     FVM_Result result;
     if (!c || (!data && size))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     result = c->file_channel != 1 ? FVM_UNSUPPORTED
              : c->closed          ? FVM_ERROR
@@ -120,6 +148,8 @@ FVM_Result fvm_channel_file_write(FVM_Channel *c, const void *data, size_t size)
     fvm_port_sync_unlock(c->sync);
     return result;
 }
+
+/* Send channel file record. */
 FVM_Result fvm_channel_file_send_record(FVM_Channel *c, const unsigned char *data, size_t size)
 {
     if (!data || size < 16 || size > 64UL * 1024 * 1024)
@@ -130,17 +160,24 @@ FVM_Result fvm_channel_file_send_record(FVM_Channel *c, const unsigned char *dat
 }
 /* Lock held. Invalid/truncated records leave the read position unchanged;
    EOF is finite: blocking receive never waits for an external file writer. */
+/* Compute and return file record. */
 static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size, int blocking)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char header[16], *buffer;
     const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 1};
     size_t count, body;
     long position;
     FVM_Result result;
+
+    /* Computation / Вычисление и обновление состояния. */
     *data = 0;
     *size = 0;
     if (c->closed)
         return FVM_ERROR;
+
+    /* Computation / Вычисление и обновление состояния. */
     position = fvm_port_file_position(c->file);
     result = fvm_port_file_read(c->file, header, sizeof(header), &count);
     if (result != FVM_OK)
@@ -165,6 +202,8 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
         result = FVM_OUT_OF_MEMORY;
         goto fail;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     memcpy(buffer, header, 16);
     result = fvm_port_file_read(c->file, buffer + 16, body, &count);
     if (result != FVM_OK || count != body)
@@ -174,6 +213,8 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
             result = FVM_INVALID_ARGUMENT;
         goto fail;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *data = buffer;
     *size = body + 16;
     return FVM_OK;
@@ -181,6 +222,8 @@ fail:
     fvm_port_file_restore(c->file, position);
     return result;
 }
+
+/* Receive channel file record. */
 FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data, size_t *size,
                                            int blocking)
 {
@@ -189,6 +232,8 @@ FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data,
         return fvm_channel_stream_receive(0, c, data, size, blocking);
     if (!c || !data || !size)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *data = 0;
     *size = 0;
     fvm_port_sync_lock(c->sync);
@@ -196,8 +241,12 @@ FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data,
     fvm_port_sync_unlock(c->sync);
     return result;
 }
+
+/* Compute and return file primitive. */
 static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, int borrowed)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char *data;
     size_t size;
     long position;
@@ -227,6 +276,8 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
         fvm_port_sync_unlock(c->sync);
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     position = fvm_port_file_position(c->file);
     result = file_record(c, &data, &size, blocking);
     if (result == FVM_OK)
@@ -245,12 +296,16 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
     fvm_port_sync_unlock(c->sync);
     return result;
 }
+
+/* Close channel. */
 void fvm_channel_close(FVM_Channel *c)
 {
     if (!c)
         return;
     if (c->remote_request)
         c->remote_request(c->remote, 0, 4, 0, 0, 0, 0, 0);
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     c->closed = 1;
     fvm_port_file_close(c->file);
@@ -258,6 +313,7 @@ void fvm_channel_close(FVM_Channel *c)
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
 }
+/* Retain channel. */
 FVM_Result fvm_channel_retain(FVM_Channel *c)
 {
     if (!c)
@@ -268,16 +324,24 @@ FVM_Result fvm_channel_retain(FVM_Channel *c)
         fvm_port_sync_unlock(c->sync);
         return FVM_INVALID_ARGUMENT;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     ++c->references;
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Release channel. */
 void fvm_channel_release(FVM_Channel *c)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n, *next;
     int last;
     if (!c)
         return;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     last = (--c->references == 0);
     if (last)
@@ -301,17 +365,25 @@ void fvm_channel_release(FVM_Channel *c)
     fvm_port_file_close(c->file);
     if (c->remote_release)
         c->remote_release(c->remote);
+
+    /* Cleanup / Освобождение ресурсов. */
     free(c->last_string);
     free(c->file_path);
     fvm_port_sync_destroy(c->sync);
     free(c);
 }
+
+/* Destroy channel. */
 void fvm_channel_destroy(FVM_Channel *c)
 {
     fvm_channel_release(c);
 }
+
+/* Send channel primitive. */
 FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int blocking)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     size_t len;
     if (!c || !v || v->type < FVM_VALUE_UNDEFINED || v->type >= FVM_VALUE_OBJECT)
@@ -375,14 +447,20 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
         c->tail->next = n;
     else
         c->head = n;
+
+    /* Computation / Вычисление и обновление состояния. */
     c->tail = n;
     ++c->pending;
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Receive channel. */
 FVM_Result fvm_channel_receive(FVM_Channel *c, FVM_Value *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     char *previous;
     if (!c || !out)
@@ -406,18 +484,25 @@ FVM_Result fvm_channel_receive(FVM_Channel *c, FVM_Value *out)
     c->head = n->next;
     if (!c->head)
         c->tail = 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     --c->pending;
     fvm_port_sync_signal_all(c->sync);
     *out = n->value;
     previous = c->last_string;
     c->last_string = n->owned_string;
     fvm_port_sync_unlock(c->sync);
+
+    /* Cleanup / Освобождение ресурсов. */
     free(previous);
     free(n);
     return FVM_OK;
 }
+/* Attempt channel receive. */
 FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     char *previous;
     FVM_Result result;
@@ -441,16 +526,22 @@ FVM_Result fvm_channel_try_receive(FVM_Channel *c, FVM_Value *out)
     c->head = n->next;
     if (!c->head)
         c->tail = 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     --c->pending;
     fvm_port_sync_signal_all(c->sync);
     *out = n->value;
     previous = c->last_string;
     c->last_string = n->owned_string;
     fvm_port_sync_unlock(c->sync);
+
+    /* Cleanup / Освобождение ресурсов. */
     free(previous);
     free(n);
     return FVM_OK;
 }
+
+/* Compute and return channel available. */
 FVM_Result fvm_channel_available(FVM_Channel *c, int *available)
 {
     if (!c || !available)
@@ -464,45 +555,60 @@ FVM_Result fvm_channel_available(FVM_Channel *c, int *available)
         fvm_port_sync_unlock(c->sync);
         return result;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *available = (c->head != 0);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
 
+/* Update channel capacity. */
 FVM_Result fvm_channel_set_capacity(FVM_Channel *c, size_t capacity)
 {
     if (!c)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
         return FVM_UNSUPPORTED;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     c->capacity = capacity;
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Compute and return channel pending. */
 FVM_Result fvm_channel_pending(FVM_Channel *c, size_t *pending)
 {
     if (!c || !pending)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
         return FVM_UNSUPPORTED;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     *pending = c->pending;
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
 
+/* Send channel. */
 FVM_Result fvm_channel_send(FVM_Channel *c, const FVM_Value *v)
 {
     return fvm_channel_send_primitive(c, v, 1);
 }
+/* Attempt channel send. */
 FVM_Result fvm_channel_try_send(FVM_Channel *c, const FVM_Value *v)
 {
     return fvm_channel_send_primitive(c, v, 0);
 }
+
+/* Receive channel owned. */
 FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blocking)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     FVM_Result r;
     if (!c || !out)
@@ -527,6 +633,8 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blockin
     c->head = n->next;
     if (!c->head)
         c->tail = 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     --c->pending;
     *out = n->value;
     fvm_port_sync_signal_all(c->sync);
@@ -534,6 +642,8 @@ FVM_Result fvm_channel_receive_owned(FVM_Channel *c, FVM_Value *out, int blockin
     free(n);
     return FVM_OK;
 }
+
+/* Release channel message. */
 void fvm_channel_message_release(FVM_Value *v)
 {
     if (!v)
@@ -543,6 +653,7 @@ void fvm_channel_message_release(FVM_Value *v)
     fvm_value_undefined(v);
 }
 
+/* Send channel packet. */
 FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)(void *),
                                    FVM_Result (*retain)(void *), int blocking)
 {
@@ -556,6 +667,8 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
         return FVM_OUT_OF_MEMORY;
     n->packet = packet;
     n->release_packet = release;
+
+    /* Computation / Вычисление и обновление состояния. */
     n->retain_packet = retain;
     fvm_port_sync_lock(c->sync);
     while (!c->closed && c->capacity && c->pending >= c->capacity)
@@ -578,14 +691,20 @@ FVM_Result fvm_channel_packet_send(FVM_Channel *c, void *packet, void (*release)
         c->tail->next = n;
     else
         c->head = n;
+
+    /* Computation / Вычисление и обновление состояния. */
     c->tail = n;
     ++c->pending;
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Receive channel mixed. */
 FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **packet, int blocking)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     FVM_Result r;
     if (!c || !out || !packet)
@@ -602,10 +721,14 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
         fvm_port_sync_unlock(c->sync);
         return r;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     n = c->head;
     c->head = n->next;
     if (!c->head)
         c->tail = 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     --c->pending;
     *packet = n->packet;
     *out = n->value;
@@ -615,24 +738,31 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
     return FVM_OK;
 }
 
+/* Compute and return debug channel freeze. */
 FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
 {
     if (!c)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
         return FVM_UNSUPPORTED;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     c->frozen = frozen != 0;
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Compute and return debug channel state. */
 FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
 {
     if (!c || !out)
         return FVM_INVALID_ARGUMENT;
     if (c->file_channel)
         return FVM_UNSUPPORTED;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     out->identity = c->identity;
     out->pending = c->pending;
@@ -642,8 +772,12 @@ FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
 }
+
+/* Compute and return channel peek mixed. */
 FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, void **packet)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_ChannelNode *n;
     FVM_Result result;
     char *copy;
@@ -654,6 +788,8 @@ FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, 
     fvm_value_undefined(out);
     if (c->file_channel)
         return FVM_UNSUPPORTED;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     n = c->head;
     while (n && index)
@@ -697,15 +833,19 @@ FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, 
     return result;
 }
 
+/* Compute and return channel identity. */
 unsigned long fvm_channel_identity(FVM_Channel *c)
 {
     return c ? c->identity : 0;
 }
 
+/* Create channel remote. */
 FVM_Result fvm_channel_create_remote(void *remote, FVM_RemoteChannelFn request,
                                      void (*release)(void *), const char *address,
                                      FVM_Channel **out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Result r;
     r = fvm_channel_create(out);
     if (r == FVM_OK)
@@ -718,10 +858,14 @@ FVM_Result fvm_channel_create_remote(void *remote, FVM_RemoteChannelFn request,
     }
     return r;
 }
+
+/* Compute and return channel remote address. */
 const char *fvm_channel_remote_address(FVM_Channel *c)
 {
     return c ? c->remote_address : 0;
 }
+
+/* Test whether channel stream. */
 FVM_Result fvm_channel_is_stream(FVM_Channel *c, int *out)
 {
     if (!c || !out)
@@ -729,13 +873,19 @@ FVM_Result fvm_channel_is_stream(FVM_Channel *c, int *out)
     *out = c->file_channel != 0;
     return FVM_OK;
 }
+
+/* Test whether channel closed. */
 FVM_Result fvm_channel_is_closed(FVM_Channel *c, int *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Result r;
     unsigned char *data;
     size_t size;
     if (!c || !out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     *out = c->closed;
     fvm_port_sync_unlock(c->sync);
@@ -753,6 +903,8 @@ FVM_Result fvm_channel_is_closed(FVM_Channel *c, int *out)
     }
     return FVM_OK;
 }
+
+/* Send channel stream. */
 FVM_Result fvm_channel_stream_send(FVM_Context *context, FVM_Channel *c, const unsigned char *data,
                                    size_t size)
 {
@@ -761,21 +913,29 @@ FVM_Result fvm_channel_stream_send(FVM_Context *context, FVM_Channel *c, const u
         return FVM_INVALID_ARGUMENT;
     if (!c->remote_request)
         return fvm_channel_file_send_record(c, data, size);
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     closed = c->closed;
     fvm_port_sync_unlock(c->sync);
     return closed ? FVM_ERROR : c->remote_request(c->remote, context, 5, data, size, 0, 0, 0);
 }
+
+/* Receive channel stream. */
 FVM_Result fvm_channel_stream_receive(FVM_Context *context, FVM_Channel *c, unsigned char **data,
                                       size_t *size, int blocking)
 {
     int closed;
     if (!c || !data || !size)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *data = 0;
     *size = 0;
     if (!c->remote_request)
         return fvm_channel_file_receive_record(c, data, size, blocking);
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
     closed = c->closed;
     fvm_port_sync_unlock(c->sync);
@@ -783,6 +943,7 @@ FVM_Result fvm_channel_stream_receive(FVM_Context *context, FVM_Channel *c, unsi
                   : c->remote_request(c->remote, context, 6, 0, 0, data, size, blocking);
 }
 
+/* Compute and return channel file path. */
 const char *fvm_channel_file_path(FVM_Channel *c)
 {
     return c ? c->file_path : 0;

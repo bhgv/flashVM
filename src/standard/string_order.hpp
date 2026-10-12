@@ -1,4 +1,9 @@
+/* FlashVM: Built-in ActionScript objects: string order.
+ * File: src/standard/string_order.hpp.
+ */
+
 #ifndef FVM_STANDARD_STRING_ORDER_HPP
+/* Define FVM STANDARD STRING ORDER HPP constant or compilation switch. */
 #define FVM_STANDARD_STRING_ORDER_HPP
 #include "../core/string_internal.hpp"
 #include "flashvm/flashvm.h"
@@ -6,8 +11,11 @@
 /* Compare UTF-8/WTF-8 storage by AVM1 UTF-16 code-unit order, without allocating
  * temporary strings or using host locale. Supplementary characters contribute
  * two units; U+10000 consequently sorts before U+E000. */
+/* Compute and return string order. */
 inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right, int &order)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     const char *text[2] = {left.string, right.string};
     size_t length[2] = {fvm_string_size(left), fvm_string_size(right)}, offset[2] = {0, 0};
     unsigned long pending[2] = {0, 0};
@@ -44,15 +52,21 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
         }
     }
 }
+
+/* Compute and return string order. */
 inline FVM_Result fvm_string_order(const char *left, size_t left_size, const char *right,
                                    size_t right_size, int &order)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value a, b;
     FVM_Result r = fvm_value_string_bytes(&a, left, left_size);
     if (r == FVM_OK)
         r = fvm_value_string_bytes(&b, right, right_size);
     return r == FVM_OK ? fvm_string_order(a, b, order) : r;
 }
+
+/* Compute and return string order. */
 inline FVM_Result fvm_string_order(const char *left, const char *right, int &order)
 {
     return fvm_string_order(left, std::strlen(left), right, std::strlen(right), order);

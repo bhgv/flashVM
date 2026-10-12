@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: resource debug.
+ * File: src/capi/resource_debug_c.cpp.
+ */
+
 #include "../core/capability_internal.hpp"
 #include "../core/exception_internal.hpp"
 #include "flashvm/debug.h"
@@ -7,6 +11,8 @@ namespace
 {
 FVM_DebugResourceError errors[64];
 size_t total = 0;
+
+/* Copy the current value. */
 void copy(char *out, const char *s, size_t n)
 {
     std::memset(out, 0, n);
@@ -14,11 +20,14 @@ void copy(char *out, const char *s, size_t n)
         std::strncpy(out, s, n - 1);
 }
 } // namespace
+/* Implement debug resource error for this subsystem. */
 void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *operation,
                               const char *address)
 {
     fvm_resource_fault(c, FVM_RESOURCE_FAILURE, id, operation, address);
     FVM_DebugResourceError event;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&event, 0, sizeof(event));
     event.resource = id;
     event.result = FVM_ERROR;
@@ -38,14 +47,20 @@ void fvm_debug_resource_error(FVM_Context *c, unsigned long id, const char *oper
         std::memmove(errors, errors + 1, sizeof(errors[0]) * 63);
         --total;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     errors[total++] = event;
     fvm_port_registry_unlock();
 }
+
+/* Compute and return debug resource errors. */
 extern "C" FVM_Result fvm_debug_resource_errors(FVM_DebugResourceError *out, size_t capacity,
                                                 size_t *count, int clear)
 {
     if (!count || (!out && capacity))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_registry_lock();
     *count = total;
     if (capacity < total)

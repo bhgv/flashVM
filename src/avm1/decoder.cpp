@@ -1,13 +1,20 @@
+/* FlashVM: AVM1 bytecode decoding and execution: decoder.
+ * File: src/avm1/decoder.cpp.
+ */
+
 #include "function_record.hpp"
 #include "flashvm/avm1.h"
 #include "try_record.hpp"
 namespace
 {
+/* Compute and return inspect. */
 FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool block,
                    unsigned int depth)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     size_t pos = 0;
     bool ended = false;
     while (pos < size)
@@ -66,6 +73,7 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
     return pos == size && (ended || block) ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
 } // namespace
+/* Compute and return avm1 inspect. */
 extern "C" FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info)
 {
     if (!info || info->struct_size != sizeof(*info) || (!data && size))

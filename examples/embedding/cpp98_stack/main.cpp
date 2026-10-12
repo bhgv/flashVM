@@ -1,15 +1,56 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/cpp98_stack/main.cpp.
+ */
+
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/stack.hpp"
+/* Подключаем объявления используемых типов и функций. */
 #include <cassert>
-int main() {
-    FVM_Config cfg; FVM_Runtime *rt=0; FVM_Context *ctx=0; FVM_Value value,out;
-    assert(fvm_config_init(&cfg)==FVM_OK);
-    assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
-    assert(fvm_context_create(rt,&ctx)==FVM_OK);
-    { flashvm::Stack stack(ctx); assert(stack.valid());
-      fvm_value_number(&value,7);
-      assert(stack.push(value)==FVM_OK);
-      assert(stack.get(-1,out)==FVM_OK && out.number==7);
-      assert(stack.pop()==FVM_OK && stack.size()==0);
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main()
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Config cfg;
+    /* Сохраняем вычисленное значение: FVM_Runtime *rt. */
+    FVM_Runtime *rt = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *ctx. */
+    FVM_Context *ctx = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+    FVM_Value value, out;
+    /* Инициализируем настройки безопасными значениями по умолчанию. Проверяем успешность вызова. */
+    assert(fvm_config_init(&cfg) == FVM_OK);
+    /* Создаём среду выполнения; её необходимо освободить после контекстов. Проверяем успешность
+     * вызова. */
+    assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
+    /* Создаём отдельный контекст интерпретатора в среде выполнения. Проверяем успешность вызова. */
+    assert(fvm_context_create(rt, &ctx) == FVM_OK);
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Выполняем вызов stack с указанными аргументами. */
+        flashvm::Stack stack(ctx);
+        /* Выполняем вызов assert с указанными аргументами. */
+        assert(stack.valid());
+        /* Записываем числовое значение и соответствующий тег типа. */
+        fvm_value_number(&value, 7);
+        /* Выполняем вызов assert с указанными аргументами. */
+        assert(stack.push(value) == FVM_OK);
+        /* Выполняем вызов assert с указанными аргументами. */
+        assert(stack.get(-1, out) == FVM_OK && out.number == 7);
+        /* Выполняем вызов assert с указанными аргументами. */
+        assert(stack.pop() == FVM_OK && stack.size() == 0);
+        /* Завершаем текущий блок или описание объекта. */
     }
-    fvm_context_destroy(ctx); fvm_runtime_destroy(rt);return 0;
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
+    fvm_context_destroy(ctx);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
+    fvm_runtime_destroy(rt);
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return 0;
+    /* Завершаем текущий блок или описание объекта. */
 }

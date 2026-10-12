@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: exception.
+ * File: src/capi/exception_c.cpp.
+ */
+
 #include "../core/string_internal.hpp"
 #include "../standard/error_state.hpp"
 #include "../core/exception_internal.hpp"
@@ -10,12 +14,16 @@ namespace
 {
 FVM_ExceptionInfo events[64];
 size_t event_count = 0;
+
+/* Copy the current value. */
 void copy(char *dst, size_t size, const char *src)
 {
     std::memset(dst, 0, size);
     if (src)
         std::strncpy(dst, src, size - 1);
 }
+
+/* Compute and return message. */
 const char *message(unsigned long code)
 {
     switch (code)
@@ -40,6 +48,8 @@ const char *message(unsigned long code)
         return "resource.failure: Resource operation failed.";
     }
 }
+
+/* Implement record for this subsystem. */
 void record(const FVM_ExceptionInfo &info)
 {
     fvm_port_registry_lock();
@@ -48,34 +58,49 @@ void record(const FVM_ExceptionInfo &info)
         std::memmove(events, events + 1, 63 * sizeof(events[0]));
         --event_count;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     events[event_count++] = info;
     fvm_port_registry_unlock();
 }
+
+/* Compute and return number. */
 FVM_Result number(FVM_Context *c, FVM_Object *o, const char *key, unsigned long n)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_number(&v, (double)n);
     return fvm_object_set(c, o, key, &v);
 }
+
+/* Initialize string and its owned state. */
 FVM_Result string(FVM_Context *c, FVM_Object *o, const char *key, const char *text)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_string(&v, text);
     return fvm_object_set(c, o, key, &v);
 }
 } // namespace
+/* Implement resource fault begin for this subsystem. */
 void fvm_resource_fault_begin(FVM_Context *c)
 {
     /* Preserve an explicit pending throw; fresh calls cannot reuse old raw faults. */
     if (c && !c->exception_pending)
         c->fault_pending = false;
 }
+
+/* Implement resource fault for this subsystem. */
 void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, const char *op,
                         const char *address)
 {
     if (!c || c->destroying || c->exception_pending || c->fault_pending)
         return;
     FVM_ExceptionInfo &info = c->fault;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&info, 0, sizeof(info));
     info.code = code;
     info.resource = id;
@@ -90,10 +115,14 @@ void fvm_resource_fault(FVM_Context *c, unsigned long code, unsigned long id, co
         info.flags |= FVM_EXCEPTION_NETWORK;
     if (info.path[0])
         info.flags |= FVM_EXCEPTION_FILE;
+
+    /* Computation / Вычисление и обновление состояния. */
     copy(info.source, sizeof(info.source), c->debug_source.c_str());
     copy(info.function, sizeof(info.function), c->debug_function.c_str());
     c->fault_pending = true;
 }
+
+/* Compute and return exception raise. */
 extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value)
 {
     if (!c || c->destroying || fvm_validate_value(c, value) != FVM_OK)
@@ -118,11 +147,15 @@ extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value
         }
         owned.string = text;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     c->exception_value = owned;
     c->exception_pending = true;
     c->fault_pending = false;
     return FVM_EXCEPTION;
 }
+
+/* Read exception. */
 extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
 {
     if (!c || !out || c->destroying)
@@ -206,6 +239,8 @@ extern "C" FVM_Result fvm_exception_get(FVM_Context *c, FVM_Value *out)
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Compute and return exception info. */
 extern "C" FVM_Result fvm_exception_info(FVM_Context *c, FVM_ExceptionInfo *out)
 {
     if (!c || !out)
@@ -215,15 +250,21 @@ extern "C" FVM_Result fvm_exception_info(FVM_Context *c, FVM_ExceptionInfo *out)
     *out = c->fault;
     return FVM_OK;
 }
+
+/* Clear exception. */
 extern "C" FVM_Result fvm_exception_clear(FVM_Context *c)
 {
     if (!c)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     c->exception_pending = false;
     c->fault_pending = false;
     fvm_value_undefined(&c->exception_value);
     return FVM_OK;
 }
+
+/* Implement resource fault resource for this subsystem. */
 void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handle,
                                  unsigned long origin)
 {
@@ -245,6 +286,8 @@ void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handl
     if (f.origin_thread && f.origin_thread != c->identity)
         f.flags |= FVM_EXCEPTION_THREAD;
 }
+
+/* Compute and return exception complete. */
 FVM_Result fvm_exception_complete(FVM_Context *c, FVM_Object *self, FVM_Result result)
 {
     if (result != FVM_ERROR && result != FVM_EXCEPTION)
@@ -262,15 +305,21 @@ FVM_Result fvm_exception_complete(FVM_Context *c, FVM_Object *self, FVM_Result r
             f.flags |= FVM_EXCEPTION_FILE;
         }
     }
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value thrown;
     FVM_Result r = fvm_exception_get(c, &thrown);
     return r == FVM_OK ? FVM_EXCEPTION : r;
 }
+
+/* Compute and return debug exception events. */
 extern "C" FVM_Result fvm_debug_exception_events(FVM_ExceptionInfo *out, size_t capacity,
                                                  size_t *count, int clear)
 {
     if (!count || (!out && capacity))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_registry_lock();
     *count = event_count;
     if (capacity < event_count)

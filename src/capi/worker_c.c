@@ -1,9 +1,14 @@
+/* FlashVM: C embedding API: worker.
+ * File: src/capi/worker_c.c.
+ */
+
 #include "flashvm/worker.h"
 #include "../core/worker_context.h"
 #include "../../ports/thread_port.h"
 #include "../../ports/channel_sync.h"
 #include <stdlib.h>
 #include <string.h>
+/* Define FVM_Worker struct and its representation. */
 struct FVM_Worker
 {
     FVM_PortThread *thread;
@@ -20,8 +25,12 @@ struct FVM_Worker
     int finished;
     int stop_requested;
 };
+
+/* Copy value. */
 static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     size_t len;
     char *s;
     if (!dst || !src || src->type < FVM_VALUE_UNDEFINED || src->type >= FVM_VALUE_OBJECT)
@@ -33,23 +42,33 @@ static FVM_Result copy_value(FVM_Value *dst, const FVM_Value *src)
         return FVM_OK;
     if (!src->string)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     len = fvm_value_string_size(src);
     s = (char *)malloc(len + 1);
     if (!s)
         return FVM_OUT_OF_MEMORY;
+
+    /* Computation / Вычисление и обновление состояния. */
     memcpy(s, src->string, len);
     s[len] = 0;
     dst->string = s;
     return FVM_OK;
 }
+
+/* Implement free value for this subsystem. */
 static void free_value(FVM_Value *v)
 {
     if (v->type == FVM_VALUE_STRING)
         free((void *)v->string);
     v->string = 0;
 }
+
+/* Implement worker entry for this subsystem. */
 static void worker_entry(void *arg)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Worker *w = (FVM_Worker *)arg;
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
@@ -59,6 +78,8 @@ static void worker_entry(void *arg)
     while (!w->started)
         fvm_port_sync_wait(w->sync);
     fvm_port_sync_unlock(w->sync);
+
+    /* Initialization / Инициализация локального состояния. */
     fvm_value_undefined(&result);
     r = fvm_runtime_create(&w->config, &runtime);
     if (r == FVM_OK)
@@ -74,24 +95,34 @@ static void worker_entry(void *arg)
         fvm_context_destroy(context);
     if (runtime)
         fvm_runtime_destroy(runtime);
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     w->result = r;
     w->finished = 1;
     fvm_port_sync_signal_all(w->sync);
     fvm_port_sync_unlock(w->sync);
 }
+
+/* Create worker. */
 static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction callback,
                                 const FVM_Value *input, void *userdata, FVM_Worker **out,
                                 int start_now)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Worker *w;
     FVM_Result r;
     if (!config || !callback || !input || !out || config->struct_size != sizeof(FVM_Config))
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *out = 0;
     w = (FVM_Worker *)calloc(1, sizeof(*w));
     if (!w)
         return FVM_OUT_OF_MEMORY;
+
+    /* Computation / Вычисление и обновление состояния. */
     w->config = *config;
     w->callback = callback;
     w->userdata = userdata;
@@ -119,6 +150,8 @@ static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction cal
         free(w);
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *out = w;
     /* Publish the OS handle before callbacks can inspect or join themselves. */
     fvm_port_sync_lock(w->sync);
@@ -128,30 +161,42 @@ static FVM_Result worker_create(const FVM_Config *config, FVM_WorkerFunction cal
     fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
+
+/* Run worker. */
 FVM_Result fvm_worker_run(const FVM_Config *c, FVM_WorkerFunction f, const FVM_Value *v, void *ud,
                           FVM_Worker **out)
 {
     return worker_create(c, f, v, ud, out, 1);
 }
+
+/* Run worker suspended. */
 FVM_Result fvm_worker_run_suspended(const FVM_Config *c, FVM_WorkerFunction f, const FVM_Value *v,
                                     void *ud, FVM_Worker **out)
 {
     return worker_create(c, f, v, ud, out, 0);
 }
+
+/* Compute and return worker start. */
 FVM_Result fvm_worker_start(FVM_Worker *w)
 {
     if (!w)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     w->started = 1;
     fvm_port_sync_signal_all(w->sync);
     fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
+
+/* Compute and return worker state. */
 FVM_Result fvm_worker_state(FVM_Worker *w, FVM_WorkerState *state)
 {
     if (!w || !state)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     *state = w->joined     ? FVM_WORKER_JOINED
              : w->finished ? FVM_WORKER_FINISHED
@@ -160,6 +205,8 @@ FVM_Result fvm_worker_state(FVM_Worker *w, FVM_WorkerState *state)
     fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
+
+/* Join worker. */
 FVM_Result fvm_worker_join(FVM_Worker *w, FVM_Value *out)
 {
     FVM_PortThread *thread;
@@ -192,20 +239,29 @@ FVM_Result fvm_worker_join(FVM_Worker *w, FVM_Value *out)
     fvm_port_sync_unlock(w->sync);
     return w->result;
 }
+
+/* Destroy worker. */
 void fvm_worker_destroy(FVM_Worker *w)
 {
     if (!w || !w->joined)
         return;
+
+    /* Computation / Вычисление и обновление состояния. */
     free_value(&w->input);
     free_value(&w->output);
+
+    /* Cleanup / Освобождение ресурсов. */
     fvm_port_sync_destroy(w->sync);
     free(w);
 }
 
+/* Compute and return worker stop. */
 FVM_Result fvm_worker_stop(FVM_Worker *w)
 {
     if (!w)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     w->stop_requested = 1;
     w->started = 1;
@@ -213,17 +269,25 @@ FVM_Result fvm_worker_stop(FVM_Worker *w)
     fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
+
+/* Compute and return worker stop requested. */
 FVM_Result fvm_worker_stop_requested(FVM_Worker *w, int *requested)
 {
     if (!w || !requested)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     *requested = w->stop_requested;
     fvm_port_sync_unlock(w->sync);
     return FVM_OK;
 }
+
+/* Join worker all. */
 FVM_Result fvm_worker_join_all(FVM_Worker **workers, unsigned int count, FVM_Value *results)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned int i, j;
     FVM_Result first = FVM_OK, r;
     if (count && !workers)
@@ -245,11 +309,14 @@ FVM_Result fvm_worker_join_all(FVM_Worker **workers, unsigned int count, FVM_Val
     return first;
 }
 
+/* Compute and return worker result. */
 FVM_Result fvm_worker_result(FVM_Worker *w, FVM_Value *out)
 {
     FVM_Result r;
     if (!w || !out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(w->sync);
     r = w->finished ? w->result : FVM_NOT_FOUND;
     if (w->finished)

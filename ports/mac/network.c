@@ -1,3 +1,7 @@
+/* FlashVM: Portable platform adapter interface or implementation: network.
+ * File: ports/mac/network.c.
+ */
+
 #define _POSIX_C_SOURCE 200112L
 #include "../network_port.h"
 #include <stdlib.h>
@@ -11,14 +15,18 @@
 #include <sys/select.h>
 #include <errno.h>
 #include <fcntl.h>
+/* Define FVM_PortSocket struct and its representation. */
 struct FVM_PortSocket
 {
     int fd;
 };
 /* Socket connect is bounded independently of DNS resolution. Restore blocking
    mode before returning; callers set their own send/receive timeouts. */
+/* Compute and return bounded connect. */
 static int bounded_connect(int fd, const struct sockaddr *address, socklen_t length)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     int flags, result, error;
     socklen_t error_size;
     fd_set writable;
@@ -45,14 +53,20 @@ static int bounded_connect(int fd, const struct sockaddr *address, socklen_t len
         return 0;
     return fcntl(fd, F_SETFL, flags) == 0;
 }
+
+/* Compute and return port tcp connect. */
 FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     struct addrinfo hints, *addresses, *it;
     char service[8];
     int fd = -1;
     FVM_PortSocket *result;
     if (!hostname || !port)
         return NULL;
+
+    /* Computation / Вычисление и обновление состояния. */
     sprintf(service, "%u", (unsigned int)port);
     memset(&hints, 0, sizeof(hints));
     hints.ai_socktype = SOCK_STREAM;
@@ -85,6 +99,8 @@ FVM_PortSocket *fvm_port_tcp_connect(const char *hostname, unsigned short port)
     }
     return result;
 }
+
+/* Send port socket. */
 long fvm_port_socket_send(FVM_PortSocket *s, const void *p, size_t n)
 {
     ssize_t r;
@@ -100,6 +116,8 @@ long fvm_port_socket_send(FVM_PortSocket *s, const void *p, size_t n)
     } while (r < 0 && errno == EINTR);
     return r < 0 ? -1 : (long)r;
 }
+
+/* Compute and return port socket recv. */
 long fvm_port_socket_recv(FVM_PortSocket *s, void *p, size_t n)
 {
     ssize_t r;
@@ -111,6 +129,8 @@ long fvm_port_socket_recv(FVM_PortSocket *s, void *p, size_t n)
     } while (r < 0 && errno == EINTR);
     return r < 0 ? -1 : (long)r;
 }
+
+/* Close port socket. */
 void fvm_port_socket_close(FVM_PortSocket *s)
 {
     if (s)
@@ -120,8 +140,11 @@ void fvm_port_socket_close(FVM_PortSocket *s)
     }
 }
 
+/* Compute and return port tcp listen. */
 FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsigned short *actual)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     struct addrinfo hints, *addresses, *it;
     struct sockaddr_storage bound;
     socklen_t length;
@@ -130,12 +153,16 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
     int fd, one;
     if (!host || !actual)
         return NULL;
+
+    /* Computation / Вычисление и обновление состояния. */
     sprintf(service, "%u", (unsigned int)port);
     memset(&hints, 0, sizeof(hints));
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_family = AF_UNSPEC;
     if (getaddrinfo(host, service, &hints, &addresses))
         return NULL;
+
+    /* Computation / Вычисление и обновление состояния. */
     fd = -1;
     one = 1;
     for (it = addresses; it; it = it->ai_next)
@@ -158,6 +185,8 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
         close(fd);
         return NULL;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *actual = ntohs(bound.ss_family == AF_INET ? ((struct sockaddr_in *)&bound)->sin_port
                                                : ((struct sockaddr_in6 *)&bound)->sin6_port);
     result = (FVM_PortSocket *)malloc(sizeof(*result));
@@ -173,14 +202,20 @@ FVM_PortSocket *fvm_port_tcp_listen(const char *host, unsigned short port, unsig
     }
     return result;
 }
+
+/* Compute and return port tcp accept. */
 FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     fd_set readset;
     struct timeval timeout;
     int fd;
     FVM_PortSocket *result;
     if (!listener || listener->fd >= FD_SETSIZE)
         return NULL;
+
+    /* Computation / Вычисление и обновление состояния. */
     FD_ZERO(&readset);
     FD_SET(listener->fd, &readset);
     timeout.tv_sec = (long)(ms / 1000);
@@ -203,16 +238,24 @@ FVM_PortSocket *fvm_port_tcp_accept(FVM_PortSocket *listener, unsigned long ms)
     }
     return result;
 }
+
+/* Compute and return port socket timeout. */
 int fvm_port_socket_timeout(FVM_PortSocket *s, unsigned long ms)
 {
     struct timeval timeout;
+
+    /* Computation / Вычисление и обновление состояния. */
     timeout.tv_sec = (long)(ms / 1000);
     timeout.tv_usec = (long)(ms % 1000) * 1000;
     return s && !setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) &&
            !setsockopt(s->fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 }
+
+/* Compute and return port secure random. */
 int fvm_port_secure_random(unsigned char *bytes, size_t size)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FILE *file;
     size_t count;
     if (!bytes && size)
@@ -220,6 +263,8 @@ int fvm_port_secure_random(unsigned char *bytes, size_t size)
     file = fopen("/dev/urandom", "rb");
     if (!file)
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     count = fread(bytes, 1, size, file);
     fclose(file);
     return count == size;

@@ -1,36 +1,107 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/input_queue/main.c.
+ */
+
 /* C89 example: feed recognized gestures to the deferred input queue.
  * This example runs on one thread. Do not enqueue from an OS callback thread.
  */
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/input_queue.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
-static void on_gesture(FVM_Context *ctx,const FVM_InputEvent *event,
-                       FVM_InputPhase phase,FVM_MouseButton button,void *user) {
-    (void)ctx; (void)user;
-    printf("gesture=%d fingers=%u phase=%d mouse=%d\n",
-           (int)event->gesture,event->fingers,(int)phase,(int)button);
+/* Implement on gesture for this subsystem. */
+/* Выполняем вызов on_gesture с указанными аргументами. */
+static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputPhase phase,
+                       /* Продолжаем объявление или выражение с указанными параметрами. */
+                       FVM_MouseButton button, void *user)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)ctx;
+    /* Завершаем выражение с указанным значением или аргументами. */
+    (void)user;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("gesture=%d fingers=%u phase=%d mouse=%d\n", (int)event->gesture, event->fingers,
+           /* Завершаем выражение с указанным значением или аргументами. */
+           (int)phase, (int)button);
+    /* Завершаем текущий блок или описание объекта. */
 }
-int main(void) {
+
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Config config;
-    FVM_Runtime *runtime=0;
-    FVM_Context *context=0;
+    /* Сохраняем вычисленное значение: FVM_Runtime *runtime. */
+    FVM_Runtime *runtime = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *context. */
+    FVM_Context *context = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_InputEvent event;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_InputRule rule;
-    unsigned int dispatched=0;
-    if (fvm_config_init(&config)!=FVM_OK ||
-        fvm_runtime_create(&config,&runtime)!=FVM_OK) return 1;
-    if (fvm_context_create(runtime,&context)!=FVM_OK) {
-        fvm_runtime_destroy(runtime); return 1;
+    /* Сохраняем вычисленное значение: unsigned int dispatched. */
+    unsigned int dispatched = 0;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_config_init(&config) != FVM_OK || fvm_runtime_create(&config, &runtime) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_context_create(runtime, &context) != FVM_OK)
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Освобождаем среду выполнения после завершения работы контекстов. */
+        fvm_runtime_destroy(runtime);
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 1;
+        /* Завершаем текущий блок или описание объекта. */
     }
-    rule.struct_size=sizeof(rule); rule.gesture=FVM_GESTURE_TAP;
-    rule.fingers=2; rule.direction=0; rule.button=FVM_MOUSE_RIGHT;
-    fvm_input_set_rule(context,&rule);
-    fvm_input_set_callback(context,on_gesture,0);
-    event.gesture=FVM_GESTURE_TAP; event.fingers=2;
-    event.direction=0; event.x=100; event.y=200;
-    fvm_input_enqueue(context,&event,FVM_INPUT_END);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* Выполняем вызов sizeof с указанными аргументами. */
+    rule.struct_size = sizeof(rule);
+    /* Сохраняем вычисленное значение: rule.gesture. */
+    rule.gesture = FVM_GESTURE_TAP;
+    /* Сохраняем вычисленное значение: rule.fingers. */
+    rule.fingers = 2;
+    /* Сохраняем вычисленное значение: rule.direction. */
+    rule.direction = 0;
+    /* Сохраняем вычисленное значение: rule.button. */
+    rule.button = FVM_MOUSE_RIGHT;
+    /* Выполняем вызов fvm_input_set_rule с указанными аргументами. */
+    fvm_input_set_rule(context, &rule);
+    /* Выполняем вызов fvm_input_set_callback с указанными аргументами. */
+    fvm_input_set_callback(context, on_gesture, 0);
+    /* Сохраняем вычисленное значение: event.gesture. */
+    event.gesture = FVM_GESTURE_TAP;
+    /* Сохраняем вычисленное значение: event.fingers. */
+    event.fingers = 2;
+    /* Сохраняем вычисленное значение: event.direction. */
+    event.direction = 0;
+    /* Сохраняем вычисленное значение: event.x. */
+    event.x = 100;
+    /* Сохраняем вычисленное значение: event.y. */
+    event.y = 200;
+    /* Выполняем вызов fvm_input_enqueue с указанными аргументами. */
+    fvm_input_enqueue(context, &event, FVM_INPUT_END);
     /* Call pump on the owning VM thread, typically once per frame. */
-    fvm_input_pump(context,0,&dispatched);
+    /* Выполняем вызов fvm_input_pump с указанными аргументами. */
+    fvm_input_pump(context, 0, &dispatched);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
     fvm_context_destroy(context);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
     fvm_runtime_destroy(runtime);
-    return dispatched==1 ? 0 : 1;
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return dispatched == 1 ? 0 : 1;
+    /* Завершаем текущий блок или описание объекта. */
 }

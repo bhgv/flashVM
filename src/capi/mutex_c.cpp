@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: mutex.
+ * File: src/capi/mutex_c.cpp.
+ */
+
 #include "../core/runtime.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
@@ -10,12 +14,15 @@
 #include <climits>
 #include <new>
 
+/* Define MutexWait struct and its representation. */
 struct MutexWait
 {
     unsigned long context, line, offset;
     char source[256], function[256];
     MutexWait *next;
 };
+
+/* Define FVM_Mutex struct and its representation. */
 struct FVM_Mutex
 {
     unsigned long identity, origin, owner, references;
@@ -34,19 +41,25 @@ namespace
 {
 FVM_Mutex *mutexes = 0;
 unsigned long next_identity = 0;
+
+/* Define RegistryGuard struct and its representation. */
 struct RegistryGuard
 {
+    /* Initialize Registry Guard and its owned state. */
     RegistryGuard()
     {
         fvm_port_registry_lock();
     }
+    /* Release the resources owned by this RegistryGuard instance. */
     ~RegistryGuard()
     {
         fvm_port_registry_unlock();
     }
 };
+
 /* Called only while holding the registry lock. Ownership itself retains the
    native mutex, so collecting its last wrapper cannot unlock a critical section. */
+/* Implement drop for this subsystem. */
 void drop(FVM_Mutex *m)
 {
     if (--m->references)
@@ -61,6 +74,8 @@ void drop(FVM_Mutex *m)
         fvm_port_sync_destroy(m->remote_sync);
     delete m;
 }
+
+/* Compute and return waiting for. */
 unsigned long waiting_for(unsigned long context)
 {
     for (FVM_Mutex *m = mutexes; m; m = m->next)
@@ -69,6 +84,8 @@ unsigned long waiting_for(unsigned long context)
                 return m->owner;
     return 0;
 }
+
+/* Compute and return cycle. */
 bool cycle(unsigned long context, size_t bound)
 {
     unsigned long current = waiting_for(context);
@@ -80,8 +97,12 @@ bool cycle(unsigned long context, size_t bound)
     }
     return false;
 }
+
+/* Implement row for this subsystem. */
 void row(FVM_DebugMutex &out, FVM_Mutex *m, MutexWait *w, size_t bound)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&out, 0, sizeof(out));
     out.identity = m->identity;
     out.origin = m->origin;
@@ -105,15 +126,20 @@ void row(FVM_DebugMutex &out, FVM_Mutex *m, MutexWait *w, size_t bound)
     }
 }
 } // namespace
+/* Compute and return sync next identity. */
 extern "C" unsigned long fvm_sync_next_identity()
 {
     RegistryGuard guard;
     return next_identity == 4294967295UL ? 0 : ++next_identity;
 }
+
+/* Compute and return context identity. */
 extern "C" unsigned long fvm_context_identity(FVM_Context *c)
 {
     return c ? c->identity : 0;
 }
+
+/* Create mutex. */
 extern "C" FVM_Result fvm_mutex_create(FVM_Context *c, FVM_Mutex **out)
 {
     if (!c || !out || c->destroying)
@@ -128,6 +154,8 @@ extern "C" FVM_Result fvm_mutex_create(FVM_Context *c, FVM_Mutex **out)
         delete m;
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     m->remote_sync = 0;
     m->closed = false;
     m->remote = 0;
@@ -144,6 +172,7 @@ extern "C" FVM_Result fvm_mutex_create(FVM_Context *c, FVM_Mutex **out)
     *out = m;
     return FVM_OK;
 }
+/* Retain mutex. */
 extern "C" FVM_Result fvm_mutex_retain(FVM_Mutex *m)
 {
     if (!m)
@@ -154,6 +183,8 @@ extern "C" FVM_Result fvm_mutex_retain(FVM_Mutex *m)
     ++m->references;
     return FVM_OK;
 }
+
+/* Release mutex. */
 extern "C" void fvm_mutex_release(FVM_Mutex *m)
 {
     if (m)
@@ -162,14 +193,20 @@ extern "C" void fvm_mutex_release(FVM_Mutex *m)
         drop(m);
     }
 }
+
+/* Compute and return mutex origin. */
 extern "C" unsigned long fvm_mutex_origin(FVM_Mutex *m)
 {
     return m ? m->origin : 0;
 }
+
+/* Compute and return mutex identity. */
 extern "C" unsigned long fvm_mutex_identity(FVM_Mutex *m)
 {
     return m ? m->identity : 0;
 }
+
+/* Compute and return touch impl. */
 static FVM_Result touch_impl(FVM_Mutex *m, int *out)
 {
     if (!m || !out)
@@ -180,6 +217,8 @@ static FVM_Result touch_impl(FVM_Mutex *m, int *out)
     *out = m->owner != 0;
     return FVM_OK;
 }
+
+/* Reset impl. */
 static FVM_Result reset_impl(FVM_Context *c, FVM_Mutex *m)
 {
     if (!c || !m || c->destroying)
@@ -187,15 +226,21 @@ static FVM_Result reset_impl(FVM_Context *c, FVM_Mutex *m)
     RegistryGuard guard;
     if (m->closed || m->owner != c->identity)
         return FVM_ERROR;
+
+    /* Computation / Вычисление и обновление состояния. */
     m->owner = 0;
     drop(m);
     return FVM_OK;
 }
+
+/* Update impl. */
 static FVM_Result set_impl(FVM_Context *c, FVM_Mutex *m, int blocking)
 {
     if (!c || !m || c->destroying)
         return FVM_INVALID_ARGUMENT;
     MutexWait wait;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&wait, 0, sizeof(wait));
     wait.context = c->identity;
     wait.line = c->debug_line;
@@ -218,6 +263,8 @@ static FVM_Result set_impl(FVM_Context *c, FVM_Mutex *m, int blocking)
         fvm_port_registry_unlock();
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     ++m->references; // The waiting operation owns a reference until it returns.
     wait.next = m->waiters;
     m->waiters = &wait;
@@ -254,10 +301,14 @@ static FVM_Result set_impl(FVM_Context *c, FVM_Mutex *m, int blocking)
         std::strncpy(m->owner_source, c->debug_source.c_str(), sizeof(m->owner_source) - 1);
         ++m->references;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     drop(m);
     fvm_port_registry_unlock();
     return result;
 }
+
+/* Drop mutex registry entries belonging to the destroyed context. */
 void fvm_mutex_context_cleanup(FVM_Context *c)
 {
     /* Network cleanup must never run while holding the process registry lock. */
@@ -311,6 +362,8 @@ void fvm_mutex_context_cleanup(FVM_Context *c)
         fvm_port_registry_unlock();
     }
 }
+
+/* Create mutex remote. */
 FVM_Result fvm_mutex_create_remote(FVM_Context *c, void *remote, FVM_RemoteMutexFn request,
                                    void (*destroy)(void *), const char *address, FVM_Mutex **out)
 {
@@ -331,10 +384,14 @@ FVM_Result fvm_mutex_create_remote(FVM_Context *c, void *remote, FVM_RemoteMutex
         fvm_port_sync_destroy(sync);
     return r;
 }
+
+/* Compute and return mutex remote address. */
 const char *fvm_mutex_remote_address(FVM_Mutex *m)
 {
     return m ? m->remote_address : 0;
 }
+
+/* Test whether mutex closed. */
 extern "C" FVM_Result fvm_mutex_is_closed(FVM_Mutex *m, int *out)
 {
     if (!m || !out)
@@ -347,6 +404,8 @@ extern "C" FVM_Result fvm_mutex_is_closed(FVM_Mutex *m, int *out)
         return m->request(m->remote, 0, 0, out);
     return FVM_OK;
 }
+
+/* Compute and return mutex touch context. */
 FVM_Result fvm_mutex_touch_context(FVM_Context *c, FVM_Mutex *m, int *out)
 {
     if (!c || !m || !out)
@@ -362,6 +421,8 @@ FVM_Result fvm_mutex_touch_context(FVM_Context *c, FVM_Mutex *m, int *out)
     }
     return m->request ? m->request(m->remote, c, 3, out) : touch_impl(m, out);
 }
+
+/* Compute and return mutex touch. */
 extern "C" FVM_Result fvm_mutex_touch(FVM_Mutex *m, int *out)
 {
     if (!m || !out)
@@ -377,6 +438,8 @@ extern "C" FVM_Result fvm_mutex_touch(FVM_Mutex *m, int *out)
     }
     return touch_impl(m, out);
 }
+
+/* Update mutex. */
 extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
 {
     if (!c || !m || c->destroying)
@@ -446,6 +509,8 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
     }
     return r;
 }
+
+/* Reset mutex. */
 extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
 {
     if (!c || !m || c->destroying)
@@ -489,12 +554,16 @@ extern "C" FVM_Result fvm_mutex_reset(FVM_Context *c, FVM_Mutex *m)
     }
     return r;
 }
+
+/* Close mutex. */
 extern "C" FVM_Result fvm_mutex_close(FVM_Mutex *m)
 {
     if (!m)
         return FVM_INVALID_ARGUMENT;
     if (m->remote_sync)
         fvm_port_sync_lock(m->remote_sync);
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Result result = FVM_OK;
     bool already;
     {
@@ -522,6 +591,8 @@ extern "C" FVM_Result fvm_mutex_close(FVM_Mutex *m)
         fvm_port_sync_unlock(m->remote_sync);
     return result;
 }
+
+/* Update debug location. */
 extern "C" FVM_Result fvm_debug_set_location(FVM_Context *c, const char *source, unsigned long line)
 {
     if (!c || !source || c->destroying)
@@ -537,10 +608,14 @@ extern "C" FVM_Result fvm_debug_set_location(FVM_Context *c, const char *source,
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Capture snapshot of debug mutex. */
 extern "C" FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *out, size_t capacity, size_t *count)
 {
     if (!count || (!out && capacity))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     RegistryGuard guard;
     size_t needed = 0;
     for (FVM_Mutex *m = mutexes; m; m = m->next)
@@ -566,6 +641,7 @@ extern "C" FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *out, size_t capac
 
 namespace
 {
+/* Define ChannelWait struct and its representation. */
 struct ChannelWait
 {
     FVM_DebugChannelWait info;
@@ -573,11 +649,14 @@ struct ChannelWait
 };
 ChannelWait *channel_waits = 0;
 } // namespace
+/* Wait for debug channel begin. */
 void *fvm_debug_channel_wait_begin(FVM_Context *c, FVM_Channel *ch, int sending)
 {
     ChannelWait *w = new (std::nothrow) ChannelWait;
     if (!w)
         return 0;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&w->info, 0, sizeof(w->info));
     w->info.context = c->identity;
     w->info.channel = fvm_channel_identity(ch);
@@ -587,14 +666,20 @@ void *fvm_debug_channel_wait_begin(FVM_Context *c, FVM_Channel *ch, int sending)
     std::strncpy(w->info.source, c->debug_source.c_str(), sizeof(w->info.source) - 1);
     std::strncpy(w->info.function, c->debug_function.c_str(), sizeof(w->info.function) - 1);
     RegistryGuard guard;
+
+    /* Computation / Вычисление и обновление состояния. */
     w->next = channel_waits;
     channel_waits = w;
     return w;
 }
+
+/* Wait for debug channel end. */
 void fvm_debug_channel_wait_end(void *raw)
 {
     if (!raw)
         return;
+
+    /* Initialization / Инициализация локального состояния. */
     ChannelWait *w = (ChannelWait *)raw;
     RegistryGuard guard;
     ChannelWait **link = &channel_waits;
@@ -603,11 +688,15 @@ void fvm_debug_channel_wait_end(void *raw)
     *link = w->next;
     delete w;
 }
+
+/* Wait for debug channel snapshot. */
 extern "C" FVM_Result fvm_debug_channel_wait_snapshot(FVM_DebugChannelWait *out, size_t capacity,
                                                       size_t *count)
 {
     if (!count || (!out && capacity))
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     RegistryGuard guard;
     size_t needed = 0;
     for (ChannelWait *w = channel_waits; w; w = w->next)
@@ -621,6 +710,7 @@ extern "C" FVM_Result fvm_debug_channel_wait_snapshot(FVM_DebugChannelWait *out,
     return FVM_OK;
 }
 
+/* Compute and return debug map action. */
 extern "C" FVM_Result fvm_debug_map_action(FVM_Context *c, const char *function,
                                            unsigned long offset, const char *source,
                                            unsigned long line)
@@ -649,6 +739,8 @@ extern "C" FVM_Result fvm_debug_map_action(FVM_Context *c, const char *function,
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Update debug location. */
 void fvm_debug_update_location(FVM_Context *c, unsigned long offset)
 {
     c->debug_offset = offset;

@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: capability.
+ * File: src/capi/capability_c.cpp.
+ */
+
 #include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
 #include "flashvm/capability.h"
@@ -18,35 +22,47 @@
 namespace
 {
 const size_t limit = 64UL * 1024UL * 1024UL;
+
+/* Define Entry struct and its representation. */
 struct Entry
 {
     fvm_detail::string token;
     unsigned long kind;
     void *handle;
 };
+
+/* Define Peer struct and its representation. */
 struct Peer
 {
     fvm_detail::string key;
     FVM_Context *context;
 };
+
+/* Define Remote struct and its representation. */
 struct Remote
 {
     fvm_detail::string uri, host, session, token;
     unsigned short port;
     unsigned long kind;
 };
+
+/* Define Lock struct and its representation. */
 struct Lock
 {
     FVM_PortSync *sync;
+    /* Acquire the current value. */
     Lock(FVM_PortSync *s) : sync(s)
     {
         fvm_port_sync_lock(s);
     }
+    /* Release the resources owned by this Lock instance. */
     ~Lock()
     {
         fvm_port_sync_unlock(sync);
     }
 };
+
+/* Compute and return hex. */
 bool hex(char *out)
 {
     unsigned char bytes[16];
@@ -61,6 +77,8 @@ bool hex(char *out)
     out[32] = 0;
     return true;
 }
+
+/* Compute and return transfer. */
 bool transfer(FVM_PortSocket *s, void *data, size_t size, bool send)
 {
     unsigned char *p = (unsigned char *)data;
@@ -74,18 +92,26 @@ bool transfer(FVM_PortSocket *s, void *data, size_t size, bool send)
     }
     return true;
 }
+
+/* Implement put for this subsystem. */
 void put(unsigned char *p, unsigned long n)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     p[0] = (unsigned char)(n >> 24);
     p[1] = (unsigned char)(n >> 16);
     p[2] = (unsigned char)(n >> 8);
     p[3] = (unsigned char)n;
 }
+
+/* Read the current value. */
 unsigned long get(const unsigned char *p)
 {
     return ((unsigned long)p[0] << 24) | ((unsigned long)p[1] << 16) | ((unsigned long)p[2] << 8) |
            p[3];
 }
+
+/* Compute and return valid hex. */
 bool valid_hex(const fvm_detail::string &s)
 {
     if (s.size() != 32)
@@ -95,6 +121,8 @@ bool valid_hex(const fvm_detail::string &s)
             return false;
     return true;
 }
+
+/* Parse the current value. */
 bool parse(const char *uri, Remote &r)
 {
     if (!uri || std::strlen(uri) > 512 || std::strncmp(uri, "fvm://", 6))
@@ -122,6 +150,8 @@ bool parse(const char *uri, Remote &r)
     const char *third = std::strchr(second + 1, '/');
     if (!third || !third[1] || third[2])
         return false;
+
+    /* Computation / Вычисление и обновление состояния. */
     r.uri = uri;
     r.host = fvm_detail::string(uri + 6, (size_t)(colon - uri - 6));
     r.session = fvm_detail::string(slash + 1, (size_t)(second - slash - 1));
@@ -131,6 +161,7 @@ bool parse(const char *uri, Remote &r)
     return valid_hex(r.session) && valid_hex(r.token) && (r.kind == 1 || r.kind == 8);
 }
 } // namespace
+/* Define FVM_ResourceBroker struct and its representation. */
 struct FVM_ResourceBroker
 {
     FVM_PortSync *sync;
@@ -149,6 +180,8 @@ namespace
 /* Distinguish process identities even when context counters coincide on two
    machines. The nonce is initialized once under the registry lock. */
 char client_nonce[33] = {0};
+
+/* Compute and return nonce. */
 bool nonce(char *out)
 {
     fvm_port_registry_lock();
@@ -158,6 +191,8 @@ bool nonce(char *out)
     fvm_port_registry_unlock();
     return ok;
 }
+
+/* Compute and return rpc. */
 FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, size_t size,
                unsigned char **output, size_t *length)
 {
@@ -168,6 +203,8 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
     if (size > limit)
         return FVM_INVALID_ARGUMENT;
     unsigned char header[112];
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(header, 0, sizeof(header));
     std::memcpy(header, "FVMC", 4);
     header[4] = 1;
@@ -178,6 +215,8 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
     char id[33];
     if (!nonce(id))
         return FVM_ERROR;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memcpy(header + 72, id, 32);
     put(header + 104, c ? c->identity : 0);
     put(header + 108, (unsigned long)size);
@@ -189,6 +228,8 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
         return FVM_ERROR;
     }
     fvm_port_socket_timeout(socket, 2000);
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char response[8];
     bool ok = transfer(socket, header, sizeof(header), true) &&
               (!size || transfer(socket, (void *)input, size, true)) &&
@@ -237,8 +278,12 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
     }
     return result;
 }
+
+/* Compute and return mutex request. */
 FVM_Result mutex_request(void *raw, FVM_Context *c, int op, int *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char *data = 0;
     size_t size = 0;
     FVM_Result r = rpc((Remote *)raw, c, op, 0, 0, &data, &size);
@@ -252,6 +297,8 @@ FVM_Result mutex_request(void *raw, FVM_Context *c, int op, int *out)
     std::free(data);
     return r;
 }
+
+/* Compute and return channel request. */
 FVM_Result channel_request(void *raw, FVM_Context *c, int op, const unsigned char *data,
                            size_t size, unsigned char **out, size_t *length, int blocking)
 {
@@ -273,19 +320,27 @@ FVM_Result channel_request(void *raw, FVM_Context *c, int op, const unsigned cha
     } while (r == FVM_NOT_FOUND && blocking);
     return r;
 }
+
+/* Destroy remote. */
 void destroy_remote(void *p)
 {
     delete (Remote *)p;
 }
+
+/* Compute and return closed. */
 FVM_Result closed(const Entry &e, int *out)
 {
     return e.kind == 8 ? fvm_mutex_is_closed((FVM_Mutex *)e.handle, out)
                        : fvm_channel_is_closed((FVM_Channel *)e.handle, out);
 }
+
+/* Dispatch the current value. */
 FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigned char *input,
                     size_t size, unsigned char **output, size_t *length, unsigned long &fault)
 {
     fault = FVM_RESOURCE_STALE;
+
+    /* Initialization / Инициализация локального состояния. */
     Entry e;
     FVM_Context *c = 0;
     {
@@ -337,6 +392,8 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     fault = FVM_RESOURCE_FAILURE;
     if (c)
         fvm_exception_clear(c);
+
+    /* Initialization / Инициализация локального состояния. */
     int state = 0;
     FVM_Result r = closed(e, &state);
     if (r != FVM_OK)
@@ -386,8 +443,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     {
         /* The VM graph decoder validates contents at receipt. Reject truncated
            records before enqueueing so a malformed peer cannot split framing. */
-        if (size < 16 ||
-            (std::memcmp(input, "FVMG\0\0\0", 7) || (input[7] < 1 || input[7] > 4)) ||
+        if (size < 16 || (std::memcmp(input, "FVMG\0\0\0", 7) || (input[7] < 1 || input[7] > 4)) ||
             get(input + 8) != size - 16 ||
             get(input + 12) != (unsigned long)crc32(0, input + 16, (uInt)(size - 16)))
             return FVM_ERROR;
@@ -399,6 +455,8 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
                       : fvm_channel_receive_wire(c, (FVM_Channel *)e.handle, output, length);
     return FVM_INVALID_ARGUMENT;
 }
+
+/* Implement serve for this subsystem. */
 void serve(void *arg)
 {
     FVM_ResourceBroker *b = (FVM_ResourceBroker *)arg;
@@ -447,6 +505,7 @@ void serve(void *arg)
     }
 }
 } // namespace
+/* Compute and return broker start. */
 extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsigned short port,
                                        FVM_ResourceBroker **out)
 {
@@ -457,6 +516,8 @@ extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsig
     FVM_ResourceBroker *b = new (std::nothrow) FVM_ResourceBroker;
     if (!b)
         return FVM_OUT_OF_MEMORY;
+
+    /* Computation / Вычисление и обновление состояния. */
     b->sync = 0;
     b->listener = 0;
     b->thread = 0;
@@ -500,10 +561,13 @@ extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsig
         return FVM_ERROR;
     }
 }
+
+/* Compute and return broker port. */
 extern "C" unsigned short fvm_broker_port(FVM_ResourceBroker *b)
 {
     return b ? b->port : 0;
 }
+/* Retain broker. */
 extern "C" FVM_Result fvm_broker_retain(FVM_ResourceBroker *b)
 {
     if (!b)
@@ -514,6 +578,8 @@ extern "C" FVM_Result fvm_broker_retain(FVM_ResourceBroker *b)
     ++b->references;
     return FVM_OK;
 }
+
+/* Implement broker stop for this subsystem. */
 extern "C" void fvm_broker_stop(FVM_ResourceBroker *b)
 {
     if (!b)
@@ -524,6 +590,8 @@ extern "C" void fvm_broker_stop(FVM_ResourceBroker *b)
             return;
         b->stopped = true;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     fvm_port_thread_join(b->thread);
     b->thread = 0;
     fvm_port_socket_close(b->listener);
@@ -544,6 +612,8 @@ extern "C" void fvm_broker_stop(FVM_ResourceBroker *b)
     }
     b->entries.clear();
 }
+
+/* Release broker. */
 extern "C" void fvm_broker_release(FVM_ResourceBroker *b)
 {
     if (!b)
@@ -556,18 +626,26 @@ extern "C" void fvm_broker_release(FVM_ResourceBroker *b)
     if (!last)
         return;
     fvm_broker_stop(b);
+
+    /* Cleanup / Освобождение ресурсов. */
     fvm_runtime_destroy(b->runtime);
     fvm_port_sync_destroy(b->sync);
     delete b;
 }
+
+/* Compute and return capability export. */
 FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::string &uri)
 {
     if (!c || c->destroying || !o || o->owner != c || !o->resource ||
         (o->resource_kind != 1 && o->resource_kind != 8))
         return FVM_INVALID_ARGUMENT;
     Entry entry;
+
+    /* Computation / Вычисление и обновление состояния. */
     entry.kind = (unsigned long)o->resource_kind;
     entry.handle = o->resource;
+
+    /* Initialization / Инициализация локального состояния. */
     int state = 0;
     FVM_Result r = closed(entry, &state);
     if (r != FVM_OK || state)
@@ -618,11 +696,15 @@ FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::stri
         }
     }
     char uri_buffer[512];
+
+    /* Computation / Вычисление и обновление состояния. */
     std::sprintf(uri_buffer, "fvm://%s:%u/%s/%s/%lu", b->host.c_str(), (unsigned int)b->port,
                  b->session.c_str(), entry.token.c_str(), entry.kind);
     uri = uri_buffer;
     return FVM_OK;
 }
+
+/* Compute and return capability import. */
 FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long kind,
                                  FVM_Object **out)
 {
@@ -664,6 +746,8 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
         fvm_resource_fault_resource(c, parsed.kind, 0, 0);
         return FVM_ERROR;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char *data = 0;
     size_t length = 0;
     FVM_Result r = rpc(&parsed, c, 0, 0, 0, &data, &length);
@@ -735,9 +819,12 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
     return r;
 }
 #else
+/* Define FVM_ResourceBroker struct and its representation. */
 struct FVM_ResourceBroker
 {
 };
+
+/* Compute and return broker start. */
 extern "C" FVM_Result fvm_broker_start(const char *, const char *, unsigned short,
                                        FVM_ResourceBroker **out)
 {
@@ -746,29 +833,41 @@ extern "C" FVM_Result fvm_broker_start(const char *, const char *, unsigned shor
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return broker port. */
 extern "C" unsigned short fvm_broker_port(FVM_ResourceBroker *)
 {
     return 0;
 }
+/* Retain broker. */
 extern "C" FVM_Result fvm_broker_retain(FVM_ResourceBroker *)
 {
     return FVM_UNSUPPORTED;
 }
+
+/* Implement broker stop for this subsystem. */
 extern "C" void fvm_broker_stop(FVM_ResourceBroker *)
 {
 }
+
+/* Release broker. */
 extern "C" void fvm_broker_release(FVM_ResourceBroker *)
 {
 }
+
+/* Compute and return capability export. */
 FVM_Result fvm_capability_export(FVM_Context *, FVM_Object *, fvm_detail::string &)
 {
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return capability import. */
 FVM_Result fvm_capability_import(FVM_Context *, const char *, unsigned long, FVM_Object **)
 {
     return FVM_UNSUPPORTED;
 }
 #endif
+/* Implement capability context cleanup for this subsystem. */
 void fvm_capability_context_cleanup(FVM_Context *c)
 {
     if (c->broker)
@@ -777,6 +876,8 @@ void fvm_capability_context_cleanup(FVM_Context *c)
         c->broker = 0;
     }
 }
+
+/* Update context broker. */
 extern "C" FVM_Result fvm_context_set_broker(FVM_Context *c, FVM_ResourceBroker *b)
 {
     if (!c || c->destroying)
@@ -791,6 +892,8 @@ extern "C" FVM_Result fvm_context_set_broker(FVM_Context *c, FVM_ResourceBroker 
     c->broker = b;
     return FVM_OK;
 }
+
+/* Compute and return broker export. */
 extern "C" FVM_Result fvm_broker_export(FVM_Context *c, FVM_Object *o, char **out)
 {
     if (!out)
@@ -813,6 +916,8 @@ extern "C" FVM_Result fvm_broker_export(FVM_Context *c, FVM_Object *o, char **ou
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Compute and return broker import. */
 extern "C" FVM_Result fvm_broker_import(FVM_Context *c, const char *uri, FVM_Object **out)
 {
     try
@@ -824,6 +929,8 @@ extern "C" FVM_Result fvm_broker_import(FVM_Context *c, const char *uri, FVM_Obj
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Open channel network. */
 extern "C" FVM_Result fvm_channel_open_network(FVM_Context *c, const char *uri, FVM_Channel **out)
 {
     if (!out)

@@ -1,3 +1,7 @@
+/* FlashVM: Embedding/ActionScript tutorial: usage.
+ * File: examples/embedding/gc/usage.as.
+ */
+
 // ActionScript 2 (DESIGN EXAMPLE, NOT EXECUTABLE YET).
 // A future native gc object will expose the same policy as the C API:
 // gc.mode("suspended");

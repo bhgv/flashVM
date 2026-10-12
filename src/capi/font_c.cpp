@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: font.
+ * File: src/capi/font_c.cpp.
+ */
+
 #include "flashvm/font.h"
 #include "font_internal.hpp"
 #include "../details/vector.hpp"
@@ -14,15 +18,18 @@
 #include "wordbreak.h"
 #include "graphemebreak.h"
 #include "fribidi.h"
+/* Define FVM_Font struct and its representation. */
 struct FVM_Font
 {
     fvm_detail::vector<unsigned char> bytes;
     FT_Library library;
     FT_Face face;
     hb_font_t *shaper;
+    /* Initialize Font and its owned state. */
     FVM_Font() : library(0), face(0), shaper(0)
     {
     }
+    /* Release the resources owned by this FVM_Font instance. */
     ~FVM_Font()
     {
         if (shaper)
@@ -33,11 +40,14 @@ struct FVM_Font
             FT_Done_FreeType(library);
     }
 };
+
+/* Define FVM_TextRun struct and its representation. */
 struct FVM_TextRun
 {
     fvm_detail::vector<FVM_ShapedGlyph> glyphs;
 };
 /* Enforce a bounded Unicode input before passing it to the shaping/break APIs. */
+/* Compute and return valid utf8. */
 static bool valid_utf8(const char *text, size_t size)
 {
     if (size > 4 * 1024 * 1024 || (!text && size))
@@ -82,6 +92,8 @@ static bool valid_utf8(const char *text, size_t size)
     }
     return true;
 }
+
+/* Read font. */
 extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, double pixels,
                                     FVM_Font **out)
 {
@@ -122,38 +134,53 @@ extern "C" FVM_Result fvm_font_read(const void *bytes, size_t size, long index, 
         delete font;
         return FVM_OUT_OF_MEMORY;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     hb_ft_font_set_load_flags(font->shaper, FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
     *out = font;
     return FVM_OK;
 }
+
+/* Destroy font. */
 extern "C" void fvm_font_destroy(FVM_Font *font)
 {
     delete font;
 }
+
+/* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *font, FVM_FontMetrics *out)
 {
     if (!font || !out)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     out->ascent = font->face->size->metrics.ascender / 64.0;
     out->descent = -font->face->size->metrics.descender / 64.0;
     out->line_height = font->face->size->metrics.height / 64.0;
     out->glyph_count = (unsigned int)font->face->num_glyphs;
     return FVM_OK;
 }
+
+/* Compute and return font char. */
 extern "C" unsigned int fvm_font_char(const FVM_Font *font, unsigned int unicode)
 {
     return font && unicode <= 0x10ffff ? FT_Get_Char_Index(font->face, unicode) : 0;
 }
+
+/* Define OutlineCopy struct and its representation. */
 struct OutlineCopy
 {
     FVM_Path *path;
     FVM_Result status;
     bool open;
 };
+/* Add outline. */
 static int add_outline(OutlineCopy *copy, FVM_PathVerb verb, const FT_Vector *a,
                        const FT_Vector *b = 0, const FT_Vector *c = 0)
 {
     FVM_PathCommand command;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memset(&command, 0, sizeof(command));
     command.verb = verb;
     const FT_Vector *v[3] = {a, b, c};
@@ -166,6 +193,8 @@ static int add_outline(OutlineCopy *copy, FVM_PathVerb verb, const FT_Vector *a,
     copy->status = fvm_path_add(copy->path, &command);
     return copy->status == FVM_OK ? 0 : 1;
 }
+
+/* Compute and return outline move. */
 static int outline_move(const FT_Vector *to, void *user)
 {
     OutlineCopy *copy = (OutlineCopy *)user;
@@ -174,18 +203,26 @@ static int outline_move(const FT_Vector *to, void *user)
     copy->open = true;
     return add_outline(copy, FVM_PATH_MOVE, to);
 }
+
+/* Compute and return outline line. */
 static int outline_line(const FT_Vector *to, void *user)
 {
     return add_outline((OutlineCopy *)user, FVM_PATH_LINE, to);
 }
+
+/* Compute and return outline conic. */
 static int outline_conic(const FT_Vector *control, const FT_Vector *to, void *user)
 {
     return add_outline((OutlineCopy *)user, FVM_PATH_QUADRATIC, control, to);
 }
+
+/* Compute and return outline cubic. */
 static int outline_cubic(const FT_Vector *a, const FT_Vector *b, const FT_Vector *to, void *user)
 {
     return add_outline((OutlineCopy *)user, FVM_PATH_CUBIC, a, b, to);
 }
+
+/* Compute and return font glyph. */
 extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Path **out, double *ax,
                                      double *ay)
 {
@@ -199,10 +236,14 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Pat
         return err == FT_Err_Out_Of_Memory ? FVM_OUT_OF_MEMORY : FVM_ERROR;
     if (font->face->glyph->format != FT_GLYPH_FORMAT_OUTLINE)
         return FVM_UNSUPPORTED;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Path *path = 0;
     FVM_Result status = fvm_path_create(&path);
     if (status != FVM_OK)
         return status;
+
+    /* Initialization / Инициализация локального состояния. */
     OutlineCopy copy = {path, FVM_OK, false};
     FT_Outline_Funcs callbacks = {outline_move, outline_line, outline_conic, outline_cubic, 0, 0};
     err = FT_Outline_Decompose(&font->face->glyph->outline, &callbacks, &copy);
@@ -213,11 +254,15 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *font, unsigned int glyph, FVM_Pat
         fvm_path_destroy(path);
         return copy.status != FVM_OK ? copy.status : FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *ax = font->face->glyph->advance.x / 64.0;
     *ay = -font->face->glyph->advance.y / 64.0;
     *out = path;
     return FVM_OK;
 }
+
+/* Compute and return shape segment. */
 static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
                                 size_t length, FVM_TextDirection direction, hb_script_t script,
                                 const char *language, bool remove_ignorables, FVM_TextRun **out)
@@ -241,6 +286,8 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
                                 direction == FVM_TEXT_LTR ? HB_DIRECTION_LTR : HB_DIRECTION_RTL);
     if (language)
         hb_buffer_set_language(buffer, hb_language_from_string(language, -1));
+
+    /* Computation / Вычисление и обновление состояния. */
     hb_buffer_guess_segment_properties(buffer);
     hb_shape(font->shaper, buffer, 0, 0);
     if (!hb_buffer_allocation_successful(buffer))
@@ -248,6 +295,8 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
         hb_buffer_destroy(buffer);
         return FVM_OUT_OF_MEMORY;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned int count = 0;
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(buffer, &count);
     hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(buffer, 0);
@@ -281,6 +330,8 @@ static FVM_Result shape_segment(FVM_Font *font, const char *text, size_t size, s
     *out = run;
     return FVM_OK;
 }
+
+/* Compute and return font shape. */
 extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t size,
                                      FVM_TextDirection direction, const char *language,
                                      FVM_TextRun **out)
@@ -288,16 +339,22 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *font, const char *text, size_t si
     return shape_segment(font, text, size, 0, size, direction, HB_SCRIPT_INVALID, language, false,
                          out);
 }
+
+/* Compute and return font shape segment. */
 FVM_Result fvm_font_shape_segment(FVM_Font *font, const char *text, size_t size, size_t offset,
                                   size_t length, FVM_TextDirection direction, hb_script_t script,
                                   const char *language, FVM_TextRun **out)
 {
     return shape_segment(font, text, size, offset, length, direction, script, language, true, out);
 }
+
+/* Return the number of glyph entries in the shaped run. */
 extern "C" size_t fvm_text_run_count(const FVM_TextRun *run)
 {
     return run ? run->glyphs.size() : 0;
 }
+
+/* Read one glyph placement and its source cluster from the shaped run. */
 extern "C" FVM_Result fvm_text_run_get(const FVM_TextRun *run, size_t index, FVM_ShapedGlyph *out)
 {
     if (!run || !out || index >= run->glyphs.size())
@@ -305,10 +362,14 @@ extern "C" FVM_Result fvm_text_run_get(const FVM_TextRun *run, size_t index, FVM
     *out = run->glyphs[index];
     return FVM_OK;
 }
+
+/* Release a shaped run and its retained glyph data. */
 extern "C" void fvm_text_run_destroy(FVM_TextRun *run)
 {
     delete run;
 }
+
+/* Export the positioned glyph outlines of a shaped run as one path. */
 extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, FVM_Path **out,
                                         double *ax, double *ay)
 {
@@ -317,6 +378,8 @@ extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, 
     *out = 0;
     if (!font || !run || !ax || !ay)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Path *path = 0;
     FVM_Result status = fvm_path_create(&path);
     if (status != FVM_OK)
@@ -342,11 +405,15 @@ extern "C" FVM_Result fvm_text_run_path(FVM_Font *font, const FVM_TextRun *run, 
         x += g.x_advance;
         y += g.y_advance;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     *ax = x;
     *ay = y;
     *out = path;
     return FVM_OK;
 }
+
+/* Compute and return text breaks. */
 extern "C" FVM_Result fvm_text_breaks(const char *text, size_t size, const char *language,
                                       char *line, char *word, char *grapheme)
 {
@@ -363,6 +430,8 @@ extern "C" FVM_Result fvm_text_breaks(const char *text, size_t size, const char 
     }
     return FVM_OK;
 }
+
+/* Compute and return text bidi. */
 extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
                                     FVM_TextDirection *direction, unsigned int *visual, size_t *map,
                                     unsigned char *levels)
@@ -422,6 +491,7 @@ extern "C" FVM_Result fvm_text_bidi(const unsigned int *logical, size_t count,
 }
 #else
 /* Preserve a linkable public ABI in NO_FONTS builds. */
+/* Read font. */
 extern "C" FVM_Result fvm_font_read(const void *, size_t, long, double, FVM_Font **out)
 {
     if (!out)
@@ -429,17 +499,25 @@ extern "C" FVM_Result fvm_font_read(const void *, size_t, long, double, FVM_Font
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
+/* Destroy font. */
 extern "C" void fvm_font_destroy(FVM_Font *)
 {
 }
+
+/* Compute and return font metrics. */
 extern "C" FVM_Result fvm_font_metrics(const FVM_Font *, FVM_FontMetrics *)
 {
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return font char. */
 extern "C" unsigned int fvm_font_char(const FVM_Font *, unsigned int)
 {
     return 0;
 }
+
+/* Compute and return font glyph. */
 extern "C" FVM_Result fvm_font_glyph(FVM_Font *, unsigned int, FVM_Path **out, double *, double *)
 {
     if (!out)
@@ -447,6 +525,8 @@ extern "C" FVM_Result fvm_font_glyph(FVM_Font *, unsigned int, FVM_Path **out, d
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return font shape. */
 extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextDirection,
                                      const char *, FVM_TextRun **out)
 {
@@ -455,17 +535,25 @@ extern "C" FVM_Result fvm_font_shape(FVM_Font *, const char *, size_t, FVM_TextD
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
+/* Return the number of glyph entries in the shaped run. */
 extern "C" size_t fvm_text_run_count(const FVM_TextRun *)
 {
     return 0;
 }
+
+/* Read one glyph placement and its source cluster from the shaped run. */
 extern "C" FVM_Result fvm_text_run_get(const FVM_TextRun *, size_t, FVM_ShapedGlyph *)
 {
     return FVM_UNSUPPORTED;
 }
+
+/* Release a shaped run and its retained glyph data. */
 extern "C" void fvm_text_run_destroy(FVM_TextRun *)
 {
 }
+
+/* Export the positioned glyph outlines of a shaped run as one path. */
 extern "C" FVM_Result fvm_text_run_path(FVM_Font *, const FVM_TextRun *, FVM_Path **out, double *,
                                         double *)
 {
@@ -474,10 +562,14 @@ extern "C" FVM_Result fvm_text_run_path(FVM_Font *, const FVM_TextRun *, FVM_Pat
     *out = 0;
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return text breaks. */
 extern "C" FVM_Result fvm_text_breaks(const char *, size_t, const char *, char *, char *, char *)
 {
     return FVM_UNSUPPORTED;
 }
+
+/* Compute and return text bidi. */
 extern "C" FVM_Result fvm_text_bidi(const unsigned int *, size_t, FVM_TextDirection *,
                                     unsigned int *, size_t *, unsigned char *)
 {

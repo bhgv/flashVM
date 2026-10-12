@@ -1,3 +1,7 @@
+/* FlashVM: Portable platform adapter interface or implementation: file port.
+ * File: ports/file_port.c.
+ */
+
 #include "file_port.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +12,7 @@
 #include <windows.h>
 #endif
 
+/* Define FVM_PortFile struct and its representation. */
 struct FVM_PortFile
 {
     FILE *stream;
@@ -15,6 +20,7 @@ struct FVM_PortFile
     int readable, writable, append, failed;
 };
 
+/* Open path. */
 static FILE *open_path(const char *path, const char *mode)
 {
 #ifdef _WIN32
@@ -51,8 +57,11 @@ static FILE *open_path(const char *path, const char *mode)
 #endif
 }
 
+/* Open port file. */
 FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_PortFile *file;
     FILE *stream;
     int read, write;
@@ -63,6 +72,8 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
         return FVM_INVALID_ARGUMENT;
     if (!mode)
         mode = "rw";
+
+    /* Computation / Вычисление и обновление состояния. */
     read = !strcmp(mode, "r") || !strcmp(mode, "rw");
     write = !strcmp(mode, "w") || !strcmp(mode, "rw");
     if (!read && !write)
@@ -80,6 +91,8 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
         free(file);
         return FVM_ERROR;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     file->stream = stream;
     file->readable = read;
     file->writable = write;
@@ -93,6 +106,8 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     *out = file;
     return FVM_OK;
 }
+
+/* Close port file. */
 void fvm_port_file_close(FVM_PortFile *file)
 {
     if (!file)
@@ -100,14 +115,20 @@ void fvm_port_file_close(FVM_PortFile *file)
     fclose(file->stream);
     free(file);
 }
+
+/* Read position of port file. */
 long fvm_port_file_position(FVM_PortFile *file)
 {
     return file->read_position;
 }
+
+/* Restore port file. */
 void fvm_port_file_restore(FVM_PortFile *file, long position)
 {
     file->read_position = position;
 }
+
+/* Read port file. */
 FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_t *read)
 {
     size_t count;
@@ -124,10 +145,13 @@ FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_
     count = fread(data, 1, size, file->stream);
     if (ferror(file->stream))
         return FVM_ERROR;
+
+    /* Computation / Вычисление и обновление состояния. */
     file->read_position += (long)count;
     *read = count;
     return FVM_OK;
 }
+/* Write port file. */
 FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size)
 {
     if (!file || (!data && size))
@@ -150,12 +174,18 @@ FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size
     file->write_position += (long)size;
     return FVM_OK;
 }
+
+/* Compute and return port file available. */
 FVM_Result fvm_port_file_available(FVM_PortFile *file, int *available)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     unsigned char byte;
     size_t count;
     long position;
     FVM_Result result;
+
+    /* Computation / Вычисление и обновление состояния. */
     position = file->read_position;
     result = fvm_port_file_read(file, &byte, 1, &count);
     file->read_position = position;

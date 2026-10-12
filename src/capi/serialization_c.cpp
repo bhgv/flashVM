@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: serialization.
+ * File: src/capi/serialization_c.cpp.
+ */
+
 #include "../core/string_internal.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../standard/function_state.hpp"
@@ -26,18 +30,25 @@ namespace
 const size_t none = (size_t)-1;
 const size_t max_bytes = 64UL * 1024 * 1024;
 const size_t max_objects = 4096, max_entries = 65536;
+
+/* Define Failure struct and its representation. */
 struct Failure
 {
     FVM_Result result;
+    /* Initialize Failure and its owned state. */
     explicit Failure(FVM_Result r) : result(r)
     {
     }
 };
+
+/* Implement require for this subsystem. */
 void require(bool condition, FVM_Result result = FVM_INVALID_ARGUMENT)
 {
     if (!condition)
         throw Failure(result);
 }
+
+/* Define Value struct and its representation. */
 struct Value
 {
     FVM_ValueType type;
@@ -45,24 +56,42 @@ struct Value
     int boolean;
     fvm_detail::string string;
     size_t object, metatable;
+    /* Initialize Value and its owned state. */
     Value() : type(FVM_VALUE_UNDEFINED), number(0), boolean(0), object(none), metatable(none)
     {
     }
 };
+
+/* Define Callback struct and its representation. */
+/* [GC:] Объявляем представление состояния сборщика или корней. */
 struct Callback
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned long builtin;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::string name;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     size_t root;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     bool root_userdata;
+    /* Initialize Callback and its owned state. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     Callback() : builtin(0), root(none), root_userdata(false)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 };
+
+/* Define Accessor struct and its representation. */
 struct Accessor
 {
     Callback getter, setter;
 };
+
+/* Define Object struct and its representation. */
 struct Object
 {
     unsigned long kind;
@@ -76,15 +105,20 @@ struct Object
     Callback invocable, constructable;
     fvm_detail::map<fvm_detail::string, Value> method_values, watchers;
     fvm_detail::map<fvm_detail::string, Accessor> accessors;
+    /* Initialize Object and its owned state. */
     Object() : kind(0), prototype(none), metatable(none)
     {
     }
 };
+
+/* Define Graph struct and its representation. */
 struct Graph
 {
     Value value;
     fvm_detail::vector<Object> objects;
 };
+
+/* Compute and return known kind. */
 bool known_kind(unsigned long kind)
 {
     return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
@@ -93,6 +127,8 @@ bool known_kind(unsigned long kind)
            kind == 31 || kind == 34 || kind == 35 || kind == 32 || kind == 33 || kind == 36 ||
            kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 || kind == 1002;
 }
+
+/* Compute and return identify. */
 size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Object *> &seen)
 {
     if (!object)
@@ -101,15 +137,23 @@ size_t identify(FVM_Context *c, FVM_Object *object, fvm_detail::vector<FVM_Objec
     for (size_t i = 0; i < seen.size(); ++i)
         if (seen[i] == object)
             return i;
+
+    /* Computation / Вычисление и обновление состояния. */
     require(seen.size() < max_objects, FVM_UNSUPPORTED);
     seen.push_back(object);
     return seen.size() - 1;
 }
+
+/* Implement charge for this subsystem. */
 void charge(size_t &budget, size_t bytes)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     require(bytes <= max_bytes - budget, FVM_UNSUPPORTED);
     budget += bytes;
 }
+
+/* Capture value. */
 Value capture_value(FVM_Context *c, const FVM_Value &src, fvm_detail::vector<FVM_Object *> &seen,
                     size_t &budget)
 {
@@ -120,9 +164,13 @@ Value capture_value(FVM_Context *c, const FVM_Value &src, fvm_detail::vector<FVM
         if (!std::memcmp(&candidate, &src.type, sizeof(candidate)))
             valid = true;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     require(valid);
     charge(budget, 13);
     Value dst;
+
+    /* Computation / Вычисление и обновление состояния. */
     dst.type = src.type;
     require(!src.metatable || src.type != FVM_VALUE_OBJECT);
     dst.metatable = identify(c, src.metatable, seen);
@@ -145,56 +193,114 @@ Value capture_value(FVM_Context *c, const FVM_Value &src, fvm_detail::vector<FVM
     }
     return dst;
 }
-Callback capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata, FVM_Object *root,
-                          fvm_detail::vector<FVM_Object *> &seen, size_t &budget)
+
+/* Capture callback. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+Callback
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata, FVM_Object *root,
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                 fvm_detail::vector<FVM_Object *> &seen, size_t &budget)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     charge(budget, 13);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     Callback dst;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!fn)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(!userdata && !root);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return dst;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const char *selector = fvm_text_callback_selector(fn, userdata);
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     require(!userdata || selector || (root && userdata == root), FVM_UNSUPPORTED);
+    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     dst.root = identify(c, root, seen);
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     dst.root_userdata = userdata != 0 && !selector;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     dst.builtin = fvm_numeric_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_text_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_error_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_number_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_string_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_base_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_date_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_function_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.builtin = fvm_movieclip_callback_id(fn);
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (selector)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.name = selector;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!dst.builtin)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (fvm_detail::map<fvm_detail::string, FVM_NativeFunction>::iterator i =
-                 c->serialization_callbacks.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+             c->serialization_callbacks.begin();
+             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
              i != c->serialization_callbacks.end(); ++i)
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (i->second == fn)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 charge(budget, i->first.size());
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst.name = i->first;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 break;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(!dst.name.empty(), FVM_UNSUPPORTED);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return dst;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Capture the current value. */
 Graph capture(FVM_Context *c, const FVM_Value &value)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Graph graph;
     fvm_detail::vector<FVM_Object *> seen;
     size_t entries = 0, budget = 32;
@@ -232,11 +338,14 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                     !src->callable.callback,
                 FVM_UNSUPPORTED);
         dst.kind = (unsigned long)src->resource_kind;
-        dst.invocable = capture_callback(c, src->invocable.callback, src->invocable.userdata,
-                                         src->invocable.root, seen, budget);
-        dst.constructable =
-            capture_callback(c, src->constructable.callback, src->constructable.userdata,
-                             src->constructable.root, seen, budget);
+        dst.invocable = capture_callback(
+            c, src->invocable.callback, src->invocable.userdata,
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            src->invocable.root, seen, budget);
+        dst.constructable = capture_callback(
+            c, src->constructable.callback, src->constructable.userdata,
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            src->constructable.root, seen, budget);
         for (fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator method =
                  src->method_values.begin();
              method != src->method_values.end(); ++method)
@@ -331,75 +440,126 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator p =
                  src->methods.begin();
              p != src->methods.end(); ++p)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
-            require(!p->second.collector_entry ||
-                        fvm_function_collector_callback(p->second.callback),
-                    FVM_UNSUPPORTED);
-            dst.methods[p->first] = capture_callback(c, p->second.callback, p->second.userdata,
-                                                     p->second.root, seen, budget);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            require(
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                !p->second.collector_entry ||
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    fvm_function_collector_callback(p->second.callback),
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                FVM_UNSUPPORTED);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            dst.methods[p->first] = capture_callback(
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                c, p->second.callback, p->second.userdata,
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                p->second.root, seen, budget);
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator p =
                  src->metamethods.begin();
              p != src->metamethods.end(); ++p)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
-            require(!p->second.collector_entry ||
-                        fvm_function_collector_callback(p->second.callback),
-                    FVM_UNSUPPORTED);
-            dst.metamethods[p->first] = capture_callback(c, p->second.callback, p->second.userdata,
-                                                         p->second.root, seen, budget);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            require(
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                !p->second.collector_entry ||
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    fvm_function_collector_callback(p->second.callback),
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                FVM_UNSUPPORTED);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            dst.metamethods[p->first] = capture_callback(
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                c, p->second.callback, p->second.userdata,
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                p->second.root, seen, budget);
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator p =
                  src->accessors.begin();
              p != src->accessors.end(); ++p)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             Accessor a;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             a.getter =
-                capture_callback(c, p->second.getter, p->second.getter ? p->second.userdata : 0,
-                                 p->second.getter ? p->second.root : 0, seen, budget);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                capture_callback(
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    c, p->second.getter, p->second.getter ? p->second.userdata : 0,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    p->second.getter ? p->second.root : 0, seen, budget);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             a.setter =
-                capture_callback(c, p->second.setter, p->second.setter ? p->second.userdata : 0,
-                                 p->second.setter ? p->second.root : 0, seen, budget);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                capture_callback(
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    c, p->second.setter, p->second.setter ? p->second.userdata : 0,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    p->second.setter ? p->second.root : 0, seen, budget);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.accessors[p->first] = a;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         graph.objects.push_back(dst);
     }
     return graph;
 }
+
+/* Compute and return little double. */
 bool little_double()
 {
     require(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559, FVM_UNSUPPORTED);
+
+    /* Initialization / Инициализация локального состояния. */
     const unsigned char little[] = {0, 0, 0, 0, 0, 0, 0xf0, 0x3f};
     const unsigned char big[] = {0x3f, 0xf0, 0, 0, 0, 0, 0, 0};
     unsigned char bytes[8];
     double one = 1;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memcpy(bytes, &one, 8);
     require(!std::memcmp(bytes, little, 8) || !std::memcmp(bytes, big, 8), FVM_UNSUPPORTED);
     return !std::memcmp(bytes, little, 8);
 }
+
+/* Define Writer struct and its representation. */
 struct Writer
 {
     fvm_detail::vector<unsigned char> bytes;
+    /* Implement byte for this subsystem. */
     void byte(unsigned long v)
     {
+
+        /* Computation / Вычисление и обновление состояния. */
         require(bytes.size() < max_bytes, FVM_UNSUPPORTED);
         bytes.push_back((unsigned char)v);
     }
+    /* Implement u32 for this subsystem. */
     void u32(unsigned long v)
     {
         require(v <= 0xffffffffUL, FVM_UNSUPPORTED);
         for (int i = 24; i >= 0; i -= 8)
             byte(v >> i);
     }
+    /* Implement ref for this subsystem. */
     void ref(size_t id)
     {
         u32(id == none ? 0xffffffffUL : (unsigned long)id);
     }
+    /* Initialize string and its owned state. */
     void string(const fvm_detail::string &s)
     {
         u32((unsigned long)s.size());
         for (size_t i = 0; i < s.size(); ++i)
             byte((unsigned char)s[i]);
     }
+    /* Implement value for this subsystem. */
     void value(const Value &v)
     {
         byte(v.type);
@@ -419,15 +579,21 @@ struct Writer
         }
         ref(v.metatable);
     }
+    /* Implement number for this subsystem. */
     void number(double d)
     {
         Value v;
+
+        /* Computation / Вычисление и обновление состояния. */
         v.type = FVM_VALUE_NUMBER;
         v.number = d;
         value(v);
     }
+    /* Implement text style for this subsystem. */
     void text_style(const FVM_TextStyleState &s)
     {
+
+        /* Computation / Вычисление и обновление состояния. */
         string(s.font);
         number(s.size);
         number(s.leading);
@@ -441,8 +607,11 @@ struct Writer
         for (size_t i = 0; i < s.source.bytes.size(); ++i)
             byte(s.source.bytes[i]);
     }
+    /* Implement text field for this subsystem. */
     void text_field(const FVM_TextFieldState &s)
     {
+
+        /* Computation / Вычисление и обновление состояния. */
         text_style(s.current);
         text_style(s.future);
         string(s.text);
@@ -451,16 +620,29 @@ struct Writer
         byte(s.multiline ? 1 : 0);
         byte(s.wrap ? 1 : 0);
     }
+    /* Implement callback for this subsystem. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     void callback(const Callback &v)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         u32(v.builtin);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         string(v.name);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ref(v.root);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         byte(v.root_userdata ? 1 : 0);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 };
+/* Write graph. */
 void write_graph(const Graph &g, Writer &w)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     w.value(g.value);
     w.u32((unsigned long)g.objects.size());
     for (size_t i = 0; i < g.objects.size(); ++i)
@@ -533,20 +715,25 @@ void write_graph(const Graph &g, Writer &w)
         }
     }
 }
+
+/* Define Reader struct and its representation. */
 struct Reader
 {
     const unsigned char *data;
     size_t size, offset, entries;
     unsigned int version;
+    /* Initialize Reader and its owned state. */
     Reader(const void *p, size_t n)
         : data((const unsigned char *)p), size(n), offset(0), entries(0), version(1)
     {
     }
+    /* Compute and return byte. */
     unsigned long byte()
     {
         require(offset < size);
         return data[offset++];
     }
+    /* Compute and return u32. */
     unsigned long u32()
     {
         unsigned long v = 0;
@@ -554,31 +741,43 @@ struct Reader
             v = (v << 8) | byte();
         return v;
     }
+    /* Compute and return ref. */
     size_t ref()
     {
         unsigned long v = u32();
         return v == 0xffffffffUL ? none : (size_t)v;
     }
+    /* Count the current value. */
     size_t count()
     {
         size_t n = (size_t)u32();
+
+        /* Computation / Вычисление и обновление состояния. */
         require(n <= max_entries - entries && n <= size - offset);
         entries += n;
         return n;
     }
+    /* Initialize string and its owned state. */
     fvm_detail::string string(bool value = false)
     {
         size_t n = (size_t)u32();
+
+        /* Computation / Вычисление и обновление состояния. */
         require(n <= size - offset);
         require(value && version >= 4 || !n || !std::memchr(data + offset, 0, n));
         fvm_detail::string s((const char *)data + offset, n);
         offset += n;
         return s;
     }
+    /* Compute and return value. */
     Value value()
     {
+
+        /* Initialization / Инициализация локального состояния. */
         Value v;
         unsigned long type = byte();
+
+        /* Computation / Вычисление и обновление состояния. */
         require(type <= FVM_VALUE_OBJECT);
         v.type = (FVM_ValueType)type;
         if (v.type == FVM_VALUE_BOOLEAN)
@@ -607,19 +806,25 @@ struct Reader
                 raw[little ? 7 - i : i] = (unsigned char)byte();
             std::memcpy(&v.number, raw, 8);
         }
+
+        /* Computation / Вычисление и обновление состояния. */
         v.metatable = ref();
         require(v.type != FVM_VALUE_OBJECT || v.metatable == none);
         return v;
     }
+    /* Compute and return number. */
     double number()
     {
         Value v = value();
         require(v.type == FVM_VALUE_NUMBER && v.metatable == none);
         return v.number;
     }
+    /* Compute and return text style. */
     FVM_TextStyleState text_style()
     {
         FVM_TextStyleState s;
+
+        /* Computation / Вычисление и обновление состояния. */
         s.font = string();
         s.size = number();
         s.leading = number();
@@ -629,6 +834,8 @@ struct Reader
         s.source.index =
             index >= 0x80000000UL ? (long)(index - 0x80000000UL) : (long)index - 2147483647L - 1L;
         size_t length = (size_t)u32();
+
+        /* Computation / Вычисление и обновление состояния. */
         require(length <= size - offset);
         s.source.bytes.resize(length);
         if (length)
@@ -636,51 +843,89 @@ struct Reader
         offset += length;
         return s;
     }
+    /* Compute and return text field. */
     FVM_TextFieldState text_field()
     {
         FVM_TextFieldState s;
+
+        /* Computation / Вычисление и обновление состояния. */
         s.current = text_style();
         s.future = text_style();
         s.text = string();
         s.width = number();
         s.height = number();
         unsigned long multiline = byte(), wrap = byte();
+
+        /* Computation / Вычисление и обновление состояния. */
         require(multiline <= 1 && wrap <= 1);
         s.multiline = multiline != 0;
         s.wrap = wrap != 0;
         return s;
     }
+    /* Compute and return callback. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     Callback callback()
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         Callback v;
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         v.builtin = u32();
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         v.name = string();
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         v.root = ref();
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         unsigned long mode = byte();
+
+        /* Computation / Вычисление и обновление состояния. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(mode <= 1);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         v.root_userdata = mode != 0;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(!v.builtin || v.name.empty() ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_text_callback_userdata(v.builtin, v.name.c_str()));
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(v.builtin < 201 || v.builtin > 203 || !v.name.empty());
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(!v.root_userdata || v.root != none);
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         require(v.builtin || !v.name.empty() || (v.root == none && !v.root_userdata));
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return v;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 };
+
+/* Validate ref. */
 void validate_ref(size_t ref, size_t count)
 {
     require(ref == none || ref < count);
 }
+
+/* Validate value. */
 void validate_value(const Value &v, size_t count)
 {
     validate_ref(v.metatable, count);
     if (v.type == FVM_VALUE_OBJECT)
         require(v.object < count);
 }
+
+/* Validate callback. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 void validate_callback(const Callback &v, size_t count)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     validate_ref(v.root, count);
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Read graph. */
 Graph read_graph(Reader &r, unsigned int version)
 {
     Graph g;
@@ -754,17 +999,32 @@ Graph read_graph(Reader &r, unsigned int version)
         }
         count = r.count();
         for (size_t j = 0; j < count; ++j)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::string name = r.string();
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             require(o.accessors.find(name) == o.accessors.end());
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             Accessor a;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             a.getter = r.callback();
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             a.setter = r.callback();
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             require(a.getter.builtin || !a.getter.name.empty() || a.setter.builtin ||
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     !a.setter.name.empty());
+            /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
             require(a.getter.root == none || a.setter.root == none ||
+                    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного
+                       обработчика. */
+                    /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного
+                       обработчика. */
                     a.getter.root == a.setter.root);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             o.accessors[name] = a;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         if (version >= 2)
         {
@@ -817,6 +1077,8 @@ Graph read_graph(Reader &r, unsigned int version)
         }
         g.objects.push_back(o);
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     require(r.offset == r.size);
     validate_value(g.value, n);
     for (size_t i = 0; i < n; ++i)
@@ -880,14 +1142,20 @@ Graph read_graph(Reader &r, unsigned int version)
     return g;
 }
 const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 4};
+
+/* Decode the current value. */
 Graph decode(const void *data, size_t size)
 {
+
+    /* Computation / Вычисление и обновление состояния. */
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
     require(version >= 1 && version <= 4);
     Reader header(data, size);
     header.offset = 8;
+
+    /* Initialization / Инициализация локального состояния. */
     size_t body = (size_t)header.u32();
     unsigned long crc = header.u32();
     require(body == size - 16);
@@ -897,27 +1165,41 @@ Graph decode(const void *data, size_t size)
     reader.version = version;
     return read_graph(reader, version);
 }
+
+/* Encode the current value. */
 void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     Graph graph = capture(c, value);
     Writer body;
+
+    /* Computation / Вычисление и обновление состояния. */
     write_graph(graph, body);
     require(body.bytes.size() <= max_bytes - 16, FVM_UNSUPPORTED);
     Writer header;
     for (size_t i = 0; i < 8; ++i)
         header.byte(magic[i]);
+
+    /* Computation / Вычисление и обновление состояния. */
     header.u32((unsigned long)body.bytes.size());
     header.u32((unsigned long)crc32(0, body.bytes.begin(), (uInt)body.bytes.size()));
     unsigned char *p = (unsigned char *)std::malloc(body.bytes.size() + 16);
+
+    /* Computation / Вычисление и обновление состояния. */
     require(p != 0, FVM_OUT_OF_MEMORY);
     std::memcpy(p, header.bytes.begin(), 16);
     std::memcpy(p + 16, body.bytes.begin(), body.bytes.size());
     *data = p;
     *size = body.bytes.size() + 16;
 }
+
+/* Restore value. */
 FVM_Value restore_value(FVM_Context *c, const Value &src,
                         const fvm_detail::vector<FVM_Object *> &objects)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value v;
     fvm_value_undefined(&v);
     v.type = src.type;
@@ -947,53 +1229,105 @@ FVM_Value restore_value(FVM_Context *c, const Value &src,
     }
     return v;
 }
-FVM_NativeEntry restore_callback(FVM_Context *c, const Callback &src,
-                                 const fvm_detail::vector<FVM_Object *> &objects)
+
+/* Restore callback. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+FVM_NativeEntry
+restore_callback(FVM_Context *c, const Callback &src,
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                 const fvm_detail::vector<FVM_Object *> &objects)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_NativeEntry dst;
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (src.builtin)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.callback = fvm_numeric_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_text_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_error_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_number_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_string_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_base_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_date_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_function_callback_from_id(src.builtin);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (!dst.callback)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst.callback = fvm_movieclip_callback_from_id(src.builtin);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(dst.callback != 0, FVM_UNSUPPORTED);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     else if (!src.name.empty())
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_NativeFunction>::iterator p =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->serialization_callbacks.find(src.name);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(p != c->serialization_callbacks.end(), FVM_UNSUPPORTED);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.callback = p->second;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (src.builtin >= 201 && src.builtin <= 203)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.userdata = fvm_text_callback_userdata(src.builtin, src.name.c_str());
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         require(dst.userdata && src.root == none && !src.root_userdata);
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (src.root != none)
+        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
         dst.root = objects[src.root];
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (src.root_userdata)
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.userdata = dst.root;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     dst.collector_entry = fvm_function_collector_callback(dst.callback);
+    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return dst;
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Restore the current value. */
 void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     const size_t old_objects = c->objects.size(), old_strings = c->strings.size();
+    /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */
     const unsigned long old_allocations = c->gc_allocations;
     fvm_detail::map<fvm_detail::string, FVM_FontSource *> old_fonts = c->fonts;
     fvm_detail::string old_default_font = c->default_font;
@@ -1025,71 +1359,143 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
         bool random = false;
         unsigned long random_state = 0;
         for (size_t i = 0; i < objects.size(); ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             const Object &src = g.objects[i];
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Object *dst = objects[i];
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 3001 || src.kind == 3008 || src.kind == 4001 || src.kind == 4008)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 continue;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->resource_kind = (int)src.kind;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 1002)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Result result = fvm_textfield_restore(c, dst, src.text);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 require(result == FVM_OK, result);
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 src.kind == 34 || src.kind == 32 || src.kind == 40)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->resource_result_valid = true;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->resource_result = restore_value(c, src.state, objects);
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.kind == 10)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 unsigned long state = (unsigned long)src.state.number;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 require(!random || state == random_state);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 random = true;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 random_state = state;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->invocable = restore_callback(c, src.invocable, objects);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->constructable = restore_callback(c, src.constructable, objects);
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->invocable.collector_entry =
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_function_collector_callback(dst->invocable.callback);
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.method_values.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.method_values.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->method_values[p->first] = restore_value(c, p->second, objects).object;
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.watchers.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.watchers.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->watchers[p->first] = restore_value(c, p->second, objects).object;
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->attributes = src.attributes;
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.prototype != none)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->prototype = objects[src.prototype];
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.metatable != none)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->metatable = objects[src.metatable];
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.properties.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.properties.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->properties[p->first] = restore_value(c, p->second, objects);
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<unsigned long, Value>::iterator p = src.indexed.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.indexed.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->indexed[p->first] = restore_value(c, p->second, objects);
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Callback>::iterator p = src.methods.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.methods.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->methods[p->first] = restore_callback(c, p->second, objects);
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Callback>::iterator p =
-                     src.metamethods.begin();
+                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов.
+                      */
+                 src.metamethods.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.metamethods.end(); ++p)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->metamethods[p->first] = restore_callback(c, p->second, objects);
+            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Accessor>::iterator p = src.accessors.begin();
+                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                  p != src.accessors.end(); ++p)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
-                FVM_NativeEntry get = restore_callback(c, p->second.getter, objects),
-                                set = restore_callback(c, p->second.setter, objects);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                FVM_NativeEntry
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    get = restore_callback(c, p->second.getter, objects),
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    set = restore_callback(c, p->second.setter, objects);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 require(!get.callback || !set.callback || get.userdata == set.userdata);
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_AccessorEntry a;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 a.getter = get.callback;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 a.setter = set.callback;
+                /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика.
+                 */
+                /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика.
+                 */
                 a.root = get.root ? get.root : set.root;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 a.userdata = get.callback ? get.userdata : set.userdata;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 dst->accessors[p->first] = a;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         FVM_Value result = restore_value(c, g.value, objects);
         if (random)
@@ -1097,107 +1503,211 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
         *out = result;
     }
     catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
-        /* No graph was published and no user finalizer may run on failed input. */
+        /* [GC:] No graph was published and no user finalizer may run on failed input. */
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (size_t i = old_objects; i < c->objects.size(); ++i)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (c->objects[i]->release_resource)
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 c->objects[i]->release_resource(c->objects[i]->resource);
+            /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
             delete c->objects[i];
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (fvm_detail::map<fvm_detail::string, FVM_FontSource *>::iterator i = c->fonts.begin();
+             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
              i != c->fonts.end(); ++i)
+            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (old_fonts.find(i->first) == old_fonts.end())
+                /* [GC:] Удаляем запись или область корней после завершения работы с ней. */
                 delete i->second;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->fonts.swap(old_fonts);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->default_font.swap(old_default_font);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->objects.resize(old_objects);
+        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (size_t i = old_strings; i < c->strings.size(); ++i)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             delete[] c->strings[i];
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->strings.resize(old_strings);
+        /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */
         c->gc_allocations = old_allocations;
+        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         throw;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 }
 } // namespace
-extern "C" FVM_Result fvm_serialization_register_callback(FVM_Context *c, const char *name,
-                                                          FVM_NativeFunction fn)
+/* Register serialization callback. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result fvm_serialization_register_callback(
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Context *c, const char *name,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_NativeFunction fn)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !name || !*name || std::strlen(name) > 255 || !fn || c->destroying ||
+        /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         c->gc_collecting || c->gc_releasing || !std::strncmp(name, "flashvm.", 8))
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_NativeFunction>::iterator p =
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->serialization_callbacks.find(name);
+        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (p != c->serialization_callbacks.end() && p->second != fn)
+            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->serialization_callbacks[name] = fn;
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-extern "C" FVM_Result fvm_value_serialize(FVM_Context *c, const FVM_Value *v, unsigned char **data,
-                                          size_t *size)
+/* Serialize value. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+fvm_value_serialize(FVM_Context *c, const FVM_Value *v, unsigned char **data,
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    size_t *size)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!data || !size)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *data = 0;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *size = 0;
+    /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
     if (!c || !v || c->destroying || c->gc_releasing)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         encode(c, *v, data, size);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const Failure &f)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return f.result;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
-extern "C" FVM_Result fvm_value_deserialize(FVM_Context *c, const void *data, size_t size,
-                                            FVM_Value *out)
+/* Deserialize value. */
+/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+extern "C" FVM_Result fvm_value_deserialize(
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Context *c, const void *data, size_t size,
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    FVM_Value *out)
+/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
+    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!out)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(out);
+    /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
     if (!c || c->destroying || c->gc_collecting || c->gc_releasing)
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         Graph graph = decode(data, size);
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         restore(c, graph, out);
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (const Failure &f)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return f.result;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     catch (...)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OUT_OF_MEMORY;
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
+
+/* Implement serialized free for this subsystem. */
 extern "C" void fvm_serialized_free(void *data)
 {
     std::free(data);
 }
 /* Primitive entry points let the C89 file transport use the identical format. */
+/* Encode serialization primitive. */
 extern "C" FVM_Result fvm_serialization_encode_primitive(const FVM_Value *v, unsigned char **data,
                                                          size_t *size)
 {
     if (!v || !data || !size)
         return FVM_INVALID_ARGUMENT;
+
+    /* Computation / Вычисление и обновление состояния. */
     *data = 0;
     *size = 0;
     try
@@ -1216,6 +1726,8 @@ extern "C" FVM_Result fvm_serialization_encode_primitive(const FVM_Value *v, uns
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Decode serialization primitive. */
 extern "C" FVM_Result fvm_serialization_decode_primitive(const void *data, size_t size,
                                                          FVM_Value *out)
 {

@@ -31,9 +31,18 @@
   sources in `external/`.
 - Write readable code with useful comments, verify affected builds and tests,
   and document supported behavior and remaining limitations in Russian and English.
-- In C examples, explain purpose, API semantics, ownership and cleanup with
-  concise comments. Use readable C89 declarations and the project brace style;
-  avoid comments that merely repeat the syntax.
+- Format and document all first-party source files for human readers. Describe
+  each file at its start and each function before its declaration/definition.
+  Explain header constants, macros, aggregate types and every data member.
+  Group initialization, computation, output and cleanup into readable sections;
+  preserve required dependency/error-handling order.
+- In examples/, explain every nonempty C/C++/ActionScript/header code line as a
+  tutorial, including control-flow boundaries and API ownership.
+- Start comments explaining garbage-collector code and roots with `[GC:]` so
+  they can be found quickly. Cover marking, finalization, root scopes, native
+  call barriers, collector state and allocation accounting.
+- Exclude external/, tests/ and build scripts from formatting/commenting passes.
+  Preserve upstream library source and keep executable C89/C++98 behavior intact.
 
 - Never commit generated build/test logs, validation JSON summaries, copied build
   profiles, or source-hash dumps. Keep them outside the repository or in ignored

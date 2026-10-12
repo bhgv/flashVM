@@ -1,7 +1,12 @@
+/* FlashVM: C embedding API: property.
+ * File: src/capi/property_c.cpp.
+ */
+
 #include "../core/runtime.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/property.h"
 #include <new>
+/* Compute and return object property flags. */
 extern "C" FVM_Result fvm_object_property_flags(FVM_Context *c, FVM_Object *o, const char *name,
                                                 unsigned int *out)
 {
@@ -18,6 +23,8 @@ extern "C" FVM_Result fvm_object_property_flags(FVM_Context *c, FVM_Object *o, c
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Update object property flags. */
 extern "C" FVM_Result fvm_object_set_property_flags(FVM_Context *c, FVM_Object *o, const char *name,
                                                     unsigned int set, unsigned int clear)
 {
@@ -41,6 +48,7 @@ extern "C" FVM_Result fvm_object_set_property_flags(FVM_Context *c, FVM_Object *
         return FVM_OUT_OF_MEMORY;
     }
 }
+/* Delete object. */
 extern "C" FVM_Result fvm_object_delete(FVM_Context *c, FVM_Object *o, const char *name,
                                         int *deleted)
 {

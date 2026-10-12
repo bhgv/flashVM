@@ -1,3 +1,7 @@
+/* FlashVM: AVM1 bytecode decoding and execution: interpreter.
+ * File: src/avm1/interpreter.cpp.
+ */
+
 #include "function_record.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/base_state.hpp"
@@ -25,15 +29,20 @@
 
 namespace
 {
+/* Define Action struct and its representation. */
 struct Action
 {
     unsigned char op;
     size_t offset, next, payload, length;
 };
+
+/* Compute and return u16. */
 static unsigned int u16(const unsigned char *p)
 {
     return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
 }
+
+/* Compute and return u32. */
 static unsigned long u32(const unsigned char *p)
 {
     return (unsigned long)p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
@@ -41,6 +50,7 @@ static unsigned long u32(const unsigned char *p)
 }
 /* Bytecode buffers and function snapshots can disappear after execution.
  * Any string escaping into VM properties must have context lifetime. */
+/* Compute and return truth. */
 static bool truth(const FVM_Value &value)
 {
     switch (value.type)
@@ -58,6 +68,7 @@ static bool truth(const FVM_Value &value)
     }
 }
 
+/* Compute and return own string. */
 static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
                              size_t length = (size_t)-1)
 {
@@ -66,6 +77,8 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
         return FVM_OUT_OF_MEMORY;
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memcpy(copy, text, length);
     copy[length] = 0;
     try
@@ -79,10 +92,14 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     }
     return fvm_value_string_bytes(value, copy, length);
 }
+
+/* Compute and return date hint. */
 static bool date_hint(const FVM_Value &value)
 {
     return value.type == FVM_VALUE_OBJECT && value.object->resource_kind == 34;
 }
+
+/* Compute and return strict equal. */
 static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
 {
     if (a.type != b.type)
@@ -106,6 +123,8 @@ static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
     }
     return false;
 }
+
+/* Compute and return equal. */
 static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
                         unsigned int depth = 0)
 {
@@ -155,6 +174,8 @@ static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
     result = false;
     return FVM_OK;
 }
+
+/* Look up variable. */
 static FVM_Result lookup_variable(FVM_Context *c,
                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
                                   FVM_Object *self, const char *name, FVM_Value *out,
@@ -180,6 +201,8 @@ static FVM_Result lookup_variable(FVM_Context *c,
         out->object = self;
         return FVM_OK;
     }
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
     unsigned int depth = 0;
     while (binding && depth++ < 1024)
@@ -190,6 +213,8 @@ static FVM_Result lookup_variable(FVM_Context *c,
     }
     if (binding)
         return FVM_ERROR;
+
+    /* Computation / Вычисление и обновление состояния. */
     binding = self && self != c->global ? self : 0;
     depth = 0;
     while (binding && depth++ < 1024)
@@ -215,16 +240,20 @@ static FVM_Result lookup_variable(FVM_Context *c,
     }
     return r;
 }
+
+/* Define Execution struct and its representation. */
 struct Execution
 {
     fvm_detail::vector<fvm_detail::string> constants;
     fvm_detail::vector<FVM_Value> registers, stack;
     unsigned long steps;
     bool returned;
+    /* Initialize Execution and its owned state. */
     Execution() : steps(0), returned(false)
     {
     }
 };
+/* Execute the current value. */
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
@@ -232,12 +261,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           Execution *shared = 0, size_t base = 0, unsigned int depth = 0);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
+/* Call script. */
 static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_ScriptFunction &fn,
                               unsigned int argc, const FVM_Value *args, FVM_Object *receiver,
                               FVM_Value *result, FVM_Object *closure = 0, FVM_Object *callee = 0)
 {
     if (c->script_depth >= 64)
         return FVM_ERROR;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Object *activation = 0;
     FVM_Result activation_result = fvm_object_create(c, &activation);
     if (activation_result != FVM_OK)
@@ -303,19 +335,24 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
     {
         return FVM_OUT_OF_MEMORY;
     }
+    /* Define DebugFrame struct and its representation. */
     struct DebugFrame
     {
         FVM_Context *context;
         fvm_detail::string function, source;
         unsigned long line, offset;
         unsigned int depth;
+        /* Initialize Debug Frame and its owned state. */
         explicit DebugFrame(FVM_Context *c)
             : context(c), function(c->debug_function), source(c->debug_source), line(c->debug_line),
               offset(c->debug_offset), depth(c->script_depth)
         {
         }
+        /* Release the resources owned by this DebugFrame instance. */
         ~DebugFrame()
         {
+
+            /* Computation / Вычисление и обновление состояния. */
             context->debug_function.swap(function);
             context->debug_source.swap(source);
             context->debug_line = line;
@@ -332,12 +369,15 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         ++c->script_depth;
         activation->prototype = closure;
         c->lexical_scopes.push_back(activation);
+        /* Define PopScope struct and its representation. */
         struct PopScope
         {
             FVM_Context *c;
+            /* Pop Scope. */
             explicit PopScope(FVM_Context *context) : c(context)
             {
             }
+            /* Release the resources owned by this PopScope instance. */
             ~PopScope()
             {
                 c->lexical_scopes.pop_back();
@@ -373,23 +413,29 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
     }
     return status;
 }
+/* Execute the current value. */
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared, size_t base, unsigned int depth)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     /* Nested functions and native reentry consume the same outer instruction
      * budget. Separate operand stacks must not reset this security boundary. */
+    /* Define BudgetGuard struct and its representation. */
     struct BudgetGuard
     {
         FVM_Context *context;
+        /* Initialize Budget Guard and its owned state. */
         explicit BudgetGuard(FVM_Context *c) : context(c)
         {
             if (!c->avm1_execution_depth)
                 c->avm1_steps = 0;
             ++c->avm1_execution_depth;
         }
+        /* Release the resources owned by this BudgetGuard instance. */
         ~BudgetGuard()
         {
             --context->avm1_execution_depth;
@@ -403,29 +449,58 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
     fvm_detail::vector<Action> actions;
     /* Register live operand stack, lexical bindings and receiver as GC roots.
        The frame is popped on every return path, including exceptions. */
+    /* Define RootGuard struct and its representation. */
+    /* [GC:] Объявляем представление состояния сборщика или корней. */
     struct RootGuard
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Context *context;
+        /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         FVM_GCRootFrame frame, register_frame;
+        /* Initialize Root Guard and its owned state. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         RootGuard(FVM_Context *c, fvm_detail::vector<FVM_Value> *s,
+                  /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   fvm_detail::map<fvm_detail::string, FVM_Value> *l, FVM_Object *r,
+                  /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   fvm_detail::vector<FVM_Value> *reg)
+            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             : context(c)
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+
+            /* Computation / Вычисление и обновление состояния. */
+            /* [GC:] Сохраняем предыдущий корень для восстановления цепочки после выхода. */
             frame.previous = c->gc_frames;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             frame.stack = s;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             frame.locals = l;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             frame.receiver = r;
+            /* [GC:] Сохраняем предыдущий корень для восстановления цепочки после выхода. */
             register_frame.previous = &frame;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             register_frame.stack = reg;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             register_frame.locals = 0;
+            /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             register_frame.receiver = 0;
+            /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             c->gc_frames = &register_frame;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* Release the resources owned by this RootGuard instance. */
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ~RootGuard()
+        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             context->gc_frames = frame.previous;
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     } roots(c, &stack, locals, self, &registers);
     size_t pos = 0, pc = 0, i;
     unsigned long &steps = execution.steps;
@@ -497,14 +572,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                locals and receivers are registered by RootGuard. Never collect
                in the middle of an opcode or while a native callback runs. */
             if ((steps & 63UL) == 1UL)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 int stopped = 0;
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (c->worker && fvm_worker_stop_requested(c->worker, &stopped) == FVM_OK &&
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     stopped)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_ERROR;
+                /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
                 FVM_Result gc_result = c->gc_collecting ? FVM_OK : fvm_gc_step(c, 0);
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (gc_result != FVM_OK)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return gc_result;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             if (a.op == 0)
                 return FVM_OK;
@@ -857,57 +941,139 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x04 || a.op == 0x05 || a.op == 0x06 || a.op == 0x07 || a.op == 0x81 ||
                      a.op == 0x8c || a.op == 0x9f)
+            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (!self || self->resource_kind != 40)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return FVM_UNSUPPORTED;
-                const char *method = a.op == 0x04   ? "nextFrame"
-                                     : a.op == 0x05 ? "prevFrame"
-                                     : a.op == 0x06 ? "play"
-                                                    : "stop";
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                const char *method =
+                    a.op == 0x04 ? "nextFrame"
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    : a.op == 0x05 ? "prevFrame"
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    : a.op == 0x06 ? "play"
+                                   /* [GC:] Операция в блоке управления достижимостью и временем
+                                      жизни объектов. */
+                                   : "stop";
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Value frame, result;
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 unsigned int count = 0;
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (a.op == 0x81 || a.op == 0x8c || a.op == 0x9f)
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     count = 1;
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     bool playing = false;
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     FVM_Object *state = self->resource_result.object;
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (!self->resource_result_valid ||
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                           объектов. */
                         self->resource_result.type != FVM_VALUE_OBJECT || !state)
+                        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                         return FVM_INVALID_ARGUMENT;
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator play =
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                           объектов. */
                         state->properties.find("playing");
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (play != state->properties.end())
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         playing = play->second.number != 0;
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (a.op == 0x81)
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                     {
+                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                         if (a.length != 2)
+                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                             return FVM_INVALID_ARGUMENT;
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         fvm_value_number(&frame, u16(data + a.payload) + 1);
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
                     }
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     else if (a.op == 0x8c)
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                     {
+                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                         if (!a.length || !std::memchr(data + a.payload, 0, a.length))
+                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                             return FVM_INVALID_ARGUMENT;
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         FVM_Result r = own_string(c, (const char *)data + a.payload, &frame);
+                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                         if (r != FVM_OK)
+                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                             return r;
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
                     }
+                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     else
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                     {
+                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                         if ((a.length != 1 && a.length != 3) || stack.empty() ||
-                            (data[a.payload] & ~3) || a.length != ((data[a.payload] & 2) ? 3U : 1U))
+                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                               объектов. */
+                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                               объектов. */
+                            (data[a.payload] & ~3) ||
+                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                               объектов. */
+                            a.length != ((data[a.payload] & 2) ? 3U : 1U))
+                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                             return FVM_INVALID_ARGUMENT;
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         frame = stack.back();
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         stack.pop_back();
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов. */
                         playing = (data[a.payload] & 1) != 0;
+                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                         if ((data[a.payload] & 2) && frame.type == FVM_VALUE_NUMBER)
+                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                             * объектов. */
+                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                             * объектов. */
                             frame.number += u16(data + a.payload + 1);
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
+                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
+                         */
                     }
+                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     method = playing ? "gotoAndPlay" : "gotoAndStop";
+                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
+                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Result r = fvm_object_call(c, self, method, count, count ? &frame : 0, &result);
+                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (r != FVM_OK)
+                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return r;
+                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             else if (a.op == 0x40)
             { /* NewObject: separate named native constructor registry. */
@@ -1448,6 +1614,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
     return shared ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
 } // namespace
+/* Execute avm1. */
 extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t size)
 {
     if (!c)
@@ -1459,12 +1626,15 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
         return r;
     return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0);
 }
+/* Execute swf actions. */
 extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c)
 {
     if (!c)
         return FVM_INVALID_ARGUMENT;
     if (!c->swf_loaded)
         return FVM_ERROR;
+
+    /* Initialization / Инициализация локального состояния. */
     const unsigned char *p = &c->swf_bytes[0];
     size_t size = c->swf_bytes.size();
     size_t rect = (5 + 4 * (p[8] >> 3) + 7) / 8;
@@ -1493,6 +1663,7 @@ extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c)
     return FVM_OK;
 }
 
+/* Call avm1. */
 extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object *self,
                                     unsigned int argc, const FVM_Value *args, FVM_Value *out)
 {
@@ -1501,6 +1672,8 @@ extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object
     for (unsigned int i = 0; i < argc; ++i)
         if (fvm_validate_value(c, args + i) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     FVM_Value function;
     FVM_Result lookup = fvm_get_global(c, name, &function);
     if (lookup != FVM_OK)
@@ -1514,6 +1687,7 @@ extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object
     return call_script(c, name, it->second, argc, args, self ? self : c->global, out);
 }
 
+/* Invoke avm1 script. */
 FVM_Result fvm_avm1_invoke_script(FVM_Context *c, const FVM_ScriptFunction &body,
                                   FVM_Object *closure, FVM_Object *receiver, unsigned int argc,
                                   const FVM_Value *args, FVM_Value *out, FVM_Object *callee)
@@ -1522,6 +1696,7 @@ FVM_Result fvm_avm1_invoke_script(FVM_Context *c, const FVM_ScriptFunction &body
                        receiver ? receiver : c->global, out, closure, callee);
 }
 
+/* Execute avm1 receiver. */
 extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data, size_t size,
                                                 FVM_Object *receiver)
 {

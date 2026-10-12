@@ -1,21 +1,74 @@
+/* FlashVM: Embedding/ActionScript tutorial: main.
+ * File: examples/embedding/prototypes/main.c.
+ */
+
 /* C89: prototype inheritance and property shadowing from a host application. */
+/* Подключаем объявления используемых типов и функций. */
 #include "flashvm/value.h"
+/* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
-int main(void) {
-    FVM_Runtime *runtime=0;
-    FVM_Context *context=0;
-    FVM_Object *base=0, *instance=0;
+/* Initialize the example, run its API operations and release owned resources. */
+/* Точка входа: запускаем последовательность действий этого примера. */
+int main(void)
+/* Начинаем блок инструкций или описание объекта. */
+{
+
+    /* Initialization / Инициализация локального состояния. */
+    /* Сохраняем вычисленное значение: FVM_Runtime *runtime. */
+    FVM_Runtime *runtime = 0;
+    /* Сохраняем вычисленное значение: FVM_Context *context. */
+    FVM_Context *context = 0;
+    /* Сохраняем вычисленное значение: FVM_Object *base. */
+    FVM_Object *base = 0, *instance = 0;
+    /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Value value, result;
-    { FVM_Config cfg; if (fvm_config_init(&cfg)!=FVM_OK || fvm_runtime_create(&cfg,&runtime)!=FVM_OK) return 1; }
-    if (fvm_context_create(runtime,&context)!=FVM_OK) return 2;
-    if (fvm_object_create(context,&base)!=FVM_OK) return 3;
-    if (fvm_object_create(context,&instance)!=FVM_OK) return 4;
-    fvm_value_number(&value,42);
-    if (fvm_object_set(context,base,"inherited",&value)!=FVM_OK) return 5;
-    if (fvm_object_set_prototype(context,instance,base)!=FVM_OK) return 6;
-    if (fvm_object_get(context,instance,"inherited",&result)!=FVM_OK) return 7;
-    printf("Inherited value: %.0f\n",result.number);
+    /* Начинаем блок инструкций или описание объекта. */
+    {
+        /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
+        FVM_Config cfg;
+        /* Проверяем условие перед выполнением следующей ветки. */
+        if (fvm_config_init(&cfg) != FVM_OK || fvm_runtime_create(&cfg, &runtime) != FVM_OK)
+            /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+            return 1;
+        /* Завершаем текущий блок или описание объекта. */
+    }
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_context_create(runtime, &context) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 2;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_create(context, &base) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 3;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_create(context, &instance) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 4;
+    /* Записываем числовое значение и соответствующий тег типа. */
+    fvm_value_number(&value, 42);
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_set(context, base, "inherited", &value) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 5;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_set_prototype(context, instance, base) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 6;
+    /* Проверяем условие перед выполнением следующей ветки. */
+    if (fvm_object_get(context, instance, "inherited", &result) != FVM_OK)
+        /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+        return 7;
+
+    /* Output / Вывод и передача результата. */
+    /* Выводим результат в стандартный поток вывода. */
+    printf("Inherited value: %.0f\n", result.number);
+
+    /* Cleanup / Освобождение ресурсов. */
+    /* Освобождаем контекст и принадлежащие ему объекты. */
     fvm_context_destroy(context);
+    /* Освобождаем среду выполнения после завершения работы контекстов. */
     fvm_runtime_destroy(runtime);
-    return result.number==42 ? 0 : 8;
+    /* Возвращаем результат вызывающей стороне и завершаем функцию. */
+    return result.number == 42 ? 0 : 8;
+    /* Завершаем текущий блок или описание объекта. */
 }

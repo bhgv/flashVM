@@ -1,3 +1,7 @@
+/* FlashVM: C embedding API: transfer.
+ * File: src/capi/transfer_c.cpp.
+ */
+
 #include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
 #include "../core/exception_internal.hpp"
@@ -18,6 +22,7 @@
 #include <cstdlib>
 namespace
 {
+/* Define Resource struct and its representation. */
 struct Resource
 {
     int kind;
@@ -26,7 +31,10 @@ struct Resource
 };
 struct Packet;
 Packet *queued_packets = 0;
+/* Unregister packet. */
 void unregister_packet(Packet *);
+
+/* Define Packet struct and its representation. */
 struct Packet
 {
     Packet *next;
@@ -35,11 +43,15 @@ struct Packet
     unsigned long references;
     unsigned char *data;
     size_t size;
+    /* Initialize Packet and its owned state. */
     Packet() : next(0), target(0), references(1), data(0), size(0)
     {
     }
+    /* Release the resources owned by this Packet instance. */
     ~Packet()
     {
+
+        /* Computation / Вычисление и обновление состояния. */
         unregister_packet(this);
         fvm_serialized_free(data);
         for (size_t i = 0; i < resources.size(); ++i)
@@ -49,17 +61,22 @@ struct Packet
                 fvm_channel_release((FVM_Channel *)resources[i].handle);
     }
 };
+
+/* Define RegistryScope struct and its representation. */
 struct RegistryScope
 {
+    /* Initialize Registry Scope and its owned state. */
     RegistryScope()
     {
         fvm_port_registry_lock();
     }
+    /* Release the resources owned by this RegistryScope instance. */
     ~RegistryScope()
     {
         fvm_port_registry_unlock();
     }
 };
+/* Unregister packet. */
 void unregister_packet(Packet *p)
 {
     RegistryScope guard;
@@ -68,6 +85,8 @@ void unregister_packet(Packet *p)
     Packet **link = &queued_packets;
     while (*link != p)
         link = &(*link)->next;
+
+    /* Computation / Вычисление и обновление состояния. */
     *link = p->next;
     p->target = 0;
     p->next = 0;
@@ -75,6 +94,7 @@ void unregister_packet(Packet *p)
 /* Queue-owned capability cycles otherwise retain channels forever. Reserve an
    edge before publishing the packet so concurrent opposite sends cannot race.
    Only native handles are compared; no channel locks are taken under this lock. */
+/* Register packet. */
 FVM_Result register_packet(Packet *packet, FVM_Channel *target)
 {
     RegistryScope guard;
@@ -116,6 +136,8 @@ FVM_Result register_packet(Packet *packet, FVM_Channel *target)
         return FVM_OUT_OF_MEMORY;
     }
 }
+
+/* Release the current value. */
 void release(void *packet)
 {
     Packet *p = (Packet *)packet;
@@ -125,6 +147,7 @@ void release(void *packet)
     if (last)
         delete p;
 }
+/* Retain packet. */
 FVM_Result retain_packet(void *packet)
 {
     Packet *p = (Packet *)packet;
@@ -135,20 +158,25 @@ FVM_Result retain_packet(void *packet)
     fvm_port_registry_unlock();
     return r;
 }
+
+/* Define ResourceScope struct and its representation. */
 struct ResourceScope
 {
     FVM_Context *context;
     void *previous;
+    /* Initialize Resource Scope and its owned state. */
     ResourceScope(FVM_Context *c, Packet *p) : context(c), previous(c->transfer_resources)
     {
         c->transfer_resources = p;
     }
+    /* Release the resources owned by this ResourceScope instance. */
     ~ResourceScope()
     {
         context->transfer_resources = previous;
     }
 };
 } // namespace
+/* Capture transfer resource. */
 FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned long *token)
 {
     if (!c->transfer_resources || !o->resource || (o->resource_kind != 1 && o->resource_kind != 8))
@@ -160,6 +188,8 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
             *token = (unsigned long)i;
             return FVM_OK;
         }
+
+    /* Initialization / Инициализация локального состояния. */
     int closed = 0;
     FVM_Result status = o->resource_kind == 8
                             ? fvm_mutex_is_closed((FVM_Mutex *)o->resource, &closed)
@@ -173,6 +203,8 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
         return FVM_ERROR;
     }
     Resource resource;
+
+    /* Computation / Вычисление и обновление состояния. */
     resource.kind = o->resource_kind;
     resource.handle = o->resource;
     resource.origin = o->resource_origin;
@@ -195,6 +227,8 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
     *token = (unsigned long)p->resources.size() - 1;
     return FVM_OK;
 }
+
+/* Restore transfer resource. */
 FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, unsigned long token,
                                          FVM_Object **out)
 {
@@ -203,6 +237,8 @@ FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, uns
     Packet *p = (Packet *)c->transfer_resources;
     if (token >= p->resources.size() || kind != (unsigned long)p->resources[token].kind)
         return FVM_INVALID_ARGUMENT;
+
+    /* Initialization / Инициализация локального состояния. */
     Resource &r = p->resources[token];
     int closed = 0;
     FVM_Result status = kind == 8 ? fvm_mutex_is_closed((FVM_Mutex *)r.handle, &closed)
@@ -221,6 +257,8 @@ FVM_Result fvm_transfer_restore_resource(FVM_Context *c, unsigned long kind, uns
         (*out)->resource_origin = r.origin;
     return result;
 }
+
+/* Send channel value. */
 extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *channel,
                                              const FVM_Value *value, int blocking)
 {
@@ -296,9 +334,13 @@ extern "C" FVM_Result fvm_channel_send_value(FVM_Context *context, FVM_Channel *
     }
     return result;
 }
+
+/* Receive value. */
 static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_Value *out,
                                 int blocking, bool peek, size_t index)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     int file = 0;
     void *raw = 0;
     FVM_Value value;
@@ -315,16 +357,19 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
         size_t size = 0;
         try
         {
+            /* Define PathScope struct and its representation. */
             struct PathScope
             {
                 FVM_Context *context;
                 fvm_detail::string previous;
+                /* Initialize Path Scope and its owned state. */
                 PathScope(FVM_Context *c, const char *path)
                     : context(c), previous(c->resource_receive_path)
                 {
                     if (path)
                         c->resource_receive_path = path;
                 }
+                /* Release the resources owned by this PathScope instance. */
                 ~PathScope()
                 {
                     context->resource_receive_path.swap(previous);
@@ -415,17 +460,21 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
     return result;
 }
 
+/* Receive channel value. */
 extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *c, FVM_Channel *ch, FVM_Value *out,
                                                 int blocking)
 {
     return receive_value(c, ch, out, blocking, false, 0);
 }
+
+/* Compute and return debug channel message. */
 extern "C" FVM_Result fvm_debug_channel_message(FVM_Context *c, FVM_Channel *ch, size_t index,
                                                 FVM_Value *out)
 {
     return receive_value(c, ch, out, 0, true, index);
 }
 
+/* Send channel wire. */
 FVM_Result fvm_channel_send_wire(FVM_Channel *channel, const unsigned char *data, size_t size)
 {
     if (!data || size < 16 || size > 64UL * 1024 * 1024)
@@ -439,6 +488,8 @@ FVM_Result fvm_channel_send_wire(FVM_Channel *channel, const unsigned char *data
         delete p;
         return FVM_OUT_OF_MEMORY;
     }
+
+    /* Computation / Вычисление и обновление состояния. */
     std::memcpy(p->data, data, size);
     p->size = size;
     FVM_Result r = register_packet(p, channel);
@@ -448,11 +499,17 @@ FVM_Result fvm_channel_send_wire(FVM_Channel *channel, const unsigned char *data
         delete p;
     return r;
 }
+
+/* Receive channel wire. */
 FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned char **out,
                                     size_t *size)
 {
+
+    /* Initialization / Инициализация локального состояния. */
     void *raw = 0;
     FVM_Value value;
+
+    /* Computation / Вычисление и обновление состояния. */
     *out = 0;
     *size = 0;
     FVM_Result r = fvm_channel_receive_mixed(ch, &value, &raw, 0);
