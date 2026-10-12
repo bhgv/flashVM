@@ -112,9 +112,24 @@ double blend_channel(unsigned mode, double source, double dest)
     }
 }
 /* Composite a flattened source pixel onto destination storage, enforcing opaque receiver alpha. */
-void composite(unsigned mode, const unsigned char *source, unsigned char *dest, bool transparent)
+void composite(unsigned mode, const unsigned char *source, unsigned char *dest, bool transparent,
+               unsigned coverage)
 {
     double sa = source[3] / 255.0, da = dest[3] / 255.0;
+    if (mode == 11 || mode == 12)
+    {
+        if (!transparent || (mode == 11 ? !coverage : !source[3]))
+            return;
+        double factor = mode == 11 ? 1 - coverage / 255.0 + sa : 1 - sa;
+        if (factor > 1)
+            factor = 1;
+        if (factor < 0)
+            factor = 0;
+        dest[3] = byte(dest[3] * factor);
+        if (!dest[3])
+            dest[0] = dest[1] = dest[2] = 0;
+        return;
+    }
     if (!sa)
         return;
     double alpha = sa + da * (1 - sa);
@@ -148,7 +163,7 @@ struct RectanglePath
 };
 /* Draw one bitmap's full local rectangle using the common non-repeating affine sampler. */
 FVM_Result bitmap_source(FVM_BitmapState *source, const FVM_BitmapPaint &options,
-                         FVM_RasterSurface *destination)
+                         FVM_RasterSurface *destination, FVM_RasterSurface *coverage)
 {
     FVM_BitmapPaint paint = options;
     FVM_RasterSurface input = {source->pixels.begin(), source->width, source->height,
@@ -169,7 +184,14 @@ FVM_Result bitmap_source(FVM_BitmapState *source, const FVM_BitmapPaint &options
     }
     if (r == FVM_OK)
         r = fvm_path_transform(path.value, &paint.matrix);
-    return r == FVM_OK ? fvm_path_draw_bitmap(path.value, destination, &paint, 0) : r;
+    if (r == FVM_OK)
+        r = fvm_path_draw_bitmap(path.value, destination, &paint, 0);
+    if (r == FVM_OK && coverage)
+    {
+        FVM_RasterColor opaque = {255, 255, 255, 255};
+        r = fvm_path_draw(path.value, coverage, opaque, 0, 0);
+    }
+    return r;
 }
 } // namespace
 
@@ -214,8 +236,6 @@ FVM_Result fvm_bitmap_draw(FVM_Context *c, FVM_Object *self, unsigned n, const F
         r = optional(c, n, args, 4, rect_names, 4, clip, 2000000);
     if (r != FVM_OK)
         return r;
-    if (mode == 11 || mode == 12)
-        return FVM_UNSUPPORTED;
     /* Getter side effects may dispose either resource; refresh storage before borrowing pixels. */
     target = fvm_bitmap_pixels(self);
     FVM_BitmapState *bitmap = fvm_bitmap_pixels(source);
@@ -240,13 +260,17 @@ FVM_Result fvm_bitmap_draw(FVM_Context *c, FVM_Object *self, unsigned n, const F
     unsigned width = target->width, height = target->height;
     size_t bytes = (size_t)width * height * 4;
     unsigned long limit = c->runtime->config.memory_limit_bytes;
-    if (limit && bytes > limit / 3)
+    if (limit && bytes > limit / (mode == 11 ? 4 : 3))
         return FVM_OUT_OF_MEMORY;
-    fvm_detail::vector<unsigned char> staged(bytes);
+    fvm_detail::vector<unsigned char> staged(bytes), covered;
+    if (mode == 11)
+        covered.resize(bytes);
+    FVM_RasterSurface geometry = {covered.begin(), width, height, (size_t)width * 4};
+    FVM_RasterSurface *coverage = mode == 11 ? &geometry : 0;
     FVM_RasterSurface surface = {staged.begin(), width, height, (size_t)width * 4};
-    r = bitmap ? bitmap_source(bitmap, paint, &surface)
+    r = bitmap ? bitmap_source(bitmap, paint, &surface, coverage)
                : fvm_movieclip_render_bitmap(c, source, &surface, paint.matrix, paint.multiply,
-                                             paint.add);
+                                             paint.add, coverage);
     if (r != FVM_OK)
         return r;
     if (target->disposed || target->width != width || target->height != height)
@@ -260,7 +284,7 @@ FVM_Result fvm_bitmap_draw(FVM_Context *c, FVM_Object *self, unsigned n, const F
             {
                 size_t offset = ((size_t)y * width + x) * 4;
                 composite(mode, staged.begin() + offset, target->pixels.begin() + offset,
-                          target->transparent);
+                          target->transparent, coverage ? covered[offset + 3] : 0);
             }
     return FVM_OK;
 }

@@ -23,12 +23,17 @@ source==destination и предотвращает частичную запис�
 проверки storage; native barrier сохраняет управляемые объекты живыми.
 Побочные эффекты пользовательских getters не откатываются.
 
-Реализованы normal/layer, multiply, screen, lighten/darken, difference,
-add/subtract, invert, overlay/hardlight. Сепарабельный RGB результат
+В v0.51 реализованы normal/layer, multiply, screen, lighten/darken, difference,
+add/subtract, invert, overlay/hardlight, alpha и erase. Сепарабельный RGB результат
 композируется с alpha source-over; компоненты округляются к ближайшему
 байту. При layer источник уже flattened в отдельный буфер. Имена и integer
-IDs 1..14 распознаются; alpha (11) и erase (12) пока дают UNSUPPORTED,
-не меняя destination. Полная Flash-квантизация, group blending и взаимодействие
+IDs 1..14 распознаются. Alpha/erase изменяют только alpha прозрачного
+получателя; opaque получатель не меняется в этих двух режимах.
+Для alpha одновременно с source собирается отдельное геометрическое
+coverage, не повторяя getters: Da × (1 − coverage + Sa). Erase использует
+Da × (1 − Sa). RGB сохраняется до обнуления alpha, затем очищается.
+Область вне геометрии не очищается; учитываются AA, отверстия и stroke-only
+контуры. Полная Flash-квантизация, group blending и взаимодействие
 с masks/filters не подтверждены.
 
 clipRect — destination rectangle; сейчас отбираются pixel centers внутри
@@ -36,7 +41,7 @@ clipRect — destination rectangle; сейчас отбираются pixel cent
 determinant (<1e-20) и пустой clip дают no-op. Числовые bounds: matrix ±1e6,
 color coefficients/offsets ±65536, clip fields ±2e6. Действуют ограничения
 существующего raster path backend (включая координаты ±4096). Scratch RGBA
-проверяется против memory_limit/3; это не полная квота всех VM allocations.
+проверяется против memory_limit/3 (memory_limit/4 для alpha coverage); это не полная квота всех VM allocations.
 
 bitmap_draw.cpp проверяет nearest/bilinear, reflection, clipping, self alias,
 opaque alpha, фиксированные blend vectors, normalized MovieClip root и
@@ -44,11 +49,13 @@ child poses, внешний ColorTransform, лимит, disposed receiver чер
 GC и queue transfer callback/source без standard_install в receiver.
 bitmap_draw_allocation.cpp инъецирует каждую границу new/new[] для bitmap
 и многослойного clip, проверяет destination rollback и баланс аллокаций после
-уничтожения VM. Профили: AGG, Cairo, headless, portable и heap/global
+уничтожения VM. bitmap_draw_coverage.cpp проверяет прозрачные/полупрозрачные
+bitmap/clip, self alias, AA edges, holes/strokes, clipping и single getter
+read. Профили: AGG, Cairo, headless, portable и heap/global
 ASan+UBSan; stack ASan/LeakSanitizer выключены в специальном профиле.
 Native callback ID 1540 сохраняет прежние bitmap IDs.
 
-Открыто: alpha/erase coverage, дробный clipping и точное Flash округление,
+Открыто: полная alpha/erase Flash-сверка, дробный clipping и точное Flash округление,
 child blend modes/group effects, masks/filters и остальные BitmapData API,
 полный текст, шрифты, звук и видео. Этап 4 ROADMAP.md не завершён.
 
@@ -67,19 +74,27 @@ paint/child allocations cannot publish a partial image. Disposed destination
 storage is rechecked after reentrant getters; getter side effects themselves
 are not rolled back. Opaque receivers retain alpha=255.
 
-Twelve modes are implemented: normal/layer, multiply/screen, lighten/darken,
-difference, add/subtract, invert and overlay/hardlight. Separable RGB blending
-uses source-over alpha and nearest-byte rounding. Alpha/erase (11/12) remain
-explicitly unsupported pending geometry coverage; exact Flash quantization,
-group blending and masks/filter interactions are unverified.
+v0.51 implements all fourteen recognized draw modes: normal/layer,
+multiply/screen, lighten/darken, difference, add/subtract, invert,
+overlay/hardlight, alpha and erase. Separable RGB blending uses source-over
+alpha and nearest-byte rounding. Alpha uses Da × (1 − coverage + Sa), with
+geometry coverage collected during the same scene traversal without repeated
+getters; erase uses Da × (1 − Sa). Only transparent receiver alpha changes,
+with RGB retained until alpha becomes zero. Outside geometry is preserved,
+including AA edges, holes and strokes. Opaque alpha/erase targets are unchanged
+in this model. Exact Flash quantization, group blending and masks/filter
+interactions are still unverified.
 
 Clip selection currently uses destination pixel centers without fractional
 clip coverage. Empty clips and determinant magnitude below 1e-20 are no-ops.
 Explicit numeric bounds and existing raster path limits apply. Scratch bytes
-are checked against memory_limit/3, without claiming complete VM peak quotas.
+are checked against memory_limit/3 (memory_limit/4 for alpha coverage),
+without claiming complete VM peak quotas.
 Tests cover sampling/transforms/clipping, self aliases, blend vectors, root
 normalization/children, color, budgets, reentrant disposal, GC/queue transport
-and new/new[] failure rollback/balance. AGG/Cairo, disabled-graphics profiles
+and new/new[] failure rollback/balance. Coverage tests include transparent
+pixels, self aliases, AA edges, holes/strokes and single getter evaluation.
+AGG/Cairo, disabled-graphics profiles
 and heap/global ASan+UBSan are checked. Callback ID 1540 preserves older IDs.
 Remaining coverage, conformance, filters/bitmap APIs, text and media keep
 stage 4 open.

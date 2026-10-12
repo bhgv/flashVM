@@ -7,7 +7,8 @@
 FVM_Result fvm_bitmap_draw(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *,
                            void *);
 /* [GC:] Render a retained clip subtree with an explicit root matrix/color and preserved child
- * poses. */
+ * poses; optional caller-owned coverage receives geometry independent of source alpha. */
 FVM_Result fvm_movieclip_render_bitmap(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
-                                       const FVM_Affine &, const double *, const double *);
+                                       const FVM_Affine &, const double *, const double *,
+                                       FVM_RasterSurface *coverage = 0);
 #endif

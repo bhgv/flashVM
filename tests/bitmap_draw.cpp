@@ -38,7 +38,7 @@ int main()
     FVM_Object *blend_source=bitmap(c,1,1,true,0x80c86432UL);
     const unsigned expected[][3]={{150,150,50},{150,150,50},{89,139,30},{161,211,70},{150,200,50},{100,150,50},{100,150,25},{178,228,75},{50,150,25},{128,127,128},{0,0,0},{0,0,0},{129,194,35},{144,178,35}};
     for(unsigned mode=1;mode<=14;++mode){FVM_Object *target=bitmap(c,1,1,false,0xff64c832UL);FVM_Result r=draw_result(c,target,blend_source,0,0,mode);
-        if(mode==11 || mode==12){assert(r==FVM_UNSUPPORTED);assert(read(c,target,0,0)==0xff64c832UL);continue;}
+        if(mode==11 || mode==12){assert(r==(rendered==FVM_OK?FVM_OK:FVM_UNSUPPORTED));assert(read(c,target,0,0)==0xff64c832UL);continue;}
         if(rendered==FVM_UNSUPPORTED){assert(r==FVM_UNSUPPORTED);continue;}assert(r==FVM_OK);unsigned long value=(unsigned long)read(c,target,0,0);
         for(unsigned channel=0;channel<3;++channel){unsigned actual=(unsigned)((value>>(16-channel*8))&255);assert(actual+1>=expected[mode-1][channel] && actual<=expected[mode-1][channel]+1);}assert((value>>24)==255);}
     FVM_Object *root=0;assert(fvm_movieclip_create(c,"source",1,&root)==FVM_OK);assert(fvm_gc_pin(c,root)==FVM_OK);fill_color(c,root,0xff0000UL);

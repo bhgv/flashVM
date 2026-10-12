@@ -2280,7 +2280,7 @@ FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
 /* Render the current value. */
 FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                   const ColorAffine &parent_color, unsigned int depth,
-                  const FVM_Affine *drawing_base = 0)
+                  const FVM_Affine *drawing_base = 0, FVM_RasterSurface *coverage = 0)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
@@ -2369,6 +2369,11 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                                                     transform.add, even_odd);
                 else
                     r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, even_odd);
+                if (r == FVM_OK && coverage)
+                {
+                    FVM_RasterColor opaque = {255, 255, 255, 255};
+                    r = fvm_path_draw(p, coverage, opaque, 0, even_odd);
+                }
             }
         }
         if (r == FVM_OK && stroke)
@@ -2382,6 +2387,11 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
             if (r == FVM_OK)
                 r = fvm_path_draw(p, surface, color(rgb, a, transform), width ? width * scale : 1,
                                   0);
+            if (r == FVM_OK && coverage)
+            {
+                FVM_RasterColor opaque = {255, 255, 255, 255};
+                r = fvm_path_draw(p, coverage, opaque, width ? width * scale : 1, 0);
+            }
         }
         if (r != FVM_OK)
             return r;
@@ -2406,7 +2416,8 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         FVM_Value child = children->indexed.find(order[i])->second;
         if (child.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
-        r = render(c, child.object, surface, transform, depth + 1, drawing_base ? &world : 0);
+        r = render(c, child.object, surface, transform, depth + 1, drawing_base ? &world : 0,
+                   coverage);
         if (r != FVM_OK)
             return r;
     }
@@ -3215,7 +3226,7 @@ extern "C" FVM_Result fvm_movieclip_render(
 /* [GC:] Render source-library geometry while ignoring the root clip's on-stage pose/color. */
 FVM_Result fvm_movieclip_render_bitmap(FVM_Context *c, FVM_Object *clip, FVM_RasterSurface *surface,
                                        const FVM_Affine &matrix, const double *multipliers,
-                                       const double *offsets)
+                                       const double *offsets, FVM_RasterSurface *coverage)
 {
     if (!c || !clip || clip->owner != c || !surface || !multipliers || !offsets)
         return FVM_INVALID_ARGUMENT;
@@ -3227,7 +3238,7 @@ FVM_Result fvm_movieclip_render_bitmap(FVM_Context *c, FVM_Object *clip, FVM_Ras
         color.multiply[i] = multipliers[i];
         color.add[i] = offsets[i];
     }
-    return render(c, clip, surface, color, 0, &matrix);
+    return render(c, clip, surface, color, 0, &matrix, coverage);
 }
 
 /* Build constructor and prototype for movieclip. */
