@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "function_state.hpp"
+#include "../avm1/function_record.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -14,6 +15,8 @@
 #include <cstring>
 #include <new>
 #include <cmath>
+#include <cstdio>
+
 namespace
 {
 /* Define anonymous enum and its representation. */
@@ -182,7 +185,39 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Val
     return FVM_OK;
 }
 
-/* Compute and return hex. */
+/* Read the parameter bound to this arguments index through its retained descriptor. */
+FVM_Result argument_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
+                        FVM_Value *out, void *ud)
+{
+    FVM_Value scope, name;
+    FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "scope", &scope);
+    if (r == FVM_OK)
+        r = fvm_object_get(c, (FVM_Object *)ud, "name", &name);
+    if (r != FVM_OK)
+        return r;
+    if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
+        return FVM_INVALID_ARGUMENT;
+    return fvm_object_get(c, scope.object, name.string, out);
+}
+/* Update the named parameter bound to this arguments entry. */
+FVM_Result argument_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
+                        FVM_Value *out, void *ud)
+{
+    if (!n)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value scope, name;
+    FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "scope", &scope);
+    if (r == FVM_OK)
+        r = fvm_object_get(c, (FVM_Object *)ud, "name", &name);
+    if (r != FVM_OK)
+        return r;
+    if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
+        return FVM_INVALID_ARGUMENT;
+    r = fvm_object_set(c, scope.object, name.string, a);
+    fvm_value_undefined(out);
+    return r;
+}
+/* Decode a hexadecimal bytecode digit, or return an invalid-digit sentinel. */
 int hex(unsigned char c)
 {
     return c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1;
@@ -241,7 +276,10 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
             return r;
         if (v.type != FVM_VALUE_STRING)
             return FVM_INVALID_ARGUMENT;
-        body.parameters.push_back(fvm_detail::string(v.string));
+
+        if (std::memchr(v.string, 0, fvm_string_size(v)))
+            return FVM_INVALID_ARGUMENT;
+        body.parameters.push_back(fvm_detail::string(v.string, fvm_string_size(v)));
     }
     r = fvm_object_get(c, constants.object, "length", &length);
     if (r != FVM_OK)
@@ -257,7 +295,54 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
             return r;
         if (v.type != FVM_VALUE_STRING)
             return FVM_INVALID_ARGUMENT;
-        body.constants.push_back(fvm_detail::string(v.string));
+        body.constants.push_back(fvm_detail::string(v.string, fvm_string_size(v)));
+    }
+    FVM_Value kind;
+    r = fvm_object_get(c, data, "function2", &kind);
+    if (r != FVM_OK)
+        return r;
+    if (kind.type == FVM_VALUE_BOOLEAN && kind.boolean)
+    {
+        FVM_Value count, flags, registers, register_length;
+        r = fvm_object_get(c, data, "register_count", &count);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, data, "flags", &flags);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, data, "parameter_registers", &registers);
+        if (r != FVM_OK)
+            return r;
+        if (count.type != FVM_VALUE_NUMBER || count.number < 0 || count.number > 255 ||
+            count.number != std::floor(count.number) || flags.type != FVM_VALUE_NUMBER ||
+            flags.number < 0 || flags.number > 511 || flags.number != std::floor(flags.number) ||
+            registers.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        r = fvm_object_get(c, registers.object, "length", &register_length);
+        if (r != FVM_OK)
+            return r;
+        if (register_length.type != FVM_VALUE_NUMBER ||
+            register_length.number != body.parameters.size())
+            return FVM_INVALID_ARGUMENT;
+        body.function2 = true;
+        body.register_count = (unsigned int)count.number;
+        body.flags = (unsigned int)flags.number;
+        unsigned int preload = 0;
+        const unsigned int bits[] = {1, 4, 16, 64, 128, 256};
+        for (unsigned int i = 0; i < 6; ++i)
+            if (body.flags & bits[i])
+                ++preload;
+        if (!fvm_function2_flags_valid(body.flags) || preload > body.register_count)
+            return FVM_INVALID_ARGUMENT;
+        for (size_t i = 0; i < body.parameters.size(); ++i)
+        {
+            FVM_Value reg;
+            r = fvm_table_get_index(c, registers.object, (unsigned long)i, &reg);
+            if (r != FVM_OK)
+                return r;
+            if (reg.type != FVM_VALUE_NUMBER || reg.number < 0 ||
+                reg.number > body.register_count || reg.number != std::floor(reg.number))
+                return FVM_INVALID_ARGUMENT;
+            body.parameter_registers.push_back((unsigned int)reg.number);
+        }
     }
     FVM_Value name;
     r = fvm_object_get(c, data, "name", &name);
@@ -451,6 +536,9 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
+
+    params->prototype = 0;
+    constants->prototype = 0;
     for (size_t i = 0; i < body.parameters.size(); ++i)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
@@ -543,9 +631,38 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+
+    if (body.function2)
+    {
+        if (body.parameter_registers.size() != body.parameters.size())
+            return FVM_INVALID_ARGUMENT;
+        FVM_Object *registers = 0;
+        r = fvm_array_create_like(c, 0, (unsigned long)body.parameter_registers.size(), &registers);
+        if (r != FVM_OK)
+            return r;
+        registers->prototype = 0;
+        for (size_t i = 0; i < body.parameter_registers.size(); ++i)
+        {
+            fvm_value_number(&v, body.parameter_registers[i]);
+            r = fvm_table_set_index(c, registers, (unsigned long)i, &v);
+            if (r != FVM_OK)
+                return r;
+        }
+        fvm_value_undefined(&v);
+        v.type = FVM_VALUE_OBJECT;
+        v.object = registers;
+        data->properties["parameter_registers"] = v;
+        fvm_value_number(&v, body.register_count);
+        data->properties["register_count"] = v;
+        fvm_value_number(&v, body.flags);
+        data->properties["flags"] = v;
+        fvm_value_boolean(&v, 1);
+        data->properties["function2"] = v;
+    }
     fn->resource_kind = SCRIPT_FUNCTION;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fn->resource_result_valid = true;
+    fvm_value_undefined(&v);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.type = FVM_VALUE_OBJECT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -939,6 +1056,8 @@ unsigned long fvm_function_callback_id(FVM_NativeFunction cb)
            : cb == function_text ? 803
            : cb == empty         ? 804
            : cb == constructor   ? 805
+           : cb == argument_get  ? 806
+           : cb == argument_set  ? 807
                                  : 0;
 }
 
@@ -951,6 +1070,8 @@ FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
            : id == 803 ? function_text
            : id == 804 ? empty
            : id == 805 ? constructor
+           : id == 806 ? argument_get
+           : id == 807 ? argument_set
                        : 0;
 }
 
@@ -958,4 +1079,30 @@ FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
 bool fvm_function_collector_callback(FVM_NativeFunction cb)
 {
     return cb == script || cb == call || cb == apply;
+}
+
+/* [GC:] Link an arguments index to an activation using a traced accessor descriptor. */
+FVM_Result fvm_function_map_argument(FVM_Context *c, FVM_Object *arguments, unsigned long index,
+                                     FVM_Object *activation, const char *name)
+{
+    FVM_Object *descriptor = 0;
+    FVM_Result r = fvm_object_create(c, &descriptor);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    value.type = FVM_VALUE_OBJECT;
+    value.object = activation;
+    r = fvm_object_set(c, descriptor, "scope", &value);
+    if (r != FVM_OK)
+        return r;
+    fvm_value_string(&value, name);
+    r = fvm_object_set(c, descriptor, "name", &value);
+    if (r != FVM_OK)
+        return r;
+    char key[32];
+    std::sprintf(key, "%lu", index);
+    arguments->indexed.erase(index);
+    return fvm_object_define_accessor_rooted(c, arguments, key, argument_get, argument_set,
+                                             descriptor, descriptor);
 }

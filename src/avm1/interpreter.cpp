@@ -194,6 +194,13 @@ static FVM_Result lookup_variable(FVM_Context *c,
             return FVM_OK;
         }
     }
+    if (!std::strcmp(name, "_global"))
+    {
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = c->global;
+        return FVM_OK;
+    }
     if (self && !std::strcmp(name, "this"))
     {
         fvm_value_undefined(out);
@@ -270,18 +277,93 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         return FVM_ERROR;
 
     /* Initialization / Инициализация локального состояния. */
+
+    if (fn.function2 && (fn.flags & 16))
+        return FVM_UNSUPPORTED;
+    Execution execution;
+    try
+    {
+        execution.constants = fn.constants;
+        execution.registers.resize(fn.function2 ? fn.register_count + 1 : 4);
+        for (size_t i = 0; i < execution.registers.size(); ++i)
+            fvm_value_undefined(&execution.registers[i]);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
     FVM_Object *activation = 0;
     FVM_Result activation_result = fvm_object_create(c, &activation);
     if (activation_result != FVM_OK)
         return activation_result;
     fvm_detail::map<fvm_detail::string, FVM_Value> &frame = activation->properties;
+
+    /* [GC:] The activation retains the function's captured lexical environment. */
+    activation->prototype = closure;
+    fvm_detail::vector<FVM_Value> constructing;
+    /* [GC:] Keep activation, arguments, receiver and registers alive during call setup. */
+    struct ConstructionRoots
+    {
+        FVM_Context *c;
+        /* [GC:] Trace construction values separately from private registers. */
+        FVM_GCRootFrame values, registers;
+        /* [GC:] Push value and register frames before any preload lookup can invoke code. */
+        ConstructionRoots(FVM_Context *context, FVM_Object *activation,
+                          fvm_detail::vector<FVM_Value> *roots, fvm_detail::vector<FVM_Value> *regs)
+            : c(context)
+        {
+            /* [GC:] Save the caller root chain before attaching this activation. */
+            values.previous = c->gc_frames;
+            /* [GC:] Trace temporary receiver, callee and preload values. */
+            values.stack = roots;
+            /* [GC:] Trace parameter bindings retained by the activation. */
+            values.locals = &activation->properties;
+            /* [GC:] Retain the activation and its captured lexical scope. */
+            values.receiver = activation;
+            /* [GC:] Chain the private-register frame after the construction values. */
+            registers.previous = &values;
+            /* [GC:] Expose live private register contents to the collector. */
+            registers.stack = regs;
+            /* [GC:] Avoid tracing the same activation properties twice. */
+            registers.locals = 0;
+            /* [GC:] The preceding frame already retains the activation receiver. */
+            registers.receiver = 0;
+            /* [GC:] Publish both setup frames as live roots. */
+            c->gc_frames = &registers;
+        }
+        /* [GC:] Restore the previous root chain on normal and exceptional exits. */
+        ~ConstructionRoots()
+        {
+            /* [GC:] Remove both temporary frames on scope exit. */
+            c->gc_frames = values.previous;
+        }
+    } construction(c, activation, &constructing, &execution.registers);
     try
     {
+
+        FVM_Value capture;
+        fvm_value_undefined(&capture);
+        capture.type = FVM_VALUE_OBJECT;
+        if (receiver)
+        {
+            capture.object = receiver;
+            /* [GC:] Retain this value while subsequent call setup may execute script code. */
+            constructing.push_back(capture);
+        }
+        if (callee)
+        {
+            capture.object = callee;
+            /* [GC:] Retain this value while subsequent call setup may execute script code. */
+            constructing.push_back(capture);
+        }
         FVM_Object *arguments = 0;
         FVM_Result stored = fvm_object_create(c, &arguments);
         if (stored != FVM_OK)
             return stored;
         arguments->resource_kind = 30;
+        capture.object = arguments;
+        /* [GC:] Retain this value while subsequent call setup may execute script code. */
+        constructing.push_back(capture);
         FVM_Value value;
         fvm_value_number(&value, argc);
         stored = fvm_object_set(c, arguments, "length", &value);
@@ -307,17 +389,100 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;
         value.object = arguments;
+
+        FVM_Value implicit_arguments = value;
+        if (fn.function2 && (fn.flags & 8))
+            fvm_value_undefined(&value);
         stored = fvm_object_set(c, activation, "arguments", &value);
         if (stored != FVM_OK)
             return stored;
         /* Explicit parameters can shadow the implicit arguments binding. */
+
+        {
+            FVM_Value named_this;
+            fvm_value_undefined(&named_this);
+            if (!fn.function2 || !(fn.flags & 2))
+            {
+                named_this.type = FVM_VALUE_OBJECT;
+                named_this.object = receiver ? receiver : c->global;
+            }
+            stored = fvm_object_set(c, activation, "this", &named_this);
+            if (stored != FVM_OK)
+                return stored;
+            if (fn.function2)
+            {
+                fvm_value_undefined(&named_this);
+                stored = fvm_object_set(c, activation, "super", &named_this);
+                if (stored != FVM_OK)
+                    return stored;
+            }
+        }
         for (size_t i = 0; i < fn.parameters.size(); ++i)
         {
             FVM_Value value;
             fvm_value_undefined(&value);
             if (i < argc)
                 value = args[i];
+
+            if (fn.function2 && fn.parameter_registers[i])
+            {
+                execution.registers[fn.parameter_registers[i]] = value;
+                continue;
+            }
             FVM_Result stored = fvm_object_set(c, activation, fn.parameters[i].c_str(), &value);
+            if (stored != FVM_OK)
+                return stored;
+        }
+        if (fn.function2)
+        {
+            FVM_Value common[6];
+            for (unsigned int i = 0; i < 6; ++i)
+                fvm_value_undefined(common + i);
+            common[0].type = FVM_VALUE_OBJECT;
+            common[0].object = receiver ? receiver : c->global;
+            common[1] = implicit_arguments;
+            if (receiver && (fn.flags & 64))
+            {
+                stored = fvm_object_get(c, receiver, "_root", common + 3);
+                if (stored != FVM_OK)
+                    return stored;
+                /* [GC:] Retain this value while subsequent call setup may execute script code. */
+                constructing.push_back(common[3]);
+            }
+            if ((fn.flags & 64) && common[3].type == FVM_VALUE_UNDEFINED)
+            {
+                stored = fvm_get_global(c, "_root", common + 3);
+                if (stored != FVM_OK)
+                    return stored;
+            }
+            if (receiver && (fn.flags & 128))
+            {
+                stored = fvm_object_get(c, receiver, "_parent", common + 4);
+                if (stored != FVM_OK)
+                    return stored;
+            }
+            common[5].type = FVM_VALUE_OBJECT;
+            common[5].object = c->global;
+            const unsigned int bits[] = {1, 4, 16, 64, 128, 256};
+            unsigned int slot = 1;
+            for (unsigned int i = 0; i < 6; ++i)
+                if (fn.flags & bits[i])
+                    execution.registers[slot++] = common[i];
+        }
+        fvm_detail::map<fvm_detail::string, bool> seen;
+        for (size_t i = fn.parameters.size(); i; --i)
+        {
+            size_t index = i - 1;
+            if (fn.function2 && fn.parameter_registers[index])
+                continue;
+            const fvm_detail::string &name = fn.parameters[index];
+            if (seen.find(name) != seen.end())
+                continue;
+            seen[name] = true;
+            if (index >= argc)
+                continue;
+            stored = fvm_function_map_argument(c, arguments, (unsigned long)index, activation,
+                                               name.c_str());
             if (stored != FVM_OK)
                 return stored;
         }
@@ -367,6 +532,7 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         c->debug_function = name;
         c->debug_line = 0;
         ++c->script_depth;
+        /* [GC:] The activation retains the function's captured lexical environment. */
         activation->prototype = closure;
         c->lexical_scopes.push_back(activation);
         /* Define PopScope struct and its representation. */
@@ -384,7 +550,7 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
             }
         } scope(c);
         status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame, receiver,
-                         &snapshot.constants);
+                         &snapshot.constants, &execution);
         --c->script_depth;
     }
     catch (...)
@@ -535,10 +701,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.length > size - pos)
                     return FVM_INVALID_ARGUMENT;
                 pos += a.length;
-                if (a.op == 0x9b)
+                if (a.op == 0x9b || a.op == 0x8e)
                 {
                     FVM_FunctionRecord record;
-                    if (!fvm_function_record(data, size, a.payload, a.length, record))
+                    if (!fvm_function_record(data, size, a.payload, a.length, record, a.op == 0x8e))
                         return FVM_INVALID_ARGUMENT;
                     pos = record.next;
                 }
@@ -728,17 +894,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_INVALID_ARGUMENT;
                 registers[reg] = stack.back();
             }
-            else if (a.op == 0x9b)
+            else if (a.op == 0x9b || a.op == 0x8e)
             {
                 FVM_FunctionRecord record;
-                if (!fvm_function_record(data, size, a.payload, a.length, record))
+                if (!fvm_function_record(data, size, a.payload, a.length, record, a.op == 0x8e))
                     return FVM_INVALID_ARGUMENT;
                 FVM_ScriptFunction fn;
+                fn.function2 = record.function2;
+                fn.register_count = record.register_count;
+                fn.flags = record.flags;
                 fn.constants = constants;
                 fn.name = fvm_detail::string((const char *)data + record.name, record.name_size);
                 size_t p = record.parameters;
                 for (unsigned int parameter = 0; parameter < record.count; ++parameter)
                 {
+
+                    if (record.function2)
+                        fn.parameter_registers.push_back(data[p++]);
                     size_t begin = p;
                     while (data[p])
                         ++p;
@@ -750,7 +922,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_AVM1Info body_info;
                 body_info.struct_size = sizeof(body_info);
                 if (fvm_avm1_inspect(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
+
+                {
                     fn.body.push_back(0);
+
+                    if (fvm_avm1_inspect(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
+                        return FVM_INVALID_ARGUMENT;
+                }
                 FVM_Object *object = 0;
                 FVM_Result r = fvm_function_make_script(
                     c, fn, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), &object);

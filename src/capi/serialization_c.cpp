@@ -1141,7 +1141,7 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 4};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 5};
 
 /* Decode the current value. */
 Graph decode(const void *data, size_t size)
@@ -1151,7 +1151,7 @@ Graph decode(const void *data, size_t size)
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 4);
+    require(version >= 1 && version <= 5);
     Reader header(data, size);
     header.offset = 8;
 

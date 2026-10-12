@@ -141,6 +141,16 @@ struct FVM_ScriptFunction
     fvm_detail::vector<unsigned char> body; /* Bytecode storage or view for this record. */
     fvm_detail::vector<fvm_detail::string>
         parameters; /* Formal parameter names in declaration order. */
+
+    fvm_detail::vector<unsigned int>
+        parameter_registers;     /* Register per parameter; zero selects a named binding. */
+    bool function2;              /* Whether this function has private Function2 registers. */
+    unsigned int register_count; /* Number of allocated Function2 registers. */
+    unsigned int flags; /* Preload/suppression flags retained for calls and graph transfer. */
+    /* Initialize legacy function metadata without Function2 flags or registers. */
+    FVM_ScriptFunction() : function2(false), register_count(0), flags(0)
+    {
+    }
 };
 
 /* Define FVM_QueuedInput struct and its representation. */

@@ -56,10 +56,10 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
                     pos += record.sizes[i];
                 }
             }
-            else if (op == 0x9b)
+            else if (op == 0x9b || op == 0x8e)
             {
                 FVM_FunctionRecord record;
-                if (!fvm_function_record(p, size, pos, len, record))
+                if (!fvm_function_record(p, size, pos, len, record, op == 0x8e))
                     return FVM_INVALID_ARGUMENT;
                 FVM_Result result = inspect(p + record.body, record.size, info, true, depth + 1);
                 if (result != FVM_OK)

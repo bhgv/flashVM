@@ -9,6 +9,9 @@
 /* Build constructor and prototype for function. */
 FVM_Result fvm_function_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
+/* [GC:] Install a parameter alias whose descriptor retains the activation object. */
+FVM_Result fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long, FVM_Object *,
+                                     const char *);
 
 /* Validate function. */
 FVM_Result fvm_function_validate(FVM_Context *);
