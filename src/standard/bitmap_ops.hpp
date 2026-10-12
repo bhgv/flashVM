@@ -18,4 +18,8 @@ FVM_Result fvm_bitmap_merge(FVM_Context *, FVM_Object *, unsigned, const FVM_Val
  * publication. */
 FVM_Result fvm_bitmap_palette_map(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                   FVM_Value *, void *);
+/* [GC:] Test copied public geometry against live bitmap alpha without borrowing across callbacks.
+ */
+FVM_Result fvm_bitmap_hit_test(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                               FVM_Value *, void *);
 #endif

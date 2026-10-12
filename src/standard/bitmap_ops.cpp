@@ -457,3 +457,191 @@ FVM_Result fvm_bitmap_palette_map(FVM_Context *c, FVM_Object *self, unsigned n,
         }
     return FVM_OK;
 }
+
+namespace
+{
+/* Convert a public numeric coordinate to signed 32-bit semantics without host integer overflow. */
+double hit_integer(double value)
+{
+    if (!(value == value && std::fabs(value) <= std::numeric_limits<double>::max()))
+        return 0;
+    unsigned long word = color_word(value);
+    return word >= 0x80000000UL ? (double)word - 4294967296.0 : (double)word;
+}
+/* Read and convert a public point/rectangle tuple; absent fields distinguish invalid geometry. */
+FVM_Result hit_tuple(FVM_Context *c, FVM_Object *object, unsigned count, double *values,
+                     bool &valid)
+{
+    const char *const keys[] = {"x", "y", "width", "height"};
+    valid = true;
+    for (unsigned i = 0; i < count; ++i)
+    {
+        FVM_Value value;
+        FVM_Result r = fvm_object_get(c, object, keys[i], &value);
+        if (r != FVM_OK)
+            return r;
+        if (value.type == FVM_VALUE_UNDEFINED)
+            valid = false;
+        double number = 0;
+        r = fvm_value_to_number(c, &value, &number);
+        if (r != FVM_OK)
+            return r;
+        values[i] = hit_integer(number);
+    }
+    return FVM_OK;
+}
+/* Coerce and clamp an alpha threshold, keeping the omitted second threshold separate. */
+FVM_Result hit_threshold(FVM_Context *c, unsigned n, const FVM_Value *args, unsigned index,
+                         unsigned fallback, unsigned &threshold)
+{
+    double value = fallback;
+    FVM_Result r = FVM_OK;
+    if (n > index)
+        r = fvm_value_to_number(c, args + index, &value);
+    if (r != FVM_OK)
+        return r;
+    value = hit_integer(value);
+    threshold = value < 0 ? 0 : value > 255 ? 255 : (unsigned)value;
+    return FVM_OK;
+}
+} // namespace
+/* [GC:] Resolve geometry and thresholds before refreshing native pixel storage for a read-only
+ * scan. */
+FVM_Result fvm_bitmap_hit_test(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value *args,
+                               FVM_Value *out, void *)
+{
+    /* [GC:] Prevent collection of receiver, comparison object and getter results during coercion.
+     */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_number(out, -1);
+    FVM_BitmapState *initial = fvm_bitmap_pixels(self);
+    if (!initial || initial->disposed)
+        return FVM_OK;
+    FVM_Object *first = 0, *other = 0;
+    if (n < 1 || args[0].type != FVM_VALUE_OBJECT || !args[0].object || args[0].object->owner != c)
+    {
+        fvm_value_number(out, -2);
+        return FVM_OK;
+    }
+    first = args[0].object;
+    double first_xy[2], geometry[4] = {0, 0, 1, 1};
+    bool valid = false;
+    FVM_Result r = hit_tuple(c, first, 2, first_xy, valid);
+    if (r != FVM_OK)
+        return r;
+    if (!valid)
+    {
+        fvm_value_number(out, -2);
+        return FVM_OK;
+    }
+    unsigned first_alpha = 0, second_alpha = 1;
+    r = hit_threshold(c, n, args, 1, 0, first_alpha);
+    if (r != FVM_OK)
+        return r;
+    if (n < 3 || args[2].type != FVM_VALUE_OBJECT || !args[2].object || args[2].object->owner != c)
+    {
+        fvm_value_number(out, -3);
+        return FVM_OK;
+    }
+    other = args[2].object;
+    bool bitmap = fvm_bitmap_pixels(other) != 0, point = false;
+    if (bitmap)
+    {
+        if (fvm_bitmap_pixels(other)->disposed)
+        {
+            fvm_value_number(out, -3);
+            return FVM_OK;
+        }
+        if (n < 4 || args[3].type != FVM_VALUE_OBJECT || !args[3].object ||
+            args[3].object->owner != c)
+        {
+            fvm_value_number(out, -4);
+            return FVM_OK;
+        }
+        r = hit_tuple(c, args[3].object, 2, geometry, valid);
+        if (r != FVM_OK)
+            return r;
+        if (!valid)
+        {
+            fvm_value_number(out, -4);
+            return FVM_OK;
+        }
+        r = hit_threshold(c, n, args, 4, 1, second_alpha);
+    }
+    else
+    {
+        r = hit_tuple(c, other, 2, geometry, valid);
+        if (r != FVM_OK)
+            return r;
+        if (!valid)
+        {
+            fvm_value_number(out, -3);
+            return FVM_OK;
+        }
+        FVM_Value width, height;
+        r = fvm_object_get(c, other, "width", &width);
+        if (r == FVM_OK)
+            r = fvm_object_get(c, other, "height", &height);
+        if (r != FVM_OK)
+            return r;
+        point = width.type == FVM_VALUE_UNDEFINED && height.type == FVM_VALUE_UNDEFINED;
+        if (!point)
+        {
+            if (width.type == FVM_VALUE_UNDEFINED || height.type == FVM_VALUE_UNDEFINED)
+            {
+                fvm_value_number(out, -3);
+                return FVM_OK;
+            }
+            r = fvm_value_to_number(c, &width, geometry + 2);
+            if (r == FVM_OK)
+                r = fvm_value_to_number(c, &height, geometry + 3);
+            geometry[2] = hit_integer(geometry[2]);
+            geometry[3] = hit_integer(geometry[3]);
+        }
+    }
+    if (r != FVM_OK)
+        return r;
+    FVM_BitmapState *target = fvm_bitmap_pixels(self);
+    if (!target || target->disposed)
+        return FVM_OK;
+    FVM_BitmapState *comparison = bitmap ? fvm_bitmap_pixels(other) : 0;
+    if (bitmap && (!comparison || comparison->disposed))
+    {
+        fvm_value_number(out, -3);
+        return FVM_OK;
+    }
+    if (bitmap)
+    {
+        geometry[2] = comparison->width;
+        geometry[3] = comparison->height;
+    }
+    double offset_x = geometry[0] - first_xy[0], offset_y = geometry[1] - first_xy[1];
+    double left = offset_x > 0 ? offset_x : 0, top = offset_y > 0 ? offset_y : 0;
+    double right = offset_x + geometry[2], bottom = offset_y + geometry[3];
+    if (right > target->width)
+        right = target->width;
+    if (bottom > target->height)
+        bottom = target->height;
+    bool hit = false;
+    if (left < right && top < bottom && geometry[2] > 0 && geometry[3] > 0)
+    {
+        unsigned threshold = point && first_alpha == 0 ? 1 : first_alpha;
+        for (unsigned y = (unsigned)top; y < (unsigned)bottom && !hit; ++y)
+            for (unsigned x = (unsigned)left; x < (unsigned)right; ++x)
+            {
+                if (target->pixels[((size_t)y * target->width + x) * 4 + 3] < threshold)
+                    continue;
+                if (bitmap)
+                {
+                    unsigned bx = (unsigned)(x - offset_x), by = (unsigned)(y - offset_y);
+                    if (comparison->pixels[((size_t)by * comparison->width + bx) * 4 + 3] <
+                        second_alpha)
+                        continue;
+                }
+                hit = true;
+                break;
+            }
+    }
+    fvm_value_boolean(out, hit ? 1 : 0);
+    return FVM_OK;
+}

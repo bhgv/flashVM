@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.56 / Remaining work after v0.56
+# Оставшаяся работа после v0.57 / Remaining work after v0.57
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -101,3 +101,6 @@ v0.55 checks channel merging; exact premultiplied/coercion conformance and remai
 
 В v0.56 проверен paletteMap: cached palettes, modulo-32 sums, source aliases, GC и OOM rollback (BITMAP_PALETTE_MAP.md).
 v0.56 checks palette mapping; exact historical Flash coercion and premultiplied storage remain open.
+
+В v0.57 проверен hitTest: point/rectangle/bitmap, alpha thresholds, integer bounds, queue/file, GC и OOM (BITMAP_HIT_TEST.md).
+v0.57 checks pixel hit testing; reference coercion/accessor compatibility remains open.
