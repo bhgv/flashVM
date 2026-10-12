@@ -420,12 +420,26 @@ FVM_Result method(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value 
 }
 const char *const properties[] = {"width", "height", "transparent", "rectangle"};
 const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>};
-const char *const methods[] = {"clone",          "dispose",    "getPixel", "getPixel32",
-                               "setPixel",       "setPixel32", "fillRect", "scroll",
-                               "colorTransform", "copyChannel"};
-const FVM_NativeFunction callbacks[] = {method<0>, method<1>, method<2>, method<3>, method<4>,
-                                        method<5>, method<6>, method<7>, method<8>, method<9>};
+const char *const methods[] = {"clone",          "dispose",     "getPixel",  "getPixel32",
+                               "setPixel",       "setPixel32",  "fillRect",  "scroll",
+                               "colorTransform", "copyChannel", "copyPixels"};
+const FVM_NativeFunction callbacks[] = {method<0>,
+                                        method<1>,
+                                        method<2>,
+                                        method<3>,
+                                        method<4>,
+                                        method<5>,
+                                        method<6>,
+                                        method<7>,
+                                        method<8>,
+                                        method<9>,
+                                        fvm_bitmap_copy_pixels};
 } // namespace
+/* [GC:] Borrow the native pixel allocation only when its internal ownership callback matches. */
+FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)
+{
+    return state(object);
+}
 /* [GC:] Install an unpublished display namespace and bitmap class with retained rectangle/clone
  * factories. */
 FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindings,
@@ -469,7 +483,7 @@ FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindi
     bindings->properties["BitmapData"] = managed(klass);
     /* [GC:] The staged flash namespace owns the display namespace. */
     flash->properties["display"] = managed(display);
-    for (unsigned i = 0; i < 10; ++i)
+    for (unsigned i = 0; i < 11; ++i)
     {
         entry.callback = callbacks[i];
         /* [GC:] Method userdata aliases retained class factories. */
@@ -510,7 +524,7 @@ unsigned long fvm_bitmap_callback_id(FVM_NativeFunction fn)
 {
     if (fn == constructor)
         return 1500;
-    for (unsigned i = 0; i < 10; ++i)
+    for (unsigned i = 0; i < 11; ++i)
         if (fn == callbacks[i])
             return 1510 + i;
     for (unsigned i = 0; i < 4; ++i)
@@ -523,7 +537,7 @@ FVM_NativeFunction fvm_bitmap_callback_from_id(unsigned long id)
 {
     if (id == 1500)
         return constructor;
-    if (id >= 1510 && id < 1520)
+    if (id >= 1510 && id < 1521)
         return callbacks[id - 1510];
     if (id >= 1530 && id < 1534)
         return getters[id - 1530];

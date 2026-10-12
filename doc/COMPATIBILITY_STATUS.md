@@ -61,3 +61,10 @@ MovieClip.hitTest point/shape queries and the backend-independent C89 path query
 are implemented with documented subdivision/boundary tolerances. path_hit and
 movieclip_shape_hit cover fill rules, curves, strokes, transforms, queue/file and
 GC. See MOVIECLIP_SHAPE_HIT.md. Маски/bitmap/text и полный этап 3 остаются открыты.
+
+## v0.42 BitmapData.copyPixels
+
+Implemented clipped pixel copies, alpha masks, mergeAlpha and opaque source-over
+composition with source/mask snapshots before mutation. bitmap_copy_pixels and
+bitmap_allocation cover transport, overlap and OOM. See BITMAP_DATA.md for
+premultiplied/rounding limitations. Полный этап 4 остаётся открытым.

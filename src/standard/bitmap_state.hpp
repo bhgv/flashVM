@@ -16,6 +16,13 @@ struct FVM_BitmapState
     {
     }
 };
+/* [GC:] Borrow only bitmap-owned native pixels during a protected native call; never retain the
+ * pointer. */
+FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *);
+/* [GC:] Copy source and optional mask pixels under a native barrier, preserving receiver ownership.
+ */
+FVM_Result fvm_bitmap_copy_pixels(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
+                                  FVM_Value *, void *);
 /* [GC:] Stage BitmapData under flash.display and retain geometry factory classes. */
 FVM_Result fvm_bitmap_stage(FVM_Context *, FVM_Object *, FVM_Object *, FVM_Object *, FVM_Object *,
                             fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);

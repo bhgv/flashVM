@@ -1,21 +1,23 @@
-Development version: **0.41** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.41 ` and an English description. Increase the subversion before each
+Development version: **0.42** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.42 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 
-Mirror updates require an explicit user command. Use `origin` pointing to
+The current standing user instruction authorizes mirror updates after every commit
+until revoked. Use `origin` pointing to
 `https://bhgv.pythonanywhere.com/git/FlashVM/` and push with a 64 MiB HTTP buffer:
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.41** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.41 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.42** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.42 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
 
-Зеркало обновляется только по прямой команде пользователя. Для отправки используйте
+Действующая команда пользователя разрешает обновлять зеркало после каждого
+коммита до нового указания. Для отправки используйте
 указанный выше `origin` и HTTP-буфер 64 МиБ, без принудительной перезаписи истории.
 После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
 

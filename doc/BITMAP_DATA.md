@@ -70,3 +70,27 @@ remain subject to reference conformance.
 в текущем подмножестве другие значения ничего не меняют.
 Only single-channel masks are implemented. Combined masks documented by Flash
 remain open; other values currently leave the destination unchanged.
+
+## v0.42 copyPixels
+
+Добавлено копирование прямоугольника с необязательным alphaBitmap/alphaPoint и
+mergeAlpha. Отсекается пересечение источника, назначения и маски, с сохранением
+их смещений. Все исходные пиксели и маска читаются в снимок до записи, включая
+совпадение с назначением. Поэтому перекрытие не размазывает изображение, а OOM
+не меняет пиксели. Для прозрачного назначения mergeAlpha=false заменяет RGBA;
+mergeAlpha=true смешивает source-over. Непрозрачное назначение смешивается с
+источником и сохраняет alpha=255. Маска умножает alpha источника.
+
+bitmap_copy_pixels и bitmap_allocation проверяют операции, клиппинг, aliasing,
+перенос нативного метода без установки стандартных глобальных объектов, GC
+и отказы памяти. Пока используется straight RGBA и целочисленное округление
+к ближайшему; точные premultiplied/fixed-point правила Flash не подтверждены.
+Дробные координаты, ошибки аргументов и порядок всех getter/coercion вызовов
+также требуют полного эталонного корпуса. draw/ресурсы/заливки/фильтры открыты.
+
+copyPixels supports optional alpha bitmap/point and mergeAlpha, joint clipping
+and allocation-before-write source/mask snapshots. Transparent replacement and
+source-over composition are supported; opaque destinations remain opaque.
+The named suites cover overlapping source/mask aliases, transported callbacks,
+GC and OOM. Straight RGBA with nearest integer rounding remains an explicit
+Flash-conformance limitation; drawing, resources, fills and filters are open.
