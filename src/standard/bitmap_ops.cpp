@@ -741,9 +741,10 @@ FVM_Result fvm_bitmap_noise(FVM_Context *c, FVM_Object *self, unsigned n, const 
             for (unsigned channel = 0; channel < 3; ++channel)
                 pixels[i + channel] =
                     channels & (1UL << channel) ? noise_sample(state, low, range) : 0;
-        pixels[i + 3] = channels & 8 ? noise_sample(state, low, range) : 255;
-        if (!target->transparent)
-            pixels[i + 3] = 255;
+        /* Opaque storage skips alpha samples entirely so they cannot shift subsequent RGB values.
+         */
+        pixels[i + 3] =
+            target->transparent && (channels & 8) ? noise_sample(state, low, range) : 255;
         if (!pixels[i + 3])
             pixels[i] = pixels[i + 1] = pixels[i + 2] = 0;
     }

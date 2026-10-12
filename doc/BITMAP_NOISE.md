@@ -13,8 +13,8 @@ Park-Miller генератор с multiplier=16807, modulus=2147483647. Random s
 Генератор обходится row-major. В color режиме маски red=1, green=2, blue=4,
 alpha=8 выбирают очередные samples; выключенные RGB равны нулю, выключенный
 alpha равен 255. Grayscale всегда генерирует один общий RGB sample, независимо
-от RGB mask; alpha sample остаётся отдельным. Opaque bitmap всё равно
-потребляет alpha sample, если mask его выбирает, но сохраняет alpha=255.
+от RGB mask; alpha sample остаётся отдельным. Начиная с v0.61 opaque bitmap не потребляет alpha samples независимо от
+mask и сохраняет alpha=255; это исправляет смещение RGB sequence из v0.60.
 В текущей модели zero alpha очищает RGB результата.
 
 low/high приводятся к младшему unsigned байту; при high<low high заменяется
@@ -55,8 +55,8 @@ state is unaffected.
 
 Pixels consume selected RGB/alpha samples in row-major order. Disabled RGB is
 zero, default alpha is 255. Grayscale generates one shared RGB sample regardless
-of RGB mask and a separate alpha sample when selected. Opaque targets still
-consume selected alpha samples but store 255. Current zero-alpha output clears RGB.
+of RGB mask and a separate alpha sample when selected. Since v0.61 opaque targets skip alpha samples entirely and store 255, correcting
+the shifted RGB sequence from v0.60. Current zero-alpha output clears RGB.
 Bounds wrap to bytes, high is raised to low if necessary and samples include both
 bounds. NaN/infinite numeric conversions yield integer zero. Missing seed leaves
 pixels unchanged; disposed storage returns -1 and conversion errors propagate.
@@ -71,3 +71,13 @@ Headless, AGG, Cairo, portable and heap/global ASan+UBSan are exercised; stack
 ASan/leak scanning are disabled. Historical Flash coercion/version conformance,
 partial-alpha premultiplied quantization, Perlin/pixel dissolve and remaining
 filters/text/media keep roadmap stage 4 open.
+
+## v0.61 opacity regression
+
+Все 16 масок проверяются в color и grayscale на 17×7 opaque bitmap: выбор
+alpha bit не должен менять RGB sequence. Opaque fixed seed vector исправлен;
+transparent sequence не изменена.
+All sixteen masks are checked in color/grayscale over an opaque 17×7 image;
+the alpha bit must not affect RGB sampling. Transparent sequences are preserved.
+
+Implementation comparison: [Ruffle bitmap operations](https://github.com/ruffle-rs/ruffle/blob/master/core/src/bitmap/operations.rs).

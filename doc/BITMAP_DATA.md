@@ -1,6 +1,6 @@
 # BitmapData: текущая реализация / Current implementation
 
-## Current development checkpoint: v0.60 / Текущая контрольная точка
+## Current development checkpoint: v0.61 / Текущая контрольная точка
 
 Ниже сохранены исторические проверки v0.37–v0.42. Более поздние реализации
 описаны отдельно: [bitmap resources and JPEG tables](SWF_JPEG_TABLES.md),
