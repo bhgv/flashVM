@@ -56,11 +56,11 @@ int main(void)
     }
     /* First record: kind, state(undefined+meta), prototype, meta, five counts.
        A valid first prototype must not lead to an unchecked second reference. */
-    assert(size == 179);
-    u32(data + 29 + 75 + 9, 100000);
+    assert(size == 187);
+    u32(data + 29 + 79 + 9, 100000);
     repair(data, size);
     assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_INVALID_ARGUMENT);
-    u32(data + 29 + 75 + 9, 0xffffffffUL);
+    u32(data + 29 + 79 + 9, 0xffffffffUL);
     /* First object -> itself is an invalid prototype cycle. */
     u32(data + 29 + 9, 0);
     repair(data, size);
@@ -73,8 +73,10 @@ int main(void)
     {
         unsigned char legacy[103];
         memcpy(legacy, data, 29);
-        memcpy(legacy + 29, data + 29, 37);
-        memcpy(legacy + 66, data + 104, 37);
+        memcpy(legacy + 29, data + 29, 17);
+        memcpy(legacy + 46, data + 50, 20);
+        memcpy(legacy + 66, data + 108, 17);
+        memcpy(legacy + 83, data + 129, 20);
         legacy[7] = 1;
         u32(legacy + 8, sizeof(legacy) - 16);
         repair(legacy, sizeof(legacy));
@@ -84,16 +86,30 @@ int main(void)
     {
         unsigned char previous[171];
         memcpy(previous, data, 29);
-        memcpy(previous + 29, data + 29, 71);
-        memcpy(previous + 100, data + 104, 71);
+        memcpy(previous + 29, data + 29, 17);
+        memcpy(previous + 46, data + 50, 54);
+        memcpy(previous + 100, data + 108, 17);
+        memcpy(previous + 117, data + 129, 54);
         previous[7] = 2;
         u32(previous + 8, sizeof(previous) - 16);
         repair(previous, sizeof(previous));
         assert(fvm_value_deserialize(dst, previous, sizeof(previous), &copy) == FVM_OK);
     }
-    data[7] = 3;
-    assert(fvm_value_deserialize(dst, data, size, &copy) == FVM_OK);
-    data[7] = 4;
+    {
+        unsigned char previous[179];
+        memcpy(previous, data, 29);
+        memcpy(previous + 29, data + 29, 17);
+        memcpy(previous + 46, data + 50, 58);
+        memcpy(previous + 104, data + 108, 17);
+        memcpy(previous + 121, data + 129, 58);
+        u32(previous + 8, sizeof(previous) - 16);
+        repair(previous, sizeof(previous));
+        for (i = 3; i <= 5; ++i)
+        {
+            previous[7] = (unsigned char)i;
+            assert(fvm_value_deserialize(dst, previous, sizeof(previous), &copy) == FVM_OK);
+        }
+    }
     fvm_serialized_free(data);
     /* Decode rollback does not keep partly allocated objects or invoke user code. */
     assert(fvm_serialization_register_callback(c, "test.noop", noop) == FVM_OK);

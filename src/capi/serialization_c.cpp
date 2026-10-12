@@ -7,6 +7,7 @@
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
 #include "../standard/base_state.hpp"
+#include "../standard/inheritance.hpp"
 #include "flashvm/utf8.h"
 #include "../standard/string_state.hpp"
 #include "../standard/number_state.hpp"
@@ -98,6 +99,8 @@ struct Object
     Value state;
     FVM_TextFieldState text;
     size_t prototype, metatable;
+    fvm_detail::vector<size_t>
+        implemented_interfaces; /* [GC:] Captured interface constructor references. */
     fvm_detail::map<fvm_detail::string, Value> properties;
     fvm_detail::map<unsigned long, Value> indexed;
     fvm_detail::map<fvm_detail::string, Callback> methods, metamethods;
@@ -408,8 +411,12 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(!src->resource_result_valid, FVM_UNSUPPORTED);
         dst.prototype = identify(c, src->prototype, seen);
         dst.metatable = identify(c, src->metatable, seen);
+        /* [GC:] Capture interface edges with the same identity map as other object references. */
+        for (size_t j = 0; j < src->implemented_interfaces.size(); ++j)
+            dst.implemented_interfaces.push_back(identify(c, src->implemented_interfaces[j], seen));
         size_t count = src->properties.size() + src->indexed.size() + src->methods.size() +
-                       src->metamethods.size() + src->accessors.size();
+                       src->metamethods.size() + src->accessors.size() +
+                       src->implemented_interfaces.size();
         require(count <= max_entries - entries, FVM_UNSUPPORTED);
         entries += count;
         charge(budget, count * 4);
@@ -654,6 +661,9 @@ void write_graph(const Graph &g, Writer &w)
             w.text_field(o.text);
         w.ref(o.prototype);
         w.ref(o.metatable);
+        w.u32((unsigned long)o.implemented_interfaces.size());
+        for (size_t j = 0; j < o.implemented_interfaces.size(); ++j)
+            w.ref(o.implemented_interfaces[j]);
         w.u32((unsigned long)o.properties.size());
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.properties.begin();
              p != o.properties.end(); ++p)
@@ -943,6 +953,12 @@ Graph read_graph(Reader &r, unsigned int version)
             o.text = r.text_field();
         o.prototype = r.ref();
         o.metatable = r.ref();
+        if (version >= 6)
+        {
+            size_t count = r.count();
+            for (size_t j = 0; j < count; ++j)
+                o.implemented_interfaces.push_back(r.ref());
+        }
         if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
@@ -1086,6 +1102,12 @@ Graph read_graph(Reader &r, unsigned int version)
         const Object &o = g.objects[i];
         validate_ref(o.prototype, n);
         validate_ref(o.metatable, n);
+        for (size_t j = 0; j < o.implemented_interfaces.size(); ++j)
+        {
+            validate_ref(o.implemented_interfaces[j], n);
+            require(o.implemented_interfaces[j] != none);
+            require(fvm_class_kind(g.objects[o.implemented_interfaces[j]].kind));
+        }
         validate_value(o.state, n);
         validate_callback(o.invocable, n);
         validate_callback(o.constructable, n);
@@ -1121,8 +1143,8 @@ Graph read_graph(Reader &r, unsigned int version)
              watcher != g.objects[i].watchers.end(); ++watcher)
         {
             const Object &descriptor = g.objects[watcher->second.object];
-            require(descriptor.kind == 0 && descriptor.prototype == none &&
-                    descriptor.metatable == none);
+            require(descriptor.kind == 0 && descriptor.implemented_interfaces.empty() &&
+                    descriptor.prototype == none && descriptor.metatable == none);
             fvm_detail::map<fvm_detail::string, Value>::iterator handler =
                 descriptor.properties.find("handler");
             require(handler != descriptor.properties.end() &&
@@ -1141,7 +1163,7 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 5};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 6};
 
 /* Decode the current value. */
 Graph decode(const void *data, size_t size)
@@ -1151,7 +1173,7 @@ Graph decode(const void *data, size_t size)
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 5);
+    require(version >= 1 && version <= 6);
     Reader header(data, size);
     header.offset = 8;
 
@@ -1429,6 +1451,9 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 dst->watchers[p->first] = restore_value(c, p->second, objects).object;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->attributes = src.attributes;
+            /* [GC:] Restore private interface edges using destination graph identities. */
+            for (size_t j = 0; j < src.implemented_interfaces.size(); ++j)
+                dst->implemented_interfaces.push_back(objects[src.implemented_interfaces[j]]);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (src.prototype != none)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

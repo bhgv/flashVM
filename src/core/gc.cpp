@@ -191,6 +191,10 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
             mark_object(accessor->second.root, pending);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->prototype, pending);
+        /* [GC:] Interface inheritance adds constructor edges to the reachable graph. */
+        for (size_t j = 0; j < o->implemented_interfaces.size(); ++j)
+            /* [GC:] Retain each implemented interface and its transitive declarations. */
+            mark_object(o->implemented_interfaces[j], pending);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->metatable, pending);
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */

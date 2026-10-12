@@ -4,6 +4,7 @@
 
 #include "function_record.hpp"
 #include "../standard/function_state.hpp"
+#include "../standard/inheritance.hpp"
 #include "../standard/base_state.hpp"
 #include "../standard/primitive_state.hpp"
 #include "flashvm/function.h"
@@ -1104,6 +1105,57 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.type = FVM_VALUE_OBJECT;
                 value.object = object;
                 stack.push_back(value);
+            }
+            else if (a.op == 0x69)
+            {
+                /* Extends pops superclass first and does not execute either constructor. */
+                if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT ||
+                    stack[stack.size() - 2].type != FVM_VALUE_OBJECT)
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Result r =
+                    fvm_class_extend(c, stack[stack.size() - 2].object, stack.back().object);
+                if (r != FVM_OK)
+                    return r;
+                stack.resize(stack.size() - 2);
+            }
+            else if (a.op == 0x2c)
+            {
+                /* ImplementsOp pops the class, count, then interface constructors. */
+                if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT)
+                    return FVM_INVALID_ARGUMENT;
+                double count = 0;
+                FVM_Result r = fvm_value_to_number(c, &stack[stack.size() - 2], &count);
+                if (r != FVM_OK)
+                    return r;
+                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
+                    count > stack.size() - 2)
+                    return FVM_INVALID_ARGUMENT;
+                unsigned int n = (unsigned int)count;
+                fvm_detail::vector<FVM_Value> interfaces;
+                for (unsigned int i = 0; i < n; ++i)
+                    interfaces.push_back(stack[stack.size() - 3 - i]);
+                r = fvm_class_implements(c, stack.back().object, n, interfaces.begin());
+                if (r != FVM_OK)
+                    return r;
+                stack.resize(stack.size() - n - 2);
+            }
+            else if (a.op == 0x2b)
+            {
+                /* CastOp pops the value first, then preserves it or replaces it with null. */
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                FVM_Value value = stack.back();
+                int match = 0;
+                FVM_Result r = fvm_value_instance_of(c, &value, &stack[stack.size() - 2], &match);
+                if (r != FVM_OK)
+                    return r;
+                if (!match)
+                {
+                    fvm_value_undefined(&value);
+                    value.type = FVM_VALUE_NULL;
+                }
+                stack.pop_back();
+                stack.back() = value;
             }
             else if (a.op == 0x54)
             { /* InstanceOf: native constructor metadata and prototype identity. */

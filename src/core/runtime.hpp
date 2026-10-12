@@ -95,6 +95,8 @@ struct FVM_Object
     FVM_Object *metatable; /* [GC:] Metadata object used for metamethod dispatch. */
     FVM_Context *owner;    /* [GC:] Owner responsible for the lifetime of this resource. */
     FVM_Object *prototype; /* [GC:] Prototype used for inherited property lookup. */
+    fvm_detail::vector<FVM_Object *>
+        implemented_interfaces; /* [GC:] Interface constructors retained by this prototype. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>
         metamethods; /* [GC:] Native metamethod callbacks keyed by name. */
