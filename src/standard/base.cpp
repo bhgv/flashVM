@@ -1,4 +1,5 @@
 #include "string_state.hpp"
+#include "array_generic.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/property_watch.hpp"
@@ -416,6 +417,9 @@ FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const
 FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "push", n, a, out, push);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long old = size(o);
@@ -436,9 +440,12 @@ FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
-FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "pop", n, a, out, pop);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long old = size(o);
@@ -455,9 +462,12 @@ FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, F
         return committed;
     return FVM_OK;
 }
-FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "shift", n, a, out, shift);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long old = size(o);
@@ -481,6 +491,9 @@ FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
 FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "unshift", n, a, out, unshift);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long old = size(o);
@@ -503,9 +516,12 @@ FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
-FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
-                   void *)
+FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
+                   FVM_Value *out, void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "reverse", n, a, out, reverse);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     Slots next;
@@ -545,6 +561,9 @@ unsigned long bound(double v, unsigned long length)
 FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "slice", n, a, out, slice);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     double first = 0, last = 0;
@@ -570,6 +589,9 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "splice", n, a, out, splice);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long length = size(o);
@@ -619,6 +641,9 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "concat", n, a, out, concat);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     FVM_Object *copy = 0;
@@ -655,6 +680,9 @@ FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "join", n, a, out, join);
+
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     for (size_t i = 0; i < c->joining_arrays.size(); ++i)
@@ -974,11 +1002,17 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
 FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "sort", n, a, out, sort);
+
     return sort_impl(c, o, n, a, out, 0);
 }
 FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
+    if (fvm_array_needs_generic(o))
+        return fvm_array_generic(c, o, "sortOn", n, a, out, sort_on);
+
     if (!n)
         return FVM_INVALID_ARGUMENT;
     SortSpec spec;
@@ -1023,6 +1057,32 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         spec.flags.push_back((unsigned int)flags);
     }
     return sort_impl(c, o, 0, 0, out, &spec);
+}
+FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
+                          FVM_Value *out, void *userdata)
+{
+    fvm_value_boolean(out, 0);
+    FVM_Object *registry = (FVM_Object *)userdata;
+    if (!registry || registry->owner != c || n < 2)
+        return FVM_OK;
+    FVM_Value name;
+    FVM_Result r = fvm_value_to_string(c, a, &name);
+    if (r != FVM_OK)
+        return r;
+    size_t size = fvm_string_size(name);
+    if (!size || std::memchr(name.string, 0, size))
+        return FVM_OK;
+    fvm_detail::string key(name.string, size);
+    if (a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED)
+        registry->properties.erase(key);
+    else
+    {
+        if (a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback)
+            return FVM_OK;
+        registry->properties[key] = a[1];
+    }
+    fvm_value_boolean(out, 1);
+    return FVM_OK;
 }
 /* The descriptor is a traced object, not a host pointer: getter and setter
  * closures remain live and travel with the property through graph channels. */
@@ -1231,6 +1291,17 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     r = fvm_array_create_like(c, 0, 0, &array_proto);
     if (r != FVM_OK)
         return r;
+    /* A normal traced record retains registered constructors and travels with
+     * the static registerClass function. No opaque host-side registry is used. */
+    FVM_Object *registry = 0;
+    r = fvm_object_create(c, &registry);
+    if (r != FVM_OK)
+        return r;
+    FVM_NativeEntry registry_entry;
+    registry_entry.callback = register_class;
+    registry_entry.root = registry;
+    registry_entry.userdata = registry;
+    object_class->methods["registerClass"] = registry_entry;
     object_class->resource_kind = OBJECT_CLASS;
     object_proto->resource_kind = OBJECT_OBJECT;
     array_class->resource_kind = ARRAY_CLASS;
@@ -1337,6 +1408,8 @@ FVM_Result fvm_base_validate(FVM_Context *c)
 }
 unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == register_class)
+        return 626;
     if (callback == script_property_get)
         return 608;
     if (callback == script_property_set)
@@ -1367,6 +1440,8 @@ unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 }
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
 {
+    if (id == 626)
+        return register_class;
     if (id == 608)
         return script_property_get;
     if (id == 609)
@@ -1392,4 +1467,58 @@ FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
     return id >= 630 && id < 630 + sizeof(array_methods) / sizeof(array_methods[0])
                ? array_methods[id - 630].callback
                : 0;
+}
+
+FVM_Result fvm_base_class_registry(FVM_Context *c, FVM_Object **out)
+{
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    try
+    {
+        FVM_Value object;
+        FVM_Result r = fvm_get_global(c, "Object", &object);
+        if (r != FVM_OK)
+            return r;
+        if (object.type != FVM_VALUE_OBJECT || object.object->resource_kind != OBJECT_CLASS)
+            return FVM_NOT_FOUND;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator entry =
+            object.object->methods.find("registerClass");
+        if (entry == object.object->methods.end() || entry->second.callback != register_class ||
+            !entry->second.root || entry->second.root != entry->second.userdata)
+            return FVM_NOT_FOUND;
+        *out = entry->second.root;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+extern "C" FVM_Result fvm_registered_class(FVM_Context *c, const char *name, FVM_Object **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!c || !name)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        FVM_Object *registry = 0;
+        FVM_Result r = fvm_base_class_registry(c, &registry);
+        if (r != FVM_OK)
+            return r;
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
+            registry->properties.find(name);
+        if (entry == registry->properties.end())
+            return FVM_NOT_FOUND;
+        if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object->invocable.callback)
+            return FVM_INVALID_ARGUMENT;
+        *out = entry->second.object;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }

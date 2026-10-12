@@ -22,6 +22,8 @@ extern "C"
      * TextField. Imported graphs retain their own prototype identities. */
     FVM_API FVM_Result fvm_value_instance_of(FVM_Context *, const FVM_Value *,
                                              const FVM_Value *constructor, int *out);
+    /* Borrowed constructor registered by Object.registerClass; NOT_FOUND if absent. */
+    FVM_API FVM_Result fvm_registered_class(FVM_Context *, const char *, FVM_Object **);
 #ifdef __cplusplus
 }
 #endif

@@ -4,6 +4,7 @@
 FVM_Result fvm_base_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
+FVM_Result fvm_base_class_registry(FVM_Context *, FVM_Object **);
 FVM_Result fvm_base_validate(FVM_Context *);
 unsigned long fvm_base_callback_id(FVM_NativeFunction);
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long);

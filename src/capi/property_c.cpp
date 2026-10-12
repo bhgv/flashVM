@@ -58,12 +58,10 @@ extern "C" FVM_Result fvm_object_delete(FVM_Context *c, FVM_Object *o, const cha
         unsigned long index;
         if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
             o->indexed.erase(index);
-        else
-        {
-            o->properties.erase(name);
-            o->methods.erase(name);
-            o->accessors.erase(name);
-        }
+        /* Canonical numeric accessors/methods are own properties too. */
+        o->properties.erase(name);
+        o->methods.erase(name);
+        o->accessors.erase(name);
         o->attributes.erase(name);
         *deleted = 1;
         return FVM_OK;
