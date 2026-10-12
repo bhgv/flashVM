@@ -145,6 +145,64 @@ FVM_Result integer_field(FVM_Object *data, const char *name, unsigned long limit
     return FVM_OK;
 }
 
+/* Read a signed ActionScript depth without converting negative values to unsigned slots. */
+FVM_Result depth_field(FVM_Object *data, long &out)
+{
+    FVM_Value value;
+    FVM_Result r = field(data, "depth", value);
+    if (r != FVM_OK || value.type != FVM_VALUE_NUMBER ||
+        !(value.number >= -16384 && value.number <= 1048575) ||
+        value.number != std::floor(value.number))
+        return FVM_INVALID_ARGUMENT;
+    out = (long)value.number;
+    return FVM_OK;
+}
+
+/* Read the slot encoding; snapshots before v0.27 use unbiased nonnegative indices. */
+FVM_Result slot_bias(FVM_Object *data, unsigned long &bias)
+{
+    bias = 0;
+    if (data->properties.find("slot_bias") == data->properties.end())
+        return FVM_OK;
+    FVM_Result r = integer_field(data, "slot_bias", 16384, bias);
+    return r == FVM_OK && (bias == 0 || bias == 16384) ? FVM_OK : FVM_INVALID_ARGUMENT;
+}
+
+/* [GC:] Upgrade a legacy child table atomically, preserving all existing object edges. */
+FVM_Result ensure_slot_bias(FVM_Object *data, FVM_Object *children)
+{
+    unsigned long bias = 0;
+    FVM_Result r = slot_bias(data, bias);
+    if (r != FVM_OK || bias)
+        return r;
+    Slots next;
+    for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+    {
+        if (i->first > 1048575)
+            return FVM_INVALID_ARGUMENT;
+        /* [GC:] Copy the same children; migration must not clone or detach live instances. */
+        next[i->first + 16384] = i->second;
+    }
+    data->properties["slot_bias"] = number(16384);
+    children->indexed.swap(next);
+    return FVM_OK;
+}
+
+/* Translate a public depth into its parent's internal unsigned slot key. */
+FVM_Result slot_key(FVM_Object *data, long depth, unsigned long &key)
+{
+    unsigned long bias = 0;
+    FVM_Result r = slot_bias(data, bias);
+    if (r != FVM_OK)
+        return r;
+    if (depth < -16384 || depth > 1048575)
+        return FVM_INVALID_ARGUMENT;
+    if (depth < 0 && !bias)
+        return FVM_NOT_FOUND;
+    key = (unsigned long)(depth + (long)bias);
+    return FVM_OK;
+}
+
 /* Compute and return make. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Object *proto,
@@ -221,6 +279,8 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
     data->properties["entered"] = number(0);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["depth"] = number(0);
+    /* Biased slots place authored SWF depths below dynamic ActionScript depths. */
+    data->properties["slot_bias"] = number(16384);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["cx"] = number(0);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -373,13 +433,23 @@ FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *
 }
 
 /* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
-FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, unsigned long depth)
+FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, long depth)
 {
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
     r = private_object(data, "children", children);
+    if (r != FVM_OK)
+        return r;
+    if (depth < 0)
+    {
+        r = ensure_slot_bias(data, children);
+        if (r != FVM_OK)
+            return r;
+    }
+    unsigned long key = 0;
+    r = slot_key(data, depth, key);
     if (r != FVM_OK)
         return r;
     FVM_Object *child_data = child->resource_result.object;
@@ -391,7 +461,7 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, uns
     /* Initialization / Инициализация локального состояния. */
     Slots next = children->indexed;
     fvm_detail::map<fvm_detail::string, FVM_Value> props = o->properties;
-    Slots::iterator old = children->indexed.find((unsigned long)depth);
+    Slots::iterator old = children->indexed.find(key);
     FVM_Object *replaced = old != children->indexed.end() && old->second.type == FVM_VALUE_OBJECT
                                ? old->second.object
                                : 0;
@@ -407,7 +477,7 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, uns
                 props.erase(old_name.string);
         }
     }
-    next[(unsigned long)depth] = object(child);
+    next[key] = object(child);
     if (props.find(name) == props.end())
         props[name] = object(child);
     if (replaced)
@@ -453,7 +523,7 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = args(c, n, a, 1, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     FVM_Object *child = 0, *proto = o->prototype;
     FVM_Value library;
@@ -473,7 +543,7 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     /* [GC:] Empty descendants retain the library so attachMovie can resolve linkage names. */
     if (imported)
         child->resource_result.object->properties["library"] = library;
-    r = publish_child(o, child, name.string, (unsigned long)depth);
+    r = publish_child(o, child, name.string, (long)depth);
     if (r == FVM_OK)
         *out = object(child);
     return r;
@@ -607,7 +677,7 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = args(c, n, a, 2, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
 
     FVM_Object *proto = 0, *constructor = 0;
@@ -627,7 +697,7 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = fvm_object_set(c, child->resource_result.object, "linkage", &linkage);
     if (r != FVM_OK)
         return r;
-    r = publish_child(o, child, name.string, (unsigned long)depth);
+    r = publish_child(o, child, name.string, (long)depth);
     if (r != FVM_OK)
         return r;
     return finish_instance(c, child, constructor, n > 3 ? a + 3 : 0, out);
@@ -701,7 +771,7 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     r = args(c, n, a, 1, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < 0 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     unsigned long total = 0;
     FVM_Object *frames = 0;
@@ -762,7 +832,7 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     r = copy_drawing(c, data, child->resource_result.object);
     if (r != FVM_OK)
         return r;
-    r = publish_child(p, child, name.string, (unsigned long)depth);
+    r = publish_child(p, child, name.string, (long)depth);
     if (r != FVM_OK)
         return r;
     return finish_instance(c, child, constructor, n > 2 ? a + 2 : 0, out);
@@ -782,17 +852,21 @@ FVM_Result remove(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
     if (p)
     {
         FVM_Object *pd = 0, *children = 0;
-        unsigned long depth = 0;
+        long depth = 0;
+        unsigned long key = 0;
         r = state(p, pd);
         if (r != FVM_OK)
             return r;
         r = private_object(pd, "children", children);
         if (r != FVM_OK)
             return r;
-        r = integer_field(data, "depth", 1048575, depth);
+        r = depth_field(data, depth);
         if (r != FVM_OK)
             return r;
-        children->indexed.erase(depth);
+        r = slot_key(pd, depth, key);
+        if (r != FVM_OK)
+            return r;
+        children->indexed.erase(key);
         FVM_Value name;
         field(o, "_name", name);
         if (name.type == FVM_VALUE_STRING)
@@ -836,13 +910,16 @@ FVM_Result next_depth(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Valu
     r = private_object(data, "children", children);
     if (r != FVM_OK)
         return r;
-    unsigned long next = 0;
+    unsigned long next = 0, bias = 0;
+    r = slot_bias(data, bias);
+    if (r != FVM_OK)
+        return r;
     for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
     {
-        if (i->first > 1048575)
+        if (i->first > 1048575 + bias)
             return FVM_INVALID_ARGUMENT;
-        if (i->first >= next)
-            next = i->first + 1;
+        if (i->first >= bias && i->first - bias >= next)
+            next = i->first - bias + 1;
     }
     fvm_value_number(out, next);
     return FVM_OK;
@@ -863,9 +940,18 @@ FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Val
         return r;
     double depth = 0;
     r = args(c, n, a, 0, 0, depth);
-    if (r != FVM_OK || depth < 0 || depth > 1048575 || depth != std::floor(depth))
+    if (r != FVM_OK || depth < -16384 || depth > 1048575 || depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
-    Slots::iterator i = children->indexed.find((unsigned long)depth);
+    unsigned long key = 0;
+    r = slot_key(data, (long)depth, key);
+    if (r == FVM_NOT_FOUND)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    if (r != FVM_OK)
+        return r;
+    Slots::iterator i = children->indexed.find(key);
     if (i == children->indexed.end())
         fvm_value_undefined(out);
     else
@@ -891,8 +977,9 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     r = private_object(pd, "children", children);
     if (r != FVM_OK)
         return r;
-    unsigned long old = 0;
-    r = integer_field(data, "depth", 1048575, old);
+    long old = 0;
+    unsigned long old_key = 0, desired_key = 0;
+    r = depth_field(data, old);
     if (r != FVM_OK)
         return r;
     double desired = 0;
@@ -902,11 +989,11 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
         if (parent(other) != parent(o))
             return FVM_INVALID_ARGUMENT;
         FVM_Object *od = 0;
-        unsigned long d = 0;
+        long d = 0;
         r = state(other, od);
         if (r != FVM_OK)
             return r;
-        r = integer_field(od, "depth", 1048575, d);
+        r = depth_field(od, d);
         if (r != FVM_OK)
             return r;
         desired = d;
@@ -914,9 +1001,20 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     else
     {
         r = args(c, n, a, 0, 0, desired);
-        if (r != FVM_OK || desired < 0 || desired > 1048575 || desired != std::floor(desired))
+        if (r != FVM_OK || desired < -16384 || desired > 1048575 || desired != std::floor(desired))
             return FVM_INVALID_ARGUMENT;
-        Slots::iterator i = children->indexed.find((unsigned long)desired);
+    }
+    r = ensure_slot_bias(pd, children);
+    if (r != FVM_OK)
+        return r;
+    r = slot_key(pd, old, old_key);
+    if (r == FVM_OK)
+        r = slot_key(pd, (long)desired, desired_key);
+    if (r != FVM_OK)
+        return r;
+    if (!other)
+    {
+        Slots::iterator i = children->indexed.find(desired_key);
         if (i != children->indexed.end())
         {
             if (i->second.type != FVM_VALUE_OBJECT)
@@ -927,10 +1025,10 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     Slots next = children->indexed;
 
     /* Computation / Вычисление и обновление состояния. */
-    next.erase(old);
-    next[(unsigned long)desired] = object(o);
+    next.erase(old_key);
+    next[desired_key] = object(o);
     if (other && other != o)
-        next[old] = object(other);
+        next[old_key] = object(other);
     if (other && other != o)
     {
         FVM_Object *od = 0;
