@@ -1,4 +1,5 @@
-/* FlashVM: bounded bitmap fills, masked bounds/tests, channel merging and palette remapping. */
+/* FlashVM: bounded bitmap fills, masked bounds/tests, channel merging and palette remapping and
+ * deterministic noise. */
 #include "bitmap_ops.hpp"
 #include "bitmap_state.hpp"
 #include "bitmap_region.hpp"
@@ -643,5 +644,111 @@ FVM_Result fvm_bitmap_hit_test(FVM_Context *c, FVM_Object *self, unsigned n, con
             }
     }
     fvm_value_boolean(out, hit ? 1 : 0);
+    return FVM_OK;
+}
+
+namespace
+{
+/* Convert optional public numeric noise arguments to low unsigned 32 bits, including NaN/infinity.
+ */
+FVM_Result noise_argument(FVM_Context *c, unsigned n, const FVM_Value *args, unsigned index,
+                          unsigned long fallback, unsigned long &out)
+{
+    if (n <= index)
+    {
+        out = fallback;
+        return FVM_OK;
+    }
+    double value = 0;
+    FVM_Result r = fvm_value_to_number(c, args + index, &value);
+    if (r != FVM_OK)
+        return r;
+    out = value == value && std::fabs(value) <= std::numeric_limits<double>::max()
+              ? color_word(value)
+              : 0;
+    return FVM_OK;
+}
+/* Advance Park-Miller with Schrage reduction, keeping every product and subtraction signed-32 safe.
+ */
+unsigned char noise_sample(unsigned long &state, unsigned low, unsigned range)
+{
+    long next = 16807L * (long)(state % 127773UL) - 2836L * (long)(state / 127773UL);
+    if (next < 0)
+        next += 2147483647L;
+    state = (unsigned long)next;
+    return (unsigned char)(low + state % range);
+}
+} // namespace
+/* [GC:] Coerce options and seed before regenerating a complete unpublished RGBA noise image. */
+FVM_Result fvm_bitmap_noise(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value *args,
+                            FVM_Value *out, void *)
+{
+    /* [GC:] Retain receiver and argument conversion objects while callbacks may dispose pixels. */
+    FVM_NativeCallGuard guard(c);
+    fvm_value_undefined(out);
+    unsigned long low_word = 0, high_word = 255, channels = 7, seed = 0;
+    FVM_Result r = noise_argument(c, n, args, 1, 0, low_word);
+    if (r == FVM_OK)
+        r = noise_argument(c, n, args, 2, 255, high_word);
+    if (r == FVM_OK)
+        r = noise_argument(c, n, args, 3, 7, channels);
+    if (r != FVM_OK)
+        return r;
+    bool gray =
+        n > 4 &&
+        (args[4].type == FVM_VALUE_OBJECT ||
+         (args[4].type == FVM_VALUE_BOOLEAN && args[4].boolean) ||
+         (args[4].type == FVM_VALUE_NUMBER && args[4].number && args[4].number == args[4].number) ||
+         (args[4].type == FVM_VALUE_STRING && fvm_value_string_size(args + 4)));
+    FVM_BitmapState *target = fvm_bitmap_pixels(self);
+    if (!target || target->disposed)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    if (!n)
+        return FVM_OK;
+    r = noise_argument(c, n, args, 0, 0, seed);
+    if (r != FVM_OK)
+        return r;
+    target = fvm_bitmap_pixels(self);
+    if (!target || target->disposed)
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
+    }
+    unsigned low = (unsigned)(low_word & 255), high = (unsigned)(high_word & 255);
+    if (high < low)
+        high = low;
+    unsigned range = high - low + 1;
+    double signed_seed = seed >= 0x80000000UL ? (double)seed - 4294967296.0 : (double)seed;
+    unsigned long state = (unsigned long)(signed_seed <= 0 ? 1 - signed_seed : signed_seed);
+    state %= 2147483647UL;
+    unsigned long limit = c->runtime->config.memory_limit_bytes;
+    if (limit && target->pixels.size() > limit)
+        return FVM_OUT_OF_MEMORY;
+    /* [GC:] Hold the replacement buffer locally while the native barrier retains its owning bitmap.
+     */
+    fvm_detail::vector<unsigned char> pixels(target->pixels.size());
+    for (size_t i = 0; i < pixels.size(); i += 4)
+    {
+        if (gray)
+        {
+            unsigned char value = noise_sample(state, low, range);
+            pixels[i] = pixels[i + 1] = pixels[i + 2] = value;
+        }
+        else
+            for (unsigned channel = 0; channel < 3; ++channel)
+                pixels[i + channel] =
+                    channels & (1UL << channel) ? noise_sample(state, low, range) : 0;
+        pixels[i + 3] = channels & 8 ? noise_sample(state, low, range) : 255;
+        if (!target->transparent)
+            pixels[i + 3] = 255;
+        if (!pixels[i + 3])
+            pixels[i] = pixels[i + 1] = pixels[i + 2] = 0;
+    }
+    /* [GC:] Preserve the managed bitmap identity while atomically replacing its owned pixel buffer.
+     */
+    target->pixels.swap(pixels);
     return FVM_OK;
 }

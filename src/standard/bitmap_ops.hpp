@@ -22,4 +22,7 @@ FVM_Result fvm_bitmap_palette_map(FVM_Context *, FVM_Object *, unsigned, const F
  */
 FVM_Result fvm_bitmap_hit_test(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *,
                                FVM_Value *, void *);
+/* [GC:] Stage deterministic channel noise before replacing the receiver's complete pixel buffer. */
+FVM_Result fvm_bitmap_noise(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *,
+                            void *);
 #endif

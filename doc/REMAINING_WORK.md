@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.59 / Remaining work after v0.59
+# Оставшаяся работа после v0.60 / Remaining work after v0.60
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -110,3 +110,6 @@ v0.58 adds the first filter classes and color matrix bitmap application; remaini
 
 В v0.59 подключён ConvolutionFilter: native options/matrix copies, whole-source halo sampling, edge replacement, preserveAlpha, transport и OOM (CONVOLUTION_FILTER.md).
 v0.59 adds convolution filtering; remaining filters, scene rendering and exact Flash conformance remain open.
+
+В v0.60 добавлен детерминированный BitmapData.noise: signed seed normalization, portable Park-Miller, channel masks/grayscale, transport и OOM rollback (BITMAP_NOISE.md).
+v0.60 adds bitmap noise; Perlin noise, pixel dissolve and exact alpha/Flash conformance remain open.
