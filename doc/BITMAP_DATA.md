@@ -1,5 +1,25 @@
 # BitmapData: текущая реализация / Current implementation
 
+## Current development checkpoint: v0.58 / Текущая контрольная точка
+
+Ниже сохранены исторические проверки v0.37–v0.42. Более поздние реализации
+описаны отдельно: [bitmap resources and JPEG tables](SWF_JPEG_TABLES.md),
+[MovieClip bitmap fills](MOVIECLIP_BITMAP_FILL.md),
+[attachBitmap](MOVIECLIP_ATTACH_BITMAP.md), [loadBitmap](BITMAP_LOAD_RESOURCE.md),
+[draw/blend coverage](BITMAP_DRAW.md), [floodFill](BITMAP_FLOOD_FILL.md),
+[color bounds](BITMAP_COLOR_BOUNDS.md), [threshold](BITMAP_THRESHOLD.md),
+[merge](BITMAP_MERGE.md), [paletteMap](BITMAP_PALETTE_MAP.md),
+[hitTest](BITMAP_HIT_TEST.md) и [ColorMatrixFilter](COLOR_MATRIX_FILTER.md).
+
+Остаются noise, perlinNoise, pixelDissolve, остальные applyFilter/generateFilterRect
+варианты, полная premultiplied/coercion сверка и scene filter rendering.
+Наличие метода и успешные сценарии не означают полную Flash-совместимость.
+
+Historical v0.37–v0.42 evidence is retained below. The linked later documents
+cover resource integration, bitmap scene rendering and additional pixel methods.
+Noise, Perlin noise, pixel dissolve, remaining filter variants, exact historical
+premultiplied/coercion conformance and scene filters remain open.
+
 Реализован класс `flash.display.BitmapData`: ограниченные размеры 1–2880,
 прозрачные/непрозрачные буферы, width/height/transparent/rectangle только для
 чтения, clone, dispose, getPixel, getPixel32, setPixel, setPixel32, fillRect,

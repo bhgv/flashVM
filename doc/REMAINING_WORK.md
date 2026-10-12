@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.57 / Remaining work after v0.57
+# Оставшаяся работа после v0.58 / Remaining work after v0.58
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -104,3 +104,6 @@ v0.56 checks palette mapping; exact historical Flash coercion and premultiplied 
 
 В v0.57 проверен hitTest: point/rectangle/bitmap, alpha thresholds, integer bounds, queue/file, GC и OOM (BITMAP_HIT_TEST.md).
 v0.57 checks pixel hit testing; reference coercion/accessor compatibility remains open.
+
+В v0.58 подключены BitmapFilter/ColorMatrixFilter, matrix snapshots/clone и BitmapData.applyFilter/generateFilterRect для color matrix; остальные фильтры и MovieClip.filters открыты (COLOR_MATRIX_FILTER.md).
+v0.58 adds the first filter classes and color matrix bitmap application; remaining filters and scene filter rendering stay open.

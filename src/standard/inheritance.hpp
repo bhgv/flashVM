@@ -9,7 +9,7 @@ inline bool fvm_class_kind(unsigned long kind)
     return kind == 21 || kind == 23 || kind == 25 || kind == 27 || kind == 29 || kind == 31 ||
            kind == 35 || kind == 33 || kind == 32 || kind == 36 || kind == 41 || kind == 1003 ||
            kind == 1004 || kind == 44 || kind == 45 || kind == 47 || kind == 49 || kind == 51 ||
-           kind == 53;
+           kind == 53 || kind == 55 || kind == 57;
 }
 /* Recognize supported function and native class constructor representations. */
 bool fvm_is_class_constructor(const FVM_Object *constructor);

@@ -4,6 +4,7 @@
 #include "color_transform_state.hpp"
 #include "transform_state.hpp"
 #include "bitmap_state.hpp"
+#include "filter_state.hpp"
 #include "primitive_state.hpp"
 #include "inheritance.hpp"
 #include "../core/native_call_guard.hpp"
@@ -862,6 +863,12 @@ FVM_Result fvm_geometry_stage(FVM_Context *c, Properties &globals,
     r = fvm_bitmap_stage(c, flash, bindings, object_proto, function_proto, constructors);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Complete filter class and Array captures before publishing the shared flash namespace.
+     */
+    r = fvm_filter_stage(c, flash, bindings, object_proto, function_proto,
+                         own_object(c, globals["Array"].object, "prototype"), constructors);
+    if (r != FVM_OK)
+        return r;
     /* [GC:] Publish staged namespace edges only after all method/constructor records exist. */
     flash->properties["geom"] = managed(geometry);
     /* [GC:] Bind MovieClip.transform only after its captured geometry constructor graph exists. */
@@ -889,7 +896,8 @@ FVM_Result fvm_geometry_validate(FVM_Context *c)
                    matrix->constructable.callback == matrix_constructor &&
                    fvm_rectangle_validate(c, geometry) &&
                    fvm_color_transform_validate(c, geometry) &&
-                   fvm_transform_validate(c, geometry) && fvm_bitmap_validate(c, flash)
+                   fvm_transform_validate(c, geometry) && fvm_bitmap_validate(c, flash) &&
+                   fvm_filter_validate(c, flash)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
@@ -919,7 +927,10 @@ unsigned long fvm_geometry_callback_id(FVM_NativeFunction callback)
     if (color_id)
         return color_id;
     unsigned long transform_id = fvm_transform_callback_id(callback);
-    return transform_id ? transform_id : fvm_bitmap_callback_id(callback);
+    if (transform_id)
+        return transform_id;
+    unsigned long filter_id = fvm_filter_callback_id(callback);
+    return filter_id ? filter_id : fvm_bitmap_callback_id(callback);
 }
 
 /* Restore geometry callbacks without accepting an unknown or conflicting identifier. */
@@ -944,5 +955,8 @@ FVM_NativeFunction fvm_geometry_callback_from_id(unsigned long id)
     if (color)
         return color;
     FVM_NativeFunction transform = fvm_transform_callback_from_id(id);
-    return transform ? transform : fvm_bitmap_callback_from_id(id);
+    if (transform)
+        return transform;
+    FVM_NativeFunction filter = fvm_filter_callback_from_id(id);
+    return filter ? filter : fvm_bitmap_callback_from_id(id);
 }
