@@ -116,3 +116,9 @@ Shared table JPEG and SWF 1..8 placement have binary/pixel/GC/transport and allo
 Static loadBitmap: независимые копии exported bitmap, AVM1/current/global scope, NUL/missing linkage, GC/OOM и queue/file/TCP. [BITMAP_LOAD_RESOURCE.md](BITMAP_LOAD_RESOURCE.md) содержит RU/EN ограничения; loaded-library/closure scope и этап 4 открыты.
 
 Static resource copies and transport are checked; full library scope and remaining graphics/media remain open.
+
+## v0.50: BitmapData.draw
+
+Проверенный subset draw BitmapData/MovieClip: transforms, color, clipping, nearest/bilinear, 12 blend modes, GC/queue и allocation rollback/balance. [BITMAP_DRAW.md](BITMAP_DRAW.md) описывает RU/EN ограничения; alpha/erase, masks/group effects и этап 4 открыты.
+
+Transactional drawing has fixed-vector/scene and allocation-failure coverage; complete blend/Flash conformance remains open.

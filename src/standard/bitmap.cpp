@@ -1,5 +1,7 @@
-/* FlashVM: BitmapData pixel storage, exported resource loading, cloning and clipped pixel operations. */
+/* FlashVM: BitmapData pixel storage, exported resource loading, cloning and clipped pixel
+ * operations. */
 #include "bitmap_state.hpp"
+#include "bitmap_draw.hpp"
 #include "color_transform_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/standard.h"
@@ -511,9 +513,9 @@ FVM_Result method(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value 
 }
 const char *const properties[] = {"width", "height", "transparent", "rectangle"};
 const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>};
-const char *const methods[] = {"clone",          "dispose",     "getPixel",  "getPixel32",
-                               "setPixel",       "setPixel32",  "fillRect",  "scroll",
-                               "colorTransform", "copyChannel", "copyPixels"};
+const char *const methods[] = {"clone",          "dispose",     "getPixel",   "getPixel32",
+                               "setPixel",       "setPixel32",  "fillRect",   "scroll",
+                               "colorTransform", "copyChannel", "copyPixels", "draw"};
 const FVM_NativeFunction callbacks[] = {method<0>,
                                         method<1>,
                                         method<2>,
@@ -524,7 +526,8 @@ const FVM_NativeFunction callbacks[] = {method<0>,
                                         method<7>,
                                         method<8>,
                                         method<9>,
-                                        fvm_bitmap_copy_pixels};
+                                        fvm_bitmap_copy_pixels,
+                                        fvm_bitmap_draw};
 } // namespace
 /* [GC:] Borrow the native pixel allocation only when its internal ownership callback matches. */
 FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)
@@ -629,7 +632,7 @@ FVM_Result fvm_bitmap_stage(FVM_Context *c, FVM_Object *flash, FVM_Object *bindi
     bindings->properties["BitmapData"] = managed(klass);
     /* [GC:] The staged flash namespace owns the display namespace. */
     flash->properties["display"] = managed(display);
-    for (unsigned i = 0; i < 11; ++i)
+    for (unsigned i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); ++i)
     {
         entry.callback = callbacks[i];
         /* [GC:] Method userdata aliases retained class factories. */
@@ -672,9 +675,9 @@ unsigned long fvm_bitmap_callback_id(FVM_NativeFunction fn)
         return 1500;
     if (fn == load_bitmap)
         return 1501;
-    for (unsigned i = 0; i < 11; ++i)
+    for (unsigned i = 0; i < sizeof(callbacks) / sizeof(callbacks[0]); ++i)
         if (fn == callbacks[i])
-            return 1510 + i;
+            return i < 11 ? 1510 + i : 1540 + i - 11;
     for (unsigned i = 0; i < 4; ++i)
         if (fn == getters[i])
             return 1530 + i;
@@ -689,6 +692,8 @@ FVM_NativeFunction fvm_bitmap_callback_from_id(unsigned long id)
         return load_bitmap;
     if (id >= 1510 && id < 1521)
         return callbacks[id - 1510];
+    if (id >= 1540 && id < 1540 + sizeof(callbacks) / sizeof(callbacks[0]) - 11)
+        return callbacks[id - 1540 + 11];
     if (id >= 1530 && id < 1534)
         return getters[id - 1530];
     return 0;

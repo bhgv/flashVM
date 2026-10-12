@@ -8,6 +8,7 @@
 #include "transform_scene.hpp"
 #include "gradient.hpp"
 #include "bitmap_fill.hpp"
+#include "bitmap_draw.hpp"
 #include "bitmap_state.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
@@ -2278,7 +2279,8 @@ FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
 
 /* Render the current value. */
 FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
-                  const ColorAffine &parent_color, unsigned int depth)
+                  const ColorAffine &parent_color, unsigned int depth,
+                  const FVM_Affine *drawing_base = 0)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
@@ -2288,16 +2290,22 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
-    double visible = 0;
-    r = numeric(c, o, "_visible", visible);
-    if (r != FVM_OK)
-        return r;
-    if (!visible)
-        return FVM_OK;
-    ColorAffine transform;
-    r = display_color(c, o, data, parent_color, transform);
-    if (r != FVM_OK)
-        return r;
+    if (!drawing_base || depth)
+    {
+        double visible = 0;
+        r = numeric(c, o, "_visible", visible);
+        if (r != FVM_OK)
+            return r;
+        if (!visible)
+            return FVM_OK;
+    }
+    ColorAffine transform = parent_color;
+    if (!drawing_base || depth)
+    {
+        r = display_color(c, o, data, parent_color, transform);
+        if (r != FVM_OK)
+            return r;
+    }
     r = private_object(data, "paths", paths);
     if (r != FVM_OK)
         return r;
@@ -2305,12 +2313,30 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
     if (r != FVM_OK)
         return r;
     FVM_Affine world;
-    r = matrix(c, o, world);
-    if (r != FVM_OK)
-        return r;
-    r = bitmap_snap(data, world);
-    if (r != FVM_OK)
-        return r;
+    if (drawing_base)
+    {
+        world = *drawing_base;
+        if (depth)
+        {
+            FVM_Affine local;
+            r = local_matrix(c, o, local);
+            if (r != FVM_OK)
+                return r;
+            world = multiply(world, local);
+        }
+    }
+    else
+    {
+        r = matrix(c, o, world);
+        if (r != FVM_OK)
+            return r;
+    }
+    if (!drawing_base || depth)
+    {
+        r = bitmap_snap(data, world);
+        if (r != FVM_OK)
+            return r;
+    }
     for (Slots::iterator i = paths->indexed.begin(); i != paths->indexed.end(); ++i)
     {
         if (i->second.type != FVM_VALUE_OBJECT)
@@ -2380,7 +2406,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         FVM_Value child = children->indexed.find(order[i])->second;
         if (child.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
-        r = render(c, child.object, surface, transform, depth + 1);
+        r = render(c, child.object, surface, transform, depth + 1, drawing_base ? &world : 0);
         if (r != FVM_OK)
             return r;
     }
@@ -3184,6 +3210,24 @@ extern "C" FVM_Result fvm_movieclip_render(
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* [GC:] Render source-library geometry while ignoring the root clip's on-stage pose/color. */
+FVM_Result fvm_movieclip_render_bitmap(FVM_Context *c, FVM_Object *clip, FVM_RasterSurface *surface,
+                                       const FVM_Affine &matrix, const double *multipliers,
+                                       const double *offsets)
+{
+    if (!c || !clip || clip->owner != c || !surface || !multipliers || !offsets)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] The caller retains source and destination while script getters inspect child poses. */
+    FVM_NativeCallGuard guard(c);
+    ColorAffine color;
+    for (unsigned i = 0; i < 4; ++i)
+    {
+        color.multiply[i] = multipliers[i];
+        color.add[i] = offsets[i];
+    }
+    return render(c, clip, surface, color, 0, &matrix);
 }
 
 /* Build constructor and prototype for movieclip. */

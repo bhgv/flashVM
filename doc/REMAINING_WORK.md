@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.49 / Remaining work after v0.49
+# Оставшаяся работа после v0.50 / Remaining work after v0.50
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -39,7 +39,7 @@
 
 Проверенные новые части: Number power-of-two formatting (v0.39), числовые/битовые
 Action-коды (v0.40), векторный shape hitTest (v0.41), copyPixels (v0.42), beginBitmapFill и sampler (v0.43).
-Следующая задача пункта 4: draw и оставшиеся BitmapData операции; полная scope семантика loadBitmap ещё требует сверки. Версия и число тестов
+Следующая задача пункта 4: alpha/erase coverage, оставшиеся BitmapData операции и filters; полная scope семантика loadBitmap ещё требует сверки. Версия и число тестов
 не означают завершения пункта. Технические результаты хранятся отдельно от Git.
 
 ## English
@@ -74,3 +74,7 @@ v0.48 checks shared JPEG tables and bitmap placement across SWF 1..8; exact reco
 В v0.49 проверен static loadBitmap с независимыми копиями и AVM1/global resource scopes, GC/OOM и queue/file/TCP (BITMAP_LOAD_RESOURCE.md).
 
 v0.49 checks static loadBitmap copies, current/global resource scope, GC/OOM and queue/file/TCP; full reference scope conformance remains open.
+
+В v0.50 проверен draw BitmapData/MovieClip, transforms/clipping, 12 blend modes, self-alias, GC/OOM и queue (BITMAP_DRAW.md). Alpha/erase и точная group/Flash семантика остаются открытыми.
+
+v0.50 checks draw with 12 blend modes; alpha/erase coverage and exact grouping/reference conformance remain open.
