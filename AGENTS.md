@@ -1,5 +1,10 @@
 # FlashVM development rules
 
+- Read `doc/ROADMAP.md` before continuing development. It is the user-approved
+  completion plan and the primary reference for scope, sequence and acceptance.
+  Keep compatibility status and test evidence current; do not mark a stage
+  complete without the tests and documentation required by that roadmap.
+
 - Start every new commit subject with `v<version> `, using the development
   version in `VERSION.txt`, followed by a meaningful English description.
   Example: `v0.1 Fix native constructor root lifetime`.
