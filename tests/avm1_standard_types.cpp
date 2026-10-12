@@ -58,6 +58,8 @@ static void object(FVM_Context *c, const char *name, FVM_Object *o)
     v.object = o;
     assert(fvm_set_global(c, name, &v) == FVM_OK);
 }
+
+#ifndef FVM_AVM1_STANDARD_FIXTURE_ONLY
 int main()
 {
     FVM_Config cfg;
@@ -215,3 +217,5 @@ int main()
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);
 }
+
+#endif

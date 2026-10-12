@@ -50,6 +50,22 @@ static unsigned long u32(const unsigned char *p)
     return (unsigned long)p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
            ((unsigned long)p[3] << 24);
 }
+/* Convert a numeric operand to the low 32 unsigned bits without undefined float-to-int casts. */
+static unsigned long integer_bits(double value)
+{
+    if (value != value || value == std::numeric_limits<double>::infinity() ||
+        value == -std::numeric_limits<double>::infinity())
+        return 0;
+    value = value < 0 ? std::ceil(value) : std::floor(value);
+    value = std::fmod(value, 4294967296.0);
+    return (unsigned long)(value < 0 ? value + 4294967296.0 : value);
+}
+/* Represent a low 32-bit result as a signed ActionScript Number on both 32/64-bit hosts. */
+static double signed_bits(unsigned long value)
+{
+    value &= 0xffffffffUL;
+    return value >= 0x80000000UL ? (double)value - 4294967296.0 : (double)value;
+}
 /* Bytecode buffers and function snapshots can disappear after execution.
  * Any string escaping into VM properties must have context lifetime. */
 /* Compute and return truth. */
@@ -1406,7 +1422,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.back() = output;
             }
-            else if (a.op == 0x47 || a.op == 0x48 || a.op == 0x49 || a.op == 0x66)
+            else if (a.op == 0x47 || a.op == 0x48 || a.op == 0x49 || a.op == 0x66 || a.op == 0x67)
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
@@ -1414,7 +1430,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result r = FVM_OK;
                 if (a.op != 0x66)
                 {
-                    const char *hook = a.op == 0x47 ? "__add" : a.op == 0x48 ? "__lt" : "__eq";
+                    const char *hook = a.op == 0x47   ? "__add"
+                                       : a.op == 0x48 ? "__lt"
+                                       : a.op == 0x67 ? "__gt"
+                                                      : "__eq";
                     FVM_Value operands[2] = {left, right};
                     r = fvm_value_meta_invoke(c, operands, hook, 2, operands, &output);
                     if (r == FVM_NOT_FOUND)
@@ -1464,12 +1483,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             r = own_string(c, text.begin(), &output, first + last);
                         }
                     }
-                    else if (r == FVM_OK && a.op == 0x48 && left.type == FVM_VALUE_STRING &&
-                             right.type == FVM_VALUE_STRING)
+                    else if (r == FVM_OK && (a.op == 0x48 || a.op == 0x67) &&
+                             left.type == FVM_VALUE_STRING && right.type == FVM_VALUE_STRING)
                     {
                         int order = 0;
                         r = fvm_string_order(left, right, order);
-                        fvm_value_boolean(&output, order < 0);
+                        fvm_value_boolean(&output, a.op == 0x67 ? order > 0 : order < 0);
                     }
                     else if (r == FVM_OK)
                     {
@@ -1480,13 +1499,72 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         if (a.op == 0x47)
                             fvm_value_number(&output, x + y);
                         else
-                            fvm_value_boolean(&output, x < y);
+                            fvm_value_boolean(&output, a.op == 0x67 ? x > y : x < y);
                     }
                 }
                 if (r != FVM_OK)
                     return r;
                 stack.pop_back();
                 stack.back() = output;
+            }
+            else if (a.op == 0x50 || a.op == 0x51)
+            {
+                if (stack.empty())
+                    return FVM_ERROR;
+                double value = 0;
+                FVM_Result r = fvm_value_to_number(c, &stack.back(), &value);
+                if (r != FVM_OK)
+                    return r;
+                fvm_value_number(&stack.back(), value + (a.op == 0x50 ? 1 : -1));
+            }
+            else if (a.op == 0x3f || (a.op >= 0x60 && a.op <= 0x65))
+            {
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                /* Coerce the original left operand first; user callbacks observe this order. */
+                double left = 0, right = 0;
+                FVM_Result r = fvm_value_to_number(c, &stack[stack.size() - 2], &left);
+                if (r == FVM_OK)
+                    r = fvm_value_to_number(c, &stack.back(), &right);
+                if (r != FVM_OK)
+                    return r;
+                double result = 0;
+                if (a.op == 0x3f)
+                {
+                    if (!right || left != left || right != right ||
+                        std::fabs(left) == std::numeric_limits<double>::infinity())
+                        result = std::numeric_limits<double>::quiet_NaN();
+                    else if (std::fabs(right) == std::numeric_limits<double>::infinity())
+                        result = left;
+                    else
+                        result = std::fmod(left, right);
+                }
+                else
+                {
+                    unsigned long value = integer_bits(left), operand = integer_bits(right);
+                    unsigned int shift = (unsigned int)(operand & 31);
+                    unsigned long bits = 0;
+                    if (a.op == 0x60)
+                        bits = value & operand;
+                    else if (a.op == 0x61)
+                        bits = value | operand;
+                    else if (a.op == 0x62)
+                        bits = value ^ operand;
+                    else if (a.op == 0x63)
+                        bits = (value << shift) & 0xffffffffUL;
+                    else
+                    {
+                        bits = value >> shift;
+                        /* Arithmetic right shift is implemented with unsigned masks, avoiding
+                         * implementation-defined signed shifts and shifts by the host word width.
+                         */
+                        if (a.op == 0x64 && shift && (value & 0x80000000UL))
+                            bits |= (0xffffffffUL << (32 - shift)) & 0xffffffffUL;
+                    }
+                    result = a.op == 0x65 ? (double)bits : signed_bits(bits);
+                }
+                stack.pop_back();
+                fvm_value_number(&stack.back(), result);
             }
             else if (a.op == 0x4e)
             {

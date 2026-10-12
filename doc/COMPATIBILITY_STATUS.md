@@ -48,3 +48,9 @@ Exact finite fractions and large integers in bases 2/4/8/16/32 are implemented
 and covered by standard_number, including extreme binary64 values and queue
 transport. [NUMBER_RADIX.md](NUMBER_RADIX.md) records the remaining limits.
 Остальные дробные основания и историческая сверка открыты; этап 1 не закрыт.
+
+## v0.40 Numeric AVM1 actions
+
+Increment/decrement, remainder, bitwise operations/shifts and Greater are
+implemented; avm1_numeric_operations verifies boundaries, coercion order and
+error recovery. See AVM1_NUMERIC_ACTIONS.md. Полная семантика AVM1 открыта.
