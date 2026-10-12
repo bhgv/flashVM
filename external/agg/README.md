@@ -30,3 +30,13 @@ Integer alpha blending can differ by one RGB unit after rounding.
 FONTS adds the pinned font_freetype bridge (the FT_Outline tag pointer was
 adapted to FreeType 2.14.3). The independent FlashVM path API now also supports
 Bezier curves, fill/stroke and image masks; see [fonts](../../doc/FONT_LIBRARIES.md).
+
+Exception-safety corrections (FlashVM bitmap rendering):
+- Publish raster-cell block counts only after allocation succeeds; free the pointer
+  table even when the first data block fails.
+- Allocate pod_array/pod_vector replacements before freeing their old storage.
+- Free vertex pointer tables after a failed first vertex block, avoiding
+  before-begin pointer arithmetic in reverse destruction loops.
+These are narrow functional patches; upstream code has not been reformatted.
+Regression coverage: movieclip_bitmap_allocation in AGG/Cairo and the dedicated
+AGG sanitizer profile.

@@ -84,16 +84,15 @@ namespace agg
     template<class T, unsigned S, unsigned P>
     void vertex_block_storage<T,S,P>::free_all()
     {
-        if(m_total_blocks)
+        if(m_max_blocks)
         {
-            T** coord_blk = m_coord_blocks + m_total_blocks - 1;
+            T** coord_blk = m_coord_blocks + m_total_blocks;
             while(m_total_blocks--)
             {
                 pod_allocator<T>::deallocate(
-                    *coord_blk,
+                    *--coord_blk,
                     block_size * 2 + 
                     block_size / (sizeof(T) / sizeof(unsigned char)));
-                --coord_blk;
             }
             pod_allocator<T*>::deallocate(m_coord_blocks, m_max_blocks * 2);
             m_total_blocks   = 0;

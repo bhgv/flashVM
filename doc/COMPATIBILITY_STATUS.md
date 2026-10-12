@@ -68,3 +68,12 @@ Implemented clipped pixel copies, alpha masks, mergeAlpha and opaque source-over
 composition with source/mask snapshots before mutation. bitmap_copy_pixels and
 bitmap_allocation cover transport, overlap and OOM. See BITMAP_DATA.md for
 premultiplied/rounding limitations. Полный этап 4 остаётся открытым.
+
+## v0.43 MovieClip bitmap fills / Bitmap-заливки
+
+beginBitmapFill and the C89 bitmap painter implement copied affine matrices,
+live texture edges, repeat/edge extension, nearest/bilinear sampling, inherited
+color transforms and graph transfer. Duplication shares texture identity while
+copying geometry. Native path RAII and marked AGG exception-safety corrections
+handle injected allocation failures. See MOVIECLIP_BITMAP_FILL.md for named tests
+and remaining resource/filter/text/media limits. Полный этап 4 остаётся открытым.

@@ -7,6 +7,7 @@
 #include "movieclip_scene.hpp"
 #include "transform_scene.hpp"
 #include "gradient.hpp"
+#include "bitmap_fill.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
@@ -33,6 +34,28 @@ enum
     CLIP_CLASS = 41
 };
 typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
+typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
+
+/* Release a temporary native vector path on every return or allocation exception. */
+struct OwnedPath
+{
+    FVM_Path *path; /* Native geometry owned by this scope, independent of managed scene edges. */
+    /* Adopt an already constructed path without allocating memory. */
+    explicit OwnedPath(FVM_Path *value) : path(value)
+    {
+    }
+    /* Release native geometry when this render/bounds/hit scope exits. */
+    ~OwnedPath()
+    {
+        fvm_path_destroy(path);
+    }
+
+  private:
+    /* Prevent accidental duplicate ownership of the same native path. */
+    OwnedPath(const OwnedPath &);
+    /* Prevent assignment from transferring ownership implicitly. */
+    OwnedPath &operator=(const OwnedPath &);
+};
 
 /* Compute and return object. */
 FVM_Value object(FVM_Object *o)
@@ -748,6 +771,53 @@ FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destinat
         r = field(source, "active", active);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Preserve live bitmap edges separately; duplication clones geometry, not its texture. */
+    FVM_Object *original_paths = paths.object;
+    bool bitmap_paths = false;
+    for (Slots::iterator i = original_paths->indexed.begin(); i != original_paths->indexed.end();
+         ++i)
+    {
+        if (i->second.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        if (i->second.object->properties.find("bitmap") != i->second.object->properties.end())
+            bitmap_paths = true;
+    }
+    if (bitmap_paths)
+    {
+        /* [GC:] The native barrier protects these stripped paint copies until the bundle adopts
+         * them. */
+        FVM_Object *table = 0;
+        /* [GC:] Allocate an independent path table without serializing shared bitmap resources. */
+        r = fvm_object_create(c, &table);
+        if (r != FVM_OK)
+            return r;
+        FVM_Value mapped_active = object(0);
+        for (Slots::iterator i = original_paths->indexed.begin();
+             i != original_paths->indexed.end(); ++i)
+        {
+            /* [GC:] Copy immutable paint metadata while retaining command edges for graph cloning.
+             */
+            FVM_Object *part = 0;
+            /* [GC:] Allocate a temporary paint record protected by the native barrier. */
+            r = fvm_object_create(c, &part);
+            if (r != FVM_OK)
+                return r;
+            /* [GC:] Commands/gradients will be deep-copied together with the active-path alias. */
+            part->properties = i->second.object->properties;
+            /* [GC:] Exclude the live texture descriptor from the independent geometry snapshot. */
+            part->properties.erase("bitmap");
+            /* [GC:] The temporary table owns this stripped paint record. */
+            table->indexed[i->first] = object(part);
+            if (active.type == FVM_VALUE_OBJECT && active.object == i->second.object)
+                /* [GC:] Map the active path to the same stripped record held by the table. */
+                mapped_active = object(part);
+        }
+        /* [GC:] The bundle adopts the stripped graph; original bitmap edges remain in the source.
+         */
+        paths = object(table);
+        /* [GC:] Preserve the active alias without sharing any editable command table. */
+        active = mapped_active;
+    }
     /* [GC:] One snapshot preserves aliases between the path table and its active path. */
     bundle->properties["paths"] = paths;
     bundle->properties["active"] = active;
@@ -779,6 +849,28 @@ FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destinat
         /* [GC:] Adopt the cloned current ramp rather than retaining the source's descriptor. */
         destination->properties["gradient"] = restored.object->properties["gradient"];
     }
+    if (bitmap_paths)
+    {
+        for (Slots::iterator i = original_paths->indexed.begin();
+             i != original_paths->indexed.end(); ++i)
+        {
+            Properties::iterator bitmap = i->second.object->properties.find("bitmap");
+            if (bitmap != i->second.object->properties.end())
+            {
+                Slots::iterator copied = paths.object->indexed.find(i->first);
+                if (copied == paths.object->indexed.end() ||
+                    copied->second.type != FVM_VALUE_OBJECT)
+                    return FVM_INVALID_ARGUMENT;
+                /* [GC:] Both clips retain the original live bitmap through the immutable
+                 * descriptor. */
+                copied->second.object->properties["bitmap"] = bitmap->second;
+            }
+        }
+    }
+    Properties::iterator current_bitmap = source->properties.find("bitmap");
+    if (current_bitmap != source->properties.end())
+        /* [GC:] Future paths in the duplicate retain the same current texture descriptor. */
+        destination->properties["bitmap"] = current_bitmap->second;
     const char *styles[] = {"cx",     "cy",    "fill",    "rgb",      "alpha",
                             "stroke", "width", "lineRgb", "lineAlpha"};
     for (size_t i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
@@ -1466,6 +1558,8 @@ FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     data->properties["active"] = object(0);
     /* [GC:] Release the current ramp without altering gradients retained by older paths. */
     data->properties.erase("gradient");
+    /* [GC:] Release only the current bitmap style; completed paths retain their own source. */
+    data->properties.erase("bitmap");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1486,6 +1580,8 @@ FVM_Result end_fill(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value 
     data->properties["active"] = object(0);
     /* [GC:] Release the current ramp without altering gradients retained by older paths. */
     data->properties.erase("gradient");
+    /* [GC:] Release only the current bitmap style; completed paths retain their own source. */
+    data->properties.erase("bitmap");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1560,6 +1656,11 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         {
             /* [GC:] A completed path retains the immutable ramp chosen when it begins. */
             part->properties["gradient"] = data->properties["gradient"];
+        }
+        if (data->properties.find("bitmap") != data->properties.end())
+        {
+            /* [GC:] This path retains the live bitmap and copied matrix chosen when it begins. */
+            part->properties["bitmap"] = data->properties["bitmap"];
         }
         const char *style[] = {"fill", "rgb", "alpha", "stroke", "width", "lineRgb", "lineAlpha"};
         for (unsigned int i = 0; i < 7; ++i)
@@ -1673,6 +1774,8 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     data->properties["alpha"] = data->properties["lineAlpha"] = number(100);
     /* [GC:] Clearing graphics releases the active/current ramp after dropping all path edges. */
     data->properties.erase("gradient");
+    /* [GC:] Release only the current bitmap style; completed paths retain their own source. */
+    data->properties.erase("bitmap");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1789,10 +1892,10 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
         r = path(c, i->second.object, world, &p);
         if (r != FVM_OK)
             return r;
+        OwnedPath ownership(p);
         FVM_PathBounds b;
         r = fvm_path_bounds(p, &b);
         size_t count = fvm_path_count(p);
-        fvm_path_destroy(p);
         if (r != FVM_OK)
             return r;
         if (!count)
@@ -1939,6 +2042,7 @@ FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &ye
         r = path(c, paint, world, &geometry);
         if (r != FVM_OK)
             return r;
+        OwnedPath ownership(geometry);
         int hit = 0;
         FVM_Value rule;
         int even_odd = field(paint, "even_odd", rule) == FVM_OK && rule.number ? 1 : 0;
@@ -1954,7 +2058,6 @@ FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &ye
             if (r == FVM_OK)
                 r = fvm_path_hit_test(geometry, x, y, width ? width * scale : 1, even_odd, &hit);
         }
-        fvm_path_destroy(geometry);
         if (r != FVM_OK)
             return r;
         if (hit)
@@ -2190,6 +2293,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         r = path(c, part, world, &p);
         if (r != FVM_OK)
             return r;
+        OwnedPath ownership(p);
         double fill = 0, stroke = 0, rgb = 0, a = 0, width = 0;
         r = numeric(c, part, "fill", fill);
         if (r == FVM_OK)
@@ -2204,7 +2308,10 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 FVM_Value rule;
                 int even_odd = field(part, "even_odd", rule) == FVM_OK &&
                                rule.type == FVM_VALUE_NUMBER && rule.number != 0;
-                if (part->properties.find("gradient") != part->properties.end())
+                if (part->properties.find("bitmap") != part->properties.end())
+                    r = fvm_movieclip_bitmap_draw(c, part, world, p, surface, transform.multiply,
+                                                  transform.add, even_odd);
+                else if (part->properties.find("gradient") != part->properties.end())
                     r = fvm_movieclip_gradient_draw(c, part, world, p, surface, transform.multiply,
                                                     transform.add, even_odd);
                 else
@@ -2223,7 +2330,6 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 r = fvm_path_draw(p, surface, color(rgb, a, transform), width ? width * scale : 1,
                                   0);
         }
-        fvm_path_destroy(p);
         if (r != FVM_OK)
             return r;
     }
@@ -2426,7 +2532,8 @@ const Method methods[] = {{"toString", target},
                           {"hitTest", hit},
                           {"attachMovie", attach_movie},
                           {"duplicateMovieClip", duplicate_movie},
-                          {"beginGradientFill", fvm_movieclip_gradient_begin}};
+                          {"beginGradientFill", fvm_movieclip_gradient_begin},
+                          {"beginBitmapFill", fvm_movieclip_bitmap_begin}};
 } // namespace
 
 /* [GC:] Expose the validated managed state without publishing a new host ownership claim. */

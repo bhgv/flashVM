@@ -259,6 +259,8 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
         /* [GC:] Releasing the current descriptor allows collection when no completed path owns it.
          */
         data->properties.erase("gradient");
+        /* [GC:] No active bitmap style remains after disabling the fill. */
+        data->properties.erase("bitmap");
         return FVM_OK;
     }
     if (argc < 5 || argc > 8)
@@ -317,6 +319,8 @@ FVM_Result fvm_movieclip_gradient_begin(FVM_Context *c, FVM_Object *clip, unsign
     Properties next = data->properties;
     /* [GC:] The clip owns the copied ramp independently of the caller's arrays and matrix. */
     next["gradient"] = managed(record);
+    /* [GC:] A new gradient replaces the current bitmap style, not completed path descriptors. */
+    next.erase("bitmap");
     /* [GC:] A fresh path adopts this descriptor when the next geometry command is issued. */
     next["active"] = managed(0);
     next["fill"] = scalar(1);

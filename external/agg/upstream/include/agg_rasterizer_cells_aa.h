@@ -131,14 +131,13 @@ namespace agg
     {
         if(m_num_blocks)
         {
-            cell_type** ptr = m_cells + m_num_blocks - 1;
+            cell_type** ptr = m_cells + m_num_blocks;
             while(m_num_blocks--)
             {
-                pod_allocator<cell_type>::deallocate(*ptr, cell_block_size);
-                ptr--;
+                pod_allocator<cell_type>::deallocate(*--ptr, cell_block_size);
             }
-            pod_allocator<cell_type*>::deallocate(m_cells, m_max_blocks);
         }
+        pod_allocator<cell_type*>::deallocate(m_cells, m_max_blocks);
     }
 
     //------------------------------------------------------------------------
@@ -489,8 +488,9 @@ namespace agg
                 m_max_blocks += cell_block_pool;
             }
 
-            m_cells[m_num_blocks++] = 
-                pod_allocator<cell_type>::allocate(cell_block_size);
+            cell_type* block = pod_allocator<cell_type>::allocate(cell_block_size);
+            m_cells[m_num_blocks] = block;
+            ++m_num_blocks;
 
         }
         m_curr_cell_ptr = m_cells[m_curr_block++];

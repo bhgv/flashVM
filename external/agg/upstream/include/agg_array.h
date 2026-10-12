@@ -128,8 +128,10 @@ namespace agg
         {
             if(size != m_size)
             {
+                T* array = pod_allocator<T>::allocate(size);
                 pod_allocator<T>::deallocate(m_array, m_size);
-                m_array = pod_allocator<T>::allocate(m_size = size);
+                m_array = array;
+                m_size = size;
             }
         }
         const self_type& operator = (const self_type& v)
@@ -222,9 +224,11 @@ namespace agg
         m_size = 0;
         if(cap > m_capacity)
         {
+            unsigned capacity = cap + extra_tail;
+            T* array = capacity ? pod_allocator<T>::allocate(capacity) : 0;
             pod_allocator<T>::deallocate(m_array, m_capacity);
-            m_capacity = cap + extra_tail;
-            m_array = m_capacity ? pod_allocator<T>::allocate(m_capacity) : 0;
+            m_capacity = capacity;
+            m_array = array;
         }
     }
 
