@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard_text.h"
 #include "flashvm/standard.h"
@@ -463,7 +464,9 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
     if (result != FVM_OK)
         return result;
     const char *replacement = args[2].string;
-    size_t bytes = std::strlen(field->text), inserted = std::strlen(replacement), count;
+    size_t bytes = std::strlen(field->text), inserted = fvm_string_size(args[2]), count;
+    if (std::memchr(replacement, 0, inserted))
+        return FVM_UNSUPPORTED;
     if (inserted > 16384)
         return FVM_UNSUPPORTED;
     if (fvm_utf8_validate(replacement, inserted, &count) != FVM_UTF8_OK)
@@ -628,7 +631,9 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
     {
         if (args[0].type != FVM_VALUE_STRING)
             return FVM_UNSUPPORTED;
-        size_t size = std::strlen(args[0].string), count = 0;
+        size_t size = fvm_string_size(args[0]), count = 0;
+        if (std::memchr(args[0].string, 0, size))
+            return FVM_UNSUPPORTED;
         if (size > 16384 || fvm_utf8_validate(args[0].string, size, &count) != FVM_UTF8_OK)
             return FVM_INVALID_ARGUMENT;
         if (count > 4096)

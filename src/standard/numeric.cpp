@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "primitive_state.hpp"
 #include "movieclip_state.hpp"
 #include "function_state.hpp"
@@ -350,7 +351,7 @@ FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_V
         const FVM_Value &v = a[0];
         truth = (v.type == FVM_VALUE_BOOLEAN && v.boolean) ||
                 (v.type == FVM_VALUE_NUMBER && v.number != 0 && v.number == v.number) ||
-                (v.type == FVM_VALUE_STRING && v.string[0]) || v.type == FVM_VALUE_OBJECT;
+                (v.type == FVM_VALUE_STRING && fvm_string_size(v)) || v.type == FVM_VALUE_OBJECT;
     }
     fvm_value_boolean(o, truth);
     return FVM_OK;
@@ -480,7 +481,24 @@ extern "C" FVM_Result fvm_value_to_number(FVM_Context *c, const FVM_Value *value
     case FVM_VALUE_STRING:
         if (!value->string)
             return FVM_INVALID_ARGUMENT;
-        *out = parse_number(value->string);
+        /* Number consumes the entire string; an embedded NUL is not a terminator. */
+        {
+            size_t n = fvm_string_size(*value);
+            if (std::memchr(value->string, 0, n))
+                *out = nan_value();
+            else
+            {
+                try
+                {
+                    fvm_detail::string terminated(value->string, n);
+                    *out = parse_number(terminated.c_str());
+                }
+                catch (const std::bad_alloc &)
+                {
+                    return FVM_OUT_OF_MEMORY;
+                }
+            }
+        }
         return FVM_OK;
     case FVM_VALUE_OBJECT:
     {

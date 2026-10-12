@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/channel_packet.h"
@@ -383,13 +384,14 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
         *out = value;
         if (value.type == FVM_VALUE_STRING)
         {
-            size_t length = std::strlen(value.string);
+            size_t length = fvm_string_size(value);
             char *copy = new (std::nothrow) char[length + 1];
             if (!copy)
                 result = FVM_OUT_OF_MEMORY;
             else
             {
-                std::memcpy(copy, value.string, length + 1);
+                std::memcpy(copy, value.string, length);
+                copy[length] = 0;
                 try
                 {
                     context->strings.push_back(copy);

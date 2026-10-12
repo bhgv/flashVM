@@ -9,6 +9,7 @@
 #include "../core/exception_internal.hpp"
 #include "flashvm/stack.h"
 #include <cstring>
+#include "../core/string_internal.hpp"
 #include <new>
 FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
 {
@@ -39,11 +40,12 @@ static FVM_Result copy_value(FVM_Context *context, const FVM_Value *src, FVM_Val
     *dst = *src;
     if (src->type == FVM_VALUE_STRING)
     {
-        size_t n = std::strlen(src->string);
+        size_t n = fvm_string_size(*src);
         char *p = new (std::nothrow) char[n + 1];
         if (!p)
             return FVM_OUT_OF_MEMORY;
-        std::memcpy(p, src->string, n + 1);
+        std::memcpy(p, src->string, n);
+        p[n] = 0;
         try
         {
             context->strings.push_back(p);
@@ -343,6 +345,7 @@ extern "C"
         {
             std::memset(v, 0, sizeof(*v));
             v->type = FVM_VALUE_UNDEFINED;
+            v->string_size = (size_t)-1;
         }
     }
     void fvm_value_number(FVM_Value *v, double n)
@@ -370,6 +373,7 @@ extern "C"
         fvm_value_undefined(v);
         v->type = FVM_VALUE_STRING;
         v->string = s;
+        v->string_size = std::strlen(s);
         return FVM_OK;
     }
     FVM_Result fvm_object_create(FVM_Context *c, FVM_Object **out)

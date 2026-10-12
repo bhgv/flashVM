@@ -14,3 +14,5 @@
 All public headers must remain valid C89 and usable from C++98. No STL types cross the C ABI.
 
 Object graph coverage and limitations: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_OBJECTS.ru.md).
+
+`value.h`: ABI 3 counted UTF-8/WTF-8 and UTF-16 creation/query/copy helpers.

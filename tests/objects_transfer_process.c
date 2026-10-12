@@ -24,6 +24,15 @@ static void check(FVM_Context *c, FVM_Object *root)
     FVM_Value v, out;
     int same;
     FVM_Value ctor;
+    {
+        const unsigned short expected[] = {0x41, 0, 0xdfff};
+        unsigned short units[3];
+        size_t length = 0;
+        assert(fvm_object_get(c, root, "utf16", &v) == FVM_OK);
+        assert(fvm_object_call(c, v.object, "valueOf", 0, 0, &out) == FVM_OK);
+        assert(fvm_value_get_utf16(&out, units, 3, &length) == FVM_OK && length == 3);
+        assert(!memcmp(units, expected, sizeof(units)));
+    }
     assert(fvm_object_get(c, root, "boolean", &v) == FVM_OK);
     assert(fvm_object_call(c, v.object, "valueOf", 0, 0, &out) == FVM_OK && out.boolean);
     assert(fvm_object_get(c, root, "number", &v) == FVM_OK);
@@ -113,6 +122,15 @@ static void write_file(const char *path)
         assert(fvm_object_set(c, root, keys[i], &v) == FVM_OK);
         if (i == 5)
             assert(fvm_object_set(c, o, "self", &v) == FVM_OK);
+    }
+    {
+        const unsigned short units[] = {0x41, 0, 0xdfff};
+        assert(fvm_value_string_utf16(c, units, 3, &arg) == FVM_OK);
+        assert(fvm_construct(c, "String", 1, &arg, &o) == FVM_OK);
+        fvm_value_undefined(&v);
+        v.type = FVM_VALUE_OBJECT;
+        v.object = o;
+        assert(fvm_object_set(c, root, "utf16", &v) == FVM_OK);
     }
     assert(fvm_function_create_avm1(c, function_code, sizeof(function_code), 0, 0, 0, &o) ==
            FVM_OK);

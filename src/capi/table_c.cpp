@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "../standard/base_state.hpp"
 #include "../core/property_watch.hpp"
 #include "flashvm/property.h"
@@ -18,11 +19,12 @@ static FVM_Result store(FVM_Context *c, const FVM_Value *v, FVM_Value *out)
     *out = *v;
     if (v->type == FVM_VALUE_STRING)
     {
-        size_t n = std::strlen(v->string);
+        size_t n = fvm_string_size(*v);
         char *p = new (std::nothrow) char[n + 1];
         if (!p)
             return FVM_OUT_OF_MEMORY;
-        std::memcpy(p, v->string, n + 1);
+        std::memcpy(p, v->string, n);
+        p[n] = 0;
         try
         {
             c->strings.push_back(p);

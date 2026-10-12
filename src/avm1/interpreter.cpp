@@ -50,7 +50,7 @@ static bool truth(const FVM_Value &value)
     case FVM_VALUE_NUMBER:
         return value.number != 0.0 && value.number == value.number;
     case FVM_VALUE_STRING:
-        return value.string && value.string[0];
+        return value.string && fvm_string_size(value) != 0;
     case FVM_VALUE_OBJECT:
         return true;
     default:
@@ -58,13 +58,16 @@ static bool truth(const FVM_Value &value)
     }
 }
 
-static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value)
+static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
+                             size_t length = (size_t)-1)
 {
-    size_t length = std::strlen(text);
+    if (length == (size_t)-1)
+        length = std::strlen(text);
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
         return FVM_OUT_OF_MEMORY;
-    std::memcpy(copy, text, length + 1);
+    std::memcpy(copy, text, length);
+    copy[length] = 0;
     try
     {
         context->strings.push_back(copy);
@@ -74,7 +77,7 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
         delete[] copy;
         return FVM_OUT_OF_MEMORY;
     }
-    return fvm_value_string(value, copy);
+    return fvm_value_string_bytes(value, copy, length);
 }
 static bool date_hint(const FVM_Value &value)
 {
@@ -94,7 +97,10 @@ static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
     case FVM_VALUE_NUMBER:
         return a.number == b.number;
     case FVM_VALUE_STRING:
-        return !std::strcmp(a.string, b.string);
+    {
+        int order = 0;
+        return fvm_string_order(a, b, order) == FVM_OK && order == 0;
+    }
     case FVM_VALUE_OBJECT:
         return a.object == b.object;
     }
@@ -348,11 +354,12 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
     /* A returned bytecode literal must outlive the function snapshot. */
     if (status == FVM_OK && result && result->type == FVM_VALUE_STRING)
     {
-        size_t len = std::strlen(result->string);
+        size_t len = fvm_string_size(*result);
         char *copy = new (std::nothrow) char[len + 1];
         if (!copy)
             return FVM_OUT_OF_MEMORY;
-        std::memcpy(copy, result->string, len + 1);
+        std::memcpy(copy, result->string, len);
+        copy[len] = 0;
         try
         {
             c->strings.push_back(copy);
@@ -1042,20 +1049,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             r = fvm_value_to_string(c, &right, &y);
                         if (r == FVM_OK)
                         {
-                            size_t first = std::strlen(x.string), last = std::strlen(y.string);
+                            size_t first = fvm_string_size(x), last = fvm_string_size(y);
                             if (first > (size_t)-1 - last - 1)
                                 return FVM_OUT_OF_MEMORY;
                             fvm_detail::vector<char> text(first + last + 1);
                             std::memcpy(text.begin(), x.string, first);
-                            std::memcpy(text.begin() + first, y.string, last + 1);
-                            r = own_string(c, text.begin(), &output);
+                            std::memcpy(text.begin() + first, y.string, last);
+                            text[first + last] = 0;
+                            r = own_string(c, text.begin(), &output, first + last);
                         }
                     }
                     else if (r == FVM_OK && a.op == 0x48 && left.type == FVM_VALUE_STRING &&
                              right.type == FVM_VALUE_STRING)
                     {
                         int order = 0;
-                        r = fvm_string_order(left.string, right.string, order);
+                        r = fvm_string_order(left, right, order);
                         fvm_value_boolean(&output, order < 0);
                     }
                     else if (r == FVM_OK)

@@ -8,6 +8,8 @@
 - Start every new commit subject with `v<version> `, using the development
   version in `VERSION.txt`, followed by a meaningful English description.
   Example: `v0.1 Fix native constructor root lifetime`.
+- Write commit messages in English using up to four lines that explain the
+  implementation changes. Describe what changed; do not use these lines for tests.
 - Before every new commit, increment the subversion in `VERSION.txt` and update
   the current version in documentation. Use that new version in the commit
   prefix. Append `-v<version>` immediately before `.zip` in delivered Git archive

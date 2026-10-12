@@ -1,0 +1,9 @@
+{
+  "version": "3.2.0",
+  "source": "https://www.unicode.org/Public/3.2-Update/",
+  "sha256": {
+    "UnicodeData-3.2.0.txt": "5e444028b6e76d96f9dc509609c5e3222bf609056f35e5fcde7e6fb8a58cd446",
+    "SpecialCasing-3.2.0.txt": "1f7913b74dddff55ee566f6220aa9e465bae6f27709fc21d353b04adb8572b37",
+    "LICENSE.txt": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+  }
+}

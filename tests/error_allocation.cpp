@@ -270,5 +270,24 @@ int main()
         assert(completed);
         fvm_context_destroy(c);
     }
+    {
+        FVM_Context *c = 0;
+        FVM_Value out;
+        const unsigned short units[] = {65, 0, 0xdfff};
+        bool completed = false;
+        assert(fvm_context_create(runtime, &c) == FVM_OK);
+        for (long failure = 0; failure < 128 && !completed; ++failure)
+        {
+            allowance = failure;
+            FVM_Result result = fvm_value_string_utf16(c, units, 3, &out);
+            allowance = -1;
+            assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+            completed = result == FVM_OK;
+            if (!completed)
+                assert(out.type == FVM_VALUE_UNDEFINED);
+        }
+        assert(completed);
+        fvm_context_destroy(c);
+    }
     fvm_runtime_destroy(runtime);
 }

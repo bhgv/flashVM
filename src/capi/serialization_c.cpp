@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
@@ -132,8 +133,10 @@ Value capture_value(FVM_Context *c, const FVM_Value &src, fvm_detail::vector<FVM
     if (src.type == FVM_VALUE_STRING)
     {
         require(src.string != 0);
-        charge(budget, std::strlen(src.string));
-        dst.string = src.string;
+        FVM_Value checked;
+        require(fvm_value_string_bytes(&checked, src.string, fvm_string_size(src)) == FVM_OK);
+        charge(budget, fvm_string_size(src));
+        dst.string = fvm_detail::string(src.string, fvm_string_size(src));
     }
     if (src.type == FVM_VALUE_OBJECT)
     {
@@ -534,7 +537,9 @@ struct Reader
 {
     const unsigned char *data;
     size_t size, offset, entries;
-    Reader(const void *p, size_t n) : data((const unsigned char *)p), size(n), offset(0), entries(0)
+    unsigned int version;
+    Reader(const void *p, size_t n)
+        : data((const unsigned char *)p), size(n), offset(0), entries(0), version(1)
     {
     }
     unsigned long byte()
@@ -561,11 +566,11 @@ struct Reader
         entries += n;
         return n;
     }
-    fvm_detail::string string()
+    fvm_detail::string string(bool value = false)
     {
         size_t n = (size_t)u32();
         require(n <= size - offset);
-        require(!n || !std::memchr(data + offset, 0, n));
+        require(value && version >= 4 || !n || !std::memchr(data + offset, 0, n));
         fvm_detail::string s((const char *)data + offset, n);
         offset += n;
         return s;
@@ -583,7 +588,15 @@ struct Reader
             v.boolean = (int)b;
         }
         if (v.type == FVM_VALUE_STRING)
-            v.string = string();
+        {
+            v.string = string(true);
+            if (version >= 4)
+            {
+                FVM_Value checked;
+                require(fvm_value_string_bytes(&checked, v.string.data(), v.string.size()) ==
+                        FVM_OK);
+            }
+        }
         if (v.type == FVM_VALUE_OBJECT)
             v.object = ref();
         if (v.type == FVM_VALUE_NUMBER)
@@ -700,9 +713,13 @@ Graph read_graph(Reader &r, unsigned int version)
         else
             require(o.state.type == FVM_VALUE_UNDEFINED);
         if (o.kind == 26)
-            require(std::strlen(o.state.string.c_str()) == o.state.string.size() &&
-                    fvm_utf8_validate(o.state.string.c_str(), o.state.string.size(), 0) ==
-                        FVM_UTF8_OK);
+        {
+            FVM_Value text;
+            require(fvm_value_string_bytes(&text, o.state.string.data(), o.state.string.size()) ==
+                    FVM_OK);
+            fvm_detail::vector<unsigned int> units;
+            require(fvm_string_units(text, units) == FVM_OK);
+        }
         size_t count = r.count();
         for (size_t j = 0; j < count; ++j)
         {
@@ -862,13 +879,13 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 3};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 4};
 Graph decode(const void *data, size_t size)
 {
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 3);
+    require(version >= 1 && version <= 4);
     Reader header(data, size);
     header.offset = 8;
     size_t body = (size_t)header.u32();
@@ -877,6 +894,7 @@ Graph decode(const void *data, size_t size)
     const unsigned char *bytes = (const unsigned char *)data + 16;
     require(crc == (unsigned long)crc32(0, bytes, (uInt)body));
     Reader reader(bytes, body);
+    reader.version = version;
     return read_graph(reader, version);
 }
 void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size)
@@ -925,6 +943,7 @@ FVM_Value restore_value(FVM_Context *c, const Value &src,
             throw;
         }
         v.string = p;
+        v.string_size = src.string.size();
     }
     return v;
 }
@@ -1217,6 +1236,7 @@ extern "C" FVM_Result fvm_serialization_decode_primitive(const void *data, size_
             require(p != 0, FVM_OUT_OF_MEMORY);
             std::memcpy(p, v.string.c_str(), v.string.size() + 1);
             out->string = p;
+            out->string_size = v.string.size();
         }
         return FVM_OK;
     }

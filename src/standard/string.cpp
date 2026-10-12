@@ -1,4 +1,6 @@
 #include "string_state.hpp"
+#include "../core/string_internal.hpp"
+#include "../../external/unicode/case_table.hpp"
 #include "base_state.hpp"
 #include "flashvm/table.h"
 #include "flashvm/standard.h"
@@ -14,24 +16,9 @@ enum
     STRING_CLASS = 27
 };
 typedef fvm_detail::vector<unsigned int> Units;
-FVM_Result decode(const char *text, Units &units)
+FVM_Result decode(const FVM_Value &text, Units &units)
 {
-    size_t size = std::strlen(text), offset = 0;
-    while (offset < size)
-    {
-        unsigned long cp = 0;
-        if (fvm_utf8_read(text, size, &offset, &cp) != FVM_UTF8_OK)
-            return FVM_INVALID_ARGUMENT;
-        if (cp >= 0x10000)
-        {
-            cp -= 0x10000;
-            units.push_back(0xd800 + (unsigned int)(cp >> 10));
-            units.push_back(0xdc00 + (unsigned int)(cp & 1023));
-        }
-        else
-            units.push_back((unsigned int)cp);
-    }
-    return FVM_OK;
+    return fvm_string_units(text, units);
 }
 FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, FVM_Value *out)
 {
@@ -44,20 +31,14 @@ FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, 
         {
             cp = 0x10000 + ((cp - 0xd800) << 10) + units[++i] - 0xdc00;
         }
-        /* The current C string ABI stores Unicode scalars as UTF-8. It cannot
-         * preserve a NUL or an isolated UTF-16 surrogate: reject, never replace. */
-        if (!cp || (cp >= 0xd800 && cp <= 0xdfff))
-            return FVM_UNSUPPORTED;
-        char bytes[4];
-        size_t size = 0;
-        if (fvm_utf8_write(cp, bytes, sizeof(bytes), &size) != FVM_UTF8_OK)
-            return FVM_INVALID_ARGUMENT;
-        for (size_t j = 0; j < size; ++j)
-            text.push_back(bytes[j]);
+        FVM_Result r = fvm_string_append(cp, text);
+        if (r != FVM_OK)
+            return r;
     }
+    size_t length = text.size();
     text.push_back(0);
     FVM_Value temporary;
-    fvm_value_string(&temporary, text.begin());
+    fvm_value_string_bytes(&temporary, text.begin(), length);
     return fvm_value_to_string(c, &temporary, out);
 }
 FVM_Result value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *, FVM_Value *out,
@@ -83,7 +64,7 @@ FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
         object.object = self;
         result = fvm_value_to_string(c, &object, &text);
     }
-    return result == FVM_OK ? decode(text.string, units) : result;
+    return result == FVM_OK ? decode(text, units) : result;
 }
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double fallback, double &number)
@@ -122,7 +103,7 @@ FVM_Result length(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Valu
     if (result != FVM_OK)
         return result;
     Units units;
-    result = decode(text.string, units);
+    result = decode(text, units);
     if (result == FVM_OK)
         fvm_value_number(out, (double)units.size());
     return result;
@@ -221,7 +202,7 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     result = fvm_value_to_string(c, count ? args : &absent, &text);
     if (result != FVM_OK)
         return result;
-    result = decode(text.string, needle);
+    result = decode(text, needle);
     if (result != FVM_OK)
         return result;
     double position = backwards ? (double)haystack.size() : 0;
@@ -298,7 +279,7 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
         result = fvm_value_to_string(c, args + i, &text);
         if (result != FVM_OK)
             return result;
-        result = decode(text.string, joined);
+        result = decode(text, joined);
         if (result != FVM_OK)
             return result;
     }
@@ -351,7 +332,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         FVM_Value text;
         r = fvm_value_to_string(c, a, &text);
         if (r == FVM_OK)
-            r = decode(text.string, separator);
+            r = decode(text, separator);
         if (r != FVM_OK)
             return r;
     }
@@ -413,16 +394,115 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     out->object = result;
     return FVM_OK;
 }
+template <size_t N> bool in_ranges(unsigned long cp, const FVM_CaseRange (&ranges)[N])
+{
+    size_t first = 0, last = N;
+    while (first < last)
+    {
+        size_t middle = first + (last - first) / 2;
+        if (cp < ranges[middle].first)
+            last = middle;
+        else if (cp > ranges[middle].last)
+            first = middle + 1;
+        else
+            return true;
+    }
+    return false;
+}
+FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper)
+{
+    Units units;
+    FVM_Result r = decode(text, units);
+    if (r != FVM_OK)
+        return r;
+    fvm_detail::vector<unsigned long> scalars;
+    for (size_t i = 0; i < units.size(); ++i)
+    {
+        unsigned long cp = units[i];
+        if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < units.size() && units[i + 1] >= 0xdc00 &&
+            units[i + 1] <= 0xdfff)
+            cp = 0x10000 + ((cp - 0xd800) << 10) + units[++i] - 0xdc00;
+        scalars.push_back(cp);
+    }
+    fvm_detail::vector<char> bytes;
+    bool preceding_cased = false;
+    for (size_t i = 0; i < scalars.size(); ++i)
+    {
+        unsigned long cp = scalars[i];
+        size_t first = 0, last = sizeof(fvm_case_mappings) / sizeof(fvm_case_mappings[0]);
+        while (first < last)
+        {
+            size_t middle = first + (last - first) / 2;
+            if (fvm_case_mappings[middle].cp < cp)
+                first = middle + 1;
+            else
+                last = middle;
+        }
+        /* Unicode default casing uses the original surrounding text. Locale
+         * specific mappings do not participate in AS's nonlocale methods. */
+        bool final_sigma = false;
+        if (!upper && cp == 0x3a3 && preceding_cased)
+        {
+            size_t next = i + 1;
+            while (next < scalars.size() && in_ranges(scalars[next], fvm_case_ignored))
+                ++next;
+            final_sigma = next == scalars.size() || !in_ranges(scalars[next], fvm_case_cased);
+        }
+        if (final_sigma)
+            r = fvm_string_append(0x3c2, bytes);
+        else if (first < sizeof(fvm_case_mappings) / sizeof(fvm_case_mappings[0]) &&
+                 fvm_case_mappings[first].cp == cp)
+        {
+            const FVM_CaseMapping &mapping = fvm_case_mappings[first];
+            const unsigned long *target = upper ? mapping.upper : mapping.lower;
+            unsigned int count = upper ? mapping.nu : mapping.nl;
+            for (unsigned int j = 0; j < count && r == FVM_OK; ++j)
+                r = fvm_string_append(target[j], bytes);
+        }
+        else
+            r = fvm_string_append(cp, bytes);
+        if (r != FVM_OK)
+            return r;
+        if (!in_ranges(cp, fvm_case_ignored))
+            preceding_cased = in_ranges(cp, fvm_case_cased);
+    }
+    size_t size = bytes.size();
+    bytes.push_back(0);
+    FVM_Value temporary;
+    r = fvm_value_string_bytes(&temporary, bytes.begin(), size);
+    return r == FVM_OK ? fvm_value_to_string(c, &temporary, out) : r;
+}
+FVM_Result lower_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
+                      FVM_Value *out, void *)
+{
+    Units units;
+    FVM_Result r = receiver(c, o, units);
+    FVM_Value text;
+    if (r == FVM_OK)
+        r = encode(c, units, 0, units.size(), &text);
+    return r == FVM_OK ? case_text(c, text, out, false) : r;
+}
+FVM_Result upper_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
+                      FVM_Value *out, void *)
+{
+    Units units;
+    FVM_Result r = receiver(c, o, units);
+    FVM_Value text;
+    if (r == FVM_OK)
+        r = encode(c, units, 0, units.size(), &text);
+    return r == FVM_OK ? case_text(c, text, out, true) : r;
+}
 struct Method
 {
     const char *name;
     FVM_NativeFunction callback;
 };
 const Method methods[] = {
-    {"valueOf", value},        {"toString", value},      {"charAt", char_at},
-    {"charCodeAt", char_code}, {"substring", substring}, {"slice", slice},
-    {"substr", substr},        {"indexOf", index_of},    {"lastIndexOf", last_index},
-    {"concat", concat},        {"split", split}};
+    {"valueOf", value},         {"toString", value},      {"charAt", char_at},
+    {"charCodeAt", char_code},  {"substring", substring}, {"slice", slice},
+    {"substr", substr},         {"indexOf", index_of},    {"lastIndexOf", last_index},
+    {"concat", concat},         {"split", split},         {"toLowerCase", lower_case},
+    {"toUpperCase", upper_case}};
 void attach_length(FVM_Object *object)
 {
     FVM_AccessorEntry accessor;
@@ -437,7 +517,7 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     if (result != FVM_OK)
         return result;
     Units units;
-    result = decode(text.string, units);
+    result = decode(text, units);
     if (result != FVM_OK)
         return result;
     result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
@@ -460,6 +540,17 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     return FVM_OK;
 }
 } // namespace
+FVM_Result fvm_string_case(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper)
+{
+    try
+    {
+        return case_text(c, text, out, upper);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
 FVM_Result fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                             fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
 {

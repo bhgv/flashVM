@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "../standard/error_state.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
@@ -100,11 +101,12 @@ extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value
     FVM_Value owned = *value;
     if (value->type == FVM_VALUE_STRING)
     {
-        size_t size = std::strlen(value->string) + 1;
+        size_t size = fvm_string_size(*value) + 1;
         char *text = new (std::nothrow) char[size];
         if (!text)
             return FVM_OUT_OF_MEMORY;
-        std::memcpy(text, value->string, size);
+        std::memcpy(text, value->string, size - 1);
+        text[size - 1] = 0;
         try
         {
             c->strings.push_back(text);

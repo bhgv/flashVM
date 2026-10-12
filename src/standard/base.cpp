@@ -1,3 +1,4 @@
+#include "string_state.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/property_watch.hpp"
@@ -683,8 +684,8 @@ FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     for (unsigned long i = 0; i < length; ++i)
     {
         if (i)
-            for (const char *p = separator.string; *p; ++p)
-                bytes.push_back(*p);
+            for (size_t j = 0; j < fvm_string_size(separator); ++j)
+                bytes.push_back(separator.string[j]);
         FVM_Value v;
         r = fvm_table_get_index(c, o, i, &v);
         if (r != FVM_OK)
@@ -695,13 +696,13 @@ FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
             r = fvm_value_to_string(c, &v, &text);
             if (r != FVM_OK)
                 return r;
-            for (const char *p = text.string; *p; ++p)
-                bytes.push_back(*p);
+            for (size_t j = 0; j < fvm_string_size(text); ++j)
+                bytes.push_back(text.string[j]);
         }
     }
     bytes.push_back(0);
     FVM_Value text;
-    fvm_value_string(&text, bytes.begin());
+    fvm_value_string_bytes(&text, bytes.begin(), bytes.size() - 1);
     return fvm_value_to_string(c, &text, out);
 }
 struct SortSpec
@@ -749,7 +750,8 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
                 order = left.number < right.number ? -1 : left.number > right.number ? 1 : 0;
             else
             {
-                FVM_Result r = fvm_string_order(left.text.c_str(), right.text.c_str(), order);
+                FVM_Result r = fvm_string_order(left.text.data(), left.text.size(),
+                                                right.text.data(), right.text.size(), order);
                 if (r != FVM_OK)
                     return r;
             }
@@ -778,7 +780,8 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
         order = a.number < b.number ? -1 : a.number > b.number ? 1 : 0;
     else
     {
-        FVM_Result r = fvm_string_order(a.key.c_str(), b.key.c_str(), order);
+        FVM_Result r =
+            fvm_string_order(a.key.data(), a.key.size(), b.key.data(), b.key.size(), order);
         if (r != FVM_OK)
             return r;
     }
@@ -849,18 +852,14 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                     r = fvm_value_to_string(c, &field_value, &text);
                     if (r != FVM_OK)
                         return r;
-                    key.text = text.string;
+                    key.text = fvm_detail::string(text.string, fvm_string_size(text));
                     if (spec->flags[k] & 1)
                     {
-                        fvm_detail::vector<char> folded;
-                        for (const char *p = text.string; *p; ++p)
-                        {
-                            if ((unsigned char)*p >= 128)
-                                return FVM_UNSUPPORTED;
-                            folded.push_back(*p >= 'A' && *p <= 'Z' ? *p + 32 : *p);
-                        }
-                        folded.push_back(0);
-                        key.text = folded.begin();
+                        FVM_Value folded;
+                        FVM_Result status = fvm_string_case(c, text, &folded, false);
+                        if (status != FVM_OK)
+                            return status;
+                        key.text = fvm_detail::string(folded.string, fvm_string_size(folded));
                     }
                 }
                 item.keys.push_back(key);
@@ -875,18 +874,14 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 FVM_Result r = fvm_value_to_string(c, &item.value, &text);
                 if (r != FVM_OK)
                     return r;
-                item.key = text.string;
+                item.key = fvm_detail::string(text.string, fvm_string_size(text));
                 if (flags & 1)
                 {
-                    fvm_detail::vector<char> folded;
-                    for (const char *p = text.string; *p; ++p)
-                    {
-                        if ((unsigned char)*p >= 128)
-                            return FVM_UNSUPPORTED;
-                        folded.push_back(*p >= 'A' && *p <= 'Z' ? *p + 32 : *p);
-                    }
-                    folded.push_back(0);
-                    item.key = folded.begin();
+                    FVM_Value folded;
+                    FVM_Result status = fvm_string_case(c, text, &folded, false);
+                    if (status != FVM_OK)
+                        return status;
+                    item.key = fvm_detail::string(folded.string, fvm_string_size(folded));
                 }
             }
         }

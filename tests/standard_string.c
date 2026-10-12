@@ -50,7 +50,8 @@ int main(void)
     number(c, s, "charCodeAt", 1, args, 1041);
     fvm_value_number(args, 2);
     number(c, s, "charCodeAt", 1, args, 0xd83d);
-    assert(fvm_object_call(c, s, "charAt", 1, args, &out) == FVM_UNSUPPORTED);
+    assert(fvm_object_call(c, s, "charAt", 1, args, &out) == FVM_OK &&
+           fvm_value_string_size(&out) == 3);
     fvm_value_number(args, 3);
     number(c, s, "charCodeAt", 1, args, 0xde00);
     fvm_value_number(args, 99);
@@ -99,16 +100,17 @@ int main(void)
     assert(fvm_object_call(c, s, "split", 0, 0, &out) == FVM_OK);
     assert(fvm_object_get(c, out.object, "0", &out) == FVM_OK && !strcmp(out.string, sample));
     fvm_value_string(args, "");
-    assert(fvm_object_call(c, s, "split", 1, args, &out) == FVM_UNSUPPORTED);
+    assert(fvm_object_call(c, s, "split", 1, args, &out) == FVM_OK);
+    assert(fvm_object_get(c, out.object, "length", &out) == FVM_OK && out.number == 5);
     fvm_value_number(args, 65);
     fvm_value_number(args + 1, 0xd83d);
     fvm_value_number(args + 2, 0xde00);
     assert(fvm_object_call(c, klass.object, "fromCharCode", 3, args, &out) == FVM_OK &&
            !strcmp(out.string, "A\360\237\230\200"));
     fvm_value_number(args, 0);
-    assert(fvm_object_call(c, klass.object, "fromCharCode", 1, args, &out) == FVM_UNSUPPORTED);
+    assert(fvm_object_call(c, klass.object, "fromCharCode", 1, args, &out) == FVM_OK);
     fvm_value_number(args, 0xd800);
-    assert(fvm_object_call(c, klass.object, "fromCharCode", 1, args, &out) == FVM_UNSUPPORTED);
+    assert(fvm_object_call(c, klass.object, "fromCharCode", 1, args, &out) == FVM_OK);
     fvm_value_undefined(&input);
     input.type = FVM_VALUE_OBJECT;
     input.object = s;

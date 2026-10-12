@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
@@ -168,7 +169,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
     if (code.type != FVM_VALUE_STRING || params.type != FVM_VALUE_OBJECT ||
         constants.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
-    size_t bytes = std::strlen(code.string);
+    size_t bytes = fvm_string_size(code);
     if (bytes % 2 || bytes > 131072)
         return FVM_INVALID_ARGUMENT;
     FVM_ScriptFunction body;

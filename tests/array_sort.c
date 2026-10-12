@@ -101,6 +101,16 @@ int main(void)
     assert(fvm_table_get_index(other, copy.object, 0, &out) == FVM_OK);
     assert(fvm_object_get(other, out.object, "rank", &out) == FVM_OK && out.number == 3);
     fvm_channel_destroy(ch);
+    /* Unicode CASEINSENSITIVE keys retain their full byte length. */
+    fvm_value_string(values, "\320\221");
+    fvm_value_string(values + 1, "\320\260");
+    fvm_value_string(values + 2, "\320\220");
+    assert(fvm_construct(c, "Array", 3, values, &a) == FVM_OK);
+    fvm_value_number(&flags, 1);
+    assert(fvm_object_call(c, a, "sort", 1, &flags, &out) == FVM_OK);
+    assert(fvm_table_get_index(c, a, 0, &out) == FVM_OK && !strcmp(out.string, values[1].string));
+    assert(fvm_table_get_index(c, a, 1, &out) == FVM_OK && !strcmp(out.string, values[2].string));
+    assert(fvm_table_get_index(c, a, 2, &out) == FVM_OK && !strcmp(out.string, values[0].string));
     fvm_context_destroy(other);
     fvm_context_destroy(c);
     fvm_runtime_destroy(rt);

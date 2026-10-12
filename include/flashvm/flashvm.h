@@ -14,7 +14,7 @@ extern "C"
 #else
 #define FVM_API
 #endif
-#define FVM_ABI_VERSION 2UL
+#define FVM_ABI_VERSION 3UL
 #define FVM_FEATURE_JIT 0x01UL
 #define FVM_FEATURE_RENDER 0x02UL
 #define FVM_FEATURE_AUDIO 0x04UL

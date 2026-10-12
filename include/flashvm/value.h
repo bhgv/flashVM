@@ -23,6 +23,9 @@ extern "C"
         FVM_Object *object;
         /* Per-value metadata for primitives; object values use object identity. */
         FVM_Object *metatable;
+        /* Byte length of UTF-8/WTF-8 storage. SIZE_MAX is legacy strlen mode.
+         * Counted strings retain embedded NUL and unpaired UTF-16 surrogates. */
+        size_t string_size;
     } FVM_Value;
     typedef FVM_Result (*FVM_NativeFunction)(FVM_Context *, FVM_Object *, unsigned int,
                                              const FVM_Value *, FVM_Value *, void *);
@@ -30,6 +33,14 @@ extern "C"
     FVM_API void fvm_value_number(FVM_Value *value, double number);
     FVM_API void fvm_value_boolean(FVM_Value *value, int boolean);
     FVM_API FVM_Result fvm_value_string(FVM_Value *value, const char *utf8);
+    /* Borrowed counted UTF-8/WTF-8 view; no input terminator is required. */
+    FVM_API FVM_Result fvm_value_string_bytes(FVM_Value *, const char *, size_t);
+    FVM_API size_t fvm_value_string_size(const FVM_Value *);
+    /* Context-owned UTF-16 input; output length counts 16-bit code units.
+     * Query with out=NULL/capacity=0; insufficient capacity writes nothing. */
+    FVM_API FVM_Result fvm_value_string_utf16(FVM_Context *, const unsigned short *, size_t,
+                                              FVM_Value *);
+    FVM_API FVM_Result fvm_value_get_utf16(const FVM_Value *, unsigned short *, size_t, size_t *);
     FVM_API FVM_Result fvm_object_create(FVM_Context *, FVM_Object **);
     /* Prototype lookup follows the chain; own properties shadow inherited ones.
        Cycles and cross-context prototypes are rejected. */
@@ -74,7 +85,8 @@ extern "C"
      * Missing getter -> undefined; missing setter -> ignored write. Callbacks bind
      * the original receiver during prototype lookup. Capture root is GC-traced.
      * Data-property conflicts reject registration; an accessor may be replaced.
-     * Property flags are exposed in property.h; watch hooks are not implemented. */
+     * Property flags are exposed in property.h; accessor properties do not invoke watch handlers.
+     */
     FVM_API FVM_Result fvm_object_define_accessor_rooted(FVM_Context *, FVM_Object *, const char *,
                                                          FVM_NativeFunction getter,
                                                          FVM_NativeFunction setter, void *,

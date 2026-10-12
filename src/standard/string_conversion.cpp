@@ -1,4 +1,5 @@
 #include "primitive_state.hpp"
+#include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
 #include <cstdio>
@@ -10,13 +11,16 @@
 
 namespace
 {
-FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out)
+FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
+                        size_t length = (size_t)-1)
 {
-    size_t length = std::strlen(text);
+    if (length == (size_t)-1)
+        length = std::strlen(text);
     char *copy = new (std::nothrow) char[length + 1];
     if (!copy)
         return FVM_OUT_OF_MEMORY;
-    std::memcpy(copy, text, length + 1);
+    std::memcpy(copy, text, length);
+    copy[length] = 0;
     try
     {
         c->strings.push_back(copy);
@@ -26,7 +30,7 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out)
         delete[] copy;
         return FVM_OUT_OF_MEMORY;
     }
-    return fvm_value_string(out, copy);
+    return fvm_value_string_bytes(out, copy, length);
 }
 
 FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
@@ -166,7 +170,7 @@ FVM_Result primitive_string(FVM_Context *c, const FVM_Value &value, FVM_Value *o
     case FVM_VALUE_NUMBER:
         return number_string(c, value.number, out);
     case FVM_VALUE_STRING:
-        return owned_string(c, value.string, out);
+        return owned_string(c, value.string, out, fvm_string_size(value));
     default:
         return FVM_INVALID_ARGUMENT;
     }

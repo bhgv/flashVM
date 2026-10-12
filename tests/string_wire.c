@@ -59,7 +59,9 @@ int main(void)
     assert(out.type == FVM_VALUE_UNDEFINED);
     data[index] = 0;
     repair(data, size);
-    assert(fvm_value_deserialize(other, data, size, &out) == FVM_INVALID_ARGUMENT);
+    assert(fvm_value_deserialize(other, data, size, &out) == FVM_OK);
+    assert(fvm_object_call(other, out.object, "valueOf", 0, 0, &text) == FVM_OK);
+    assert(fvm_value_string_size(&text) == strlen(marker) && text.string[0] == 0);
     data[index] = (unsigned char)marker[0];
     repair(data, size);
     assert(fvm_value_deserialize(other, data, size, &out) == FVM_OK);

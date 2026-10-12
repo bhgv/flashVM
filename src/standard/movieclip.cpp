@@ -1,3 +1,4 @@
+#include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "function_state.hpp"
 #include "flashvm/movieclip.h"
@@ -1229,7 +1230,7 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
             if (r != FVM_OK || code.type != FVM_VALUE_STRING)
                 return FVM_INVALID_ARGUMENT;
             fvm_detail::vector<unsigned char> bytes;
-            size_t size = std::strlen(code.string);
+            size_t size = fvm_string_size(code);
             if (size % 2)
                 return FVM_INVALID_ARGUMENT;
             for (size_t i = 0; i < size; i += 2)

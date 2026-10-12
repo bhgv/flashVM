@@ -147,7 +147,7 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
         goto fail;
     if (!count)
         return blocking ? FVM_ERROR : FVM_NOT_FOUND;
-    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[7] < 1 || header[7] > 3))
+    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[7] < 1 || header[7] > 4))
     {
         result = FVM_INVALID_ARGUMENT;
         goto fail;
@@ -341,14 +341,15 @@ FVM_Result fvm_channel_send_primitive(FVM_Channel *c, const FVM_Value *v, int bl
             free(n);
             return FVM_INVALID_ARGUMENT;
         }
-        len = strlen(v->string);
+        len = fvm_value_string_size(v);
         n->owned_string = (char *)malloc(len + 1);
         if (!n->owned_string)
         {
             free(n);
             return FVM_OUT_OF_MEMORY;
         }
-        memcpy(n->owned_string, v->string, len + 1);
+        memcpy(n->owned_string, v->string, len);
+        n->owned_string[len] = 0;
         n->value.string = n->owned_string;
     }
     fvm_port_sync_lock(c->sync);
@@ -677,7 +678,7 @@ FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, 
         *out = n->value;
         if (out->type == FVM_VALUE_STRING)
         {
-            size = strlen(out->string) + 1;
+            size = fvm_value_string_size(out) + 1;
             copy = (char *)malloc(size);
             if (!copy)
             {
@@ -686,7 +687,8 @@ FVM_Result fvm_channel_peek_mixed(FVM_Channel *c, size_t index, FVM_Value *out, 
             }
             else
             {
-                memcpy(copy, out->string, size);
+                memcpy(copy, out->string, size - 1);
+                copy[size - 1] = 0;
                 out->string = copy;
             }
         }
