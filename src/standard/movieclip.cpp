@@ -1902,6 +1902,90 @@ FVM_Result rect_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     return get_bounds(c, o, n, a, v, false);
 }
 
+/* [GC:] Test copied paint/child edges against a world-space point under the native call barrier. */
+FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &yes, unsigned depth)
+{
+    if (depth > 64)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0, *paths = 0, *children = 0;
+    FVM_Result r = state(o, data);
+    if (r == FVM_OK)
+        r = private_object(data, "paths", paths);
+    if (r == FVM_OK)
+        r = private_object(data, "children", children);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Native barriers protect the copied geometry edges even if display getters mutate them.
+     */
+    Slots paints = paths->indexed, descendants = children->indexed;
+    FVM_Affine world;
+    r = matrix(c, o, world);
+    if (r != FVM_OK)
+        return r;
+    for (Slots::iterator i = paints.begin(); i != paints.end(); ++i)
+    {
+        if (i->second.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Object *paint = i->second.object;
+        double fill = 0, stroke = 0, width = 0;
+        r = numeric(c, paint, "fill", fill);
+        if (r == FVM_OK)
+            r = numeric(c, paint, "stroke", stroke);
+        if (r != FVM_OK)
+            return r;
+        if (!fill && !stroke)
+            continue;
+        FVM_Path *geometry = 0;
+        r = path(c, paint, world, &geometry);
+        if (r != FVM_OK)
+            return r;
+        int hit = 0;
+        FVM_Value rule;
+        int even_odd = field(paint, "even_odd", rule) == FVM_OK && rule.number ? 1 : 0;
+        if (fill)
+            r = fvm_path_hit_test(geometry, x, y, 0, even_odd, &hit);
+        if (r == FVM_OK && !hit && stroke)
+        {
+            r = numeric(c, paint, "width", width);
+            double scale = vector_length(world.xx, world.yx);
+            double other = vector_length(world.xy, world.yy);
+            if (other > scale)
+                scale = other;
+            if (r == FVM_OK)
+                r = fvm_path_hit_test(geometry, x, y, width ? width * scale : 1, even_odd, &hit);
+        }
+        fvm_path_destroy(geometry);
+        if (r != FVM_OK)
+            return r;
+        if (hit)
+        {
+            yes = true;
+            return FVM_OK;
+        }
+    }
+    for (Slots::iterator i = descendants.begin(); i != descendants.end(); ++i)
+    {
+        if (i->second.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        r = shape_hit(c, i->second.object, x, y, yes, depth + 1);
+        if (r != FVM_OK || yes)
+            return r;
+    }
+    return FVM_OK;
+}
+
+/* Apply ActionScript truthiness to the optional shape flag without invoking user code. */
+bool shape_flag(const FVM_Value &value)
+{
+    if (value.type == FVM_VALUE_BOOLEAN)
+        return value.boolean != 0;
+    if (value.type == FVM_VALUE_NUMBER)
+        return value.number != 0 && value.number == value.number;
+    if (value.type == FVM_VALUE_STRING)
+        return fvm_string_size(value) != 0;
+    return value.type == FVM_VALUE_OBJECT;
+}
+
 /* Compute and return hit. */
 FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
@@ -1930,9 +2014,7 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     {
         if (n < 2)
             return FVM_INVALID_ARGUMENT;
-        if (n > 2 && ((a[2].type == FVM_VALUE_BOOLEAN && a[2].boolean) ||
-                      (a[2].type == FVM_VALUE_NUMBER && a[2].number)))
-            return FVM_UNSUPPORTED;
+        bool shape = n > 2 && shape_flag(a[2]);
         double x = 0, y = 0;
         r = args(c, n, a, 0, 0, x);
         if (r != FVM_OK)
@@ -1941,6 +2023,18 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         if (r != FVM_OK)
             return r;
         yes = any && x >= b.x_min && x <= b.x_max && y >= b.y_min && y <= b.y_max;
+        if (shape)
+        {
+            if (!(x >= -2000000 && x <= 2000000 && y >= -2000000 && y <= 2000000))
+            {
+                fvm_value_boolean(out, 0);
+                return FVM_OK;
+            }
+            yes = false;
+            r = shape_hit(c, o, x, y, yes, 0);
+            if (r != FVM_OK)
+                return r;
+        }
     }
     fvm_value_boolean(out, yes);
     return FVM_OK;

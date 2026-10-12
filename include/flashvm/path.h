@@ -69,6 +69,11 @@ extern "C"
     /* Bezier extrema, not the control-point box. Empty path -> zero bounds. */
     /* Implement path bounds for this subsystem. */
     FVM_API FVM_Result fvm_path_bounds(const FVM_Path *path, FVM_PathBounds *out);
+    /* Point query without a graphics backend. Width=0 fills, positive width tests
+     * round strokes. Curves use adaptive chords (0.0001 coordinate-unit tolerance,
+     * maximum depth 20); filled boundaries use a 0.000001 tolerance. */
+    FVM_API FVM_Result fvm_path_hit_test(const FVM_Path *, double x, double y, double width,
+                                       int even_odd, int *hit);
     /* Draw using the selected AGG/Cairo backend. Width=0 fills; positive width
      * strokes with round joins/caps. even_odd is 0 (nonzero) or 1. Rendering
      * coordinates and surface dimensions are bounded as in raster.h. */

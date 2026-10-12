@@ -54,3 +54,10 @@ transport. [NUMBER_RADIX.md](NUMBER_RADIX.md) records the remaining limits.
 Increment/decrement, remainder, bitwise operations/shifts and Greater are
 implemented; avm1_numeric_operations verifies boundaries, coercion order and
 error recovery. See AVM1_NUMERIC_ACTIONS.md. Полная семантика AVM1 открыта.
+
+## v0.41 Vector MovieClip shape hit testing
+
+MovieClip.hitTest point/shape queries and the backend-independent C89 path query
+are implemented with documented subdivision/boundary tolerances. path_hit and
+movieclip_shape_hit cover fill rules, curves, strokes, transforms, queue/file and
+GC. See MOVIECLIP_SHAPE_HIT.md. Маски/bitmap/text и полный этап 3 остаются открыты.
