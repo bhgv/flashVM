@@ -22,3 +22,14 @@
 No roadmap stage is closed. Update this inventory with concrete tests, profiles
 and limitations when implementing a remaining item. This initial inventory is
 not yet a complete SWF tag/action/AS API compatibility catalogue.
+
+## v0.37 BitmapData subset / Частичная реализация BitmapData
+
+Native pixel storage, size/rectangle accessors, clone/dispose, pixel access,
+fillRect, scroll and colorTransform are implemented. Queue/file graph snapshots
+retain factories and validate binary state. See [BITMAP_DATA.md](BITMAP_DATA.md)
+for test names and remaining conformance/graphics limitations. Stage 4 remains
+open; no full BitmapData, rendering or media compatibility is claimed.
+
+Реализован перечисленный набор BitmapData; остаются premultiplied rounding,
+остальные операции, интеграция сцены/заливок и полная приёмка.

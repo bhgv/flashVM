@@ -6,6 +6,7 @@
 #include "../standard/movieclip_state.hpp"
 #include "../standard/geometry_state.hpp"
 #include "../standard/color_transform_state.hpp"
+#include "../standard/bitmap_state.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
 #include "../standard/base_state.hpp"
@@ -132,7 +133,8 @@ bool known_kind(unsigned long kind)
            kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
            kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
            kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
-           kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51;
+           kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51 || kind == 52 ||
+           kind == 53;
 }
 
 /* Compute and return identify. */
@@ -344,8 +346,9 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             continue;
         }
         require(src->resource_kind >= 0 && known_kind((unsigned long)src->resource_kind) &&
-                    (!src->resource || src->resource_kind == 1002) &&
-                    (!src->release_resource || src->resource_kind == 1002) &&
+                    (!src->resource || src->resource_kind == 1002 || src->resource_kind == 52) &&
+                    (!src->release_resource || src->resource_kind == 1002 ||
+                     src->resource_kind == 52) &&
                     !src->callable.callback,
                 FVM_UNSUPPORTED);
         dst.kind = (unsigned long)src->resource_kind;
@@ -391,6 +394,13 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             charge(budget, flag->first.size() + 12);
             ++entries;
             require(entries <= max_entries, FVM_UNSUPPORTED);
+        }
+        if (dst.kind == 52)
+        {
+            FVM_Result result = fvm_bitmap_snapshot(src, dst.state.string);
+            require(result == FVM_OK, result);
+            dst.state.type = FVM_VALUE_STRING;
+            charge(budget, dst.state.string.size());
         }
         if (dst.kind == 1002)
         {
@@ -797,7 +807,7 @@ struct Reader
         return s;
     }
     /* Compute and return value. */
-    Value value()
+    Value value(bool native_binary = false)
     {
 
         /* Initialization / Инициализация локального состояния. */
@@ -816,7 +826,7 @@ struct Reader
         if (v.type == FVM_VALUE_STRING)
         {
             v.string = string(true);
-            if (version >= 4)
+            if (version >= 4 && !native_binary)
             {
                 FVM_Value checked;
                 require(fvm_value_string_bytes(&checked, v.string.data(), v.string.size()) ==
@@ -964,7 +974,8 @@ Graph read_graph(Reader &r, unsigned int version)
         Object o;
         o.kind = r.u32();
         require(known_kind(o.kind), FVM_UNSUPPORTED);
-        o.state = r.value();
+        /* Bitmap native payload is validated as binary storage, not as ActionScript text. */
+        o.state = r.value(o.kind == 52);
         require(o.state.metatable == none);
         if (o.kind == 1002)
             o.text = r.text_field();
@@ -976,7 +987,9 @@ Graph read_graph(Reader &r, unsigned int version)
             for (size_t j = 0; j < count; ++j)
                 o.implemented_interfaces.push_back(r.ref());
         }
-        if (o.kind == 4001 || o.kind == 4008)
+        if (o.kind == 52)
+            require(o.state.type == FVM_VALUE_STRING && fvm_bitmap_snapshot_valid(o.state.string));
+        else if (o.kind == 4001 || o.kind == 4008)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
                  o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48 || o.kind == 50)
@@ -1503,6 +1516,12 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+            if (src.kind == 52)
+            {
+                /* [GC:] Attach a restored bitmap's separately owned pixel allocation. */
+                FVM_Result restored = fvm_bitmap_restore(dst, src.state.string);
+                require(restored == FVM_OK, restored);
+            }
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
