@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.46 / Remaining work after v0.46
+# Оставшаяся работа после v0.47 / Remaining work after v0.47
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -61,3 +61,7 @@ v0.45 checks lossless SWF resources and Shape1/2/3 bitmap fills; JPEG tags and l
 В v0.46 подключены JPEG2/3 через bounded C89/libjpeg адаптер; legacy JPEG tables, embedded PNG/GIF и CMYK открыты (SWF_JPEG_BITMAPS.md).
 
 v0.46 imports JPEG2/3 through a bounded C89 libjpeg bridge; legacy tables, embedded PNG/GIF and CMYK remain open.
+
+В v0.47 проверены embedded PNG и full-canvas single-frame GIF89a в SWF 8 (SWF_PNG_GIF_BITMAPS.md). Legacy JPEG tables и полная alpha/color сверка остаются открытыми.
+
+v0.47 checks SWF 8 PNG and full-canvas single-frame GIF89a resources; legacy JPEG tables and exact color/alpha conformance remain open.

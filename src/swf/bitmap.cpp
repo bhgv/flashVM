@@ -2,6 +2,7 @@
 #include "bitmap.hpp"
 #include "zlib.h"
 #include "../capi/swf_jpeg_internal.h"
+#include "../capi/swf_image_internal.h"
 #include <cstdlib>
 #include <cstring>
 #include <climits>
@@ -133,26 +134,29 @@ FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned t
         image += 4;
         image_size -= 4;
     }
-    if (image_size >= 3 && image[0] == 137 && image[1] == 80 && image[2] == 78)
-        return version < 8 ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
-    if (image_size >= 3 && !std::memcmp(image, "GIF", 3))
-        return version < 8 ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+    bool png = image_size >= 8 && !std::memcmp(image, "\211PNG\r\n\032\n", 8);
+    bool gif = image_size >= 6 && !std::memcmp(image, "GIF89a", 6);
+    if ((png || gif) && (version < 8 || (tag == 35 && alpha_at != size)))
+        return FVM_INVALID_ARGUMENT;
     FVM_SWFBitmap result;
     unsigned char *pixels = 0;
     FVM_Result status =
-        fvm_swf_decode_jpeg(image, image_size, limit, &result.width, &result.height, &pixels);
+        png ? fvm_swf_decode_png(image, image_size, limit, &result.width, &result.height, &pixels)
+        : gif
+            ? fvm_swf_decode_gif(image, image_size, limit, &result.width, &result.height, &pixels)
+            : fvm_swf_decode_jpeg(image, image_size, limit, &result.width, &result.height, &pixels);
     if (status != FVM_OK)
         return status;
     try
     {
         result.id = word(bytes);
-        result.transparent = tag == 35;
+        result.transparent = tag == 35 || png || gif;
         size_t count = (size_t)result.width * result.height;
         result.pixels.resize(count * 4);
         std::memcpy(result.pixels.begin(), pixels, count * 4);
         std::free(pixels);
         pixels = 0;
-        if (tag == 35)
+        if (tag == 35 && !png && !gif)
         {
             if (alpha_at >= size || size - alpha_at > ULONG_MAX)
                 return FVM_INVALID_ARGUMENT;
