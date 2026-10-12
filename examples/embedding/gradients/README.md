@@ -37,3 +37,6 @@ RADIAL измеряет расстояние от центра до единич
 Путь и пиксели принадлежат программе; путь нужно освободить. Контекст VM и корни
 GC этому нативному API не требуются. Ограничения и проверки описаны в
 [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md).
+
+The annotated AS2 example_as2.as demonstrates MovieClip.beginGradientFill with a copied legacy box matrix; see [RU/EN checkpoint](../../../doc/MOVIECLIP_GRADIENT_FILL.md).
+Русский: example_as2.as поясняет вызов beginGradientFill, копирование аргументов и сохранение рампы готовым контуром.

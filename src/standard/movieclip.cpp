@@ -127,7 +127,7 @@ FVM_Result args(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int
 /* Convert finite RGB numbers to the unsigned 24-bit paint domain before narrowing casts. */
 unsigned long packed_rgb(double value)
 {
-    double reduced = std::fmod(std::floor(value), 16777216.0);
+    double reduced = std::fmod(value < 0 ? std::ceil(value) : std::floor(value), 16777216.0);
     if (reduced < 0)
         reduced += 16777216.0;
     return (unsigned long)reduced;
@@ -750,6 +750,11 @@ FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destinat
     /* [GC:] One snapshot preserves aliases between the path table and its active path. */
     bundle->properties["paths"] = paths;
     bundle->properties["active"] = active;
+    if (source->properties.find("gradient") != source->properties.end())
+    {
+        /* [GC:] Clone the current ramp together with its aliases in active/completed paths. */
+        bundle->properties["gradient"] = source->properties["gradient"];
+    }
     FVM_Value value = object(bundle), restored;
     unsigned char *bytes = 0;
     size_t size = 0;
@@ -768,6 +773,11 @@ FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destinat
     /* [GC:] The new instance owns the cloned geometry and the matching active-path edge. */
     destination->properties["paths"] = paths;
     destination->properties["active"] = active;
+    if (restored.object->properties.find("gradient") != restored.object->properties.end())
+    {
+        /* [GC:] Adopt the cloned current ramp rather than retaining the source's descriptor. */
+        destination->properties["gradient"] = restored.object->properties["gradient"];
+    }
     const char *styles[] = {"cx",     "cy",    "fill",    "rgb",      "alpha",
                             "stroke", "width", "lineRgb", "lineAlpha"};
     for (size_t i = 0; i < sizeof(styles) / sizeof(styles[0]); ++i)
@@ -1453,6 +1463,8 @@ FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     data->properties["rgb"] = number(packed_rgb(rgb));
     data->properties["alpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
     data->properties["active"] = object(0);
+    /* [GC:] Release the current ramp without altering gradients retained by older paths. */
+    data->properties.erase("gradient");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1471,6 +1483,8 @@ FVM_Result end_fill(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value 
     /* Computation / Вычисление и обновление состояния. */
     data->properties["fill"] = number(0);
     data->properties["active"] = object(0);
+    /* [GC:] Release the current ramp without altering gradients retained by older paths. */
+    data->properties.erase("gradient");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1498,7 +1512,7 @@ FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
 
     /* Computation / Вычисление и обновление состояния. */
     data->properties["stroke"] = number(n ? 1 : 0);
-    data->properties["width"] = number(width ? width : 1);
+    data->properties["width"] = number(width);
     data->properties["lineRgb"] = number(packed_rgb(rgb));
     data->properties["lineAlpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
     data->properties["active"] = object(0);
@@ -1541,6 +1555,11 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         if (r != FVM_OK)
             return r;
         part->properties["commands"] = object(commands);
+        if (data->properties.find("gradient") != data->properties.end())
+        {
+            /* [GC:] A completed path retains the immutable ramp chosen when it begins. */
+            part->properties["gradient"] = data->properties["gradient"];
+        }
         const char *style[] = {"fill", "rgb", "alpha", "stroke", "width", "lineRgb", "lineAlpha"};
         for (unsigned int i = 0; i < 7; ++i)
         {
@@ -1646,6 +1665,13 @@ FVM_Result clear(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     data->properties["active"] = object(0);
     data->properties["cx"] = number(0);
     data->properties["cy"] = number(0);
+    data->properties["fill"] = number(0);
+    data->properties["stroke"] = number(0);
+    data->properties["width"] = number(0);
+    data->properties["rgb"] = data->properties["lineRgb"] = number(0);
+    data->properties["alpha"] = data->properties["lineAlpha"] = number(100);
+    /* [GC:] Clearing graphics releases the active/current ramp after dropping all path edges. */
+    data->properties.erase("gradient");
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1974,6 +2000,35 @@ FVM_Result display_color(FVM_Context *c, FVM_Object *o, FVM_Object *data, const 
     return FVM_OK;
 }
 
+/* Compose ancestor color transforms when the host renders a subtree in world coordinates. */
+FVM_Result ancestor_color(FVM_Context *c, FVM_Object *o, ColorAffine &out)
+{
+    /* [GC:] Borrow ancestor edges under the caller's render barrier while getters can run. */
+    fvm_detail::vector<FVM_Object *> ancestors;
+    /* [GC:] Traverse protected parent edges without adding persistent host roots. */
+    for (FVM_Object *p = parent(o); p; p = parent(p))
+    {
+        if (p->owner != c || ancestors.size() >= 64 || p == o)
+            return FVM_INVALID_ARGUMENT;
+        /* [GC:] Retain the fixed traversal order until all inherited color terms are read. */
+        ancestors.push_back(p);
+    }
+    for (size_t i = ancestors.size(); i; --i)
+    {
+        /* [GC:] Validate this ancestor's private display-state edge before reading its color. */
+        FVM_Object *data = 0;
+        FVM_Result r = state(ancestors[i - 1], data);
+        if (r != FVM_OK)
+            return r;
+        ColorAffine next;
+        r = display_color(c, ancestors[i - 1], data, out, next);
+        if (r != FVM_OK)
+            return r;
+        out = next;
+    }
+    return FVM_OK;
+}
+
 /* Clamp a computed color component before converting it to an unsigned byte. */
 unsigned char component(double value)
 {
@@ -2274,7 +2329,8 @@ const Method methods[] = {{"toString", target},
                           {"getRect", rect_method},
                           {"hitTest", hit},
                           {"attachMovie", attach_movie},
-                          {"duplicateMovieClip", duplicate_movie}};
+                          {"duplicateMovieClip", duplicate_movie},
+                          {"beginGradientFill", fvm_movieclip_gradient_begin}};
 } // namespace
 
 /* [GC:] Expose the validated managed state without publishing a new host ownership claim. */
@@ -2723,7 +2779,8 @@ extern "C" FVM_Result fvm_movieclip_render(
         FVM_NativeCallGuard guard(c);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         ColorAffine root_color;
-        return render(c, o, surface, root_color, 0);
+        FVM_Result r = ancestor_color(c, o, root_color);
+        return r == FVM_OK ? render(c, o, surface, root_color, 0) : r;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
