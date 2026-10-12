@@ -3,5 +3,6 @@
  */
 
 // AS1/AS2 (SWF 5-8): host registers nativeSum via fvm_register_function.
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * nativeSum(10, 20) — значение или выражение для вывода. */
 trace(nativeSum(10, 20));

@@ -4,5 +4,6 @@
 
 // ActionScript 2 (SWF 7/8) - planned native bridge, NOT registered by the SQLite adapter yet.
 // The host must explicitly register dbGetScore before this can work.
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * dbGetScore() — значение или выражение для вывода. */
 trace(dbGetScore());

@@ -13,9 +13,10 @@ var state = new Object();
 state.self = state;
 /* Сохраняем вычисленное значение: state.description. */
 state.description = "Persistent object graph";
-/* Выполняем вызов output.send с указанными аргументами. */
+/* Вызываем output.send: записываем значение в канал.
+ * state — передаваемое значение. */
 output.send(state);
-/* Выполняем вызов output.close с указанными аргументами. */
+/* Вызываем output.close: закрываем выходной канал после отправки. */
 output.close();
 
 /* Объявляем input и сохраняем начальное значение. */
@@ -24,15 +25,16 @@ var input = channel.create("file", "flashvm-state.bin", "r");
 var restored = input.receive();
 /* Объявляем finished и сохраняем начальное значение. */
 var finished = input.tryReceive(); // undefined at EOF; receive() reports an error.
-/* Выполняем вызов input.close с указанными аргументами. */
+/* Вызываем input.close: закрываем входной канал. */
 input.close();
 
 // Default rw preserves the file and appends new messages. Reading starts at zero.
 /* Объявляем append и сохраняем начальное значение. */
 var append = channel.create("file", "flashvm-state.bin");
-/* Выполняем вызов append.send с указанными аргументами. */
+/* Вызываем append.send: дописываем запись в файловый канал.
+ * "next record" — передаваемое значение. */
 append.send("next record");
-/* Выполняем вызов append.close с указанными аргументами. */
+/* Вызываем append.close: закрываем файловый канал после записи. */
 append.close();
 
 // Primitive metadata follows assignment. Native hooks are registered by the host.

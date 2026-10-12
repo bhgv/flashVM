@@ -34,7 +34,7 @@ int main(void)
         return 1;
 
     /* Computation / Вычисление и обновление состояния. */
-    /* Выполняем вызов sizeof с указанными аргументами. */
+    /* Определяем или используем sizeof; назначение и владение пояснены у функции. */
     rule.struct_size = sizeof(rule);
     /* Сохраняем вычисленное значение: rule.gesture. */
     rule.gesture = FVM_GESTURE_TAP;

@@ -10,7 +10,7 @@
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
 /* Implement on gesture for this subsystem. */
-/* Выполняем вызов on_gesture с указанными аргументами. */
+/* Определяем функцию on_gesture; параметры передаются вызывающей стороной в указанном порядке. */
 static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputPhase phase,
                        /* Продолжаем объявление или выражение с указанными параметрами. */
                        FVM_MouseButton button, void *user)
@@ -66,7 +66,7 @@ int main(void)
     }
 
     /* Computation / Вычисление и обновление состояния. */
-    /* Выполняем вызов sizeof с указанными аргументами. */
+    /* Определяем или используем sizeof; назначение и владение пояснены у функции. */
     rule.struct_size = sizeof(rule);
     /* Сохраняем вычисленное значение: rule.gesture. */
     rule.gesture = FVM_GESTURE_TAP;
@@ -76,9 +76,14 @@ int main(void)
     rule.direction = 0;
     /* Сохраняем вычисленное значение: rule.button. */
     rule.button = FVM_MOUSE_RIGHT;
-    /* Выполняем вызов fvm_input_set_rule с указанными аргументами. */
+    /* Вызываем fvm_input_set_rule: устанавливаем правило преобразования ввода.
+     * context — контекст интерпретатора.
+     * &rule — правило преобразования события ввода. */
     fvm_input_set_rule(context, &rule);
-    /* Выполняем вызов fvm_input_set_callback с указанными аргументами. */
+    /* Вызываем fvm_input_set_callback: назначаем нативный обработчик ввода.
+     * context — контекст интерпретатора.
+     * on_gesture — нативная функция обратного вызова.
+     * 0 — не копируемые данные хоста, живущие до завершения вызовов. */
     fvm_input_set_callback(context, on_gesture, 0);
     /* Сохраняем вычисленное значение: event.gesture. */
     event.gesture = FVM_GESTURE_TAP;
@@ -90,10 +95,16 @@ int main(void)
     event.x = 100;
     /* Сохраняем вычисленное значение: event.y. */
     event.y = 200;
-    /* Выполняем вызов fvm_input_enqueue с указанными аргументами. */
+    /* Вызываем fvm_input_enqueue: добавляем событие в очередь контекста.
+     * context — контекст интерпретатора.
+     * &event — описание события, копируемое в очередь.
+     * FVM_INPUT_END — фаза доставки события. */
     fvm_input_enqueue(context, &event, FVM_INPUT_END);
     /* Call pump on the owning VM thread, typically once per frame. */
-    /* Выполняем вызов fvm_input_pump с указанными аргументами. */
+    /* Вызываем fvm_input_pump: доставляем накопленные события.
+     * context — контекст интерпретатора.
+     * 0 — максимум событий за один вызов обработки.
+     * &dispatched — адрес для числа доставленных событий. */
     fvm_input_pump(context, 0, &dispatched);
 
     /* Cleanup / Освобождение ресурсов. */

@@ -7,7 +7,9 @@
 // UTF-8 helper functions are NOT yet exposed to ActionScript automatically.
 /* Объявляем greeting и сохраняем начальное значение. */
 var greeting : String = "Hello, мир!";
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * greeting.length — значение или выражение для вывода. */
 trace(greeting.length);
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * greeting.indexOf("Hello") — значение или выражение для вывода. */
 trace(greeting.indexOf("Hello"));

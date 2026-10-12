@@ -9,7 +9,7 @@
 /* Each worker owns a different pixel. A real renderer would use immutable
  * MovieClip display snapshots, then composite layers in display-list order. */
 /* Draw the current value. */
-/* Выполняем вызов draw с указанными аргументами. */
+/* Определяем функцию draw; параметры передаются вызывающей стороной в указанном порядке. */
 static void draw(void *buffer, unsigned int pixel)
 /* Начинаем блок инструкций или описание объекта. */
 {

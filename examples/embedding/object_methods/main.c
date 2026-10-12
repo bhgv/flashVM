@@ -8,7 +8,7 @@
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
 /* Add the current value. */
-/* Выполняем вызов add с указанными аргументами. */
+/* Определяем функцию add; параметры передаются вызывающей стороной в указанном порядке. */
 static FVM_Result add(FVM_Context *ctx, FVM_Object *self, unsigned int argc, const FVM_Value *args,
                       /* Продолжаем объявление или выражение с указанными параметрами. */
                       FVM_Value *result, void *userdata)

@@ -9,11 +9,12 @@
 function protectedWorker(input)
 /* Начинаем блок инструкций или описание объекта. */
 {
-    /* Выполняем вызов input.lock.set с указанными аргументами. */
+    /* Вызываем input.lock.set: захватываем полученный общий мутекс с ожиданием. */
     input.lock.set();
-    /* Выполняем вызов input.pipe.send с указанными аргументами. */
+    /* Вызываем input.pipe.send: отправляем сообщение через полученный общий канал.
+ * "protected work completed" — передаваемое значение. */
     input.pipe.send("protected work completed");
-    /* Выполняем вызов input.lock.reset с указанными аргументами. */
+    /* Вызываем input.lock.reset: освобождаем полученный общий мутекс. */
     input.lock.reset();
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return input.lock;

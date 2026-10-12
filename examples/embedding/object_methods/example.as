@@ -7,5 +7,6 @@
 // This call syntax is not yet a verified SWF integration scenario:
 /* Объявляем answer и сохраняем начальное значение. */
 var answer = receiver.add(7);
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * answer — значение или выражение для вывода. */
 trace(answer); // Expected: 42 when method binding is implemented.

@@ -5,9 +5,10 @@
 // AS2 (SWF 7/8): standard Flash sound APIs, not implemented by FlashVM yet.
 /* Объявляем sound и сохраняем начальное значение. */
 var sound : Sound = new Sound();
-/* Выполняем вызов sound.attachSound с указанными аргументами. */
+/* Вызываем sound.attachSound: выбираем встроенный звук по идентификатору экспорта.
+ * "click" — имя экспортированного звукового ресурса. */
 sound.attachSound("click");
-/* Выполняем вызов sound.start с указанными аргументами. */
+/* Вызываем sound.start: запускаем выбранный звук. */
 sound.start();
-/* Выполняем вызов sound.stop с указанными аргументами. */
+/* Вызываем sound.stop: останавливаем воспроизведение звука. */
 sound.stop();

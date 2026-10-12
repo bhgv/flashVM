@@ -8,7 +8,7 @@
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
 /* Implement on gesture for this subsystem. */
-/* Выполняем вызов on_gesture с указанными аргументами. */
+/* Определяем функцию on_gesture; параметры передаются вызывающей стороной в указанном порядке. */
 static void on_gesture(FVM_Context *ctx, const FVM_InputEvent *event, FVM_InputPhase phase,
                        /* Продолжаем объявление или выражение с указанными параметрами. */
                        FVM_MouseButton button, void *user)
@@ -67,7 +67,7 @@ int main(void)
 
     /* Computation / Вычисление и обновление состояния. */
     /* Two-finger tap behaves like a right mouse click. */
-    /* Выполняем вызов sizeof с указанными аргументами. */
+    /* Определяем или используем sizeof; назначение и владение пояснены у функции. */
     rule.struct_size = sizeof(rule);
     /* Сохраняем вычисленное значение: rule.gesture. */
     rule.gesture = FVM_GESTURE_TAP;
@@ -77,19 +77,41 @@ int main(void)
     rule.direction = 0;
     /* Сохраняем вычисленное значение: rule.button. */
     rule.button = FVM_MOUSE_RIGHT;
-    /* Выполняем вызов fvm_input_set_rule с указанными аргументами. */
+    /* Вызываем fvm_input_set_rule: устанавливаем правило преобразования ввода.
+     * context — контекст интерпретатора.
+     * &rule — правило преобразования события ввода. */
     fvm_input_set_rule(context, &rule);
-    /* Выполняем вызов fvm_input_set_callback с указанными аргументами. */
+    /* Вызываем fvm_input_set_callback: назначаем нативный обработчик ввода.
+     * context — контекст интерпретатора.
+     * on_gesture — нативная функция обратного вызова.
+     * 0 — не копируемые данные хоста, живущие до завершения вызовов. */
     fvm_input_set_callback(context, on_gesture, 0);
-    /* Выполняем вызов sizeof с указанными аргументами. */
+    /* Определяем или используем sizeof; назначение и владение пояснены у функции. */
     recognizer.struct_size = sizeof(recognizer);
-    /* Выполняем вызов fvm_gesture_recognizer_init с указанными аргументами. */
+    /* Вызываем fvm_gesture_recognizer_init: инициализируем распознаватель жестов.
+     * &recognizer — состояние распознавателя жестов. */
     fvm_gesture_recognizer_init(&recognizer);
 
     /* Computation / Вычисление и обновление состояния. */
-    /* Выполняем вызов fvm_gesture_recognizer_feed с указанными аргументами. */
+    /* Вызываем fvm_gesture_recognizer_feed: передаём изменение касания распознавателю жестов.
+     * context — контекст интерпретатора.
+     * &recognizer — состояние распознавателя жестов.
+     * FVM_TOUCH_BEGIN — фаза касания: начало, движение, завершение или отмена.
+     * 2 — число пальцев, участвующих в событии.
+     * 10 — горизонтальная координата события.
+     * 20 — вертикальная координата события.
+     * 100 — время события в миллисекундах.
+     * &dispatched — адрес для признака доставки распознанного жеста. */
     fvm_gesture_recognizer_feed(context, &recognizer, FVM_TOUCH_BEGIN, 2, 10, 20, 100, &dispatched);
-    /* Выполняем вызов fvm_gesture_recognizer_feed с указанными аргументами. */
+    /* Вызываем fvm_gesture_recognizer_feed: передаём изменение касания распознавателю жестов.
+     * context — контекст интерпретатора.
+     * &recognizer — состояние распознавателя жестов.
+     * FVM_TOUCH_END — фаза касания: начало, движение, завершение или отмена.
+     * 0 — число пальцев, участвующих в событии.
+     * 11 — горизонтальная координата события.
+     * 20 — вертикальная координата события.
+     * 160 — время события в миллисекундах.
+     * &dispatched — адрес для признака доставки распознанного жеста. */
     fvm_gesture_recognizer_feed(context, &recognizer, FVM_TOUCH_END, 0, 11, 20, 160, &dispatched);
 
     /* Cleanup / Освобождение ресурсов. */

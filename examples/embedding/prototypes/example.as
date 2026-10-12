@@ -20,10 +20,11 @@ function Child()
 {
     /* Завершаем текущий блок или описание объекта. */
 }
-/* Выполняем вызов Base с указанными аргументами. */
+/* Вызываем Base: вызываем базовый конструктор. */
 Child.prototype = new Base();
 /* Объявляем instance и сохраняем начальное значение. */
 var instance = new Child();
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * instance.inherited — значение или выражение для вывода. */
 trace(instance.inherited);
 // NOTE: DefineFunction/NewObject for arbitrary AS constructors is not yet supported.

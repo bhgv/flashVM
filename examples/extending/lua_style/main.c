@@ -10,7 +10,7 @@
 /* Arguments remain on the callback stack. Returning 1 selects the topmost
  * value as the result; the host bridge discards the callback's arguments. */
 /* Add the current value. */
-/* Выполняем вызов add с указанными аргументами. */
+/* Определяем функцию add; параметры передаются вызывающей стороной в указанном порядке. */
 static int add(FVM_Stack *stack)
 /* Начинаем блок инструкций или описание объекта. */
 {
@@ -20,19 +20,27 @@ static int add(FVM_Stack *stack)
     double left, right;
     /* Объявляем данные или дескрипторы, используемые в следующем блоке. */
     FVM_Result result;
-    /* Выполняем вызов fvm_stack_checknumber с указанными аргументами. */
+    /* Вызываем fvm_stack_checknumber: читаем числовой аргумент с проверкой типа.
+     * stack — дескриптор стека API.
+     * 1 — индекс выбираемого элемента.
+     * &left — адрес или буфер для результата. */
     result = fvm_stack_checknumber(stack, 1, &left);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result != FVM_OK)
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return result;
-    /* Выполняем вызов fvm_stack_checknumber с указанными аргументами. */
+    /* Вызываем fvm_stack_checknumber: читаем числовой аргумент с проверкой типа.
+     * stack — дескриптор стека API.
+     * 2 — индекс выбираемого элемента.
+     * &right — адрес или буфер для результата. */
     result = fvm_stack_checknumber(stack, 2, &right);
     /* Проверяем условие перед выполнением следующей ветки. */
     if (result != FVM_OK)
         /* Возвращаем результат вызывающей стороне и завершаем функцию. */
         return result;
-    /* Выполняем вызов fvm_stack_pushnumber с указанными аргументами. */
+    /* Вызываем fvm_stack_pushnumber: добавляем число в стек API.
+     * stack — дескриптор стека API.
+     * left + right — число, добавляемое в стек результатов. */
     result = fvm_stack_pushnumber(stack, left + right);
     /* Возвращаем результат вызывающей стороне и завершаем функцию. */
     return result == FVM_OK ? 1 : result;

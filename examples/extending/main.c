@@ -10,7 +10,7 @@
 /* Подключаем объявления используемых типов и функций. */
 #include <stdio.h>
 /* Compute and return make point. */
-/* Выполняем вызов make_point с указанными аргументами. */
+/* Определяем функцию make_point; параметры передаются вызывающей стороной в указанном порядке. */
 static FVM_Result make_point(FVM_Context *ctx, FVM_Object *self, unsigned int argc,
                              /* Продолжаем объявление или выражение с указанными параметрами. */
                              const FVM_Value *args, FVM_Value *out, void *userdata)
@@ -64,7 +64,7 @@ static FVM_Result make_point(FVM_Context *ctx, FVM_Object *self, unsigned int ar
 
 /* Called by host; not yet a dynamic plugin entry point. */
 /* Register extension. */
-/* Выполняем вызов register_extension с указанными аргументами. */
+/* Определяем функцию register_extension; параметры передаются вызывающей стороной в указанном порядке. */
 static FVM_Result register_extension(FVM_Context *ctx)
 /* Начинаем блок инструкций или описание объекта. */
 {

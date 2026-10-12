@@ -3,7 +3,8 @@
  */
 
 // ActionScript 2 (SWF 7/8): host has already exposed gameState.
-/* Выполняем вызов trace с указанными аргументами. */
+/* Вызываем trace: выводим диагностическое представление значения.
+ * gameState.score — значение или выражение для вывода. */
 trace(gameState.score);
 /* Сохраняем вычисленное значение: gameState.score. */
 gameState.score = 456;

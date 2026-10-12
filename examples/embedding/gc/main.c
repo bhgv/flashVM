@@ -68,7 +68,8 @@ int main(void)
     printf("First collection: %lu objects reclaimed\n", reclaimed);
 
     /* Computation / Вычисление и обновление состояния. */
-    /* [GC:] Выполняем вызов fvm_gc_unpin с указанными аргументами. */
+    /* [GC:] Вызываем fvm_gc_unpin: снимаем один явный корень объекта.
+     * vm — контекст-владелец; object — объект, который больше не удерживает хост. */
     /* [GC:] Снимаем одну явную удерживающую ссылку хоста. */
     fvm_gc_unpin(vm, object); /* never use object after collection */
     /* Запускаем сборку мусора и проверяем её результат. */
