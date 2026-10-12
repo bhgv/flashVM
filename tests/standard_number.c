@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <string.h>
 #include <float.h>
+#include <math.h>
 static void format(FVM_Context *c, FVM_Object *number, double radix, const char *expected)
 {
     FVM_Value arg, out;
@@ -65,9 +66,35 @@ int main(void)
     fvm_value_number(&arg, 0.25);
     assert(fvm_construct(c, "Number", 1, &arg, &zero) == FVM_OK);
     fvm_value_number(&arg, 2);
+    format(c, zero, 2, "0.01");
+    format(c, zero, 4, "0.1");
+    format(c, zero, 8, "0.2");
+    format(c, zero, 16, "0.4");
+    format(c, zero, 32, "0.8");
+    fvm_value_number(&arg, 3);
     assert(fvm_object_call(c, zero, "toString", 1, &arg, &value) == FVM_UNSUPPORTED);
     assert(fvm_object_call(c, zero, "toString", 0, 0, &value) == FVM_OK &&
            !strcmp(value.string, "0.25"));
+    fvm_value_number(&arg, -10.625);
+    assert(fvm_construct(c, "Number", 1, &arg, &zero) == FVM_OK);
+    format(c, zero, 2, "-1010.101");
+    format(c, zero, 16, "-a.a");
+    fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=zero;
+    assert(fvm_channel_send_value(c, channel, &value, 0)==FVM_OK);
+    assert(fvm_channel_receive_value(other, channel, &copy, 0)==FVM_OK);
+    format(other, copy.object, 16, "-a.a");
+    fvm_value_number(&arg, DBL_MAX);
+    assert(fvm_construct(c, "Number", 1, &arg, &zero)==FVM_OK);
+    fvm_value_number(&arg, 2);
+    assert(fvm_object_call(c, zero, "toString", 1, &arg, &value)==FVM_OK);
+    assert(fvm_value_string_size(&value)==1024);
+    {size_t i;for(i=0;i<53;++i)assert(value.string[i]=='1');for(;i<1024;++i)assert(value.string[i]=='0');}
+    if(ldexp(1.0,-1074)>0){
+      fvm_value_number(&arg,ldexp(1.0,-1074));assert(fvm_construct(c,"Number",1,&arg,&zero)==FVM_OK);
+      fvm_value_number(&arg,2);assert(fvm_object_call(c,zero,"toString",1,&arg,&value)==FVM_OK);
+      assert(fvm_value_string_size(&value)==1076);assert(value.string[0]=='0' && value.string[1]=='.' && value.string[1075]=='1');
+      {size_t i;for(i=2;i<1075;++i)assert(value.string[i]=='0');}
+    }
     fvm_value_undefined(&arg);
     assert(fvm_construct(c, "Number", 1, &arg, &zero) == FVM_OK);
     assert(fvm_object_call(c, zero, "valueOf", 0, 0, &value) == FVM_OK &&

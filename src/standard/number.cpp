@@ -27,6 +27,47 @@ FVM_Result number_value(FVM_Context *c, FVM_Object *self, unsigned int, const FV
     return FVM_OK;
 }
 
+/* Format a finite double exactly in a power-of-two radix without host integer-width assumptions. */
+FVM_Result binary_radix(FVM_Context *c, double value, unsigned int radix, FVM_Value *out)
+{
+    const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+    /* A double needs at most 1024 binary integer digits or 1074 fractional digits. */
+    char integer[1076], text[2156];
+    size_t position = sizeof(integer), used = 0;
+    double magnitude = value < 0 ? -value : value;
+    double whole = std::floor(magnitude), fraction = magnitude - whole;
+    do
+    {
+        double quotient = std::floor(whole / radix);
+        unsigned int digit = (unsigned int)(whole - quotient * radix);
+        if (digit >= radix || !position)
+            return FVM_ERROR;
+        integer[--position] = digits[digit];
+        whole = quotient;
+    } while (whole != 0);
+    if (value < 0)
+        text[used++] = '-';
+    while (position < sizeof(integer))
+        text[used++] = integer[position++];
+    if (fraction)
+    {
+        text[used++] = '.';
+        while (fraction)
+        {
+            fraction *= radix;
+            unsigned int digit = (unsigned int)fraction;
+            if (digit >= radix || used >= sizeof(text) - 1)
+                return FVM_ERROR;
+            text[used++] = digits[digit];
+            fraction -= digit;
+        }
+    }
+    text[used] = 0;
+    FVM_Value temporary;
+    FVM_Result result = fvm_value_string_bytes(&temporary, text, used);
+    return result == FVM_OK ? fvm_value_to_string(c, &temporary, out) : result;
+}
+
 /* Compute and return number string. */
 FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
                          const FVM_Value *args, FVM_Value *out, void *)
@@ -53,8 +94,10 @@ FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
     if (value != value || value == std::numeric_limits<double>::infinity() ||
         value == -std::numeric_limits<double>::infinity())
         return fvm_value_to_string(c, &primitive, out);
-    /* Exact integer conversion only. Fractional and larger nondecimal values
-     * need a separately tested version-aware formatter rather than truncation. */
+    if (radix == 2 || radix == 4 || radix == 8 || radix == 16 || radix == 32)
+        return binary_radix(c, value, (unsigned int)radix, out);
+    /* Other nondecimal radices retain the bounded exact-integer path. Their recurring
+     * fractional expansions need a separately verified rounding algorithm. */
     double magnitude = value < 0 ? -value : value;
     if (magnitude > 9007199254740991.0 || magnitude != std::floor(magnitude))
         return FVM_UNSUPPORTED;

@@ -47,3 +47,10 @@ See tests/standard_number.c and the extended tests/error_transfer_process.c.
 Missing acceptance work includes first-class Function behavior, property
 attributes, primitive receiver dispatch, complete generic ToNumber coercion,
 nondecimal fractional formatting and actual Windows/macOS/Android execution.
+
+## v0.39 update / Обновление
+
+Power-of-two bases now support finite fractions and the full binary64 range;
+other nondecimal bases retain the exact-integer limitation. See NUMBER_RADIX.md.
+Основания 2/4/8/16/32 теперь поддерживают дроби и полный диапазон binary64;
+для остальных недесятичных оснований сохраняется ограничение точными целыми.

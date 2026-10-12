@@ -41,3 +41,10 @@ overlap snapshots, opaque-alpha preservation and allocation-before-mutation.
 standard_bitmap and bitmap_allocation cover the operation.
 Реализировано копирование отдельного канала с отсечением и независимым снимком;
 полная совместимость BitmapData и этап 4 остаются открытыми.
+
+## v0.39 Number power-of-two formatting / Форматирование Number
+
+Exact finite fractions and large integers in bases 2/4/8/16/32 are implemented
+and covered by standard_number, including extreme binary64 values and queue
+transport. [NUMBER_RADIX.md](NUMBER_RADIX.md) records the remaining limits.
+Остальные дробные основания и историческая сверка открыты; этап 1 не закрыт.

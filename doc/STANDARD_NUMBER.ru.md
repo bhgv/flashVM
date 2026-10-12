@@ -48,3 +48,10 @@ GC. Нативный instanceof распознаёт Number. Сериализа�
 Остаются полноценный Function, атрибуты свойств, вызовы методов примитивных чисел,
 полное преобразование произвольных объектов в число, недесятичные дроби и проверки
 исполнения на Windows/macOS/Android.
+
+## v0.39 update / Обновление
+
+Power-of-two bases now support finite fractions and the full binary64 range;
+other nondecimal bases retain the exact-integer limitation. See NUMBER_RADIX.md.
+Основания 2/4/8/16/32 теперь поддерживают дроби и полный диапазон binary64;
+для остальных недесятичных оснований сохраняется ограничение точными целыми.
