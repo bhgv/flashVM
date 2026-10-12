@@ -7,6 +7,7 @@
 #define FLASHVM_MOVIECLIP_H
 #include "value.h"
 #include "raster.h"
+#include "path.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -21,6 +22,10 @@ extern "C"
        host owner. */
     FVM_API FVM_Result fvm_movieclip_load_swf(FVM_Context *, const void *data, size_t size,
                                               const char *name, FVM_Object **out);
+    /* Query the local affine transform in pixels, preserving authored shear/reflection. */
+    FVM_API FVM_Result fvm_movieclip_get_matrix(FVM_Context *, FVM_Object *, FVM_Affine *);
+    /* Atomically set a finite local transform and corresponding display components. */
+    FVM_API FVM_Result fvm_movieclip_set_matrix(FVM_Context *, FVM_Object *, const FVM_Affine *);
     /* Copy a validated AVM1 frame action and optional label. Frames start at 1. */
     /* Define movieclip frame. */
     FVM_API FVM_Result fvm_movieclip_define_frame(FVM_Context *, FVM_Object *, unsigned int,

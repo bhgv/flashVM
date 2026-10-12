@@ -1,0 +1,360 @@
+/* FlashVM: incremental and seek reconstruction of managed SWF display lists. */
+#include "movieclip_scene.hpp"
+#include "../core/native_call_guard.hpp"
+#include "flashvm/movieclip.h"
+#include "flashvm/standard.h"
+#include <cmath>
+#include <cstring>
+
+namespace
+{
+typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
+typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
+typedef fvm_detail::map<unsigned long, Properties> Display;
+
+/* Read one private property without invoking script or inserting a missing field. */
+FVM_Result field(FVM_Object *o, const char *key, FVM_Value &out)
+{
+    Properties::iterator i = o->properties.find(key);
+    if (i == o->properties.end())
+        return FVM_INVALID_ARGUMENT;
+    out = i->second;
+    return FVM_OK;
+}
+
+/* Read a bounded integer from a private control record. */
+FVM_Result integer(FVM_Object *o, const char *key, unsigned long limit, unsigned long &out)
+{
+    FVM_Value value;
+    FVM_Result r = field(o, key, value);
+    if (r != FVM_OK || value.type != FVM_VALUE_NUMBER ||
+        !(value.number >= 0 && value.number <= limit) || value.number != std::floor(value.number))
+        return FVM_INVALID_ARGUMENT;
+    out = (unsigned long)value.number;
+    return FVM_OK;
+}
+
+/* [GC:] Read a managed object edge, checking its context before following it. */
+FVM_Result object(FVM_Context *c, FVM_Object *o, const char *key, FVM_Object *&out)
+{
+    FVM_Value value;
+    FVM_Result r = field(o, key, value);
+    if (r != FVM_OK || value.type != FVM_VALUE_OBJECT || !value.object || value.object->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    out = value.object;
+    return FVM_OK;
+}
+
+/* Construct a scalar value for composed control metadata. */
+FVM_Value number(double value)
+{
+    FVM_Value result;
+    fvm_value_number(&result, value);
+    return result;
+}
+
+/* [GC:] Construct an edge to an object protected by the scene's native-call barrier. */
+FVM_Value managed(FVM_Object *object)
+{
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    value.type = FVM_VALUE_OBJECT;
+    value.object = object;
+    return value;
+}
+
+/* Find the current live instance at a raw SWF depth in an already normalized table. */
+FVM_Object *child(FVM_Object *children, unsigned long depth)
+{
+    Slots::iterator i = children->indexed.find(depth);
+    return i != children->indexed.end() && i->second.type == FVM_VALUE_OBJECT ? i->second.object
+                                                                              : 0;
+}
+
+/* Project optional fields; absent ratio/name/matrix/color must not become updates. */
+FVM_Result project(FVM_Context *c, FVM_Object *control, unsigned long flags, Properties &out)
+{
+    const char *base[] = {"depth", "token", "character"};
+    for (unsigned int i = 0; i < 3; ++i)
+    {
+        FVM_Value value;
+        FVM_Result r = field(control, base[i], value);
+        if (r != FVM_OK)
+            return r;
+        out[base[i]] = value;
+    }
+    const char *keys[] = {"symbol", "matrix", "color", "ratio", "name"};
+    const unsigned long masks[] = {2, 4, 8, 16, 32};
+    for (unsigned int i = 0; i < 5; ++i)
+        if (flags & masks[i])
+        {
+            FVM_Value value;
+            FVM_Result r = field(control, keys[i], value);
+            if (r != FVM_OK || (i < 3 && (value.type != FVM_VALUE_OBJECT || !value.object ||
+                                          value.object->owner != c)))
+                return FVM_INVALID_ARGUMENT;
+            out[keys[i]] = value;
+        }
+    return FVM_OK;
+}
+
+/* [GC:] Materialize a composed native property map only when an instance needs it. */
+FVM_Result record(FVM_Context *c, const Properties &properties, FVM_Object **out)
+{
+    FVM_Result r = fvm_object_create(c, out);
+    if (r == FVM_OK)
+        (*out)->properties = properties;
+    return r;
+}
+
+/* Apply one live control; sprite replacement changes pose while preserving the live timeline. */
+FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, FVM_Object *control)
+{
+    unsigned long op = 0, depth = 0, flags = 0;
+    FVM_Result r = integer(control, "op", 28, op);
+    if (r == FVM_OK)
+        r = integer(control, "depth", 65535, depth);
+    if (r != FVM_OK || !depth)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *old = child(children, depth);
+    if (op == 5 || op == 28)
+    {
+        if (!old)
+            return FVM_OK;
+        if (op == 5)
+        {
+            FVM_Object *data = 0, *symbol = 0;
+            unsigned long expected = 0, actual = 0;
+            r = integer(control, "character", 65535, expected);
+            if (r == FVM_OK)
+                r = fvm_movieclip_scene_state(old, &data);
+            if (r != FVM_OK)
+                return r;
+            if (data->properties.find("scene_symbol") == data->properties.end())
+                return FVM_OK;
+            r = object(c, data, "scene_symbol", symbol);
+            if (r == FVM_OK)
+                r = integer(symbol, "id", 65535, actual);
+            if (r != FVM_OK)
+                return r;
+            if (expected != actual)
+                return FVM_OK;
+        }
+        return fvm_movieclip_scene_remove(c, old);
+    }
+    if (op != 4 && op != 26)
+        return FVM_INVALID_ARGUMENT;
+    r = integer(control, "flags", 63, flags);
+    if (r != FVM_OK || !(flags & 3))
+        return FVM_INVALID_ARGUMENT;
+    Properties properties;
+    r = project(c, control, flags, properties);
+    if (r != FVM_OK)
+        return r;
+    if (!(flags & 2))
+    {
+        if (!old)
+            return FVM_OK;
+        /* Instance names are assigned on placement, never changed by Modify/Replace. */
+        properties.erase("name");
+        FVM_Object *update = 0;
+        r = record(c, properties, &update);
+        return r == FVM_OK ? fvm_movieclip_scene_update(c, old, update) : r;
+    }
+    if (flags & 1)
+    {
+        /* Replace does not exchange a MovieClip's definition; static art is handled separately. */
+        if (!old)
+            return FVM_OK;
+        /* Instance names are assigned on placement, never changed by Modify/Replace. */
+        properties.erase("name");
+        FVM_Object *update = 0;
+        r = record(c, properties, &update);
+        return r == FVM_OK ? fvm_movieclip_scene_update(c, old, update) : r;
+    }
+    FVM_Object *placement = 0, *instance = 0;
+    r = record(c, properties, &placement);
+    return r == FVM_OK ? fvm_movieclip_scene_insert(c, parent, placement, &instance) : r;
+}
+
+/* Compose authored controls without running constructors or any skipped frame actions. */
+FVM_Result accumulate(FVM_Context *c, FVM_Object *control, Display &display)
+{
+    unsigned long op = 0, depth = 0, flags = 0;
+    FVM_Result r = integer(control, "op", 28, op);
+    if (r == FVM_OK)
+        r = integer(control, "depth", 65535, depth);
+    if (r != FVM_OK || !depth)
+        return FVM_INVALID_ARGUMENT;
+    if (op == 5 || op == 28)
+    {
+        if (op == 28)
+            display.erase(depth);
+        else
+        {
+            unsigned long id = 0;
+            r = integer(control, "character", 65535, id);
+            if (r != FVM_OK)
+                return r;
+            Display::iterator old = display.find(depth);
+            if (old != display.end() && old->second["character"].number == id)
+                display.erase(depth);
+        }
+        return FVM_OK;
+    }
+    if (op != 4 && op != 26)
+        return FVM_INVALID_ARGUMENT;
+    r = integer(control, "flags", 63, flags);
+    if (r != FVM_OK || !(flags & 3))
+        return FVM_INVALID_ARGUMENT;
+    Display::iterator previous = display.find(depth);
+    if ((flags & 1) && previous == display.end())
+        return FVM_OK;
+    if (!(flags & 1))
+        display.erase(depth);
+    Properties projected;
+    r = project(c, control, flags, projected);
+    if (r != FVM_OK)
+        return r;
+    Properties &target = display[depth];
+    for (Properties::iterator i = projected.begin(); i != projected.end(); ++i)
+    {
+        if ((flags & 1) && (i->first == "token" || i->first == "character" ||
+                            i->first == "symbol" || i->first == "name"))
+            continue;
+        target[i->first] = i->second;
+    }
+    return FVM_OK;
+}
+
+/* Visit exact sequential control indices for one frame, rejecting holes in restored data. */
+FVM_Result controls(FVM_Context *c, FVM_Object *frames, unsigned long frame, FVM_Object *&out)
+{
+    out = 0;
+    Slots::iterator found = frames->indexed.find(frame);
+    if (found == frames->indexed.end())
+        return FVM_OK;
+    if (found->second.type != FVM_VALUE_OBJECT || !found->second.object ||
+        found->second.object->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *record = found->second.object;
+    if (record->properties.find("controls") == record->properties.end())
+        return FVM_OK;
+    return object(c, record, "controls", out);
+}
+} // namespace
+
+/* Apply a forward frame incrementally or reconstruct its authored state after a seek/loop. */
+FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned long frame,
+                                   bool loop)
+{
+    if (!c || !parent || parent->owner != c || frame < 1 || frame > 65535)
+        return FVM_INVALID_ARGUMENT;
+    /* [GC:] Temporary projections retain managed pointers while constructors execute. */
+    FVM_NativeCallGuard guard(c);
+    FVM_Object *data = 0, *frames = 0, *children = 0;
+    FVM_Result r = fvm_movieclip_scene_state(parent, &data);
+    if (r == FVM_OK)
+        r = object(c, data, "frames", frames);
+    if (r != FVM_OK)
+        return r;
+    unsigned long previous = 0;
+    if (data->properties.find("scene_frame") != data->properties.end())
+    {
+        r = integer(data, "scene_frame", 65535, previous);
+        if (r != FVM_OK)
+            return r;
+    }
+    r = fvm_movieclip_scene_children(parent, &children);
+    if (r != FVM_OK)
+        return r;
+    if (!loop && frame == previous + 1)
+    {
+        FVM_Object *list = 0;
+        r = controls(c, frames, frame, list);
+        if (r != FVM_OK)
+            return r;
+        if (list)
+            for (unsigned long i = 0; i < list->indexed.size(); ++i)
+            {
+                Slots::iterator found = list->indexed.find(i);
+                if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
+                    !found->second.object || found->second.object->owner != c)
+                    return FVM_INVALID_ARGUMENT;
+                r = apply(c, parent, children, found->second.object);
+                if (r != FVM_OK)
+                    return r;
+            }
+    }
+    else
+    {
+        Display desired;
+        for (unsigned long current = 1; current <= frame; ++current)
+        {
+            FVM_Object *list = 0;
+            r = controls(c, frames, current, list);
+            if (r != FVM_OK)
+                return r;
+            if (list)
+                for (unsigned long i = 0; i < list->indexed.size(); ++i)
+                {
+                    Slots::iterator found = list->indexed.find(i);
+                    if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
+                        !found->second.object || found->second.object->owner != c)
+                        return FVM_INVALID_ARGUMENT;
+                    r = accumulate(c, found->second.object, desired);
+                    if (r != FVM_OK)
+                        return r;
+                }
+        }
+        /* [GC:] Snapshot child edges before unlinking changes the live table. */
+        Slots old = children->indexed;
+        for (Slots::iterator i = old.begin(); i != old.end(); ++i)
+        {
+            if (i->second.type != FVM_VALUE_OBJECT || !i->second.object ||
+                i->second.object->owner != c)
+                return FVM_INVALID_ARGUMENT;
+            FVM_Object *state = 0;
+            r = fvm_movieclip_scene_state(i->second.object, &state);
+            if (r != FVM_OK)
+                return r;
+            if (state->properties.find("scene_token") == state->properties.end())
+                continue;
+            unsigned long token = 0;
+            r = integer(state, "scene_token", 0xffffffffUL, token);
+            if (r != FVM_OK)
+                return r;
+            if (!token)
+                continue;
+            Display::iterator expected = desired.find(i->first);
+            if (expected == desired.end() || expected->second["token"].number != token ||
+                expected->second["symbol"].object != state->properties["scene_symbol"].object)
+            {
+                r = fvm_movieclip_scene_remove(c, i->second.object);
+                if (r != FVM_OK)
+                    return r;
+            }
+        }
+        for (Display::iterator i = desired.begin(); i != desired.end(); ++i)
+        {
+            FVM_Object *placement = 0;
+            r = record(c, i->second, &placement);
+            if (r != FVM_OK)
+                return r;
+            FVM_Object *existing = child(children, i->first), *state = 0;
+            bool reusable = false;
+            if (existing && fvm_movieclip_scene_state(existing, &state) == FVM_OK &&
+                state->properties.find("scene_token") != state->properties.end())
+                reusable = state->properties["scene_token"].number == i->second["token"].number &&
+                           state->properties["scene_symbol"].object == i->second["symbol"].object;
+            if (reusable)
+                r = fvm_movieclip_scene_update(c, existing, placement);
+            else
+                r = fvm_movieclip_scene_insert(c, parent, placement, &existing);
+            if (r != FVM_OK)
+                return r;
+        }
+    }
+    data->properties["scene_frame"] = number(frame);
+    return FVM_OK;
+}

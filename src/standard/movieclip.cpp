@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
+#include "movieclip_scene.hpp"
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
@@ -17,6 +18,7 @@
 #include "flashvm/gc.h"
 #include "../core/native_call_guard.hpp"
 #include <cmath>
+#include <cfloat>
 #include <cstring>
 #include <cstdio>
 #include <new>
@@ -84,9 +86,9 @@ FVM_Result numeric(FVM_Context *c, FVM_Object *o, const char *name, double &out)
     if (r != FVM_OK)
         return r;
     r = fvm_value_to_number(c, &v, &out);
-    return r != FVM_OK                                ? r
-           : out == out && std::fabs(out) <= 16777215 ? FVM_OK
-                                                      : FVM_INVALID_ARGUMENT;
+    return r != FVM_OK                               ? r
+           : out == out && std::fabs(out) <= DBL_MAX ? FVM_OK
+                                                     : FVM_INVALID_ARGUMENT;
 }
 
 /* Compute and return args. */
@@ -99,9 +101,18 @@ FVM_Result args(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int
         return FVM_OK;
     }
     FVM_Result r = fvm_value_to_number(c, a + i, &out);
-    return r != FVM_OK                                ? r
-           : out == out && std::fabs(out) <= 16777215 ? FVM_OK
-                                                      : FVM_INVALID_ARGUMENT;
+    return r != FVM_OK                               ? r
+           : out == out && std::fabs(out) <= DBL_MAX ? FVM_OK
+                                                     : FVM_INVALID_ARGUMENT;
+}
+
+/* Convert finite RGB numbers to the unsigned 24-bit paint domain before narrowing casts. */
+unsigned long packed_rgb(double value)
+{
+    double reduced = std::fmod(std::floor(value), 16777216.0);
+    if (reduced < 0)
+        reduced += 16777216.0;
+    return (unsigned long)reduced;
 }
 
 /* Compute and return private object. */
@@ -829,6 +840,15 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
         if (r != FVM_OK)
             return r;
     }
+    /* [GC:] Color records are immutable; copies retain the record while owning their alpha field.
+     */
+    if (data->properties.find("swf_color") != data->properties.end())
+        child->resource_result.object->properties["swf_color"] = data->properties["swf_color"];
+    if (data->properties.find("basis_x") != data->properties.end())
+    {
+        child->resource_result.object->properties["basis_x"] = data->properties["basis_x"];
+        child->resource_result.object->properties["basis_y"] = data->properties["basis_y"];
+    }
     r = copy_drawing(c, data, child->resource_result.object);
     if (r != FVM_OK)
         return r;
@@ -1022,6 +1042,11 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
             other = i->second.object;
         }
     }
+    if (desired_key == old_key)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     Slots next = children->indexed;
 
     /* Computation / Вычисление и обновление состояния. */
@@ -1036,10 +1061,14 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
         if (r != FVM_OK)
             return r;
         od->properties["depth"] = number(old);
+        if (od->properties.find("scene_token") != od->properties.end())
+            od->properties["scene_token"] = number(0);
     }
 
     /* Computation / Вычисление и обновление состояния. */
     data->properties["depth"] = number(desired);
+    if (data->properties.find("scene_token") != data->properties.end())
+        data->properties["scene_token"] = number(0);
     children->indexed.swap(next);
     fvm_value_undefined(out);
     return FVM_OK;
@@ -1071,38 +1100,110 @@ FVM_Affine multiply(const FVM_Affine &a, const FVM_Affine &b)
     return m;
 }
 
-/* Compute and return matrix. */
+/* Compose one local affine transform while preserving an authored skew basis. */
+FVM_Result local_matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
+{
+    double x = 0, y = 0, sx = 0, sy = 0, rotation = 0;
+    FVM_Result r = numeric(c, o, "_x", x);
+    if (r == FVM_OK)
+        r = numeric(c, o, "_y", y);
+    if (r == FVM_OK)
+        r = numeric(c, o, "_xscale", sx);
+    if (r == FVM_OK)
+        r = numeric(c, o, "_yscale", sy);
+    if (r == FVM_OK)
+        r = numeric(c, o, "_rotation", rotation);
+    if (r != FVM_OK)
+        return r;
+    FVM_Object *data = 0;
+    r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    double bx = 0, by = 1;
+    if (data->properties.find("basis_x") != data->properties.end())
+    {
+        r = numeric(c, data, "basis_x", bx);
+        if (r == FVM_OK)
+            r = numeric(c, data, "basis_y", by);
+        if (r != FVM_OK)
+            return r;
+    }
+    double radians = std::fmod(rotation, 360.0) * std::acos(-1.0) / 180;
+    double cs = std::cos(radians), sn = std::sin(radians);
+    out.xx = cs * sx / 100;
+    out.yx = sn * sx / 100;
+    out.xy = (cs * bx - sn * by) * sy / 100;
+    out.yy = (sn * bx + cs * by) * sy / 100;
+    out.x0 = x;
+    out.y0 = y;
+    return FVM_OK;
+}
+
+/* Compute a vector length without squaring extremely large or tiny components. */
+double vector_length(double x, double y)
+{
+    x = std::fabs(x);
+    y = std::fabs(y);
+    if (x < y)
+    {
+        double temporary = x;
+        x = y;
+        y = temporary;
+    }
+    if (!x)
+        return 0;
+    double ratio = y / x;
+    return x * std::sqrt(1 + ratio * ratio);
+}
+
+/* Update native display components from an affine matrix without losing reflection or shear. */
+FVM_Result apply_matrix(FVM_Object *o, const FVM_Affine &matrix)
+{
+    const double components[] = {matrix.xx, matrix.yx, matrix.xy, matrix.yy, matrix.x0, matrix.y0};
+    for (unsigned int i = 0; i < 6; ++i)
+        if (!(components[i] == components[i]) || std::fabs(components[i]) > DBL_MAX)
+            return FVM_INVALID_ARGUMENT;
+    double sx = vector_length(matrix.xx, matrix.yx);
+    double sy = vector_length(matrix.xy, matrix.yy);
+    if (sx > DBL_MAX / 100 || sy > DBL_MAX / 100)
+        return FVM_INVALID_ARGUMENT;
+    double radians = sx   ? std::atan2(matrix.yx, matrix.xx)
+                     : sy ? std::atan2(-matrix.xy, matrix.yy)
+                          : 0;
+    double cs = std::cos(radians), sn = std::sin(radians);
+    double bx = sy ? (cs * matrix.xy + sn * matrix.yy) / sy : 0;
+    double by = sy ? (-sn * matrix.xy + cs * matrix.yy) / sy : 1;
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] Stage both maps before publishing, preserving all existing managed edges on failure. */
+    fvm_detail::map<fvm_detail::string, FVM_Value> properties = o->properties;
+    fvm_detail::map<fvm_detail::string, FVM_Value> private_state = data->properties;
+    properties["_x"] = number(matrix.x0);
+    properties["_y"] = number(matrix.y0);
+    properties["_xscale"] = number(sx * 100);
+    properties["_yscale"] = number(sy * 100);
+    properties["_rotation"] = number(radians * 180 / std::acos(-1.0));
+    private_state["basis_x"] = number(bx);
+    private_state["basis_y"] = number(by);
+    o->properties.swap(properties);
+    data->properties.swap(private_state);
+    return FVM_OK;
+}
+
+/* Compose a clip's local transform with every ancestor, rejecting cyclic parent chains. */
 FVM_Result matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
 {
     out = identity();
     unsigned int levels = 0;
     while (o && levels++ < 1024)
     {
-        double x = 0, y = 0, sx = 0, sy = 0, rotation = 0;
-        FVM_Result r = numeric(c, o, "_x", x);
+        FVM_Affine local;
+        FVM_Result r = local_matrix(c, o, local);
         if (r != FVM_OK)
             return r;
-        r = numeric(c, o, "_y", y);
-        if (r != FVM_OK)
-            return r;
-        r = numeric(c, o, "_xscale", sx);
-        if (r != FVM_OK)
-            return r;
-        r = numeric(c, o, "_yscale", sy);
-        if (r != FVM_OK)
-            return r;
-        r = numeric(c, o, "_rotation", rotation);
-        if (r != FVM_OK)
-            return r;
-        double radians = rotation * std::acos(-1.0) / 180;
-        FVM_Affine m;
-        m.xx = std::cos(radians) * sx / 100;
-        m.yx = std::sin(radians) * sx / 100;
-        m.xy = -std::sin(radians) * sy / 100;
-        m.yy = std::cos(radians) * sy / 100;
-        m.x0 = x;
-        m.y0 = y;
-        out = multiply(m, out);
+        out = multiply(local, out);
         o = parent(o);
     }
     return o ? FVM_INVALID_ARGUMENT : FVM_OK;
@@ -1328,7 +1429,7 @@ FVM_Result fill(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
 
     /* Computation / Вычисление и обновление состояния. */
     data->properties["fill"] = number(1);
-    data->properties["rgb"] = number(std::fmod(std::floor(rgb) + 16777216.0, 16777216.0));
+    data->properties["rgb"] = number(packed_rgb(rgb));
     data->properties["alpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
     data->properties["active"] = object(0);
     fvm_value_undefined(out);
@@ -1377,7 +1478,7 @@ FVM_Result line_style(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     /* Computation / Вычисление и обновление состояния. */
     data->properties["stroke"] = number(n ? 1 : 0);
     data->properties["width"] = number(width ? width : 1);
-    data->properties["lineRgb"] = number(std::fmod(std::floor(rgb) + 16777216.0, 16777216.0));
+    data->properties["lineRgb"] = number(packed_rgb(rgb));
     data->properties["lineAlpha"] = number(alpha < 0 ? 0 : alpha > 100 ? 100 : alpha);
     data->properties["active"] = object(0);
     fvm_value_undefined(out);
@@ -1797,25 +1898,88 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     return FVM_OK;
 }
 
-/* Compute and return color. */
-FVM_RasterColor color(double rgb, double alpha)
+/* Linear RGBA transform inherited through the display-object hierarchy. */
+struct ColorAffine
 {
+    double multiply[4]; /* Per-channel red/green/blue/alpha multipliers. */
+    double add[4];      /* Per-channel red/green/blue/alpha offsets. */
+    /* Initialize a neutral parent transform for root rendering. */
+    ColorAffine()
+    {
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            multiply[i] = 1;
+            add[i] = 0;
+        }
+    }
+};
 
-    /* Initialization / Инициализация локального состояния. */
-    unsigned long packed = (unsigned long)rgb;
-    FVM_RasterColor c;
+/* Compose authored color terms and mutable alpha with the parent's RGBA transform. */
+FVM_Result display_color(FVM_Context *c, FVM_Object *o, FVM_Object *data, const ColorAffine &parent,
+                         ColorAffine &out)
+{
+    ColorAffine local;
+    double alpha = 100;
+    FVM_Result r = numeric(c, o, "_alpha", alpha);
+    if (r != FVM_OK)
+        return r;
+    local.multiply[3] = alpha < 0 ? 0 : alpha > 100 ? 1 : alpha / 100;
+    if (data->properties.find("swf_color") != data->properties.end())
+    {
+        FVM_Object *record = 0;
+        r = private_object(data, "swf_color", record);
+        if (r != FVM_OK)
+            return r;
+        const char *multipliers[] = {"rm", "gm", "bm"};
+        const char *offsets[] = {"ra", "ga", "ba", "aa"};
+        for (unsigned int i = 0; i < 3; ++i)
+        {
+            r = numeric(c, record, multipliers[i], local.multiply[i]);
+            if (r != FVM_OK)
+                return r;
+        }
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            r = numeric(c, record, offsets[i], local.add[i]);
+            if (r != FVM_OK)
+                return r;
+        }
+    }
+    for (unsigned int i = 0; i < 4; ++i)
+    {
+        out.multiply[i] = parent.multiply[i] * local.multiply[i];
+        out.add[i] = parent.multiply[i] * local.add[i] + parent.add[i];
+    }
+    return FVM_OK;
+}
 
-    /* Computation / Вычисление и обновление состояния. */
-    c.r = (unsigned char)(packed >> 16);
-    c.g = (unsigned char)(packed >> 8);
-    c.b = (unsigned char)packed;
-    c.a = (unsigned char)(alpha * 255 / 100 + 0.5);
-    return c;
+/* Clamp a computed color component before converting it to an unsigned byte. */
+unsigned char component(double value)
+{
+    if (!(value > 0))
+        return 0;
+    if (value >= 255)
+        return 255;
+    return (unsigned char)(value + 0.5);
+}
+
+/* Apply the composed transform to one straight-alpha vector paint color. */
+FVM_RasterColor color(double rgb, double alpha, const ColorAffine &transform)
+{
+    unsigned long packed = packed_rgb(rgb);
+    const double values[] = {(double)((packed >> 16) & 255), (double)((packed >> 8) & 255),
+                             (double)(packed & 255), alpha * 255 / 100};
+    FVM_RasterColor result;
+    result.r = component(values[0] * transform.multiply[0] + transform.add[0]);
+    result.g = component(values[1] * transform.multiply[1] + transform.add[1]);
+    result.b = component(values[2] * transform.multiply[2] + transform.add[2]);
+    result.a = component(values[3] * transform.multiply[3] + transform.add[3]);
+    return result;
 }
 
 /* Render the current value. */
-FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, double opacity,
-                  unsigned int depth)
+FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
+                  const ColorAffine &parent_color, unsigned int depth)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
@@ -1825,18 +1989,16 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
-    double visible = 0, alpha = 0;
+    double visible = 0;
     r = numeric(c, o, "_visible", visible);
     if (r != FVM_OK)
         return r;
     if (!visible)
         return FVM_OK;
-    r = numeric(c, o, "_alpha", alpha);
+    ColorAffine transform;
+    r = display_color(c, o, data, parent_color, transform);
     if (r != FVM_OK)
         return r;
-
-    /* Computation / Вычисление и обновление состояния. */
-    opacity *= alpha < 0 ? 0 : alpha > 100 ? 1 : alpha / 100;
     r = private_object(data, "paths", paths);
     if (r != FVM_OK)
         return r;
@@ -1866,7 +2028,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
             if (r == FVM_OK)
                 r = numeric(c, part, "alpha", a);
             if (r == FVM_OK)
-                r = fvm_path_draw(p, surface, color(rgb, a * opacity), 0, 0);
+                r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, 0);
         }
         if (r == FVM_OK && stroke)
         {
@@ -1877,7 +2039,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
                 r = numeric(c, part, "width", width);
             double scale = std::sqrt(world.xx * world.xx + world.yx * world.yx);
             if (r == FVM_OK)
-                r = fvm_path_draw(p, surface, color(rgb, a * opacity), width * scale, 0);
+                r = fvm_path_draw(p, surface, color(rgb, a, transform), width * scale, 0);
         }
         fvm_path_destroy(p);
         if (r != FVM_OK)
@@ -1903,7 +2065,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface, dou
         FVM_Value child = children->indexed.find(order[i])->second;
         if (child.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
-        r = render(c, child.object, surface, opacity, depth + 1);
+        r = render(c, child.object, surface, transform, depth + 1);
         if (r != FVM_OK)
             return r;
     }
@@ -1960,13 +2122,17 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     /* Computation / Вычисление и обновление состояния. */
     field(data, "entered", entered);
     field(data, "playing", playing);
-    if (!entered.number || playing.number)
+    if (!entered.number || (playing.number && total > 1))
     {
         if (entered.number)
         {
             current = current == total ? 1 : current + 1;
             data->properties["frame"] = number(current);
         }
+        bool loop = entered.number && current == 1;
+        r = fvm_movieclip_scene_run(c, o, current, loop);
+        if (r != FVM_OK)
+            return r;
         data->properties["entered"] = number(1);
         Slots::iterator entry = frames->indexed.find(current);
         if (entry != frames->indexed.end())
@@ -2077,6 +2243,210 @@ const Method methods[] = {{"toString", target},
                           {"attachMovie", attach_movie},
                           {"duplicateMovieClip", duplicate_movie}};
 } // namespace
+
+/* [GC:] Expose the validated managed state without publishing a new host ownership claim. */
+FVM_Result fvm_movieclip_scene_state(FVM_Object *o, FVM_Object **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    return state(o, *out);
+}
+
+/* [GC:] Normalize the parent's child slot table before direct SWF depth lookup. */
+FVM_Result fvm_movieclip_scene_children(FVM_Object *o, FVM_Object **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    if (r == FVM_OK)
+        r = private_object(data, "children", *out);
+    if (r == FVM_OK)
+        r = ensure_slot_bias(data, *out);
+    return r;
+}
+
+/* Apply matrix/color/ratio/name fields supplied by one composed or incremental placement. */
+FVM_Result fvm_movieclip_scene_update(FVM_Context *c, FVM_Object *o, FVM_Object *placement)
+{
+    if (!c || !o || o->owner != c || !placement || placement->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result r = state(o, data);
+    if (r != FVM_OK)
+        return r;
+    if (placement->properties.find("matrix") != placement->properties.end())
+    {
+        FVM_Object *record = 0;
+        r = private_object(placement, "matrix", record);
+        if (r != FVM_OK)
+            return r;
+        FVM_Affine matrix;
+        r = numeric(c, record, "xx", matrix.xx);
+        if (r == FVM_OK)
+            r = numeric(c, record, "yx", matrix.yx);
+        if (r == FVM_OK)
+            r = numeric(c, record, "xy", matrix.xy);
+        if (r == FVM_OK)
+            r = numeric(c, record, "yy", matrix.yy);
+        if (r == FVM_OK)
+            r = numeric(c, record, "x0", matrix.x0);
+        if (r == FVM_OK)
+            r = numeric(c, record, "y0", matrix.y0);
+        if (r == FVM_OK)
+            r = apply_matrix(o, matrix);
+        if (r != FVM_OK)
+            return r;
+    }
+    if (placement->properties.find("color") != placement->properties.end())
+    {
+        FVM_Object *color = 0;
+        r = private_object(placement, "color", color);
+        if (r != FVM_OK)
+            return r;
+        double alpha = 1;
+        r = numeric(c, color, "am", alpha);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Retain the immutable color record; alpha remains a mutable display property. */
+        data->properties["swf_color"] = object(color);
+        o->properties["_alpha"] = number(alpha * 100);
+    }
+    if (placement->properties.find("ratio") != placement->properties.end())
+        data->properties["ratio"] = placement->properties["ratio"];
+    if (placement->properties.find("name") != placement->properties.end())
+    {
+        FVM_Value name = placement->properties["name"];
+        if (name.type != FVM_VALUE_STRING || std::memchr(name.string, 0, fvm_string_size(name)))
+            return FVM_INVALID_ARGUMENT;
+        FVM_Value old_name;
+        r = field(o, "_name", old_name);
+        if (r != FVM_OK)
+            return r;
+        FVM_Object *p = parent(o);
+        fvm_detail::map<fvm_detail::string, FVM_Value> properties = o->properties;
+        properties["_name"] = name;
+        if (p)
+        {
+            /* [GC:] Stage bindings before publishing; names reference the same live child. */
+            fvm_detail::map<fvm_detail::string, FVM_Value> bindings = p->properties;
+            if (old_name.type == FVM_VALUE_STRING)
+            {
+                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator old =
+                    bindings.find(old_name.string);
+                if (old != bindings.end() && old->second.type == FVM_VALUE_OBJECT &&
+                    old->second.object == o)
+                    bindings.erase(old_name.string);
+            }
+            bindings[name.string] = object(o);
+            p->properties.swap(bindings);
+        }
+        o->properties.swap(properties);
+    }
+    return FVM_OK;
+}
+
+/* Instantiate one timeline symbol, publish its pose/identity, then invoke the selected class. */
+FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object *placement,
+                                      FVM_Object **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!c || !p || p->owner != c || !placement || placement->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *pd = 0, *library = 0, *symbol = 0, *frames = 0;
+    FVM_Result r = state(p, pd);
+    if (r == FVM_OK)
+        r = private_object(pd, "library", library);
+    if (r == FVM_OK)
+        r = private_object(placement, "symbol", symbol);
+    if (r == FVM_OK)
+        r = private_object(symbol, "frames", frames);
+    if (r != FVM_OK)
+        return r;
+    unsigned long total = 0, depth = 0, token = 0;
+    r = integer_field(symbol, "total", 65535, total);
+    if (r == FVM_OK)
+        r = integer_field(placement, "depth", 65535, depth);
+    if (r == FVM_OK)
+        r = integer_field(placement, "token", 0xffffffffUL, token);
+    if (r != FVM_OK || !total || !depth || !token)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *proto = 0, *constructor = 0;
+    r = private_object(library, "prototype", proto);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value linkage;
+    bool exported = symbol->properties.find("linkage") != symbol->properties.end();
+    if (exported)
+    {
+        r = field(symbol, "linkage", linkage);
+        if (r != FVM_OK || linkage.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+        r = sprite_class(c, library, linkage.string, proto, constructor);
+        if (r != FVM_OK)
+            return r;
+    }
+    FVM_Value name;
+    if (placement->properties.find("name") != placement->properties.end())
+    {
+        r = field(placement, "name", name);
+        if (r != FVM_OK || name.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+    }
+    else
+    {
+        char generated[32];
+        std::sprintf(generated, "instance%lu", token);
+        FVM_Object *holder = 0;
+        r = fvm_object_create(c, &holder);
+        if (r != FVM_OK)
+            return r;
+        fvm_value_string(&name, generated);
+        r = fvm_object_set(c, holder, "name", &name);
+        if (r == FVM_OK)
+            r = field(holder, "name", name);
+        if (r != FVM_OK)
+            return r;
+    }
+    FVM_Object *child = 0, *child_frames = 0;
+    r = make(c, name.string, (unsigned int)total, proto, &child);
+    if (r == FVM_OK)
+        r = private_object(child->resource_result.object, "frames", child_frames);
+    if (r != FVM_OK)
+        return r;
+    /* [GC:] The instance owns its frame table and retains its source library/definition. */
+    child_frames->indexed = frames->indexed;
+    FVM_Object *data = child->resource_result.object;
+    data->properties["library"] = object(library);
+    data->properties["scene_symbol"] = object(symbol);
+    data->properties["scene_token"] = number(token);
+    if (exported)
+    {
+        r = fvm_object_set(c, data, "linkage", &linkage);
+        if (r != FVM_OK)
+            return r;
+    }
+    r = fvm_movieclip_scene_update(c, child, placement);
+    if (r == FVM_OK)
+        r = publish_child(p, child, name.string, (long)depth - 16384);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value value;
+    r = finish_instance(c, child, constructor, 0, &value);
+    if (r == FVM_OK)
+        *out = child;
+    return r;
+}
+
+/* Remove an authored instance through the same validated parent/depth unlink operation. */
+FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
+{
+    FVM_Value ignored;
+    return remove(c, o, 0, 0, &ignored, 0);
+}
+
 /* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,
                                            FVM_Object **out)
@@ -2101,6 +2471,45 @@ extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, uns
         if (proto.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
         return make(c, name, frames, proto.object, out);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Return a clip's local pixel-space affine transform, including authored shear. */
+extern "C" FVM_Result fvm_movieclip_get_matrix(FVM_Context *c, FVM_Object *o, FVM_Affine *out)
+{
+    if (!c || !o || o->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        /* [GC:] Property conversions may invoke script; protect the receiver during the query. */
+        FVM_NativeCallGuard guard(c);
+        FVM_Affine value;
+        FVM_Result r = local_matrix(c, o, value);
+        if (r == FVM_OK)
+            *out = value;
+        return r;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Set a finite local affine transform atomically across public and private display state. */
+extern "C" FVM_Result fvm_movieclip_set_matrix(FVM_Context *c, FVM_Object *o,
+                                               const FVM_Affine *value)
+{
+    if (!c || !o || o->owner != c || !value)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        /* [GC:] Retain the receiver and staged maps until the complete transform is published. */
+        FVM_NativeCallGuard guard(c);
+        return apply_matrix(o, *value);
     }
     catch (const std::bad_alloc &)
     {
@@ -2158,6 +2567,10 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
         if (r != FVM_OK)
             return r;
         frames->indexed[frame] = object(record);
+        /* Re-enter a replaced current frame once, including single-frame clips. */
+        FVM_Value current;
+        if (field(data, "frame", current) == FVM_OK && current.number == frame)
+            data->properties["entered"] = number(0);
         return FVM_OK;
     }
     catch (const std::bad_alloc &)
@@ -2228,7 +2641,8 @@ extern "C" FVM_Result fvm_movieclip_render(
         /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return render(c, o, surface, 1, 0);
+        ColorAffine root_color;
+        return render(c, o, surface, root_color, 0);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

@@ -1,6 +1,7 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "decode.hpp"
+#include "reader.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/movieclip.h"
@@ -28,12 +29,92 @@ unsigned long little(const unsigned char *p, unsigned int n)
     return value;
 }
 
+/* One decoded placement/removal operation, preserving optional-field presence. */
+struct Placement
+{
+    unsigned int frame;          /* One-based frame containing this control. */
+    unsigned int tag;            /* PlaceObject/PlaceObject2 or RemoveObject/RemoveObject2 code. */
+    unsigned int flags;          /* PlaceObject2 field-presence and move flags. */
+    unsigned int depth;          /* Raw positive SWF depth; public depth subtracts 16384. */
+    unsigned int character;      /* Defined character ID when supplied by this operation. */
+    unsigned long token;         /* Stable creation identity within this timeline. */
+    unsigned int ratio;          /* Optional morph ratio, preserved for character-specific use. */
+    FVM_Affine matrix;           /* Decoded pixel-space affine transform. */
+    FVM_SWFColorTransform color; /* Optional RGBA color transform. */
+    fvm_detail::string name;     /* Optional instance name. */
+    /* Initialize omitted placement fields without inventing presence flags. */
+    Placement() : frame(0), tag(0), flags(0), depth(0), character(0), token(0), ratio(0)
+    {
+        matrix.xx = matrix.yy = 1;
+        matrix.xy = matrix.yx = matrix.x0 = matrix.y0 = 0;
+    }
+};
+
+/* Decode supported display-list fields, rejecting trailing bytes and unknown characters. */
+FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned int tag,
+                             unsigned int version,
+                             const fvm_detail::map<unsigned long, bool> &known, Placement &out)
+{
+    FVM_SWFReader reader(bytes, size);
+    out.tag = tag;
+    if (tag == 5 || tag == 28)
+    {
+        if (tag == 5)
+            out.character = (unsigned int)reader.integer(2);
+        out.depth = (unsigned int)reader.integer(2);
+        if (!reader.finished() || !out.depth ||
+            (tag == 5 && known.find(out.character) == known.end()))
+            return FVM_INVALID_ARGUMENT;
+        return FVM_OK;
+    }
+    if (tag == 4)
+    {
+        out.flags = 6;
+        out.character = (unsigned int)reader.integer(2);
+        out.depth = (unsigned int)reader.integer(2);
+        if (!fvm_swf_read_matrix(reader, out.matrix))
+            return FVM_INVALID_ARGUMENT;
+        if (!reader.finished())
+        {
+            out.flags |= 8;
+            if (!fvm_swf_read_color(reader, false, out.color))
+                return FVM_INVALID_ARGUMENT;
+        }
+    }
+    else
+    {
+        if (version < 3)
+            return FVM_INVALID_ARGUMENT;
+        out.flags = (unsigned int)reader.integer(1);
+        out.depth = (unsigned int)reader.integer(2);
+        if (!(out.flags & 3))
+            return FVM_INVALID_ARGUMENT;
+        if (out.flags & 0xc0)
+            return FVM_UNSUPPORTED;
+        if (out.flags & 2)
+            out.character = (unsigned int)reader.integer(2);
+        if ((out.flags & 4) && !fvm_swf_read_matrix(reader, out.matrix))
+            return FVM_INVALID_ARGUMENT;
+        if ((out.flags & 8) && !fvm_swf_read_color(reader, true, out.color))
+            return FVM_INVALID_ARGUMENT;
+        if (out.flags & 16)
+            out.ratio = (unsigned int)reader.integer(2);
+        if ((out.flags & 32) && !reader.string(out.name))
+            return FVM_INVALID_ARGUMENT;
+    }
+    if (!reader.finished() || !out.depth ||
+        ((out.flags & 2) && known.find(out.character) == known.end()))
+        return FVM_INVALID_ARGUMENT;
+    return FVM_OK;
+}
+
 /* Parsed timeline data contains offsets only; it owns no interpreter objects. */
 struct Timeline
 {
     unsigned int id;     /* Zero identifies the root; nonzero IDs identify sprites. */
     unsigned int frames; /* Declared number of frames. */
-    fvm_detail::vector<ActionRange> actions;       /* Independent DoAction byte ranges. */
+    fvm_detail::vector<Placement> controls;  /* Ordered display-list controls for all frames. */
+    fvm_detail::vector<ActionRange> actions; /* Independent DoAction byte ranges. */
     fvm_detail::vector<fvm_detail::string> labels; /* Optional label at each frame. */
     /* Initialize a parsed timeline without allocating managed state. */
     Timeline() : id(0), frames(0)
@@ -52,7 +133,8 @@ struct Export
 FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size_t at, size_t end,
                             unsigned int version, Timeline &timeline,
                             fvm_detail::vector<Timeline> *sprites,
-                            fvm_detail::vector<Export> *exports)
+                            fvm_detail::vector<Export> *exports,
+                            fvm_detail::map<unsigned long, bool> &known)
 {
     if (!timeline.frames)
         return FVM_INVALID_ARGUMENT;
@@ -60,6 +142,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
     fvm_detail::vector<unsigned char> labelled(timeline.frames);
     const unsigned char *p = bytes.begin();
     unsigned int frame = 1;
+    unsigned long token = 0;
     while (at < end)
     {
         if (end - at < 2)
@@ -94,10 +177,12 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             for (size_t i = 0; i < sprites->size(); ++i)
                 if ((*sprites)[i].id == sprite.id)
                     return FVM_INVALID_ARGUMENT;
-            FVM_Result r = inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0);
+            FVM_Result r =
+                inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, known);
             if (r != FVM_OK)
                 return r;
             sprites->push_back(sprite);
+            known[sprite.id] = true;
         }
         else if (tag == 56 && exports)
         {
@@ -138,6 +223,17 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 if (count)
                     return FVM_INVALID_ARGUMENT;
                 ++frame;
+            }
+            else if (tag == 4 || tag == 5 || tag == 26 || tag == 28)
+            {
+                Placement control;
+                FVM_Result r = inspect_placement(p + at, count, tag, version, known, control);
+                if (r != FVM_OK)
+                    return r;
+                control.frame = frame;
+                if (control.flags & 2)
+                    control.token = ++token;
+                timeline.controls.push_back(control);
             }
             else if (tag == 12)
             {
@@ -199,15 +295,93 @@ FVM_Value managed(FVM_Object *object)
     return value;
 }
 
+/* Copy matrix/color components into private scalar records for graph transport. */
+FVM_Result component_record(FVM_Context *c, const char *const *keys, const double *values,
+                            size_t count, FVM_Object **out)
+{
+    FVM_Object *record = 0;
+    FVM_Result r = fvm_object_create(c, &record);
+    if (r != FVM_OK)
+        return r;
+    for (size_t i = 0; i < count; ++i)
+    {
+        FVM_Value value;
+        fvm_value_number(&value, values[i]);
+        record->properties[keys[i]] = value;
+    }
+    *out = record;
+    return FVM_OK;
+}
+
+/* [GC:] Store one control and its symbol/matrix/color edges in the owning frame table. */
+FVM_Result build_control(FVM_Context *c, const Placement &control, FVM_Object *definitions,
+                         FVM_Object **out)
+{
+    FVM_Object *record = 0;
+    FVM_Result r = fvm_object_create(c, &record);
+    if (r != FVM_OK)
+        return r;
+    const char *fields[] = {"op", "flags", "depth", "token", "character", "ratio"};
+    const unsigned long values[] = {control.tag,   control.flags,     control.depth,
+                                    control.token, control.character, control.ratio};
+    for (size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
+    {
+        FVM_Value value;
+        fvm_value_number(&value, values[i]);
+        record->properties[fields[i]] = value;
+    }
+    /* [GC:] The symbol edge retains its definition without a process-local dictionary pointer. */
+    if (control.flags & 2)
+        record->properties["symbol"] = definitions->indexed[control.character];
+    if (control.flags & 4)
+    {
+        const char *keys[] = {"xx", "yx", "xy", "yy", "x0", "y0"};
+        const double values[] = {control.matrix.xx, control.matrix.yx, control.matrix.xy,
+                                 control.matrix.yy, control.matrix.x0, control.matrix.y0};
+        FVM_Object *matrix = 0;
+        r = component_record(c, keys, values, 6, &matrix);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Retain the immutable affine record with this control. */
+        record->properties["matrix"] = managed(matrix);
+    }
+    if (control.flags & 8)
+    {
+        const char *keys[] = {"rm", "gm", "bm", "am", "ra", "ga", "ba", "aa"};
+        double values[8];
+        for (unsigned int i = 0; i < 4; ++i)
+        {
+            values[i] = control.color.multiply[i];
+            values[i + 4] = control.color.add[i];
+        }
+        FVM_Object *color = 0;
+        r = component_record(c, keys, values, 8, &color);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Retain color data with the control for later scene application. */
+        record->properties["color"] = managed(color);
+    }
+    if (control.flags & 32)
+    {
+        FVM_Value name;
+        fvm_value_string(&name, control.name.c_str());
+        r = fvm_object_set(c, record, "name", &name);
+        if (r != FVM_OK)
+            return r;
+    }
+    *out = record;
+    return FVM_OK;
+}
+
 /* [GC:] Build frame records whose labels and action strings belong to the managed graph. */
 FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> &bytes,
-                        const Timeline &timeline, FVM_Object **out)
+                        const Timeline &timeline, FVM_Object *definitions, FVM_Object **out)
 {
     FVM_Object *frames = 0;
     FVM_Result r = fvm_object_create(c, &frames);
     if (r != FVM_OK)
         return r;
-    size_t next = 0;
+    size_t next = 0, next_control = 0;
     for (unsigned int frame = 1; frame <= timeline.frames; ++frame)
     {
         FVM_Object *record = 0, *blocks = 0;
@@ -229,6 +403,22 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
         /* [GC:] The native-call barrier protects these objects until their frame links exist. */
         record->properties["segments"] = managed(blocks);
         frames->indexed[frame] = managed(record);
+        FVM_Object *controls = 0;
+        r = fvm_object_create(c, &controls);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Controls travel with the frame and retain their referenced symbols. */
+        record->properties["controls"] = managed(controls);
+        while (next_control < timeline.controls.size() &&
+               timeline.controls[next_control].frame == frame)
+        {
+            FVM_Object *control = 0;
+            r = build_control(c, timeline.controls[next_control++], definitions, &control);
+            if (r != FVM_OK)
+                return r;
+            /* [GC:] Publish the control in input order before creating the next one. */
+            controls->indexed[(unsigned long)controls->indexed.size()] = managed(control);
+        }
         unsigned long index = 0;
         while (next < timeline.actions.size() && timeline.actions[next].frame == frame)
         {
@@ -257,21 +447,28 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
     r = fvm_object_create(c, &names);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Allocate all definition identities before installing any inter-definition edges. */
     for (size_t i = 0; i < sprites.size(); ++i)
     {
-        FVM_Object *frames = 0, *definition = 0;
-        r = build_frames(c, bytes, sprites[i], &frames);
-        if (r != FVM_OK)
-            return r;
+        FVM_Object *definition = 0;
         r = fvm_object_create(c, &definition);
         if (r != FVM_OK)
             return r;
-        FVM_Value total;
+        FVM_Value total, id;
         fvm_value_number(&total, sprites[i].frames);
+        fvm_value_number(&id, sprites[i].id);
         definition->properties["total"] = total;
-        /* [GC:] Definitions share immutable frame records, not playback state. */
-        definition->properties["frames"] = managed(frames);
+        definition->properties["id"] = id;
         definitions->indexed[sprites[i].id] = managed(definition);
+    }
+    for (size_t i = 0; i < sprites.size(); ++i)
+    {
+        FVM_Object *frames = 0;
+        r = build_frames(c, bytes, sprites[i], definitions, &frames);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] A definition owns its frames, which may refer to earlier definitions. */
+        definitions->indexed[sprites[i].id].object->properties["frames"] = managed(frames);
     }
     fvm_detail::map<unsigned long, fvm_detail::string> previous;
     for (size_t i = 0; i < exports.size(); ++i)
@@ -288,6 +485,15 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
         }
         previous[exports[i].id] = exports[i].name;
         names->properties[exports[i].name] = definitions->indexed[exports[i].id];
+    }
+    for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = names->properties.begin();
+         i != names->properties.end(); ++i)
+    {
+        FVM_Value linkage;
+        fvm_value_string(&linkage, i->first.c_str());
+        r = fvm_object_set(c, i->second.object, "linkage", &linkage);
+        if (r != FVM_OK)
+            return r;
     }
     FVM_Object *classes = 0;
     r = fvm_base_class_registry(c, &classes);
@@ -329,8 +535,9 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         fvm_detail::vector<Timeline> sprites;
         fvm_detail::vector<Export> exports;
         size_t start = 8 + (5 + 4 * (bytes[8] >> 3) + 7) / 8 + 4;
+        fvm_detail::map<unsigned long, bool> known;
         r = inspect_timeline(bytes, start, bytes.size(), info.version, main_timeline, &sprites,
-                             &exports);
+                             &exports, known);
         if (r != FVM_OK)
             return r;
 
@@ -340,14 +547,18 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         r = fvm_movieclip_create(c, name, info.frame_count, &clip);
         if (r != FVM_OK)
             return r;
-        r = build_frames(c, bytes, main_timeline, &frames);
-        if (r != FVM_OK)
-            return r;
-        /* [GC:] Replace the initially empty frame table with validated managed definitions. */
-        clip->resource_result.object->properties["frames"] = managed(frames);
         r = build_library(c, bytes, sprites, exports, clip);
         if (r != FVM_OK)
             return r;
+        /* [GC:] The root frame controls refer to the same dictionary identities as sprites. */
+        FVM_Object *definitions = clip->resource_result.object->properties["library"]
+                                      .object->properties["sprites"]
+                                      .object;
+        r = build_frames(c, bytes, main_timeline, definitions, &frames);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Replace the initially empty frame table with fully linked managed definitions. */
+        clip->resource_result.object->properties["frames"] = managed(frames);
         *out = clip;
         return FVM_OK;
     }
