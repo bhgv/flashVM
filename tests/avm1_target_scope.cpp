@@ -25,6 +25,7 @@ static FVM_Result detach(FVM_Context *,FVM_Object *,unsigned,const FVM_Value *,F
 {
  Detached *data=(Detached *)raw;data->root->properties.erase("child");FVM_Object *children=data->root->resource_result.object->properties["children"].object;for(fvm_detail::map<unsigned long,FVM_Value>::iterator i=children->indexed.begin();i!=children->indexed.end();++i)if(i->second.type==FVM_VALUE_OBJECT && i->second.object==data->child){unsigned long slot=i->first;children->indexed.erase(slot);break;}fvm_value_undefined(&data->child->resource_result.object->properties["parent"]);data->child->resource_result.object->properties["parent"].type=FVM_VALUE_NULL;fvm_value_undefined(out);return FVM_OK;
 }
+#ifndef FVM_AVM1_TARGET_FIXTURE_ONLY
 int main()
 {
  FVM_Config cfg;FVM_Runtime *rt=0;assert(fvm_config_init(&cfg)==FVM_OK);assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
@@ -49,3 +50,5 @@ int main()
  fvm_context_destroy(c);}
  fvm_runtime_destroy(rt);return 0;
 }
+
+#endif

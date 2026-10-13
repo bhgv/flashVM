@@ -7,6 +7,8 @@
 - `include/flashvm/transfer.h`: graph send/receive across queue/file/TCP channels.
 - `include/flashvm/property.h`: property flags, deletion and enumerable-name snapshots.
 - `include/flashvm/function.h`: first-class native/AVM1 functions, invoke/construct.
+- `include/flashvm/avm1.h`: actions, rooted trace/URL sinks and borrowed active-target introspection.
+- `include/flashvm/stage.h`: host RGBA background selection and query.
 - `include/flashvm/movieclip.h`: host-authored clip frames and vector rendering.
 - `include/flashvm/standard.h`: standard installation and primitive conversion.
 - `include/flashvm/capability.h`: TCP resource authority and imports.

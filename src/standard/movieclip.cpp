@@ -2978,6 +2978,123 @@ FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
     return remove(c, o, 0, 0, &ignored, 0);
 }
 
+/* Read intrinsic fields independently from replaceable named property accessors. */
+FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
+                                            unsigned int index, FVM_Value *out)
+{
+    if (!c || !clip || clip->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result status = state(clip, data);
+    if (status != FVM_OK)
+        return status;
+    if (index == 8 || index == 9 || index > 13)
+        return FVM_UNSUPPORTED;
+    if (index == 11)
+        return display_path(c, clip, out, true);
+    if (index == 4 || index == 5 || index == 12)
+    {
+        unsigned long value = 0;
+        status = integer_field(data, index == 4 ? "frame" : "total", 65535, value);
+        if (status != FVM_OK || !value)
+            return FVM_INVALID_ARGUMENT;
+        fvm_value_number(out, value);
+        return FVM_OK;
+    }
+    const char *names[] = {"_x", "_y", "_xscale", "_yscale", "", "", "_alpha", "_visible",
+                           "", "", "_rotation", "", "", "_name"};
+    FVM_Value value;
+    status = field(clip, names[index], value);
+    if (status != FVM_OK)
+        return status;
+    if (index == 13)
+    {
+        if (value.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+        *out = value;
+    }
+    else
+    {
+        if (value.type != FVM_VALUE_NUMBER && !(index == 7 && value.type == FVM_VALUE_BOOLEAN))
+            return FVM_INVALID_ARGUMENT;
+        if (index == 7)
+            fvm_value_boolean(out, value.type == FVM_VALUE_BOOLEAN ? value.boolean : value.number != 0);
+        else
+            fvm_value_number(out, value.number);
+    }
+    return FVM_OK;
+}
+
+/* Publish typed display scalars with twip position conversion and normalized rotation. */
+FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
+                                            unsigned int index, const FVM_Value &input)
+{
+    if (!c || !clip || clip->owner != c || fvm_validate_value(c, &input) != FVM_OK)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *data = 0;
+    FVM_Result status = state(clip, data);
+    if (status != FVM_OK)
+        return status;
+    if (index == 8 || index == 9 || index > 13)
+        return FVM_UNSUPPORTED;
+    if (index == 4 || index == 5 || index == 11 || index == 12)
+        return FVM_OK;
+    const char *names[] = {"_x", "_y", "_xscale", "_yscale", "", "", "_alpha", "_visible",
+                           "", "", "_rotation", "", "", "_name"};
+    FVM_Value value = input;
+    if (index == 13)
+    {
+        if (value.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+    }
+    else
+    {
+        if (value.type != FVM_VALUE_NUMBER)
+            return FVM_INVALID_ARGUMENT;
+        double number = value.number;
+        if (number != number)
+            return FVM_OK;
+        if (index <= 1)
+        {
+            double twips = number * 20;
+            if (number == std::numeric_limits<double>::infinity() ||
+                number == -std::numeric_limits<double>::infinity())
+                twips = -2147483648.0;
+            if (twips >= 2147483647.0)
+                twips = 2147483647.0;
+            else if (twips <= -2147483648.0)
+                twips = -2147483648.0;
+            else
+                twips = twips < 0 ? std::ceil(twips) : std::floor(twips);
+            number = twips / 20;
+        }
+        else if (number == std::numeric_limits<double>::infinity() ||
+                 number == -std::numeric_limits<double>::infinity())
+            return FVM_UNSUPPORTED;
+        if (index == 7)
+            number = number != 0 ? 1 : 0;
+        else if (index == 10)
+        {
+            number = std::fmod(number, 360.0);
+            if (number < -180)
+                number += 360;
+            else if (number > 180)
+                number -= 360;
+        }
+        fvm_value_number(&value, number);
+    }
+    try
+    {
+        /* [GC:] Adopt the already-rooted converted value before request roots are released. */
+        clip->properties[names[index]] = value;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 /* Apply timeline controls through built-in operations rather than replaceable method properties. */
 FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, unsigned int opcode,
                                       const FVM_Value *frame, bool enabled)

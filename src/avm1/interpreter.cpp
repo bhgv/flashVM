@@ -1505,6 +1505,85 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return status;
                 }
             }
+            else if (a.op == 0x22 || a.op == 0x23)
+            { /* GetProperty/SetProperty resolve display targets after numeric index coercion. */
+                const size_t count = a.op == 0x22 ? 2 : 3;
+                if (stack.size() < count)
+                    return FVM_ERROR;
+                size_t first = stack.size() - count;
+                double number = 0;
+                FVM_Result status = fvm_avm1_number(c, &stack[first + 1], &number);
+                if (status != FVM_OK)
+                    return status;
+                fvm_detail::vector<FVM_Value> converted(3);
+                /* [GC:] A resolved temporary clip survives later valueOf/toString collection. */
+                RootGuard property_roots(c, &converted, 0, 0, &registers);
+                FVM_Object *clip = 0;
+                const FVM_Value &target = stack[first];
+                if (target.type == FVM_VALUE_OBJECT && target.object->resource_kind == 40)
+                    clip = target.object;
+                else
+                {
+                    status = action_string(c, target, &converted[0]);
+                    if (status != FVM_OK)
+                        return status;
+                    FVM_Object *start = c->avm1_target_clip ? c->avm1_target_clip : c->avm1_base_clip;
+                    if (!start)
+                        return FVM_UNSUPPORTED;
+                    if (c->avm1_target_clip || fvm_string_size(converted[0]))
+                        status = fvm_movieclip_resolve_path(c, start, converted[0], &clip);
+                    if (status != FVM_OK)
+                        return status;
+                    if (clip && clip->resource_kind != 40)
+                        clip = 0;
+                }
+                if (clip)
+                {
+                    converted[2].type = FVM_VALUE_OBJECT;
+                    converted[2].object = clip;
+                }
+                bool valid = number == number && number > -1 && number < 22;
+                unsigned int index = valid ? (unsigned int)(number < 0 ? 0 : std::floor(number)) : 0;
+                FVM_Value result;
+                fvm_value_undefined(&result);
+                /* Player 7/8 policy: invalid targets and read-only fields do not coerce the value. */
+                if (clip && valid)
+                {
+                    if (a.op == 0x22)
+                        status = fvm_movieclip_get_action_property(c, clip, index, &result);
+                    else if (index == 8 || index == 9 || index > 13)
+                        status = FVM_UNSUPPORTED;
+                    else if (index != 4 && index != 5 && index != 11 && index != 12)
+                    {
+                        const FVM_Value &value = stack[first + 2];
+                        if (index == 13)
+                        {
+                            if (value.type == FVM_VALUE_NUMBER && value.number != value.number &&
+                                c->swf_loaded && c->swf_info.version >= 7)
+                            {
+                                FVM_Value zero;
+                                fvm_value_number(&zero, 0);
+                                status = action_string(c, zero, &converted[1]);
+                            }
+                            else
+                                status = action_string(c, value, &converted[1]);
+                        }
+                        else if (value.type != FVM_VALUE_NULL && value.type != FVM_VALUE_UNDEFINED)
+                        {
+                            double scalar = 0;
+                            status = fvm_avm1_number(c, &value, &scalar);
+                            fvm_value_number(&converted[1], scalar);
+                        }
+                        if (status == FVM_OK && converted[1].type != FVM_VALUE_UNDEFINED)
+                            status = fvm_movieclip_set_action_property(c, clip, index, converted[1]);
+                    }
+                }
+                if (status != FVM_OK)
+                    return status;
+                stack.resize(first);
+                if (a.op == 0x22)
+                    stack.push_back(result);
+            }
             else if (a.op == 0x8b || a.op == 0x20)
             { /* SetTarget/SetTarget2 replace the display scope without changing the this receiver. */
                 FVM_Value path;

@@ -18,6 +18,11 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction);
 
 /* Restore a native movieclip callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long);
+/* Read a supported intrinsic display property by the classic ActionGetProperty index. */
+FVM_Result fvm_movieclip_get_action_property(FVM_Context *, FVM_Object *, unsigned int, FVM_Value *);
+/* Publish an already-coerced intrinsic scalar; unsupported dimensions/system fields stay gated. */
+FVM_Result fvm_movieclip_set_action_property(FVM_Context *, FVM_Object *, unsigned int,
+                                            const FVM_Value &);
 /* Apply a timeline Action control directly, independently from replaceable script methods. */
 FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, unsigned int,
                                      const FVM_Value *, bool playing);

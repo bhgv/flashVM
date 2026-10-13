@@ -445,3 +445,26 @@ launch-permission rerun); restricted headless ASan/UBSan and portable focused
 8/8 each. Three large external equality SWFs finish but still differ in top-level
 this/root setup. Prototype attributes, MovieClip path equality and player-profile
 selection remain open. RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).
+
+## v0.105–v0.113 — Rooted reference execution and display target actions
+
+Проверено / tested: stage background frame controls and C89 host color API;
+bounded root-timeline runner; four character-code actions; rooted local and
+target-prefixed frame Call; host URL request bridge; separate dot/slash clip
+paths with legacy callback restoration; counted target resolution; SetTarget/
+SetTarget2 activation roots, variable scope and native frame controls; twelve
+classic indexed display fields and read-only C89 target introspection.
+RU/EN details: [stage](STAGE_BACKGROUND.md), [runner](SWF_REFERENCE_RUNNER.md),
+[strings](AVM1_LEGACY_STRINGS.md), [frame Call](AVM1_FRAME_CALL.md),
+[URL](AVM1_URL.md), [paths](MOVIECLIP_PATHS.md), [target scope](AVM1_TARGET_SCOPE.md),
+[display properties](AVM1_DISPLAY_PROPERTIES.md).
+
+v0.113 evidence: 276/276 core tests in AGG/Cairo, additional AGG runner test,
+four focused portable/restricted-sanitizer tests each. Five launch failures
+required restored execute bits and successful reruns. Ten original pinned SWF
+4–8-scope probes (actual matching assets are SWF 5–8) complete with exact outputs;
+large equal/less tests use actual imported roots, without patched movie headers.
+Dimensions/system fields, full named-member/rename semantics, historic Unicode
+case/codec tables, function source/version provenance, URL loaders/forms and
+full SWF resources remain open. All nine roadmap stages remain open; stage 8
+still has no implemented native JIT backend.

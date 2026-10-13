@@ -18,6 +18,17 @@ extern "C"
         unsigned long push_count;        /* Number of decoded pushed values. */
         unsigned long branch_count;      /* Number of decoded branch instructions. */
     } FVM_AVM1Info;
+    /* Borrowed display-target metadata for the current AVM1 activation, including host callbacks. */
+    typedef struct FVM_AVM1TargetInfo
+    {
+        unsigned long struct_size; /* Caller-provided structure size for ABI validation. */
+        int active; /* Nonzero during a scoped AVM1 activation; zero outside execution. */
+        FVM_Object *base_clip; /* Borrowed base clip, null when the activation has no scene base. */
+        FVM_Object *target_clip; /* Borrowed selected clip, null for invalid or unavailable target. */
+    } FVM_AVM1TargetInfo;
+    /* Query active target metadata without allocating or invoking script. Borrowed clips must be
+     * explicitly retained before use after activation exit or a later collection. */
+    FVM_API FVM_Result fvm_avm1_get_target_info(FVM_Context *, FVM_AVM1TargetInfo *);
     /* Validates instruction framing, not the full AVM1 operand semantics. */
     /* Validate AVM1 instruction framing and count instructions, pushes and branches. */
     FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
