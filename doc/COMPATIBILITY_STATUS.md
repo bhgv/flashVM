@@ -943,3 +943,17 @@ ASan+UBSan and portable Linux profiles. Changing callback names, missing versus
 undefined, hidden flags and counted NUL pass across unloaded/SWF4..8. Two AGG
 bitmap launch failures passed after execute-bit restoration. Fifteen original
 SWFs still match. Case/version/native fields and all stages remain open.
+
+## v0.152 — loaded unshift raw data / unshift собственных данных
+
+Loaded unshift moves raw own data without accessor/watcher callbacks, materializes
+holes even with no arguments and preserves borrowed length. Native readonly
+length allows out-of-length raw slots. Length coercion shares traversal work
+accounting in loaded unshift/shift/pop.
+[RU/EN details](ARRAY_LEGACY_UNSHIFT.md). Evidence: 319 core tests in
+AGG/Cairo plus the AGG runner; six focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Protected virtual data, counted NUL/GC,
+native/borrowed lengths and combined valueOf+traversal budget pass. Three AGG
+bitmap/shape/mutex launch failures passed after execute-bit restoration. Fifteen
+original SWFs still match. Signed/size limits, native accessor data and all
+roadmap stages remain open; partial mutation is not rolled back.

@@ -137,6 +137,26 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
     return FVM_OK;
 }
 
+/* Update native Array stored length without callback dispatch, respecting its own readonly flag. */
+void legacy_native_length(FVM_Object *o, unsigned long count)
+{
+    if (o->resource_kind != 28)
+        return;
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
+    if (flags == o->attributes.end() || !(flags->second & FVM_PROPERTY_READ_ONLY))
+        fvm_value_number(&o->resource_result, (double)count);
+}
+
+/* Extend native Array length before raw own element storage without invoking accessors/watchers. */
+FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value &value)
+{
+    if (o->resource_kind == 28 && index >= o->resource_result.number)
+        legacy_native_length(o, index + 1);
+    char key[32];
+    std::sprintf(key, "%lu", index);
+    return fvm_base_store_data(c, o, key, value, false);
+}
+
 /* Write the current value. */
 FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value *value)
 {
@@ -489,6 +509,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     /* Loaded end-removal methods use raw own data and resize only native Arrays. */
     if (c->swf_loaded && (!std::strcmp(method, "pop") || !std::strcmp(method, "shift")))
     {
+        FVM_ArrayWorkScope mutation_work(c);
         unsigned long count = 0;
         long signed_length = 0;
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
@@ -503,7 +524,6 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         FVM_Value result;
         legacy_data_element(o, shifting ? 0 : count - 1, result);
         /* [GC:] Native invocation defers collection while removed raw values await publication. */
-        FVM_ArrayWorkScope mutation_work(c);
         if (shifting)
             for (unsigned long i = 1; i < count; ++i)
             {
@@ -533,11 +553,55 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         if (o->resource_kind == 28)
         {
             /* Native length data changes without setter/watcher dispatch or a nondeletable clamp. */
-            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
-            if (flags == o->attributes.end() || !(flags->second & FVM_PROPERTY_READ_ONLY))
-                fvm_value_number(&o->resource_result, (double)count - 1);
+            legacy_native_length(o, count - 1);
         }
         *out = result;
+        return FVM_OK;
+    }
+
+    /* Loaded unshift moves raw own values, including holes, without changing borrowed length. */
+    if (c->swf_loaded && !std::strcmp(method, "unshift"))
+    {
+        FVM_ArrayWorkScope mutation_work(c);
+        unsigned long count = 0;
+        long signed_length = 0;
+        FVM_Result status = legacy_data_length(c, o, count, &signed_length);
+        if (status != FVM_OK)
+            return status;
+        if (signed_length < 0 || count > 65536 || (double)count + n > 2147483647.0)
+            return FVM_UNSUPPORTED;
+        for (unsigned long i = count; i; --i)
+        {
+            status = mutation_work.step();
+            if (status != FVM_OK)
+                return status;
+            FVM_Value value;
+            legacy_data_element(o, i - 1, value);
+            char key[32];
+            std::sprintf(key, "%lu", i + n - 1);
+            int removed = 0;
+            status = fvm_object_delete(c, o, key, &removed);
+            if (status == FVM_OK)
+                status = legacy_store_element(c, o, i + n - 1, value);
+            if (status != FVM_OK)
+                return status;
+        }
+        for (unsigned int i = 0; i < n; ++i)
+        {
+            status = mutation_work.step();
+            if (status != FVM_OK)
+                return status;
+            char key[32];
+            std::sprintf(key, "%u", i);
+            int removed = 0;
+            status = fvm_object_delete(c, o, key, &removed);
+            if (status == FVM_OK)
+                status = legacy_store_element(c, o, i, a[i]);
+            if (status != FVM_OK)
+                return status;
+        }
+        legacy_native_length(o, count + n);
+        fvm_value_number(out, (double)count + n);
         return FVM_OK;
     }
 

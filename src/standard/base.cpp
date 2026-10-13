@@ -595,7 +595,7 @@ FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
-    if (fvm_array_needs_generic(o))
+    if (c->swf_loaded || fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "unshift", n, a, out, unshift);
 
     if (!array(o))
@@ -1163,7 +1163,7 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
 
 /* Persist ordinary own data after a script setter removes its descriptor, without calling another setter. */
 FVM_Result store_receiver_data(FVM_Context *c, FVM_Object *receiver, const fvm_detail::string &name,
-                                const FVM_Value &input)
+                                const FVM_Value &input, bool note_length = true)
 {
     FVM_Result status = fvm_validate_value(c, &input);
     if (status != FVM_OK)
@@ -1183,7 +1183,8 @@ FVM_Result store_receiver_data(FVM_Context *c, FVM_Object *receiver, const fvm_d
     {
         receiver->indexed[index] = stored;
         receiver->properties.erase(name);
-        fvm_array_note_index(receiver, index);
+        if (note_length)
+            fvm_array_note_index(receiver, index);
     }
     else
         receiver->properties[name] = stored;
@@ -1521,7 +1522,7 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
 
 /* Store own ActionScript data while retaining virtual properties and bypassing callbacks. */
 FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
-                               const FVM_Value &input)
+                               const FVM_Value &input, bool note_length)
 {
     if (!c || !o || o->owner != c)
         return FVM_INVALID_ARGUMENT;
@@ -1530,7 +1531,7 @@ FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::
         return FVM_OK;
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
     if (accessor == o->accessors.end())
-        return store_receiver_data(c, o, name, input);
+        return store_receiver_data(c, o, name, input, note_length);
     if (!fvm_base_script_accessor(accessor->second))
         return FVM_UNSUPPORTED;
     FVM_Object *descriptor = accessor->second.root;
