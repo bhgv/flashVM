@@ -125,7 +125,7 @@ int main(void)
     assert(fvm_mutex_reset(b, m) == FVM_OK);
     assert(fvm_channel_open_file("mutex-shared-reject.bin", "w", &file) == FVM_OK);
     assert(fvm_channel_send_value(b, file, &value, 0) == FVM_UNSUPPORTED);
-    assert(fvm_debug_channel_freeze(file, 1) == FVM_UNSUPPORTED);
+    assert(fvm_debug_channel_freeze(file, 1) == FVM_OK);
     fvm_channel_destroy(file);
     assert(fvm_gc_collect(b, &freed) == FVM_OK);
     fvm_context_destroy(inspect);

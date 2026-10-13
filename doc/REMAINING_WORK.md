@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.62 / Remaining work after v0.62
+# Оставшаяся работа после v0.63 / Remaining work after v0.63
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -119,3 +119,6 @@ v0.61 fixes opaque noise sample consumption; full historical Flash conformance r
 
 В v0.62 добавлен Perlin noise с независимыми gradient planes, octaves/offsets/stitch и staged publication. SVG vectors, transport/GC и OOM проверяются (BITMAP_PERLIN.md). Историческая Flash-сверка остаётся открытой.
 v0.62 adds staged Perlin turbulence; pixel dissolve and remaining filters/text/media stay open.
+
+В v0.63 добавлены freeze/peek для локальных файловых каналов: non-consuming indexed records, worker resume, cycles/GC (FILE_CHANNEL_DEBUG.md). Полная приёмка стадий 6/7 остаётся открытой.
+v0.63 adds local file debugger freezing and non-consuming record inspection; stages 6/7 remain open.

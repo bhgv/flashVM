@@ -45,6 +45,8 @@ extern "C"
     FVM_Result fvm_channel_file_send_record(FVM_Channel *, const unsigned char *, size_t);
     /* Receive channel file record. */
     FVM_Result fvm_channel_file_receive_record(FVM_Channel *, unsigned char **, size_t *, int);
+    /* Copy an indexed local file record without advancing its read position; caller frees data. */
+    FVM_Result fvm_channel_file_peek_record(FVM_Channel *, size_t, unsigned char **, size_t *);
     /* Encode serialization primitive. */
     FVM_Result fvm_serialization_encode_primitive(const FVM_Value *, unsigned char **, size_t *);
     /* Decode serialization primitive. */

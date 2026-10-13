@@ -5,8 +5,8 @@
 #ifndef FLASHVM_DEBUG_H
 /* Define FLASHVM DEBUG H constant or compilation switch. */
 #define FLASHVM_DEBUG_H
-#include "table.h"
 #include "channel.h"
+#include "table.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -52,14 +52,15 @@ extern "C"
         int closed /* Whether further operations have been closed. */,
             frozen; /* Whether debugger interception has frozen delivery. */
     } FVM_DebugChannel;
-    /* Freeze dequeue only; producers can still enqueue. Closed frozen queues require
-       explicit resume to drain. File-channel interception is not implemented. */
+    /* Freeze queue delivery or local file reads; producers/writers remain active. Closed frozen
+       queues require explicit resume to drain. Remote endpoints do not support freezing. */
     /* Implement debug channel freeze for this subsystem. */
     FVM_API FVM_Result fvm_debug_channel_freeze(FVM_Channel *, int);
-    /* Implement debug channel state for this subsystem. */
+    /* Inspect in-process queue state; file/remote channels return UNSUPPORTED. */
     FVM_API FVM_Result fvm_debug_channel_state(FVM_Channel *, FVM_DebugChannel *);
     /* Decode an immutable packet snapshot without dequeueing. Resource capabilities
-       remain live shared handles; this does not freeze their native state. */
+       remain live shared handles; this does not freeze their native state. Local file indexes
+       count unread records, and inspection restores the cursor even after malformed input. */
     /* Implement debug channel message for this subsystem. */
     FVM_API FVM_Result fvm_debug_channel_message(FVM_Context *, FVM_Channel *, size_t, FVM_Value *);
     /* Define FVM_DebugChannelWait struct and its representation. */

@@ -2,24 +2,24 @@
  * File: src/capi/transfer_c.cpp.
  */
 
-#include "../core/string_internal.hpp"
-#include "../core/runtime.hpp"
-#include "../core/exception_internal.hpp"
-#include "../core/channel_packet.h"
-#include "../core/transfer_resource.hpp"
-#include "../core/capability_internal.hpp"
-#include "flashvm/extensions.h"
-#include "flashvm/mutex.h"
-#include "flashvm/debug.h"
 #include "../../ports/channel_sync.h"
 #include "../../ports/thread_port.h"
+#include "../core/capability_internal.hpp"
+#include "../core/channel_packet.h"
+#include "../core/exception_internal.hpp"
+#include "../core/runtime.hpp"
+#include "../core/string_internal.hpp"
+#include "../core/transfer_resource.hpp"
+#include "flashvm/debug.h"
+#include "flashvm/extensions.h"
+#include "flashvm/mutex.h"
+#include "flashvm/serialization.h"
+#include "flashvm/transfer.h"
 #include "flashvm/worker.h"
 #include <climits>
-#include "flashvm/transfer.h"
-#include "flashvm/serialization.h"
-#include <new>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
+#include <new>
 namespace
 {
 /* Define Resource struct and its representation. */
@@ -351,8 +351,6 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
     fvm_channel_is_stream(channel, &file);
     if (file)
     {
-        if (peek)
-            return FVM_UNSUPPORTED;
         unsigned char *data = 0;
         size_t size = 0;
         try
@@ -375,7 +373,8 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
                     context->resource_receive_path.swap(previous);
                 }
             } provenance(context, fvm_channel_file_path(channel));
-            result = fvm_channel_stream_receive(context, channel, &data, &size, blocking);
+            result = peek ? fvm_channel_file_peek_record(channel, index, &data, &size)
+                          : fvm_channel_stream_receive(context, channel, &data, &size, blocking);
             if (result == FVM_OK)
                 result = fvm_value_deserialize(context, data, size, out);
             fvm_serialized_free(data);
@@ -467,7 +466,8 @@ extern "C" FVM_Result fvm_channel_receive_value(FVM_Context *c, FVM_Channel *ch,
     return receive_value(c, ch, out, blocking, false, 0);
 }
 
-/* Compute and return debug channel message. */
+/* [GC:] Decode an independent inspection graph without consuming its queue/file record; the
+ * caller must retain a root if the returned graph is kept across a later collection. */
 extern "C" FVM_Result fvm_debug_channel_message(FVM_Context *c, FVM_Channel *ch, size_t index,
                                                 FVM_Value *out)
 {

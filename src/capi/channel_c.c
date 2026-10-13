@@ -2,14 +2,14 @@
  * File: src/capi/channel_c.c.
  */
 
-#include "flashvm/channel.h"
-#include "flashvm/debug.h"
-#include "../core/channel_packet.h"
 #include "../../ports/channel_sync.h"
 #include "../../ports/file_port.h"
+#include "../core/channel_packet.h"
+#include "flashvm/channel.h"
+#include "flashvm/debug.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
 /* Define FVM_ChannelNode struct and its representation. */
 typedef struct FVM_ChannelNode
 {
@@ -129,6 +129,7 @@ FVM_Result fvm_channel_file_read(FVM_Channel *c, void *data, size_t size, size_t
     fvm_port_sync_lock(c->sync);
     result = c->file_channel != 1 ? FVM_UNSUPPORTED
              : c->closed          ? FVM_ERROR
+             : c->frozen          ? FVM_NOT_FOUND
                                   : fvm_port_file_read(c->file, data, size, read);
     fvm_port_sync_unlock(c->sync);
     return result;
@@ -161,7 +162,8 @@ FVM_Result fvm_channel_file_send_record(FVM_Channel *c, const unsigned char *dat
 /* Lock held. Invalid/truncated records leave the read position unchanged;
    EOF is finite: blocking receive never waits for an external file writer. */
 /* Compute and return file record. */
-static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size, int blocking)
+static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size, int blocking,
+                              int inspecting)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -174,8 +176,12 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
     /* Computation / Вычисление и обновление состояния. */
     *data = 0;
     *size = 0;
+    while (c->frozen && !c->closed && blocking && !inspecting)
+        fvm_port_sync_wait(c->sync);
     if (c->closed)
         return FVM_ERROR;
+    if (c->frozen && !inspecting)
+        return FVM_NOT_FOUND;
 
     /* Computation / Вычисление и обновление состояния. */
     position = fvm_port_file_position(c->file);
@@ -223,6 +229,41 @@ fail:
     return result;
 }
 
+/* Copy the indexed unread file record under the channel lock, restoring the cursor on every
+ * outcome. Inspection bypasses debugger freezing but never bypasses closure or read permissions. */
+FVM_Result fvm_channel_file_peek_record(FVM_Channel *c, size_t index, unsigned char **data,
+                                        size_t *size)
+{
+    long position;
+    FVM_Result result;
+    if (!c || !data || !size)
+        return FVM_INVALID_ARGUMENT;
+    *data = 0;
+    *size = 0;
+    if (c->file_channel != 1)
+        return FVM_UNSUPPORTED;
+    fvm_port_sync_lock(c->sync);
+    if (c->closed)
+    {
+        fvm_port_sync_unlock(c->sync);
+        return FVM_ERROR;
+    }
+    position = fvm_port_file_position(c->file);
+    for (;;)
+    {
+        result = file_record(c, data, size, 0, 1);
+        if (result != FVM_OK || !index)
+            break;
+        free(*data);
+        *data = 0;
+        *size = 0;
+        --index;
+    }
+    fvm_port_file_restore(c->file, position);
+    fvm_port_sync_unlock(c->sync);
+    return result;
+}
+
 /* Receive channel file record. */
 FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data, size_t *size,
                                            int blocking)
@@ -237,7 +278,7 @@ FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data,
     *data = 0;
     *size = 0;
     fvm_port_sync_lock(c->sync);
-    result = c->file_channel ? file_record(c, data, size, blocking) : FVM_UNSUPPORTED;
+    result = c->file_channel ? file_record(c, data, size, blocking, 0) : FVM_UNSUPPORTED;
     fvm_port_sync_unlock(c->sync);
     return result;
 }
@@ -271,6 +312,9 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
         return result;
     }
     fvm_port_sync_lock(c->sync);
+    /* Wait before capturing the rollback cursor: another resumed reader may run first. */
+    while (c->frozen && !c->closed && blocking)
+        fvm_port_sync_wait(c->sync);
     if (c->closed)
     {
         fvm_port_sync_unlock(c->sync);
@@ -279,7 +323,7 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
 
     /* Computation / Вычисление и обновление состояния. */
     position = fvm_port_file_position(c->file);
-    result = file_record(c, &data, &size, blocking);
+    result = file_record(c, &data, &size, blocking, 0);
     if (result == FVM_OK)
     {
         result = fvm_serialization_decode_primitive(data, size, out);
@@ -738,12 +782,12 @@ FVM_Result fvm_channel_receive_mixed(FVM_Channel *c, FVM_Value *out, void **pack
     return FVM_OK;
 }
 
-/* Compute and return debug channel freeze. */
+/* Suspend local queue delivery or file reads under the channel lock and wake resumed waiters. */
 FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
 {
     if (!c)
         return FVM_INVALID_ARGUMENT;
-    if (c->file_channel)
+    if (c->remote_request)
         return FVM_UNSUPPORTED;
 
     /* Computation / Вычисление и обновление состояния. */
