@@ -1703,6 +1703,45 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - 2);
                 stack.back() = output;
             }
+            else if (a.op == 0x32 || a.op == 0x36)
+            { /* CharToAscii/MBCharToAscii return the first UTF-16 unit, replacing surrogates. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value text;
+                FVM_Result status = action_string(c, stack.back(), &text);
+                if (status != FVM_OK)
+                    return status;
+                fvm_detail::vector<unsigned int> units;
+                status = fvm_string_units(text, units);
+                if (status != FVM_OK)
+                    return status;
+                unsigned int code = units.empty() ? 0 : units[0];
+                /* Legacy byte/locale encodings remain unsupported for non-ASCII input. */
+                if (c->swf_loaded && c->swf_info.version < 6 && code > 127)
+                    return FVM_UNSUPPORTED;
+                if (code >= 0xd800 && code <= 0xdfff)
+                    code = 0xfffd;
+                fvm_value_number(&stack.back(), code);
+            }
+            else if (a.op == 0x33 || a.op == 0x37)
+            { /* AsciiToChar/MBAsciiToChar wrap to Uint16; zero is empty and surrogates are replaced. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                double number = 0;
+                FVM_Result status = fvm_avm1_number(c, &stack.back(), &number);
+                if (status != FVM_OK)
+                    return status;
+                unsigned short code = (unsigned short)(integer_bits(number) & 0xffffUL);
+                if (c->swf_loaded && c->swf_info.version < 6 && code > 127)
+                    return FVM_UNSUPPORTED;
+                if (code >= 0xd800 && code <= 0xdfff)
+                    code = 0xfffd;
+                FVM_Value output;
+                status = fvm_value_string_utf16(c, &code, code ? 1 : 0, &output);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = output;
+            }
             else if (a.op == 0x18)
             { /* ToInteger uses signed Int32 wrapping, not an unsafe floating cast. */
                 if (stack.empty())

@@ -28,3 +28,21 @@ callback order, integer conversion, unsupported legacy encodings, operand
 underflow and repeated collection during script coercion. Other character
 conversion/actions, default-hint Add2 and full reference corpus remain open.
 Primary cross-check: [pinned Ruffle string actions](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/activation.rs).
+
+## v0.107 — Character conversion actions
+
+CharToAscii (0x32), AsciiToChar (0x33), MBCharToAscii (0x36) and
+MBAsciiToChar (0x37) support SWF 6–8 UTF-16 behavior. Character-to-code uses
+the first unit (empty/NUL gives zero) and replaces surrogate units with U+FFFD.
+Code-to-character wraps numeric coercion to Uint16, returns an empty string for
+zero and replaces surrogate units. Before SWF 6, ASCII is supported; non-ASCII
+returns FVM_UNSUPPORTED pending byte/locale codec implementation. This limit is
+intentional and does not certify the older character encodings.
+
+Четыре операции проверены тестом avm1_character_actions: версии SWF 5–8,
+пустая строка, NUL, суррогаты, выход за диапазон, Infinity, ошибки callbacks и
+нехватка операндов. Все 268 обычных тестов AGG/Cairo и дополнительный runner
+тест AGG прошли, после восстановления прав запуска у пяти бинарников среды.
+По три профильных теста прошли в переносимой и ASan/UBSan сборках; ограничения
+санитарного профиля сохраняются. Широкий внешний эталон теперь проходит эти
+операции, но остаётся незавершённым из-за отсутствующего ActionCall.
