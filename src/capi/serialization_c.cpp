@@ -1152,7 +1152,8 @@ Graph read_graph(Reader &r, unsigned int version)
             {
                 fvm_detail::string name = r.key();
                 Value descriptor = r.value();
-                require(!name.empty() && descriptor.type == FVM_VALUE_OBJECT &&
+                /* Loaded watch accepts empty names; descriptor/reference validation still applies. */
+                require(descriptor.type == FVM_VALUE_OBJECT &&
                         o.watchers.find(name) == o.watchers.end());
                 o.watchers[name] = descriptor;
             }

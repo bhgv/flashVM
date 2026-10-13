@@ -1208,3 +1208,18 @@ open. Growth before allocation failure may persist; atomicity is not claimed.
 
 Проверены readonly length, own хвосты и согласованность decoder после передачи.
 Защита зарезервированного индекса сохранена; все стадии остаются открытыми.
+
+## v0.171 — empty watcher decode / пустое имя watcher
+
+Graph decoding accepts empty watcher keys supported by loaded watch, preserving
+descriptor/duplicate/reference validation. [RU/EN details](OBJECT_EMPTY_WATCH_TRANSFER.md).
+Evidence: AGG 332/Cairo 331, eight focused portable/restricted heap-global ASan+UBSan
+checks, fifteen byte-exact original SWFs. SWF4..8 pre-load empty data, AVM1 handler,
+self userData, traced GC/queue transfer/GC, aliasing, ignored empty assignments,
+unwatch true/false and restored watch/GC state pass. Three AGG resource launch
+failures plus their subprocess check and two Cairo launch failures passed after
+restoring execute bits. Format/ABI, attribute version masks and all roadmap stage
+completion states remain unchanged.
+
+Пустой watcher сохраняется после передачи и удаляется корректно. Исходное
+правило игнорирования assignment пустого имени сохранено; все стадии открыты.
