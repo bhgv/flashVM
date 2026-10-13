@@ -278,6 +278,7 @@ struct FVM_Context
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
     bool stage_background_set; /* Whether a host or encountered SWF control selected a color. */
     FVM_RasterColor stage_background; /* Straight-alpha RGBA stage color, containing no managed edges. */
+    FVM_NativeEntry avm1_url; /* [GC:] Host URL request sink retaining its optional capture. */
     FVM_NativeEntry avm1_trace; /* [GC:] Host ActionTrace sink retaining its optional capture. */
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */

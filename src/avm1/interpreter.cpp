@@ -1535,6 +1535,66 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
+            else if (a.op == 0x83 || a.op == 0x9a)
+            { /* GetURL/GetURL2 delegate counted requests to an explicitly registered host sink. */
+                fvm_detail::vector<FVM_Value> request(3);
+                /* [GC:] The first converted target survives URL coercion that can collect. */
+                RootGuard request_roots(c, &request, 0, 0, &registers);
+                unsigned int flags = 0;
+                FVM_Result status = FVM_OK;
+                if (a.op == 0x9a)
+                {
+                    if (a.length != 1)
+                        return FVM_INVALID_ARGUMENT;
+                    flags = data[a.payload];
+                    if ((flags & 0x3c) || (flags & 3) == 3)
+                        return FVM_INVALID_ARGUMENT;
+                    if (stack.size() < 2)
+                        return FVM_ERROR;
+                    status = action_string(c, stack.back(), &request[1]);
+                    if (status == FVM_OK)
+                        status = action_string(c, stack[stack.size() - 2], &request[0]);
+                }
+                else
+                {
+                    const unsigned char *payload = data + a.payload;
+                    const unsigned char *separator =
+                        (const unsigned char *)std::memchr(payload, 0, a.length);
+                    if (!separator)
+                        return FVM_INVALID_ARGUMENT;
+                    size_t first = (size_t)(separator - payload);
+                    size_t remaining = a.length - first - 1;
+                    if (!remaining || payload[a.length - 1] ||
+                        std::memchr(separator + 1, 0, remaining - 1))
+                        return FVM_INVALID_ARGUMENT;
+                    if (c->swf_loaded && c->swf_info.version < 6)
+                        for (size_t i = 0; i < a.length; ++i)
+                            if (payload[i] > 127)
+                                return FVM_UNSUPPORTED;
+                    status = own_string(c, (const char *)payload, &request[0], first);
+                    if (status == FVM_OK)
+                        status = own_string(c, (const char *)separator + 1, &request[1],
+                                            remaining - 1);
+                }
+                if (status != FVM_OK)
+                    return status;
+                fvm_value_number(&request[2], flags);
+                /* Copy the sink before delivery so replacement applies to the next request. */
+                FVM_NativeEntry sink = c->avm1_url;
+                if (!sink.callback)
+                    return FVM_UNSUPPORTED;
+                FVM_Value ignored;
+                fvm_value_undefined(&ignored);
+                {
+                    /* [GC:] Host URL callbacks share the ordinary native collection barrier. */
+                    FVM_NativeCallGuard guard(c);
+                    status = sink.callback(c, c->global, 3, request.begin(), &ignored, sink.userdata);
+                }
+                if (status != FVM_OK)
+                    return status;
+                if (a.op == 0x9a)
+                    stack.resize(stack.size() - 2);
+            }
             else if (a.op == 0x9e)
             { /* Call executes frame actions without seeking or placing frame controls. */
                 if (a.length || stack.empty())
@@ -2507,6 +2567,21 @@ extern "C" FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *c, FVM_NativeFuncti
     entry.userdata = userdata;
     entry.root = capture;
     c->avm1_trace = entry;
+    return FVM_OK;
+}
+
+/* [GC:] Replace the host request sink only after validating its retained capture. */
+extern "C" FVM_Result fvm_avm1_set_url_rooted(FVM_Context *c, FVM_NativeFunction callback,
+                                              void *userdata, FVM_Object *capture)
+{
+    if (!c || c->destroying || c->gc_collecting ||
+        (capture && capture->owner != c) || (!callback && (userdata || capture)))
+        return FVM_INVALID_ARGUMENT;
+    FVM_NativeEntry entry;
+    entry.callback = callback;
+    entry.userdata = userdata;
+    entry.root = capture;
+    c->avm1_url = entry;
     return FVM_OK;
 }
 

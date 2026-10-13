@@ -30,6 +30,23 @@ extern "C"
      * from the callback. Text is borrowed for the synchronous call; retain a copy if needed. */
     FVM_API FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *, FVM_NativeFunction, void *,
                                                  FVM_Object *);
+    /* URL request carries no HTTP method selection. */
+#define FVM_AVM1_URL_METHOD_NONE 0U
+    /* URL request selects HTTP GET. */
+#define FVM_AVM1_URL_METHOD_GET 1U
+    /* URL request selects HTTP POST. */
+#define FVM_AVM1_URL_METHOD_POST 2U
+    /* Request targets a movie clip instead of host navigation. */
+#define FVM_AVM1_URL_LOAD_TARGET 64U
+    /* Request loads variables into the target. */
+#define FVM_AVM1_URL_LOAD_VARIABLES 128U
+    /* [GC:] Register a synchronous host URL request sink and optional same-context capture.
+     * Callback receives STRING URL, STRING target/FSCommand arguments, NUMBER flags and the
+     * global receiver. Strings are counted and borrowed. Return status propagates; result is
+     * ignored. No sink returns FVM_UNSUPPORTED. The VM performs no network/navigation here.
+     * NULL callback/userdata/capture disables delivery. Do not destroy the context in callback. */
+    FVM_API FVM_Result fvm_avm1_set_url_rooted(FVM_Context *, FVM_NativeFunction, void *,
+                                               FVM_Object *);
     /* Execute avm1 receiver. */
     FVM_API FVM_Result fvm_avm1_execute_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
     /* Invoke a named AVM1 function with rooted parameter bindings and receiver. */
