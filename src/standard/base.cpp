@@ -7,6 +7,7 @@
 #include "array_work.hpp"
 #include "../avm1/coercion.hpp"
 #include "base_state.hpp"
+#include "function_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/property_watch.hpp"
@@ -899,6 +900,47 @@ FVM_Result loaded_value_compare(FVM_Context *c, const FVM_Value &left, const FVM
     return FVM_OK;
 }
 
+/* Read one own stored sortOn field without prototype lookup or virtual getter calls. */
+FVM_Result loaded_sort_field(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
+                             FVM_Value &out)
+{
+    fvm_value_undefined(&out);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(name);
+    if (property != o->properties.end())
+    {
+        out = property->second;
+        return FVM_OK;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
+    if (accessor != o->accessors.end())
+    {
+        if (fvm_base_accessor_data(accessor->second, out))
+            return FVM_OK;
+        if (o->resource_kind == ARRAY_OBJECT && name == "length" && o->resource_result_valid)
+            out = o->resource_result;
+        return FVM_OK;
+    }
+    unsigned long index = 0;
+    if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
+    {
+        Slots::iterator slot = o->indexed.find(index);
+        if (slot != o->indexed.end())
+        {
+            out = slot->second;
+            return FVM_OK;
+        }
+    }
+    if (o->resource_kind == ARRAY_OBJECT && name == "length" && o->resource_result_valid)
+    {
+        out = o->resource_result;
+        return FVM_OK;
+    }
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = o->methods.find(name);
+    if (method != o->methods.end())
+        return fvm_function_wrap_entry(c, o, name, method->second, &out);
+    return FVM_OK;
+}
+
 /* Compare the current value. */
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
@@ -911,6 +953,24 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
     }
     if (spec)
     {
+        if (c->swf_loaded)
+        {
+            if (a.value.type != FVM_VALUE_OBJECT || b.value.type != FVM_VALUE_OBJECT)
+                return loaded_value_compare(c, a.value, b.value, flags, order);
+            order = 0;
+            for (size_t i = 0; i < spec->fields.size(); ++i)
+            {
+                FVM_Value left, right;
+                FVM_Result result = loaded_sort_field(c, a.value.object, spec->fields[i], left);
+                if (result == FVM_OK)
+                    result = loaded_sort_field(c, b.value.object, spec->fields[i], right);
+                if (result == FVM_OK)
+                    result = loaded_value_compare(c, left, right, spec->flags[i], order);
+                if (result != FVM_OK || order)
+                    return result;
+            }
+            return FVM_OK;
+        }
         order = 0;
         for (size_t i = 0; i < spec->fields.size(); ++i)
         {
@@ -1084,7 +1144,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         flags = (unsigned int)value;
     }
     if (spec && !spec->flags.empty())
-        flags = spec->flags[0] & 12;
+        flags = c->swf_loaded ? spec->flags[0] : spec->flags[0] & 12;
     FVM_ArrayWorkScope work(c, c->swf_loaded);
     SortInputRoots input(c, o, length);
     fvm_detail::vector<SortItem> items;
@@ -1101,7 +1161,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         SortItem item;
         item.index = i;
         item.value = c->swf_loaded ? input.values[i] : slot->second;
-        if (spec)
+        if (spec && !c->swf_loaded)
         {
             for (size_t k = 0; k < spec->fields.size(); ++k)
             {

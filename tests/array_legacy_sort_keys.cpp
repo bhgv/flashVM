@@ -38,6 +38,11 @@ int main()
         assert(value.object == (version && version < 7 ? rows[1] : rows[2]));
         assert(fvm_table_get_index(c, o, 1, &value) == FVM_OK);
         assert(value.object == (version == 4 ? rows[0] : version && version < 7 ? rows[2] : rows[0]));
+        fvm_value_number(values, 3); fvm_value_number(values + 1, 1); fvm_value_number(values + 2, 2);
+        assert(fvm_construct(c, "Array", 3, values, &o) == FVM_OK);
+        fvm_value_string(args, "missing"); fvm_value_number(args + 1, 18);
+        assert(fvm_object_call(c, o, "sortOn", 2, args, &out) == FVM_OK);
+        assert(fvm_table_get_index(c, o, 1, &value) == FVM_OK && value.number == (version ? 2 : 1));
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

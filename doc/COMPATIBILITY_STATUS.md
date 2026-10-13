@@ -1111,3 +1111,20 @@ lookup/coercion, native GC barriers and all stages remain open.
 
 Проверены повторные преобразования каждой пары и отдельная builtin проверка
 UNIQUESORT. Исправлена ошибка времени жизни строки в тесте. Все стадии открыты.
+
+## v0.165 — own live sortOn fields / собственные данные полей
+
+Loaded sortOn reads own stored fields at each comparison without getters/prototype
+lookup, using retained script descriptor data, native Array length/index values and
+lazy native method values. Field coercion is left before right; changes from
+callbacks are visible later. Primitive elements use full first-field options.
+[RU/EN details](ARRAY_LEGACY_SORT_FIELDS.md). Evidence: AGG 328/Cairo 327,
+seven focused portable/restricted heap-global ASan+UBSan checks, fifteen byte-exact
+original SWFs. Counted NUL fields, pinned ascending/descending conversions,
+callback field changes, inherited getter bypass, versioned missing values,
+conversion errors and primitive numeric descending pass. Two AGG launch failures
+passed after execute-bit restoration. Native display fallback, SWF case/version
+masks, argument overloads and all stages remain open.
+
+Проверены собственные virtual данные, повторное чтение изменённых полей и
+отсутствие getter. Native display fallback и все стадии остаются открытыми.
