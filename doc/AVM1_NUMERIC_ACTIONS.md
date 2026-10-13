@@ -103,3 +103,19 @@ avm1_version_shifts covers signed boundaries, count 0/32, conversion order and
 right-side failure. Original SWF 8 biturshift_swf8 completes and exactly matches
 its pinned 93-byte reference output. Earlier notes about always-unsigned URShift
 and left-first remainder are superseded by this verified behavior.
+
+## v0.96 — Legacy arithmetic coercion
+
+Старые Add/Subtract/Multiply/Divide преобразуют операнды через AVM1 number
+bridge вместо отказа для нечисловых типов. Add/Multiply преобразуют левый
+операнд первым, Subtract/Divide — правый. Стек удерживает оба корня до
+успешного завершения hook/преобразований. В SWF 4 деление на ноль даёт
+строку #ERROR#; более поздние версии сохраняют IEEE результат.
+
+Legacy arithmetic now accepts coercible operands with per-opcode callback
+order and preserves FlashVM metahooks. Conversion failures occur before operand
+consumption. SWF 4 division by either sign of zero returns #ERROR#. Regression
+avm1_legacy_arithmetic covers SWF 4–8, numeric strings/booleans, prefix syntax,
+zero signs, valueOf order, native GC barriers and early failure. The original
+equals_swf4 reference still fails on an uncoercible global object; full object
+conversion policy and remaining actions are open.

@@ -1920,37 +1920,47 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_Value b = stack.back();
-                stack.pop_back();
-                FVM_Value &v = stack.back();
+                /* [GC:] Both operands stay in the registered stack across hooks and coercion. */
+                FVM_Value operands[2] = {stack[stack.size() - 2], stack.back()}, result;
                 const char *hook = a.op == 0x0a   ? "__add"
                                    : a.op == 0x0b ? "__sub"
                                    : a.op == 0x0c ? "__mul"
                                                   : "__div";
-                FVM_Value operands[2] = {v, b}, result;
-                FVM_Result status =
-                    fvm_value_meta_invoke(c, &operands[0], hook, 2, operands, &result);
+                FVM_Result status = fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
                 if (status == FVM_NOT_FOUND)
-                    status = fvm_value_meta_invoke(c, &operands[1], hook, 2, operands, &result);
-                if (status == FVM_OK)
-                {
-                    v = result;
-                    ++pc;
-                    continue;
-                }
-                if (status != FVM_NOT_FOUND)
+                    status = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &result);
+                if (status != FVM_OK && status != FVM_NOT_FOUND)
                     return status;
-                if (v.type != FVM_VALUE_NUMBER || b.type != FVM_VALUE_NUMBER)
-                    return FVM_UNSUPPORTED;
-                v.metatable = 0;
-                if (a.op == 0x0a)
-                    v.number += b.number;
-                if (a.op == 0x0b)
-                    v.number -= b.number;
-                if (a.op == 0x0c)
-                    v.number *= b.number;
-                if (a.op == 0x0d)
-                    v.number /= b.number;
+                if (status == FVM_NOT_FOUND)
+                {
+                    double left = 0, right = 0;
+                    /* Subtract/Divide convert right first; Add/Multiply convert left first. */
+                    if (a.op == 0x0b || a.op == 0x0d)
+                    {
+                        status = fvm_avm1_number(c, operands + 1, &right);
+                        if (status == FVM_OK)
+                            status = fvm_avm1_number(c, operands, &left);
+                    }
+                    else
+                    {
+                        status = fvm_avm1_number(c, operands, &left);
+                        if (status == FVM_OK)
+                            status = fvm_avm1_number(c, operands + 1, &right);
+                    }
+                    if (status != FVM_OK)
+                        return status;
+                    if (a.op == 0x0d && right == 0 && c->swf_loaded && c->swf_info.version < 5)
+                        status = fvm_value_string(&result, "#ERROR#");
+                    else
+                        fvm_value_number(&result, a.op == 0x0a ? left + right
+                                                   : a.op == 0x0b ? left - right
+                                                   : a.op == 0x0c ? left * right
+                                                                  : left / right);
+                    if (status != FVM_OK)
+                        return status;
+                }
+                stack.pop_back();
+                stack.back() = result;
             }
             else if (a.op == 0x52 || a.op == 0x53)
             { /* CallMethod: args, argc, receiver, method name */

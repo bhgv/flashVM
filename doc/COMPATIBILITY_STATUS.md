@@ -363,3 +363,11 @@ coercion. AGG/Cairo Release 256/256 each (AGG three launch-permission reruns);
 restricted headless ASan/UBSan and portable focused 3/3 each. Fourth original
 external SWF trace matches: biturshift_swf8, 93 bytes. Other arithmetic/actions
 and whole-stage acceptance remain open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.96 — Legacy arithmetic operands
+
+Проверено / tested: legacy arithmetic coercion/order, rooted operands and SWF 4
+division-by-zero spelling. AGG/Cairo Release 257/257 each (AGG three
+launch-permission reruns); restricted headless ASan/UBSan and portable focused
+4/4 each. External SWF 4/8 coercion probes remain blocked by object conversion
+or additional missing actions. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
