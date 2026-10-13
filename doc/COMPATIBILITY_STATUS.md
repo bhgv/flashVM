@@ -706,3 +706,15 @@ profiles. Three AGG bitmap launch failures passed after execute-bit restoration.
 Loaded allocation retries preserve source/root state and collect after every
 attempt. All fourteen selected original SWFs still complete with exact outputs.
 Full Array/version/prototype semantics and every roadmap stage remain open.
+
+## v0.133 — signed splice endpoints / signed-границы splice
+
+Loaded splice converts start/deleteCount through AVM1 signed wrapping Int32
+exactly once, preserving conversion order and rejected-count no-mutation.
+Unloaded mode retains truncation. [RU/EN details](ARRAY_LEGACY_SPLICE_BOUNDS.md).
+Evidence: 300 core tests in AGG/Cairo plus the AGG runner; six focused checks
+in restricted sanitizer/portable profiles. Four AGG ActionScript launch failures
+passed after execute-bit restoration. Legacy fixtures now exclude their main
+when reused, avoiding non-main implicit-return warnings. Splice length remains
+property-aware/unsigned; historical removed slots, movement/descriptors and
+all roadmap stages remain open.

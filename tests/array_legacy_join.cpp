@@ -40,6 +40,8 @@ static void number(FVM_Context *c, FVM_Object *o, const char *name, double expec
 }
 #include "../src/core/runtime.hpp"
 #include <cstdio>
+
+#ifndef FVM_ARRAY_LEGACY_FIXTURE_ONLY
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0;
@@ -100,3 +102,5 @@ int main()
     }
     fvm_runtime_destroy(rt);
 }
+
+#endif

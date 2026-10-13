@@ -754,7 +754,8 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
     if (!n || a[0].type == FVM_VALUE_UNDEFINED)
         return FVM_OK;
     double first = 0, last = 0;
-    FVM_Result status = integer(c, n, a, 0, 0, first);
+    FVM_Result status = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first)
+                                      : integer(c, n, a, 0, 0, first);
     if (status == FVM_OK)
         status = length(c, o, out.length);
     if (status != FVM_OK)
@@ -762,7 +763,8 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
     out.start = bound(first, out.length);
     if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
         return FVM_OK;
-    status = integer(c, n, a, 1, out.length - out.start, last);
+    status = c->swf_loaded ? legacy_index(c, n, a, 1, out.length - out.start, last)
+                            : integer(c, n, a, 1, out.length - out.start, last);
     if (status != FVM_OK)
         return status;
     if (last < 0)

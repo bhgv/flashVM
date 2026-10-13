@@ -1,7 +1,6 @@
 /* Loaded concat copies own data, explicit missing slots and signed per-source lengths. */
-#define main legacy_join_fixture_main
+#define FVM_ARRAY_LEGACY_FIXTURE_ONLY
 #include "array_legacy_join.cpp"
-#undef main
 static void undefined_slot(FVM_Context *c, FVM_Object *o, unsigned long index)
 {
     FVM_Value value; char name[32]; std::sprintf(name, "%lu", index); int has = 0;

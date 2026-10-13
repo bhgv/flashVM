@@ -1,7 +1,6 @@
 /* Loaded slice uses own data and signed endpoints, retaining explicit undefined slots. */
-#define main legacy_join_fixture_main
+#define FVM_ARRAY_LEGACY_FIXTURE_ONLY
 #include "array_legacy_join.cpp"
-#undef main
 static FVM_Result mutate(FVM_Context *c, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *raw)
 {
     FVM_Object *source = (FVM_Object *)raw; FVM_Value value;
