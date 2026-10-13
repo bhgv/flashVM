@@ -27,3 +27,21 @@ zero divisors and signed zero. Greater preserves coercion order and supports the
 FlashVM __gt extension. The new suite covers boundary values, coercion errors,
 native GC reentry rejection and subsequent execution. Other opcodes, version
 semantics, scope conformance and full Flash acceptance remain open.
+
+## v0.87 — Legacy comparison and logic
+
+Старые Equals (0x0e) и Less (0x0f) преобразуют операнды через текущий
+ToNumber вместо отказа для строк и объектов. Equals вызывает преобразование
+правого операнда первым, Less — левого. Операнды остаются в корнях стека
+до завершения метаметода/преобразований; ошибки распространяются. And/Or
+принимают остальные типы через текущую проверку истинности, без valueOf.
+Историческая истинность строк до SWF 7 и версия-зависимый ToNumber пока открыты.
+
+Legacy Equals/Less use the existing numeric conversion path with right-first
+Equals and left-first Less coercion. Both operands remain stack roots until
+completion. And/Or accept other value types without object coercion. Existing
+FlashVM comparison metahooks remain supported. Regression tests cover numeric
+strings, NaN, booleans, object conversion order and non-coercing logical actions.
+Pre-SWF-7 string truth and full version-specific numeric coercion remain open.
+Order cross-check: [Ruffle AVM1 activation at pinned commit](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/activation.rs).
+This is an implementation comparison, not a captured Flash Player oracle.

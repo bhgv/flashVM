@@ -24,6 +24,18 @@ out=operation(c,0x3f,number(inf),number(2));assert(out.number!=out.number);asser
 assert(operation(c,0x60,number(nan),number(3)).number==0);assert(operation(c,0x61,number(inf),number(3)).number==3);
 out=operation(c,0x3f,number(-0.0),number(2));assert(out.number==0 && 1.0/out.number<0);
 FVM_Object *left=0,*right=0;assert(fvm_construct(c,"Object",0,0,&left)==FVM_OK);assert(fvm_construct(c,"Object",0,0,&right)==FVM_OK);unsigned ids[]={1,2};assert(fvm_object_define_method_rooted(c,left,"valueOf",convert,ids,0)==FVM_OK);assert(fvm_object_define_method_rooted(c,right,"valueOf",convert,ids+1,0)==FVM_OK);FVM_Value a,b;fvm_value_undefined(&a);a.type=FVM_VALUE_OBJECT;a.object=left;b=a;b.object=right;count=0;assert(operation(c,0x3f,a,b).number==1);assert(count==2 && order[0]==1 && order[1]==2);count=0;assert(operation(c,0x67,a,b).boolean);assert(count==2 && order[0]==1 && order[1]==2);
+/* Legacy comparison coerces numeric strings rather than comparing them lexically. */
+fvm_value_string(&string_a,"10");fvm_value_string(&string_b,"2");
+assert(!operation(c,0x0f,string_a,string_b).boolean);
+assert(operation(c,0x0e,string_a,number(10)).boolean);
+fvm_value_string(&string_a,"invalid");assert(!operation(c,0x0e,string_a,string_a).boolean);
+assert(!operation(c,0x10,number(nan),number(1)).boolean);
+assert(operation(c,0x11,number(nan),number(1)).boolean);
+fvm_value_boolean(&string_a,1);assert(operation(c,0x10,string_a,number(1)).boolean);
+count=0;assert(!operation(c,0x0e,a,b).boolean);assert(count==2 && order[0]==2 && order[1]==1);
+count=0;assert(!operation(c,0x0f,a,b).boolean);assert(count==2 && order[0]==1 && order[1]==2);
+count=0;assert(operation(c,0x10,a,b).boolean && count==0);
 assert(fvm_object_define_method_rooted(c,left,"valueOf",fail,0,0)==FVM_OK);Bytes broken;global(broken,"left");broken.push_back(0x50);broken.push_back(0);assert(fvm_avm1_execute(c,broken.begin(),broken.size())==FVM_ERROR);assert(operation(c,0x50,number(1),number(0)).number==2);
+for(unsigned op=0x0e;op<=0x0f;++op){assert(fvm_set_global(c,"left",&a)==FVM_OK);assert(fvm_set_global(c,"right",&b)==FVM_OK);Bytes bad;global(bad,"left");global(bad,"right");bad.push_back((unsigned char)op);bad.push_back(0);count=0;assert(fvm_avm1_execute(c,bad.begin(),bad.size())==FVM_ERROR);assert(count==(op==0x0e?1U:0U));assert(operation(c,op,number(1),number(1)).boolean==(op==0x0e));}
 for(unsigned op=0x60;op<=0x65;++op){unsigned char underflow[]={(unsigned char)op,0};assert(fvm_avm1_execute(c,underflow,sizeof(underflow))==FVM_ERROR);}
 fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;}

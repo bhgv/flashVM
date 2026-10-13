@@ -1680,41 +1680,49 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x0e || a.op == 0x0f || a.op == 0x10 || a.op == 0x11)
             {
-                /* Equals, Less, And, Or: deliberately limited primitive semantics. */
+                /* [GC:] Keep both operands in the rooted stack through native coercion. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_Value rhs = stack.back();
-                stack.pop_back();
-                FVM_Value &lhs = stack.back();
+                FVM_Value operands[2] = {stack[stack.size() - 2], stack.back()}, result;
+                bool value = false;
                 if (a.op == 0x0e || a.op == 0x0f)
                 {
-                    FVM_Value operands[2] = {lhs, rhs}, result;
                     const char *hook = a.op == 0x0e ? "__eq" : "__lt";
                     FVM_Result status =
                         fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
                     if (status == FVM_NOT_FOUND)
                         status = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &result);
                     if (status == FVM_OK)
-                    {
-                        fvm_value_boolean(&lhs, truth(result));
-                        ++pc;
-                        continue;
-                    }
-                    if (status != FVM_NOT_FOUND)
+                        value = truth(result);
+                    else if (status != FVM_NOT_FOUND)
                         return status;
+                    else
+                    {
+                        double left = 0, right = 0;
+                        /* Legacy Equals converts the top operand first; Less converts left first. */
+                        if (a.op == 0x0e)
+                        {
+                            status = fvm_value_to_number(c, operands + 1, &right);
+                            if (status == FVM_OK)
+                                status = fvm_value_to_number(c, operands, &left);
+                        }
+                        else
+                        {
+                            status = fvm_value_to_number(c, operands, &left);
+                            if (status == FVM_OK)
+                                status = fvm_value_to_number(c, operands + 1, &right);
+                        }
+                        if (status != FVM_OK)
+                            return status;
+                        value = a.op == 0x0e ? left == right : left < right;
+                    }
                 }
-                if (lhs.type != FVM_VALUE_NUMBER || rhs.type != FVM_VALUE_NUMBER)
-                    return FVM_UNSUPPORTED;
-                int value = 0;
-                if (a.op == 0x0e)
-                    value = (lhs.number == rhs.number);
-                if (a.op == 0x0f)
-                    value = (lhs.number < rhs.number);
-                if (a.op == 0x10)
-                    value = (lhs.number != 0 && rhs.number != 0);
-                if (a.op == 0x11)
-                    value = (lhs.number != 0 || rhs.number != 0);
-                fvm_value_boolean(&lhs, value);
+                else
+                    value = a.op == 0x10 ? truth(operands[0]) && truth(operands[1])
+                                         : truth(operands[0]) || truth(operands[1]);
+                fvm_value_boolean(&result, value);
+                stack.pop_back();
+                stack.back() = result;
             }
             else if (a.op == 0x17)
             { /* Pop */

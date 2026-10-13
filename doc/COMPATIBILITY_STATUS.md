@@ -282,3 +282,12 @@ range from a uint32-length receiver, including inherited slots, negative and
 empty ranges. The 65536 selected-range limit and other full-scan limits remain.
 Regression: array_counted_ranges. AGG/Cairo Release 249/249 each; focused
 headless ASan/UBSan 3/3 (stack/leak exclusions), portable 3/3. Stage 1 remains open.
+
+## v0.87 — Legacy AVM1 coercion
+
+Проверено / tested: Equals/Less numeric coercion and callback order, rooted
+operands, conversion failures and general logical operands. avm1_numeric_operations
+extended; AGG 249/249, Cairo Release 249/249 (six launch permissions restored and
+rerun); focused headless ASan/UBSan and portable 4/4 each. Additional comparison
+failure-order assertions passed on AGG. Historical string truth/version coercion
+and full stage 2 remain open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
