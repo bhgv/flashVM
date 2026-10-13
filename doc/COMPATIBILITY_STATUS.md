@@ -612,3 +612,15 @@ use of unversioned host conversion; shared AVM1 conversion fixes the SWF 4..8
 spelling checks. All thirteen original probes complete with exact outputs under
 documented policies, including array_prototyping SWF8 (121 bytes). Other Array
 methods, function-version provenance and every roadmap stage remain open.
+
+## v0.125 — initializer counts / счётчики инициализаторов
+
+Loaded InitArray/InitObject coerce counts, preserve values when signed range
+is invalid, truncate valid fractions and map NaN to zero. Valid counts beyond
+the remaining materialization cap fail explicitly as unsupported.
+[RU/EN details](AVM1_INITIALIZER_COUNTS.md). Evidence: 292 core tests in AGG/Cairo
+plus the AGG runner, four focused checks in restricted sanitizer/portable
+profiles. Two AGG channel/filter launch failures passed after execute-bit
+restoration. The unit test checks preserved stack Trace for both initializers.
+Original init_array_invalid remains blocked earlier by required ActionEnd;
+no fourteenth oracle success is claimed yet. All roadmap stages remain open.

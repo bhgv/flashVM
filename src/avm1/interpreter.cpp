@@ -1268,12 +1268,35 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == 0x42 || a.op == 0x43)
             {
-                if (stack.empty() || stack.back().type != FVM_VALUE_NUMBER)
+                if (stack.empty())
                     return FVM_ERROR;
-                double count = stack.back().number;
+                double count = 0;
+                if (c->swf_loaded)
+                {
+                    FVM_Result status = fvm_avm1_number(c, &stack.back(), &count);
+                    if (status != FVM_OK)
+                        return status;
+                    /* Invalid signed counts consume only the count and leave operand values untouched. */
+                    if (count < 0 || count > 2147483647.0)
+                    {
+                        fvm_value_undefined(&stack.back());
+                        ++pc;
+                        continue;
+                    }
+                    count = count == count ? std::floor(count) : 0;
+                    if (count > 65536)
+                        return FVM_UNSUPPORTED;
+                }
+                else
+                {
+                    if (stack.back().type != FVM_VALUE_NUMBER)
+                        return FVM_ERROR;
+                    count = stack.back().number;
+                    if (!(count >= 0 && count <= 65536) || count != std::floor(count))
+                        return FVM_INVALID_ARGUMENT;
+                }
                 unsigned int width = a.op == 0x42 ? 1 : 2;
-                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
-                    count * width > stack.size() - 1)
+                if (count * width > stack.size() - 1)
                     return FVM_INVALID_ARGUMENT;
                 FVM_Object *object = 0;
                 FVM_Result r = FVM_OK;
