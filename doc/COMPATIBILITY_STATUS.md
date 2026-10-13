@@ -659,3 +659,14 @@ Evidence: 295 core tests in AGG/Cairo plus the AGG runner, four focused checks
 in restricted sanitizer/portable profiles. Four AGG AVM1 launch failures passed
 after execute-bit restoration. Materialization, full constructor/descriptor
 semantics, version provenance and all roadmap stages remain open.
+
+## v0.129 — own Array result definitions / собственные индексы
+
+InitArray and String.split bypass inherited accessors/readonly assignment and
+define own stored slots. Existing slice/splice/concat share the private helper;
+split records final length directly. [RU/EN details](ARRAY_RESULT_OWN_SLOTS.md).
+Evidence: 296 core tests in AGG/Cairo plus the AGG runner; five focused checks
+in restricted sanitizer/portable profiles. Six AGG Array/font/function launch
+failures passed after execute-bit restoration. All fourteen original selected
+SWF probes still complete with exact outputs. Full Array descriptors, version
+provenance and all roadmap stages remain open.

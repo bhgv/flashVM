@@ -444,7 +444,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         FVM_Value part;
         r = encode(c, input, start, end, &part);
         if (r == FVM_OK)
-            r = fvm_table_set_index(c, result, count++, &part);
+            r = fvm_array_store_own(c, result, count++, part);
         if (r != FVM_OK)
             return r;
         if (absent || position == input.size())
@@ -452,6 +452,8 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         position = separator.empty() ? end : position + separator.size();
         start = position;
     }
+    /* Own result definitions do not assign through length/index descriptors. */
+    result->resource_result.number = count;
     fvm_value_undefined(out);
 
     /* Computation / Вычисление и обновление состояния. */

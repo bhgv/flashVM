@@ -1351,6 +1351,28 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
         o->resource_result.number = (double)key + 1;
 }
 
+/* Define an own result index without inherited descriptors or assignment watchers. */
+FVM_Result fvm_array_store_own(FVM_Context *c, FVM_Object *result, unsigned long index,
+                        const FVM_Value &input)
+{
+    if (!c || !result || result->owner != c || result->resource_kind != 28 || index >= 0xffffffffUL)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Result status = fvm_validate_value(c, &input);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value value = input;
+    if (value.type == FVM_VALUE_STRING)
+    {
+        status = fvm_value_to_string(c, &input, &value);
+        if (status != FVM_OK)
+            return status;
+        value.metatable = input.metatable;
+    }
+    /* [GC:] Persist owned string bytes and managed edges before the native copy scope exits. */
+    result->indexed[index] = value;
+    return FVM_OK;
+}
+
 /* Create array like. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_array_create_like(

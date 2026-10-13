@@ -1334,10 +1334,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                     /* Array literals never interpret a numeric element as a length. */
                     r = fvm_array_create_like(c, 0, (unsigned long)count, &object, true);
-                    /* [GC:] Indexed assignment can enter script setters before the result reaches the stack. */
+                    /* [GC:] Retain the literal result and copied elements until its own slots are published. */
                     RootGuard literal_roots(c, &values, 0, object, &registers);
                     for (size_t j = 0; r == FVM_OK && j < values.size(); ++j)
-                        r = fvm_table_set_index(c, object, (unsigned long)j, &values[j]);
+                        r = fvm_array_store_own(c, object, (unsigned long)j, values[j]);
                 }
                 else
                 {

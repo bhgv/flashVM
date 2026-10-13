@@ -190,26 +190,6 @@ void object(FVM_Value *out, FVM_Object *o)
     out->object = o;
 }
 
-/* Create an own slice result slot without invoking inherited destination setters. */
-FVM_Result slice_store(FVM_Context *c, FVM_Object *result, unsigned long index,
-                        const FVM_Value &input)
-{
-    FVM_Result status = fvm_validate_value(c, &input);
-    if (status != FVM_OK)
-        return status;
-    FVM_Value value = input;
-    if (value.type == FVM_VALUE_STRING)
-    {
-        status = fvm_value_to_string(c, &input, &value);
-        if (status != FVM_OK)
-            return status;
-        value.metatable = input.metatable;
-    }
-    /* [GC:] Persist owned string bytes and managed edges before the native copy scope exits. */
-    result->indexed[index] = value;
-    return FVM_OK;
-}
-
 /* Restore the numeric max-heap invariant while charging each bounded sift iteration. */
 FVM_Result sift(fvm_detail::vector<unsigned long> &values, size_t root, size_t count,
                  FVM_ArrayWorkScope &work)
@@ -349,7 +329,7 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
                 bool present = false;
                 status = get(c, source, cursor, value, present);
                 if (status == FVM_OK && present)
-                    status = slice_store(c, result, offset + cursor - start, value);
+                    status = fvm_array_store_own(c, result, offset + cursor - start, value);
                 if (status != FVM_OK)
                     return status;
             }
@@ -365,7 +345,7 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
             bool present = false, observable = false;
             status = get(c, source, indices[i], value, present, &observable);
             if (status == FVM_OK && present)
-                status = slice_store(c, result, offset + indices[i] - start, value);
+                status = fvm_array_store_own(c, result, offset + indices[i] - start, value);
             if (status != FVM_OK)
                 return status;
             cursor = indices[i] + 1;
@@ -434,7 +414,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             if (spread)
                 status = sparse_slice(c, source, result, 0, count, work, total);
             else
-                status = slice_store(c, result, total, value);
+                status = fvm_array_store_own(c, result, total, value);
             if (status != FVM_OK)
                 return status;
             total += count;
@@ -578,7 +558,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 if (r == FVM_OK)
                     r = get(c, o, start + i, value, present);
                 if (r == FVM_OK && present)
-                    r = slice_store(c, result, i, value);
+                    r = fvm_array_store_own(c, result, i, value);
             }
         if (splice)
         {
