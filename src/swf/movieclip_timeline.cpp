@@ -1,6 +1,7 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "decode.hpp"
+#include "document.hpp"
 #include "reader.hpp"
 #include "shape_graph.hpp"
 #include "bitmap.hpp"
@@ -117,6 +118,7 @@ struct Timeline
 {
     unsigned int id;     /* Zero identifies the root; nonzero IDs identify sprites. */
     unsigned int frames; /* Declared number of frames. */
+    FVM_SWFDocument document; /* Borrowed root metadata copied into managed frame storage later. */
     fvm_detail::vector<Placement> controls;  /* Ordered display-list controls for all frames. */
     fvm_detail::vector<ActionRange> actions; /* Independent DoAction byte ranges. */
     fvm_detail::vector<fvm_detail::string> labels; /* Optional label at each frame. */
@@ -148,6 +150,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
     fvm_detail::vector<unsigned char> labelled(timeline.frames);
     const unsigned char *p = bytes.begin();
     unsigned int frame = 1;
+    bool first_tag = true; /* FileAttributes must be the first root tag. */
     unsigned long token = 0;
     fvm_detail::vector<unsigned char> jpeg_tables;
     bool have_jpeg_tables = false;
@@ -168,13 +171,26 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         }
         if (count > end - at)
             return FVM_INVALID_ARGUMENT;
+        bool document_first = first_tag;
+        first_tag = false;
         if (tag == 0)
-            return count == 0 && at == end && frame == timeline.frames + 1 ? FVM_OK
-                                                                           : FVM_INVALID_ARGUMENT;
+        {
+            if (count || at != end || frame != timeline.frames + 1)
+                return FVM_INVALID_ARGUMENT;
+            return fvm_swf_document_finish(timeline.document);
+        }
         if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32 ||
                          tag == 20 || tag == 36 || tag == 21 || tag == 35 || tag == 6 || tag == 8))
             return FVM_INVALID_ARGUMENT;
-        if (tag == 8 && bitmaps)
+        if (tag == 69 || tag == 77)
+        {
+            if (!sprites)
+                return FVM_INVALID_ARGUMENT;
+            FVM_Result r = fvm_swf_document_tag(tag, p + at, count, document_first, timeline.document);
+            if (r != FVM_OK)
+                return r;
+        }
+        else if (tag == 8 && bitmaps)
         {
             if (have_jpeg_tables)
                 return FVM_INVALID_ARGUMENT;
@@ -453,6 +469,22 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
     FVM_Result r = fvm_object_create(c, &frames);
     if (r != FVM_OK)
         return r;
+    /* [GC:] Store scalar flags and owned UTF-8 in the graph, without executing metadata. */
+    if (timeline.document.attributes_present)
+    {
+        FVM_Value value;
+        fvm_value_number(&value, timeline.document.attributes);
+        frames->properties["swf_file_attributes"] = value;
+    }
+    if (timeline.document.metadata_present)
+    {
+        FVM_Value value;
+        r = fvm_value_string_bytes(&value, timeline.document.metadata, timeline.document.metadata_size);
+        if (r == FVM_OK)
+            r = fvm_object_set(c, frames, "swf_metadata", &value);
+        if (r != FVM_OK)
+            return r;
+    }
     size_t next = 0, next_control = 0;
     for (unsigned int frame = 1; frame <= timeline.frames; ++frame)
     {
@@ -701,6 +733,57 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         /* [GC:] Replace the initially empty frame table with fully linked managed definitions. */
         clip->resource_result.object->properties["frames"] = managed(frames);
         *out = clip;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Read neutral document records from private frame storage, without invoking script getters. */
+extern "C" FVM_Result fvm_movieclip_swf_document_info(FVM_Context *c, FVM_Object *clip,
+                                                       FVM_SWFDocumentInfo *out)
+{
+    if (!c || !clip || clip->owner != c || clip->resource_kind != 40 ||
+        !clip->resource_result_valid || clip->resource_result.type != FVM_VALUE_OBJECT ||
+        !clip->resource_result.object || clip->resource_result.object->owner != c ||
+        !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        FVM_Object *state = clip->resource_result.object;
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator found = state->properties.find("frames");
+        if (found == state->properties.end() || found->second.type != FVM_VALUE_OBJECT ||
+            !found->second.object || found->second.object->owner != c)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Object *frames = found->second.object;
+        FVM_SWFDocumentInfo result;
+        result.struct_size = sizeof(result);
+        result.file_attributes_present = 0;
+        result.file_attributes = 0;
+        fvm_value_undefined(&result.metadata);
+        found = frames->properties.find("swf_file_attributes");
+        if (found != frames->properties.end())
+        {
+            if (found->second.type != FVM_VALUE_NUMBER ||
+                (found->second.number != 0 && found->second.number != 16))
+                return FVM_INVALID_ARGUMENT;
+            result.file_attributes_present = 1;
+            result.file_attributes = (unsigned long)found->second.number;
+        }
+        found = frames->properties.find("swf_metadata");
+        if (found != frames->properties.end())
+        {
+            if (found->second.type != FVM_VALUE_STRING || result.file_attributes != 16 ||
+                fvm_validate_value(c, &found->second) != FVM_OK)
+                return FVM_INVALID_ARGUMENT;
+            /* [GC:] The owning frame graph retains this counted string until its host root is released. */
+            result.metadata = found->second;
+        }
+        else if (result.file_attributes == 16)
+            return FVM_INVALID_ARGUMENT;
+        *out = result;
         return FVM_OK;
     }
     catch (const std::bad_alloc &)

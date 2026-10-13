@@ -10,3 +10,5 @@
 - `channel.h`: передача типизированных сообщений, если модуль включён.
 
 Все публичные заголовки должны компилироваться как C89 и C++98. STL-типы не должны пересекать границу C ABI.
+
+`fvm_movieclip_swf_document_info` — [SWF document metadata / метаданные SWF](SWF_DOCUMENT_METADATA.md), `include/flashvm/movieclip.h`.

@@ -552,9 +552,25 @@ root. Six native result builders use it independently of custom source or
 replacement public prototypes; explicit construction reads the public getter
 once. [RU/EN details](ARRAY_RESULT_PROTOTYPE.md). Evidence: 285 core tests in
 AGG/Cairo plus the AGG runner, seven focused Array/String tests in restricted
-sanitarian/portable profiles (sanitizer still excludes stack/leak certification).
+sanitizer/portable profiles (sanitizer still excludes stack/leak certification).
 All pass without launch reruns. A real collection after public-prototype
 replacement verifies retention and finalization once at teardown. Four newly
 fetched original SWF 6/8 probes stop at unsupported FileAttributes/Metadata
 tags before execution; no reference success is claimed for them. Imported
 uninstalled-context fallback, Array() call semantics and all stages remain open.
+
+## v0.121 — neutral SWF document tags / нейтральные служебные теги
+
+Validate first-position FileAttributes (zero/HasMetadata only) and one declared
+scalar UTF-8 Metadata string. Store flags and owned metadata in the clip graph;
+new C89 document query leaves output unchanged on errors. Network/AVM2/hardware
+policies remain unsupported. [RU/EN details](SWF_DOCUMENT_METADATA.md).
+Evidence: 288 core tests in AGG/Cairo plus the AGG runner, four focused tests
+in restricted sanitizer/portable profiles. Three AGG bitmap launch-permission
+failures passed after restoring execute bits. Final document/API/allocation
+tests pass in all four profiles. Ten earlier original SWF probes again complete
+with exact outputs. Four new original SWF 6/8 probes now reach execution through
+real timelines: Array/Object/InitArray mismatches and unhandled FSCommand remain;
+array_trivial's matching Trace followed by failure does not count as acceptance.
+Graph transport, real GC, malformed input and allocation failures are covered.
+All roadmap stages remain open.

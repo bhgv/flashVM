@@ -12,6 +12,18 @@
 extern "C"
 {
 #endif
+    /* Neutral SWF document metadata; strings are borrowed from the rooted clip graph. */
+    typedef struct FVM_SWFDocumentInfo
+    {
+        unsigned long struct_size; /* Exact structure size required by this API. */
+        int file_attributes_present; /* Distinguish absent attributes from explicit zero flags. */
+        unsigned long file_attributes; /* Supported flags are zero or HasMetadata (0x10). */
+        FVM_Value metadata; /* Undefined if absent; otherwise counted context-owned UTF-8. */
+    } FVM_SWFDocumentInfo;
+    /* Read without script execution; errors leave output unchanged. [GC:] Root the clip or retain
+       the returned string before collection. Metadata is not parsed or executed as XML. */
+    FVM_API FVM_Result fvm_movieclip_swf_document_info(FVM_Context *, FVM_Object *,
+                                                       FVM_SWFDocumentInfo *);
     /* Create movieclip. */
     FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
                                             FVM_Object **);

@@ -3,6 +3,7 @@
  */
 
 #include "decode.hpp"
+#include "document.hpp"
 #include <cstring>
 #include <climits>
 #include "zlib.h"
@@ -43,6 +44,7 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
     parsed.frame_count = read16(p + pos + 2);
     pos += 4;
 
+    FVM_SWFDocument document;
     while (pos < size)
     {
         if (size - pos < 2)
@@ -60,6 +62,10 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
         }
         if (length > size - pos)
             return FVM_INVALID_ARGUMENT;
+        FVM_Result document_status =
+            fvm_swf_document_tag(code, p + pos, (size_t)length, parsed.tag_count == 0, document);
+        if (document_status != FVM_OK)
+            return document_status;
         ++parsed.tag_count;
         if (code == 12)
             ++parsed.action_tag_count;
@@ -69,6 +75,9 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
             /* End is a zero-length tag and must terminate the file. */
             if (length != 0 || pos != size)
                 return FVM_INVALID_ARGUMENT;
+            FVM_Result document_status = fvm_swf_document_finish(document);
+            if (document_status != FVM_OK)
+                return document_status;
             *info = parsed;
             return FVM_OK;
         }
