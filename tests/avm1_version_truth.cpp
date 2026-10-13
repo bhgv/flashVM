@@ -33,7 +33,7 @@ int main()
         for(unsigned i=0;i<sizeof(samples)/sizeof(*samples);++i)
         {
             FVM_Value value;fvm_value_string(&value,samples[i]);
-            bool expected=version>=7 ? i!=0 : i==3 || i==4 || i==8;
+            bool expected=version>=7 ? i!=0 : i==3 || i==4;
             assert(logic(c,0x12,value).boolean==!expected);
             assert(logic(c,0x10,value).boolean==expected);
             assert(logic(c,0x11,value).boolean);

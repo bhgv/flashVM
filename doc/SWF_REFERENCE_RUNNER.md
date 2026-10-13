@@ -43,3 +43,12 @@ coercion and full call semantics remain open. New external probes
 `swf6_string_as_bool` and `equals_swf5` complete but still differ in historic
 numeric string parsing. Other selected original SWF 4/8 probes encounter
 unsupported actions; their output prefixes are not passing acceptance results.
+
+## v0.93 — Three matching external probes
+
+Original SWF 6 `swf6_string_as_bool` (97 bytes) and SWF 5 `equals_swf5`
+(261 bytes) now join `undefined_to_string_swf6` (22 bytes) with successful
+execution and exact pinned expected output. Files were not patched or relabelled.
+Три исходных SWF завершились успешно; вывод полностью совпал с эталоном.
+Other corpus probes remain open; top-level DefineLocal and missing actions still
+block selected SWF 4/8 tests. No stage is closed by these three matches.

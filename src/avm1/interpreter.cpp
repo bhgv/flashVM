@@ -3,6 +3,7 @@
  */
 
 #include "function_record.hpp"
+#include "coercion.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/inheritance.hpp"
 #include "../standard/super.hpp"
@@ -90,14 +91,14 @@ static bool truth(const FVM_Value &value)
     }
 }
 
-/* Use numeric string truth in loaded SWF 5/6, preserving conversion failures. */
+/* Use numeric string truth in loaded SWFs below version 7, preserving conversion failures. */
 static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
 {
     if (value.type == FVM_VALUE_STRING && context->swf_loaded &&
-        context->swf_info.version >= 5 && context->swf_info.version < 7)
+        context->swf_info.version < 7)
     {
         double number = 0;
-        FVM_Result result = fvm_value_to_number(context, &value, &number);
+        FVM_Result result = fvm_avm1_number(context, &value, &number);
         if (result != FVM_OK)
             return result;
         out = number != 0 && number == number;
@@ -113,6 +114,9 @@ static FVM_Result action_string(FVM_Context *context, const FVM_Value &value, FV
     if (value.type == FVM_VALUE_UNDEFINED && context->swf_loaded &&
         context->swf_info.version < 7)
         return fvm_value_string(out, "");
+    if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
+        context->swf_info.version < 5)
+        return fvm_value_string(out, value.boolean ? "1" : "0");
     return fvm_value_to_string(context, &value, out);
 }
 
@@ -205,9 +209,9 @@ static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
         (b.type == FVM_VALUE_NUMBER && a.type == FVM_VALUE_STRING))
     {
         double x = 0, y = 0;
-        FVM_Result r = fvm_value_to_number(c, &a, &x);
+        FVM_Result r = fvm_avm1_number(c, &a, &x);
         if (r == FVM_OK)
-            r = fvm_value_to_number(c, &b, &y);
+            r = fvm_avm1_number(c, &b, &y);
         result = x == y;
         return r;
     }
@@ -1219,7 +1223,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT)
                     return FVM_INVALID_ARGUMENT;
                 double count = 0;
-                FVM_Result r = fvm_value_to_number(c, &stack[stack.size() - 2], &count);
+                FVM_Result r = fvm_avm1_number(c, &stack[stack.size() - 2], &count);
                 if (r != FVM_OK)
                     return r;
                 if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
@@ -1486,7 +1490,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 else
                 {
                     double number = 0;
-                    r = fvm_value_to_number(c, &input, &number);
+                    r = fvm_avm1_number(c, &input, &number);
                     fvm_value_number(&output, number);
                 }
                 if (r != FVM_OK)
@@ -1564,9 +1568,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     else if (r == FVM_OK)
                     {
                         double x = 0, y = 0;
-                        r = fvm_value_to_number(c, &left, &x);
+                        r = fvm_avm1_number(c, &left, &x);
                         if (r == FVM_OK)
-                            r = fvm_value_to_number(c, &right, &y);
+                            r = fvm_avm1_number(c, &right, &y);
                         if (a.op == 0x47)
                             fvm_value_number(&output, x + y);
                         else
@@ -1583,7 +1587,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 double value = 0;
-                FVM_Result r = fvm_value_to_number(c, &stack.back(), &value);
+                FVM_Result r = fvm_avm1_number(c, &stack.back(), &value);
                 if (r != FVM_OK)
                     return r;
                 fvm_value_number(&stack.back(), value + (a.op == 0x50 ? 1 : -1));
@@ -1594,9 +1598,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 /* Coerce the original left operand first; user callbacks observe this order. */
                 double left = 0, right = 0;
-                FVM_Result r = fvm_value_to_number(c, &stack[stack.size() - 2], &left);
+                FVM_Result r = fvm_avm1_number(c, &stack[stack.size() - 2], &left);
                 if (r == FVM_OK)
-                    r = fvm_value_to_number(c, &stack.back(), &right);
+                    r = fvm_avm1_number(c, &stack.back(), &right);
                 if (r != FVM_OK)
                     return r;
                 double result = 0;
@@ -1757,15 +1761,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         /* Legacy Equals converts the top operand first; Less converts left first. */
                         if (a.op == 0x0e)
                         {
-                            status = fvm_value_to_number(c, operands + 1, &right);
+                            status = fvm_avm1_number(c, operands + 1, &right);
                             if (status == FVM_OK)
-                                status = fvm_value_to_number(c, operands, &left);
+                                status = fvm_avm1_number(c, operands, &left);
                         }
                         else
                         {
-                            status = fvm_value_to_number(c, operands, &left);
+                            status = fvm_avm1_number(c, operands, &left);
                             if (status == FVM_OK)
-                                status = fvm_value_to_number(c, operands + 1, &right);
+                                status = fvm_avm1_number(c, operands + 1, &right);
                         }
                         if (status != FVM_OK)
                             return status;
@@ -1792,7 +1796,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 /* [GC:] The input remains in the rooted stack during toString execution. */
                 FVM_Value text, ignored;
-                FVM_Result status = fvm_value_to_string(c, &stack.back(), &text);
+                FVM_Result status = stack.back().type == FVM_VALUE_UNDEFINED
+                                        ? fvm_value_string(&text, "undefined")
+                                        : action_string(c, stack.back(), &text);
                 if (status != FVM_OK)
                     return status;
                 FVM_NativeEntry sink = c->avm1_trace;

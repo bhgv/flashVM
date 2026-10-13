@@ -336,3 +336,12 @@ each (AGG two launch-permission reruns); focused restricted headless ASan/UBSan
 and portable 4/4 each. Original external SWF 6 undefined_to_string_swf6 finishes
 with exact 22-byte reference output. Other numeric/version probes still differ;
 stages 1/2 remain open. RU/EN: [SWF_REFERENCE_RUNNER.md](SWF_REFERENCE_RUNNER.md).
+
+## v0.93 — Version-aware AVM1 numbers
+
+Проверено / tested: primitive gates, counted legacy numeric grammar, signed
+32-bit radix/exponent wraparound and pre-7 string truth. AGG/Cairo Release
+254/254 each; focused restricted headless ASan/UBSan and portable 5/5 each.
+Three original external SWF 5/6 traces exactly match pinned reference output.
+Historical rounding/object fallback/function provenance and remaining actions
+keep stage 2 open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).

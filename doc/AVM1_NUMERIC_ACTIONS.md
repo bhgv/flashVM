@@ -61,3 +61,30 @@ propagate before stack mutation. The new test loads minimal SWFs 5–8 rather
 than editing private context metadata. Pre-SWF-5 truth, exact historical
 number parsing and per-function SWF version provenance remain open.
 Reference cross-check: [pinned Ruffle value implementation](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/value.rs).
+
+## v0.93 — Loaded-version numeric grammar
+
+Действия AVM1 используют отдельный числовой мост для загруженного SWF.
+До SWF 7 null/undefined дают 0, далее NaN. Строковый hex появляется в SWF 6;
+hex/octal оборачиваются в Int32. Сохраняется исторический сдвиг raw hex-prefix
+(0x-10 допустим, +0x10 даёт NaN), октальная форма без пробелов, строгий хвост
+с SWF 5, prefix-разбор и 0 при ошибке до SWF 5. Infinity как строка не принимается.
+Экспонента оборачивается в Int32; отсутствующие цифры экспоненты означают 0.
+Числовая истинность строк ниже SWF 7 использует этот же путь. До SWF 5
+строковое boolean даёт 1/0; Trace сохраняет особое undefined.
+
+AVM1 numeric conversion now uses loaded-version primitive gates and counted
+legacy syntax separately from the embedding C API. Raw hexadecimal/octal use
+explicit Uint32 arithmetic and signed Int32 results; decimal exponent parsing
+also wraps without signed overflow. Embedded NUL is never a terminator.
+The host decimal mantissa converter supplies the floating result; exact historical
+rounding, whitespace tables and object fallback policy are not fully certified.
+Objects still use FlashVM's existing numeric primitive fallback, then apply
+version-aware conversion to the returned primitive. Per-function player version
+provenance remains open. Contexts without SWF metadata retain host semantics.
+
+avm1_version_numbers tests version gates, radix/sign/wraparound, decimal syntax,
+NUL, object-returned strings and unchanged C embedding conversion. Three original
+external SWFs now complete with byte-for-byte pinned expected output:
+undefined_to_string_swf6 (6), swf6_string_as_bool (6), equals_swf5 (5).
+This is targeted reference evidence, not full AVM1 compatibility.
