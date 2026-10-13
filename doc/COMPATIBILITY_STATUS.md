@@ -300,3 +300,12 @@ Cairo Release 250/250 each after launch-permission reruns (3 and 1 tests);
 focused headless ASan/UBSan and portable 3/3 each. Stack/leak sanitizer
 exclusions remain. Earlier numeric parsing/function-version rules are open.
 RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.89 — AVM1 own-property deletion
+
+Проверено / tested: ActionDelete counted keys, own/prototype/flag behavior,
+accessor deletion without getter calls, Array indices/length and coercion errors.
+Regression avm1_delete; AGG and Cairo Release 251/251 each (AGG launch-permission
+failures and dependent process test rerun); focused restricted headless
+ASan/UBSan and portable 3/3 each. Stage 2 remains open.
+RU/EN: [AVM1_DELETE.md](AVM1_DELETE.md).

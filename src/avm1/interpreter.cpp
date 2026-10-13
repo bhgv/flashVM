@@ -1674,6 +1674,30 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.resize(stack.size() - 3);
             }
+            else if (a.op == 0x3a)
+            { /* Delete: owner and property name; absent/inherited members report false. */
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                /* [GC:] Retain owner and coercible name in the stack until deletion completes. */
+                FVM_Value owner = stack[stack.size() - 2], key, result;
+                FVM_Result status = fvm_value_to_string(c, &stack.back(), &key);
+                if (status != FVM_OK)
+                    return status;
+                int own = 0, deleted = 0;
+                if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind != 37)
+                {
+                    status = fvm_object_has_own_bytes(c, owner.object, key.string,
+                                                       fvm_string_size(key), &own);
+                    if (status == FVM_OK && own)
+                        status = fvm_object_delete_bytes(c, owner.object, key.string,
+                                                          fvm_string_size(key), &deleted);
+                    if (status != FVM_OK)
+                        return status;
+                }
+                fvm_value_boolean(&result, deleted);
+                stack.pop_back();
+                stack.back() = result;
+            }
             else if (a.op == 0x4c)
             { /* PushDuplicate */
                 if (stack.empty())
