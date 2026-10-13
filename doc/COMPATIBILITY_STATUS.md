@@ -1175,3 +1175,18 @@ version masks and all stages remain open. Unloaded behavior is unchanged.
 
 Проверены setter/watcher после GC и передачи, защищённые raw данные и receiver.
 Нативная length и все стадии пока открыты.
+
+## v0.169 — loaded sort allocation faults / отказы памяти
+
+Successive C++ new/new[] boundaries are faulted through SWF8 sort, UNIQUESORT,
+RETURNINDEXEDARRAY and sortOn, with fresh contexts and traced post-call GC.
+Temporary roots/depth/setter metadata restore on each OOM. C++ allocation counts
+return to runtime baseline after every context and zero after runtime destruction.
+[RU/EN details](ARRAY_LEGACY_SORT_ALLOCATION.md). Evidence: AGG 330/Cairo 329,
+nine focused portable/restricted heap-global ASan+UBSan tests, fifteen byte-exact
+original SWFs, no launch failures. Partial sequential copyback is explicitly
+accepted; indexed return leaves the original values unchanged. C malloc, other
+lengths/callback effects, native GC barriers and all roadmap stages remain open.
+
+Проверены каждый C++ allocation boundary до успеха, очистка корней и временной
+памяти. Это не заменяет C malloc/leak-инструменты и не закрывает стадии.
