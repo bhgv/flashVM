@@ -27,6 +27,8 @@
 #include <cstring>
 #include <cstdio>
 #include <new>
+#include <limits>
+#include "string_order.hpp"
 namespace
 {
 /* Define anonymous enum and its representation. */
@@ -2926,6 +2928,148 @@ FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
 {
     FVM_Value ignored;
     return remove(c, o, 0, 0, &ignored, 0);
+}
+
+/* [GC:] Retain every selected block and receiver while nested frame calls execute script. */
+FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_Value &argument)
+{
+    if (!c || !clip || clip->owner != c || c->script_depth >= 64)
+        return FVM_ERROR;
+    try
+    {
+        FVM_Object *data = 0, *frames = 0;
+        FVM_Result status = state(clip, data);
+        if (status == FVM_OK)
+            status = private_object(data, "frames", frames);
+        if (status != FVM_OK)
+            return status;
+        unsigned long selected = 0;
+        double numeric = std::numeric_limits<double>::quiet_NaN();
+        if (argument.type == FVM_VALUE_NUMBER)
+            numeric = argument.number;
+        else if (argument.type == FVM_VALUE_STRING)
+        {
+            size_t size = fvm_string_size(argument);
+            bool decimal = size != 0;
+            for (size_t i = 0; i < size; ++i)
+            {
+                unsigned char ch = (unsigned char)argument.string[i];
+                if (ch == ':' || ch == '/' )
+                    return FVM_UNSUPPORTED;
+                if (!((ch >= '0' && ch <= '9') || ch == '+' || ch == '-' ||
+                      ch == '.' || ch == 'e' || ch == 'E'))
+                    decimal = false;
+            }
+            if (decimal)
+            {
+                status = fvm_value_to_number(c, &argument, &numeric);
+                if (status != FVM_OK)
+                    return status;
+            }
+            if (numeric != numeric)
+                for (Slots::iterator i = frames->indexed.begin(); i != frames->indexed.end(); ++i)
+                {
+                    if (i->second.type != FVM_VALUE_OBJECT || !i->second.object)
+                        return FVM_INVALID_ARGUMENT;
+                    FVM_Value label;
+                    status = field(i->second.object, "label", label);
+                    if (status != FVM_OK || label.type != FVM_VALUE_STRING)
+                        return FVM_INVALID_ARGUMENT;
+                    int order = 0;
+                    status = fvm_string_order(label, argument, order);
+                    if (status != FVM_OK)
+                        return status;
+                    if (!order)
+                    {
+                        selected = i->first;
+                        break;
+                    }
+                }
+        }
+        else
+            return FVM_INVALID_ARGUMENT;
+        if (numeric == numeric && numeric != std::numeric_limits<double>::infinity() &&
+            numeric != -std::numeric_limits<double>::infinity())
+        {
+            numeric = numeric < 0 ? std::ceil(numeric) : std::floor(numeric);
+            numeric = std::fmod(numeric, 4294967296.0);
+            selected = (unsigned long)(numeric < 0 ? numeric + 4294967296.0 : numeric);
+        }
+        if (!selected || selected > 65535)
+            return FVM_OK;
+        Slots::iterator entry = frames->indexed.find(selected);
+        if (entry == frames->indexed.end())
+            return FVM_OK;
+        if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object)
+            return FVM_INVALID_ARGUMENT;
+        /* [GC:] Snapshot guard also bounds recursion and restores the caller's debug cursor. */
+        struct FrameScope
+        {
+            FVM_Context *context; /* Context owning the root chain and debug cursor. */
+            FVM_GCRootFrame frame; /* [GC:] Temporary block/receiver roots. */
+            fvm_detail::vector<FVM_Value> blocks; /* [GC:] Action strings copied before script entry. */
+            fvm_detail::string function; /* Caller debug function name restored on exit. */
+            unsigned long offset; /* Caller bytecode offset restored on exit. */
+            /* [GC:] Link empty block roots before preparing the snapshot. */
+            FrameScope(FVM_Context *owner, FVM_Object *receiver)
+                : context(owner), function(owner->debug_function), offset(owner->debug_offset)
+            {
+                owner->debug_function = "[Frame Call]";
+                frame.previous = owner->gc_frames;
+                frame.stack = &blocks;
+                frame.locals = 0;
+                frame.receiver = receiver;
+                owner->gc_frames = &frame;
+                ++owner->script_depth;
+            }
+            /* [GC:] Unlink the frame and restore nesting/debug state on every exit. */
+            ~FrameScope()
+            {
+                --context->script_depth;
+                context->gc_frames = frame.previous;
+                context->debug_function.swap(function);
+                context->debug_offset = offset;
+            }
+          private:
+            /* Keep root-chain ownership unique. */
+            FrameScope(const FrameScope &);
+            /* Keep root-chain ownership unique. */
+            FrameScope &operator=(const FrameScope &);
+        } scope(c, clip);
+        FVM_Object *record = entry->second.object;
+        Properties::iterator segments = record->properties.find("segments");
+        if (segments != record->properties.end())
+        {
+            if (segments->second.type != FVM_VALUE_OBJECT || !segments->second.object)
+                return FVM_INVALID_ARGUMENT;
+            for (Slots::iterator i = segments->second.object->indexed.begin();
+                 i != segments->second.object->indexed.end(); ++i)
+                scope.blocks.push_back(i->second);
+        }
+        else
+        {
+            FVM_Value code;
+            status = field(record, "code", code);
+            if (status != FVM_OK)
+                return status;
+            scope.blocks.push_back(code);
+        }
+        for (size_t i = 0; i < scope.blocks.size(); ++i)
+        {
+            status = execute_frame_block(c, clip, scope.blocks[i]);
+            if (status != FVM_OK)
+                return status;
+        }
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
 }
 
 /* Create movieclip. */

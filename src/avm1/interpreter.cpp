@@ -9,6 +9,7 @@
 #include "../standard/super.hpp"
 #include "../standard/base_state.hpp"
 #include "../standard/primitive_state.hpp"
+#include "../standard/movieclip_state.hpp"
 #include "flashvm/function.h"
 #include "../standard/string_order.hpp"
 #include "flashvm/property.h"
@@ -1533,6 +1534,40 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     return r;
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+            }
+            else if (a.op == 0x9e)
+            { /* Call executes frame actions without seeking or placing frame controls. */
+                if (a.length || stack.empty())
+                    return a.length ? FVM_INVALID_ARGUMENT : FVM_ERROR;
+                FVM_Value argument = stack.back();
+                FVM_Result status = FVM_OK;
+                if (argument.type != FVM_VALUE_NUMBER)
+                {
+                    FVM_Value converted;
+                    status = action_string(c, argument, &converted);
+                    if (status == FVM_OK)
+                        argument = converted;
+                }
+                if (status != FVM_OK)
+                    return status;
+                /* [GC:] Keep the converted label live until the nested frame has finished. */
+                stack.back() = argument;
+                FVM_Object *target = self && self->resource_kind == 40 ? self : 0;
+                if (!target)
+                {
+                    FVM_Value root;
+                    status = fvm_get_global(c, "_root", &root);
+                    if (status != FVM_OK)
+                        return status;
+                    if (root.type == FVM_VALUE_OBJECT && root.object->resource_kind == 40)
+                        target = root.object;
+                }
+                if (!target)
+                    return FVM_UNSUPPORTED;
+                status = fvm_movieclip_call_frame(c, target, argument);
+                if (status != FVM_OK)
+                    return status;
+                stack.pop_back();
             }
             else if (a.op == 0x40)
             { /* NewObject: separate named native constructor registry. */
