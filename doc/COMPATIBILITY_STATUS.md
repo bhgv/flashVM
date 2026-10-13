@@ -682,3 +682,14 @@ launch failures passed after execute-bit restoration. The descriptor test
 includes queue transfer and GC before reading/writing in the receiving context.
 Protected replacement, full prototype/Array descriptor rules and all stages
 remain open.
+
+## v0.131 — loaded slice own data / исторический slice
+
+Loaded slice captures own data length, uses signed wrapping Int32 endpoints,
+ignores inherited/accessor elements and materializes own undefined slots.
+Unloaded sparse/property-aware behavior stays available.
+[RU/EN details](ARRAY_LEGACY_SLICE.md). Evidence: 298 core tests in AGG/Cairo
+plus the AGG runner; five focused checks in restricted sanitizer/portable
+profiles. All fourteen selected original SWF probes still complete with exact
+output. Original array_slice is SWF15 and is not accepted or patched. Full Array
+semantics, version provenance and every roadmap stage remain open.

@@ -74,7 +74,7 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
     return cursor ? FVM_ERROR : FVM_OK;
 }
 /* Read legacy Array element data without invoking accessors or walking prototypes. */
-void legacy_join_element(FVM_Object *o, unsigned long index, FVM_Value &out)
+void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
 {
     fvm_value_undefined(&out);
     char key[32];
@@ -92,8 +92,8 @@ void legacy_join_element(FVM_Object *o, unsigned long index, FVM_Value &out)
         out = slot->second;
 }
 
-/* Capture the positive portion of AVM1's signed, wrapping own-data length for join. */
-FVM_Result legacy_join_length(FVM_Context *c, FVM_Object *o, unsigned long &out)
+/* Capture the positive portion of AVM1's signed, wrapping own-data length for copying and joining. */
+FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out)
 {
     FVM_Value value;
     fvm_value_undefined(&value);
@@ -169,6 +169,32 @@ FVM_Result integer(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned 
         out = 0;
     else
         out = out < 0 ? -std::floor(-out) : std::floor(out);
+    return FVM_OK;
+}
+
+/* Coerce a supplied legacy slice index through signed wrapping Int32. */
+FVM_Result legacy_index(FVM_Context *c, unsigned int n, const FVM_Value *a,
+                         unsigned int index, double fallback, double &out)
+{
+    if (index >= n)
+    {
+        out = fallback;
+        return FVM_OK;
+    }
+    FVM_Result status = fvm_avm1_number(c, a + index, &out);
+    if (status != FVM_OK)
+        return status;
+    if (!(out == out) || !out || std::fabs(out) == HUGE_VAL)
+        out = 0;
+    else
+    {
+        out = out < 0 ? -std::floor(-out) : std::floor(out);
+        out = std::fmod(out, 4294967296.0);
+        if (out < 0)
+            out += 4294967296.0;
+        if (out >= 2147483648.0)
+            out -= 4294967296.0;
+    }
     return FVM_OK;
 }
 
@@ -431,8 +457,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
         count = prepared->length;
-    else if (c->swf_loaded && !std::strcmp(method, "join"))
-        r = legacy_join_length(c, o, count);
+    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice")))
+        r = legacy_data_length(c, o, count);
     else
         r = length(c, o, count);
     if (r != FVM_OK)
@@ -532,10 +558,14 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         if (!splice)
         {
             double first = 0, last = 0;
-            r = integer(c, n, a, 0, 0, first);
+            r = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first)
+                              : integer(c, n, a, 0, 0, first);
             if (r == FVM_OK)
-                r = integer(c, n > 1 && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n,
-                            a, 1, count, last);
+            {
+                unsigned int end_args = n > 1 && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n;
+                r = c->swf_loaded ? legacy_index(c, end_args, a, 1, count, last)
+                                  : integer(c, end_args, a, 1, count, last);
+            }
             if (r != FVM_OK)
                 return r;
             start = bound(first, count);
@@ -546,7 +576,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         }
         FVM_Object *result = 0;
         r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result, true);
-        if (!splice && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
+        if (!splice && !c->swf_loaded && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
             r = sparse_slice(c, o, result, start, end, work);
         else
             for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
@@ -556,7 +586,15 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 FVM_Value value;
                 bool present = false;
                 if (r == FVM_OK)
-                    r = get(c, o, start + i, value, present);
+                {
+                    if (!splice && c->swf_loaded)
+                    {
+                        legacy_data_element(o, start + i, value);
+                        present = true;
+                    }
+                    else
+                        r = get(c, o, start + i, value, present);
+                }
                 if (r == FVM_OK && present)
                     r = fvm_array_store_own(c, result, i, value);
             }
@@ -622,7 +660,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             FVM_Value value;
             bool present;
             if (c->swf_loaded)
-                legacy_join_element(o, i, value);
+                legacy_data_element(o, i, value);
             else
                 r = get(c, o, i, value, present);
             if (r != FVM_OK)

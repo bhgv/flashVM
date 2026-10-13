@@ -42,3 +42,9 @@ prototype semantics and all remaining stage-1 acceptance gates remain open.
 
 The tests above cover uint32 ranges, live getter mutations, coercion changes,
 shared callback budgets and injected allocation failures through success.
+
+## Follow-up v0.131 / Последующее уточнение
+
+Loaded SWF execution now uses historical own-data, signed Int32 and explicit
+undefined-slot rules; see [ARRAY_LEGACY_SLICE.md](ARRAY_LEGACY_SLICE.md).
+Описанный здесь sparse/property-aware режим сохраняется для незагруженного C-контекста.

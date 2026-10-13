@@ -22,7 +22,7 @@ avm1_bounded_blocks проверяет эти границы и перенос; 
 выполняется в режиме --timeline 1 без изменения файла и выводит ровно 16 байт
 эталона: undefined, c, b, a. Все четырнадцать выбранных исходных проб повторно
 сравниваются байт в байт; политики FSCommand описаны в SWF_REFERENCE_RUNNER.md.
-[Исходный тест](https://github.com/ruffle-rs/ruffle/tree/2372a4e148a67d68efd796f4477b3cddd4f880cd/tests/tests/swf/avm1/init_array_invalid).
+[Исходный тест](https://github.com/ruffle-rs/ruffle/tree/2372a4e148a67d68efd796f4477b3cddd4f880cd/tests/tests/swfs/avm1/init_array_invalid).
 Все стадии роудмапа остаются открытыми.
 
 ## English
