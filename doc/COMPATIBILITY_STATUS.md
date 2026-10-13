@@ -586,3 +586,15 @@ array_trivial SWF 6 (1447 bytes, real root timeline). Twelve probes pass under
 explicitly documented modes/policies; actual player-quit behavior is not claimed.
 [RU/EN details](SWF_REFERENCE_RUNNER.md). Core code is unchanged from the v0.121
 288-test acceptance subset. Array/Object/InitArray gaps and all stages remain open.
+
+## v0.123 — addProperty names/flags / имена и флаги addProperty
+
+Coerce supplied names before descriptor validation, retaining numeric/object
+and counted-NUL names. Null setters set read-only; writable replacement clears
+that bit. Descriptor allocation failure restores new flag records before stored
+values are removed. [RU/EN details](OBJECT_ADD_PROPERTY_NAMES.md). Evidence:
+290 core tests in AGG/Cairo plus the AGG runner, four focused Object/Function/
+Array checks in restricted sanitizer/portable profiles. Two AGG GC binaries
+lacked execute permission and passed after restoration. Exhaustive allocation
+retries preserve prior value/flags. Other descriptor/version rules and historic
+Array join semantics remain open, as do all roadmap stages.

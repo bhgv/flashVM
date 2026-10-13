@@ -1145,21 +1145,20 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
 {
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_boolean(out, 0);
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (n < 3 || args[0].type != FVM_VALUE_STRING || !fvm_string_size(args[0]) ||
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        args[1].type != FVM_VALUE_OBJECT || !args[1].object->invocable.callback ||
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        (args[2].type != FVM_VALUE_NULL &&
-         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-         (args[2].type != FVM_VALUE_OBJECT || !args[2].object->invocable.callback)))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    if (!n)
         return FVM_OK;
-
-    /* Initialization / Инициализация локального состояния. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    /* Convert a supplied name before checking the getter/setter arguments, as AVM1 does. */
+    FVM_Value converted_name;
+    FVM_Result normalized = fvm_value_to_string(c, args, &converted_name);
+    if (normalized != FVM_OK)
+        return normalized;
+    if (!fvm_string_size(converted_name) || n < 3 ||
+        args[1].type != FVM_VALUE_OBJECT || !args[1].object->invocable.callback ||
+        (args[2].type != FVM_VALUE_NULL &&
+         (args[2].type != FVM_VALUE_OBJECT || !args[2].object->invocable.callback)))
+        return FVM_OK;
     fvm_detail::string name;
-    FVM_Result normalized = fvm_property_key(args[0].string, fvm_string_size(args[0]), name);
+    normalized = fvm_property_key(converted_name.string, fvm_string_size(converted_name), name);
     if (normalized != FVM_OK)
         return normalized;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1213,8 +1212,24 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     entry.userdata = descriptor;
     /* Allocate before removing a data property so allocation failure preserves it. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    receiver->accessors[name] = entry;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    unsigned int old_flags = flag == receiver->attributes.end() ? 0 : flag->second;
+    bool new_flags = flag == receiver->attributes.end();
+    if (new_flags)
+        receiver->attributes[name] = 0;
+    try
+    {
+        receiver->accessors[name] = entry;
+    }
+    catch (...)
+    {
+        /* Restore an absent flags record if descriptor allocation could not complete. */
+        if (new_flags)
+            receiver->attributes.erase(name);
+        throw;
+    }
+    receiver->attributes[name] = (old_flags & ~FVM_PROPERTY_READ_ONLY) |
+                                    (args[2].type == FVM_VALUE_NULL ? FVM_PROPERTY_READ_ONLY : 0);
+    /* [GC:] All descriptor/flag allocations completed before removing old stored values. */
     receiver->properties.erase(name);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (receiver->resource_kind == OBJECT_OBJECT && (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)))
