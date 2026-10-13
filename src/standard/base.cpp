@@ -1104,13 +1104,19 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     if (!registry || registry->owner != c || n < 2)
         return FVM_OK;
 
+    /* Validate the constructor before name coercion can run user code. */
+    if (a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED &&
+        (a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback))
+        return FVM_OK;
+
     /* Initialization / Инициализация локального состояния. */
     FVM_Value name;
-    FVM_Result r = fvm_value_to_string(c, a, &name);
+    FVM_Result r = c->swf_loaded ? fvm_avm1_string(c, a[0], &name)
+                                : fvm_value_to_string(c, a, &name);
     if (r != FVM_OK)
         return r;
     size_t size = fvm_string_size(name);
-    if (!size)
+    if (!size && !c->swf_loaded)
         return FVM_OK;
     fvm_detail::string key;
     r = fvm_property_key(name.string, size, key);
@@ -1119,11 +1125,7 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     if (a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED)
         registry->properties.erase(key);
     else
-    {
-        if (a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback)
-            return FVM_OK;
         registry->properties[key] = a[1];
-    }
     fvm_value_boolean(out, 1);
     return FVM_OK;
 }

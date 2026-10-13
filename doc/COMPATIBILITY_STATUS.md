@@ -918,3 +918,16 @@ after execute-bit restoration. Named/numeric/countеd NUL, virtual setter flags,
 root unwind and post-write GC pass; all fifteen original SWFs still match.
 Native Array guard and watcher exception ordering, case/version and all stages
 remain open.
+
+## v0.150 — registerClass name validation / имя класса
+
+Constructor validation precedes name conversion; loaded registration uses the
+AVM1 string bridge and permits empty symbols. Null/undefined removes entries.
+[RU/EN details](OBJECT_REGISTER_CLASS_NAMES.md). Evidence: 317 core tests in
+AGG/Cairo plus the AGG runner; seven focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Invalid constructors skip name callbacks;
+empty/undefined/counted NUL, GC and queue transfer with restored execution pass.
+Four AGG launch failures, one dependent reader and one subprocess PermissionError
+passed on explicit rerun after restoring executable bits. Fifteen original SWFs
+still match; case-sensitive environment separation, function versions and all
+stages remain open.
