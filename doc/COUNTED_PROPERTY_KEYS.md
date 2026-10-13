@@ -134,3 +134,32 @@ cell independence, undefined declarations/shadowing, rooted globals, native
 calls, surrogate aliases, missing-prefix rejection and native exception recovery.
 property_counted adds an actual modified legacy graph with surrogate-pair names
 and verifies successful restore and graph-8 reserialization.
+
+## v0.84 — Constructor and stack names / Конструкторы и стековые имена
+
+Counted native constructor registration and construction now use canonical keys,
+including NUL and lone surrogates. AVM1 NewObject can resolve a full-key native
+constructor after lexical/global lookup; a missing name never falls back to a
+prefix. Reserved Object remains reserved only for its exact complete name.
+
+Rooted stack registration/call and Lua-style CFunction registration now use the
+same canonical name registry. Captures publish with entries in one operation;
+lookup allocation failures return OOM before callback entry. Counted auxiliary
+field/global helpers preserve stack consumption rules; pushstring/checkstring
+variants expose the complete string byte count. Legacy helpers use this bridge.
+No value layout or graph version change (ABI 3, graph 8).
+
+Добавлены counted constructor/stack/CFunction API и вспомогательные операции
+field/global/string. Имена NUL не обрезаются; пары суррогатов канонизируются.
+Native constructor и stack capture устанавливаются атомарно с записью. Служебное
+имя Object защищено по полному ключу. AVM1 NewObject вызывает полный native key
+без подмены отсутствующего имени префиксом. Инъекции/приёмка остальных стадий
+остаются обязательными; данный пункт не закрывает стадию 1.
+
+Regression native_counted_construction covers full-key native construction,
+wrong-context capture rejection, reserved names, scalar/pair/lone-surrogate
+names, invalid encoding, GC capture retention, FVM and Lua-style stack callbacks,
+full-key global-call fallback, AVM1 NewObject and counted field/global/string
+helpers. Linux AGG 247/247; Cairo Release 247/247; focused headless ASan/UBSan
+4/4 with stack/leak exclusions; portable new test 1/1. Examples disabled in full
+profiles. Formal parameter alias identity and remaining conformance gates stay open.

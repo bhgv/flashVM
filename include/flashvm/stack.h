@@ -37,6 +37,12 @@ extern "C"
     /* Register stack rooted. */
     FVM_API FVM_Result fvm_stack_register_rooted(FVM_Context *, const char *, FVM_StackFunction,
                                                  void *, FVM_Object *);
+    /* [GC:] Register a complete counted native stack name and traced capture. */
+    FVM_API FVM_Result fvm_stack_register_rooted_bytes(FVM_Context *, const char *, size_t,
+                                                       FVM_StackFunction, void *, FVM_Object *);
+    /* Call a full counted stack name, preserving the ordinary result-stack contract. */
+    FVM_API FVM_Result fvm_stack_call_bytes(FVM_Context *, const char *, size_t, unsigned int,
+                                            const FVM_Value *, FVM_Value *);
     /* Calls a registered stack function with a temporary argument stack.
      * The callback receives exactly argc entries. On success it must leave
      * exactly one result entry; an empty stack means undefined. */

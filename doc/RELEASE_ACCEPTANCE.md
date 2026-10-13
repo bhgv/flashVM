@@ -5,7 +5,7 @@
 
 | Стадия | Проверенная часть | Что требуется для завершения |
 | --- | --- | --- |
-| 1 | Counted UTF-16 values/property/member/global names, selected Object/Array/Number semantics | Native constructor/stack names, parameter aliases, Array size boundaries, full API inventory and historical/versioned conversion comparisons |
+| 1 | Counted UTF-16 values/property/member/global names, selected Object/Array/Number semantics | Parameter aliases, remaining named/debug helpers, Array size boundaries, full API inventory and historical/versioned conversion comparisons |
 | 2 | Selected Function2/preloads/arguments, inheritance/super, numeric and member/variable actions | Complete action/version/scope/exception semantics with compiler-generated SWFs and a reference oracle |
 | 3 | Frame actions, sprites/exports, selected scene controls, shapes/bitmaps and clip APIs | Complete SWF display list/resources/masks/drag/load/text creation and event ordering |
 | 4 | Selected raster/bitmap/filter/geometry/text operations and bundled dependencies | Complete text/font integration, filter/blend semantics, audio/video/streaming and historical comparisons |
@@ -46,3 +46,12 @@ target-platform runs in addition to implementation.
 роудмапа, реальных платформенных запусков и документированного воспроизводимого
 архива исходников с полной историей Git. Текущий архив — контрольная точка v0.83,
 а не итоговый SWF 8 release. Generated logs/evidence остаются вне Git и источников.
+
+## v0.84 checkpoint
+
+Counted native constructor/stack-name gates above are implemented and covered
+by native_counted_construction. Linux AGG/Cairo Release now pass 247/247 each;
+focused headless sanitizer checks 4/4 and portable new test 1/1. Earlier v0.83
+figures remain historical evidence. Parameter aliases and remaining type/API
+conformance keep stage 1 open. The active user endpoint is stage 8; stage 9
+platform/release acceptance remains separate and is not being claimed complete.

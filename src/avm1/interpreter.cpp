@@ -1388,9 +1388,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                            ? fvm_function_construct(c, constructor.object, argc,
                                                                     args.begin(), &object)
                                            : FVM_UNSUPPORTED
-                                     : std::memchr(stack.back().string, 0, fvm_string_size(stack.back()))
-                                           ? FVM_UNSUPPORTED
-                                           : fvm_construct(c, stack.back().string, argc, args.begin(), &object);
+                                     : fvm_construct_bytes(c, stack.back().string,
+                                                           fvm_string_size(stack.back()), argc,
+                                                           args.begin(), &object);
                 if (result != FVM_OK)
                     return result;
                 stack.resize(stack.size() - argc - 2);

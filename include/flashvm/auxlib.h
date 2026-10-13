@@ -17,6 +17,21 @@ extern "C"
     /* Register stack cfunction. */
     FVM_API FVM_Result fvm_stack_register_cfunction(FVM_Context *, const char *, FVM_CFunction,
                                                     FVM_Object *);
+    /* [GC:] Register a counted CFunction key and traced capture. */
+    FVM_API FVM_Result fvm_stack_register_cfunction_bytes(FVM_Context *, const char *, size_t,
+                                                          FVM_CFunction, FVM_Object *);
+    /* Copy all string bytes, including NUL and lone surrogates, onto the stack. */
+    FVM_API FVM_Result fvm_stack_pushstring_bytes(FVM_Stack *, const char *, size_t);
+    /* Query a string view with its full byte count; no terminator is required. */
+    FVM_API FVM_Result fvm_stack_checkstring_bytes(FVM_Stack *, int, const char **, size_t *);
+    /* Read a field using a complete counted name and push its value. */
+    FVM_API FVM_Result fvm_stack_getfield_bytes(FVM_Stack *, int, const char *, size_t);
+    /* Assign a counted field; consume the top value only after success. */
+    FVM_API FVM_Result fvm_stack_setfield_bytes(FVM_Stack *, int, const char *, size_t);
+    /* Read a counted global key and push its value. */
+    FVM_API FVM_Result fvm_stack_getglobal_bytes(FVM_Stack *, const char *, size_t);
+    /* Assign a counted global key; consume the top value only after success. */
+    FVM_API FVM_Result fvm_stack_setglobal_bytes(FVM_Stack *, const char *, size_t);
     /* Return the interpreter context associated with the stack handle. */
     FVM_API FVM_Context *fvm_stack_context(FVM_Stack *);
     /* Implement stack settop for this subsystem. */

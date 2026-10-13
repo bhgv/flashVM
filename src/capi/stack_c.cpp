@@ -9,6 +9,7 @@
 #include <climits>
 #include "flashvm/callable.h"
 #include "../core/runtime.hpp"
+#include "../core/property_key.hpp"
 #include <new>
 #include <cstring>
 /* Define FVM_Stack struct and its representation. */
@@ -146,27 +147,20 @@ extern "C"
     FVM_Result fvm_stack_register(FVM_Context *c, const char *name, FVM_StackFunction cb,
                                   void *user)
     {
-        FVM_StackEntry e;
-        if (!c || !name || !*name || !cb)
-            return FVM_INVALID_ARGUMENT;
-
-        /* Computation / Вычисление и обновление состояния. */
-        e.callback = cb;
-        e.userdata = user;
-        try
-        {
-            c->stack_functions[name] = e;
-        }
-        catch (...)
-        {
-            return FVM_OUT_OF_MEMORY;
-        }
-        return FVM_OK;
+        return name ? fvm_stack_register_rooted_bytes(c, name, std::strlen(name), cb, user, 0)
+                    : FVM_INVALID_ARGUMENT;
     }
     /* Call stack. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result
-    fvm_stack_call(FVM_Context *c, const char *name, unsigned int argc,
+fvm_stack_call(FVM_Context *c, const char *name, unsigned int argc,
+                   const FVM_Value *args, FVM_Value *out)
+    {
+        return name ? fvm_stack_call_bytes(c, name, std::strlen(name), argc, args, out)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Invoke the counted stack registry without truncating the selected key. */
+    FVM_Result     fvm_stack_call_bytes(FVM_Context *c, const char *name, size_t size, unsigned int argc,
                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                    const FVM_Value *args, FVM_Value *out)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -184,19 +178,24 @@ extern "C"
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator it =
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            c->stack_functions.find(name);
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (it == c->stack_functions.end())
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return FVM_UNSUPPORTED;
-
-        /* Initialization / Инициализация локального состояния. */
-        /* Copy the entry before user code can replace its registration. */
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_StackEntry entry = it->second;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_StackEntry entry;
+        try
+        {
+            fvm_detail::string key;
+            r = fvm_property_key(name, size, key);
+            if (r != FVM_OK)
+                return r;
+            fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator found =
+                c->stack_functions.find(key);
+            if (found == c->stack_functions.end())
+                return FVM_UNSUPPORTED;
+            /* Copy the entry before user code can replace the registration. */
+            entry = found->second;
+        }
+        catch (const std::bad_alloc &)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
         r = fvm_stack_create(c, &s);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
@@ -476,19 +475,33 @@ extern "C" FVM_Result fvm_stack_register_rooted(
     FVM_StackFunction cb, void *ud, FVM_Object *root)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!c || (root && root->owner != c))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    return name ? fvm_stack_register_rooted_bytes(c, name, std::strlen(name), cb, ud, root)
+                : FVM_INVALID_ARGUMENT;
+}
+/* [GC:] Publish a counted stack registration with its traced capture atomically. */
+extern "C" FVM_Result fvm_stack_register_rooted_bytes(FVM_Context *c, const char *name, size_t size,
+                                                      FVM_StackFunction callback, void *userdata,
+                                                      FVM_Object *root)
+{
+    if (!c || !name || !size || !callback || (root && root->owner != c))
         return FVM_INVALID_ARGUMENT;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result r = fvm_stack_register(c, name, cb, ud);
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (r == FVM_OK)
-        /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
-        c->stack_functions.find(name)->second.root = root;
-    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-    return r;
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    try
+    {
+        fvm_detail::string key;
+        FVM_Result result = fvm_property_key(name, size, key);
+        if (result != FVM_OK)
+            return result;
+        FVM_StackEntry entry;
+        entry.callback = callback;
+        entry.userdata = userdata;
+        entry.root = root;
+        c->stack_functions[key] = entry;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }
 
 /* [GC:] Create callable rooted. */
@@ -554,8 +567,18 @@ extern "C"
         FVM_CFunction callback, FVM_Object *root)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        return name ? fvm_stack_register_cfunction_bytes(context, name, std::strlen(name), callback, root) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_register_cfunction_bytes(
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Context *context, const char *name, size_t size,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_CFunction callback, FVM_Object *root)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!context || !name || !*name || !callback || (root && root->owner != context))
+        if (!context || !name || !size || !callback || (root && root->owner != context))
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -570,8 +593,13 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            context->stack_functions[name] = entry;
+            context->stack_functions[key] = entry;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -713,15 +741,24 @@ extern "C"
     /* Compute and return stack pushstring. */
     FVM_Result fvm_stack_pushstring(FVM_Stack *stack, const char *text)
     {
+        return text ? fvm_stack_pushstring_bytes(stack, text, std::strlen(text)) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_pushstring_bytes(FVM_Stack *stack, const char *text, size_t length)
+    {
         if (!stack || !text)
             return FVM_INVALID_ARGUMENT;
-        size_t length = std::strlen(text);
+        FVM_Value checked;
+        FVM_Result validated = fvm_value_string_bytes(&checked, text, length);
+        if (validated != FVM_OK)
+            return validated;
         if (length == (size_t)-1)
             return FVM_OUT_OF_MEMORY;
         char *copy = new (std::nothrow) char[length + 1];
         if (!copy)
             return FVM_OUT_OF_MEMORY;
-        std::memcpy(copy, text, length + 1);
+        std::memcpy(copy, text, length);
+        copy[length] = 0;
         try
         {
             /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
@@ -736,7 +773,7 @@ extern "C"
 
         /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
-        fvm_value_string(&value, copy);
+        fvm_value_string_bytes(&value, copy, length);
         return fvm_stack_push(stack, &value);
     }
 
@@ -770,6 +807,21 @@ extern "C"
         return FVM_OK;
     }
 
+    /* Return a borrowed string view together with its complete counted length. */
+    FVM_Result fvm_stack_checkstring_bytes(FVM_Stack *stack, int index, const char **out, size_t *size)
+    {
+        if (!out || !size)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Value value;
+        FVM_Result result = fvm_stack_get(stack, index, &value);
+        if (result != FVM_OK)
+            return result;
+        if (value.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+        *out = value.string;
+        *size = fvm_value_string_size(&value);
+        return FVM_OK;
+    }
     /* Compute and return stack newtable. */
     FVM_Result fvm_stack_newtable(FVM_Stack *stack)
     {
@@ -795,6 +847,11 @@ extern "C"
     /* Compute and return stack getfield. */
     FVM_Result fvm_stack_getfield(FVM_Stack *stack, int index, const char *name)
     {
+        return name ? fvm_stack_getfield_bytes(stack, index, name, std::strlen(name)) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_getfield_bytes(FVM_Stack *stack, int index, const char *name, size_t size)
+    {
 
         /* Initialization / Инициализация локального состояния. */
         FVM_Value object, value;
@@ -803,12 +860,17 @@ extern "C"
             return result;
         if (object.type != FVM_VALUE_OBJECT || !name)
             return FVM_INVALID_ARGUMENT;
-        result = fvm_object_get(stack->context, object.object, name, &value);
+        result = fvm_object_get_bytes(stack->context, object.object, name, size, &value);
         return result == FVM_OK ? fvm_stack_push(stack, &value) : result;
     }
 
     /* Compute and return stack setfield. */
     FVM_Result fvm_stack_setfield(FVM_Stack *stack, int index, const char *name)
+    {
+        return name ? fvm_stack_setfield_bytes(stack, index, name, std::strlen(name)) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_setfield_bytes(FVM_Stack *stack, int index, const char *name, size_t size)
     {
 
         /* Initialization / Инициализация локального состояния. */
@@ -818,7 +880,7 @@ extern "C"
             return result;
         if (object.type != FVM_VALUE_OBJECT || !name)
             return FVM_INVALID_ARGUMENT;
-        result = fvm_object_set(stack->context, object.object, name, &stack->values.back());
+        result = fvm_object_set_bytes(stack->context, object.object, name, size, &stack->values.back());
         if (result == FVM_OK)
             stack->values.pop_back();
         return result;
@@ -827,21 +889,31 @@ extern "C"
     /* Compute and return stack getglobal. */
     FVM_Result fvm_stack_getglobal(FVM_Stack *stack, const char *name)
     {
+        return name ? fvm_stack_getglobal_bytes(stack, name, std::strlen(name)) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_getglobal_bytes(FVM_Stack *stack, const char *name, size_t size)
+    {
         if (!stack || !name)
             return FVM_INVALID_ARGUMENT;
 
         /* Initialization / Инициализация локального состояния. */
         FVM_Value value;
-        FVM_Result result = fvm_get_global(stack->context, name, &value);
+        FVM_Result result = fvm_get_global_bytes(stack->context, name, size, &value);
         return result == FVM_OK ? fvm_stack_push(stack, &value) : result;
     }
 
     /* Compute and return stack setglobal. */
     FVM_Result fvm_stack_setglobal(FVM_Stack *stack, const char *name)
     {
+        return name ? fvm_stack_setglobal_bytes(stack, name, std::strlen(name)) : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve complete counted input through the existing stack contract. */
+    FVM_Result fvm_stack_setglobal_bytes(FVM_Stack *stack, const char *name, size_t size)
+    {
         if (!stack || !name || stack->values.empty())
             return FVM_INVALID_ARGUMENT;
-        FVM_Result result = fvm_set_global(stack->context, name, &stack->values.back());
+        FVM_Result result = fvm_set_global_bytes(stack->context, name, size, &stack->values.back());
         if (result == FVM_OK)
             stack->values.pop_back();
         return result;

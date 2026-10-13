@@ -248,3 +248,13 @@ AGG 246/246; Cairo Release 246/246; ASan/UBSan targeted 5/5 with stack/leak
 exclusions; portable targeted 2/2. Stages 1–9 remain open. RU/EN behavior and
 remaining scope: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
 Final acceptance gates: [RELEASE_ACCEPTANCE.md](RELEASE_ACCEPTANCE.md).
+
+## v0.84 — Counted constructor and stack APIs
+
+Проверено / tested: canonical counted native construction/registration,
+AVM1 NewObject fallback, rooted stack/Lua-style registration and calls,
+counted field/global/string auxiliary helpers. Regression:
+native_counted_construction. AGG 247/247, Cairo Release 247/247;
+headless ASan/UBSan targeted 4/4, portable new test 1/1. ABI 3 / graph 8 unchanged.
+Remaining parameter aliases and full standard-type/version conformance keep
+stage 1 open. RU/EN: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).

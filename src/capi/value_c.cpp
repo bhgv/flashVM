@@ -1297,9 +1297,16 @@ extern "C"
     }
     /* [GC:] Register constructor rooted. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result fvm_register_constructor_rooted(
+    FVM_Result fvm_register_constructor_rooted(FVM_Context *c, const char *name,
+                                      FVM_NativeFunction callback, void *userdata, FVM_Object *root)
+    {
+        return name ? fvm_register_constructor_rooted_bytes(c, name, std::strlen(name), callback,
+                                                            userdata, root) : FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Register a counted constructor and its capture under one canonical key. */
+    FVM_Result fvm_register_constructor_rooted_bytes(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Context *c, const char *name,
+        FVM_Context *c, const char *name, size_t size,
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_NativeFunction callback, void *userdata,
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1307,7 +1314,7 @@ extern "C"
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!c || !name || !*name || !callback || std::strcmp(name, "Object") == 0 ||
+        if (!c || !name || !size || !callback ||
             /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
             (root && root->owner != c) || c->destroying || c->gc_releasing)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1326,8 +1333,15 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+            if (key == fvm_detail::string("Object"))
+                return FVM_INVALID_ARGUMENT;
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            c->constructors[name] = entry;
+            c->constructors[key] = entry;
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1346,6 +1360,17 @@ extern "C"
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result
     fvm_construct(FVM_Context *c, const char *name, unsigned int argc,
+                  const FVM_Value *argv, FVM_Object **out)
+    {
+        if (!name)
+        {
+            if (out) *out = 0;
+            return FVM_INVALID_ARGUMENT;
+        }
+        return fvm_construct_bytes(c, name, std::strlen(name), argc, argv, out);
+    }
+    /* [GC:] Construct through a full native name or a full-key Function global. */
+    FVM_Result fvm_construct_bytes(FVM_Context *c, const char *name, size_t size, unsigned int argc,
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   const FVM_Value *argv, FVM_Object **out)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1366,18 +1391,21 @@ extern "C"
             if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (std::strcmp(name, "Object") == 0 && !c->standard_library)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
         /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+            if (key == fvm_detail::string("Object") && !c->standard_library)
+                return argc ? FVM_UNSUPPORTED : fvm_object_create(c, out);
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                c->constructors.find(name);
+                c->constructors.find(key);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (found == c->constructors.end())
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1385,7 +1413,7 @@ extern "C"
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_Value function;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                FVM_Result r = fvm_get_global(c, name, &function);
+                FVM_Result r = fvm_get_global_bytes(c, key.data(), key.size(), &function);
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (r != FVM_OK)
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1492,8 +1520,7 @@ extern "C"
                 return result;
             if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
                 return fvm_function_invoke(c, callable.object, c->global, argc, args, out);
-            return fvm_property_terminated(key) ? fvm_stack_call(c, key.c_str(), argc, args, out)
-                                                : FVM_UNSUPPORTED;
+            return fvm_stack_call_bytes(c, key.data(), key.size(), argc, args, out);
         }
         catch (const std::bad_alloc &)
         {

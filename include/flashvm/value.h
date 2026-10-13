@@ -142,6 +142,12 @@ extern "C"
         FVM_NativeFunction, void *,
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *root);
+    /* [GC:] Register a counted constructor name and traced capture; Object remains reserved. */
+    FVM_API FVM_Result fvm_register_constructor_rooted_bytes(FVM_Context *, const char *, size_t,
+                                                            FVM_NativeFunction, void *, FVM_Object *);
+    /* [GC:] Construct through a counted native name or full-key Function value. */
+    FVM_API FVM_Result fvm_construct_bytes(FVM_Context *, const char *, size_t, unsigned int,
+                                           const FVM_Value *, FVM_Object **);
     /* Implement construct for this subsystem. */
     FVM_API FVM_Result fvm_construct(FVM_Context *, const char *, unsigned int, const FVM_Value *,
                                      FVM_Object **out);
