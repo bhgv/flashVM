@@ -1,7 +1,8 @@
-/* FlashVM: counted legacy numeric syntax and primitive version gates for AVM1 actions. */
+/* FlashVM: counted legacy numeric syntax and shared versioned primitive/string coercion. */
 #include "coercion.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/primitive_state.hpp"
+#include "../standard/movieclip_state.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/function.h"
 #include <cstdio>
@@ -240,4 +241,61 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Legacy ordinary coercion uses an empty undefined string; Trace keeps its own spelling. */
+FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Value *out)
+{
+    if (value.type == FVM_VALUE_UNDEFINED && context->swf_loaded &&
+        context->swf_info.version < 7)
+        return fvm_value_string(out, "");
+    if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
+        context->swf_info.version < 5)
+        return fvm_value_string(out, value.boolean ? "1" : "0");
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == 40)
+        return fvm_movieclip_reference_string(context, value.object, out);
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != 40)
+    {
+        if (value.object->resource_kind == 26 && value.object->resource_result_valid &&
+            value.object->resource_result.type == FVM_VALUE_STRING)
+        {
+            *out = value.object->resource_result;
+            return FVM_OK;
+        }
+        if (context->string_depth >= 64)
+            return FVM_ERROR;
+        /* [GC:] The caller retains the owner; invocation roots its selected method. */
+        struct StringScope
+        {
+            FVM_Context *context; /* Owner of the string-coercion recursion counter. */
+            /* Bound string callback reentry before resolving toString. */
+            explicit StringScope(FVM_Context *owner) : context(owner)
+            {
+                ++context->string_depth;
+            }
+            /* Restore recursion depth after invocation or allocation failure. */
+            ~StringScope()
+            {
+                --context->string_depth;
+            }
+        } coercion(context);
+        FVM_Value method, result;
+        fvm_value_undefined(&result);
+        FVM_Result status = fvm_object_get_bytes(context, value.object, "toString", 8, &method);
+        if (status != FVM_OK)
+            return status;
+        if (method.type == FVM_VALUE_OBJECT &&
+            (method.object->invocable.callback || method.object->callable.callback))
+            status = fvm_function_invoke(context, method.object, value.object, 0, 0, &result);
+        if (status != FVM_OK)
+            return status;
+        if (result.type == FVM_VALUE_STRING)
+        {
+            *out = result;
+            return FVM_OK;
+        }
+        return fvm_value_string(out, value.object->invocable.callback || value.object->callable.callback
+                                        ? "[type Function]" : "[type Object]");
+    }
+    return fvm_value_to_string(context, &value, out);
 }

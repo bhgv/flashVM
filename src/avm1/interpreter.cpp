@@ -110,63 +110,6 @@ static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, boo
     return FVM_OK;
 }
 
-/* Legacy ordinary coercion uses an empty undefined string; Trace keeps its own spelling. */
-static FVM_Result action_string(FVM_Context *context, const FVM_Value &value, FVM_Value *out)
-{
-    if (value.type == FVM_VALUE_UNDEFINED && context->swf_loaded &&
-        context->swf_info.version < 7)
-        return fvm_value_string(out, "");
-    if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
-        context->swf_info.version < 5)
-        return fvm_value_string(out, value.boolean ? "1" : "0");
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == 40)
-        return fvm_movieclip_reference_string(context, value.object, out);
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != 40)
-    {
-        if (value.object->resource_kind == 26 && value.object->resource_result_valid &&
-            value.object->resource_result.type == FVM_VALUE_STRING)
-        {
-            *out = value.object->resource_result;
-            return FVM_OK;
-        }
-        if (context->string_depth >= 64)
-            return FVM_ERROR;
-        /* [GC:] The caller retains the owner; invocation roots its selected method. */
-        struct StringScope
-        {
-            FVM_Context *context; /* Owner of the string-coercion recursion counter. */
-            /* Bound string callback reentry before resolving toString. */
-            explicit StringScope(FVM_Context *owner) : context(owner)
-            {
-                ++context->string_depth;
-            }
-            /* Restore recursion depth after invocation or allocation failure. */
-            ~StringScope()
-            {
-                --context->string_depth;
-            }
-        } coercion(context);
-        FVM_Value method, result;
-        fvm_value_undefined(&result);
-        FVM_Result status = fvm_object_get_bytes(context, value.object, "toString", 8, &method);
-        if (status != FVM_OK)
-            return status;
-        if (method.type == FVM_VALUE_OBJECT &&
-            (method.object->invocable.callback || method.object->callable.callback))
-            status = fvm_function_invoke(context, method.object, value.object, 0, 0, &result);
-        if (status != FVM_OK)
-            return status;
-        if (result.type == FVM_VALUE_STRING)
-        {
-            *out = result;
-            return FVM_OK;
-        }
-        return fvm_value_string(out, value.object->invocable.callback || value.object->callable.callback
-                                        ? "[type Function]" : "[type Object]");
-    }
-    return fvm_value_to_string(context, &value, out);
-}
-
 /* Compute and return own string. */
 static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
                              size_t length = (size_t)-1)
@@ -1465,7 +1408,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (stack.back().type == FVM_VALUE_NUMBER)
                         fvm_value_number(&frame[0], stack.back().number);
                     else
-                        status = action_string(c, stack.back(), &frame[0]);
+                        status = fvm_avm1_string(c, stack.back(), &frame[0]);
                     if (status != FVM_OK)
                         return status;
                     if (frame[0].type == FVM_VALUE_STRING)
@@ -1524,7 +1467,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     clip = target.object;
                 else
                 {
-                    status = action_string(c, target, &converted[0]);
+                    status = fvm_avm1_string(c, target, &converted[0]);
                     if (status != FVM_OK)
                         return status;
                     FVM_Object *start = c->avm1_target_clip ? c->avm1_target_clip : c->avm1_base_clip;
@@ -1563,10 +1506,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             {
                                 FVM_Value zero;
                                 fvm_value_number(&zero, 0);
-                                status = action_string(c, zero, &converted[1]);
+                                status = fvm_avm1_string(c, zero, &converted[1]);
                             }
                             else
-                                status = action_string(c, value, &converted[1]);
+                                status = fvm_avm1_string(c, value, &converted[1]);
                         }
                         else if (value.type != FVM_VALUE_NULL && value.type != FVM_VALUE_UNDEFINED)
                         {
@@ -1608,7 +1551,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         invalid = !reset;
                     }
                     else
-                        status = action_string(c, stack.back(), &path);
+                        status = fvm_avm1_string(c, stack.back(), &path);
                 }
                 if (status != FVM_OK)
                     return status;
@@ -1645,9 +1588,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return FVM_INVALID_ARGUMENT;
                     if (stack.size() < 2)
                         return FVM_ERROR;
-                    status = action_string(c, stack.back(), &request[1]);
+                    status = fvm_avm1_string(c, stack.back(), &request[1]);
                     if (status == FVM_OK)
-                        status = action_string(c, stack[stack.size() - 2], &request[0]);
+                        status = fvm_avm1_string(c, stack[stack.size() - 2], &request[0]);
                 }
                 else
                 {
@@ -1698,7 +1641,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (argument.type != FVM_VALUE_NUMBER)
                 {
                     FVM_Value converted;
-                    status = action_string(c, argument, &converted);
+                    status = fvm_avm1_string(c, argument, &converted);
                     if (status == FVM_OK)
                         argument = converted;
                 }
@@ -1827,15 +1770,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result status;
                 if (a.op == 0x68)
                 {
-                    status = action_string(c, stack[stack.size() - 2], &left);
+                    status = fvm_avm1_string(c, stack[stack.size() - 2], &left);
                     if (status == FVM_OK)
-                        status = action_string(c, stack.back(), &right);
+                        status = fvm_avm1_string(c, stack.back(), &right);
                 }
                 else
                 {
-                    status = action_string(c, stack.back(), &right);
+                    status = fvm_avm1_string(c, stack.back(), &right);
                     if (status == FVM_OK)
-                        status = action_string(c, stack[stack.size() - 2], &left);
+                        status = fvm_avm1_string(c, stack[stack.size() - 2], &left);
                 }
                 if (status != FVM_OK)
                     return status;
@@ -1867,7 +1810,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 FVM_Value text;
-                FVM_Result status = action_string(c, stack.back(), &text);
+                FVM_Result status = fvm_avm1_string(c, stack.back(), &text);
                 if (status != FVM_OK)
                     return status;
                 fvm_detail::vector<unsigned int> units;
@@ -1891,7 +1834,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     status = fvm_avm1_number(c, &stack[stack.size() - 2], &start_number);
                 FVM_Value text, output;
                 if (status == FVM_OK)
-                    status = action_string(c, stack[stack.size() - 3], &text);
+                    status = fvm_avm1_string(c, stack[stack.size() - 3], &text);
                 if (status != FVM_OK)
                     return status;
                 fvm_detail::vector<unsigned int> units;
@@ -1924,7 +1867,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 FVM_Value text;
-                FVM_Result status = action_string(c, stack.back(), &text);
+                FVM_Result status = fvm_avm1_string(c, stack.back(), &text);
                 if (status != FVM_OK)
                     return status;
                 fvm_detail::vector<unsigned int> units;
@@ -1987,7 +1930,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_value_string(&output, name);
                 }
                 else if (a.op == 0x4b)
-                    r = action_string(c, input, &output);
+                    r = fvm_avm1_string(c, input, &output);
                 else
                 {
                     double number = 0;
@@ -2085,9 +2028,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
                     {
                         FVM_Value &x = converted[2], &y = converted[3];
-                        r = action_string(c, left, &x);
+                        r = fvm_avm1_string(c, left, &x);
                         if (r == FVM_OK)
-                            r = action_string(c, right, &y);
+                            r = fvm_avm1_string(c, right, &y);
                         if (r == FVM_OK)
                         {
                             size_t first = fvm_string_size(x), last = fvm_string_size(y);
@@ -2204,7 +2147,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_table_get_index(c, owner.object, (unsigned long)member.number, &value);
                 else
                 {
-                    r = action_string(c, member, &key);
+                    r = fvm_avm1_string(c, member, &key);
                     if (r == FVM_OK)
                         r = fvm_value_get_property_bytes(c, &owner, key.string, fvm_string_size(key), &value);
                 }
@@ -2229,7 +2172,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                             &stack.back());
                 else
                 {
-                    r = action_string(c, member, &key);
+                    r = fvm_avm1_string(c, member, &key);
                     if (r == FVM_OK)
                         r = fvm_value_set_property_bytes(c, &owner, key.string, fvm_string_size(key), &stack.back());
                 }
@@ -2243,7 +2186,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 /* [GC:] Retain owner and coercible name in the stack until deletion completes. */
                 FVM_Value owner = stack[stack.size() - 2], key, result;
-                FVM_Result status = action_string(c, stack.back(), &key);
+                FVM_Result status = fvm_avm1_string(c, stack.back(), &key);
                 if (status != FVM_OK)
                     return status;
                 int own = 0, deleted = 0;
@@ -2347,7 +2290,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value text, ignored;
                 FVM_Result status = stack.back().type == FVM_VALUE_UNDEFINED
                                         ? fvm_value_string(&text, "undefined")
-                                        : action_string(c, stack.back(), &text);
+                                        : fvm_avm1_string(c, stack.back(), &text);
                 if (status != FVM_OK)
                     return status;
                 FVM_NativeEntry sink = c->avm1_trace;
@@ -2375,7 +2318,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 /* [GC:] Retain the name and initialized value through coercion/setters. */
                 const FVM_Value &name_value = stack[a.op == 0x3c ? stack.size() - 2 : stack.size() - 1];
                 FVM_Value text;
-                FVM_Result status = action_string(c, name_value, &text);
+                FVM_Result status = fvm_avm1_string(c, name_value, &text);
                 if (status != FVM_OK)
                     return status;
                 fvm_detail::string name;

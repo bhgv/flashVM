@@ -5,6 +5,7 @@
 #include "string_state.hpp"
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "../avm1/coercion.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/property_watch.hpp"
@@ -1149,7 +1150,8 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
         return FVM_OK;
     /* Convert a supplied name before checking the getter/setter arguments, as AVM1 does. */
     FVM_Value converted_name;
-    FVM_Result normalized = fvm_value_to_string(c, args, &converted_name);
+    FVM_Result normalized = c->swf_loaded ? fvm_avm1_string(c, args[0], &converted_name)
+                                          : fvm_value_to_string(c, args, &converted_name);
     if (normalized != FVM_OK)
         return normalized;
     if (!fvm_string_size(converted_name) || n < 3 ||

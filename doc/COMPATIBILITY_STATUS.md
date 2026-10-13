@@ -598,3 +598,17 @@ Array checks in restricted sanitizer/portable profiles. Two AGG GC binaries
 lacked execute permission and passed after restoration. Exhaustive allocation
 retries preserve prior value/flags. Other descriptor/version rules and historic
 Array join semantics remain open, as do all roadmap stages.
+
+## v0.124 — loaded-SWF own-data join / исторический join
+
+Loaded join reads own stored elements/length, uses signed wrapping length and
+versioned string parts/separators. The existing AVM1 string helper is shared
+with standard join/addProperty without changing public C conversion. Unloaded
+contexts keep property-aware join. [RU/EN details](ARRAY_LEGACY_JOIN.md).
+Evidence: 291 core tests in AGG/Cairo plus the AGG runner; four focused checks
+in restricted sanitizer/portable profiles. One AGG GC callback test launch
+needed execute-bit restoration and passed. An initial test exposed accidental
+use of unversioned host conversion; shared AVM1 conversion fixes the SWF 4..8
+spelling checks. All thirteen original probes complete with exact outputs under
+documented policies, including array_prototyping SWF8 (121 bytes). Other Array
+methods, function-version provenance and every roadmap stage remain open.

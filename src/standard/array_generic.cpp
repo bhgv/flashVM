@@ -4,6 +4,7 @@
 
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
 #include "base_state.hpp"
 #include "../core/string_internal.hpp"
@@ -72,6 +73,54 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
     }
     return cursor ? FVM_ERROR : FVM_OK;
 }
+/* Read legacy Array element data without invoking accessors or walking prototypes. */
+void legacy_join_element(FVM_Object *o, unsigned long index, FVM_Value &out)
+{
+    fvm_value_undefined(&out);
+    char key[32];
+    std::sprintf(key, "%lu", index);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(key);
+    if (property != o->properties.end())
+    {
+        out = property->second;
+        return;
+    }
+    if (o->accessors.find(key) != o->accessors.end())
+        return;
+    fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
+    if (slot != o->indexed.end())
+        out = slot->second;
+}
+
+/* Capture the positive portion of AVM1's signed, wrapping own-data length for join. */
+FVM_Result legacy_join_length(FVM_Context *c, FVM_Object *o, unsigned long &out)
+{
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    if (o->resource_kind == 28 && o->resource_result_valid)
+        value = o->resource_result;
+    else
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find("length");
+        if (property != o->properties.end())
+            value = property->second;
+    }
+    double number = 0;
+    FVM_Result status = fvm_avm1_number(c, &value, &number);
+    if (status != FVM_OK)
+        return status;
+    out = 0;
+    if (!(number == number) || !number || std::fabs(number) == HUGE_VAL)
+        return FVM_OK;
+    number = number < 0 ? -std::floor(-number) : std::floor(number);
+    number = std::fmod(number, 4294967296.0);
+    if (number < 0)
+        number += 4294967296.0;
+    if (number < 2147483648.0)
+        out = (unsigned long)number;
+    return FVM_OK;
+}
+
 /* Write the current value. */
 FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value *value)
 {
@@ -402,6 +451,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
         count = prepared->length;
+    else if (c->swf_loaded && !std::strcmp(method, "join"))
+        r = legacy_join_length(c, o, count);
     else
         r = length(c, o, count);
     if (r != FVM_OK)
@@ -568,8 +619,10 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         } pop;
         pop.c = c;
         FVM_Value separator;
-        r = n && a[0].type != FVM_VALUE_UNDEFINED ? fvm_value_to_string(c, a, &separator)
-                                                  : fvm_value_string(&separator, ",");
+        r = n && (c->swf_loaded || a[0].type != FVM_VALUE_UNDEFINED)
+                ? (c->swf_loaded ? fvm_avm1_string(c, a[0], &separator)
+                                 : fvm_value_to_string(c, a, &separator))
+                : fvm_value_string(&separator, ",");
         if (r != FVM_OK)
             return r;
         fvm_detail::vector<char> bytes;
@@ -588,13 +641,17 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 }
             FVM_Value value;
             bool present;
-            r = get(c, o, i, value, present);
+            if (c->swf_loaded)
+                legacy_join_element(o, i, value);
+            else
+                r = get(c, o, i, value, present);
             if (r != FVM_OK)
                 return r;
-            if (value.type != FVM_VALUE_UNDEFINED && value.type != FVM_VALUE_NULL)
+            if (c->swf_loaded || (value.type != FVM_VALUE_UNDEFINED && value.type != FVM_VALUE_NULL))
             {
                 FVM_Value text;
-                r = fvm_value_to_string(c, &value, &text);
+                r = c->swf_loaded ? fvm_avm1_string(c, value, &text)
+                                    : fvm_value_to_string(c, &value, &text);
                 if (r != FVM_OK)
                     return r;
                 for (size_t j = 0; j < fvm_string_size(text); ++j)
