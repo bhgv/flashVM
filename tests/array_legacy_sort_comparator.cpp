@@ -6,11 +6,22 @@ static unsigned compared;
 static bool equal_keys, positive;
 static unsigned undefined_compared;
 static bool tracing;
+static FVM_Object *mutating_array;
+static unsigned mutation;
+static bool mutated;
 static unsigned trace_count, error_after;
 static const int pairs[][2] = {{3,1},{3,4},{3,2},{3,2},{3,4},{3,2},{2,1}};
-static FVM_Result compare(FVM_Context *, FVM_Object *, unsigned n, const FVM_Value *a, FVM_Value *out, void *)
+static FVM_Result compare(FVM_Context *c, FVM_Object *, unsigned n, const FVM_Value *a, FVM_Value *out, void *)
 {
     assert(n == 2); ++compared;
+    if (mutation && !mutated) {
+        mutated = true; FVM_Value value;
+        fvm_value_number(&value, mutation == 2 ? 1 : mutation == 4 ? 0 : 8);
+        assert(fvm_object_set(c, mutating_array, "length", &value) == FVM_OK);
+        if (mutation == 2 || mutation == 4) assert(fvm_object_set_property_flags(c, mutating_array, "length", 4, 0) == FVM_OK);
+        else { fvm_value_number(&value, 81); assert(fvm_table_set_index(c, mutating_array, 7, &value) == FVM_OK); }
+        if (mutation == 3) return FVM_ERROR;
+    }
     if (tracing) {
         assert(trace_count < 7 && a[0].number == pairs[trace_count][0] && a[1].number == pairs[trace_count][1]);
         ++trace_count;
@@ -110,6 +121,18 @@ int main()
             assert(fvm_object_call(c, array, "sort", 2, args, &out) == FVM_ERROR && compared > 0 && compared < 64);
             assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
             rt->config.instruction_limit = old_limit; number(c, array, "0", 0); number(c, array, "15", 15);
+            for (unsigned mode = 1; mode <= 5; ++mode) {
+                assert(fvm_construct(c, "Array", 4, input, &array) == FVM_OK);
+                fvm_value_number(args + 1, mode == 5 ? 8 : 0);
+                mutating_array = array; mutation = mode; mutated = false;
+                assert(fvm_object_call(c, array, "sort", 2, args, &out) == (mode == 3 ? FVM_ERROR : FVM_OK) && mutated);
+                mutation = 0;
+                number(c, array, "length", mode == 2 ? 1 : mode == 4 ? 0 : 8);
+                number(c, array, "0", mode == 3 || mode == 5 ? 3 : 1); number(c, array, "3", mode == 3 || mode == 5 ? 2 : 4);
+                if (mode == 1 || mode == 3 || mode == 5) number(c, array, "7", 81);
+                if (mode == 5) { number(c, out.object, "length", 4); number(c, out.object, "0", 1); number(c, out.object, "3", 2); }
+                assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
+            }
         }
         fvm_context_destroy(c);
     }

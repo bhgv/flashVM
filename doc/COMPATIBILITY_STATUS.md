@@ -1128,3 +1128,19 @@ masks, argument overloads and all stages remain open.
 
 Проверены собственные virtual данные, повторное чтение изменённых полей и
 отсутствие getter. Native display fallback и все стадии остаются открытыми.
+
+## v0.166 — loaded raw sort copyback / обратная запись sort
+
+Loaded native sort/sortOn writes captured positions sequentially through shared
+raw element storage, preserving current receiver length/tails and readonly length
+semantics after callback changes. Unloaded staging is unchanged.
+[RU/EN details](ARRAY_LEGACY_SORT_COPYBACK.md). Evidence: AGG 328/Cairo 327,
+seven focused portable/restricted heap-global ASan+UBSan checks, fifteen byte-exact
+original SWFs. Callback tail growth, readonly length one/zero with own outside
+slots, errors after growth, indexed return with captured length, restored roots/
+depth and getter/watcher bypass pass. Three AGG launch failures passed after
+restoring execute bits. Sequential loaded copyback may leave partial mutation on
+allocation/budget errors; full argument/flag cases and all stages remain open.
+
+Проверены сохранение callback хвоста, READ_ONLY length и индексы за длиной.
+Ошибки обратной записи могут оставить частичные изменения. Все стадии открыты.

@@ -1033,6 +1033,13 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     return r;
 }
 } // namespace
+/* Write loaded own data while preserving the receiver's current length, tail and property flags. */
+FVM_Result fvm_array_legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index,
+                                         const FVM_Value &value)
+{
+    return legacy_store_element(c, o, index, value);
+}
+
 /* Capture observable splice inputs once, leaving a rejected result without allocation. */
 FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n,
                                     const FVM_Value *a, FVM_ArraySpliceBounds &out)

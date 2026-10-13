@@ -9,6 +9,9 @@
 /* Implement array needs generic for this subsystem. */
 bool fvm_array_needs_generic(FVM_Object *);
 
+/* Store a loaded own element without callbacks, applying native length growth before data flags. */
+FVM_Result fvm_array_legacy_store_element(FVM_Context *, FVM_Object *, unsigned long, const FVM_Value &);
+
 /* Captured splice preparation has no managed edges or callback-owned values. */
 struct FVM_ArraySpliceBounds
 {

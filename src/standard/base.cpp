@@ -1298,7 +1298,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
             fvm_value_number(&v, items[i].index);
             indices->indexed[(unsigned long)i] = v;
         }
-        else
+        else if (!c->swf_loaded)
             reordered[(unsigned long)i] = items[i].value;
     }
     if (indices)
@@ -1313,7 +1313,19 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
             }
         return object_value(c, indices, 0, 0, out, 0);
     }
-    FVM_Result committed = commit_slots(c, o, reordered, length, 0, length, false, c->swf_loaded);
+    if (c->swf_loaded)
+    {
+        for (size_t i = 0; i < items.size(); ++i)
+        {
+            FVM_Result result = work.step();
+            if (result == FVM_OK)
+                result = fvm_array_legacy_store_element(c, o, (unsigned long)i, items[i].value);
+            if (result != FVM_OK)
+                return result;
+        }
+        return object_value(c, o, 0, 0, out, 0);
+    }
+    FVM_Result committed = commit_slots(c, o, reordered, length, 0, length);
     if (committed != FVM_OK)
         return committed;
     if (spec && !c->swf_loaded)
