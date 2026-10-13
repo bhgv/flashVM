@@ -1160,3 +1160,18 @@ remain open.
 
 Проверены сохранение indexed data/flags, cycle и queue transfer после GC.
 Виртуальная native length и все стадии остаются открытыми.
+
+## v0.168 — readonly Array virtual setter / setter readonly индекса
+
+Loaded native Array script setters execute for readonly virtual index data, while
+retained data stays protected. Watcher ordering/raw old-value behavior is retained.
+[RU/EN details](ARRAY_LEGACY_VIRTUAL_INDEX.md). Evidence: AGG 329/Cairo 328,
+five focused portable/restricted heap-global ASan+UBSan checks, fifteen byte-exact
+original SWFs. AVM1 setter receiver markers, counted old strings in watchers,
+writable/readonly data distinction, traced GC and repeat callback execution after
+channel transfer pass. Three AGG launch failures passed after execute-bit
+restoration. Native readonly length growth guards, virtual length, SWF attribute
+version masks and all stages remain open. Unloaded behavior is unchanged.
+
+Проверены setter/watcher после GC и передачи, защищённые raw данные и receiver.
+Нативная length и все стадии пока открыты.

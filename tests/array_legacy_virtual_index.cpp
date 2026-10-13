@@ -5,10 +5,16 @@
 static void verify(FVM_Context *c, FVM_Object *array, bool virtual_indices)
 {
     FVM_Value out, value;
+    if (virtual_indices) {
+        int removed = 0; assert(fvm_object_delete(c, array, "called", &removed) == FVM_OK && removed);
+        fvm_value_number(&value, 70); assert(fvm_table_set_index(c, array, 0, &value) == FVM_OK);
+        number(c, array, "called", 1);
+        assert(fvm_object_get(c, array, "watchedOld", &value) == FVM_OK && value.type == FVM_VALUE_STRING && fvm_value_string_size(&value) == 3 && !std::memcmp(value.string, "a\0b", 3));
+    }
     assert(fvm_object_call(c, array, "slice", 0, 0, &out) == FVM_OK);
     number(c, out.object, "length", 3);
     assert(fvm_table_get_index(c, out.object, 0, &value) == FVM_OK && value.type == FVM_VALUE_STRING && fvm_value_string_size(&value) == 3 && !std::memcmp(value.string, "a\0b", 3));
-    number(c, out.object, "1", 9);
+    number(c, out.object, "1", virtual_indices ? 81 : 9);
     assert(fvm_table_get_index(c, out.object, 2, &value) == FVM_OK && value.type == FVM_VALUE_OBJECT && value.object == array);
     unsigned flags = 0;
     assert(fvm_object_property_flags(c, array, "0", &flags) == FVM_OK && flags == 4);
@@ -33,13 +39,28 @@ int main()
         assert(fvm_construct(c, "Array", 3, values, &array) == FVM_OK); assert(fvm_gc_pin(c, array) == FVM_OK);
         out = object(array); assert(fvm_table_set_index(c, array, 2, &out) == FVM_OK);
         assert(fvm_object_set_property_flags(c, array, "0", 4, 0) == FVM_OK); assert(fvm_object_set_property_flags(c, array, "1", 2, 0) == FVM_OK);
-        const unsigned char getter_code[] = {0x96,5,0,7,42,0,0,0,0x3e,0}, setter_code[] = {0};
+        const unsigned char getter_code[] = {0x96,5,0,7,42,0,0,0,0x3e,0}, setter_code[] = {0x96,6,0,0,'t','h','i','s',0,0x1c,
+            0x96,13,0,0,'c','a','l','l','e','d',0,7,1,0,0,0,0x4f,0};
         assert(fvm_function_create_avm1(c, getter_code, sizeof(getter_code), 0, 0, 0, &get_fn) == FVM_OK);
         assert(fvm_function_create_avm1(c, setter_code, sizeof(setter_code), 0, 0, 0, &set_fn) == FVM_OK);
         args[1] = object(get_fn); args[2] = object(set_fn);
         for (unsigned i = 0; i < 3; ++i) {
             char key[2] = {(char)('0' + i),0}; fvm_value_string(args, key);
             assert(fvm_object_call(c, array, "addProperty", 3, args, &out) == FVM_OK && (out.boolean != 0) == (version != 0));
+        }
+        if (version) {
+            const unsigned char watch_code[] = {0x96,6,0,0,'t','h','i','s',0,0x1c,
+                0x96,17,0,0,'w','a','t','c','h','e','d','O','l','d',0,0,'o','l','d',0,0x1c,0x4f,
+                0x96,5,0,7,82,0,0,0,0x3e,0};
+            const char *parameters[] = {"name","old","new","userData"}; FVM_Object *watch_fn = 0;
+            assert(fvm_function_create_avm1(c, watch_code, sizeof(watch_code), 4, parameters, 0, &watch_fn) == FVM_OK);
+            FVM_Value watch_args[2]; fvm_value_string(watch_args, "0"); watch_args[1] = object(watch_fn);
+            assert(fvm_object_call(c, array, "watch", 2, watch_args, &out) == FVM_OK && out.boolean);
+            fvm_value_number(&out, 81); assert(fvm_table_set_index(c, array, 0, &out) == FVM_OK);
+            number(c, array, "called", 1);
+            int removed = 0; assert(fvm_object_delete(c, array, "called", &removed) == FVM_OK && removed);
+            assert(fvm_table_set_index(c, array, 1, &out) == FVM_OK); number(c, array, "called", 1);
+            assert(c->calling_setter_owner == 0 && c->calling_setter_name == 0);
         }
         assert(fvm_gc_string_mode(c, FVM_GC_STRINGS_TRACED) == FVM_OK); assert(fvm_gc_collect(c, 0) == FVM_OK); verify(c, array, version != 0);
         FVM_Channel *channel = 0; assert(fvm_channel_create(&channel) == FVM_OK);

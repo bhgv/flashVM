@@ -26,3 +26,23 @@ flags 4/2, getter results and raw slice values. Traced GC runs before and after
 channel transfer to another context, preserving the cycle, strings, descriptors
 and AVM1 getter. Native readonly setter dispatch, virtual length, version masks,
 argument semantics and all roadmap stages remain open. No ABI/wire changes.
+
+## v0.168: readonly setter / Setter для readonly index
+
+Loaded native Array теперь выполняет script setter при READ_ONLY индексных
+данных, как Object; protected retained data не изменяются. Watcher по-прежнему
+выполняется раньше, получает исходные raw данные и может преобразовать аргумент.
+Проверен AVM1 setter с наблюдаемым свойством called и watcher, сохраняющий old
+строку a\0b. Writable virtual index получает 81; readonly index сохраняет строку.
+Setter/watcher повторно выполняются после traced GC и queue transfer в другом
+контексте; receiver binding и temporary setter metadata восстановлены.
+Readonly native length growth guard и виртуальная length остаются открытыми.
+
+Loaded native Array script setters now execute for readonly indexed data,
+matching Object behavior, while retained data remains protected. Watchers still
+run first and receive original raw data. An AVM1 setter records a receiver marker;
+a watcher retains the old counted string. Writable virtual data updates to 81;
+readonly data remains unchanged. Both callbacks execute again after traced GC and
+channel transfer in the destination context. Receiver binding and setter metadata
+restore correctly. Readonly native length growth guards and virtual length remain
+open. Unloaded behavior, ABI and wire formats are unchanged.

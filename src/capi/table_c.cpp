@@ -81,10 +81,11 @@ extern "C"
             FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
             if (status != FVM_OK)
                 return status;
+            /* Loaded script setters run even when their stored indexed data is readonly. */
             if (flags & 4)
             {
                 fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-                if (!c->swf_loaded || o->resource_kind != 30 || script == o->accessors.end() ||
+                if (!c->swf_loaded || script == o->accessors.end() ||
                     !fvm_base_script_accessor(script->second))
                     return FVM_OK;
             }
