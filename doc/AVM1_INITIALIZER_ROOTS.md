@@ -33,3 +33,8 @@ properties and root-chain restoration, plus SWF6/7 undefined names. This verifie
 actual collection during coercion. Missing operands, the materialization cap,
 constructor/version provenance and complete historical setter rules remain open,
 as does every roadmap stage.
+
+## Follow-up v0.138 / Последующее уточнение
+
+Loaded InitObject ignores names whose coerced result is empty; this corrects
+earlier SWF6 empty-key expectations. See [AVM1_INITIALIZER_EMPTY_NAMES.md](AVM1_INITIALIZER_EMPTY_NAMES.md).

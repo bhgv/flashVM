@@ -40,7 +40,8 @@ int main()
         Bytes code; code.push_back(0x96); code.push_back(1); code.push_back(0); code.push_back(3);
         text(code, "value"); integer(code, 1); code.push_back(0x43); FVM_Value result = run(c, code), property;
         assert(fvm_object_get(c, result.object, version < 7 ? "" : "undefined", &property) == FVM_OK);
-        assert(property.type == FVM_VALUE_STRING && !std::strcmp(property.string, "value"));
+        if (version < 7) assert(property.type == FVM_VALUE_UNDEFINED);
+        else assert(property.type == FVM_VALUE_STRING && !std::strcmp(property.string, "value"));
     }
     fvm_context_destroy(c); fvm_runtime_destroy(rt);
 }

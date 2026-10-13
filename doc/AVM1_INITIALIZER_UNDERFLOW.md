@@ -30,3 +30,8 @@ pair followed by a missing pair, odd pairs, own undefined slots, SWF6..8 names
 and unloaded errors. Rules follow the pinned primary source. The 65,536
 materialization cap, full constructor/descriptor semantics, version provenance
 and every roadmap stage remain open.
+
+## Follow-up v0.138 / Последующее уточнение
+
+Loaded InitObject ignores names whose coerced result is empty; this corrects
+earlier SWF6 empty-key expectations. See [AVM1_INITIALIZER_EMPTY_NAMES.md](AVM1_INITIALIZER_EMPTY_NAMES.md).

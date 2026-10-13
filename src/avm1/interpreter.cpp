@@ -1364,6 +1364,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                               : fvm_value_to_string(c, &temporary[1], &temporary[2]);
                             if (r != FVM_OK)
                                 break;
+                            /* AVM1 Object.set ignores an empty property name after its coercion. */
+                            if (c->swf_loaded && !fvm_string_size(temporary[2]))
+                                continue;
                             r = fvm_object_set_bytes(c, object, temporary[2].string,
                                                      fvm_string_size(temporary[2]), &temporary[0]);
                             if (r != FVM_OK)

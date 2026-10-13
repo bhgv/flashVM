@@ -770,3 +770,16 @@ portable profiles. Four AGG bitmap and three Cairo Function/inheritance launch
 failures passed after execute-bit restoration. All fourteen selected original
 SWFs still match exactly. Array mutation set_data, replacement flags, inherited
 setter data, thrown-setter/version rules and all stages remain open.
+
+## v0.138 — InitObject empty names / пустые имена
+
+Loaded InitObject coerces names, then ignores an empty result; unloaded host
+mode retains empty keys. Earlier underflow/GC expectations for SWF6 were
+incorrect and are corrected. [RU/EN details](AVM1_INITIALIZER_EMPTY_NAMES.md).
+Evidence: 306 core tests in AGG/Cairo plus the AGG runner; five focused checks
+in restricted sanitizer/portable profiles. Eight AGG Array/bitmap and four
+Cairo Array launch failures passed after execute-bit restoration. Fifteen
+original SWFs now complete with exact expected output, including newly selected
+init_object_invalid SWF8 (16 bytes). add_property/init_object_order are SWF15
+and do not count as supported successes. General empty-name property behavior
+and all roadmap stages remain open.

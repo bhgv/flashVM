@@ -46,7 +46,8 @@ int main()
         swf[3] = (unsigned char)version; assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK);
         b.clear(); text(b, "value"); integer(b, 1); b.push_back(0x43); result = literal(c, b);
         assert(fvm_object_get(c, result.object, version < 7 ? "" : "undefined", &v) == FVM_OK);
-        assert(v.type == FVM_VALUE_STRING && !std::strcmp(v.string, "value"));
+        if (version < 7) { int own = 1; assert(v.type == FVM_VALUE_UNDEFINED); assert(fvm_object_has_own_bytes(c, result.object, "", 0, &own) == FVM_OK && !own); }
+        else assert(v.type == FVM_VALUE_STRING && !std::strcmp(v.string, "value"));
     }
     fvm_context_destroy(raw); fvm_context_destroy(c); fvm_runtime_destroy(rt);
 }
