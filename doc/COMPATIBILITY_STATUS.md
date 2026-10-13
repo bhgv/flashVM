@@ -783,3 +783,16 @@ original SWFs now complete with exact expected output, including newly selected
 init_object_invalid SWF8 (16 bytes). add_property/init_object_order are SWF15
 and do not count as supported successes. General empty-name property behavior
 and all roadmap stages remain open.
+
+## v0.139 — preserved virtual flags / flags замены
+
+addProperty preserves existing own-property flags, allows DONT_DELETE descriptor
+replacement while keeping deletion protection, and marks only new null-setter
+properties readonly. Writable existing null setters use the script data bridge.
+[RU/EN details](OBJECT_ADD_PROPERTY_FLAGS.md). Evidence: 307 core tests in
+AGG/Cairo plus the AGG runner; six focused checks in restricted sanitizer/
+portable profiles. One AGG bitmap launch failed and passed after execute-bit
+restoration. Full suites used serial CTest scheduling for this change.
+All fifteen selected original SWFs still match exactly. Corrected names and
+allocation fixtures now retain existing flags. Real Array index/length guards,
+readonly callbacks, inherited setter data and all roadmap stages remain open.

@@ -137,7 +137,7 @@ int main()
         unsigned flags = 0;
         assert(fvm_object_property_flags(c, o, "2", &flags) == FVM_OK);
         if (succeeded) {
-            assert(out.boolean && (flags & FVM_PROPERTY_READ_ONLY));
+            assert(out.boolean && !(flags & FVM_PROPERTY_READ_ONLY));
             number(c, o, "2", 4);
         } else {
             assert(!(flags & FVM_PROPERTY_READ_ONLY));

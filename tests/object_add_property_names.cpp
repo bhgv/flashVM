@@ -50,6 +50,8 @@ static FVM_Result fail_name(FVM_Context *, FVM_Object *, unsigned int,
 static FVM_Result setter(FVM_Context *, FVM_Object *, unsigned int,
                          const FVM_Value *, FVM_Value *out, void *)
 { ++writes; fvm_value_undefined(out); return FVM_OK; }
+
+#ifndef FVM_OBJECT_NAMES_FIXTURE_ONLY
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; FVM_Context *c = 0;
@@ -68,7 +70,8 @@ int main()
     assert(fvm_object_property_flags(c, o, "2", &flags) == FVM_OK && (flags & FVM_PROPERTY_READ_ONLY));
     args[2] = object(set);
     assert(fvm_object_call(c, o, "addProperty", 3, args, &out) == FVM_OK && out.boolean);
-    assert(fvm_object_property_flags(c, o, "2", &flags) == FVM_OK && !(flags & FVM_PROPERTY_READ_ONLY));
+    assert(fvm_object_property_flags(c, o, "2", &flags) == FVM_OK && (flags & FVM_PROPERTY_READ_ONLY));
+    assert(fvm_object_set_property_flags(c, o, "2", 0, FVM_PROPERTY_READ_ONLY) == FVM_OK);
     fvm_value_number(&value, 8);
     assert(fvm_object_set(c, o, "2", &value) == FVM_OK && writes == 1);
     assert(fvm_value_string_bytes(args, "n\0m", 3) == FVM_OK);
@@ -88,3 +91,5 @@ int main()
     number(c, o, "coerced", 4);
     fvm_context_destroy(c); fvm_runtime_destroy(rt);
 }
+
+#endif

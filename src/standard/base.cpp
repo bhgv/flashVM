@@ -1214,9 +1214,6 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         receiver->attributes.find(name);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (flag != receiver->attributes.end() && (flag->second & FVM_PROPERTY_DONT_DELETE))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return FVM_OK;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned long index;
     /* Numeric Array slots and its length use the dedicated indexed contract. */
@@ -1234,18 +1231,25 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     FVM_Value stored;
     fvm_value_undefined(&stored);
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator previous = receiver->properties.find(name);
+    bool existed = previous != receiver->properties.end() || receiver->methods.find(name) != receiver->methods.end();
     if (previous != receiver->properties.end())
         stored = previous->second;
     else
     {
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = receiver->accessors.find(name);
         if (accessor != receiver->accessors.end())
+        {
+            existed = true;
             fvm_base_accessor_data(accessor->second, stored);
+        }
         else if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
         {
             fvm_detail::map<unsigned long, FVM_Value>::iterator slot = receiver->indexed.find(index);
             if (slot != receiver->indexed.end())
+            {
+                existed = true;
                 stored = slot->second;
+            }
         }
     }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1273,7 +1277,8 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.getter = script_property_get;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    entry.setter = args[2].type == FVM_VALUE_NULL ? 0 : script_property_set;
+    /* Null setters on writable existing properties still need stored-data assignment. */
+    entry.setter = script_property_set;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     entry.root = descriptor;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1295,8 +1300,10 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
             receiver->attributes.erase(name);
         throw;
     }
-    receiver->attributes[name] = (old_flags & ~FVM_PROPERTY_READ_ONLY) |
-                                    (args[2].type == FVM_VALUE_NULL ? FVM_PROPERTY_READ_ONLY : 0);
+    /* Existing property attributes survive virtual replacement; null marks only new properties readonly. */
+    receiver->attributes[name] = existed ? old_flags :
+        (old_flags & ~FVM_PROPERTY_READ_ONLY) |
+        (args[2].type == FVM_VALUE_NULL ? FVM_PROPERTY_READ_ONLY : 0);
     /* [GC:] All descriptor/flag allocations completed before removing old stored values. */
     receiver->properties.erase(name);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */

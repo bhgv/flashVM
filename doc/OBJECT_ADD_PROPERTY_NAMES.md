@@ -43,3 +43,9 @@ partial output is not whole-probe acceptance. All roadmap stages remain open.
 Non-callable descriptor Objects now work; see [OBJECT_DESCRIPTOR_OBJECTS.md](OBJECT_DESCRIPTOR_OBJECTS.md).
 Обычные Object в дескрипторах поддерживаются начиная с v0.130.
 The earlier array_prototyping blocker was resolved by v0.124; the original probe passes.
+
+## Follow-up v0.139 / Последующее исправление
+
+Existing property flags are now preserved on virtual replacement; null marks
+only new properties readonly. The earlier writable-replacement clearing rule
+was incorrect. See [OBJECT_ADD_PROPERTY_FLAGS.md](OBJECT_ADD_PROPERTY_FLAGS.md).
