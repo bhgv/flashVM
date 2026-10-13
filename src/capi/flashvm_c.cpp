@@ -159,6 +159,9 @@ extern "C"
         context->gc_releasing = false;
         /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
         context->gc_frames = 0;
+        /* [GC:] A new context has no suspended or active display-target activation. */
+        context->avm1_target_active = false;
+        context->avm1_base_clip = context->avm1_target_clip = 0;
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         context->gc_native_depth = 0;
         /* [GC:] New contexts have no armed finalizer preparation. */

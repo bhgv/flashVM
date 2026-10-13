@@ -4,6 +4,7 @@
 
 #include "function_record.hpp"
 #include "coercion.hpp"
+#include "target_scope.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/inheritance.hpp"
 #include "../standard/super.hpp"
@@ -331,6 +332,23 @@ static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bo
     return FVM_OK;
 }
 
+/* Select variable/frame-call scope, using the display root after an invalid target selection. */
+static FVM_Result variable_receiver(FVM_Context *c, FVM_Object *self, FVM_Object **out)
+{
+    *out = self;
+    if (!c->avm1_target_active || !c->avm1_base_clip)
+        return FVM_OK;
+    if (c->avm1_target_clip)
+    {
+        *out = c->avm1_target_clip;
+        return FVM_OK;
+    }
+    FVM_Value root_path;
+    FVM_Result status = fvm_value_string(&root_path, "/");
+    return status == FVM_OK ? fvm_movieclip_resolve_path(c, c->avm1_base_clip, root_path, out)
+                           : status;
+}
+
 /* Look up variable. */
 static FVM_Result lookup_variable(FVM_Context *c,
                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
@@ -378,7 +396,11 @@ static FVM_Result lookup_variable(FVM_Context *c,
         return FVM_ERROR;
 
     /* Computation / Вычисление и обновление состояния. */
-    binding = self && self != c->global ? self : 0;
+    FVM_Object *scope_receiver = 0;
+    FVM_Result selected = variable_receiver(c, self, &scope_receiver);
+    if (selected != FVM_OK)
+        return selected;
+    binding = scope_receiver && scope_receiver != c->global ? scope_receiver : 0;
     depth = 0;
     while (binding && depth++ < 1024)
     {
@@ -387,8 +409,8 @@ static FVM_Result lookup_variable(FVM_Context *c,
             binding->accessors.find(name) != binding->accessors.end())
         {
             if (call_receiver)
-                *call_receiver = self;
-            return fvm_object_get_bytes(c, self, name.data(), name.size(), out);
+                *call_receiver = scope_receiver;
+            return fvm_object_get_bytes(c, scope_receiver, name.data(), name.size(), out);
         }
         binding = binding->prototype;
     }
@@ -416,7 +438,12 @@ static FVM_Result declare_variable(FVM_Context *context,
             (*locals)[name] = value;
         return FVM_OK;
     }
-    FVM_Object *destination = self && self->resource_kind == 40 ? self : context->global;
+    FVM_Object *scope_receiver = 0;
+    FVM_Result selected = variable_receiver(context, self, &scope_receiver);
+    if (selected != FVM_OK)
+        return selected;
+    FVM_Object *destination = scope_receiver && scope_receiver->resource_kind == 40
+                                  ? scope_receiver : context->global;
     if (!initialized)
     {
         FVM_Object *cursor = destination;
@@ -453,8 +480,9 @@ struct Execution
     fvm_detail::vector<FVM_Value> registers, stack;
     unsigned long steps;
     bool returned;
+    bool target_initialized; /* Whether this execution has entered its initial display-target scope. */
     /* Initialize Execution and its owned state. */
-    Execution() : steps(0), returned(false)
+    Execution() : steps(0), returned(false), target_initialized(false)
     {
     }
 };
@@ -901,6 +929,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         fvm_value_undefined(returned);
     try
     {
+        /* [GC:] Block activations inherit targets; fresh script/frame activations reset them. */
+        FVM_AVM1TargetScope target_scope(c, self, shared && execution.target_initialized);
+        execution.target_initialized = true;
         if (!shared)
         {
             if (inherited)
@@ -1401,141 +1432,123 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 fvm_value_boolean(&stack.back(), matches);
             }
-            else if (a.op == 0x04 || a.op == 0x05 || a.op == 0x06 || a.op == 0x07 || a.op == 0x81 ||
-                     a.op == 0x8c || a.op == 0x9f)
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            {
-                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (!self || self->resource_kind != 40)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return FVM_UNSUPPORTED;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                const char *method =
-                    a.op == 0x04 ? "nextFrame"
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    : a.op == 0x05 ? "prevFrame"
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    : a.op == 0x06 ? "play"
-                                   /* [GC:] Операция в блоке управления достижимостью и временем
-                                      жизни объектов. */
-                                   : "stop";
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                FVM_Value frame, result;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                unsigned int count = 0;
-                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (a.op == 0x81 || a.op == 0x8c || a.op == 0x9f)
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+            else if (a.op == 0x04 || a.op == 0x05 || a.op == 0x06 || a.op == 0x07 ||
+                     a.op == 0x81 || a.op == 0x8c || a.op == 0x9f)
+            { /* Timeline controls use the selected display target, independently from script methods. */
+                FVM_Object *target = c->avm1_target_clip;
+                bool playing = false;
+                fvm_detail::vector<FVM_Value> frame(1);
+                /* [GC:] Keep a coerced frame label live while resolving the target root. */
+                RootGuard frame_roots(c, &frame, 0, 0, &registers);
+                FVM_Result status = FVM_OK;
+                if (a.op == 0x81)
                 {
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    count = 1;
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    bool playing = false;
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    FVM_Object *state = self->resource_result.object;
-                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                    if (!self->resource_result_valid ||
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                           объектов. */
-                        self->resource_result.type != FVM_VALUE_OBJECT || !state)
-                        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+                    if (a.length != 2)
                         return FVM_INVALID_ARGUMENT;
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator play =
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                           объектов. */
-                        state->properties.find("playing");
-                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                    if (play != state->properties.end())
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        playing = play->second.number != 0;
-                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                    if (a.op == 0x81)
-                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-                    {
-                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                        if (a.length != 2)
-                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                            return FVM_INVALID_ARGUMENT;
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        fvm_value_number(&frame, u16(data + a.payload) + 1);
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                    }
-                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                    else if (a.op == 0x8c)
-                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-                    {
-                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                        if (!a.length || !std::memchr(data + a.payload, 0, a.length))
-                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                            return FVM_INVALID_ARGUMENT;
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        FVM_Result r = own_string(c, (const char *)data + a.payload, &frame);
-                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                        if (r != FVM_OK)
-                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                            return r;
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                    }
-                    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                    else
-                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-                    {
-                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                        if ((a.length != 1 && a.length != 3) || stack.empty() ||
-                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                               объектов. */
-                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                               объектов. */
-                            (data[a.payload] & ~3) ||
-                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                               объектов. */
-                            a.length != ((data[a.payload] & 2) ? 3U : 1U))
-                            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                            return FVM_INVALID_ARGUMENT;
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        frame = stack.back();
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        stack.pop_back();
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                         * объектов. */
-                        playing = (data[a.payload] & 1) != 0;
-                        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                        if ((data[a.payload] & 2) && frame.type == FVM_VALUE_NUMBER)
-                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                             * объектов. */
-                            /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                             * объектов. */
-                            frame.number += u16(data + a.payload + 1);
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                    }
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    method = playing ? "gotoAndPlay" : "gotoAndStop";
-                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+                    fvm_value_number(&frame[0], u16(data + a.payload) + 1);
                 }
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                FVM_Result r = fvm_object_call(c, self, method, count, count ? &frame : 0, &result);
-                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (r != FVM_OK)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return r;
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+                else if (a.op == 0x8c)
+                {
+                    if (!a.length || data[a.payload + a.length - 1] ||
+                        std::memchr(data + a.payload, 0, a.length - 1))
+                        return FVM_INVALID_ARGUMENT;
+                    status = own_string(c, (const char *)data + a.payload, &frame[0], a.length - 1);
+                }
+                else if (a.op == 0x9f)
+                {
+                    if ((a.length != 1 && a.length != 3) || (data[a.payload] & ~3) ||
+                        a.length != ((data[a.payload] & 2) ? 3U : 1U))
+                        return FVM_INVALID_ARGUMENT;
+                    if (stack.empty())
+                        return FVM_ERROR;
+                    playing = (data[a.payload] & 1) != 0;
+                    if (stack.back().type == FVM_VALUE_NUMBER)
+                        fvm_value_number(&frame[0], stack.back().number);
+                    else
+                        status = action_string(c, stack.back(), &frame[0]);
+                    if (status != FVM_OK)
+                        return status;
+                    if (frame[0].type == FVM_VALUE_STRING)
+                    {
+                        bool decimal = fvm_string_size(frame[0]) != 0;
+                        for (size_t digit = 0; digit < fvm_string_size(frame[0]); ++digit)
+                            if (frame[0].string[digit] < '0' || frame[0].string[digit] > '9')
+                                decimal = false;
+                        if (decimal)
+                        {
+                            double number = 0;
+                            status = fvm_value_to_number(c, &frame[0], &number);
+                            if (status != FVM_OK)
+                                return status;
+                            fvm_value_number(&frame[0], number);
+                        }
+                    }
+                    if ((data[a.payload] & 2) && frame[0].type == FVM_VALUE_NUMBER)
+                        frame[0].number += u16(data + a.payload + 1);
+                    status = variable_receiver(c, self, &target);
+                    stack.pop_back();
+                }
+                else if (a.length)
+                    return FVM_INVALID_ARGUMENT;
+                if (status != FVM_OK)
+                    return status;
+                if (!target || target->resource_kind != 40)
+                {
+                    if (!c->avm1_base_clip)
+                        return FVM_UNSUPPORTED;
+                }
+                else
+                {
+                    status = fvm_movieclip_frame_control(c, target, a.op,
+                                                        a.op >= 0x80 ? &frame[0] : 0, playing);
+                    if (status != FVM_OK && status != FVM_NOT_FOUND)
+                        return status;
+                }
+            }
+            else if (a.op == 0x8b || a.op == 0x20)
+            { /* SetTarget/SetTarget2 replace the display scope without changing the this receiver. */
+                FVM_Value path;
+                FVM_Result status = FVM_OK;
+                FVM_Object *target = 0;
+                bool reset = false, invalid = false;
+                if (a.op == 0x8b)
+                {
+                    if (!a.length || data[a.payload + a.length - 1] ||
+                        std::memchr(data + a.payload, 0, a.length - 1))
+                        return FVM_INVALID_ARGUMENT;
+                    status = fvm_value_string_bytes(&path, (const char *)data + a.payload,
+                                                    a.length - 1);
+                }
+                else
+                {
+                    if (stack.empty())
+                        return FVM_ERROR;
+                    if (stack.back().type == FVM_VALUE_UNDEFINED)
+                    {
+                        reset = c->swf_loaded && c->swf_info.version <= 6;
+                        invalid = !reset;
+                    }
+                    else
+                        status = action_string(c, stack.back(), &path);
+                }
+                if (status != FVM_OK)
+                    return status;
+                if (!reset && !invalid)
+                    reset = fvm_string_size(path) == 0;
+                if (reset)
+                    target = c->avm1_base_clip;
+                else if (!invalid && c->avm1_base_clip)
+                {
+                    status = fvm_movieclip_resolve_path(c, c->avm1_base_clip, path, &target);
+                    if (status != FVM_OK)
+                        return status;
+                    if (target && target->resource_kind != 40)
+                        target = 0;
+                }
+                /* [GC:] Context roots adopt the selected clip before the operand is removed. */
+                c->avm1_target_clip = target;
+                if (a.op == 0x20)
+                    stack.pop_back();
             }
             else if (a.op == 0x83 || a.op == 0x9a)
             { /* GetURL/GetURL2 delegate counted requests to an explicitly registered host sink. */
@@ -1614,7 +1627,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 /* [GC:] Keep the converted label live until the nested frame has finished. */
                 stack.back() = argument;
-                FVM_Object *target = self && self->resource_kind == 40 ? self : 0;
+                FVM_Object *scope_receiver = 0;
+                status = variable_receiver(c, self, &scope_receiver);
+                if (status != FVM_OK)
+                    return status;
+                FVM_Object *target = scope_receiver && scope_receiver->resource_kind == 40
+                                         ? scope_receiver : 0;
                 if (!target)
                 {
                     FVM_Value root;
@@ -2324,10 +2342,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     while (captured && levels++ < 1024 &&
                            captured->properties.find(name) == captured->properties.end())
                         captured = captured->prototype;
-                    r = captured ? fvm_object_set_bytes(c, captured, name.data(), name.size(), &stack.back())
-                        : self && self->resource_kind == 40
-                            ? fvm_object_set_bytes(c, self, name.data(), name.size(), &stack.back())
-                            : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
+                    if (captured && levels > 1024)
+                        return FVM_ERROR;
+                    FVM_Object *scope_receiver = 0;
+                    r = variable_receiver(c, self, &scope_receiver);
+                    if (r == FVM_OK)
+                        r = captured
+                            ? fvm_object_set_bytes(c, captured, name.data(), name.size(), &stack.back())
+                            : scope_receiver && scope_receiver->resource_kind == 40
+                                ? fvm_object_set_bytes(c, scope_receiver, name.data(), name.size(), &stack.back())
+                                : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
                 }
                 if (r != FVM_OK)
                     return r;

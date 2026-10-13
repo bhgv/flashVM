@@ -18,6 +18,9 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction);
 
 /* Restore a native movieclip callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long);
+/* Apply a timeline Action control directly, independently from replaceable script methods. */
+FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, unsigned int,
+                                     const FVM_Value *, bool playing);
 /* Resolve display children and object properties along a counted AVM1 path. */
 FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **);
 /* Build the current counted AVM1 dot path directly from display state. */

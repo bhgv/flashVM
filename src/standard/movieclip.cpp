@@ -1507,11 +1507,18 @@ FVM_Result seek(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
                 return FVM_INVALID_ARGUMENT;
             FVM_Value label;
             if (field(i->second.object, "label", label) == FVM_OK &&
-                label.type == FVM_VALUE_STRING && !std::strcmp(label.string, a[0].string))
+                label.type == FVM_VALUE_STRING)
             {
-                desired = i->first;
-                found = true;
-                break;
+                int order = 0;
+                r = fvm_string_order(label, a[0], order);
+                if (r != FVM_OK)
+                    return r;
+                if (!order)
+                {
+                    desired = i->first;
+                    found = true;
+                    break;
+                }
             }
         }
         if (!found)
@@ -2969,6 +2976,33 @@ FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
 {
     FVM_Value ignored;
     return remove(c, o, 0, 0, &ignored, 0);
+}
+
+/* Apply timeline controls through built-in operations rather than replaceable method properties. */
+FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, unsigned int opcode,
+                                      const FVM_Value *frame, bool enabled)
+{
+    if (!c || !clip || clip->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        /* [GC:] Native seek/state updates cannot collect through host conversion callbacks. */
+        FVM_NativeCallGuard guard(c);
+        FVM_Value ignored;
+        if (opcode == 0x04)
+            return next(c, clip, 0, 0, &ignored, 0);
+        if (opcode == 0x05)
+            return previous(c, clip, 0, 0, &ignored, 0);
+        if (opcode == 0x06 || opcode == 0x07)
+            return playing(c, clip, &ignored, opcode == 0x06);
+        if ((opcode != 0x81 && opcode != 0x8c && opcode != 0x9f) || !frame)
+            return FVM_INVALID_ARGUMENT;
+        return seek(c, clip, 1, frame, &ignored, opcode == 0x9f && enabled);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }
 
 /* Resolve the AVM1 MovieClip-reference string without invoking a replaceable script method. */

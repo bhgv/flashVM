@@ -78,6 +78,9 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
     mark_object(c->avm1_trace.root, pending);
     /* [GC:] Host URL registration retains its capture between requests. */
     mark_object(c->avm1_url.root, pending);
+    /* [GC:] Current display targets remain live between target changes and nested calls. */
+    mark_object(c->avm1_base_clip, pending);
+    mark_object(c->avm1_target_clip, pending);
     /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
     mark_object(c->calling_constructor, pending);
     /* [GC:] Retain the function used to resolve the current method owner. */
