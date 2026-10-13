@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.61 / Remaining work after v0.61
+# Оставшаяся работа после v0.62 / Remaining work after v0.62
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -116,3 +116,6 @@ v0.60 adds bitmap noise; Perlin noise, pixel dissolve and exact alpha/Flash conf
 
 В v0.61 исправлено расходование alpha RNG samples на opaque BitmapData.noise; проверены все masks в color/grayscale. Эталонная Flash-сверка открыта.
 v0.61 fixes opaque noise sample consumption; full historical Flash conformance remains open.
+
+В v0.62 добавлен Perlin noise с независимыми gradient planes, octaves/offsets/stitch и staged publication. SVG vectors, transport/GC и OOM проверяются (BITMAP_PERLIN.md). Историческая Flash-сверка остаётся открытой.
+v0.62 adds staged Perlin turbulence; pixel dissolve and remaining filters/text/media stay open.

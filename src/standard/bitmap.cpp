@@ -3,6 +3,7 @@
 #include "bitmap_state.hpp"
 #include "bitmap_draw.hpp"
 #include "bitmap_ops.hpp"
+#include "bitmap_perlin.hpp"
 #include "filter_state.hpp"
 #include "color_transform_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -520,7 +521,7 @@ const char *const methods[] = {
     "setPixel32", "fillRect",   "scroll",    "colorTransform",     "copyChannel",
     "copyPixels", "draw",       "floodFill", "getColorBoundsRect", "threshold",
     "merge",      "paletteMap", "hitTest",   "applyFilter",        "generateFilterRect",
-    "noise"};
+    "noise",      "perlinNoise"};
 const FVM_NativeFunction callbacks[] = {method<0>,
                                         method<1>,
                                         method<2>,
@@ -541,7 +542,8 @@ const FVM_NativeFunction callbacks[] = {method<0>,
                                         fvm_bitmap_hit_test,
                                         fvm_bitmap_apply_filter,
                                         fvm_bitmap_filter_rect,
-                                        fvm_bitmap_noise};
+                                        fvm_bitmap_noise,
+                                        fvm_bitmap_perlin_noise};
 } // namespace
 /* [GC:] Borrow the native pixel allocation only when its internal ownership callback matches. */
 FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)

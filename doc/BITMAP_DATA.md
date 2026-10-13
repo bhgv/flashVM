@@ -1,6 +1,6 @@
 # BitmapData: текущая реализация / Current implementation
 
-## Current development checkpoint: v0.61 / Текущая контрольная точка
+## Current development checkpoint: v0.62 / Текущая контрольная точка
 
 Ниже сохранены исторические проверки v0.37–v0.42. Более поздние реализации
 описаны отдельно: [bitmap resources and JPEG tables](SWF_JPEG_TABLES.md),
@@ -9,15 +9,15 @@
 [draw/blend coverage](BITMAP_DRAW.md), [floodFill](BITMAP_FLOOD_FILL.md),
 [color bounds](BITMAP_COLOR_BOUNDS.md), [threshold](BITMAP_THRESHOLD.md),
 [merge](BITMAP_MERGE.md), [paletteMap](BITMAP_PALETTE_MAP.md),
-[hitTest](BITMAP_HIT_TEST.md) и [ColorMatrixFilter](COLOR_MATRIX_FILTER.md) [ConvolutionFilter](CONVOLUTION_FILTER.md) и [noise](BITMAP_NOISE.md).
+[hitTest](BITMAP_HIT_TEST.md) и [ColorMatrixFilter](COLOR_MATRIX_FILTER.md) [ConvolutionFilter](CONVOLUTION_FILTER.md) и [noise](BITMAP_NOISE.md) и [perlinNoise](BITMAP_PERLIN.md).
 
-Остаются perlinNoise, pixelDissolve, остальные applyFilter/generateFilterRect
+Остаются pixelDissolve, остальные applyFilter/generateFilterRect
 варианты, полная premultiplied/coercion сверка и scene filter rendering.
 Наличие метода и успешные сценарии не означают полную Flash-совместимость.
 
 Historical v0.37–v0.42 evidence is retained below. The linked later documents
 cover resource integration, bitmap scene rendering and additional pixel methods.
-Perlin noise, pixel dissolve, remaining filter variants, exact historical
+Pixel dissolve, remaining filter variants, exact historical
 premultiplied/coercion conformance and scene filters remain open.
 
 Реализован класс `flash.display.BitmapData`: ограниченные размеры 1–2880,
