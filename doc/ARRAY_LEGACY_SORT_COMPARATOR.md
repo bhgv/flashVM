@@ -30,3 +30,19 @@ ASan/UBSan checks and 15 byte-exact SWF oracles. Execution-permission failures
 passed after restoring executable bits. Full sanitizer run is still pending.
 Exact callback order, undefined/holes, custom UNIQUESORT, masks/defaults,
 receiver/this semantics and all roadmap stages remain open. No ABI/wire changes.
+
+## v0.160: sortOn return / Результат sortOn
+
+Успешный загруженный sortOn возвращает исходный receiver, как sort_internal
+в эталоне. Generic snapshot преобразует этот результат обратно в borrowed
+receiver. RETURNINDEXEDARRAY и UNIQUESORT rejection сохраняют свои отдельные
+результаты; незагруженный sortOn по-прежнему возвращает undefined.
+Проверены native Array и borrowed Object для SWF4..8 и незагруженного режима.
+Порядок сравнений и чтение полей sortOn остаются открытыми.
+
+Successful loaded sortOn returns its original receiver, matching reference
+sort_internal. Generic snapshot copyback remaps the return to the borrowed
+receiver. Indexed-return and unique rejection retain their separate results;
+unloaded sortOn still returns undefined. Tests cover native arrays and borrowed
+objects in SWF4..8 and unloaded mode. Exact comparisons and sortOn field reads
+remain open.

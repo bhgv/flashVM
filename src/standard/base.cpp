@@ -1067,7 +1067,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     FVM_Result committed = commit_slots(c, o, reordered, length, 0, length, false, c->swf_loaded);
     if (committed != FVM_OK)
         return committed;
-    if (spec)
+    if (spec && !c->swf_loaded)
     {
         fvm_value_undefined(out);
         return FVM_OK;

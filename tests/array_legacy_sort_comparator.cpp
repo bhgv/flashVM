@@ -53,6 +53,13 @@ int main()
         assert(fvm_table_get_index(c, array, version ? 0 : 2, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
         number(c, array, version ? "1" : "0", 1);
         number(c, array, version ? "2" : "1", 3);
+        fvm_value_string(args, "missing");
+        assert(fvm_object_call(c, array, "sortOn", 1, args, &out) == FVM_OK);
+        if (version) assert(out.type == FVM_VALUE_OBJECT && out.object == array);
+        else assert(out.type == FVM_VALUE_UNDEFINED);
+        assert(borrow(c, array, "sortOn", o, 1, args, &out) == FVM_OK);
+        if (version) assert(out.type == FVM_VALUE_OBJECT && out.object == o);
+        else assert(out.type == FVM_VALUE_UNDEFINED);
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

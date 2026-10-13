@@ -1021,3 +1021,25 @@ holes, readonly data, no index callbacks and post-GC data pass. Five AGG Array/G
 launch failures passed after execute-bit restoration. Fifteen original SWFs
 still match. Native sparse holes, callback/flag/return rules, native accessor data
 and all stages remain open.
+
+## v0.158–v0.160 — loaded sorting corrections / исправления сортировки
+
+Loaded Array.sort handles DESCENDING after comparison by reversing the complete
+result, including equal keys. Undefined uses versioned AVM1 string keys and is
+passed to custom comparators; the SWF6 v0.157 expectation is corrected. Loaded
+sortOn returns the original receiver, including generic borrowed copyback.
+[Direction/return details](ARRAY_LEGACY_SORT_COMPARATOR.md) and
+[raw-data/undefined details](ARRAY_LEGACY_SORT_DATA.md) describe RU/EN behavior.
+All earlier stage completion states remain open. Exact comparator order,
+custom UNIQUESORT, native sparse holes and sortOn field lookup remain open.
+
+Загруженный sort разворачивает весь результат для DESCENDING, включая равные
+ключи. undefined сравнивается с учётом версии AVM1 и передаётся comparator.
+sortOn возвращает исходный receiver, включая заимствованный метод.
+Исправлено ожидание SWF6 из v0.157. Все стадии остаются открытыми.
+
+Evidence through v0.160: AGG 326/Cairo 325 tests, five focused checks in
+portable Linux and restricted ASan/UBSan, and fifteen byte-exact original SWFs.
+AGG execute-bit launch failures passed after restoring executable bits.
+Полные проверки AGG/Cairo и профильные portable/ASan/UBSan прошли;
+15 исходных SWF совпали побайтово. Это не подтверждает полную совместимость.
