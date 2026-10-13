@@ -8,6 +8,7 @@
 #include "../avm1/coercion.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
+#include "../core/object_root_scope.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_key.hpp"
 #include "string_order.hpp"
@@ -643,6 +644,9 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
+    if (!c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_ArrayWorkScope work(c, c->swf_loaded);
     FVM_ArraySpliceBounds bounds;
     FVM_Result r = fvm_array_splice_prepare(c, o, n, a, bounds);
     if (r != FVM_OK)
@@ -665,6 +669,8 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     r = fvm_array_create_like(c, o, deleted, &removed, true);
     if (r != FVM_OK)
         return r;
+    /* [GC:] The removed graph stays live through later source watchers before publication. */
+    FVM_ObjectRootScope removed_roots(c, removed);
     Slots next;
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
     {
@@ -678,6 +684,21 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         else
             next[i->first - deleted + added] = i->second;
     }
+    if (c->swf_loaded)
+        for (unsigned long i = 0; i < deleted; ++i)
+        {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
+            if (removed->indexed.find(i) == removed->indexed.end())
+            {
+                FVM_Value missing;
+                fvm_value_undefined(&missing);
+                r = fvm_array_store_own(c, removed, i, missing);
+                if (r != FVM_OK)
+                    return r;
+            }
+        }
     for (unsigned int i = 0; i < added; ++i)
     {
         FVM_Value v;

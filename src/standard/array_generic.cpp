@@ -6,6 +6,7 @@
 #include "array_work.hpp"
 #include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
+#include "../core/object_root_scope.hpp"
 #include "base_state.hpp"
 #include "../core/string_internal.hpp"
 #include "flashvm/standard.h"
@@ -409,7 +410,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         }
     }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
-                                  !std::strcmp(method, "concat"));
+                                  !std::strcmp(method, "concat") ||
+                                  (c->swf_loaded && !std::strcmp(method, "splice")));
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
@@ -593,18 +595,20 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         }
         FVM_Object *result = 0;
         r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result, true);
+        /* [GC:] Keep the removed/copy result alive through source mutation callbacks. */
+        FVM_ObjectRootScope result_roots(c, result);
         if (!splice && !c->swf_loaded && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
             r = sparse_slice(c, o, result, start, end, work);
         else
             for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
             {
-                if (!splice)
+                if (!splice || c->swf_loaded)
                     r = work.step();
                 FVM_Value value;
                 bool present = false;
                 if (r == FVM_OK)
                 {
-                    if (!splice && c->swf_loaded)
+                    if (c->swf_loaded)
                     {
                         legacy_data_element(o, start + i, value);
                         present = true;

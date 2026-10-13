@@ -718,3 +718,17 @@ passed after execute-bit restoration. Legacy fixtures now exclude their main
 when reused, avoiding non-main implicit-return warnings. Splice length remains
 property-aware/unsigned; historical removed slots, movement/descriptors and
 all roadmap stages remain open.
+
+## v0.134 — own removed splice slots / собственные удалённые элементы
+
+Loaded splice removed results contain own undefined slots for missing/accessor/
+inherited data. Generic removed copying bypasses getters; fast copying fills
+missing slots, charges the shared budget and retains the partial result graph
+with an allocation-free root. [RU/EN details](ARRAY_LEGACY_SPLICE_REMOVED.md).
+Evidence: 302 core tests in AGG/Cairo plus the AGG runner; six focused checks
+in restricted sanitizer/portable profiles. Five AGG Array/version launch failures
+passed after execute-bit restoration. Fast allocation retries preserve source
+and root/depth state through success with GC; the initial GC fixture was fixed
+to pin its host method Array. All fourteen selected original SWFs still complete
+with exact outputs. Historical source movement/write and signed own-data length,
+generic mutation atomicity and all roadmap stages remain open.
