@@ -33,7 +33,7 @@ int main(void)
     assert(fvm_object_get(c, child, "_parent", &out) == FVM_OK && out.object == root);
     assert(fvm_object_get(c, child, "_root", &out) == FVM_OK && out.object == root);
     assert(fvm_object_call(c, child, "toString", 0, 0, &out) == FVM_OK &&
-           !strcmp(out.string, "/root/child"));
+           !strcmp(out.string, "_level0.child"));
     assert(fvm_object_call(c, root, "getNextHighestDepth", 0, 0, &out) == FVM_OK &&
            out.number == 5);
     fvm_value_number(&value, 10);

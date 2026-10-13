@@ -1757,6 +1757,11 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     set = restore_callback(c, p->second.setter, objects);
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                /* Old graphs shared callback 1010 for toString and _target. Preserve the
+                 * accessor role while the method now restores the corrected dot-path callback. */
+                if (src.kind == 40 && p->first == fvm_detail::string("_target") &&
+                    p->second.getter.builtin == 1010)
+                    get.callback = fvm_movieclip_callback_from_id(1005);
                 require(!get.callback || !set.callback || get.userdata == set.userdata);
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_AccessorEntry a;

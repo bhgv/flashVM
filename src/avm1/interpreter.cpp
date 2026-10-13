@@ -118,6 +118,8 @@ static FVM_Result action_string(FVM_Context *context, const FVM_Value &value, FV
     if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
         context->swf_info.version < 5)
         return fvm_value_string(out, value.boolean ? "1" : "0");
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == 40)
+        return fvm_movieclip_reference_string(context, value.object, out);
     if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != 40)
     {
         if (value.object->resource_kind == 26 && value.object->resource_result_valid &&

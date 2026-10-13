@@ -451,42 +451,83 @@ FVM_Result total_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value
     return r == FVM_OK ? field(data, "total", *out) : r;
 }
 
-/* Compute and return target. */
+/* Build counted dot/slash display paths without invoking replaceable _name accessors. */
+FVM_Result display_path(FVM_Context *c, FVM_Object *clip, FVM_Value *out, bool slash)
+{
+    if (!c || !clip || clip->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        fvm_detail::vector<fvm_detail::string> names;
+        FVM_Object *cursor = clip, *root = clip;
+        unsigned int visited = 0;
+        while (cursor)
+        {
+            if (++visited > 1024)
+                return FVM_ERROR;
+            FVM_Object *data = 0;
+            FVM_Result status = state(cursor, data);
+            if (status != FVM_OK)
+                return status;
+            FVM_Object *next = parent(cursor);
+            if (!next)
+            {
+                root = cursor;
+                break;
+            }
+            FVM_Value name;
+            status = field(cursor, "_name", name);
+            if (status != FVM_OK || name.type != FVM_VALUE_STRING)
+                return FVM_INVALID_ARGUMENT;
+            names.push_back(fvm_detail::string(name.string, fvm_string_size(name)));
+            cursor = next;
+        }
+        FVM_Object *data = 0;
+        long level = 0;
+        FVM_Result status = state(root, data);
+        if (status == FVM_OK)
+            status = depth_field(data, level);
+        if (status != FVM_OK)
+            return status;
+        fvm_detail::vector<char> bytes;
+        if (!slash || (level && !names.empty()))
+        {
+            char prefix[40];
+            std::sprintf(prefix, "_level%ld", level);
+            for (size_t i = 0; prefix[i]; ++i)
+                bytes.push_back(prefix[i]);
+        }
+        if (slash && names.empty())
+            bytes.push_back('/');
+        for (size_t i = names.size(); i > 0; --i)
+        {
+            bytes.push_back(slash ? '/' : '.');
+            for (size_t j = 0; j < names[i - 1].size(); ++j)
+                bytes.push_back(names[i - 1][j]);
+        }
+        FVM_Value borrowed;
+        status = fvm_value_string_bytes(&borrowed, bytes.begin(), bytes.size());
+        /* [GC:] Copy the complete counted path to context-owned string storage. */
+        return status == FVM_OK ? fvm_value_to_string(c, &borrowed, out) : status;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Return the slash-syntax _target property independently from MovieClip.toString. */
 FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
+    return display_path(c, o, out, true);
+}
 
-    /* Initialization / Инициализация локального состояния. */
-    fvm_detail::vector<fvm_detail::string> names;
-    unsigned int depth = 0;
-    while (o && depth++ < 1024)
-    {
-        FVM_Value name;
-        FVM_Result r = fvm_object_get(c, o, "_name", &name);
-        if (r != FVM_OK)
-            return r;
-        if (name.type != FVM_VALUE_STRING)
-            return FVM_INVALID_ARGUMENT;
-        names.push_back(fvm_detail::string(name.string));
-        o = parent(o);
-    }
-    if (o)
-        return FVM_INVALID_ARGUMENT;
-    fvm_detail::vector<char> text;
-    text.push_back('/');
-    for (size_t i = names.size(); i > 0; --i)
-    {
-        if (i != names.size())
-            text.push_back('/');
-        for (size_t j = 0; j < names[i - 1].size(); ++j)
-            text.push_back(names[i - 1][j]);
-    }
-    text.push_back(0);
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value v;
-    fvm_value_string(&v, text.begin());
-    return fvm_value_to_string(c, &v, out);
+/* Return the default dot-syntax MovieClip string used by the built-in method. */
+FVM_Result clip_string(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
+                       FVM_Value *out, void *)
+{
+    return display_path(c, o, out, false);
 }
 
 /* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
@@ -2647,7 +2688,7 @@ struct Method
     const char *name;
     FVM_NativeFunction callback;
 };
-const Method methods[] = {{"toString", target},
+const Method methods[] = {{"toString", clip_string},
                           {"getDepth", get_depth},
                           {"getNextHighestDepth", next_depth},
                           {"getInstanceAtDepth", at_depth},
@@ -2928,6 +2969,12 @@ FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
 {
     FVM_Value ignored;
     return remove(c, o, 0, 0, &ignored, 0);
+}
+
+/* Resolve the AVM1 MovieClip-reference string without invoking a replaceable script method. */
+FVM_Result fvm_movieclip_reference_string(FVM_Context *c, FVM_Object *clip, FVM_Value *out)
+{
+    return display_path(c, clip, out, false);
 }
 
 /* [GC:] Retain every selected block and receiver while nested frame calls execute script. */
@@ -3498,6 +3545,8 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return 1003;
     if (cb == total_get)
         return 1004;
+    if (cb == target)
+        return 1005;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
             return 1010 + (unsigned long)i;
@@ -3517,6 +3566,8 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return frame_get;
     if (id == 1004)
         return total_get;
+    if (id == 1005)
+        return target;
     return id >= 1010 && id < 1010 + sizeof(methods) / sizeof(methods[0])
                ? methods[id - 1010].callback
                : 0;
