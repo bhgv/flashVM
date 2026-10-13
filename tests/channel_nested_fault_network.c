@@ -16,7 +16,7 @@ int main(void)
 #ifdef OS_PORTS
     FVM_Config cfg;FVM_Runtime *rt;FVM_Context *owner,*client;FVM_ResourceBroker *broker;
     FVM_Channel *queue,*network,*inner_channel;FVM_Mutex *mutex;FVM_Object *wrapper,*proxy,*inner;
-    FVM_Value value,out;FVM_ExceptionInfo fault;FVM_DebugChannel state;char *uri;int kind;
+    FVM_Value value,out;FVM_ExceptionInfo fault;FVM_DebugChannel state;FVM_BrokerStats stats;char *uri;int kind;
     assert(fvm_config_init(&cfg)==FVM_OK);assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
     assert(fvm_context_create(rt,&owner)==FVM_OK);assert(fvm_context_create(rt,&client)==FVM_OK);
     assert(fvm_broker_start("127.0.0.1","127.0.0.1",0,&broker)==FVM_OK);
@@ -48,11 +48,13 @@ int main(void)
         assert(fault.line==29 && !strcmp(fault.source,"nested-capability.as") && !strcmp(fault.address,uri));
         assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.pending==1 && !state.closed);
         assert(fvm_exception_clear(client)==FVM_OK);
+        assert(fvm_broker_stats(broker,&stats)==FVM_OK && !stats.peer_contexts && !stats.adapter_contexts);
         assert(fvm_object_call(client,proxy,"receive",0,0,&out)==FVM_EXCEPTION);
         assert(fvm_exception_info(client,&fault)==FVM_OK && fault.code==FVM_RESOURCE_CLOSED);
         assert(fault.line==29 && !strcmp(fault.source,"nested-capability.as") && (fault.flags&FVM_EXCEPTION_NETWORK));
         assert(fvm_debug_channel_state(network,&state)==FVM_OK && !state.pending && !state.closed);
         assert(fvm_exception_clear(client)==FVM_OK);
+        assert(fvm_broker_stats(broker,&stats)==FVM_OK && !stats.peer_contexts && !stats.adapter_contexts);
         fvm_value_number(&value,19);assert(fvm_channel_send(queue,&value)==FVM_OK);
         assert(fvm_channel_receive_value(client,network,&out,0)==FVM_OK && out.number==19);
         fvm_channel_release(network);fvm_channel_release(queue);

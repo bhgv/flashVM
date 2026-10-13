@@ -20,6 +20,18 @@ extern "C"
                                         unsigned short port, FVM_ResourceBroker **);
     /* Implement broker port for this subsystem. */
     FVM_API unsigned short fvm_broker_port(FVM_ResourceBroker *);
+    /* Copied broker lifetime counters; these are handle/context counts, not memory byte totals. */
+    typedef struct FVM_BrokerStats
+    {
+        size_t peer_contexts;      /* Stable client ownership contexts retained by the broker. */
+        size_t exported_resources; /* Retained canonical mutex/channel capability entries. */
+        size_t adapter_contexts;   /* [GC:] Graph-conversion contexts currently alive. */
+        unsigned long
+            adapter_requests; /* [GC:] Successful adapter creations, saturating at ULONG_MAX. */
+    } FVM_BrokerStats;
+    /* [GC:] Snapshot active broker counters without RPC or allocation; stopped/error leaves output
+     * unchanged. */
+    FVM_API FVM_Result fvm_broker_stats(FVM_ResourceBroker *, FVM_BrokerStats *);
     /* Retain broker. */
     FVM_API FVM_Result fvm_broker_retain(FVM_ResourceBroker *);
     /* Implement broker stop for this subsystem. */

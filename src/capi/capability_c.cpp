@@ -175,9 +175,63 @@ struct FVM_ResourceBroker
     fvm_detail::vector<Entry> entries;
     fvm_detail::vector<Peer> peers;
     FVM_Runtime *runtime;
+    size_t adapter_contexts;        /* [GC:] Scoped graph-conversion contexts currently alive. */
+    unsigned long adapter_requests; /* [GC:] Saturating graph-adapter creation counter. */
 };
 namespace
 {
+/* [GC:] A wire adapter owns only intermediate graph replicas, not client script execution state. */
+struct AdapterContext
+{
+    FVM_Context *context; /* [GC:] Per-request graph conversion context, null before creation. */
+    FVM_ResourceBroker
+        *broker; /* [GC:] Borrowed authority used to export shared native capabilities. */
+
+    /* [GC:] Start without publishing an adapter or claiming a broker reference. */
+    AdapterContext() : context(0), broker(0)
+    {
+    }
+
+    /* [GC:] Create transient graph storage without adding a persistent mutex ownership peer. */
+    FVM_Result create(FVM_ResourceBroker *authority)
+    {
+        /* [GC:] Failure leaves no context or lifetime-counter mutation. */
+        FVM_Result result = fvm_context_create(authority->runtime, &context);
+        if (result != FVM_OK)
+            return result;
+        /* [GC:] The service owns the broker while this request runs; the VM pointer is borrowed. */
+        broker = authority;
+        context->broker = authority;
+        Lock guard(authority->sync);
+        /* [GC:] Publish adapter lifetime only after complete context initialization. */
+        ++authority->adapter_contexts;
+        /* [GC:] Saturating history never wraps on long-running services. */
+        if (authority->adapter_requests < ULONG_MAX)
+            ++authority->adapter_requests;
+        return FVM_OK;
+    }
+
+    /* [GC:] Destroy invisible transport replicas without executing their user __gc handlers. */
+    ~AdapterContext()
+    {
+        if (!context)
+            return;
+        /* [GC:] Graph conversion must not produce extra user finalizer effects in an intermediary
+         * VM. */
+        for (size_t i = 0; i < context->objects.size(); ++i)
+            /* [GC:] Every intermediate shell skips user finalizer dispatch during adapter teardown. */
+            context->objects[i]->finalized = true;
+        /* [GC:] The borrowed broker must not be released by ordinary context teardown. */
+        context->broker = 0;
+        /* [GC:] Native payload references and all arena buffers are released on every dispatch
+         * exit. */
+        fvm_context_destroy(context);
+        Lock guard(broker->sync);
+        /* [GC:] No adapter remains live when the request's serialized reply is published. */
+        --broker->adapter_contexts;
+    }
+};
+
 /* Distinguish process identities even when context counters coincide on two
    machines. The nonce is initialized once under the registry lock. */
 char client_nonce[33] = {0};
@@ -353,6 +407,8 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     /* Initialization / Инициализация локального состояния. */
     Entry e;
     FVM_Context *c = 0;
+    /* [GC:] Wire transformations use a scoped replica heap instead of persistent client state. */
+    AdapterContext adapter;
     {
         Lock guard(b->sync);
         if (b->stopped || std::memcmp(h + 8, b->session.c_str(), 32))
@@ -367,9 +423,10 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
             }
         if (!found)
             return FVM_ERROR;
-        if (h[5] == 1 || h[5] == 2 || h[5] == 6 || h[5] == 9)
+        /* [GC:] Only mutex ownership operations need a stable client-context identity. */
+        if ((h[5] == 1 || h[5] == 2) && e.kind == 8)
         {
-            if (!get(h + 104) && h[5] != 6 && h[5] != 9)
+            if (!get(h + 104))
                 return FVM_ERROR;
             char key[41];
             std::memcpy(key, h + 72, 32);
@@ -400,6 +457,16 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         }
     }
     fault = FVM_RESOURCE_FAILURE;
+    /* [GC:] Receipt/inspection allocate graph state only for this authorized channel request. */
+    if ((h[5] == 6 || h[5] == 9) && e.kind == 1)
+    {
+        /* [GC:] Adapter creation failure occurs before a queue packet can be consumed. */
+        FVM_Result result = adapter.create(b);
+        if (result != FVM_OK)
+            return result;
+        /* [GC:] The codec/export helper sees the borrowed authority for this scoped heap. */
+        c = adapter.context;
+    }
     if (c)
         fvm_exception_clear(c);
 
@@ -573,6 +640,10 @@ extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsig
     b->runtime = 0;
     b->references = 1;
     b->stopped = false;
+    /* [GC:] Broker wire conversion starts without active scoped adapters. */
+    b->adapter_contexts = 0;
+    /* [GC:] Count successful adapter creation independently of persistent mutex peers. */
+    b->adapter_requests = 0;
     try
     {
         char id[33];
@@ -615,6 +686,25 @@ extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsig
 extern "C" unsigned short fvm_broker_port(FVM_ResourceBroker *b)
 {
     return b ? b->port : 0;
+}
+/* [GC:] Copy synchronized broker lifetime counters without observing mutable VM heaps. */
+extern "C" FVM_Result fvm_broker_stats(FVM_ResourceBroker *b, FVM_BrokerStats *out)
+{
+    if (!b || !out)
+        return FVM_INVALID_ARGUMENT;
+    Lock guard(b->sync);
+    /* Stop clears registries outside this lock only after setting stopped under it. */
+    if (b->stopped)
+        return FVM_ERROR;
+    FVM_BrokerStats snapshot;
+    snapshot.peer_contexts = b->peers.size();
+    snapshot.exported_resources = b->entries.size();
+    /* [GC:] Read only scalar counters maintained under the same broker lock. */
+    snapshot.adapter_contexts = b->adapter_contexts;
+    /* [GC:] The historical creation counter may saturate but never wraps. */
+    snapshot.adapter_requests = b->adapter_requests;
+    *out = snapshot;
+    return FVM_OK;
 }
 /* Retain broker. */
 extern "C" FVM_Result fvm_broker_retain(FVM_ResourceBroker *b)
@@ -883,6 +973,11 @@ extern "C" FVM_Result fvm_broker_start(const char *, const char *, unsigned shor
     return FVM_UNSUPPORTED;
 }
 
+/* [GC:] Validate diagnostics arguments when the build has no network broker adapter. */
+extern "C" FVM_Result fvm_broker_stats(FVM_ResourceBroker *b, FVM_BrokerStats *out)
+{
+    return !b || !out ? FVM_INVALID_ARGUMENT : FVM_UNSUPPORTED;
+}
 /* Compute and return broker port. */
 extern "C" unsigned short fvm_broker_port(FVM_ResourceBroker *)
 {

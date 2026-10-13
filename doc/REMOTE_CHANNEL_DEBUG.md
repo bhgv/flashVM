@@ -106,3 +106,13 @@ GC/resource/debugger tests 28/28 in AGG, Cairo, portable and ASan/UBSan;
 final shared-mutex inspection regressions 3/3 in all five profiles. Portable
 OS_PORTS-disabled profile excludes live TCP. Heap/global ASan and UBSan active;
 LSAN and stack ASan disabled. No other platform runtime certification.
+
+## Обновление v0.78 / v0.78 update
+
+Указанное выше удержание adapter graph heaps до shutdown устранено: receive/peek
+используют scoped contexts (BROKER_ADAPTER_LIFETIME.md). Canonical exported
+capabilities и stable mutex ownership peers по-прежнему живут до broker stop.
+
+Wire conversion graph heaps now use scoped contexts; the previous shutdown-only
+graph retention limitation is superseded. Exported entries and stable mutex
+ownership peers still remain until stop; see BROKER_ADAPTER_LIFETIME.md.
