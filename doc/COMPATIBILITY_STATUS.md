@@ -435,3 +435,13 @@ coercion and corresponding early-false/GC paths. AGG/Cairo Release 264/264 each
 focused 4/4 each. Large external relational SWFs still differ in root/version
 behavior; they are not passing acceptance evidence.
 RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.104 — SWF 5 loose equality and player NaN behavior
+
+Проверено / tested: SWF 5 preconversion/callback counts, valueOf-only recursive
+Equals2, loaded Flash Player 7/8 NaN equality, separate strict/legacy rules and
+undefined prototype clearing. AGG/Cairo Release 265/265 each (AGG one
+launch-permission rerun); restricted headless ASan/UBSan and portable focused
+8/8 each. Three large external equality SWFs finish but still differ in top-level
+this/root setup. Prototype attributes, MovieClip path equality and player-profile
+selection remain open. RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).

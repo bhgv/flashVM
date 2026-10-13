@@ -54,3 +54,27 @@ valueOf. Тест с GC продолжает проверять живые вр�
 Equals2/player-specific NaN, MovieClip paths, standard constructors and function
 version provenance remain open. Source comparison follows the pinned Ruffle
 value implementation linked above; full external acceptance is still incomplete.
+
+## v0.104 — Loose equality preconversion
+
+Equals2 now applies SWF 5 numeric primitive preconversion, right first, before
+type dispatch. Recursive boolean/value comparisons preserve the same version
+rule. Later loaded formats use valueOf-only object/primitive comparison without
+Date's default string hint; nonprimitive results compare false. A separate root
+frame retains each recursively transformed pair across script GC. Loaded AVM1
+uses the Flash Player 7/8 NaN==NaN Equals2 rule demonstrated by the pinned
+SWF 5/6/7 reference files. This is player behavior, not a SWF-7-only format gate.
+StrictEquals and legacy Equals still return false for two NaNs; a string "NaN"
+does not become loosely equal to numeric NaN. Unloaded host policy remains distinct.
+
+AVM1 `__proto__ = undefined` now clears the effective prototype like null.
+This fixes the reference's bare-object comparison. Complete own-property
+attributes/value distinction for __proto__, MovieClip path equality and a
+configurable pre-Flash-Player-7 profile remain open.
+
+Тест avm1_loose_equality проверяет SWF 5–8, порядок и кратность valueOf,
+разные виды сравнения NaN, остановку на объектном результате и bare object.
+GC тест добавляет десять SWF 5 preconversion циклов с настоящей сборкой
+между временными строками. Большие equals2 SWF 5/6/7 теперь завершаются;
+оставшиеся различия связаны с this=root, не созданным top-level runner.
+Они ещё не считаются полностью совпавшей внешней приёмкой.

@@ -276,7 +276,7 @@ FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FV
     FVM_Result r = FVM_OK;
     if (a[0].type == FVM_VALUE_OBJECT)
         r = fvm_object_set_prototype(c, o, a[0].object);
-    else if (a[0].type == FVM_VALUE_NULL)
+    else if (a[0].type == FVM_VALUE_NULL || a[0].type == FVM_VALUE_UNDEFINED)
         r = fvm_object_set_prototype(c, o, 0);
     fvm_value_undefined(out);
     return r;

@@ -23,7 +23,8 @@ int main()
     const unsigned char swf[]={'F','W','S',8,16,0,0,0,0x08,0,0,12,1,0,0,0};assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);assert(fvm_standard_install(c)==FVM_OK);assert(fvm_extensions_install(c)==FVM_OK);
     FVM_Object *concat=0,*sweep=0;assert(fvm_construct(c,"Object",0,0,&concat)==FVM_OK);assert(fvm_construct(c,"Object",0,0,&sweep)==FVM_OK);
     Bytes body;text(body,"prefix");text(body,"suffix");body.push_back(0x21);value_of(c,concat,body);
-    body.clear();integer(body,0);global(body,"gc");text(body,"collect");body.push_back(0x52);body.push_back(0x17);text(body,"LEFT_LONG_RETURN");value_of(c,sweep,body);
+    FVM_Value zero;fvm_value_number(&zero,0);assert(fvm_set_global(c,"sweeps",&zero)==FVM_OK);
+    body.clear();text(body,"sweeps");global(body,"sweeps");body.push_back(0x50);body.push_back(0x1d);integer(body,0);global(body,"gc");text(body,"collect");body.push_back(0x52);body.push_back(0x17);text(body,"LEFT_LONG_RETURN");value_of(c,sweep,body);
     assert(fvm_gc_string_mode(c,FVM_GC_STRINGS_TRACED)==FVM_OK);
     /* Less2 converts left first; Greater/Add2 convert right first. */
     for(unsigned i=0;i<30;++i)
@@ -31,6 +32,9 @@ int main()
         FVM_Value result=operation(c,0x47,sweep,concat);assert(result.type==FVM_VALUE_STRING && !std::strcmp(result.string,"LEFT_LONG_RETURNprefixsuffix"));
         assert(!operation(c,0x48,concat,sweep).boolean);assert(operation(c,0x67,concat,sweep).boolean);assert(!operation(c,0x67,sweep,concat).boolean);
     }
+    unsigned char legacy[sizeof(swf)];std::memcpy(legacy,swf,sizeof(swf));legacy[3]=5;assert(fvm_load_memory(c,legacy,sizeof(legacy))==FVM_OK);
+    for(unsigned i=0;i<10;++i){FVM_Value before,after;assert(fvm_get_global(c,"sweeps",&before)==FVM_OK);assert(!operation(c,0x49,sweep,concat).boolean);assert(fvm_get_global(c,"sweeps",&after)==FVM_OK && after.number==before.number+1);}
+    assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);
     FVM_Object *a=0,*b=0;assert(fvm_construct(c,"Object",0,0,&a)==FVM_OK);assert(fvm_construct(c,"Object",0,0,&b)==FVM_OK);unsigned ids[]={1,2};assert(fvm_object_define_method_rooted(c,a,"valueOf",ordered,ids,0)==FVM_OK);assert(fvm_object_define_method_rooted(c,b,"valueOf",ordered,ids+1,0)==FVM_OK);
     calls=0;assert(operation(c,0x47,a,b).number==3 && calls==2 && order[0]==2 && order[1]==1);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;

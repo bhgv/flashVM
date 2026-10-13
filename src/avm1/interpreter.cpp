@@ -221,15 +221,59 @@ static bool strict_equal(const FVM_Value &a, const FVM_Value &b)
     return false;
 }
 
+/* [GC:] Retain both loose-equality values while recursive/scripted conversion replaces them. */
+struct EqualityRoots
+{
+    FVM_Context *context; /* Context owning this temporary root frame. */
+    FVM_GCRootFrame frame; /* [GC:] Frame linked above the caller's operand roots. */
+    fvm_detail::vector<FVM_Value> values; /* [GC:] Mutable operands including converted strings. */
+  private:
+    /* [GC:] Copying a linked frame would break the collector's LIFO chain. */
+    EqualityRoots(const EqualityRoots &);
+    /* [GC:] Root-frame assignment is unavailable. */
+    EqualityRoots &operator=(const EqualityRoots &);
+  public:
+    /* [GC:] Publish initialized values only after the vector allocation succeeds. */
+    EqualityRoots(FVM_Context *owner, const FVM_Value &left, const FVM_Value &right)
+        : context(owner), values(2)
+    {
+        values[0] = left;
+        values[1] = right;
+        frame.previous = context->gc_frames;
+        frame.stack = &values;
+        frame.locals = 0;
+        frame.receiver = 0;
+        context->gc_frames = &frame;
+    }
+    /* [GC:] Restore the caller frame on every return and exception path. */
+    ~EqualityRoots()
+    {
+        context->gc_frames = frame.previous;
+    }
+};
+
 /* Compute and return equal. */
-static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
+static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bool &result,
                         unsigned int depth = 0)
 {
     if (depth > 8)
         return FVM_ERROR;
+    EqualityRoots roots(c, input_a, input_b);
+    FVM_Value &a = roots.values[0], &b = roots.values[1];
+    if (c->swf_loaded && c->swf_info.version <= 5)
+    {
+        FVM_Result status = fvm_avm1_primitive(c, &b, false, &b);
+        if (status == FVM_OK)
+            status = fvm_avm1_primitive(c, &a, false, &a);
+        if (status != FVM_OK)
+            return status;
+    }
     if (a.type == b.type)
     {
-        result = strict_equal(a, b);
+        /* Loaded AVM1 targets the Flash Player 7/8 NaN rule; StrictEquals remains distinct. */
+        result = strict_equal(a, b) ||
+                 (c->swf_loaded && a.type == FVM_VALUE_NUMBER && a.number != a.number &&
+                  b.number != b.number);
         return FVM_OK;
     }
     if ((a.type == FVM_VALUE_NULL && b.type == FVM_VALUE_UNDEFINED) ||
@@ -258,14 +302,26 @@ static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
         result = x == y;
         return r;
     }
-    if (a.type == FVM_VALUE_OBJECT && (b.type == FVM_VALUE_STRING || b.type == FVM_VALUE_NUMBER))
+    if (a.type == FVM_VALUE_OBJECT && b.type != FVM_VALUE_OBJECT)
     {
-        FVM_Result r = fvm_to_primitive(c, &a, date_hint(a), &a);
+        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &a, false, &a)
+                                     : fvm_to_primitive(c, &a, date_hint(a), &a);
+        if (r == FVM_OK && a.type == FVM_VALUE_OBJECT)
+        {
+            result = false;
+            return FVM_OK;
+        }
         return r == FVM_OK ? equal(c, a, b, result, depth + 1) : r;
     }
-    if (b.type == FVM_VALUE_OBJECT && (a.type == FVM_VALUE_STRING || a.type == FVM_VALUE_NUMBER))
+    if (b.type == FVM_VALUE_OBJECT && a.type != FVM_VALUE_OBJECT)
     {
-        FVM_Result r = fvm_to_primitive(c, &b, date_hint(b), &b);
+        FVM_Result r = c->swf_loaded ? fvm_avm1_primitive(c, &b, false, &b)
+                                     : fvm_to_primitive(c, &b, date_hint(b), &b);
+        if (r == FVM_OK && b.type == FVM_VALUE_OBJECT)
+        {
+            result = false;
+            return FVM_OK;
+        }
         return r == FVM_OK ? equal(c, a, b, result, depth + 1) : r;
     }
     result = false;
