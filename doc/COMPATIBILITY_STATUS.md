@@ -983,3 +983,16 @@ was corrected; all repeated suites pass without launch failures. Virtual flags,
 prototype holes, borrowed/native tails and counted strings after traced GC pass.
 Fifteen original SWFs still match. Native fast splice watch/flags, signed/size
 limits, native accessor data and all stages remain open.
+
+## v0.155 — native splice flags/watch / native флаги splice
+
+Loaded indexed flags/readonly length route native splice through live generic
+raw operations, respecting source deletion before later destination writes.
+The ordinary unflagged fast path skips watchers while retaining staging/OOM
+checks. [RU/EN details](ARRAY_LEGACY_SPLICE_FLAGS.md). Evidence: 322 core tests
+in AGG/Cairo plus the AGG runner; nine focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. All eight indexed masks, protected tails,
+readonly length, watcher bypass and inherited getter holes pass. The final pinned
+prototype fixture passed all four profiles. Two AGG bitmap/broker launch failures
+passed after execute-bit restoration. Fifteen original SWFs still match. Routed
+flagged array size limits, sort mutation/case/version and all stages remain open.

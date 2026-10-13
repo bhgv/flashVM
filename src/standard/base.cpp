@@ -77,9 +77,9 @@ FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
 /* Compute and return commit slots. */
 FVM_Result commit_slots(FVM_Context *c, FVM_Object *o, Slots &next, unsigned long length,
                         unsigned long write_begin = 0, unsigned long write_end = 0,
-                        bool skip_middle = false)
+                        bool skip_middle = false, bool skip_watch = false)
 {
-    if (!o->watchers.empty())
+    if (!skip_watch && !o->watchers.empty())
         for (Slots::iterator i = next.begin(); i != next.end(); ++i)
         {
             if (i->first < write_begin || i->first >= write_end ||
@@ -653,6 +653,25 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
     return status == FVM_OK ? fvm_array_generic(c, o, "slice", n, a, out, slice) : status;
 }
 
+/* Route loaded flagged splice through live raw property operations instead of a flag snapshot. */
+bool splice_needs_generic(FVM_Context *c, FVM_Object *o)
+{
+    if (fvm_array_needs_generic(o))
+        return true;
+    if (!c->swf_loaded)
+        return false;
+    for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator i = o->attributes.begin();
+         i != o->attributes.end(); ++i)
+    {
+        if (i->first == "length" && (i->second & FVM_PROPERTY_READ_ONLY))
+            return true;
+        unsigned long index = 0;
+        if (i->second && fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
+            return true;
+    }
+    return false;
+}
+
 /* Remove and insert an Array range and return the removed elements. */
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
@@ -670,7 +689,7 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         return FVM_OK;
     }
     /* Both conversions may install inherited indices; preserve captured inputs on fallback. */
-    if (fvm_array_needs_generic(o))
+    if (splice_needs_generic(c, o))
         return fvm_array_generic(c, o, "splice", n, a, out, splice, &bounds);
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
@@ -722,7 +741,7 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     }
     FVM_Result committed =
         commit_slots(c, o, next, length - deleted + added, start,
-                     added == deleted ? start + added : length - deleted + added);
+                     added == deleted ? start + added : length - deleted + added, false, c->swf_loaded);
     if (committed != FVM_OK)
         return committed;
     return object_value(c, removed, 0, 0, out, 0);
