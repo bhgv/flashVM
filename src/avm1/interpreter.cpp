@@ -1626,7 +1626,29 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 if (!target)
                     return FVM_UNSUPPORTED;
-                status = fvm_movieclip_call_frame(c, target, argument);
+                if (argument.type == FVM_VALUE_STRING)
+                {
+                    size_t size = fvm_string_size(argument), separator = size;
+                    for (size_t part = 0; part < size; ++part)
+                        if (argument.string[part] == ':')
+                            separator = part;
+                    if (separator < size)
+                    {
+                        FVM_Value path, frame;
+                        status = fvm_value_string_bytes(&path, argument.string, separator);
+                        if (status == FVM_OK)
+                            status = fvm_value_string_bytes(&frame, argument.string + separator + 1,
+                                                            size - separator - 1);
+                        FVM_Object *resolved = 0;
+                        if (status == FVM_OK)
+                            status = fvm_movieclip_resolve_path(c, target, path, &resolved);
+                        if (status != FVM_OK)
+                            return status;
+                        target = resolved && resolved->resource_kind == 40 ? resolved : 0;
+                        argument = frame;
+                    }
+                }
+                status = target ? fvm_movieclip_call_frame(c, target, argument) : FVM_OK;
                 if (status != FVM_OK)
                     return status;
                 stack.pop_back();

@@ -28,3 +28,11 @@ AGG/Cairo tests plus the AGG runner test passed; three focused tests passed in
 each headless portable and ASan/UBSan profile (existing sanitizer limits apply).
 The original broad coercion-order SWF passes Call and now stops at GetURL2;
 its output prefix does not count as a passing whole reference test.
+
+## v0.111 — Target-prefixed frame calls
+
+Counted `clip-path:frame` operands now resolve through the display path helper
+before action selection. Child, absolute and parent prefixes and embedded NUL
+are tested. Missing targets are silent no-ops. Frames still execute actions only.
+Прежнее ограничение на все пути снято для формы `путь:кадр`; без разделяющего
+двоеточия альтернативная slash-форма пока не реализована.

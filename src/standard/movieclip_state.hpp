@@ -18,9 +18,11 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction);
 
 /* Restore a native movieclip callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long);
+/* Resolve display children and object properties along a counted AVM1 path. */
+FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **);
 /* Build the current counted AVM1 dot path directly from display state. */
 FVM_Result fvm_movieclip_reference_string(FVM_Context *, FVM_Object *, FVM_Value *);
 /* Run only a selected local frame's actions without moving the playhead or applying scene controls.
- * Number or counted label input is already coerced by AVM1; target paths remain unsupported. */
+ * Number or counted label input is already coerced; AVM1 resolves target prefixes first. */
 FVM_Result fvm_movieclip_call_frame(FVM_Context *, FVM_Object *, const FVM_Value &);
 #endif

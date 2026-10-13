@@ -30,3 +30,34 @@ host override behavior and cyclic parent recovery. All 272 core AGG/Cairo tests
 and the additional AGG runner test pass. Four focused tests pass in each portable
 and ASan/UBSan profile with its existing restrictions. Ten original external SWF
 probes continue to match exactly. Target-path resolution remains the next step.
+
+## v0.111 — Counted target resolution and frame prefixes
+
+The internal resolver supports absolute slash paths, relative slash/dot/colon
+paths, parent `..` and `_parent`, initial `_root` (SWF 5+) and `_level0`.
+After a slash, dots become part of the child name. Named display children have
+priority over same-named dynamic properties; remaining object/prototype lookups
+use the ordinary counted property bridge and actual receiver. Empty paths select
+the start clip; missing or nonobject components return no target. SWF 4 keeps
+its restricted delimiters; SWF 4–6 currently support ASCII case-insensitive paths
+and explicitly reject non-ASCII paths pending the historic case table. SWF 7–8
+paths preserve counted NUL and Unicode names. Other loaded levels remain open.
+
+[GC:] Scoped roots retain original/root/current objects and the path across
+script property callbacks. Root and token traversals are bounded. ActionCall
+now splits a counted `clip-path:frame` operand, resolves its target, and invokes
+that clip's frame actions; missing targets do nothing. Unseparated slash frame
+syntax, full variable-path lookup and SetTarget execution remain open.
+
+Пути теперь учитывают различия SWF 4–8 и приоритет display child над свойством.
+Call другого клипа поддерживает форму `путь:кадр`, включая NUL в имени. Резолвер
+сохраняет корни GC при скриптовом __index. Не-ASCII регистр старых версий,
+остальные уровни и изменение target текущей активации ещё не завершены.
+
+movieclip_resolve_paths checks delimiter/version rules, parent/root traversal,
+child/property collisions, object aliases, missing components, NUL/Unicode,
+legacy case gates and actual collection while walking a temporary script result.
+avm1_frame_call additionally checks child/absolute/parent frame calls and counted
+prefixes without moving either playhead. All 273 core tests in AGG/Cairo and the
+additional AGG runner test pass; three focused tests pass in each portable and
+restricted ASan/UBSan profile. No roadmap stage is closed by these results.
