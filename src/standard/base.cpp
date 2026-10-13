@@ -221,9 +221,12 @@ FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
 {
 
     /* Initialization / Инициализация локального состояния. */
-    FVM_Value absent, key;
-    fvm_value_undefined(&absent);
-    FVM_Result r = fvm_value_to_string(c, n ? a : &absent, &key);
+    fvm_value_boolean(out, 0);
+    if (!n)
+        return FVM_OK;
+    FVM_Value key;
+    FVM_Result r = c->swf_loaded ? fvm_avm1_string(c, a[0], &key)
+                                : fvm_value_to_string(c, a, &key);
     if (r != FVM_OK)
         return r;
     int has = 0;
@@ -238,15 +241,18 @@ FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
 FVM_Result enumerable(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                       FVM_Value *out, void *)
 {
-    FVM_Result r = object_own(c, o, n, a, out, 0);
-    if (r != FVM_OK || !out->boolean)
-        return r;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value missing, key;
-    fvm_value_undefined(&missing);
-    r = fvm_value_to_string(c, n ? a : &missing, &key);
+    fvm_value_boolean(out, 0);
+    if (!n)
+        return FVM_OK;
+    /* Convert once: a name callback may return a different property on its next call. */
+    FVM_Value key;
+    FVM_Result r = c->swf_loaded ? fvm_avm1_string(c, a[0], &key)
+                                : fvm_value_to_string(c, a, &key);
     if (r != FVM_OK)
+        return r;
+    int own = 0;
+    r = fvm_object_has_own_bytes(c, o, key.string, fvm_string_size(key), &own);
+    if (r != FVM_OK || !own)
         return r;
     unsigned int flags = 0;
     r = fvm_object_property_flags_bytes(c, o, key.string, fvm_string_size(key), &flags);

@@ -931,3 +931,15 @@ Four AGG launch failures, one dependent reader and one subprocess PermissionErro
 passed on explicit rerun after restoring executable bits. Fifteen original SWFs
 still match; case-sensitive environment separation, function versions and all
 stages remain open.
+
+## v0.151 — single property-name coercion / однократное имя
+
+Own/enumeration queries coerce a counted key once with loaded AVM1 rules, and
+return false without an argument. Enumeration presence and flags share that
+key instead of invoking toString twice.
+[RU/EN details](OBJECT_PROPERTY_QUERIES.md). Evidence: 318 core tests in
+AGG/Cairo plus the AGG runner; four focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Changing callback names, missing versus
+undefined, hidden flags and counted NUL pass across unloaded/SWF4..8. Two AGG
+bitmap launch failures passed after execute-bit restoration. Fifteen original
+SWFs still match. Case/version/native fields and all stages remain open.
