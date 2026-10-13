@@ -7,6 +7,7 @@
 #include "../standard/geometry_state.hpp"
 #include "../standard/color_transform_state.hpp"
 #include "../standard/filter_state.hpp"
+#include "../standard/blur.hpp"
 #include "../standard/convolution.hpp"
 #include "../standard/bitmap_state.hpp"
 #include "../standard/function_state.hpp"
@@ -137,7 +138,7 @@ bool known_kind(unsigned long kind)
            kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
            kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51 || kind == 52 ||
            kind == 53 || kind == 54 || kind == 55 || kind == 56 || kind == 57 || kind == 58 ||
-           kind == 59;
+           kind == 59 || kind == 60 || kind == 61;
 }
 
 /* Compute and return identify. */
@@ -413,7 +414,8 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         }
         if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
             dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 ||
-            dst.kind == 48 || dst.kind == 50 || (dst.kind == 54 || dst.kind == 58))
+            dst.kind == 48 || dst.kind == 50 ||
+            (dst.kind == 54 || dst.kind == 58 || dst.kind == 60))
         {
             require(
                 src->resource_result_valid &&
@@ -421,7 +423,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                         (dst.kind == 20   ? FVM_VALUE_BOOLEAN
                          : dst.kind == 26 ? FVM_VALUE_STRING
                          : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40 || dst.kind == 48 ||
-                            dst.kind == 50 || (dst.kind == 54 || dst.kind == 58))
+                            dst.kind == 50 || (dst.kind == 54 || dst.kind == 58 || dst.kind == 60))
                              ? FVM_VALUE_OBJECT
                              : FVM_VALUE_NUMBER),
                 FVM_UNSUPPORTED);
@@ -443,6 +445,12 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                 /* [GC:] Reject malformed convolution data before capturing its managed private
                  * edge. */
                 require(fvm_convolution_values(c, src, convolution), FVM_UNSUPPORTED);
+            }
+            if (dst.kind == 60)
+            {
+                double options[3];
+                /* [GC:] Reject malformed private blur data before capturing its owned graph. */
+                require(fvm_blur_values(c, src, options), FVM_UNSUPPORTED);
             }
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
@@ -1010,12 +1018,12 @@ Graph read_graph(Reader &r, unsigned int version)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
                  o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48 || o.kind == 50 ||
-                 (o.kind == 54 || o.kind == 58))
+                 (o.kind == 54 || o.kind == 58 || o.kind == 60))
             require(o.state.type ==
                     (o.kind == 20   ? FVM_VALUE_BOOLEAN
                      : o.kind == 26 ? FVM_VALUE_STRING
                      : (o.kind == 32 || o.kind == 37 || o.kind == 40 || o.kind == 48 ||
-                        o.kind == 50 || (o.kind == 54 || o.kind == 58))
+                        o.kind == 50 || (o.kind == 54 || o.kind == 58 || o.kind == 60))
                          ? FVM_VALUE_OBJECT
                          : FVM_VALUE_NUMBER));
         else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
@@ -1217,6 +1225,32 @@ Graph read_graph(Reader &r, unsigned int version)
                     entry->second.metatable == none);
             if (color.kind == 54)
                 require(entry->second.number >= -1000000.0 && entry->second.number <= 1000000.0);
+        }
+    }
+    /* [GC:] Blur state is a detached canonical numeric record with no script dispatch edges. */
+    for (size_t i = 0; i < n; ++i)
+    {
+        const Object &filter = g.objects[i];
+        if (filter.kind != 60)
+            continue;
+        require(filter.state.type == FVM_VALUE_OBJECT && filter.state.object != none);
+        const Object &data = g.objects[filter.state.object];
+        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+                data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 3 &&
+                data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
+                data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                !data.invocable.builtin && data.invocable.name.empty() &&
+                !data.constructable.builtin && data.constructable.name.empty());
+        const char *names[] = {"blurX", "blurY", "quality"};
+        for (unsigned index = 0; index < 3; ++index)
+        {
+            fvm_detail::map<fvm_detail::string, Value>::const_iterator entry =
+                data.properties.find(names[index]);
+            require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
+                    entry->second.metatable == none && entry->second.number >= 0 &&
+                    entry->second.number <= (index == 2 ? 15 : 255) &&
+                    (index != 2 || entry->second.number == std::floor(entry->second.number)));
         }
     }
     /* [GC:] Convolution records contain bounded numeric options and a detached coefficient
@@ -1605,7 +1639,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
-                src.kind == 48 || src.kind == 50 || (src.kind == 54 || src.kind == 58))
+                src.kind == 48 || src.kind == 50 ||
+                (src.kind == 54 || src.kind == 58 || src.kind == 60))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

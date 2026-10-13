@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.65 / Remaining work after v0.65
+# Оставшаяся работа после v0.66 / Remaining work after v0.66
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -128,3 +128,6 @@ v0.64 adds a tested deterministic dissolve model; historical Flash order/seed ac
 
 В v0.65 добавлен coherent snapshot локального файлового канала: pending framed records/frozen/closed, cursor rollback и unchanged output при ошибках. Remote inspection и полная приёмка GC/debugger остаются открытыми.
 v0.65 adds non-consuming local file channel state inspection; remote inspection and full GC/debugger acceptance remain open.
+
+В v0.66 добавлены BlurFilter class/properties/clone, fractional box bitmap application и expanded bounds (BLUR_FILTER.md). Историческая Flash/scene сверка и остальные фильтры открыты.
+v0.66 adds managed blur filtering; full historical Flash and scene conformance remain open.

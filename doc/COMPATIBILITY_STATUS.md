@@ -196,3 +196,7 @@ Deterministic dissolve API implemented; exact historical Flash behavior is not c
 ## v0.65 — Local file state snapshots
 
 Non-consuming local file pending/frozen/closed inspection implemented; malformed/read failures preserve output and cursor. Проверки в file_channel_debug; remote snapshot и полная приёмка стадии 7 открыты. См. FILE_CHANNEL_DEBUG.md.
+
+## v0.66 — Managed fractional box blur
+
+BlurFilter constructor/properties/clone, bitmap application and expanded bounds implemented with staged premultiplied planes and private graph validation. Полная Flash/scene совместимость остаётся открытой. Проверки: blur_filter, blur_filter_allocation; BLUR_FILTER.md.
