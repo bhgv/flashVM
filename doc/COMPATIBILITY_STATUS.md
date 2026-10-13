@@ -507,3 +507,16 @@ passed after permissions were restored. Final cases for later-argument length
 changes and uint32 overflow passed in all four profiles. Exhaustive allocation
 failures through success retain the source and restore execution nesting.
 All roadmap stages remain open; no native JIT or other-OS completion is claimed.
+
+## v0.117 — rejected splice arguments / отклонённые аргументы splice
+
+Missing/undefined starts and explicit undefined/negative deletion counts now
+return undefined without splice mutation. Missing starts do not read length.
+Zero/null and omitted deletion remain valid; the already-supported undefined
+slice endpoint has a regression check. [RU/EN details](ARRAY_UNDEFINED_BOUNDS.md).
+Evidence: 283 core tests in AGG/Cairo plus the AGG runner; four focused Array
+tests in restricted sanitizer/portable profiles. Three AGG execute-bit launch
+failures passed after permission restoration. Final null/omitted/huge-range
+cases passed in all four profiles. Initial development compiler errors in
+undefined/null value initialization were fixed before running final binaries.
+Historic integer/evaluation-order details and all roadmap stages remain open.

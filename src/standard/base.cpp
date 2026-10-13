@@ -671,6 +671,12 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
+    /* Missing/undefined starts are rejected before reading length or converting arguments. */
+    if (!n || a[0].type == FVM_VALUE_UNDEFINED)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     if (fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "splice", n, a, out, splice);
 
@@ -684,9 +690,20 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     if (r != FVM_OK)
         return r;
     unsigned long start = bound(first, length);
+    if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     r = index_arg(c, n, a, 1, length - start, remove);
     if (r != FVM_OK)
         return r;
+    /* Flash rejects an explicit undefined or negative deletion count without mutation. */
+    if (remove < 0)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     unsigned long deleted = remove <= 0                ? 0

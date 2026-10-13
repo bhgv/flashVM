@@ -336,6 +336,12 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {
+    /* Splice rejects a missing start without invoking an observable length accessor. */
+    if (!std::strcmp(method, "splice") && (!n || a[0].type == FVM_VALUE_UNDEFINED))
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
                                   !std::strcmp(method, "concat"));
     if (!std::strcmp(method, "concat"))
@@ -414,7 +420,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         return r;
     }
     /* Remaining mutating/sorting traversals retain their explicit size restriction. */
-    if (count > 65536 && std::strcmp(method, "slice") && std::strcmp(method, "join"))
+    if (count > 65536 && std::strcmp(method, "slice") && std::strcmp(method, "join") && std::strcmp(method, "splice"))
         return FVM_UNSUPPORTED;
     if (!std::strcmp(method, "shift"))
     {
@@ -476,10 +482,23 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         if (r != FVM_OK)
             return r;
         unsigned long start = bound(first, count), deleted;
+        if (splice && n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
         r = integer(c, n > 1 && !splice && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n, a, 1,
                     splice ? count - start : count, last);
         if (r != FVM_OK)
             return r;
+        /* Validate deletion before enforcing the remaining mutating traversal cap. */
+        if (splice && last < 0)
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
+        if (splice && count > 65536)
+            return FVM_UNSUPPORTED;
         unsigned long end = splice ? (last <= 0               ? start
                                       : last >= count - start ? count
                                                               : start + (unsigned long)last)
