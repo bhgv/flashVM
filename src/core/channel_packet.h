@@ -11,7 +11,7 @@ extern "C"
 {
 #endif
     /* Remote operation codes: 0 status, 4 close, 5 send graph, 6 receive graph,
-       7 debugger freeze/resume, 8 debugger state snapshot. */
+       7 debugger freeze/resume, 8 debugger state snapshot, 9 indexed debugger message copy. */
     typedef FVM_Result (*FVM_RemoteChannelFn)(void *, FVM_Context *, int, const unsigned char *,
                                               size_t, unsigned char **, size_t *, int);
     /* Create channel remote. */
@@ -28,6 +28,9 @@ extern "C"
     /* Receive channel stream. */
     FVM_Result fvm_channel_stream_receive(FVM_Context *, FVM_Channel *, unsigned char **, size_t *,
                                           int);
+    /* Copy an indexed stream record locally or by remote opcode 9; caller frees data. */
+    FVM_Result fvm_channel_stream_peek(FVM_Context *, FVM_Channel *, size_t, unsigned char **,
+                                       size_t *);
     /* Allocate a process-local shared resource identity under the registry lock. */
     unsigned long fvm_sync_next_identity(void);
     /* Internal in-process packets own no VM pointers. Send transfers ownership

@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.69 / Remaining work after v0.69
+# Оставшаяся работа после v0.70 / Remaining work after v0.70
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -140,3 +140,6 @@ v0.68 adds exact arena accounting and native string lifetime snapshots; full GC 
 
 В v0.69 ограничен indexed file peek: 65536 записей и 64 MiB на запрос, с восстановлением позиции при отказе. Сетевой indexed peek остаётся открытым.
 v0.69 bounds indexed file inspection work and preserves the cursor on failure; remote indexed inspection remains open.
+
+В v0.70 добавлен remote indexed peek для queue/file authority с циклами и shared capabilities. Source-aware remote waiters, distributed deadlocks и длительные испытания остаются открытыми.
+v0.70 adds non-consuming remote queue/file message inspection; full distributed debugger acceptance remains open.

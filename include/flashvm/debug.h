@@ -63,9 +63,11 @@ extern "C"
        Remote identity denotes the local proxy; remote counters are bounded to Uint32.
        Transport/read/framing failures leave output unchanged; older brokers reject new controls. */
     FVM_API FVM_Result fvm_debug_channel_state(FVM_Channel *, FVM_DebugChannel *);
-    /* Decode an immutable packet snapshot without dequeueing. Resource capabilities
-       remain live shared handles; this does not freeze their native state. Local file indexes
-       count unread records, and inspection restores the cursor even after malformed input. */
+    /* [GC:] Decode an independent snapshot without dequeueing, including compatible remote brokers.
+       Resource capabilities remain live shared handles; their native state is not frozen.
+       File indexes count unread records, with a 65536-record / 64 MiB inspection work limit;
+       every outcome restores the cursor. Remote indexes are Uint32. Root returned objects
+       before GC; decoding or transport failure leaves the result undefined. */
     /* Implement debug channel message for this subsystem. */
     FVM_API FVM_Result fvm_debug_channel_message(FVM_Context *, FVM_Channel *, size_t, FVM_Value *);
     /* Define FVM_DebugChannelWait struct and its representation. */

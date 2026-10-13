@@ -373,7 +373,7 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
                     context->resource_receive_path.swap(previous);
                 }
             } provenance(context, fvm_channel_file_path(channel));
-            result = peek ? fvm_channel_file_peek_record(channel, index, &data, &size)
+            result = peek ? fvm_channel_stream_peek(context, channel, index, &data, &size)
                           : fvm_channel_stream_receive(context, channel, &data, &size, blocking);
             if (result == FVM_OK)
                 result = fvm_value_deserialize(context, data, size, out);
@@ -502,9 +502,9 @@ FVM_Result fvm_channel_send_wire(FVM_Channel *channel, const unsigned char *data
     return r;
 }
 
-/* Receive channel wire. */
-FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned char **out,
-                                    size_t *size)
+/* Encode a retained peek or an owned receive packet for transport without VM pointers. */
+static FVM_Result channel_wire(FVM_Context *c, FVM_Channel *ch, unsigned char **out, size_t *size,
+                               bool peek, size_t index)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -514,7 +514,8 @@ FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned ch
     /* Computation / Вычисление и обновление состояния. */
     *out = 0;
     *size = 0;
-    FVM_Result r = fvm_channel_receive_mixed(ch, &value, &raw, 0);
+    FVM_Result r = peek ? fvm_channel_peek_mixed(ch, index, &value, &raw)
+                        : fvm_channel_receive_mixed(ch, &value, &raw, 0);
     if (r != FVM_OK)
         return r;
     if (!raw)
@@ -524,7 +525,9 @@ FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned ch
         return r;
     }
     Packet *p = (Packet *)raw;
-    unregister_packet(p);
+    /* A peek retains the packet while the queue keeps its registration and ownership. */
+    if (!peek)
+        unregister_packet(p);
     if (p->resources.empty())
     {
         *out = (unsigned char *)std::malloc(p->size);
@@ -550,4 +553,18 @@ FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned ch
     }
     release(p);
     return r;
+}
+
+/* Remove and encode the next queued value for remote receipt. */
+FVM_Result fvm_channel_receive_wire(FVM_Context *c, FVM_Channel *ch, unsigned char **out,
+                                    size_t *size)
+{
+    return channel_wire(c, ch, out, size, false, 0);
+}
+
+/* Copy and encode an indexed queued value while preserving queue order and ownership. */
+FVM_Result fvm_channel_peek_wire(FVM_Context *c, FVM_Channel *ch, size_t index, unsigned char **out,
+                                 size_t *size)
+{
+    return channel_wire(c, ch, out, size, true, index);
 }

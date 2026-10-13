@@ -1074,6 +1074,32 @@ FVM_Result fvm_channel_stream_receive(FVM_Context *context, FVM_Channel *c, unsi
                   : c->remote_request(c->remote, context, 6, 0, 0, data, size, blocking);
 }
 
+/* Copy an indexed remote or file message without consuming it or changing its freeze state. */
+FVM_Result fvm_channel_stream_peek(FVM_Context *context, FVM_Channel *c, size_t index,
+                                   unsigned char **data, size_t *size)
+{
+    int closed;
+    unsigned char request[4];
+    if (!c || !data || !size)
+        return FVM_INVALID_ARGUMENT;
+    *data = 0;
+    *size = 0;
+    if (!c->remote_request)
+        return fvm_channel_file_peek_record(c, index, data, size);
+    if (index > 4294967295UL)
+        return FVM_UNSUPPORTED;
+    request[0] = (unsigned char)(index >> 24);
+    request[1] = (unsigned char)(index >> 16);
+    request[2] = (unsigned char)(index >> 8);
+    request[3] = (unsigned char)index;
+    fvm_port_sync_lock(c->sync);
+    closed = c->closed;
+    fvm_port_sync_unlock(c->sync);
+    return closed
+               ? FVM_ERROR
+               : c->remote_request(c->remote, context, 9, request, sizeof(request), data, size, 0);
+}
+
 /* Compute and return channel file path. */
 const char *fvm_channel_file_path(FVM_Channel *c)
 {

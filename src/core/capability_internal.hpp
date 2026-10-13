@@ -38,4 +38,6 @@ FVM_Result fvm_channel_send_wire(FVM_Channel *, const unsigned char *, size_t);
 
 /* Receive channel wire. */
 FVM_Result fvm_channel_receive_wire(FVM_Context *, FVM_Channel *, unsigned char **, size_t *);
+/* Encode an indexed queue snapshot without removing its packet or shared resources. */
+FVM_Result fvm_channel_peek_wire(FVM_Context *, FVM_Channel *, size_t, unsigned char **, size_t *);
 #endif

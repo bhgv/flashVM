@@ -358,9 +358,9 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
             }
         if (!found)
             return FVM_ERROR;
-        if (h[5] == 1 || h[5] == 2 || h[5] == 6)
+        if (h[5] == 1 || h[5] == 2 || h[5] == 6 || h[5] == 9)
         {
-            if (!get(h + 104) && h[5] != 6)
+            if (!get(h + 104) && h[5] != 6 && h[5] != 9)
                 return FVM_ERROR;
             char key[41];
             std::memcpy(key, h + 72, 32);
@@ -466,6 +466,15 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     }
     int stream = 0;
     fvm_channel_is_stream((FVM_Channel *)e.handle, &stream);
+    /* Inspection bypasses read freezing, retains queue packets and restores file cursors. */
+    if (h[5] == 9)
+    {
+        if (size != 4)
+            return FVM_INVALID_ARGUMENT;
+        size_t index = (size_t)get(input);
+        return stream ? fvm_channel_file_peek_record((FVM_Channel *)e.handle, index, output, length)
+                      : fvm_channel_peek_wire(c, (FVM_Channel *)e.handle, index, output, length);
+    }
     if (h[5] == 5)
     {
         /* The VM graph decoder validates contents at receipt. Reject truncated

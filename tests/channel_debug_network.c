@@ -4,6 +4,9 @@
 #include "flashvm/extensions.h"
 #include "flashvm/transfer.h"
 #include "flashvm/serialization.h"
+#include "flashvm/table.h"
+#include "flashvm/gc.h"
+#include "flashvm/mutex.h"
 #include "flashvm/worker.h"
 #include "../ports/thread_port.h"
 #include <assert.h>
@@ -49,8 +52,12 @@ int main(void)
     assert(fvm_debug_channel_state(queue,&local)==FVM_OK && local.frozen && local.pending==1);
     assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.frozen && state.pending==1 && state.capacity==4 && state.identity==fvm_channel_identity(network));
     assert(fvm_channel_receive_value(client,network,&out,0)==FVM_NOT_FOUND);
+    assert(fvm_debug_channel_message(client,network,0,&out)==FVM_OK && out.number==7);
+    assert(fvm_debug_channel_message(client,network,1,&out)==FVM_NOT_FOUND);
     assert(fvm_channel_try_receive(queue,&out)==FVM_NOT_FOUND);
     fvm_value_number(&value,9);assert(fvm_channel_send_value(client,network,&value,0)==FVM_OK);
+    assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.pending==2 && state.frozen);
+    assert(fvm_debug_channel_message(client,network,1,&out)==FVM_OK && out.number==9);
     assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.pending==2 && state.frozen);
     fvm_value_undefined(&input);task.channel=network;task.has_fault=0;assert(fvm_worker_run(&cfg,receive,&input,&task,&worker)==FVM_OK);
     fvm_port_thread_sleep_us(10000);assert(fvm_worker_state(worker,&status)==FVM_OK && status!=FVM_WORKER_FINISHED);
@@ -58,6 +65,42 @@ int main(void)
     assert(fvm_worker_join(worker,&out)==FVM_OK && out.number==7);fvm_worker_destroy(worker);
     assert(fvm_channel_receive_value(client,network,&out,0)==FVM_OK && out.number==9);
     assert(fvm_debug_channel_state(network,&state)==FVM_OK && !state.pending && !state.frozen);
+    /* Retained packets preserve cycles and shared capabilities across repeated inspection and GC. */
+    {
+        FVM_Channel *shared;FVM_Object *graph,*resource,*first;FVM_Value root,edge,argument;
+        unsigned long collected;FVM_Mutex *mutex;int locked;
+        assert(fvm_channel_create(&shared)==FVM_OK);
+        assert(fvm_object_create(owner,&graph)==FVM_OK);
+        fvm_value_undefined(&root);root.type=FVM_VALUE_OBJECT;root.object=graph;
+        assert(fvm_object_set(owner,graph,"self",&root)==FVM_OK);
+        assert(fvm_extensions_wrap_channel(owner,shared,&resource)==FVM_OK);
+        root.object=resource;assert(fvm_object_set(owner,graph,"channel",&root)==FVM_OK);
+        assert(fvm_mutex_create(owner,&mutex)==FVM_OK);
+        assert(fvm_extensions_wrap_mutex(owner,mutex,&resource)==FVM_OK);
+        root.object=resource;assert(fvm_object_set(owner,graph,"mutex",&root)==FVM_OK);
+        root.object=graph;assert(fvm_channel_send_value(owner,queue,&root,0)==FVM_OK);
+        assert(fvm_debug_channel_freeze(network,1)==FVM_OK);
+        assert(fvm_gc_collect(owner,&collected)==FVM_OK);
+        assert(fvm_debug_channel_message(client,network,0,&out)==FVM_OK);
+        first=out.object;assert(fvm_gc_pin(client,first)==FVM_OK);
+        assert(fvm_gc_collect(client,&collected)==FVM_OK);
+        assert(fvm_object_get(client,first,"self",&edge)==FVM_OK && edge.object==first);
+        assert(fvm_object_get(client,first,"mutex",&edge)==FVM_OK);
+        assert(fvm_object_call(client,edge.object,"set",0,0,&out)==FVM_OK);
+        assert(fvm_mutex_touch(mutex,&locked)==FVM_OK && locked);
+        assert(fvm_object_call(client,edge.object,"reset",0,0,&out)==FVM_OK);
+        assert(fvm_mutex_touch(mutex,&locked)==FVM_OK && !locked);
+        assert(fvm_object_get(client,first,"channel",&edge)==FVM_OK);
+        fvm_value_number(&argument,23);
+        assert(fvm_object_call(client,edge.object,"send",1,&argument,&out)==FVM_OK);
+        assert(fvm_channel_receive_value(owner,shared,&out,0)==FVM_OK && out.number==23);
+        assert(fvm_debug_channel_message(client,network,0,&out)==FVM_OK && out.object!=first);
+        assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.pending==1 && state.frozen);
+        assert(fvm_debug_channel_freeze(network,0)==FVM_OK);
+        assert(fvm_channel_receive_value(client,network,&out,0)==FVM_OK && out.object!=first);
+        assert(fvm_object_get(client,out.object,"self",&edge)==FVM_OK && edge.object==out.object);
+        assert(fvm_gc_unpin(client,first)==FVM_OK);fvm_channel_release(shared);fvm_mutex_release(mutex);
+    }
     remove("network-debug-file.bin");assert(fvm_channel_open_file("network-debug-file.bin","rw",&file)==FVM_OK);
     fvm_value_number(&value,11);assert(fvm_channel_send(file,&value)==FVM_OK);
     assert(fvm_extensions_wrap_channel(owner,file,&wrapper)==FVM_OK);
@@ -66,6 +109,9 @@ int main(void)
     assert(fvm_debug_channel_freeze(remote_file,1)==FVM_OK);
     assert(fvm_debug_channel_state(remote_file,&state)==FVM_OK && state.frozen && state.pending==1 && !state.capacity);
     assert(fvm_channel_receive_value(client,remote_file,&out,0)==FVM_NOT_FOUND);
+    assert(fvm_debug_channel_message(client,remote_file,0,&out)==FVM_OK && out.number==11);
+    assert(fvm_debug_channel_message(client,remote_file,1,&out)==FVM_NOT_FOUND);
+    assert(fvm_debug_channel_state(remote_file,&state)==FVM_OK && state.pending==1 && state.frozen);
     assert(fvm_debug_channel_freeze(remote_file,0)==FVM_OK);
     assert(fvm_channel_receive_value(client,remote_file,&out,0)==FVM_OK && out.number==11);
     assert(fvm_debug_channel_state(remote_file,&state)==FVM_OK && !state.pending);
@@ -77,6 +123,7 @@ int main(void)
     assert(task.has_fault && task.fault.code==FVM_RESOURCE_CLOSED && task.fault.line==42 && !strcmp(task.fault.source,"network-worker.as") && (task.fault.flags & FVM_EXCEPTION_NETWORK) && !strcmp(task.fault.address,uri));
     assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.closed && state.frozen);
     assert(fvm_debug_channel_freeze(network,0)==FVM_ERROR);
+    assert(fvm_debug_channel_message(client,network,0,&out)==FVM_ERROR);
     fvm_broker_stop(broker);state.pending=987;state.identity=555;
     assert(fvm_debug_channel_state(network,&state)==FVM_ERROR && state.pending==987 && state.identity==555);
     assert(fvm_debug_resource_errors(errors,64,&count,1)==FVM_OK && count>0);
