@@ -35,6 +35,8 @@ extern "C"
 #define FVM_EXCEPTION_FILE 2UL
 /* Define FVM EXCEPTION NETWORK constant or compilation switch. */
 #define FVM_EXCEPTION_NETWORK 4UL
+#define FVM_EXCEPTION_REMOTE_CONTEXT                                                               \
+    8UL /* Resource identifiers/path describe the remote authority. */
     /* Define FVM_ExceptionInfo struct and its representation. */
     typedef struct FVM_ExceptionInfo
     {

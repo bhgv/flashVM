@@ -284,6 +284,14 @@ void fvm_resource_fault_resource(FVM_Context *c, unsigned long kind, void *handl
         if (handle)
             f.resource = fvm_channel_identity((FVM_Channel *)handle);
         f.origin_thread = origin;
+        /* Preserve a carrier path if present; otherwise identify the failed native file resource.
+         */
+        const char *path = handle ? fvm_channel_file_path((FVM_Channel *)handle) : 0;
+        if (path && *path && !f.path[0])
+        {
+            copy(f.path, sizeof(f.path), path);
+            f.flags |= FVM_EXCEPTION_FILE;
+        }
     }
     if (f.origin_thread && f.origin_thread != c->identity)
         f.flags |= FVM_EXCEPTION_THREAD;

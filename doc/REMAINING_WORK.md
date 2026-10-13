@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.78 / Remaining work after v0.78
+# Оставшаяся работа после v0.79 / Remaining work after v0.79
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -167,3 +167,6 @@ v0.77 preserves nested capability failure codes; full remote cause metadata and 
 
 В v0.78 broker receive/peek используют disposable adapter contexts: wire replicas/native references/strings освобождаются на выходе, mutex peers сохраняют identity (BROKER_ADAPTER_LIFETIME.md). Export registry/ownership peers сохраняются до stop; полная стадия 7 открыта.
 v0.78 bounds broker conversion graph lifetime and adds coherent lifetime counters; remote ownership leases and full distributed acceptance remain open.
+
+В v0.79 optional FFME error metadata переносит kind/id/origin/path/message/operation/address с REMOTE_CONTEXT flag и сохранением caller location (NETWORK_FAULT_CONTEXT.md). Полная distributed deadlock/lease/source-map приёмка стадии 7 открыта.
+v0.79 adds portable optional authority fault details with malformed-record rollback; full distributed debugger acceptance remains open.

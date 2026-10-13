@@ -6,6 +6,7 @@
 #include "flashvm/serialization.h"
 #include "flashvm/transfer.h"
 #include <assert.h>
+#include <stdio.h>
 #include <string.h>
 #ifdef OS_PORTS
 static FVM_Result inspect(FVM_Context *c,FVM_Object *self,unsigned n,const FVM_Value *args,FVM_Value *out,void *raw)
@@ -21,7 +22,7 @@ int main(void)
     assert(fvm_context_create(rt,&owner)==FVM_OK);assert(fvm_context_create(rt,&client)==FVM_OK);
     assert(fvm_broker_start("127.0.0.1","127.0.0.1",0,&broker)==FVM_OK);
     assert(fvm_context_set_broker(owner,broker)==FVM_OK);
-    for(kind=0;kind<2;++kind)
+    for(kind=0;kind<3;++kind)
     {
         assert(fvm_channel_create(&queue)==FVM_OK);
         assert(fvm_extensions_wrap_channel(owner,queue,&wrapper)==FVM_OK);
@@ -36,7 +37,12 @@ int main(void)
         }
         else
         {
-            assert(fvm_channel_create(&inner_channel)==FVM_OK);
+            if(kind==2)
+            {
+                remove("nested-inner-resource.bin");
+                assert(fvm_channel_open_file("nested-inner-resource.bin","rw",&inner_channel)==FVM_OK);
+            }
+            else assert(fvm_channel_create(&inner_channel)==FVM_OK);
             assert(fvm_extensions_wrap_channel(owner,inner_channel,&inner)==FVM_OK);
         }
         fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=inner;
@@ -45,12 +51,22 @@ int main(void)
         assert(fvm_debug_set_location(client,"nested-capability.as",29)==FVM_OK);
         assert(fvm_object_call(client,proxy,"inspect",0,0,&out)==FVM_EXCEPTION);
         assert(fvm_exception_info(client,&fault)==FVM_OK && fault.code==FVM_RESOURCE_CLOSED);
+        assert(!strcmp(fault.kind,kind==0?"mutex":"channel") && (fault.flags&FVM_EXCEPTION_REMOTE_CONTEXT));
+        assert(fault.resource==(kind==0?fvm_mutex_identity(mutex):fvm_channel_identity(inner_channel)));
+        assert(fault.origin_thread==fvm_context_identity(owner));
+        assert(!strcmp(fault.operation,"capability.receive"));
+        if(kind==2)assert((fault.flags&FVM_EXCEPTION_FILE) && !strcmp(fault.path,"nested-inner-resource.bin"));
         assert(fault.line==29 && !strcmp(fault.source,"nested-capability.as") && !strcmp(fault.address,uri));
         assert(fvm_debug_channel_state(network,&state)==FVM_OK && state.pending==1 && !state.closed);
         assert(fvm_exception_clear(client)==FVM_OK);
         assert(fvm_broker_stats(broker,&stats)==FVM_OK && !stats.peer_contexts && !stats.adapter_contexts);
         assert(fvm_object_call(client,proxy,"receive",0,0,&out)==FVM_EXCEPTION);
         assert(fvm_exception_info(client,&fault)==FVM_OK && fault.code==FVM_RESOURCE_CLOSED);
+        assert(!strcmp(fault.kind,kind==0?"mutex":"channel") && (fault.flags&FVM_EXCEPTION_REMOTE_CONTEXT));
+        assert(fault.resource==(kind==0?fvm_mutex_identity(mutex):fvm_channel_identity(inner_channel)));
+        assert(fault.origin_thread==fvm_context_identity(owner));
+        assert(!strcmp(fault.operation,"capability.receive"));
+        if(kind==2)assert((fault.flags&FVM_EXCEPTION_FILE) && !strcmp(fault.path,"nested-inner-resource.bin"));
         assert(fault.line==29 && !strcmp(fault.source,"nested-capability.as") && (fault.flags&FVM_EXCEPTION_NETWORK));
         assert(fvm_debug_channel_state(network,&state)==FVM_OK && !state.pending && !state.closed);
         assert(fvm_exception_clear(client)==FVM_OK);
@@ -60,6 +76,7 @@ int main(void)
         fvm_channel_release(network);fvm_channel_release(queue);
         if(kind==0)fvm_mutex_release(mutex);else fvm_channel_release(inner_channel);
         fvm_serialized_free(uri);
+        if(kind==2)assert(!remove("nested-inner-resource.bin"));
     }
     fvm_broker_stop(broker);fvm_broker_release(broker);
     fvm_context_destroy(client);fvm_context_destroy(owner);fvm_runtime_destroy(rt);

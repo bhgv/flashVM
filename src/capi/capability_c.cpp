@@ -7,6 +7,7 @@
 #include "flashvm/capability.h"
 #include "flashvm/worker.h"
 #include "flashvm/debug.h"
+#include "../core/fault_wire.hpp"
 #include "../../ports/network_port.h"
 #include "../../ports/thread_port.h"
 #include "../../ports/channel_sync.h"
@@ -219,7 +220,8 @@ struct AdapterContext
         /* [GC:] Graph conversion must not produce extra user finalizer effects in an intermediary
          * VM. */
         for (size_t i = 0; i < context->objects.size(); ++i)
-            /* [GC:] Every intermediate shell skips user finalizer dispatch during adapter teardown. */
+            /* [GC:] Every intermediate shell skips user finalizer dispatch during adapter teardown.
+             */
             context->objects[i]->finalized = true;
         /* [GC:] The borrowed broker must not be released by ordinary context teardown. */
         context->broker = 0;
@@ -246,6 +248,9 @@ bool nonce(char *out)
     fvm_port_registry_unlock();
     return ok;
 }
+
+/* Optional error records have a portable fixed layout defined by the fault codec. */
+const size_t fault_record_size = FVM_FAULT_WIRE_SIZE;
 
 /* Compute and return rpc. */
 FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, size_t size,
@@ -312,6 +317,12 @@ FVM_Result rpc(Remote *r, FVM_Context *c, int op, const unsigned char *input, si
             else if (!transfer(socket, *output, n, false))
                 ok = false;
         }
+        /* Optional metadata never changes the primary status or accepts partial/unverified fields.
+         */
+        if (ok && result == FVM_ERROR && status >= FVM_RESOURCE_CLOSED &&
+            status <= FVM_RESOURCE_FAILURE)
+            if (c && c->fault_pending)
+                fvm_fault_wire_decode(&c->fault, output ? *output : 0, (size_t)n);
         if (ok && length)
             *length = (size_t)n;
     }
@@ -390,17 +401,23 @@ FVM_Result closed(const Entry &e, int *out)
 }
 
 /* Preserve a structured nested resource cause instead of replacing it with broker failure. */
-FVM_Result channel_result(FVM_Result result, FVM_Context *context, unsigned long &fault)
+FVM_Result channel_result(FVM_Result result, FVM_Context *context, unsigned long &fault,
+                          FVM_ExceptionInfo &details)
 {
     if (result != FVM_OK && context && context->fault_pending &&
         context->fault.code >= FVM_RESOURCE_CLOSED && context->fault.code <= FVM_RESOURCE_FAILURE)
+    {
         fault = context->fault.code;
+        /* Copy before a scoped adapter destroys its heap and pending diagnostic storage. */
+        details = context->fault;
+    }
     return result;
 }
 
 /* Dispatch the current value. */
 FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigned char *input,
-                    size_t size, unsigned char **output, size_t *length, unsigned long &fault)
+                    size_t size, unsigned char **output, size_t *length, unsigned long &fault,
+                    FVM_ExceptionInfo &details)
 {
     fault = FVM_RESOURCE_STALE;
 
@@ -502,7 +519,10 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         if (r != FVM_OK)
         {
             if (c && c->fault_pending)
+            {
                 fault = c->fault.code;
+                details = c->fault;
+            }
             return r;
         }
         *output = (unsigned char *)std::malloc(1);
@@ -550,7 +570,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         size_t index = (size_t)get(input);
         r = stream ? fvm_channel_file_peek_record((FVM_Channel *)e.handle, index, output, length)
                    : fvm_channel_peek_wire(c, (FVM_Channel *)e.handle, index, output, length);
-        return channel_result(r, c, fault);
+        return channel_result(r, c, fault, details);
     }
     if (h[5] == 5)
     {
@@ -567,7 +587,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     {
         r = stream ? fvm_channel_stream_receive(c, (FVM_Channel *)e.handle, output, length, 0)
                    : fvm_channel_receive_wire(c, (FVM_Channel *)e.handle, output, length);
-        return channel_result(r, c, fault);
+        return channel_result(r, c, fault, details);
     }
     return FVM_INVALID_ARGUMENT;
 }
@@ -591,6 +611,8 @@ void serve(void *arg)
         size_t length = 0;
         FVM_Result result = FVM_ERROR;
         unsigned long fault = FVM_RESOURCE_FAILURE;
+        FVM_ExceptionInfo details;
+        std::memset(&details, 0, sizeof(details));
         if (transfer(s, h, sizeof(h), false) && !std::memcmp(h, "FVMC", 4) && h[4] == 1 &&
             get(h + 108) <= limit)
         {
@@ -600,11 +622,29 @@ void serve(void *arg)
             {
                 try
                 {
-                    result = dispatch(b, h, input, size, &output, &length, fault);
+                    result = dispatch(b, h, input, size, &output, &length, fault, details);
                 }
                 catch (...)
                 {
                     result = FVM_OUT_OF_MEMORY;
+                }
+            }
+        }
+        /* Optional details are best-effort; allocation failure preserves the original error code.
+         */
+        if (result != FVM_OK && result != FVM_NOT_FOUND && result != FVM_OUT_OF_MEMORY)
+        {
+            std::free(output);
+            output = 0;
+            length = 0;
+            if (details.code == fault && details.kind[0] && details.resource <= 4294967295UL &&
+                details.origin_thread <= 4294967295UL)
+            {
+                output = (unsigned char *)std::malloc(fault_record_size);
+                if (output)
+                {
+                    fvm_fault_wire_encode(output, details);
+                    length = fault_record_size;
                 }
             }
         }

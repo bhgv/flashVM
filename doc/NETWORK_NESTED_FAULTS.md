@@ -44,3 +44,9 @@ OS_PORTS-disabled profiles omit live networking; stages 6/7 remain open.
 resource/mutex/GC/serialization tests 72/72 in AGG, Cairo, portable and
 ASan/UBSan. Portable excludes TCP, live fonts only in AGG/Cairo; heap/global
 ASan and UBSan active, leak detection/stack ASan disabled. Linux only.
+
+## Обновление v0.79 / v0.79 update
+
+Ограничение передачи inner-resource metadata устранено для recognized pending
+resource causes: optional FFME record переносит details (NETWORK_FAULT_CONTEXT.md).
+Legacy peers/status-only faults по-прежнему используют прежний context fallback.
