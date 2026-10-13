@@ -3,7 +3,7 @@
 #include "array_legacy_join.cpp"
 #include "flashvm/gc.h"
 static unsigned compared;
-static bool equal_keys;
+static bool equal_keys, positive;
 static unsigned undefined_compared;
 static bool tracing;
 static unsigned trace_count, error_after;
@@ -19,7 +19,7 @@ static FVM_Result compare(FVM_Context *, FVM_Object *, unsigned n, const FVM_Val
     if (a[0].type == FVM_VALUE_UNDEFINED || a[1].type == FVM_VALUE_UNDEFINED) {
         ++undefined_compared;
         fvm_value_number(out, a[0].type == a[1].type ? 0 : a[0].type == FVM_VALUE_UNDEFINED ? -1 : 1);
-    } else fvm_value_number(out, equal_keys ? 0 : a[0].number - a[1].number);
+    } else fvm_value_number(out, positive ? 1 : equal_keys ? 0 : a[0].number - a[1].number);
     return FVM_OK;
 }
 int main()
@@ -52,7 +52,18 @@ int main()
         number(c, out.object, "0", version ? 2 : 0);
         number(c, out.object, "1", 1);
         number(c, out.object, "2", version ? 0 : 2);
+        fvm_value_number(args + 1, 12); compared = 0;
+        assert(borrow(c, array, "sort", o, 2, args, &out) == FVM_OK);
+        if (version) { assert(out.type == FVM_VALUE_OBJECT && compared == 4); number(c, out.object, "0", 0); number(c, out.object, "2", 2); }
+        else assert(out.type == FVM_VALUE_NUMBER && out.number == 0);
         equal_keys = false;
+        FVM_Value duplicates[2]; fvm_value_number(duplicates, 2); fvm_value_number(duplicates + 1, 2);
+        FVM_Object *duplicate_array = 0; assert(fvm_construct(c, "Array", 2, duplicates, &duplicate_array) == FVM_OK);
+        positive = true; compared = 0; fvm_value_number(args + 1, 4);
+        assert(fvm_object_call(c, duplicate_array, "sort", 2, args, &out) == FVM_OK);
+        if (version) assert(out.type == FVM_VALUE_NUMBER && out.number == 0 && compared == 1);
+        else assert(out.type == FVM_VALUE_OBJECT && compared == 2);
+        positive = false;
         fvm_value_undefined(&value);
         assert(fvm_table_set_index(c, array, 1, &value) == FVM_OK);
         fvm_value_number(args + 1, 0); undefined_compared = 0;

@@ -837,6 +837,68 @@ class SortInputRoots
     ~SortInputRoots() { context_->gc_frames = frame_.previous; }
 };
 
+/* [GC:] Retain comparison operands and converted strings across later coercion callbacks. */
+class SortComparisonRoots
+{
+    FVM_Context *context_; /* Context owning the active collector chain. */
+    FVM_GCRootFrame frame_; /* [GC:] Frame tracing operands and intermediate string buffers. */
+    /* [GC:] Linked root ownership is unique. */
+    SortComparisonRoots(const SortComparisonRoots &);
+    /* [GC:] Assignment cannot move a live collector frame. */
+    SortComparisonRoots &operator=(const SortComparisonRoots &);
+  public:
+    fvm_detail::vector<FVM_Value> values; /* [GC:] Two operands followed by their converted strings. */
+    /* [GC:] Publish initialized values before any conversion can invoke ActionScript. */
+    SortComparisonRoots(FVM_Context *c, const FVM_Value &left, const FVM_Value &right)
+        : context_(c), values(4)
+    {
+        values[0] = left;
+        values[1] = right;
+        fvm_value_undefined(&values[2]);
+        fvm_value_undefined(&values[3]);
+        frame_.previous = c->gc_frames;
+        frame_.stack = &values;
+        frame_.locals = 0;
+        frame_.receiver = 0;
+        c->gc_frames = &frame_;
+    }
+    /* [GC:] Restore caller roots after conversion errors and allocation exceptions. */
+    ~SortComparisonRoots() { context_->gc_frames = frame_.previous; }
+};
+
+/* Compare loaded builtin values at comparison time, coercing left before right. */
+FVM_Result loaded_value_compare(FVM_Context *c, const FVM_Value &left, const FVM_Value &right,
+                                unsigned int flags, int &order)
+{
+    if ((flags & 16) && left.type == FVM_VALUE_NUMBER && right.type == FVM_VALUE_NUMBER)
+        order = left.number < right.number ? -1 : left.number > right.number ? 1 : 0;
+    else
+    {
+        SortComparisonRoots roots(c, left, right);
+        FVM_Result result = fvm_avm1_string(c, roots.values[0], &roots.values[2]);
+        if (result == FVM_OK)
+            result = fvm_avm1_string(c, roots.values[1], &roots.values[3]);
+        if (result != FVM_OK)
+            return result;
+        if (flags & 1)
+            for (size_t i = 2; i < 4; ++i)
+            {
+                FVM_Value folded;
+                result = fvm_string_case(c, roots.values[i], &folded, false);
+                if (result != FVM_OK)
+                    return result;
+                roots.values[i] = folded;
+            }
+        result = fvm_string_order(roots.values[2].string, fvm_string_size(roots.values[2]),
+                                  roots.values[3].string, fvm_string_size(roots.values[3]), order);
+        if (result != FVM_OK)
+            return result;
+    }
+    if (flags & 2)
+        order = -order;
+    return FVM_OK;
+}
+
 /* Compare the current value. */
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
@@ -888,6 +950,8 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
         if (c->swf_loaded)
             return FVM_OK;
     }
+    else if (c->swf_loaded)
+        return loaded_value_compare(c, a.value, b.value, flags, order);
     else if ((flags & 16) && a.value.type == FVM_VALUE_NUMBER && b.value.type == FVM_VALUE_NUMBER)
         order = a.number < b.number ? -1 : a.number > b.number ? 1 : 0;
     else
@@ -1071,7 +1135,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 item.keys.push_back(key);
             }
         }
-        if (!spec && !callback && (c->swf_loaded || item.value.type != FVM_VALUE_UNDEFINED))
+        if (!c->swf_loaded && !spec && !callback && item.value.type != FVM_VALUE_UNDEFINED)
         {
             if (item.value.type == FVM_VALUE_NUMBER)
                 item.number = item.value.number;
@@ -1146,7 +1210,10 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         for (size_t i = 1; i < items.size(); ++i)
         {
             int order = 0;
-            FVM_Result r = compare(c, items[i - 1], items[i], flags, callback, order, spec);
+            FVM_Result r = work.step();
+            if (r == FVM_OK)
+                r = compare(c, items[i - 1], items[i], flags,
+                            c->swf_loaded && !spec ? 0 : callback, order, spec);
             if (r != FVM_OK)
                 return r;
             if (!order)

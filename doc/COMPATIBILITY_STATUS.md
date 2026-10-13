@@ -1094,3 +1094,20 @@ stages remain open.
 
 Проверены эталонные пары comparator, ошибки и предел работы quicksort.
 Точная семантика преобразования ключей и все стадии пока открыты.
+
+## v0.164 — comparison-time coercion / преобразования пар
+
+Loaded Array.sort performs builtin AVM1 string conversion per comparison, left
+before right, while NUMERIC compares two Numbers directly. Intermediate operand/
+string roots remain live across later callbacks. Custom UNIQUESORT checks adjacent
+final values with builtin comparison instead of invoking the custom callback.
+[RU/EN details](ARRAY_LEGACY_SORT_COERCION.md). Evidence: AGG 328/Cairo 327,
+seven focused portable/restricted heap-global ASan+UBSan checks, fifteen byte-exact
+original SWFs. Fourteen pinned toString calls, conversion errors, equal/positive
+custom uniqueness and snapshot clearing pass. A test-local expired string buffer
+was replaced by a literal; all seven final focused tests passed all four profiles.
+One AGG bitmap launch failure passed after restoring executable bits. sortOn field
+lookup/coercion, native GC barriers and all stages remain open.
+
+Проверены повторные преобразования каждой пары и отдельная builtin проверка
+UNIQUESORT. Исправлена ошибка времени жизни строки в тесте. Все стадии открыты.

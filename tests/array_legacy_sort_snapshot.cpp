@@ -41,7 +41,7 @@ int main()
             assert(fvm_object_call(c, target, "sort", 0, 0, &out) == (fail ? FVM_ERROR : FVM_OK));
             assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
             if (!fail) {
-                assert(calls == 3); assert(fvm_gc_collect(c, 0) == FVM_OK);
+                assert(calls == 6); assert(fvm_gc_collect(c, 0) == FVM_OK);
                 assert(fvm_table_get_index(c, target, 0, &value) == FVM_OK && value.object == rows[1]);
                 assert(fvm_table_get_index(c, target, 1, &value) == FVM_OK && value.object == rows[0]);
                 assert(fvm_table_get_index(c, target, 2, &value) == FVM_OK && value.object == rows[2]);
