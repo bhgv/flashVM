@@ -89,6 +89,23 @@ static bool truth(const FVM_Value &value)
     }
 }
 
+/* Use numeric string truth in loaded SWF 5/6, preserving conversion failures. */
+static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
+{
+    if (value.type == FVM_VALUE_STRING && context->swf_loaded &&
+        context->swf_info.version >= 5 && context->swf_info.version < 7)
+    {
+        double number = 0;
+        FVM_Result result = fvm_value_to_number(context, &value, &number);
+        if (result != FVM_OK)
+            return result;
+        out = number != 0 && number == number;
+    }
+    else
+        out = truth(value);
+    return FVM_OK;
+}
+
 /* Compute and return own string. */
 static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
                              size_t length = (size_t)-1)
@@ -1676,7 +1693,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 FVM_Value &v = stack.back();
-                fvm_value_boolean(&v, !truth(v));
+                bool converted = false;
+                FVM_Result status = action_truth(c, v, converted);
+                if (status != FVM_OK)
+                    return status;
+                fvm_value_boolean(&v, !converted);
             }
             else if (a.op == 0x0e || a.op == 0x0f || a.op == 0x10 || a.op == 0x11)
             {
@@ -1718,8 +1739,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                 }
                 else
-                    value = a.op == 0x10 ? truth(operands[0]) && truth(operands[1])
-                                         : truth(operands[0]) || truth(operands[1]);
+                {
+                    bool left = false, right = false;
+                    FVM_Result status = action_truth(c, operands[0], left);
+                    if (status == FVM_OK)
+                        status = action_truth(c, operands[1], right);
+                    if (status != FVM_OK)
+                        return status;
+                    value = a.op == 0x10 ? left && right : left || right;
+                }
                 fvm_value_boolean(&result, value);
                 stack.pop_back();
                 stack.back() = result;
@@ -1963,9 +1991,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     if (stack.empty())
                         return FVM_ERROR;
-                    FVM_Value v = stack.back();
+                    bool converted = false;
+                    FVM_Result status = action_truth(c, stack.back(), converted);
+                    if (status != FVM_OK)
+                        return status;
                     stack.pop_back();
-                    take = truth(v);
+                    take = converted;
                 }
                 if (take)
                 {

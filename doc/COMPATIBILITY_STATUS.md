@@ -291,3 +291,12 @@ extended; AGG 249/249, Cairo Release 249/249 (six launch permissions restored an
 rerun); focused headless ASan/UBSan and portable 4/4 each. Additional comparison
 failure-order assertions passed on AGG. Historical string truth/version coercion
 and full stage 2 remain open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.88 — Loaded SWF string truth
+
+Проверено / tested: Not/And/Or/If string truth switch for loaded SWF 5/6 vs
+7/8, including counted NUL strings. Regression avm1_version_truth; AGG and
+Cairo Release 250/250 each after launch-permission reruns (3 and 1 tests);
+focused headless ASan/UBSan and portable 3/3 each. Stack/leak sanitizer
+exclusions remain. Earlier numeric parsing/function-version rules are open.
+RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).

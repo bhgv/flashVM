@@ -45,3 +45,19 @@ strings, NaN, booleans, object conversion order and non-coercing logical actions
 Pre-SWF-7 string truth and full version-specific numeric coercion remain open.
 Order cross-check: [Ruffle AVM1 activation at pinned commit](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/activation.rs).
 This is an implementation comparison, not a captured Flash Player oracle.
+
+## v0.88 — SWF 5/6 string truth
+
+Not, And, Or и If используют числовую истинность строк для загруженных SWF
+5/6, а для SWF 7/8 — непустую строку. Без загруженного SWF сохраняется
+современный режим. Ошибки числового преобразования не меняют стек.
+Тест avm1_version_truth загружает минимальные SWF каждой версии 5–8 и
+проверяет четыре Action-кода, нули, дроби, NaN, Infinity и встроенный NUL.
+SWF 4 и старше, исторический разбор чисел и версии отдельных функций остаются открытыми.
+
+Loaded SWF 5/6 use numeric string truth in Not/And/Or/If; SWF 7/8 and
+contexts without loaded metadata use nonempty string truth. Conversion errors
+propagate before stack mutation. The new test loads minimal SWFs 5–8 rather
+than editing private context metadata. Pre-SWF-5 truth, exact historical
+number parsing and per-function SWF version provenance remain open.
+Reference cross-check: [pinned Ruffle value implementation](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/value.rs).
