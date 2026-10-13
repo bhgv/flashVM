@@ -58,3 +58,27 @@ block selected SWF 4/8 tests. No stage is closed by these three matches.
 Original SWF 8 biturshift_swf8 now completes with exact 93-byte expected output.
 Top-level declarations and the SWF 8 signed URShift result were both necessary.
 Четвёртый внешний SWF совпал с эталоном; полная AVM1 приёмка остаётся открытой.
+
+## v0.106 — Root timeline comparison
+
+`flashvm_reference_swf --timeline TICKS INPUT.swf` imports the actual root
+MovieClip, publishes `_root` and `_level0`, then advances 1–10000 ticks.
+Loading never substitutes an empty clip for unsupported resource/control tags:
+those inputs fail explicitly. The original no-option mode remains available.
+This bounded mode does not simulate host input, audio or rendering schedules.
+The optional `flashvm_reference_runner` test generates two-frame FWS/CWS files
+and checks root receiver identity, frame progression, argument limits, corrupt
+input and unsupported resource tags. Standard installation follows loading so
+SWF version information is already available.
+
+Six additional original pinned Ruffle assets complete with exit 0 and exact
+output: equals2_swf5 (7487 bytes), equals2_swf6/7 (7488 each),
+lessthan2_swf5/6 (10642 each), lessthan2_swf7 (11000). Together with the four
+previous matches this gives ten passing external probes, without patched assets.
+The broader swf4_actions_coercion_order asset now reaches CharToAscii and fails
+there; its matching prefix is not acceptance evidence for the entire probe.
+
+Режим `--timeline` загружает настоящий корневой MovieClip и исполняет заданное
+число тактов. Шесть эталонов SWF 5–7 полностью совпали, включая `this`/`_root`.
+Теперь точно совпадают десять внешних проверок. Неизвестные теги, отсутствующие
+Action-коды и полная совместимость сцены остаются открытыми; этапы не закрыты.

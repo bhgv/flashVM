@@ -1,10 +1,12 @@
-/* FlashVM: bounded top-level DoAction runner for external SWF trace comparisons.
+/* FlashVM: bounded DoAction or root-timeline runner for external SWF trace comparisons.
  * This tool does not simulate frame/input scheduling or certify whole-movie compatibility. */
 #include "flashvm/avm1.h"
 #include "flashvm/standard.h"
+#include "flashvm/movieclip.h"
 #include "flashvm/swf.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Write exact counted trace bytes, followed by one newline, to the chosen output stream. */
 static FVM_Result output_trace(FVM_Context *context, FVM_Object *receiver,
@@ -63,7 +65,28 @@ static FVM_Result read_swf(const char *path, unsigned char **data, size_t *size)
     return FVM_OK;
 }
 
-/* Execute top-level actions in file order and report failure separately from trace output. */
+/* Accept a bounded positive decimal tick count without signs, suffixes or overflow. */
+static int parse_ticks(const char *text, unsigned int *ticks)
+{
+    unsigned int value = 0;
+    const char *cursor = text;
+    if (!*cursor)
+        return 0;
+    while (*cursor)
+    {
+        if (*cursor < '0' || *cursor > '9')
+            return 0;
+        value = value * 10 + (unsigned int)(*cursor++ - '0');
+        if (value > 10000)
+            return 0;
+    }
+    if (!value)
+        return 0;
+    *ticks = value;
+    return 1;
+}
+
+/* Run actions or bounded root timeline ticks and report failures separately from traces. */
 int main(int argc, char **argv)
 {
     FVM_Config config;
@@ -72,12 +95,20 @@ int main(int argc, char **argv)
     unsigned char *data = NULL;
     size_t size = 0;
     FVM_Result status;
-    if (argc != 2)
+    FVM_Object *root = NULL;
+    FVM_Value value;
+    unsigned int ticks = 0;
+    const char *path;
+    if (argc == 4 && strcmp(argv[1], "--timeline") == 0 && parse_ticks(argv[2], &ticks))
+        path = argv[3];
+    else if (argc == 2)
+        path = argv[1];
+    else
     {
-        fprintf(stderr, "Usage: flashvm_reference_swf INPUT.swf\n");
+        fprintf(stderr, "Usage: flashvm_reference_swf [--timeline TICKS] INPUT.swf\n");
         return 2;
     }
-    status = read_swf(argv[1], &data, &size);
+    status = read_swf(path, &data, &size);
     if (status == FVM_OK)
         status = fvm_config_init(&config);
     if (status == FVM_OK)
@@ -88,18 +119,30 @@ int main(int argc, char **argv)
     if (status == FVM_OK)
         status = fvm_context_create(runtime, &context);
     if (status == FVM_OK)
+        status = fvm_load_memory(context, data, size);
+    if (status == FVM_OK)
         status = fvm_standard_install(context);
     if (status == FVM_OK)
         status = fvm_avm1_set_trace_rooted(context, output_trace, stdout, NULL);
-    if (status == FVM_OK)
-        status = fvm_load_memory(context, data, size);
+    if (status == FVM_OK && ticks)
+        status = fvm_movieclip_load_swf(context, data, size, "root", &root);
+    if (status == FVM_OK && ticks)
+    {
+        /* [GC:] Publish the imported root before advancing any script that can collect it. */
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = root;
+        status = fvm_set_global(context, "_root", &value);
+        if (status == FVM_OK)
+            status = fvm_set_global(context, "_level0", &value);
+    }
     free(data);
     if (status == FVM_OK)
-        status = fvm_swf_execute_actions(context);
+        status = ticks ? fvm_movieclip_advance(context, root, ticks) : fvm_swf_execute_actions(context);
     if (fflush(stdout) && status == FVM_OK)
         status = FVM_ERROR;
     if (status != FVM_OK)
-        fprintf(stderr, "FlashVM result %d for %s\n", (int)status, argv[1]);
+        fprintf(stderr, "FlashVM result %d for %s\n", (int)status, path);
     /* [GC:] Context destruction releases VM objects after the final sink invocation. */
     if (context)
         fvm_context_destroy(context);

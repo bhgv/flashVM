@@ -16,7 +16,7 @@ endif()
 
 option(FVM_BUILD_TESTS "Build regression tests" ON)
 option(FVM_BUILD_EXAMPLES "Build embedding and extension examples" ON)
-option(FVM_BUILD_REFERENCE_RUNNER "Build the top-level SWF trace comparison runner" OFF)
+option(FVM_BUILD_REFERENCE_RUNNER "Build the SWF action/root-timeline trace comparison runner" OFF)
 include(cmake/BuildDefinitions.cmake)
 option(FVM_ENABLE_RENDER "Require a raster backend" OFF)
 if(FVM_ENABLE_RENDER AND NOT FVM_ENABLE_AGG AND NOT FVM_ENABLE_CAIRO)
@@ -229,8 +229,14 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND UNIX)
   set_tests_properties(flashvm_date_timezone_profiles PROPERTIES TIMEOUT 60)
 endif()
 
-# Explicit corpus tool; invocation requires a user-selected SWF path, so it is not a CTest.
+# Optional corpus runner; its smoke test generates bounded fixtures without external downloads.
 if(FVM_BUILD_REFERENCE_RUNNER)
   add_executable(flashvm_reference_swf tools/reference_swf.c)
   target_link_libraries(flashvm_reference_swf PRIVATE flashvm)
+  if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
+    add_test(NAME flashvm_reference_runner
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_reference_runner.py
+              $<TARGET_FILE:flashvm_reference_swf>)
+    set_tests_properties(flashvm_reference_runner PROPERTIES TIMEOUT 60)
+  endif()
 endif()
