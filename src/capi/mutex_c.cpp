@@ -125,6 +125,48 @@ void row(FVM_DebugMutex &out, FVM_Mutex *m, MutexWait *w, size_t bound)
         out.deadlocked = cycle(w->context, bound);
     }
 }
+/* Retain and expose a blocking remote acquisition until every exit path removes its wait row. */
+struct RemoteWaitScope
+{
+    FVM_Mutex *mutex;
+    MutexWait wait;
+    bool registered;
+    bool ready;
+
+    /* Capture the requesting script location and register its operation under the registry lock. */
+    RemoteWaitScope(FVM_Context *c, FVM_Mutex *m, int blocking)
+        : mutex(m), registered(false), ready(!blocking)
+    {
+        if (!blocking)
+            return;
+        std::memset(&wait, 0, sizeof(wait));
+        wait.context = c->identity;
+        wait.line = c->debug_line;
+        wait.offset = c->debug_offset;
+        std::strncpy(wait.source, c->debug_source.c_str(), sizeof(wait.source) - 1);
+        std::strncpy(wait.function, c->debug_function.c_str(), sizeof(wait.function) - 1);
+        RegistryGuard guard;
+        if (m->closed || m->owner == c->identity || m->references > ULONG_MAX - 2)
+            return;
+        ++m->references;
+        wait.next = m->waiters;
+        m->waiters = &wait;
+        registered = ready = true;
+    }
+
+    /* Remove the stack-backed wait record before dropping its retained native mutex reference. */
+    ~RemoteWaitScope()
+    {
+        if (!registered)
+            return;
+        RegistryGuard guard;
+        MutexWait **link = &mutex->waiters;
+        while (*link != &wait)
+            link = &(*link)->next;
+        *link = wait.next;
+        drop(mutex);
+    }
+};
 } // namespace
 /* Compute and return sync next identity. */
 extern "C" unsigned long fvm_sync_next_identity()
@@ -445,53 +487,58 @@ extern "C" FVM_Result fvm_mutex_set(FVM_Context *c, FVM_Mutex *m, int blocking)
     if (!c || !m || c->destroying)
         return FVM_INVALID_ARGUMENT;
     FVM_Result r;
+    RemoteWaitScope wait(c, m, m->request && blocking);
     if (!m->request)
         r = set_impl(c, m, blocking);
     else
     {
-        do
-        {
-            int stop = 0, ignored = 0;
-            if (c->worker)
-                fvm_worker_stop_requested(c->worker, &stop);
-            if (stop)
+        if (!wait.ready)
+            r = FVM_ERROR;
+        else
+            do
             {
-                fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, m->identity, "mutex.set",
-                                   m->remote_address);
-                r = FVM_ERROR;
-                break;
-            }
-            fvm_port_sync_lock(m->remote_sync);
-            {
-                RegistryGuard guard;
-                r = m->closed || m->owner == c->identity || m->references == ULONG_MAX ? FVM_ERROR
-                                                                                       : FVM_OK;
-                if (r == FVM_OK)
-                    ++m->references;
-            }
-            if (r == FVM_OK)
-            {
-                r = m->request(m->remote, c, 1, &ignored);
-                RegistryGuard guard;
+                int stop = 0, ignored = 0;
+                if (c->worker)
+                    fvm_worker_stop_requested(c->worker, &stop);
+                if (stop)
+                {
+                    fvm_resource_fault(c, FVM_RESOURCE_CANCELLED, m->identity, "mutex.set",
+                                       m->remote_address);
+                    r = FVM_ERROR;
+                    break;
+                }
+                fvm_port_sync_lock(m->remote_sync);
+                {
+                    RegistryGuard guard;
+                    r = m->closed || m->owner == c->identity || m->references == ULONG_MAX
+                            ? FVM_ERROR
+                            : FVM_OK;
+                    if (r == FVM_OK)
+                        ++m->references;
+                }
                 if (r == FVM_OK)
                 {
-                    m->owner = c->identity;
-                    m->owner_line = c->debug_line;
-                    m->owner_offset = c->debug_offset;
-                    std::memset(m->owner_source, 0, sizeof(m->owner_source));
-                    std::memset(m->owner_function, 0, sizeof(m->owner_function));
-                    std::strncpy(m->owner_source, c->debug_source.c_str(),
-                                 sizeof(m->owner_source) - 1);
-                    std::strncpy(m->owner_function, c->debug_function.c_str(),
-                                 sizeof(m->owner_function) - 1);
+                    r = m->request(m->remote, c, 1, &ignored);
+                    RegistryGuard guard;
+                    if (r == FVM_OK)
+                    {
+                        m->owner = c->identity;
+                        m->owner_line = c->debug_line;
+                        m->owner_offset = c->debug_offset;
+                        std::memset(m->owner_source, 0, sizeof(m->owner_source));
+                        std::memset(m->owner_function, 0, sizeof(m->owner_function));
+                        std::strncpy(m->owner_source, c->debug_source.c_str(),
+                                     sizeof(m->owner_source) - 1);
+                        std::strncpy(m->owner_function, c->debug_function.c_str(),
+                                     sizeof(m->owner_function) - 1);
+                    }
+                    else
+                        drop(m);
                 }
-                else
-                    drop(m);
-            }
-            fvm_port_sync_unlock(m->remote_sync);
-            if (r == FVM_NOT_FOUND && blocking)
-                fvm_port_thread_sleep_us(1000);
-        } while (r == FVM_NOT_FOUND && blocking);
+                fvm_port_sync_unlock(m->remote_sync);
+                if (r == FVM_NOT_FOUND && blocking)
+                    fvm_port_thread_sleep_us(1000);
+            } while (r == FVM_NOT_FOUND && blocking);
     }
     if (r == FVM_ERROR)
     {
@@ -609,13 +656,13 @@ extern "C" FVM_Result fvm_debug_set_location(FVM_Context *c, const char *source,
     }
 }
 
-/* Capture snapshot of debug mutex. */
-extern "C" FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *out, size_t capacity, size_t *count)
+/* Copy coherent local ownership/wait metadata and optional endpoint descriptions without RPC. */
+static FVM_Result mutex_snapshot(FVM_DebugMutex *plain, FVM_DebugMutexDetail *detail,
+                                 size_t capacity, size_t *count)
 {
-    if (!count || (!out && capacity))
+    if (!count || (!plain && !detail && capacity))
         return FVM_INVALID_ARGUMENT;
 
-    /* Initialization / Инициализация локального состояния. */
     RegistryGuard guard;
     size_t needed = 0;
     for (FVM_Mutex *m = mutexes; m; m = m->next)
@@ -628,15 +675,42 @@ extern "C" FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *out, size_t capac
     *count = needed;
     if (capacity < needed)
         return FVM_NOT_FOUND;
+
     size_t index = 0;
     for (FVM_Mutex *m = mutexes; m; m = m->next)
     {
-        if (!m->waiters)
-            row(out[index++], m, 0, needed);
-        for (MutexWait *w = m->waiters; w; w = w->next)
-            row(out[index++], m, w, needed);
+        MutexWait *w = m->waiters;
+        do
+        {
+            if (detail)
+            {
+                std::memset(&detail[index], 0, sizeof(detail[index]));
+                row(detail[index].state, m, w, needed);
+                detail[index].remote = m->request != 0;
+                if (m->remote_address)
+                    std::strncpy(detail[index].address, m->remote_address,
+                                 sizeof(detail[index].address) - 1);
+            }
+            else
+                row(plain[index], m, w, needed);
+            ++index;
+            w = w ? w->next : 0;
+        } while (w);
     }
     return FVM_OK;
+}
+
+/* Capture the existing ABI-compatible ownership/wait snapshot for all local native handles. */
+extern "C" FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *out, size_t capacity, size_t *count)
+{
+    return mutex_snapshot(out, 0, capacity, count);
+}
+
+/* Include copied remote capability addresses without performing network operations. */
+extern "C" FVM_Result fvm_debug_mutex_detail_snapshot(FVM_DebugMutexDetail *out, size_t capacity,
+                                                      size_t *count)
+{
+    return mutex_snapshot(0, out, capacity, count);
 }
 
 namespace

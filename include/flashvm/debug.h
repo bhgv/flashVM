@@ -30,8 +30,8 @@ extern "C"
             waiter /* Identifier of the waiting participant. */,
             line /* Source line number associated with this entry. */,
             offset; /* Byte offset identifying the instruction or data. */
-        int state /* Current state of the resource. */,
-            deadlocked; /* Whether the wait graph contains a detected deadlock. */
+        int state /* Locally observed ownership; remote authority owners may be unknown. */,
+            deadlocked; /* Whether the locally observed wait graph contains a cycle. */
         unsigned long owner_line /* Source line where the resource was acquired. */,
             owner_offset; /* Bytecode offset where the resource was acquired. */
         char owner_source[256] /* Source name where the resource was acquired. */,
@@ -43,6 +43,17 @@ extern "C"
        Exact coherent registry snapshot; insufficient capacity returns NOT_FOUND. */
     /* Capture snapshot of debug mutex. */
     FVM_API FVM_Result fvm_debug_mutex_snapshot(FVM_DebugMutex *, size_t, size_t *);
+    /* Endpoint-aware row: all fields are copied under the registry lock without network requests.
+     */
+    typedef struct FVM_DebugMutexDetail
+    {
+        FVM_DebugMutex state; /* Existing local ownership, waiter and source metadata. */
+        int remote; /* True for a remote proxy; foreign authority ownership is not inferred. */
+        char address[512]; /* Copied capability URI, empty for a local mutex. */
+    } FVM_DebugMutexDetail;
+    /* Snapshot all local mutex/proxy rows with endpoints. Count is required; insufficient
+       capacity returns NOT_FOUND without modifying rows. No distributed cycle claim is made. */
+    FVM_API FVM_Result fvm_debug_mutex_detail_snapshot(FVM_DebugMutexDetail *, size_t, size_t *);
     /* Define FVM_DebugChannel struct and its representation. */
     typedef struct FVM_DebugChannel
     {

@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.70 / Remaining work after v0.70
+# Оставшаяся работа после v0.71 / Remaining work after v0.71
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -143,3 +143,6 @@ v0.69 bounds indexed file inspection work and preserves the cursor on failure; r
 
 В v0.70 добавлен remote indexed peek для queue/file authority с циклами и shared capabilities. Source-aware remote waiters, distributed deadlocks и длительные испытания остаются открытыми.
 v0.70 adds non-consuming remote queue/file message inspection; full distributed debugger acceptance remains open.
+
+В v0.71 blocking remote mutex waits включены в local registry snapshots с местом ожидания и скопированным URI (REMOTE_MUTEX_DEBUG.md). Это не полный распределённый граф владельцев/ожиданий.
+v0.71 exposes blocking remote mutex requests and endpoint-aware snapshots; complete distributed deadlock detection remains open.

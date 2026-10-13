@@ -18,7 +18,7 @@ Close пробуждает читателей с `FVM_ERROR`; закрытый �
 Ограничения: raw bytes без framing FVMG не являются сообщениями; индексация
 проходит предыдущие записи последовательно и использует ограничение 64 MiB
 на запись. Изменение файла внешним процессом не замораживается. В v0.67 remote endpoints поддерживают freeze/state через совместимый broker,
-но remote peek остаётся открытым (REMOTE_CHANNEL_DEBUG.md). В v0.65 `fvm_debug_channel_state` сканирует framed записи локального файла
+а v0.70 добавляет remote indexed peek (REMOTE_CHANNEL_DEBUG.md). В v0.65 `fvm_debug_channel_state` сканирует framed записи локального файла
 под lock и возвращает pending/frozen/closed без изменения read cursor. Pending
 считает complete framed records, а не проверенные decoded payloads; capacity=0.
 Закрытый file handle имеет pending=0 (дальнейшее чтение через него невозможно).
@@ -47,7 +47,7 @@ Callers must root inspected objects across GC. Embedded capabilities continue
 to refer to shared live resources; their state is not frozen by inspection.
 
 Raw unframed bytes and external file mutations are not supported. v0.67 adds
-compatible broker freeze/state controls; remote peek remains open. v0.65 scans framed local file records under the channel lock and
+compatible broker freeze/state controls; v0.70 adds remote indexed peek. v0.65 scans framed local file records under the channel lock and
 reports pending/frozen/closed without advancing the cursor. Pending counts full
 framed records, not decoded/validated payload graphs; capacity is zero. Closed
 file handles report zero readable pending records. Read/framing/allocation
