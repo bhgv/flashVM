@@ -269,3 +269,16 @@ extend symbol/debug coverage. AGG/Cairo Release 248/248 each; restricted headles
 ASan/UBSan focused 4/4; portable focused 2/2. Function2 register-only aliases and
 remaining type/version conformance remain open. ABI 3 / graph 8 unchanged.
 RU/EN: [FUNCTION_PARAMETER_KEYS.md](FUNCTION_PARAMETER_KEYS.md).
+
+## v0.86 — Counted sort fields and selected slice ranges
+
+Проверено: `sortOn` сохраняет полное имя поля, включая NUL, и нормализует
+UTF-16 ключи. Заимствованный `slice` допускает источник длиной uint32 max,
+если выбранный диапазон не превышает 65536; наследуемые индексы сохраняются.
+Ограничение размера результата и остальных полных обходов остаётся.
+
+Tested: complete canonical sortOn field keys and borrowed slice of a small
+range from a uint32-length receiver, including inherited slots, negative and
+empty ranges. The 65536 selected-range limit and other full-scan limits remain.
+Regression: array_counted_ranges. AGG/Cairo Release 249/249 each; focused
+headless ASan/UBSan 3/3 (stack/leak exclusions), portable 3/3. Stage 1 remains open.

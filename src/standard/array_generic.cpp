@@ -182,7 +182,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         return r;
     }
     /* Operations which visit every slot share the existing VM work bound. */
-    if (count > 65536)
+    if (count > 65536 && std::strcmp(method, "slice"))
         return FVM_UNSUPPORTED;
     if (!std::strcmp(method, "shift"))
     {
@@ -255,6 +255,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         if (end < start)
             end = start;
         deleted = end - start;
+        /* A slice visits only its selected interval, not the full uint32 receiver length. */
+        if (!splice && deleted > 65536)
+            return FVM_UNSUPPORTED;
         unsigned int added = splice && n > 2 ? n - 2 : 0;
         if ((double)count - deleted + added > 4294967295.0)
             return FVM_INVALID_ARGUMENT;

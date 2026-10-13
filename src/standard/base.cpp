@@ -1001,7 +1001,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 fvm_value_undefined(&field_value);
                 FVM_Result r = FVM_OK;
                 if (item.value.type == FVM_VALUE_OBJECT)
-                    r = fvm_object_get(c, item.value.object, spec->fields[k].c_str(), &field_value);
+                    r = fvm_object_get_bytes(c, item.value.object, spec->fields[k].data(), spec->fields[k].size(), &field_value);
                 if (r != FVM_OK)
                     return r;
                 SortKey key;
@@ -1171,7 +1171,11 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         r = fvm_value_to_string(c, &field_value, &text);
         if (r != FVM_OK)
             return r;
-        spec.fields.push_back(fvm_detail::string(text.string));
+        fvm_detail::string key;
+        r = fvm_property_key(text.string, fvm_string_size(text), key);
+        if (r != FVM_OK)
+            return r;
+        spec.fields.push_back(key);
         FVM_Value option;
         fvm_value_number(&option, 0);
         if (n > 1)
