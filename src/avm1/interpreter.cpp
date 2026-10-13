@@ -1748,9 +1748,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                     else
                     {
-                        r = fvm_avm1_primitive(c, &left, false, &left);
-                        if (r == FVM_OK && c->swf_loaded && left.type == FVM_VALUE_OBJECT &&
-                            left.object->resource_kind != 40)
+                        FVM_Value &first = a.op == 0x67 ? right : left;
+                        FVM_Value &second = a.op == 0x67 ? left : right;
+                        r = fvm_avm1_primitive(c, &first, false, &first);
+                        if (r == FVM_OK && c->swf_loaded && first.type == FVM_VALUE_OBJECT &&
+                            first.object->resource_kind != 40)
                         {
                             stack.pop_back();
                             fvm_value_boolean(&stack.back(), 0);
@@ -1758,9 +1760,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             continue;
                         }
                         if (r == FVM_OK)
-                            r = fvm_avm1_primitive(c, &right, false, &right);
-                        if (r == FVM_OK && c->swf_loaded && right.type == FVM_VALUE_OBJECT &&
-                            right.object->resource_kind != 40)
+                            r = fvm_avm1_primitive(c, &second, false, &second);
+                        if (r == FVM_OK && c->swf_loaded && second.type == FVM_VALUE_OBJECT &&
+                            second.object->resource_kind != 40)
                         {
                             stack.pop_back();
                             fvm_value_boolean(&stack.back(), 0);
@@ -1802,6 +1804,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             r = fvm_avm1_number(c, &right, &y);
                         if (a.op == 0x47)
                             fvm_value_number(&output, x + y);
+                        else if (x != x || y != y)
+                            fvm_value_undefined(&output);
                         else
                             fvm_value_boolean(&output, a.op == 0x67 ? x > y : x < y);
                     }

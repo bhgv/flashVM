@@ -426,3 +426,12 @@ AGG/Cairo Release 263/263 each (AGG two launch-permission reruns); restricted
 headless ASan/UBSan and portable focused 5/5 each. Loose equality, player NaN,
 MovieClip paths and per-function version provenance remain open.
 RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).
+
+## v0.103 — Unordered relational result type
+
+Проверено / tested: undefined Less2/Greater NaN results, right-first Greater
+coercion and corresponding early-false/GC paths. AGG/Cairo Release 264/264 each
+(AGG two launch-permission reruns); restricted headless ASan/UBSan and portable
+focused 4/4 each. Large external relational SWFs still differ in root/version
+behavior; they are not passing acceptance evidence.
+RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).

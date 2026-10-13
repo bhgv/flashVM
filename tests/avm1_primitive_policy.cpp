@@ -24,7 +24,7 @@ int main()
         assert(fvm_object_define_method_rooted(c,object,"valueOf",self_value,0,0)==FVM_OK);assert(fvm_object_define_method_rooted(c,object,"toString",text_value,(void *)"TEXT",0)==FVM_OK);assert(fvm_object_define_method_rooted(c,right,"valueOf",right_fail,0,0)==FVM_OK);
         FVM_Value a=ref(object),b,result;fvm_value_number(&b,1);values=strings=0;result=operation(c,0x47,a,b);assert(result.type==FVM_VALUE_NUMBER && result.number!=result.number && values==2 && strings==0);
         fvm_value_string(&b,"_");values=strings=0;result=operation(c,0x47,a,b);assert(!std::strcmp(result.string,"TEXT_") && values==1 && strings==1);
-        b=ref(right);values=strings=right_calls=0;assert(!operation(c,0x48,a,b).boolean && values==1 && strings==0 && right_calls==0);values=0;assert(!operation(c,0x67,a,b).boolean && values==1 && right_calls==0);
+        b=ref(right);values=strings=right_calls=0;assert(!operation(c,0x48,a,b).boolean && values==1 && strings==0 && right_calls==0);values=0;assert(!operation(c,0x67,b,a).boolean && values==1 && right_calls==0);
         FVM_Value zero;fvm_value_number(&zero,0);FVM_Object *date=0;assert(fvm_construct(c,"Date",1,&zero,&date)==FVM_OK);assert(fvm_object_define_method_rooted(c,date,"valueOf",number_value,0,0)==FVM_OK);assert(fvm_object_define_method_rooted(c,date,"toString",text_value,(void *)"DATE",0)==FVM_OK);
         a=ref(date);fvm_value_string(&b,"_");values=strings=0;result=operation(c,0x47,a,b);assert(!std::strcmp(result.string,version==5?"4_":"DATE_"));assert(values==(version==5?1U:0U) && strings==(version==5?0U:1U));
         fvm_value_number(&b,4);values=strings=0;assert(!operation(c,0x48,a,b).boolean && values==1 && strings==0);

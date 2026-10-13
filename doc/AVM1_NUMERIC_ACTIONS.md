@@ -138,3 +138,19 @@ recursive conversion failure. Original equals_swf4 now finishes its whole action
 block but still differs because unversioned installed NaN/Infinity globals exist
 in SWF 4; the full reference is not yet passing. Per-version standard global
 installation and complete display-object coercion remain open.
+
+## v0.103 — Unordered relational results
+
+Less2/Greater return undefined for numeric NaN rather than false. Finite results
+remain booleans; a non-display object result still takes the early false path.
+Greater converts the right operand first, while Less2 converts left first.
+This supersedes the earlier left-first Greater notes. Metahook boolean behavior
+remains the FlashVM extension contract.
+
+Эталонные большие lessthan2 SWF 5–7 выявили отличие типа результата. Новый
+avm1_relational_results проверяет undefined для NaN/нечисловых строк, boolean
+для определённых сравнений и порядок valueOf. GC регрессия проверяет обе
+стороны Greater после изменения порядка. Полные внешние сравнения пока
+расходятся из-за this/root и других версионных правил, поэтому не закрыты.
+Primary cross-check: pinned Ruffle abstract_lt/action_greater implementations
+linked in this document; original external expected traces also require undefined.
