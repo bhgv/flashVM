@@ -107,6 +107,15 @@ static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, boo
     return FVM_OK;
 }
 
+/* Legacy ordinary coercion uses an empty undefined string; Trace keeps its own spelling. */
+static FVM_Result action_string(FVM_Context *context, const FVM_Value &value, FVM_Value *out)
+{
+    if (value.type == FVM_VALUE_UNDEFINED && context->swf_loaded &&
+        context->swf_info.version < 7)
+        return fvm_value_string(out, "");
+    return fvm_value_to_string(context, &value, out);
+}
+
 /* Compute and return own string. */
 static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *value,
                              size_t length = (size_t)-1)
@@ -1473,7 +1482,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_value_string(&output, name);
                 }
                 else if (a.op == 0x4b)
-                    r = fvm_value_to_string(c, &input, &output);
+                    r = action_string(c, input, &output);
                 else
                 {
                     double number = 0;
@@ -1530,9 +1539,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
                     {
                         FVM_Value x, y;
-                        r = fvm_value_to_string(c, &left, &x);
+                        r = action_string(c, left, &x);
                         if (r == FVM_OK)
-                            r = fvm_value_to_string(c, &right, &y);
+                            r = action_string(c, right, &y);
                         if (r == FVM_OK)
                         {
                             size_t first = fvm_string_size(x), last = fvm_string_size(y);
@@ -1910,6 +1919,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                      stack.back().type != FVM_VALUE_UNDEFINED) ||
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
+                double n = stack[stack.size() - 3].number;
+                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 3)
+                    return FVM_ERROR;
+                FVM_Value owner = stack[stack.size() - 2];
+                if (a.op == 0x52 &&
+                    (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED))
+                {
+                    /* A nullish receiver consumes valid arguments without invoking a method. */
+                    stack.resize(stack.size() - (size_t)n - 3);
+                    FVM_Value missing;
+                    fvm_value_undefined(&missing);
+                    stack.push_back(missing);
+                    ++pc;
+                    continue;
+                }
                 fvm_detail::string name;
                 if (stack.back().type == FVM_VALUE_STRING)
                 {
@@ -1918,7 +1942,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (normalized != FVM_OK)
                         return normalized;
                 }
-                FVM_Value owner = stack[stack.size() - 2];
+
                 FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
                 if (!receiver)
                 {
@@ -1931,9 +1955,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (boxed != FVM_OK)
                         return boxed;
                 }
-                double n = stack[stack.size() - 3].number;
-                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 3)
-                    return FVM_ERROR;
+
                 unsigned int argc = (unsigned int)n;
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (i = 0; i < argc; ++i)

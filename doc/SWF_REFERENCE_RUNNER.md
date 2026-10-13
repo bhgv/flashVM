@@ -27,3 +27,19 @@ These findings are open issues, not passing conformance results.
 Первый настоящий SWF 6 выявил различия undefined/toString/CallMethod.
 Два выбранных Array файла имеют версию 15 и не подтверждают совместимость SWF 8.
 Стадии 1/2 остаются открытыми до исправлений и повторного сравнения.
+
+## v0.92 — First exact external SWF match
+
+The original `undefined_to_string_swf6/test.swf` now completes with exit 0 and
+exactly matches the pinned 22-byte output file. Ordinary ToString/Add2 use an
+empty undefined string below SWF 7; Trace keeps `undefined`. Null/undefined
+CallMethod consumes validated operands and returns undefined.
+
+Настоящий SWF 6 завершился без ошибки; все 22 байта совпали с закреплённым
+эталоном. avm1_version_strings проверяет переключение SWF 5–8, обе стороны
+конкатенации, null, trace и корректность числа аргументов у пустого receiver.
+Host C string conversion is unchanged. Numeric parsing, dynamic method-name
+coercion and full call semantics remain open. New external probes
+`swf6_string_as_bool` and `equals_swf5` complete but still differ in historic
+numeric string parsing. Other selected original SWF 4/8 probes encounter
+unsupported actions; their output prefixes are not passing acceptance results.

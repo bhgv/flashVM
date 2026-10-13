@@ -327,3 +327,12 @@ checks passed on Linux AGG. External SWF 6 reference probe fails legacy string
 coercion/CallMethod; two selected Array corpus SWFs are version 15 and outside
 scope. No new conformance gate is closed.
 RU/EN: [SWF_REFERENCE_RUNNER.md](SWF_REFERENCE_RUNNER.md).
+
+## v0.92 — Legacy undefined strings and nullish method calls
+
+Проверено / tested: ordinary undefined ToString/Add2 vs Trace below SWF 7 and
+nullish CallMethod result after operand validation. AGG/Cairo Release 253/253
+each (AGG two launch-permission reruns); focused restricted headless ASan/UBSan
+and portable 4/4 each. Original external SWF 6 undefined_to_string_swf6 finishes
+with exact 22-byte reference output. Other numeric/version probes still differ;
+stages 1/2 remain open. RU/EN: [SWF_REFERENCE_RUNNER.md](SWF_REFERENCE_RUNNER.md).
