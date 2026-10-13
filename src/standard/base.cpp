@@ -844,10 +844,14 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
         if (r != FVM_OK)
             return r;
         double number = 0;
-        r = fvm_value_to_number(c, &out, &number);
+        r = c->swf_loaded ? fvm_avm1_number(c, &out, &number)
+                          : fvm_value_to_number(c, &out, &number);
         if (r != FVM_OK)
             return r;
         order = number < 0 ? -1 : number > 0 ? 1 : 0;
+        /* Loaded Array.sort applies DESCENDING after sorting the snapshot. */
+        if (c->swf_loaded)
+            return FVM_OK;
     }
     else if ((flags & 16) && a.value.type == FVM_VALUE_NUMBER && b.value.type == FVM_VALUE_NUMBER)
         order = a.number < b.number ? -1 : a.number > b.number ? 1 : 0;
@@ -985,7 +989,9 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 int order = 0;
                 FVM_Result r = FVM_OK;
                 if (left < middle && right < end)
-                    r = compare(c, items[left], items[right], flags, callback, order, spec);
+                    r = compare(c, items[left], items[right],
+                                c->swf_loaded && !spec ? flags & ~2u : flags,
+                                callback, order, spec);
                 if (r != FVM_OK)
                     return r;
                 if (right == end || (left < middle && order <= 0))
@@ -996,6 +1002,23 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         }
         items.swap(temp);
     }
+    /* Loaded Array.sort reverses the complete result, including equal keys. */
+    if (c->swf_loaded && !spec && (flags & 2))
+        for (size_t i = 0; i < items.size() / 2; ++i)
+        {
+            SortItem &left = items[i], &right = items[items.size() - 1 - i];
+            FVM_Value value = left.value;
+            unsigned long index = left.index;
+            double number = left.number;
+            left.value = right.value;
+            left.index = right.index;
+            left.number = right.number;
+            right.value = value;
+            right.index = index;
+            right.number = number;
+            left.key.swap(right.key);
+            left.keys.swap(right.keys);
+        }
     if (flags & 4)
         for (size_t i = 1; i < items.size(); ++i)
         {
