@@ -772,65 +772,11 @@ FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 FVM_Result join(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
-    if (fvm_array_needs_generic(o))
-        return fvm_array_generic(c, o, "join", n, a, out, join);
-
-    if (!array(o))
+    if (!c)
         return FVM_INVALID_ARGUMENT;
-    for (size_t i = 0; i < c->joining_arrays.size(); ++i)
-        if (c->joining_arrays[i] == o)
-            return fvm_value_string(out, "");
-    c->joining_arrays.push_back(o);
-
-    /* Initialization / Инициализация локального состояния. */
-    /* Define PopJoin struct and its representation. */
-    struct PopJoin
-    {
-        FVM_Context *context;
-        /* Pop Join. */
-        explicit PopJoin(FVM_Context *c) : context(c)
-        {
-        }
-        /* Release the resources owned by this PopJoin instance. */
-        ~PopJoin()
-        {
-            context->joining_arrays.pop_back();
-        }
-    } pop_join(c);
-    unsigned long length = size(o);
-    if (length > 65536)
-        return FVM_OUT_OF_MEMORY;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value separator;
-    FVM_Result r = n && a[0].type != FVM_VALUE_UNDEFINED ? fvm_value_to_string(c, a, &separator)
-                                                         : fvm_value_string(&separator, ",");
-    if (r != FVM_OK)
-        return r;
-    fvm_detail::vector<char> bytes;
-    for (unsigned long i = 0; i < length; ++i)
-    {
-        if (i)
-            for (size_t j = 0; j < fvm_string_size(separator); ++j)
-                bytes.push_back(separator.string[j]);
-        FVM_Value v;
-        r = fvm_table_get_index(c, o, i, &v);
-        if (r != FVM_OK)
-            return r;
-        if (v.type != FVM_VALUE_UNDEFINED && v.type != FVM_VALUE_NULL)
-        {
-            FVM_Value text;
-            r = fvm_value_to_string(c, &v, &text);
-            if (r != FVM_OK)
-                return r;
-            for (size_t j = 0; j < fvm_string_size(text); ++j)
-                bytes.push_back(text.string[j]);
-        }
-    }
-    bytes.push_back(0);
-    FVM_Value text;
-    fvm_value_string_bytes(&text, bytes.begin(), bytes.size() - 1);
-    return fvm_value_to_string(c, &text, out);
+    FVM_ArrayWorkScope work(c);
+    FVM_Result status = work.step();
+    return status == FVM_OK ? fvm_array_generic(c, o, "join", n, a, out, join) : status;
 }
 
 /* Define SortSpec struct and its representation. */

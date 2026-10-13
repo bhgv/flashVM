@@ -335,7 +335,7 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {
-    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice"));
+    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join"));
     if (!std::strcmp(method, "concat") && o->resource_kind != 28)
     {
         FVM_Object *snapshot = 0;
@@ -382,8 +382,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             *out = value;
         return r;
     }
-    /* Operations which visit every slot share the existing VM work bound. */
-    if (count > 65536 && std::strcmp(method, "slice"))
+    /* Remaining mutating/sorting traversals retain their explicit size restriction. */
+    if (count > 65536 && std::strcmp(method, "slice") && std::strcmp(method, "join"))
         return FVM_UNSUPPORTED;
     if (!std::strcmp(method, "shift"))
     {
@@ -522,9 +522,17 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         fvm_detail::vector<char> bytes;
         for (unsigned long i = 0; i < count; ++i)
         {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
             if (i)
                 for (size_t j = 0; j < fvm_string_size(separator); ++j)
+                {
+                    r = work.step();
+                    if (r != FVM_OK)
+                        return r;
                     bytes.push_back(separator.string[j]);
+                }
             FVM_Value value;
             bool present;
             r = get(c, o, i, value, present);
@@ -537,7 +545,12 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 if (r != FVM_OK)
                     return r;
                 for (size_t j = 0; j < fvm_string_size(text); ++j)
+                {
+                    r = work.step();
+                    if (r != FVM_OK)
+                        return r;
                     bytes.push_back(text.string[j]);
+                }
             }
         }
         size_t size = bytes.size();

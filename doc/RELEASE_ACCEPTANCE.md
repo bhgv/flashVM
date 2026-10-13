@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.114
+# Условия окончательной приёмки / Final acceptance gates — v0.115
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -17,10 +17,10 @@
 
 ## Проверки этой среды / Evidence from this environment
 
-| Среда | Доказательство v0.114 | Ограничение |
+| Среда | Доказательство v0.115 | Ограничение |
 | --- | --- | --- |
-| Linux x86_64 GCC/G++ 13.3, AGG/fonts/codecs/SQLite | 278/278 core CTest tests plus the optional runner test, strict C90/C++98 | Examples excluded; passing subset does not certify full Flash compatibility |
-| Linux x86_64 Cairo Release/fonts/codecs/SQLite | 278/278 core CTest tests with assertions retained | Same compatibility gaps; no other OS runtime proof |
+| Linux x86_64 GCC/G++ 13.3, AGG/fonts/codecs/SQLite | 280/280 core CTest tests plus the optional runner test, strict C90/C++98 | Examples excluded; passing subset does not certify full Flash compatibility |
+| Linux x86_64 Cairo Release/fonts/codecs/SQLite | 280/280 core CTest tests with assertions retained | Same compatibility gaps; no other OS runtime proof |
 | Linux headless ASan/UBSan | 4/4 focused Array/slice checks; earlier focused evidence in feature docs | /proc restrictions require disabled stack ASan and LeakSanitizer; no full stack/leak certification |
 | NO_OS_PORTS portable profile on Linux | Array/slice checks 4/4 | TCP excluded; this is still Linux execution |
 | Windows | No runtime evidence in this session | No Windows runner/compiler/emulator available |

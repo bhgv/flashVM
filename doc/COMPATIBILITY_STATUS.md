@@ -482,3 +482,15 @@ runner; four focused slice/Array tests in restricted ASan/UBSan and portable
 profiles. Two AGG launch-permission failures passed after restoring execute
 bits. The final added callback-budget and inherited-setter cases passed in
 all four profiles. These checks do not certify complete Array or Flash semantics.
+
+## v0.115 — large join / большой join
+
+Removed the real/borrowed join length cap, retaining live inherited reads,
+counted separator bytes and recursion cleanup. Native slot/output work shares
+the execution limit with callbacks. [RU/EN details](ARRAY_LARGE_JOIN.md).
+Evidence: 280 core tests in AGG/Cairo plus the AGG runner, four focused tests
+in restricted sanitizer/portable profiles. The allocation test was corrected
+from a large fixture whose allocation count exceeded its injection-loop bound
+to exhaustive failure injection on a compact fixture; final tests pass in all
+four profiles. Two AGG execute-bit failures passed after restoring permissions.
+All stages and other Array semantic/size limitations remain open.
