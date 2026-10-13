@@ -119,3 +119,22 @@ avm1_legacy_arithmetic covers SWF 4–8, numeric strings/booleans, prefix syntax
 zero signs, valueOf order, native GC barriers and early failure. The original
 equals_swf4 reference still fails on an uncoercible global object; full object
 conversion policy and remaining actions are open.
+
+## v0.97 — Numeric valueOf without string fallback
+
+Загруженный AVM1 вызывает только valueOf для числового преобразования
+объекта. Отсутствующий/невызываемый valueOf даёт undefined; возвращённый
+объект не преобразуется повторно (0 до SWF 5, NaN далее). MovieClip не
+вызывает valueOf в этом пути. Счётчик primitive-depth ограничивает повторный
+вход и восстанавливается после ошибок. Это заменяет ранее отмеченный
+незавершённый object fallback; C API и unloaded режим сохраняют свои правила.
+
+Loaded AVM1 numeric object conversion performs valueOf-only lookup/invocation
+with a bounded reentry scope. It does not call toString after an object result
+or recursively coerce that result. Missing/noncallable valueOf is undefined.
+avm1_object_number tests omitted/primitive/object-returned methods, legacy
+primitive gates, numeric returned strings, GC barriers and recovery after
+recursive conversion failure. Original equals_swf4 now finishes its whole action
+block but still differs because unversioned installed NaN/Infinity globals exist
+in SWF 4; the full reference is not yet passing. Per-version standard global
+installation and complete display-object coercion remain open.

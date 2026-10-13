@@ -371,3 +371,12 @@ division-by-zero spelling. AGG/Cairo Release 257/257 each (AGG three
 launch-permission reruns); restricted headless ASan/UBSan and portable focused
 4/4 each. External SWF 4/8 coercion probes remain blocked by object conversion
 or additional missing actions. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.97 — Numeric valueOf-only object conversion
+
+Проверено / tested: loaded AVM1 numeric valueOf-only lookup, noncallable/missing
+methods, object-result primitive gates and recursion recovery. AGG/Cairo Release
+258/258 each after launch-permission reruns (3 and 2 tests); restricted headless
+ASan/UBSan and portable focused 4/4 each. Four prior exact external SWF matches
+reverified. equals_swf4 now completes but unversioned installed NaN/Infinity
+globals still differ from its reference. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).

@@ -1,8 +1,8 @@
 /* FlashVM: counted legacy numeric syntax and primitive version gates for AVM1 actions. */
 #include "coercion.hpp"
 #include "../core/string_internal.hpp"
-#include "../standard/primitive_state.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/function.h"
 #include <cstdio>
 #include <limits>
 #include <new>
@@ -158,9 +158,46 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
     }
     if (value->type == FVM_VALUE_OBJECT)
     {
-        FVM_Value primitive;
-        FVM_Result status = fvm_to_primitive(context, value, false, &primitive);
-        return status == FVM_OK ? fvm_avm1_number(context, &primitive, out) : status;
+        if (context->primitive_depth >= 64)
+            return FVM_ERROR;
+        /* [GC:] Bound native/script reentry while the caller keeps this operand rooted. */
+        struct ConversionScope
+        {
+            FVM_Context *context; /* Context whose primitive recursion counter is scoped. */
+            /* Enter one numeric object conversion before invoking an accessor or function. */
+            explicit ConversionScope(FVM_Context *owner) : context(owner)
+            {
+                ++context->primitive_depth;
+            }
+            /* Restore the counter on success, callback failure or C++ unwinding. */
+            ~ConversionScope()
+            {
+                --context->primitive_depth;
+            }
+        } conversion(context);
+        FVM_Value method, primitive;
+        fvm_value_undefined(&primitive);
+        FVM_Result status = FVM_OK;
+        if (value->object->resource_kind != 40)
+        {
+            status = fvm_object_get_bytes(context, value->object, "valueOf", 7, &method);
+            if (status != FVM_OK)
+                return status;
+            if (method.type == FVM_VALUE_OBJECT &&
+                (method.object->invocable.callback || method.object->callable.callback))
+                status = fvm_function_invoke(context, method.object, value->object, 0, 0, &primitive);
+            if (status != FVM_OK)
+                return status;
+        }
+        else
+            primitive = *value;
+        /* Flash numeric coercion does not fall back to toString or recursively coerce objects. */
+        if (primitive.type == FVM_VALUE_OBJECT)
+        {
+            *out = version < 5 ? 0 : std::numeric_limits<double>::quiet_NaN();
+            return FVM_OK;
+        }
+        return fvm_avm1_number(context, &primitive, out);
     }
     if (value->type != FVM_VALUE_STRING)
         return fvm_value_to_number(context, value, out);
