@@ -1062,3 +1062,20 @@ Evidence v0.161: 326 AGG and 325 Cairo tests, eight focused checks each in
 portable Linux and restricted heap/global ASan+UBSan, fifteen byte-exact original
 SWFs. Cairo timezone launch failure and its dependent profile test passed after
 execute-bit restoration. Проверки пройдены; stage completion не заявлено.
+
+## v0.162 — rooted loaded sort snapshot / полный снимок сортировки
+
+Loaded sort captures all own values before key coercion; native sparse holes
+become own undefined values. An explicit FVM_Value collector frame retains the
+complete original graph through callbacks and restores caller roots on all exits.
+[RU/EN details](ARRAY_LEGACY_SORT_SNAPSHOT.md). Evidence: AGG 327/Cairo 326,
+six focused portable/restricted heap-global ASan+UBSan tests, fifteen byte-exact
+original SWFs. Seven AGG launch failures passed after execute-bit restoration.
+Tests verify coercion clearing the receiver, original rows after actual post-sort
+GC, callback error root/depth restoration and native undefined holes. Arbitrary
+native callback GC remains limited by the existing native barrier. Callback order,
+custom UNIQUESORT and all roadmap stages remain open.
+
+Полный снимок захватывается до toString и сохраняется в корнях GC. Проверены
+очистка receiver из callback, сохранение исходных объектов и sparse native holes.
+Сборка выполняется после sort; GC внутри произвольного native callback не заявлен.

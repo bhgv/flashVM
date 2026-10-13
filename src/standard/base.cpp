@@ -803,6 +803,40 @@ struct SortItem
     }
 };
 
+/* [GC:] Retain the complete loaded sort input before any coercion or comparator callback. */
+class SortInputRoots
+{
+    FVM_Context *context_; /* Context whose collector chain owns this temporary frame. */
+    FVM_GCRootFrame frame_; /* [GC:] Frame tracing every captured value and the receiver. */
+    /* [GC:] A linked root frame cannot be copied. */
+    SortInputRoots(const SortInputRoots &);
+    /* [GC:] Assignment would break the collector's LIFO root chain. */
+    SortInputRoots &operator=(const SortInputRoots &);
+  public:
+    fvm_detail::vector<FVM_Value> values; /* [GC:] Original own values, including undefined holes. */
+    /* [GC:] Capture without callbacks and publish only completely initialized values. */
+    SortInputRoots(FVM_Context *c, FVM_Object *o, unsigned long length) : context_(c)
+    {
+        if (c->swf_loaded)
+            for (unsigned long i = 0; i < length; ++i)
+            {
+                FVM_Value value;
+                fvm_value_undefined(&value);
+                Slots::iterator slot = o->indexed.find(i);
+                if (slot != o->indexed.end())
+                    value = slot->second;
+                values.push_back(value);
+            }
+        frame_.previous = c->gc_frames;
+        frame_.stack = &values;
+        frame_.locals = 0;
+        frame_.receiver = o;
+        c->gc_frames = &frame_;
+    }
+    /* [GC:] Restore caller roots on success, callback failure and allocation exceptions. */
+    ~SortInputRoots() { context_->gc_frames = frame_.previous; }
+};
+
 /* Compare the current value. */
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
@@ -903,17 +937,22 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     }
     if (spec && !spec->flags.empty())
         flags = spec->flags[0] & 12;
+    FVM_ArrayWorkScope work(c, c->swf_loaded);
+    SortInputRoots input(c, o, length);
     fvm_detail::vector<SortItem> items;
     /* Build a snapshot before comparisons: neither allocation nor callback
      * failure commits a partially reordered array. */
     for (unsigned long i = 0; i < length; ++i)
     {
+        FVM_Result charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         Slots::iterator slot = o->indexed.find(i);
-        if (slot == o->indexed.end())
+        if (!c->swf_loaded && slot == o->indexed.end())
             continue;
         SortItem item;
         item.index = i;
-        item.value = slot->second;
+        item.value = c->swf_loaded ? input.values[i] : slot->second;
         if (spec)
         {
             for (size_t k = 0; k < spec->fields.size(); ++k)
@@ -1055,7 +1094,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     if (indices)
     {
         unsigned long next = (unsigned long)items.size();
-        for (unsigned long i = 0; i < length; ++i)
+        for (unsigned long i = 0; !c->swf_loaded && i < length; ++i)
             if (o->indexed.find(i) == o->indexed.end())
             {
                 FVM_Value v;
