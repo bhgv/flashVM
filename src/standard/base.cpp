@@ -469,7 +469,7 @@ FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const
         length = (unsigned long)v;
     }
     FVM_Object *o = 0;
-    r = fvm_array_create_like(c, 0, length, &o);
+    r = fvm_array_create_like(c, 0, length, &o, true);
     if (r != FVM_OK)
         return r;
     o->prototype = proto.object;
@@ -661,7 +661,7 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     unsigned long deleted = bounds.deleted;
     unsigned int added = bounds.added;
     FVM_Object *removed = 0;
-    r = fvm_array_create_like(c, o, deleted, &removed);
+    r = fvm_array_create_like(c, o, deleted, &removed, true);
     if (r != FVM_OK)
         return r;
     Slots next;
@@ -956,7 +956,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     FVM_Object *indices = 0;
     if (flags & 8)
     {
-        FVM_Result r = fvm_array_create_like(c, o, length, &indices);
+        FVM_Result r = fvm_array_create_like(c, o, length, &indices, true);
         if (r != FVM_OK)
             return r;
     }
@@ -1339,7 +1339,7 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
 FVM_Result fvm_array_create_like(
     FVM_Context *c, FVM_Object *source, unsigned long length,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Object **out)
+    FVM_Object **out, bool builtin_result)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -1369,9 +1369,11 @@ FVM_Result fvm_array_create_like(
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_number(&(*out)->resource_result, length);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    (*out)->prototype = source ? source->prototype : 0;
+    /* [GC:] Result builders use the cached system prototype without executing constructor getters. */
+    (*out)->prototype = builtin_result && c->array_builtin_prototype
+                           ? c->array_builtin_prototype : source ? source->prototype : 0;
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!source)
+    if (!source && !(builtin_result && c->array_builtin_prototype))
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

@@ -918,9 +918,13 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                     text_prototypes[i] = prototype->second.object;
             }
         }
+        /* [GC:] Capture the staged builtin prototype before publishing; no callback or allocation follows. */
+        FVM_Object *array_builtin_prototype =
+            constructors.find("Array")->second.root->properties.find("prototype")->second.object;
         c->global->properties.swap(globals);
         c->functions.swap(functions);
         c->constructors.swap(constructors);
+        c->array_builtin_prototype = array_builtin_prototype;
         c->standard_library = true;
         for (size_t i = 0; i < 2; ++i)
         {

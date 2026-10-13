@@ -544,3 +544,17 @@ tests in restricted sanitizer/portable profiles. Two AGG JPEG tests lacked
 execute bits and passed after permission restoration. Getter installation,
 source growth/shrinkage and bounds retention are checked. Historic integer,
 hole, watcher and result-prototype semantics remain open; all stages are open.
+
+## v0.120 — retained Array result prototype / встроенный прототип результатов
+
+Standard installation publishes a retained original Array prototype as a GC
+root. Six native result builders use it independently of custom source or
+replacement public prototypes; explicit construction reads the public getter
+once. [RU/EN details](ARRAY_RESULT_PROTOTYPE.md). Evidence: 285 core tests in
+AGG/Cairo plus the AGG runner, seven focused Array/String tests in restricted
+sanitarian/portable profiles (sanitizer still excludes stack/leak certification).
+All pass without launch reruns. A real collection after public-prototype
+replacement verifies retention and finalization once at teardown. Four newly
+fetched original SWF 6/8 probes stop at unsupported FileAttributes/Metadata
+tags before execution; no reference success is claimed for them. Imported
+uninstalled-context fallback, Array() call semantics and all stages remain open.

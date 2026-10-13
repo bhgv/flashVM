@@ -29,6 +29,7 @@ bool fvm_as_index(const char *, unsigned long *);
 /* Update Array length after writing an indexed property. */
 void fvm_array_note_index(FVM_Object *, unsigned long);
 
-/* Create array like. */
-FVM_Result fvm_array_create_like(FVM_Context *, FVM_Object *, unsigned long, FVM_Object **);
+/* Create an Array, optionally selecting the retained builtin result prototype. */
+FVM_Result fvm_array_create_like(FVM_Context *, FVM_Object *, unsigned long, FVM_Object **,
+                                  bool builtin_result = false);
 #endif

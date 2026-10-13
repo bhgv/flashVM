@@ -1340,7 +1340,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     for (size_t j = 0; j < values.size(); ++j)
                         values[j] = stack[stack.size() - 2 - j];
                     /* Array literals never interpret a numeric element as a length. */
-                    r = fvm_array_create_like(c, 0, (unsigned long)count, &object);
+                    r = fvm_array_create_like(c, 0, (unsigned long)count, &object, true);
                     for (size_t j = 0; r == FVM_OK && j < values.size(); ++j)
                         r = fvm_table_set_index(c, object, (unsigned long)j, &values[j]);
                 }

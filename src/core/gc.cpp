@@ -74,6 +74,8 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
                 pending.push_back(c->objects[i]);
     /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
     mark_object(c->global, pending);
+    /* [GC:] Native Array results retain the original prototype after public prototype replacement. */
+    mark_object(c->array_builtin_prototype, pending);
     /* [GC:] A registered trace sink keeps its capture alive between ActionTrace calls. */
     mark_object(c->avm1_trace.root, pending);
     /* [GC:] Host URL registration retains its capture between requests. */

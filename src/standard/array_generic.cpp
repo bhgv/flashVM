@@ -358,7 +358,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
-        FVM_Result status = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, 0, &result);
+        FVM_Result status = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, 0, &result, true);
         if (status != FVM_OK)
             return status;
         unsigned long total = 0;
@@ -514,7 +514,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             deleted = end - start;
         }
         FVM_Object *result = 0;
-        r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result);
+        r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result, true);
         if (!splice && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
             r = sparse_slice(c, o, result, start, end, work);
         else
@@ -616,7 +616,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
      * and stable sorting. The native work array has no original prototype:
      * callback results are committed through the actual receiver's property API. */
     FVM_Object *snapshot = 0;
-    r = fvm_array_create_like(c, 0, count, &snapshot);
+    r = fvm_array_create_like(c, 0, count, &snapshot, true);
     if (r == FVM_OK)
         snapshot->prototype = 0;
     for (unsigned long i = 0; i < count && r == FVM_OK; ++i)

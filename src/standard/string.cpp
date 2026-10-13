@@ -398,7 +398,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
             return r;
     }
     FVM_Object *result = 0;
-    r = fvm_array_create_like(c, 0, 0, &result);
+    r = fvm_array_create_like(c, 0, 0, &result, true);
     if (r != FVM_OK)
         return r;
 

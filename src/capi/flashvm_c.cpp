@@ -121,6 +121,7 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->worker = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        context->array_builtin_prototype = 0;
         context->standard_library = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->standard_text_library = false;
