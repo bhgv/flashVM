@@ -1,5 +1,6 @@
 /* FlashVM: retained superclass facades with receiver-preserving property/method dispatch. */
 #include "super.hpp"
+#include "../core/property_key.hpp"
 #include "inheritance.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
@@ -200,7 +201,7 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
 }
 
 /* Read only the selected ancestor chain, preserving the original accessor receiver. */
-FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const char *name, FVM_Value *out)
+FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name, FVM_Value *out)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
     FVM_Result result = unpack(c, facade, &receiver, &owner, &start);
@@ -247,7 +248,7 @@ FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const char *name
 }
 
 /* Assign a parent-visible property using the live ancestor setter and actual receiver. */
-FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const char *name,
+FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
                          const FVM_Value *value)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
@@ -255,7 +256,7 @@ FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const char *name,
     if (result != FVM_OK)
         return result;
     unsigned long index;
-    if (fvm_as_index(name, &index))
+    if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
         return FVM_UNSUPPORTED;
     return fvm_object_set_from(c, receiver, start, name, value, false);
 }

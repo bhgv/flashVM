@@ -70,6 +70,15 @@ extern "C"
     FVM_API FVM_Result fvm_object_get(FVM_Context *, FVM_Object *, const char *, FVM_Value *);
     /* Assign a named property using attributes, accessors and watchers. */
     FVM_API FVM_Result fvm_object_set(FVM_Context *, FVM_Object *, const char *, const FVM_Value *);
+    /* Read/assign a counted WTF-8 name, retaining NUL and lone surrogates.
+     * UTF-16-equivalent names resolve to the same property. */
+    FVM_API FVM_Result fvm_object_get_bytes(FVM_Context *, FVM_Object *, const char *, size_t,
+                                            FVM_Value *);
+    FVM_API FVM_Result fvm_object_set_bytes(FVM_Context *, FVM_Object *, const char *, size_t,
+                                            const FVM_Value *);
+    /* Test an own counted name without invoking property getters. */
+    FVM_API FVM_Result fvm_object_has_own_bytes(FVM_Context *, FVM_Object *, const char *, size_t,
+                                                int *);
     /* Read global. */
     FVM_API FVM_Result fvm_get_global(FVM_Context *, const char *, FVM_Value *);
     /* Update global. */

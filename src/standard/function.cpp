@@ -458,7 +458,7 @@ FVM_Result fvm_function_validate(FVM_Context *c)
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_function_wrap_entry(
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Context *c, FVM_Object *owner, const char *name,
+    FVM_Context *c, FVM_Object *owner, const fvm_detail::string &name,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const FVM_NativeEntry &entry, FVM_Value *out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

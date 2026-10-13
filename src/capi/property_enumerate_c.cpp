@@ -128,7 +128,7 @@ extern "C" FVM_Result fvm_object_enumerate(
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value value;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_value_string(&value, keys[i].c_str());
+            fvm_value_string_bytes(&value, keys[i].data(), keys[i].size());
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             r = fvm_table_set_index(c, result, (unsigned long)i, &value);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */

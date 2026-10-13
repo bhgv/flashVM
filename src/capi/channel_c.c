@@ -190,7 +190,7 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
         goto fail;
     if (!count)
         return blocking ? FVM_ERROR : FVM_NOT_FOUND;
-    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[7] < 1 || header[7] > 7))
+    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[7] < 1 || header[7] > 8))
     {
         result = FVM_INVALID_ARGUMENT;
         goto fail;

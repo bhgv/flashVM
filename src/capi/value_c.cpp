@@ -14,6 +14,7 @@
 #include "flashvm/stack.h"
 #include <cstring>
 #include "../core/string_internal.hpp"
+#include "../core/property_key.hpp"
 #include <new>
 #include "../core/call_scope.hpp"
 #include "../standard/super.hpp"
@@ -105,12 +106,12 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const char *name, FVM_Na
 
 /* Read a selected prototype chain with a separate accessor receiver. */
 FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiver,
-                               const char *name, FVM_Value *out, bool allow_meta)
+                               const fvm_detail::string &name, FVM_Value *out, bool allow_meta)
 {
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int depth = 0;
-    if (!c || !o || o->owner != c || !receiver || receiver->owner != c || !name || !out)
+    if (!c || !o || o->owner != c || !receiver || receiver->owner != c || !out)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
     try
@@ -242,7 +243,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[1].object = o->metatable;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_value_string(&args[2], name);
+                fvm_value_string_bytes(&args[2], name.data(), name.size());
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_value_undefined(&result);
                 /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -319,7 +320,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[1].object = o->metatable;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_value_string(args + 2, name);
+                fvm_value_string_bytes(args + 2, name.data(), name.size());
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_function_invoke(c, m->second.object, receiver, 3, args, out);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -354,20 +355,20 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
 
 /* Update object no index. */
 /* Read an ordinary property chain using its original receiver and metadata fallbacks. */
-FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
+FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name, FVM_Value *out)
 {
     return fvm_object_get_from(c, o, o, name, out, true);
 }
 
 /* Write an ordinary property using accessors, attributes and metadata hooks. */
-FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const char *name,
+FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const fvm_detail::string &name,
                                const FVM_Value *v, bool allow_meta)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value copy;
     unsigned int depth = 0;
-    if (!c || !o || o->owner != c || !name || fvm_validate_value(c, v) != FVM_OK)
+    if (!c || !o || o->owner != c || fvm_validate_value(c, v) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -376,7 +377,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
     {
         unsigned int flags = 0;
-        FVM_Result flag_result = fvm_object_property_flags(c, flag_cursor, name, &flags);
+        FVM_Result flag_result = fvm_object_property_flags_bytes(c, flag_cursor, name.data(), name.size(), &flags);
         if (flag_result != FVM_OK)
             return flag_result;
         if (flags & 4)
@@ -389,7 +390,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     if (start != o)
     {
         unsigned int own_flags = 0;
-        FVM_Result flag_result = fvm_object_property_flags(c, o, name, &own_flags);
+        FVM_Result flag_result = fvm_object_property_flags_bytes(c, o, name.data(), name.size(), &own_flags);
         if (flag_result != FVM_OK)
             return flag_result;
         if (own_flags & 4)
@@ -505,7 +506,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[1].object = o->metatable;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_value_string(&args[2], name);
+                fvm_value_string_bytes(&args[2], name.data(), name.size());
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[3] = copy;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -556,7 +557,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[1].object = o->metatable;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_value_string(args + 2, name);
+                fvm_value_string_bytes(args + 2, name.data(), name.size());
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[3] = copy;
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -588,7 +589,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     return FVM_OK;
 }
 /* Write an ordinary property through the receiver's complete property chain. */
-FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const char *name,
+FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
                                    const FVM_Value *value)
 {
     return fvm_object_set_from(c, o, o, name, value, true);
@@ -760,14 +761,26 @@ extern "C"
         return FVM_OK;
     }
     /* Test presence of object own. */
+    /* Preserve the terminated-name API through the counted implementation. */
     FVM_Result fvm_object_has_own(FVM_Context *c, FVM_Object *o, const char *name, int *out)
+    {
+        return name ? fvm_object_has_own_bytes(c, o, name, std::strlen(name), out)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Resolve a validated counted name through the complete property bridge. */
+    FVM_Result fvm_object_has_own_bytes(FVM_Context *c, FVM_Object *o, const char *name, size_t size, int *out)
     {
         if (!c || !o || o->owner != c || !name || !out)
             return FVM_INVALID_ARGUMENT;
         try
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+                fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
             {
                 if (o->indexed.find(index) != o->indexed.end())
                 {
@@ -775,7 +788,7 @@ extern "C"
                     return FVM_OK;
                 }
             }
-            fvm_detail::string key(name);
+
             *out = o->properties.find(key) != o->properties.end() ||
                    o->accessors.find(key) != o->accessors.end() ||
                    o->methods.find(key) != o->methods.end();
@@ -789,19 +802,31 @@ extern "C"
     /* AVM1 prototype lookup takes precedence over Lua-style __index fallback.
      * Native/function-valued hooks and table-valued fallbacks are supported. */
     /* Read a named property, following accessors and the prototype chain. */
+    /* Preserve the terminated-name API through the counted implementation. */
     FVM_Result fvm_object_get(FVM_Context *c, FVM_Object *o, const char *name, FVM_Value *out)
+    {
+        return name ? fvm_object_get_bytes(c, o, name, std::strlen(name), out)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Resolve a validated counted name through the complete property bridge. */
+    FVM_Result fvm_object_get_bytes(FVM_Context *c, FVM_Object *o, const char *name, size_t size, FVM_Value *out)
     {
         if (!c || !o || o->owner != c || !name || !out)
             return FVM_INVALID_ARGUMENT;
         fvm_value_undefined(out);
         try
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
             if (o->resource_kind == 37)
-                return fvm_super_get(c, o, name, out);
+                return fvm_super_get(c, o, key, out);
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+                fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_get_index(c, o, index, out);
-            return fvm_object_get_no_index(c, o, name, out);
+            return fvm_object_get_no_index(c, o, key, out);
         }
         catch (const std::bad_alloc &)
         {
@@ -815,18 +840,30 @@ extern "C"
         }
     }
     /* Assign a named property using attributes, accessors and watchers. */
+    /* Preserve the terminated-name API through the counted implementation. */
     FVM_Result fvm_object_set(FVM_Context *c, FVM_Object *o, const char *name, const FVM_Value *v)
+    {
+        return name ? fvm_object_set_bytes(c, o, name, std::strlen(name), v)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Resolve a validated counted name through the complete property bridge. */
+    FVM_Result fvm_object_set_bytes(FVM_Context *c, FVM_Object *o, const char *name, size_t size, const FVM_Value *v)
     {
         if (!c || !o || o->owner != c || !name || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
         try
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
             if (o->resource_kind == 37)
-                return fvm_super_set(c, o, name, v);
+                return fvm_super_set(c, o, key, v);
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) && fvm_as_index(name, &index))
+            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+                fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_set_index(c, o, index, v);
-            return fvm_object_set_no_index(c, o, name, v);
+            return fvm_object_set_no_index(c, o, key, v);
         }
         catch (const std::bad_alloc &)
         {

@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 1: значения String с NUL и суррогатами | Проверено для базовых сценариев v0.16 | standard_utf16.c, standard_string.c, string_wire.c; ABI 3, граф 4. См. UTF16_STRINGS.md. |
 | 1: Unicode upper/lower и CASEINSENSITIVE | Проверено для выбранных сценариев v0.16 | Кириллица, расширения, финальная сигма; Unicode 3.2. Полная сверка с историческим Flash открыта. |
-| 1: Object, Array и ключи | Реализовано частично | Watch/перечисление есть; generic Array, наследование индексов и registerClass проверены в сценариях v0.17 (GENERIC_ARRAYS.md). Полноценные строковые ключи, пределы длины и полная сверка открыты. |
+| 1: Object, Array и ключи | Реализовано частично | Watch/перечисление есть; generic Array, наследование индексов и registerClass проверены в сценариях v0.17 (GENERIC_ARRAYS.md). Counted property get/set/flags/delete, AVM1 member operations и graph 8 проверены в v0.81 (COUNTED_PROPERTY_KEYS.md). Counted calls/registration, пределы длины и полная сверка открыты. |
 | 2: AVM1 | Реализовано частично | Регистры Function2, основные preloads и aliasing именованных arguments проверены в v0.20 (AVM1_FUNCTION2.md). Extends/ImplementsOp/CastOp и транзитивные интерфейсы проверены в v0.22 (AVM1_INHERITANCE.md). Основные вызовы super и перенос фасадов проверены в v0.23 (AVM1_SUPER.md); числовые super-свойства, регистровые aliases и полная сверка областей/версий ещё открыты. |
 | 3: MovieClip и SWF-сцена | Реализовано частично | В v0.24 проверен импорт корневых DoAction/FrameLabel из FWS/CWS по кадрам и перенос через очередь/файл (SWF_MOVIECLIP_TIMELINE.md). В v0.25 проверены DefineSprite/ExportAssets и attachMovie с initObject/registerClass и переносом библиотеки (SWF_SPRITE_RESOURCES.md). В v0.26 проверено duplicateMovieClip с независимым рисунком, конструкторами и переносом (MOVIECLIP_DUPLICATE.md). В v0.27 проверены знаковые глубины и совместимость прежних снимков (MOVIECLIP_DEPTHS.md). В v0.28 проверены размещение/перемещение/удаление спрайтов, реконструкция кадров, матрицы и цвет, перенос и отказы памяти (SWF_SCENE_CONTROLS.md). В v0.29 подключены сплошные DefineShape/2/3: контуры, кривые, отверстия, замена геометрии, перенос и отказы памяти (SWF_SOLID_SHAPES.md). Полный display list и остальные ресурсы открыты. |
 | 4: линейные/радиальные градиенты | Проверено для сценариев v0.30 | SWF Shape1/2/3 и C89 API: матрицы, цвет, перенос и отказы памяти (SWF_GRADIENTS.md). В v0.31 проверен beginGradientFill pad/RGB, копирование аргументов, AVM1, дублирование/перенос и OOM (MOVIECLIP_GRADIENT_FILL.md). Shape4, другие режимы, полная геометрия и остальная графика/мультимедиа открыты. |
@@ -218,3 +218,13 @@ Default AGG regression suite: 242/242 (examples disabled); mixed test 100 repeat
 ASan/UBSan targeted 5/5, leak scanning unavailable; portable excludes live TCP.
 Separate proxy/process owners and full distributed deadlock detection remain
 open. RU/EN scope and validation: [REMOTE_MUTEX_DEBUG.md](REMOTE_MUTEX_DEBUG.md).
+
+## v0.81 — Counted property keys
+
+Проверено / tested: counted UTF-8/WTF-8 names with embedded NUL and equivalent
+UTF-16 scalar/pair representations, property attributes, lookup, enumeration,
+watch and AVM1 member access; graph 8 queue/file/TCP with malformed-input and
+allocation rollback checks. Default suite 244/244; portable 2/2; headless
+ASan/UBSan 5/5 with stack/leak exclusions. Stage 1 remains open; counted calls,
+native registrations and variable names are not covered yet.
+RU/EN: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).

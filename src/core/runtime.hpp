@@ -354,10 +354,10 @@ FVM_Result fvm_validate_value(FVM_Context *, const FVM_Value *);
 /* Named lookup without the canonical-index bridge prevents recursive aliasing
  * when indexed access encounters a named getter/setter or metatable hook. */
 /* Read object no index. */
-FVM_Result fvm_object_get_no_index(FVM_Context *, FVM_Object *, const char *, FVM_Value *);
+FVM_Result fvm_object_get_no_index(FVM_Context *, FVM_Object *, const fvm_detail::string &, FVM_Value *);
 
 /* Update object no index. */
-FVM_Result fvm_object_set_no_index(FVM_Context *, FVM_Object *, const char *, const FVM_Value *);
+FVM_Result fvm_object_set_no_index(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value *);
 
 /* [GC:] Adopt a freshly allocated terminated buffer and exact byte count; caller frees on failure.
  */

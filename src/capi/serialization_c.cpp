@@ -3,6 +3,7 @@
  */
 
 #include "../core/string_internal.hpp"
+#include "../core/property_key.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../standard/geometry_state.hpp"
 #include "../standard/color_transform_state.hpp"
@@ -618,7 +619,15 @@ struct Writer
         for (size_t i = 0; i < s.size(); ++i)
             byte((unsigned char)s[i]);
     }
-    /* Implement value for this subsystem. */
+    /* Emit only valid canonical property names; never emit an unreadable graph. */
+    void key(const fvm_detail::string &name)
+    {
+        fvm_detail::string canonical;
+        require(fvm_property_key(name.data(), name.size(), canonical) == FVM_OK);
+        require(name == canonical, FVM_UNSUPPORTED);
+        string(name);
+    }
+    /* Emit a counted value and its metadata reference. */
     void value(const Value &v)
     {
         byte(v.type);
@@ -720,7 +729,7 @@ void write_graph(const Graph &g, Writer &w)
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.properties.begin();
              p != o.properties.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.value(p->second);
         }
         w.u32((unsigned long)o.indexed.size());
@@ -734,21 +743,21 @@ void write_graph(const Graph &g, Writer &w)
         for (fvm_detail::map<fvm_detail::string, Callback>::iterator p = o.methods.begin();
              p != o.methods.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.callback(p->second);
         }
         w.u32((unsigned long)o.metamethods.size());
         for (fvm_detail::map<fvm_detail::string, Callback>::iterator p = o.metamethods.begin();
              p != o.metamethods.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.callback(p->second);
         }
         w.u32((unsigned long)o.accessors.size());
         for (fvm_detail::map<fvm_detail::string, Accessor>::iterator p = o.accessors.begin();
              p != o.accessors.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.callback(p->second.getter);
             w.callback(p->second.setter);
         }
@@ -756,7 +765,7 @@ void write_graph(const Graph &g, Writer &w)
         for (fvm_detail::map<fvm_detail::string, unsigned int>::iterator p = o.attributes.begin();
              p != o.attributes.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.u32(p->second);
         }
         w.callback(o.invocable);
@@ -765,14 +774,14 @@ void write_graph(const Graph &g, Writer &w)
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.method_values.begin();
              p != o.method_values.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.value(p->second);
         }
         w.u32((unsigned long)o.watchers.size());
         for (fvm_detail::map<fvm_detail::string, Value>::iterator p = o.watchers.begin();
              p != o.watchers.end(); ++p)
         {
-            w.string(p->first);
+            w.key(p->first);
             w.value(p->second);
         }
     }
@@ -830,6 +839,17 @@ struct Reader
         fvm_detail::string s((const char *)data + offset, n);
         offset += n;
         return s;
+    }
+    /* Graph 8 property names retain NUL and normalize surrogate-pair aliases.
+     * Callback identifiers still use the terminated-name record above. */
+    fvm_detail::string key()
+    {
+        fvm_detail::string raw = string(version >= 8);
+        if (version < 8)
+            return raw;
+        fvm_detail::string canonical;
+        require(fvm_property_key(raw.data(), raw.size(), canonical) == FVM_OK);
+        return canonical;
     }
     /* Compute and return value. */
     Value value(bool native_binary = false)
@@ -1043,7 +1063,7 @@ Graph read_graph(Reader &r, unsigned int version)
         size_t count = r.count();
         for (size_t j = 0; j < count; ++j)
         {
-            fvm_detail::string name = r.string();
+            fvm_detail::string name = r.key();
             require(o.properties.find(name) == o.properties.end());
             o.properties[name] = r.value();
         }
@@ -1057,7 +1077,7 @@ Graph read_graph(Reader &r, unsigned int version)
         count = r.count();
         for (size_t j = 0; j < count; ++j)
         {
-            fvm_detail::string name = r.string();
+            fvm_detail::string name = r.key();
             require(o.methods.find(name) == o.methods.end());
             Callback cb = r.callback();
             require(cb.builtin || !cb.name.empty());
@@ -1066,7 +1086,7 @@ Graph read_graph(Reader &r, unsigned int version)
         count = r.count();
         for (size_t j = 0; j < count; ++j)
         {
-            fvm_detail::string name = r.string();
+            fvm_detail::string name = r.key();
             require(o.metamethods.find(name) == o.metamethods.end());
             Callback cb = r.callback();
             require(cb.builtin || !cb.name.empty());
@@ -1077,7 +1097,7 @@ Graph read_graph(Reader &r, unsigned int version)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_detail::string name = r.string();
+            fvm_detail::string name = r.key();
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             require(o.accessors.find(name) == o.accessors.end());
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1106,7 +1126,7 @@ Graph read_graph(Reader &r, unsigned int version)
             count = r.count();
             for (size_t j = 0; j < count; ++j)
             {
-                fvm_detail::string name = r.string();
+                fvm_detail::string name = r.key();
                 unsigned long flags = r.u32();
                 require(flags <= 7 && o.attributes.find(name) == o.attributes.end());
                 o.attributes[name] = (unsigned int)flags;
@@ -1119,7 +1139,7 @@ Graph read_graph(Reader &r, unsigned int version)
             count = r.count();
             for (size_t j = 0; j < count; ++j)
             {
-                fvm_detail::string name = r.string();
+                fvm_detail::string name = r.key();
                 Value method = r.value();
                 require(method.type == FVM_VALUE_OBJECT &&
                         o.method_values.find(name) == o.method_values.end());
@@ -1131,7 +1151,7 @@ Graph read_graph(Reader &r, unsigned int version)
             count = r.count();
             for (size_t j = 0; j < count; ++j)
             {
-                fvm_detail::string name = r.string();
+                fvm_detail::string name = r.key();
                 Value descriptor = r.value();
                 require(!name.empty() && descriptor.type == FVM_VALUE_OBJECT &&
                         o.watchers.find(name) == o.watchers.end());
@@ -1384,7 +1404,7 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 7};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 8};
 
 /* Decode the current value. */
 Graph decode(const void *data, size_t size)
@@ -1394,7 +1414,7 @@ Graph decode(const void *data, size_t size)
     require(data && size >= 16 && size <= max_bytes);
     require(!std::memcmp(data, magic, 7));
     unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 7);
+    require(version >= 1 && version <= 8);
     Reader header(data, size);
     header.offset = 8;
 

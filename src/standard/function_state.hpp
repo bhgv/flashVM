@@ -17,7 +17,7 @@ FVM_Result fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long,
 FVM_Result fvm_function_validate(FVM_Context *);
 
 /* Implement function wrap entry for this subsystem. */
-FVM_Result fvm_function_wrap_entry(FVM_Context *, FVM_Object *, const char *,
+FVM_Result fvm_function_wrap_entry(FVM_Context *, FVM_Object *, const fvm_detail::string &,
                                    const FVM_NativeEntry &, FVM_Value *);
 
 /* Implement function make script for this subsystem. */

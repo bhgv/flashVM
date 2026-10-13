@@ -7,6 +7,7 @@
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/property_watch.hpp"
+#include "../core/property_key.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/table.h"
@@ -223,7 +224,7 @@ FVM_Result object_own(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     if (r != FVM_OK)
         return r;
     int has = 0;
-    r = fvm_object_has_own(c, o, key.string, &has);
+    r = fvm_object_has_own_bytes(c, o, key.string, fvm_string_size(key), &has);
     if (r != FVM_OK)
         return r;
     fvm_value_boolean(out, has);
@@ -245,7 +246,7 @@ FVM_Result enumerable(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
     if (r != FVM_OK)
         return r;
     unsigned int flags = 0;
-    r = fvm_object_property_flags(c, o, key.string, &flags);
+    r = fvm_object_property_flags_bytes(c, o, key.string, fvm_string_size(key), &flags);
     if (r == FVM_OK)
         fvm_value_boolean(out, !(flags & 1));
     return r;
@@ -331,21 +332,23 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
         r = fvm_value_to_string(c, args + 1, &text);
         if (r != FVM_OK)
             return r;
-        const char *start = text.string;
-        for (const char *p = start;; ++p)
-            if (*p == ',' || !*p)
+        size_t length = fvm_string_size(text), begin = 0;
+        for (size_t at = 0; at <= length; ++at)
+            if (at == length || text.string[at] == ',')
             {
-                names.push_back(fvm_detail::string(start, (size_t)(p - start)));
-                if (!*p)
-                    break;
-                start = p + 1;
+                fvm_detail::string key;
+                r = fvm_property_key(text.string + begin, at - begin, key);
+                if (r != FVM_OK)
+                    return r;
+                names.push_back(key);
+                begin = at + 1;
             }
     }
     fvm_detail::map<fvm_detail::string, unsigned int> flags = o->attributes;
     for (size_t i = 0; i < names.size(); ++i)
     {
         int own = 0;
-        r = fvm_object_has_own(c, o, names[i].c_str(), &own);
+        r = fvm_object_has_own_bytes(c, o, names[i].data(), names[i].size(), &own);
         if (r != FVM_OK)
             return r;
         if (!own)
@@ -1274,7 +1277,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_boolean(out, 0);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (n < 3 || args[0].type != FVM_VALUE_STRING || !*args[0].string ||
+    if (n < 3 || args[0].type != FVM_VALUE_STRING || !fvm_string_size(args[0]) ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         args[1].type != FVM_VALUE_OBJECT || !args[1].object->invocable.callback ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1286,7 +1289,10 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    const char *name = args[0].string;
+    fvm_detail::string name;
+    FVM_Result normalized = fvm_property_key(args[0].string, fvm_string_size(args[0]), name);
+    if (normalized != FVM_OK)
+        return normalized;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1301,7 +1307,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (receiver->resource_kind == ARRAY_OBJECT &&
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        (fvm_as_index(name, &index) || !std::strcmp(name, "length")))
+        ((fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)) || name == fvm_detail::string("length")))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
 
@@ -1342,7 +1348,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->properties.erase(name);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (receiver->resource_kind == OBJECT_OBJECT && fvm_as_index(name, &index))
+    if (receiver->resource_kind == OBJECT_OBJECT && (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)))
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         receiver->indexed.erase(index);
 
@@ -1363,8 +1369,15 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
                  FVM_Value *out, void *)
 {
     fvm_value_boolean(out, 0);
-    if (n < 2 || a[0].type != FVM_VALUE_STRING || !*a[0].string || a[1].type != FVM_VALUE_OBJECT ||
-        !a[1].object->invocable.callback || !fvm_property_watchable(object, a[0].string))
+    if (n < 2 || a[0].type != FVM_VALUE_STRING || !fvm_string_size(a[0]) || a[1].type != FVM_VALUE_OBJECT ||
+        !a[1].object->invocable.callback)
+        return FVM_OK;
+
+    fvm_detail::string key;
+    FVM_Result normalized = fvm_property_key(a[0].string, fvm_string_size(a[0]), key);
+    if (normalized != FVM_OK)
+        return normalized;
+    if (!fvm_property_watchable(object, key))
         return FVM_OK;
 
     /* Initialization / Инициализация локального состояния. */
@@ -1381,7 +1394,7 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
         r = fvm_object_set(c, descriptor, "userData", n > 2 ? a + 2 : &undefined);
     if (r != FVM_OK)
         return r;
-    object->watchers[a[0].string] = descriptor;
+    object->watchers[key] = descriptor;
     fvm_value_boolean(out, 1);
     return FVM_OK;
 }
@@ -1390,10 +1403,17 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
 FVM_Result unwatch(FVM_Context *, FVM_Object *object, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
-    bool present = n && a[0].type == FVM_VALUE_STRING &&
-                   object->watchers.find(a[0].string) != object->watchers.end();
+    fvm_detail::string key;
+    bool present = false;
+    if (n && a[0].type == FVM_VALUE_STRING)
+    {
+        FVM_Result result = fvm_property_key(a[0].string, fvm_string_size(a[0]), key);
+        if (result != FVM_OK)
+            return result;
+        present = object->watchers.find(key) != object->watchers.end();
+    }
     if (present)
-        object->watchers.erase(a[0].string);
+        object->watchers.erase(key);
     fvm_value_boolean(out, present);
     return FVM_OK;
 }

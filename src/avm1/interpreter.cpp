@@ -1140,7 +1140,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             r = fvm_value_to_string(c, &key, &text);
                             if (r != FVM_OK)
                                 break;
-                            r = fvm_object_set(c, object, text.string, &value);
+                            r = fvm_object_set_bytes(c, object, text.string, fvm_string_size(text), &value);
                             if (r != FVM_OK)
                                 break;
                         }
@@ -1606,7 +1606,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     r = fvm_value_to_string(c, &member, &key);
                     if (r == FVM_OK)
-                        r = fvm_value_get_property(c, &owner, key.string, &value);
+                        r = fvm_value_get_property_bytes(c, &owner, key.string, fvm_string_size(key), &value);
                 }
                 if (r != FVM_OK)
                     return r;
@@ -1630,7 +1630,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     r = fvm_value_to_string(c, &member, &key);
                     if (r == FVM_OK)
-                        r = fvm_value_set_property(c, &owner, key.string, &stack.back());
+                        r = fvm_value_set_property_bytes(c, &owner, key.string, fvm_string_size(key), &stack.back());
                 }
                 if (r != FVM_OK)
                     return r;

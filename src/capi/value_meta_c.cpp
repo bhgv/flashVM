@@ -8,6 +8,7 @@
 #include "flashvm/table.h"
 #include "flashvm/function.h"
 #include <new>
+#include "../core/property_key.hpp"
 
 /* Update value metatable. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -203,14 +204,23 @@ extern "C" FVM_Result fvm_value_meta_invoke(
 extern "C" FVM_Result fvm_value_get_property(FVM_Context *context, const FVM_Value *value,
                                              const char *name, FVM_Value *out)
 {
+    return name ? fvm_value_get_property_bytes(context, value, name, std::strlen(name), out)
+                : FVM_INVALID_ARGUMENT;
+}
+/* Preserve counted names across primitive metadata and boxing dispatch. */
+extern "C" FVM_Result fvm_value_get_property_bytes(FVM_Context *context, const FVM_Value *value,
+                                             const char *name, size_t size, FVM_Value *out)
+{
     if (!context || !name || !out || fvm_validate_value(context, value) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
     if (value->type == FVM_VALUE_OBJECT)
-        return fvm_object_get(context, value->object, name, out);
+        return fvm_object_get_bytes(context, value->object, name, size, out);
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value key;
-    fvm_value_string(&key, name);
+    FVM_Result checked = fvm_value_string_bytes(&key, name, size);
+    if (checked != FVM_OK)
+        return checked;
     FVM_Result result = fvm_value_meta_invoke(context, value, "__index", 1, &key, out);
     if (result == FVM_NOT_FOUND)
     {
@@ -223,7 +233,7 @@ extern "C" FVM_Result fvm_value_get_property(FVM_Context *context, const FVM_Val
                                                                   : "Number";
             FVM_Object *boxed = 0;
             result = fvm_construct(context, type, 1, value, &boxed);
-            return result == FVM_OK ? fvm_object_get(context, boxed, name, out) : result;
+            return result == FVM_OK ? fvm_object_get_bytes(context, boxed, name, size, out) : result;
         }
         fvm_value_undefined(out);
         return FVM_OK;
@@ -235,15 +245,24 @@ extern "C" FVM_Result fvm_value_get_property(FVM_Context *context, const FVM_Val
 extern "C" FVM_Result fvm_value_set_property(FVM_Context *context, const FVM_Value *value,
                                              const char *name, const FVM_Value *assigned)
 {
+    return name ? fvm_value_set_property_bytes(context, value, name, std::strlen(name), assigned)
+                : FVM_INVALID_ARGUMENT;
+}
+/* Preserve counted names across primitive metadata and boxing dispatch. */
+extern "C" FVM_Result fvm_value_set_property_bytes(FVM_Context *context, const FVM_Value *value,
+                                             const char *name, size_t size, const FVM_Value *assigned)
+{
     if (!context || !name || fvm_validate_value(context, value) != FVM_OK ||
         fvm_validate_value(context, assigned) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
     if (value->type == FVM_VALUE_OBJECT)
-        return fvm_object_set(context, value->object, name, assigned);
+        return fvm_object_set_bytes(context, value->object, name, size, assigned);
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value args[2], ignored;
-    fvm_value_string(args, name);
+    FVM_Result checked = fvm_value_string_bytes(args, name, size);
+    if (checked != FVM_OK)
+        return checked;
     args[1] = *assigned;
     FVM_Result result = fvm_value_meta_invoke(context, value, "__newindex", 2, args, &ignored);
     return result == FVM_NOT_FOUND ? FVM_UNSUPPORTED : result;

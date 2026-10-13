@@ -47,6 +47,12 @@ extern "C"
     /* Update value property. */
     FVM_API FVM_Result fvm_value_set_property(FVM_Context *, const FVM_Value *, const char *,
                                               const FVM_Value *);
+    /* Read a property through a counted WTF-8 name, including primitive boxing. */
+    FVM_API FVM_Result fvm_value_get_property_bytes(FVM_Context *, const FVM_Value *, const char *,
+                                                    size_t, FVM_Value *);
+    /* Assign through a counted name, including primitive metatable hooks. */
+    FVM_API FVM_Result fvm_value_set_property_bytes(FVM_Context *, const FVM_Value *, const char *,
+                                                    size_t, const FVM_Value *);
     /* Explicit finalization of an owned table, at most once.  The object remains
      * allocated until a later tracing collection or context teardown. */
     /* Implement meta finalize for this subsystem. */

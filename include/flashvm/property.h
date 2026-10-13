@@ -22,6 +22,14 @@ extern "C"
     /* Update object property flags. */
     FVM_API FVM_Result fvm_object_set_property_flags(FVM_Context *, FVM_Object *, const char *,
                                                      unsigned int set, unsigned int clear);
+    /* Read/update attributes for a counted WTF-8 property name. */
+    FVM_API FVM_Result fvm_object_property_flags_bytes(FVM_Context *, FVM_Object *, const char *,
+                                                       size_t, unsigned int *);
+    FVM_API FVM_Result fvm_object_set_property_flags_bytes(FVM_Context *, FVM_Object *, const char *,
+                                                           size_t, unsigned int, unsigned int);
+    /* Delete a counted property name, respecting DONT_DELETE. */
+    FVM_API FVM_Result fvm_object_delete_bytes(FVM_Context *, FVM_Object *, const char *, size_t,
+                                               int *);
     /* Snapshot enumerable keys without invoking getters. Own nonenumerable
      * names shadow prototypes. Hidden watch descriptors are never keys.
      * The returned Array is borrowed; pin it while retained by native code. */

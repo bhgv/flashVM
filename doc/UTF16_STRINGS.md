@@ -91,3 +91,9 @@ certification is claimed.
 LeakSanitizer отключены, container_exceptions.cpp проверяется только UBSan,
 санитайзер-профиль без SQLite. Другие ОС и полная проверка стека/утечек этим
 проходом не подтверждаются. Логи не коммитятся.
+
+## v0.81 update / Обновление v0.81
+
+Counted property APIs and AVM1 member operations now preserve full keys; graph 8
+transports them. See [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
+Native call/registration and AVM1 variable-name gates remain open.

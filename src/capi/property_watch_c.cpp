@@ -7,22 +7,23 @@
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
 #include <cstring>
+#include "../core/property_key.hpp"
 #include <new>
 /* Compute and return property watchable. */
-bool fvm_property_watchable(FVM_Object *object, const char *name)
+bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
 {
     if (object->resource_kind == 40)
     {
         const char *fields[] = {"_x",     "_y",       "_xscale", "_yscale", "_rotation",
                                 "_alpha", "_visible", "_name",   "enabled", "useHandCursor"};
         for (size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
-            if (!std::strcmp(name, fields[i]))
+            if (name == fvm_detail::string(fields[i]))
                 return false;
     }
 
     /* Initialization / Инициализация локального состояния. */
     unsigned long index = 0;
-    const bool indexed = fvm_as_index(name, &index);
+    const bool indexed = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
     unsigned int depth = 0;
     for (FVM_Object *o = object; o && depth++ < 1024; o = o->prototype)
     {
@@ -39,13 +40,13 @@ bool fvm_property_watchable(FVM_Object *object, const char *name)
 /* Compute and return property watch prepare. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 FVM_Result fvm_property_watch_prepare(
-    FVM_Context *c, FVM_Object *object, const char *name,
+    FVM_Context *c, FVM_Object *object, const fvm_detail::string &name,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     const FVM_Value *requested, FVM_Value *out)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!c || !object || object->owner != c || !name || !out ||
+    if (!c || !object || object->owner != c || !out ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_validate_value(c, requested) != FVM_OK)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -136,9 +137,9 @@ FVM_Result fvm_property_watch_prepare(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value args[4], handler, result;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_value_string(args, key.c_str());
+        fvm_value_string_bytes(args, key.data(), key.size());
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Result r = fvm_object_get(c, object, key.c_str(), args + 1);
+        FVM_Result r = fvm_object_get_bytes(c, object, key.data(), key.size(), args + 1);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
