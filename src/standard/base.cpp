@@ -1146,6 +1146,37 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
     return fvm_function_invoke(c, function.object, receiver, 0, 0, out);
 }
 
+/* Persist ordinary own data after a script setter removes its descriptor, without calling another setter. */
+FVM_Result store_receiver_data(FVM_Context *c, FVM_Object *receiver, const fvm_detail::string &name,
+                                const FVM_Value &input)
+{
+    FVM_Result status = fvm_validate_value(c, &input);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value stored = input;
+    if (stored.type == FVM_VALUE_STRING)
+    {
+        status = fvm_value_to_string(c, &input, &stored);
+        if (status != FVM_OK)
+            return status;
+        stored.metatable = input.metatable;
+    }
+    unsigned long index = 0;
+    /* [GC:] Commit copied bytes/edges before removing obsolete method metadata. */
+    if ((receiver->resource_kind == ARRAY_OBJECT || receiver->resource_kind == OBJECT_OBJECT) &&
+        fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
+    {
+        receiver->indexed[index] = stored;
+        receiver->properties.erase(name);
+        fvm_array_note_index(receiver, index);
+    }
+    else
+        receiver->properties[name] = stored;
+    receiver->methods.erase(name);
+    receiver->method_values.erase(name);
+    return FVM_OK;
+}
+
 /* Update script property. */
 FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned int n,
                                const FVM_Value *args, FVM_Value *out, void *userdata)
@@ -1176,7 +1207,17 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
                 receiver->attributes.find(*c->calling_setter_name);
             if (flags != receiver->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
                 return FVM_OK;
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator current =
+                receiver->accessors.find(*c->calling_setter_name);
+            if (current == receiver->accessors.end())
+                return store_receiver_data(c, receiver, *c->calling_setter_name, args[0]);
+            if (current->second.getter != script_property_get || !current->second.root)
+                return FVM_UNSUPPORTED;
+            /* [GC:] Re-resolve after callback replacement; the receiver roots the new descriptor graph. */
+            descriptor = current->second.root;
         }
+        /* [GC:] Retain a replacement descriptor independently while copying the incoming value. */
+        FVM_ObjectRootScope target_roots(c, descriptor);
         FVM_Value stored = args[0];
         if (stored.type == FVM_VALUE_STRING)
         {

@@ -823,3 +823,15 @@ in restricted sanitizer/portable profiles. Three AGG GC launch failures passed
 after execute-bit restoration. Numeric/countеd NUL callbacks and metadata restore
 pass; all fifteen original SWFs still match. Readonly watcher order, self-replaced
 property storage, real Array virtual guards/version rules and all stages stay open.
+
+## v0.142 — setter replacement / замена setter
+
+Successful own script setters store into the current receiver property after
+callback deletion/replacement, without another setter invocation; current own
+readonly suppresses storage. Counted bytes and both descriptor graphs remain
+owned/rooted. [RU/EN details](OBJECT_SETTER_REPLACEMENT.md). Evidence: 310 core
+tests in AGG/Cairo plus the AGG runner; seven focused tests in restricted
+heap/global ASan+UBSan and portable Linux profiles. One AGG blur-filter launch
+failure passed after execute-bit restoration. Fifteen original SWFs still match
+exactly. Native C accessor replacement remains UNSUPPORTED; callback side effects
+are not rolled back. Array mutation set_data and all stages stay open.
