@@ -847,3 +847,14 @@ ASan+UBSan and portable Linux profiles. One AGG bitmap-allocation launch failure
 passed after execute-bit restoration. All fifteen original SWFs still match
 exactly. The mutation size limit/native accessor model, other mutators and every
 roadmap stage remain open.
+
+## v0.144 — loaded shift/pop raw data / удаление элементов
+
+Loaded shift/pop use own raw data without getter/prototype lookup. Borrowed
+length remains unchanged; only native Arrays shrink. Protected native tail
+indices may remain beyond the smaller length instead of clamping it.
+[RU/EN details](ARRAY_LEGACY_REMOVE.md). Evidence: 312 core tests in AGG/Cairo
+plus the AGG runner; six focused checks in restricted heap/global ASan+UBSan
+and portable Linux profiles. One AGG broker-lifetime launch failure passed after
+execute-bit restoration. All fifteen original SWFs match exactly. Negative signed
+lengths, shift size limits, native accessor data and all stages remain open.

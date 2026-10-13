@@ -524,7 +524,7 @@ FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
 FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
 {
-    if (fvm_array_needs_generic(o))
+    if (c->swf_loaded || fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "pop", n, a, out, pop);
 
     if (!array(o))
@@ -550,7 +550,7 @@ FVM_Result pop(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
 FVM_Result shift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
-    if (fvm_array_needs_generic(o))
+    if (c->swf_loaded || fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "shift", n, a, out, shift);
 
     if (!array(o))
