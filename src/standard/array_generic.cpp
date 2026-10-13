@@ -157,6 +157,55 @@ FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long ind
     return fvm_base_store_data(c, o, key, value, false);
 }
 
+/* Move one splice source by own presence/data, deleting the source only after successful storage. */
+FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long to)
+{
+    char source[32], destination[32];
+    std::sprintf(source, "%lu", from);
+    std::sprintf(destination, "%lu", to);
+    int present = 0, removed = 0;
+    FVM_Result status = fvm_object_has_own(c, o, source, &present);
+    if (status != FVM_OK)
+        return status;
+    if (!present)
+        return fvm_object_delete(c, o, destination, &removed);
+    FVM_Value value;
+    legacy_data_element(o, from, value);
+    status = legacy_store_element(c, o, to, value);
+    if (status == FVM_OK && from != to)
+        status = fvm_object_delete(c, o, source, &removed);
+    return status;
+}
+
+/* Set raw splice length, deleting native Array tails while retaining borrowed tail properties. */
+FVM_Result legacy_splice_length(FVM_Context *c, FVM_Object *o, unsigned long count, FVM_ArrayWorkScope &work)
+{
+    if (o->resource_kind == 28)
+    {
+        unsigned long old = 0;
+        FVM_Result status = legacy_data_length(c, o, old);
+        if (status != FVM_OK)
+            return status;
+        for (unsigned long i = count; i < old; ++i)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
+            char key[32];
+            std::sprintf(key, "%lu", i);
+            int removed = 0;
+            status = fvm_object_delete(c, o, key, &removed);
+            if (status != FVM_OK)
+                return status;
+        }
+        legacy_native_length(o, count);
+        return FVM_OK;
+    }
+    FVM_Value value;
+    fvm_value_number(&value, (double)count);
+    return fvm_base_store_data(c, o, "length", value, false);
+}
+
 /* Write the current value. */
 FVM_Result write(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value *value)
 {
@@ -759,7 +808,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         unsigned long deleted = splice ? prepared->deleted : 0;
         unsigned long end = start + deleted;
         unsigned int added = splice ? prepared->added : 0;
-        if (splice && count > 65536)
+        if (splice && (count > 65536 || (c->swf_loaded && (double)count - deleted + added > 2147483647.0)))
             return FVM_UNSUPPORTED;
         if (!splice)
         {
@@ -806,7 +855,32 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 if (r == FVM_OK && present)
                     r = fvm_array_store_own(c, result, i, value);
             }
-        if (splice)
+        if (splice && c->swf_loaded)
+        {
+            if (added > deleted)
+                for (unsigned long i = count; i > start + deleted && r == FVM_OK; --i)
+                {
+                    r = work.step();
+                    if (r == FVM_OK)
+                        r = legacy_splice_move(c, o, i - 1, i - 1 - deleted + added);
+                }
+            else
+                for (unsigned long i = start + deleted; i < count && r == FVM_OK; ++i)
+                {
+                    r = work.step();
+                    if (r == FVM_OK)
+                        r = legacy_splice_move(c, o, i, i - deleted + added);
+                }
+            for (unsigned int i = 0; i < added && r == FVM_OK; ++i)
+            {
+                r = work.step();
+                if (r == FVM_OK)
+                    r = legacy_store_element(c, o, start + i, a[i + 2]);
+            }
+            if (r == FVM_OK)
+                r = legacy_splice_length(c, o, count - deleted + added, work);
+        }
+        else if (splice)
         {
             if (added < deleted)
             {

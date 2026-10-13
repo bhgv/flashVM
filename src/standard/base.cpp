@@ -1533,7 +1533,12 @@ FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::
     if (accessor == o->accessors.end())
         return store_receiver_data(c, o, name, input, note_length);
     if (!fvm_base_script_accessor(accessor->second))
+    {
+        /* Getter-only C accessors keep their existing immutable embedding contract. */
+        if (!accessor->second.setter)
+            return FVM_OK;
         return FVM_UNSUPPORTED;
+    }
     FVM_Object *descriptor = accessor->second.root;
     /* [GC:] Keep the private data target alive while copying counted strings. */
     FVM_ObjectRootScope roots(c, descriptor);

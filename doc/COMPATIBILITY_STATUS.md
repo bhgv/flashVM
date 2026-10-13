@@ -969,3 +969,17 @@ data, no watchers and counted NUL/GC pass. One AGG error-transfer launch failure
 and its dependent subprocess PermissionError passed after execute-bit restoration.
 Fifteen original SWFs still match. Signed/native accessor limits, case/version
 and all stages remain open; no rollback on partial mutation is promised.
+
+## v0.154 — generic splice raw moves / общий перенос splice
+
+Loaded generic splice moves by own presence/raw data, bypasses callbacks/watch,
+handles both directions and retains borrowed tails beyond new length. Native
+generic protected tails do not clamp length. Getter-only C accessor raw writes
+retain their immutable contract; writable native accessor data is unsupported.
+[RU/EN details](ARRAY_LEGACY_SPLICE_MUTATION.md). Evidence: 321 core tests in
+AGG/Cairo plus the AGG runner; nine focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. An initial getter-only length regression
+was corrected; all repeated suites pass without launch failures. Virtual flags,
+prototype holes, borrowed/native tails and counted strings after traced GC pass.
+Fifteen original SWFs still match. Native fast splice watch/flags, signed/size
+limits, native accessor data and all stages remain open.
