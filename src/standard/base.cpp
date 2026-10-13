@@ -1588,9 +1588,9 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned long index;
-    /* Numeric Array slots and its length use the dedicated indexed contract. */
+    /* Preserve unloaded indexed behavior; loaded numeric slots can become virtual properties. */
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (receiver->resource_kind == ARRAY_OBJECT &&
+    if (receiver->resource_kind == ARRAY_OBJECT && (!c->swf_loaded || name == "length") &&
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ((fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)) || name == fvm_detail::string("length")))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1679,7 +1679,9 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] All descriptor/flag allocations completed before removing old stored values. */
     receiver->properties.erase(name);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (receiver->resource_kind == OBJECT_OBJECT && (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)))
+    if ((receiver->resource_kind == OBJECT_OBJECT ||
+         (c->swf_loaded && receiver->resource_kind == ARRAY_OBJECT)) &&
+        fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         receiver->indexed.erase(index);
 

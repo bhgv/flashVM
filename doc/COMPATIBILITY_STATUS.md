@@ -1144,3 +1144,19 @@ allocation/budget errors; full argument/flag cases and all stages remain open.
 
 Проверены сохранение callback хвоста, READ_ONLY length и индексы за длиной.
 Ошибки обратной записи могут оставить частичные изменения. Все стадии открыты.
+
+## v0.167 — virtual Array indices / виртуальные индексы
+
+Loaded native Array addProperty accepts numeric indices, retaining original data
+and flags in script descriptors before removing indexed slots. Ordinary getters
+and loaded raw methods now expose their distinct values.
+[RU/EN details](ARRAY_LEGACY_VIRTUAL_INDEX.md). Evidence: AGG 329/Cairo 328,
+eight focused portable/restricted heap-global ASan+UBSan checks, fifteen byte-exact
+original SWFs, no launch failures. Counted NUL strings, readonly/nondelete flags,
+self-cycles, raw slice/getter distinction and AVM1 getter graph transfer all pass
+with traced GC in both contexts. Unloaded rejection is unchanged. Native length
+virtualization, readonly native setter dispatch, version masks and all stages
+remain open.
+
+Проверены сохранение indexed data/flags, cycle и queue transfer после GC.
+Виртуальная native length и все стадии остаются открытыми.
