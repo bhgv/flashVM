@@ -37,3 +37,9 @@ were checked against the linked primary source. Non-callable descriptor objects,
 protected replacement, real Array numeric/length accessors and version exposure
 remain open. The original array_prototyping probe also needs historic join fixes;
 partial output is not whole-probe acceptance. All roadmap stages remain open.
+
+## Follow-up v0.130 / Последующее исправление
+
+Non-callable descriptor Objects now work; see [OBJECT_DESCRIPTOR_OBJECTS.md](OBJECT_DESCRIPTOR_OBJECTS.md).
+Обычные Object в дескрипторах поддерживаются начиная с v0.130.
+The earlier array_prototyping blocker was resolved by v0.124; the original probe passes.

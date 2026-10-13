@@ -1111,7 +1111,8 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
     FVM_Result r = fvm_object_get(c, (FVM_Object *)userdata, "get", &function);
     if (r != FVM_OK)
         return r;
-    if (function.type != FVM_VALUE_OBJECT)
+    /* A stored non-function Object is a valid descriptor but has no executable getter. */
+    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
     {
         fvm_value_undefined(out);
         return FVM_OK;
@@ -1129,7 +1130,8 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
     FVM_Result r = fvm_object_get(c, (FVM_Object *)userdata, "set", &function);
     if (r != FVM_OK)
         return r;
-    if (function.type != FVM_VALUE_OBJECT)
+    /* Non-function setter Objects ignore assignment instead of reporting a call error. */
+    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
     {
         fvm_value_undefined(out);
         return FVM_OK;
@@ -1155,9 +1157,9 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     if (normalized != FVM_OK)
         return normalized;
     if (!fvm_string_size(converted_name) || n < 3 ||
-        args[1].type != FVM_VALUE_OBJECT || !args[1].object->invocable.callback ||
+        args[1].type != FVM_VALUE_OBJECT ||
         (args[2].type != FVM_VALUE_NULL &&
-         (args[2].type != FVM_VALUE_OBJECT || !args[2].object->invocable.callback)))
+         args[2].type != FVM_VALUE_OBJECT))
         return FVM_OK;
     fvm_detail::string name;
     normalized = fvm_property_key(converted_name.string, fvm_string_size(converted_name), name);

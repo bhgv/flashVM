@@ -670,3 +670,15 @@ in restricted sanitizer/portable profiles. Six AGG Array/font/function launch
 failures passed after execute-bit restoration. All fourteen original selected
 SWF probes still complete with exact outputs. Full Array descriptors, version
 provenance and all roadmap stages remain open.
+
+## v0.130 — plain getter/setter Objects / обычные объекты дескрипторов
+
+addProperty accepts plain Object descriptors; non-function getters yield
+undefined, non-function setters ignore writes, and mixed descriptors invoke
+the function side. [RU/EN details](OBJECT_DESCRIPTOR_OBJECTS.md). Evidence:
+297 core tests in AGG/Cairo plus the AGG runner; five focused checks in
+restricted sanitizer/portable profiles. Three AGG Array and two Cairo AVM1
+launch failures passed after execute-bit restoration. The descriptor test
+includes queue transfer and GC before reading/writing in the receiving context.
+Protected replacement, full prototype/Array descriptor rules and all stages
+remain open.
