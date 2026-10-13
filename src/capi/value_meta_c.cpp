@@ -160,6 +160,8 @@ extern "C" FVM_Result fvm_value_meta_invoke(
                                       /* [GC:] Операция в блоке управления достижимостью и временем
                                          жизни объектов. */
                                       count + 2, parameters.begin(), &result, callback.userdata);
+                /* [GC:] Retain primitive metamethod string results before capture roots unwind. */
+                status = fvm_native_result(context, status, &result);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */

@@ -603,7 +603,9 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         std::memcpy(owned, joined.begin(), total + 1);
         try
         {
-            c->strings.push_back(owned);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(c, owned, total);
         }
         catch (...)
         {
@@ -1414,7 +1416,9 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
         std::memcpy(text, state.text.c_str(), state.text.size() + 1);
         try
         {
-            context->strings.push_back(text);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(context, text, state.text.size());
         }
         catch (...)
         {

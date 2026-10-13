@@ -138,7 +138,9 @@ extern "C" FVM_Result fvm_exception_raise(FVM_Context *c, const FVM_Value *value
         text[size - 1] = 0;
         try
         {
-            c->strings.push_back(text);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(c, text, size - 1);
         }
         catch (...)
         {

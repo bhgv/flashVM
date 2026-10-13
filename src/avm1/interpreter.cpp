@@ -101,7 +101,9 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
     copy[length] = 0;
     try
     {
-        context->strings.push_back(copy);
+        /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+         * caller cleanup active. */
+        fvm_context_adopt_string(context, copy, length);
     }
     catch (...)
     {
@@ -594,7 +596,9 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         copy[len] = 0;
         try
         {
-            c->strings.push_back(copy);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(c, copy, len);
         }
         catch (...)
         {

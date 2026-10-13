@@ -1460,7 +1460,9 @@ FVM_Value restore_value(FVM_Context *c, const Value &src,
         std::memcpy(p, src.string.c_str(), src.string.size() + 1);
         try
         {
-            c->strings.push_back(p);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(c, p, src.string.size());
         }
         catch (...)
         {
@@ -1793,8 +1795,13 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
         c->objects.resize(old_objects);
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (size_t i = old_strings; i < c->strings.size(); ++i)
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            delete[] c->strings[i];
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        {
+            /* [GC:] Remove the exact buffer index before freeing unpublished decode storage. */
+            fvm_context_forget_string(c, c->strings[i].data);
+            /* [GC:] Release the failed record buffer before shortening the descriptor vector. */
+            delete[] c->strings[i].data;
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         c->strings.resize(old_strings);
         /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */

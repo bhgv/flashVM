@@ -6,6 +6,13 @@ The existing global-object and explicitly pinned-object roots remain active. Cyc
 
 ## Safety and limitations
 
-This is **not yet a complete production GC**. In particular, arbitrary native callbacks, temporary C API values, results held by callers and references in native extensions need an explicit root discipline. Native callers should pin object values before requesting collection. Automatic collection inside the AVM1 dispatch loop remains disabled until native callback and temporary-value rooting is audited. String allocations are managed separately from object GC. The ActionScript `gc` object is not yet implemented.
+This historical active-frame milestone does not certify complete GC. The current
+implementation also traces API stacks and registered native captures, and the
+native-call barrier defers automatic collection/rejects explicit collection
+until it is safe. External C object pointers require pins or scoped roots.
+Context-owned string buffers retain their lifetime until context destruction;
+exact accounting/native result snapshots are described in GC_STRING_STORAGE.md.
+Full string/native resource/concurrency acceptance remains open. Refer to
+GC_CALLBACK_SAFETY.md and GC_AVM1_SAFE_POINTS.md for current scheduling rules.
 
 Collection is context-local and must run on the context's owning thread. Do not call `fvm_gc_collect` concurrently with the same context's execution. The public C ABI is unchanged by this stage.

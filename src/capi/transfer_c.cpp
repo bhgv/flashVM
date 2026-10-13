@@ -438,7 +438,9 @@ static FVM_Result receive_value(FVM_Context *context, FVM_Channel *channel, FVM_
                 copy[length] = 0;
                 try
                 {
-                    context->strings.push_back(copy);
+                    /* [GC:] Register owned bytes and their counted length together; failed
+                     * insertion leaves caller cleanup active. */
+                    fvm_context_adopt_string(context, copy, length);
                 }
                 catch (...)
                 {

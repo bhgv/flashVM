@@ -81,7 +81,18 @@ extern "C"
     /* Run a collection at a safe point when the scheduling threshold is reached. */
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
     FVM_API FVM_Result fvm_gc_step(FVM_Context *, unsigned long *reclaimed);
-/* [GC:] Ограничиваем компиляцию объявлений и режимов сборщика. */
+    /* [GC:] Ограничиваем компиляцию объявлений и режимов сборщика. */
+    /* [GC:] Exact context string-buffer accounting; excludes container and allocator overhead. */
+    typedef struct FVM_GCStringStats
+    {
+        size_t buffers;         /* [GC:] Number of registered context-owned string allocations. */
+        size_t payload_bytes;   /* [GC:] Counted bytes, preserving NUL and WTF-8 payload lengths. */
+        size_t allocated_bytes; /* [GC:] Payload bytes plus one terminator per allocation. */
+        /* [GC:] Complete the scalar string-storage snapshot type. */
+    } FVM_GCStringStats;
+    /* [GC:] Read string arena statistics without allocation; errors leave caller output unchanged.
+     */
+    FVM_API FVM_Result fvm_gc_string_stats(FVM_Context *, FVM_GCStringStats *);
 #ifdef __cplusplus
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }

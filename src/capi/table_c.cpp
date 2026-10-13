@@ -34,7 +34,9 @@ static FVM_Result store(FVM_Context *c, const FVM_Value *v, FVM_Value *out)
         p[n] = 0;
         try
         {
-            c->strings.push_back(p);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(c, p, n);
         }
         catch (...)
         {

@@ -196,7 +196,8 @@ extern "C"
                      * сборщик. */
                     FVM_NativeCallGuard native_guard(c);
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return it->second.callback(c, o, 3, args, value, it->second.userdata);
+                    return fvm_native_result(
+                        c, it->second.callback(c, o, 3, args, value, it->second.userdata), value);
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

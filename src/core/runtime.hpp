@@ -20,6 +20,21 @@ struct FVM_Channel;
 struct FVM_ResourceBroker;
 typedef FVM_Result (*FVM_StackCallbackInternal)(FVM_Context *, FVM_Stack *, void *);
 
+/* [GC:] Non-owning allocation descriptor; the enclosing context releases each registered buffer. */
+struct FVM_ContextString
+{
+    char *data; /* [GC:] Context-owned terminated byte buffer, including counted embedded NULs. */
+    size_t length; /* [GC:] Payload bytes before the separately allocated final terminator. */
+    /* [GC:] Initialize an unused vector capacity entry without claiming a buffer. */
+    FVM_ContextString() : data(0), length(0)
+    {
+    }
+    /* [GC:] Record buffer ownership and exact byte length atomically in one vector element. */
+    FVM_ContextString(char *bytes, size_t count) : data(bytes), length(count)
+    {
+    }
+};
+
 /* Define FVM_StackEntry struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
 struct FVM_StackEntry
@@ -242,7 +257,10 @@ struct FVM_Context
         gc_stacks;      /* Temporary value stacks exposed to the collector. */
     FVM_Object *global; /* [GC:] Global ActionScript object of this context. */
     fvm_detail::vector<FVM_Object *> objects; /* [GC:] Managed objects owned by the context. */
-    fvm_detail::vector<char *> strings;       /* [GC:] String allocations owned by the context. */
+    fvm_detail::map<size_t, size_t>
+        string_allocations; /* [GC:] Buffer address to descriptor index. */
+    fvm_detail::vector<FVM_ContextString>
+        strings; /* [GC:] Owned strings with exact payload lengths. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>
         functions; /* [GC:] Registered native global functions. */
@@ -338,4 +356,12 @@ FVM_Result fvm_object_get_no_index(FVM_Context *, FVM_Object *, const char *, FV
 /* Update object no index. */
 FVM_Result fvm_object_set_no_index(FVM_Context *, FVM_Object *, const char *, const FVM_Value *);
 
+/* [GC:] Adopt a freshly allocated terminated buffer and exact byte count; caller frees on failure.
+ */
+void fvm_context_adopt_string(FVM_Context *, char *, size_t);
+/* [GC:] Remove a buffer ownership index before explicit rollback frees its allocation. */
+void fvm_context_forget_string(FVM_Context *, const char *);
+/* [GC:] Preserve successful native string results in context storage before receiver roots unwind.
+ */
+FVM_Result fvm_native_result(FVM_Context *, FVM_Result, FVM_Value *);
 #endif

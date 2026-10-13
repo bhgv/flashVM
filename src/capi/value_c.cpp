@@ -57,7 +57,9 @@ static FVM_Result copy_value(FVM_Context *context, const FVM_Value *src, FVM_Val
         p[n] = 0;
         try
         {
-            context->strings.push_back(p);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(context, p, n);
         }
         catch (...)
         {
@@ -164,7 +166,9 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                         c,
                         /* [GC:] Операция в блоке управления достижимостью и временем жизни
                            объектов. */
-                        receiver, entry.getter(c, receiver, 0, 0, out, entry.userdata));
+                        receiver,
+                        fvm_native_result(c, entry.getter(c, receiver, 0, 0, out, entry.userdata),
+                                          out));
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -257,6 +261,8 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                         /* [GC:] Операция в блоке управления достижимостью и временем жизни
                            объектов. */
                         fn->second.callback(c, receiver, 3, args, &result, fn->second.userdata);
+                    /* [GC:] Snapshot an index result before the metatable/receiver roots unwind. */
+                    status = fvm_native_result(c, status, &result);
                     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (status == FVM_OK)
                         /* [GC:] Операция в блоке управления достижимостью и временем жизни
@@ -1051,7 +1057,9 @@ extern "C"
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_exception_complete(
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c, self, entry.callback(c, self, argc, argv, out, entry.userdata));
+                    c, self,
+                    fvm_native_result(c, entry.callback(c, self, argc, argv, out, entry.userdata),
+                                      out));
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
@@ -1063,7 +1071,8 @@ extern "C"
             return fvm_exception_complete(
                 c, self,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                entry.callback(c, self, argc, argv, out, entry.userdata));
+                fvm_native_result(c, entry.callback(c, self, argc, argv, out, entry.userdata),
+                                  out));
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         catch (const std::bad_alloc &)

@@ -108,7 +108,9 @@ fvm_meta_call(FVM_Context *context, FVM_Object *owner, unsigned int count,
         /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard native_guard(context);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return it->second.callback(context, owner, 3, params, result, it->second.userdata);
+        return fvm_native_result(
+            context, it->second.callback(context, owner, 3, params, result, it->second.userdata),
+            result);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

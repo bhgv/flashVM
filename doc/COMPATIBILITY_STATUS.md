@@ -204,3 +204,7 @@ BlurFilter constructor/properties/clone, bitmap application and expanded bounds 
 ## v0.67 — Remote channel debugger controls
 
 Compatible broker queue/file freeze/state implemented with validated controls and bounded file scans. Проверки: channel_debug_network, channel_debug_protocol, file_channel_debug. Remote payload inspection, distributed wait/deadlock graphs and complete acceptance remain open; REMOTE_CHANNEL_DEBUG.md.
+
+## v0.68 — Native string result lifetime
+
+Context-owned snapshots retain native string results across userdata finalization, with counted-byte arena descriptors and atomic indexes. Проверки: gc_string_pool, gc_native_string_result, gc_native_string_allocation. Arena strings remain retained to context teardown; traced reclamation and full GC acceptance remain open (GC_STRING_STORAGE.md).

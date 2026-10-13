@@ -713,7 +713,9 @@ extern "C"
         std::memcpy(copy, text, length + 1);
         try
         {
-            stack->context->strings.push_back(copy);
+            /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+             * caller cleanup active. */
+            fvm_context_adopt_string(stack->context, copy, length);
         }
         catch (...)
         {

@@ -30,7 +30,9 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
     copy[length] = 0;
     try
     {
-        c->strings.push_back(copy);
+        /* [GC:] Register owned bytes and their counted length together; failed insertion leaves
+         * caller cleanup active. */
+        fvm_context_adopt_string(c, copy, length);
     }
     catch (...)
     {

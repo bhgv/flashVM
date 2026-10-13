@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.67 / Remaining work after v0.67
+# Оставшаяся работа после v0.68 / Remaining work after v0.68
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -134,3 +134,6 @@ v0.66 adds managed blur filtering; full historical Flash and scene conformance r
 
 В v0.67 добавлены remote channel freeze/state, неблокирующие broker controls и bounded file scans (REMOTE_CHANNEL_DEBUG.md). Remote peek/waiters/deadlock и полная приёмка стадий 6/7 открыты.
 v0.67 adds remote debugger controls; complete distributed inspection and acceptance remain open.
+
+В v0.68 добавлены exact string buffer accounting, atomic ownership indexes и snapshots native string results перед снятием roots (GC_STRING_STORAGE.md). Arena lifetime сохранён; traced string reclamation и полная приёмка стадии 7 открыты.
+v0.68 adds exact arena accounting and native string lifetime snapshots; full GC acceptance remains open.
