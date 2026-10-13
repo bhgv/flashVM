@@ -1726,8 +1726,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 const FVM_Value &owner = stack[stack.size() - 2];
                 const FVM_Value &member = stack.back();
                 FVM_Result r;
-                /* Legacy native tables expose numeric slots through the indexed API. */
-                if (owner.type == FVM_VALUE_OBJECT && member.type == FVM_VALUE_NUMBER &&
+                /* Legacy extension tables retain integer slots; standard/global members use string keys. */
+                if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind == 0 &&
+                    owner.object != c->global && member.type == FVM_VALUE_NUMBER &&
                     member.number >= 0 && member.number <= 4294967295.0 &&
                     member.number == std::floor(member.number))
                     r = fvm_table_get_index(c, owner.object, (unsigned long)member.number, &value);
@@ -1750,7 +1751,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 const FVM_Value &owner = stack[stack.size() - 3];
                 const FVM_Value &member = stack[stack.size() - 2];
                 FVM_Result r;
-                if (owner.type == FVM_VALUE_OBJECT && member.type == FVM_VALUE_NUMBER &&
+                if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind == 0 &&
+                    owner.object != c->global && member.type == FVM_VALUE_NUMBER &&
                     member.number >= 0 && member.number <= 4294967295.0 &&
                     member.number == std::floor(member.number))
                     r = fvm_table_set_index(c, owner.object, (unsigned long)member.number,

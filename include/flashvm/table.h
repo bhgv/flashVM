@@ -10,10 +10,11 @@
 extern "C"
 {
 #endif
-    /* Tables are VM-owned objects. Numeric slots and named slots are distinct.
-       Named properties support table-valued __index and __newindex. Numeric
-       properties still use direct metatable fallback. Function-valued metamethods
-       and metatables on primitive values are not implemented yet. */
+    /* Legacy native tables have distinct integer and named slots. Standard Object,
+       Array and arguments route canonical indexed properties through their shared
+       property bridge. Other standard/global AVM1 member names use string keys.
+       Named __index/__newindex support table and function hooks; raw native integer
+       slots retain direct table-metatable fallback. Primitive metadata uses value APIs. */
     /* Update table index. */
     FVM_API FVM_Result fvm_table_set_index(FVM_Context *, FVM_Object *, unsigned long,
                                            const FVM_Value *);

@@ -389,3 +389,12 @@ Release 259/259 each (AGG two launch-permission reruns); restricted headless
 ASan/UBSan and portable focused 4/4 each. MovieClip paths, Add2 hint behavior
 and standard constructor/global version gates remain open.
 RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).
+
+## v0.99 — Standard numeric member names
+
+Проверено / tested: global and standard resource numeric/string member identity,
+Object indexed bridge/prototype/accessor/flag behavior and graph transfer. Native
+table integer/named separation retained. AGG/Cairo Release 260/260 each after
+launch-permission reruns (3 and 1 tests); restricted headless ASan/UBSan and
+portable focused 5/5 each. Full standard type/API inventory remains open.
+RU/EN: [AVM1_NUMERIC_MEMBERS.md](AVM1_NUMERIC_MEMBERS.md).
