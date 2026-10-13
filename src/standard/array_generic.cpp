@@ -3,6 +3,8 @@
  */
 
 #include "array_generic.hpp"
+#include "array_work.hpp"
+#include "../core/property_key.hpp"
 #include "base_state.hpp"
 #include "../core/string_internal.hpp"
 #include "flashvm/standard.h"
@@ -36,8 +38,10 @@ FVM_Result length(FVM_Context *c, FVM_Object *o, unsigned long &out)
 }
 
 /* Read the current value. */
-FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &out, bool &present)
+FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &out, bool &present, bool *observable = 0)
 {
+    if (observable)
+        *observable = false;
     char key[32];
     std::sprintf(key, "%lu", index);
     FVM_Object *cursor = o;
@@ -52,11 +56,17 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
             out = slot->second;
             return FVM_OK;
         }
-        if (cursor->properties.find(key) != cursor->properties.end() ||
-            cursor->accessors.find(key) != cursor->accessors.end() ||
+        if (cursor->properties.find(key) != cursor->properties.end())
+        {
+            present = true;
+            return fvm_object_get_no_index(c, o, key, &out);
+        }
+        if (cursor->accessors.find(key) != cursor->accessors.end() ||
             cursor->methods.find(key) != cursor->methods.end())
         {
             present = true;
+            if (observable)
+                *observable = true;
             return fvm_object_get_no_index(c, o, key, &out);
         }
     }
@@ -131,10 +141,201 @@ void object(FVM_Value *out, FVM_Object *o)
     out->object = o;
 }
 
+/* Create an own slice result slot without invoking inherited destination setters. */
+FVM_Result slice_store(FVM_Context *c, FVM_Object *result, unsigned long index,
+                        const FVM_Value &input)
+{
+    FVM_Result status = fvm_validate_value(c, &input);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value value = input;
+    if (value.type == FVM_VALUE_STRING)
+    {
+        status = fvm_value_to_string(c, &input, &value);
+        if (status != FVM_OK)
+            return status;
+        value.metatable = input.metatable;
+    }
+    /* [GC:] Persist owned string bytes and managed edges before the native copy scope exits. */
+    result->indexed[index] = value;
+    return FVM_OK;
+}
+
+/* Restore the numeric max-heap invariant while charging each bounded sift iteration. */
+FVM_Result sift(fvm_detail::vector<unsigned long> &values, size_t root, size_t count,
+                 FVM_ArrayWorkScope &work)
+{
+    while (root < count / 2)
+    {
+        FVM_Result status = work.step();
+        if (status != FVM_OK)
+            return status;
+        size_t child = root * 2 + 1;
+        if (child + 1 < count && values[child] < values[child + 1])
+            ++child;
+        if (values[root] >= values[child])
+            break;
+        unsigned long value = values[root];
+        values[root] = values[child];
+        values[child] = value;
+        root = child;
+    }
+    return FVM_OK;
+}
+
+/* Sort candidate indices in ascending read order using project-owned contiguous storage. */
+FVM_Result sort_indices(fvm_detail::vector<unsigned long> &values, FVM_ArrayWorkScope &work)
+{
+    for (size_t i = values.size() / 2; i; --i)
+    {
+        FVM_Result status = sift(values, i - 1, values.size(), work);
+        if (status != FVM_OK)
+            return status;
+    }
+    for (size_t i = values.size(); i > 1; --i)
+    {
+        FVM_Result status = work.step();
+        if (status != FVM_OK)
+            return status;
+        unsigned long value = values[0];
+        values[0] = values[i - 1];
+        values[i - 1] = value;
+        status = sift(values, 0, i - 1, work);
+        if (status != FVM_OK)
+            return status;
+    }
+    return FVM_OK;
+}
+
+/* Collect complete numeric names without truncating embedded NULs. */
+template <class T>
+FVM_Result names(fvm_detail::map<fvm_detail::string, T> &entries, unsigned long start,
+                 unsigned long end, fvm_detail::map<unsigned long, bool> &indices,
+                 FVM_ArrayWorkScope &work)
+{
+    for (typename fvm_detail::map<fvm_detail::string, T>::iterator i = entries.begin();
+         i != entries.end(); ++i)
+    {
+        FVM_Result status = work.step();
+        if (status != FVM_OK)
+            return status;
+        unsigned long index = 0;
+        if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index) &&
+            index >= start && index < end)
+            indices[index] = true;
+    }
+    return FVM_OK;
+}
+
+/* Snapshot observable indices; dense/cyclic chains keep ordinary sequential HasProperty behavior. */
+FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end,
+                       fvm_detail::vector<unsigned long> &out, bool &sequential,
+                       FVM_ArrayWorkScope &work)
+{
+    out.clear();
+    sequential = false;
+    fvm_detail::map<unsigned long, bool> indices;
+    FVM_Object *cursor = source;
+    unsigned int depth = 0;
+    while (cursor && depth++ < 1024)
+    {
+        FVM_Result status = work.step();
+        if (status != FVM_OK)
+            return status;
+        for (fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.begin();
+             i != cursor->indexed.end(); ++i)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
+            if (i->first >= start && i->first < end)
+                indices[i->first] = true;
+        }
+        status = names(cursor->properties, start, end, indices, work);
+        if (status == FVM_OK)
+            status = names(cursor->accessors, start, end, indices, work);
+        if (status == FVM_OK)
+            status = names(cursor->methods, start, end, indices, work);
+        if (status != FVM_OK)
+            return status;
+        unsigned long span = end - start;
+        if (indices.size() >= span / 2 + span % 2)
+        {
+            sequential = true;
+            return FVM_OK;
+        }
+        cursor = cursor->prototype;
+    }
+    if (cursor)
+    {
+        sequential = true;
+        return FVM_OK;
+    }
+    for (fvm_detail::map<unsigned long, bool>::iterator i = indices.begin(); i != indices.end(); ++i)
+        out.push_back(i->first);
+    return sort_indices(out, work);
+}
+
+/* Copy huge sparse ranges, refreshing future indices after any getter or method materialization. */
+FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
+                         unsigned long start, unsigned long end, FVM_ArrayWorkScope &work)
+{
+    unsigned long cursor = start;
+    while (cursor < end)
+    {
+        fvm_detail::vector<unsigned long> indices;
+        bool sequential = false;
+        FVM_Result status = candidates(source, cursor, end, indices, sequential, work);
+        if (status != FVM_OK)
+            return status;
+        if (sequential)
+        {
+            for (; cursor < end; ++cursor)
+            {
+                status = work.step();
+                if (status != FVM_OK)
+                    return status;
+                FVM_Value value;
+                bool present = false;
+                status = get(c, source, cursor, value, present);
+                if (status == FVM_OK && present)
+                    status = slice_store(c, result, cursor - start, value);
+                if (status != FVM_OK)
+                    return status;
+            }
+            return FVM_OK;
+        }
+        bool refresh = false;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
+            FVM_Value value;
+            bool present = false, observable = false;
+            status = get(c, source, indices[i], value, present, &observable);
+            if (status == FVM_OK && present)
+                status = slice_store(c, result, indices[i] - start, value);
+            if (status != FVM_OK)
+                return status;
+            cursor = indices[i] + 1;
+            if (observable)
+            {
+                refresh = true;
+                break;
+            }
+        }
+        if (!refresh)
+            return FVM_OK;
+    }
+    return FVM_OK;
+}
+
 /* Run the current value. */
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {
+    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice"));
     if (!std::strcmp(method, "concat") && o->resource_kind != 28)
     {
         FVM_Object *snapshot = 0;
@@ -255,22 +456,26 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         if (end < start)
             end = start;
         deleted = end - start;
-        /* A slice visits only its selected interval, not the full uint32 receiver length. */
-        if (!splice && deleted > 65536)
-            return FVM_UNSUPPORTED;
         unsigned int added = splice && n > 2 ? n - 2 : 0;
         if ((double)count - deleted + added > 4294967295.0)
             return FVM_INVALID_ARGUMENT;
         FVM_Object *result = 0;
         r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result);
-        for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
-        {
-            FVM_Value value;
-            bool present;
-            r = get(c, o, start + i, value, present);
-            if (r == FVM_OK && present)
-                r = fvm_table_set_index(c, result, i, &value);
-        }
+        if (!splice && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
+            r = sparse_slice(c, o, result, start, end, work);
+        else
+            for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
+            {
+                if (!splice)
+                    r = work.step();
+                FVM_Value value;
+                bool present = false;
+                if (r == FVM_OK)
+                    r = get(c, o, start + i, value, present);
+                if (r == FVM_OK && present)
+                    r = splice ? fvm_table_set_index(c, result, i, &value)
+                               : slice_store(c, result, i, value);
+            }
         if (splice)
         {
             if (added < deleted)
@@ -394,14 +599,14 @@ bool fvm_array_needs_generic(FVM_Object *o)
              i != o->properties.end(); ++i)
         {
             unsigned long index;
-            if (fvm_as_index(i->first.c_str(), &index))
+            if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
                 return true;
         }
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i = o->methods.begin();
              i != o->methods.end(); ++i)
         {
             unsigned long index;
-            if (fvm_as_index(i->first.c_str(), &index))
+            if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
                 return true;
         }
         for (fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator i =
@@ -409,7 +614,7 @@ bool fvm_array_needs_generic(FVM_Object *o)
              i != o->accessors.end(); ++i)
         {
             unsigned long index;
-            if (fvm_as_index(i->first.c_str(), &index))
+            if (fvm_property_terminated(i->first) && fvm_as_index(i->first.c_str(), &index))
                 return true;
         }
     }

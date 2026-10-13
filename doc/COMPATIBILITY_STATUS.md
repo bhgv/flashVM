@@ -468,3 +468,17 @@ Dimensions/system fields, full named-member/rename semantics, historic Unicode
 case/codec tables, function source/version provenance, URL loaders/forms and
 full SWF resources remain open. All nine roadmap stages remain open; stage 8
 still has no implemented native JIT backend.
+
+## v0.114 — native sparse slice / разреженный slice
+
+Removed the 65,536 result-range cap from real/borrowed slice, with ordered live
+prototype reads and candidate refresh after getters. Native work and nested
+AVM1 callbacks share the instruction limit. Allocation failure tests verify
+source preservation and execution-scope restoration. See
+[RU/EN details](ARRAY_SPARSE_SLICE.md). Other Array limits and all stages remain open.
+
+Evidence: 278 core tests in both Linux AGG and Cairo Release, plus the AGG
+runner; four focused slice/Array tests in restricted ASan/UBSan and portable
+profiles. Two AGG launch-permission failures passed after restoring execute
+bits. The final added callback-budget and inherited-setter cases passed in
+all four profiles. These checks do not certify complete Array or Flash semantics.

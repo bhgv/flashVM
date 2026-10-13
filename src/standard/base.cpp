@@ -4,6 +4,7 @@
 
 #include "string_state.hpp"
 #include "array_generic.hpp"
+#include "array_work.hpp"
 #include "base_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/property_watch.hpp"
@@ -655,36 +656,15 @@ unsigned long bound(double v, unsigned long length)
     return (unsigned long)v;
 }
 
-/* Copy the selected Array range, preserving absent indexed properties. */
+/* Snapshot slice bounds once and let the property-aware copier observe later callback mutations. */
 FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
 {
-    if (fvm_array_needs_generic(o))
-        return fvm_array_generic(c, o, "slice", n, a, out, slice);
-
-    if (!array(o))
+    if (!c)
         return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    double first = 0, last = 0;
-    unsigned long length = size(o);
-    FVM_Result r = index_arg(c, n, a, 0, 0, first);
-    if (r != FVM_OK)
-        return r;
-    r = index_arg(c, n > 1 && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n, a, 1, length, last);
-    if (r != FVM_OK)
-        return r;
-    unsigned long start = bound(first, length), end = bound(last, length);
-    if (end < start)
-        end = start;
-    FVM_Object *copy = 0;
-    r = fvm_array_create_like(c, o, end - start, &copy);
-    if (r != FVM_OK)
-        return r;
-    for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
-        if (i->first >= start && i->first < end)
-            copy->indexed[i->first - start] = i->second;
-    return object_value(c, copy, 0, 0, out, 0);
+    FVM_ArrayWorkScope work(c);
+    FVM_Result status = work.step();
+    return status == FVM_OK ? fvm_array_generic(c, o, "slice", n, a, out, slice) : status;
 }
 
 /* Remove and insert an Array range and return the removed elements. */

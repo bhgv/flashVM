@@ -54,9 +54,10 @@ int main()
     fvm_value_number(call+1, 10);fvm_value_number(call+2, 10);
     assert(fvm_object_call(c, method.object, "call", 3, call, &out) == FVM_OK);
     assert(fvm_object_get(c, out.object, "length", &value) == FVM_OK && value.number == 0);
-    /* A result interval above the current materialization bound is still rejected. */
+    /* Large result intervals retain sparse holes without the former materialization cap. */
     fvm_value_number(call+1, 0);fvm_value_number(call+2, 65537);
-    assert(fvm_object_call(c, method.object, "call", 3, call, &out) == FVM_UNSUPPORTED);
+    assert(fvm_object_call(c, method.object, "call", 3, call, &out) == FVM_OK);
+    assert(fvm_object_get(c, out.object, "length", &value) == FVM_OK && value.number == 65537);
     assert(fvm_object_get(c, generic, "length", &value) == FVM_OK && value.number == 4294967295.0);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
     return 0;
