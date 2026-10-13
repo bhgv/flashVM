@@ -90,3 +90,47 @@ surrogates, invalid names, inherited dispatch, shadowing, setters, stable method
 Function identity, GC capture retention, AVM1 CallMethod, graph restore and queue
 transfer. Headless ASan/UBSan targeted 4/4; portable new test 1/1. Stack/leak
 sanitizer exclusions remain as above. No other-platform runtime certification.
+
+## v0.83 — Глобальные и локальные имена / Global and lexical names
+
+Добавлены counted `fvm_get_global_bytes`, `fvm_set_global_bytes`,
+`fvm_register_function_rooted_bytes` и `fvm_call_bytes`. Регистрация нативного
+имени и capture выполняется одной операцией; legacy registration/call также
+используют canonical WTF-8 key. Явный C API call сохраняет native-first правило;
+script lookup продолжает учитывать собственное undefined свойство. Нативный
+callback копируется перед вызовом, результат сохраняется до снятия native
+barrier, bad_alloc и другие C++ исключения переводятся в FVM_Result.
+
+AVM1 DefineLocal/DeclareLocal/GetVariable/SetVariable/CallFunction и строковое
+Enumerate сохраняют полное имя и отличают NUL suffix от legacy prefix. NewObject
+при отсутствии полного имени с NUL возвращает UNSUPPORTED, а не вызывает
+конструктор по обрезанному префиксу; существующий Function-конструктор с таким
+полным ключом работает через обычную lexical/global resolution.
+
+Legacy graphs 1–7 по-прежнему запрещают NUL names, но теперь нормализуют valid
+scalar/surrogate-pair keys при restore, поэтому такие ключи доступны и повторно
+сериализуются в graph 8. Некорректный WTF-8 и canonical duplicates отклоняются.
+
+Counted global registration/read/write/call now preserve NUL and canonical
+UTF-16 identity. Native registration publishes its capture with the entry.
+Explicit C native calls retain precedence; script lookup honors own undefined
+shadowing. Native results remain guarded and all callback exceptions return
+status codes. AVM1 local declarations, variable lookup/assignment, function calls
+and string enumeration preserve full names. A missing NUL-suffixed constructor
+cannot fall back to its terminated prefix; existing full-key Function values can
+construct. Legacy graph keys normalize on restore without admitting old NUL keys.
+
+Remaining boundaries: counted native constructor/stack-function registration,
+C-string-only AVM1 named-call/debug helpers, complete duplicate-parameter alias
+semantics, Array limits and exact historical/versioned conversions remain open.
+This checkpoint does not close roadmap stage 1 or any later stage.
+
+Verification (Linux GCC/G++ 13.3, strict C90/C++98): default AGG 246/246;
+static Cairo Release 246/246; examples disabled in both. Headless ASan/UBSan
+5/5 focused global/Function2/instruction-budget/native/property regressions;
+portable 2/2 new variable/property regressions, live TCP excluded. Stack ASan
+and LeakSanitizer remain disabled. New avm1_counted_variables covers lexical
+cell independence, undefined declarations/shadowing, rooted globals, native
+calls, surrogate aliases, missing-prefix rejection and native exception recovery.
+property_counted adds an actual modified legacy graph with surrogate-pair names
+and verifies successful restore and graph-8 reserialization.

@@ -83,6 +83,16 @@ extern "C"
     FVM_API FVM_Result fvm_get_global(FVM_Context *, const char *, FVM_Value *);
     /* Update global. */
     FVM_API FVM_Result fvm_set_global(FVM_Context *, const char *, const FVM_Value *);
+    /* Read the complete counted global key, including registered function fallback. */
+    FVM_API FVM_Result fvm_get_global_bytes(FVM_Context *, const char *, size_t, FVM_Value *);
+    /* Assign a counted global key through property attributes and metadata hooks. */
+    FVM_API FVM_Result fvm_set_global_bytes(FVM_Context *, const char *, size_t, const FVM_Value *);
+    /* [GC:] Register a counted native global name with a traced capture. */
+    FVM_API FVM_Result fvm_register_function_rooted_bytes(FVM_Context *, const char *, size_t,
+                                                          FVM_NativeFunction, void *, FVM_Object *);
+    /* Call a full counted native or script global function name. */
+    FVM_API FVM_Result fvm_call_bytes(FVM_Context *, const char *, size_t, unsigned int,
+                                      const FVM_Value *, FVM_Value *);
     /* Register function. */
     FVM_API FVM_Result fvm_register_function(FVM_Context *, const char *, FVM_NativeFunction,
                                              void *);

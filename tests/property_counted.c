@@ -115,6 +115,37 @@ int main(void)
     assert(fvm_value_deserialize(other, data, size, &out) == FVM_INVALID_ARGUMENT);
     data[7] = 8;
     fvm_serialized_free(data);
+    /* A legacy graph with surrogate-pair bytes resolves through the canonical scalar key. */
+    {
+        FVM_Object *plain;
+        FVM_Value packet;
+        unsigned char legacy[512];
+        unsigned long body, crc;
+        size_t match = 0;
+        const unsigned char marker[] = {0,0,0,4,0xf0,0x90,0x80,0x80};
+        assert(fvm_object_create(c, &plain) == FVM_OK);
+        fvm_value_number(&value, 42);
+        assert(fvm_object_set(c, plain, scalar, &value) == FVM_OK);
+        fvm_value_undefined(&packet);packet.type = FVM_VALUE_OBJECT;packet.object = plain;
+        assert(fvm_value_serialize(c, &packet, &data, &size) == FVM_OK);
+        assert(size + 2 <= sizeof(legacy));
+        for (i = 16; i + sizeof(marker) <= size; ++i)
+            if (!memcmp(data+i, marker, sizeof(marker)))
+            { assert(!match);match = i; }
+        assert(match);
+        memcpy(legacy, data, match + 4);legacy[match+3] = 6;
+        memcpy(legacy+match+4, pair, 6);
+        memcpy(legacy+match+10, data+match+8, size-match-8);
+        legacy[7] = 7;body = (unsigned long)(size + 2 - 16);
+        for (i = 0; i < 4; ++i)legacy[8+i] = (unsigned char)(body >> (24-i*8));
+        crc = (unsigned long)crc32(0, legacy+16, (uInt)(size+2-16));
+        for (i = 0; i < 4; ++i)legacy[12+i] = (unsigned char)(crc >> (24-i*8));
+        assert(fvm_value_deserialize(other, legacy, size+2, &out) == FVM_OK);
+        assert(fvm_object_get(other, out.object, scalar, &value) == FVM_OK && value.number == 42);
+        fvm_serialized_free(data);
+        assert(fvm_value_serialize(other, &out, &data, &size) == FVM_OK);
+        fvm_serialized_free(data);
+    }
     /* Malformed UTF-8 and duplicate counted keys reject the graph before allocation. */
     {
         FVM_Object *plain;

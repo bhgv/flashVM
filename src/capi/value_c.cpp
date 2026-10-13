@@ -874,76 +874,91 @@ extern "C"
             return FVM_ERROR;
         }
     }
-    /* Read global. */
+    /* Read a terminated global name through the counted lookup bridge. */
     FVM_Result fvm_get_global(FVM_Context *c, const char *name, FVM_Value *out)
     {
-        if (!c)
+        return name ? fvm_get_global_bytes(c, name, std::strlen(name), out)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Read a full global name and preserve own undefined shadowing of native entries. */
+    FVM_Result fvm_get_global_bytes(FVM_Context *c, const char *name, size_t size, FVM_Value *out)
+    {
+        if (!c || !name || !out)
             return FVM_INVALID_ARGUMENT;
-        FVM_Result result = fvm_object_get(c, c->global, name, out);
-        if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED)
-            return result;
+        fvm_value_undefined(out);
         try
         {
-            if (c->global->properties.find(name) != c->global->properties.end())
+            fvm_detail::string key;
+            FVM_Result result = fvm_property_key(name, size, key);
+            if (result != FVM_OK)
+                return result;
+            result = fvm_object_get_bytes(c, c->global, key.data(), key.size(), out);
+            if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED)
+                return result;
+            if (c->global->properties.find(key) != c->global->properties.end())
                 return FVM_OK;
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
-                c->functions.find(name);
+                c->functions.find(key);
             return fn == c->functions.end() ? FVM_OK
-                                            : fvm_function_wrap_entry(c, 0, name, fn->second, out);
+                                            : fvm_function_wrap_entry(c, 0, key, fn->second, out);
+        }
+        catch (const std::bad_alloc &)
+        {
+            fvm_value_undefined(out);
+            return FVM_OUT_OF_MEMORY;
+        }
+    }
+    /* Assign a terminated global name through the counted property bridge. */
+    FVM_Result fvm_set_global(FVM_Context *c, const char *name, const FVM_Value *value)
+    {
+        return name ? fvm_set_global_bytes(c, name, std::strlen(name), value)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Assign the complete global key without shortening its byte count. */
+    FVM_Result fvm_set_global_bytes(FVM_Context *c, const char *name, size_t size,
+                                   const FVM_Value *value)
+    {
+        return c ? fvm_object_set_bytes(c, c->global, name, size, value) : FVM_INVALID_ARGUMENT;
+    }
+    /* Register an unrooted terminated function with canonical name identity. */
+    FVM_Result fvm_register_function(FVM_Context *c, const char *name, FVM_NativeFunction callback,
+                                     void *userdata)
+    {
+        return name ? fvm_register_function_rooted_bytes(c, name, std::strlen(name), callback,
+                                                         userdata, 0) : FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Register a terminated function and its traced capture in one operation. */
+    FVM_Result fvm_register_function_rooted(FVM_Context *c, const char *name,
+                                            FVM_NativeFunction callback, void *userdata,
+                                            FVM_Object *root)
+    {
+        return name ? fvm_register_function_rooted_bytes(c, name, std::strlen(name), callback,
+                                                         userdata, root) : FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Prepare a canonical key and capture before replacing the native registration. */
+    FVM_Result fvm_register_function_rooted_bytes(FVM_Context *c, const char *name, size_t size,
+                                                  FVM_NativeFunction callback, void *userdata,
+                                                  FVM_Object *root)
+    {
+        if (!c || !name || !size || !callback || (root && root->owner != c))
+            return FVM_INVALID_ARGUMENT;
+        try
+        {
+            fvm_detail::string key;
+            FVM_Result result = fvm_property_key(name, size, key);
+            if (result != FVM_OK)
+                return result;
+            FVM_NativeEntry entry;
+            entry.callback = callback;
+            entry.userdata = userdata;
+            entry.root = root;
+            c->functions[key] = entry;
+            return FVM_OK;
         }
         catch (const std::bad_alloc &)
         {
             return FVM_OUT_OF_MEMORY;
         }
-    }
-    /* Update global. */
-    FVM_Result fvm_set_global(FVM_Context *c, const char *name, const FVM_Value *v)
-    {
-        return c ? fvm_object_set(c, c->global, name, v) : FVM_INVALID_ARGUMENT;
-    }
-    /* Register function. */
-    FVM_Result fvm_register_function(FVM_Context *c, const char *name, FVM_NativeFunction cb,
-                                     void *user)
-    {
-        FVM_NativeEntry entry;
-        if (!c || !name || !*name || !cb)
-            return FVM_INVALID_ARGUMENT;
-
-        /* Computation / Вычисление и обновление состояния. */
-        entry.callback = cb;
-        entry.userdata = user;
-        try
-        {
-            c->functions[name] = entry;
-        }
-        catch (...)
-        {
-            return FVM_OUT_OF_MEMORY;
-        }
-        return FVM_OK;
-    }
-    /* [GC:] Register function rooted. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result fvm_register_function_rooted(
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Context *c, const char *name, FVM_NativeFunction cb,
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        void *user, FVM_Object *root)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-    {
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!c || (root && root->owner != c))
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return FVM_INVALID_ARGUMENT;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Result r = fvm_register_function(c, name, cb, user);
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (r == FVM_OK)
-            /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
-            c->functions.find(name)->second.root = root;
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return r;
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* Call object. */
     FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name,
@@ -1442,76 +1457,60 @@ extern "C"
         }
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* Call the current value. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_call(FVM_Context *c, const char *name, unsigned int argc, const FVM_Value *argv,
-             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-             FVM_Value *out)
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    /* Call a full global name; only terminated keys reach the legacy stack registry. */
+    FVM_Result fvm_call_bytes(FVM_Context *c, const char *name, size_t size, unsigned int argc,
+                              const FVM_Value *args, FVM_Value *out)
     {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        unsigned int i;
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!c || !name || !out || (argc && !argv))
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        if (!c || !name || !out || (argc && !args))
             return FVM_INVALID_ARGUMENT;
-        /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-        for (i = 0; i < argc; ++i)
-            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (fvm_validate_value(c, &argv[i]) != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        for (unsigned int i = 0; i < argc; ++i)
+            if (fvm_validate_value(c, args + i) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_undefined(out);
-        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         try
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                c->functions.find(name);
-            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (it == c->functions.end())
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return fvm_stack_call(c, name, argc, argv, out);
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_value_undefined(out);
-            /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
-             */
-            /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
-             */
-            FVM_NativeCallGuard native_guard(c);
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_resource_fault_begin(c);
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return fvm_exception_complete(
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                c, c->global,
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_native_result(
-                    c, it->second.callback(c, c->global, argc, argv, out, it->second.userdata),
-                    out));
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+            fvm_detail::string key;
+            FVM_Result result = fvm_property_key(name, size, key);
+            if (result != FVM_OK)
+                return result;
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator registered =
+                c->functions.find(key);
+            if (registered != c->functions.end())
+            {
+                /* Copy the entry before a callback can replace its registration. */
+                FVM_NativeEntry entry = registered->second;
+                /* [GC:] Preserve the native barrier and result lifetime of the legacy call. */
+                FVM_NativeCallGuard guard(c);
+                fvm_resource_fault_begin(c);
+                return fvm_exception_complete(c, c->global,
+                    fvm_native_result(c, entry.callback(c, c->global, argc, args, out,
+                                                        entry.userdata), out));
+            }
+            FVM_Value callable;
+            result = fvm_get_global_bytes(c, key.data(), key.size(), &callable);
+            if (result != FVM_OK)
+                return result;
+            if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
+                return fvm_function_invoke(c, callable.object, c->global, argc, args, out);
+            return fvm_property_terminated(key) ? fvm_stack_call(c, key.c_str(), argc, args, out)
+                                                : FVM_UNSUPPORTED;
         }
-        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         catch (const std::bad_alloc &)
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            fvm_value_undefined(out);
             return FVM_OUT_OF_MEMORY;
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
-        /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
         catch (...)
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+            fvm_value_undefined(out);
             return FVM_ERROR;
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    }
+    /* Call a terminated global name through the canonical counted bridge. */
+    FVM_Result fvm_call(FVM_Context *c, const char *name, unsigned int argc,
+                         const FVM_Value *args, FVM_Value *out)
+    {
+        return name ? fvm_call_bytes(c, name, std::strlen(name), argc, args, out)
+                    : FVM_INVALID_ARGUMENT;
     }
 }

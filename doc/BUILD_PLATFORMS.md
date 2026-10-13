@@ -39,3 +39,8 @@ JIT and media are reserved keys; selecting them produces a configuration error.
 FONTS adds bundled static FreeType 2.14.3, HarfBuzz 1.8.8, libunibreak 6.1 and
 FriBidi 1.0.16, plus AGG/Cairo FreeType adapters. Fontconfig/system font discovery
 remains disabled. [Profile and compatibility limits](FONT_LIBRARIES.md).
+
+## v0.83 acceptance status
+
+Linux x86_64 AGG and Cairo Release: 246/246 tests each, examples excluded.
+Other-OS runtime gates remain open; see [RELEASE_ACCEPTANCE.md](RELEASE_ACCEPTANCE.md).

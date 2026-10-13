@@ -40,3 +40,8 @@ JIT и MEDIA зарезервированы; их выбор завершает 
 FONTS добавляет встроенные статические FreeType 2.14.3, HarfBuzz 1.8.8,
 libunibreak 6.1, FriBidi 1.0.16 и адаптеры FreeType для AGG/Cairo. Fontconfig
 и поиск системных шрифтов отключены. [Профиль и ограничения](FONT_LIBRARIES.ru.md).
+
+## Приёмка v0.83
+
+Linux x86_64 AGG и Cairo Release: по 246/246 тестов, без examples.
+Реальные запуски других ОС не подтверждены; см. [RELEASE_ACCEPTANCE.md](RELEASE_ACCEPTANCE.md).

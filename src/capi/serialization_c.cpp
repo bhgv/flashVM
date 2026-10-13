@@ -845,8 +845,7 @@ struct Reader
     fvm_detail::string key()
     {
         fvm_detail::string raw = string(version >= 8);
-        if (version < 8)
-            return raw;
+        /* Legacy graphs still forbid NUL, but valid UTF-16 aliases share identity. */
         fvm_detail::string canonical;
         require(fvm_property_key(raw.data(), raw.size(), canonical) == FVM_OK);
         return canonical;

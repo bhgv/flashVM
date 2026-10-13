@@ -201,7 +201,7 @@ static FVM_Result equal(FVM_Context *c, FVM_Value a, FVM_Value b, bool &result,
 /* Look up variable. */
 static FVM_Result lookup_variable(FVM_Context *c,
                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
-                                  FVM_Object *self, const char *name, FVM_Value *out,
+                                  FVM_Object *self, const fvm_detail::string &name, FVM_Value *out,
                                   bool *defined = 0, FVM_Object **call_receiver = 0)
 {
     if (defined)
@@ -217,14 +217,14 @@ static FVM_Result lookup_variable(FVM_Context *c,
             return FVM_OK;
         }
     }
-    if (!std::strcmp(name, "_global"))
+    if (name == fvm_detail::string("_global"))
     {
         fvm_value_undefined(out);
         out->type = FVM_VALUE_OBJECT;
         out->object = c->global;
         return FVM_OK;
     }
-    if (self && !std::strcmp(name, "this"))
+    if (self && name == fvm_detail::string("this"))
     {
         fvm_value_undefined(out);
         out->type = FVM_VALUE_OBJECT;
@@ -238,7 +238,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
     while (binding && depth++ < 1024)
     {
         if (binding->properties.find(name) != binding->properties.end())
-            return fvm_object_get(c, binding, name, out);
+            return fvm_object_get_bytes(c, binding, name.data(), name.size(), out);
         binding = binding->prototype;
     }
     if (binding)
@@ -255,20 +255,31 @@ static FVM_Result lookup_variable(FVM_Context *c,
         {
             if (call_receiver)
                 *call_receiver = self;
-            return fvm_object_get(c, self, name, out);
+            return fvm_object_get_bytes(c, self, name.data(), name.size(), out);
         }
         binding = binding->prototype;
     }
     if (binding)
         return FVM_ERROR;
-    FVM_Result r = fvm_get_global(c, name, out);
+    FVM_Result r = fvm_get_global_bytes(c, name.data(), name.size(), out);
     if (r == FVM_OK && defined && out->type == FVM_VALUE_UNDEFINED)
     {
         int own = 0;
-        r = fvm_object_has_own(c, c->global, name, &own);
+        r = fvm_object_has_own_bytes(c, c->global, name.data(), name.size(), &own);
         *defined = own != 0;
     }
     return r;
+}
+
+/* Resolve a string-valued variable reference using its complete canonical key. */
+static FVM_Result lookup_variable_value(FVM_Context *c,
+                                        fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
+                                        FVM_Object *self, const FVM_Value &value, FVM_Value *out,
+                                        bool *defined = 0)
+{
+    fvm_detail::string key;
+    FVM_Result result = fvm_property_key(value.string, fvm_string_size(value), key);
+    return result == FVM_OK ? lookup_variable(c, locals, self, key, out, defined) : result;
 }
 
 /* Define Execution struct and its representation. */
@@ -996,7 +1007,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         (*locals)[name] = value;
                     else
                     {
-                        r = fvm_set_global(c, name.c_str(), &value);
+                        r = fvm_set_global_bytes(c, name.data(), name.size(), &value);
                         if (r != FVM_OK)
                             return r;
                     }
@@ -1371,14 +1382,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value constructor;
                 bool defined = false;
                 FVM_Result result =
-                    lookup_variable(c, locals, self, stack.back().string, &constructor, &defined);
+                    lookup_variable_value(c, locals, self, stack.back(), &constructor, &defined);
                 if (result == FVM_OK)
                     result = defined ? constructor.type == FVM_VALUE_OBJECT
                                            ? fvm_function_construct(c, constructor.object, argc,
                                                                     args.begin(), &object)
                                            : FVM_UNSUPPORTED
-                                     : fvm_construct(c, stack.back().string, argc, args.begin(),
-                                                     &object);
+                                     : std::memchr(stack.back().string, 0, fvm_string_size(stack.back()))
+                                           ? FVM_UNSUPPORTED
+                                           : fvm_construct(c, stack.back().string, argc, args.begin(), &object);
                 if (result != FVM_OK)
                     return result;
                 stack.resize(stack.size() - argc - 2);
@@ -1398,7 +1410,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     if (target.type != FVM_VALUE_STRING)
                         return FVM_INVALID_ARGUMENT;
-                    r = lookup_variable(c, locals, self, target.string, &target);
+                    r = lookup_variable_value(c, locals, self, target, &target);
                 }
                 if (r != FVM_OK)
                     return r;
@@ -1713,8 +1725,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 else if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                fvm_detail::string name =
-                    stack[a.op == 0x3c ? stack.size() - 2 : stack.size() - 1].string;
+                const FVM_Value &name_value = stack[a.op == 0x3c ? stack.size() - 2 : stack.size() - 1];
+                fvm_detail::string name;
+                FVM_Result normalized = fvm_property_key(name_value.string, fvm_string_size(name_value), name);
+                if (normalized != FVM_OK)
+                    return normalized;
                 FVM_Value v;
                 fvm_value_undefined(&v);
                 if (a.op == 0x3c)
@@ -1727,7 +1742,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
                 FVM_Value value;
-                FVM_Result r = lookup_variable(c, locals, self, stack.back().string, &value);
+                FVM_Result r = lookup_variable_value(c, locals, self, stack.back(), &value);
                 if (r != FVM_OK)
                     return r;
                 stack.back() = value;
@@ -1736,7 +1751,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             { /* SetVariable: name, value */
                 if (stack.size() < 2 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                fvm_detail::string name = stack[stack.size() - 2].string;
+                const FVM_Value &name_value = stack[stack.size() - 2];
+                fvm_detail::string name;
+                FVM_Result normalized = fvm_property_key(name_value.string, fvm_string_size(name_value), name);
+                if (normalized != FVM_OK)
+                    return normalized;
                 FVM_Result r = FVM_OK;
                 if (locals && locals->find(name) != locals->end())
                     (*locals)[name] = stack.back();
@@ -1748,10 +1767,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     while (captured && levels++ < 1024 &&
                            captured->properties.find(name) == captured->properties.end())
                         captured = captured->prototype;
-                    r = captured ? fvm_object_set(c, captured, name.c_str(), &stack.back())
+                    r = captured ? fvm_object_set_bytes(c, captured, name.data(), name.size(), &stack.back())
                         : self && self->resource_kind == 40
-                            ? fvm_object_set(c, self, name.c_str(), &stack.back())
-                            : fvm_set_global(c, name.c_str(), &stack.back());
+                            ? fvm_object_set_bytes(c, self, name.data(), name.size(), &stack.back())
+                            : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
                 }
                 if (r != FVM_OK)
                     return r;
@@ -1881,7 +1900,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
                     stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
-                fvm_detail::string name = stack.back().string;
+                fvm_detail::string name;
+                FVM_Result normalized = fvm_property_key(stack.back().string, fvm_string_size(stack.back()), name);
+                if (normalized != FVM_OK)
+                    return normalized;
                 double n = stack[stack.size() - 2].number;
                 if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 2)
                     return FVM_ERROR;
@@ -1897,7 +1919,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 fvm_value_undefined(&callable);
                 bool defined = false;
                 FVM_Object *call_receiver = c->global;
-                r = lookup_variable(c, locals, self, name.c_str(), &callable, &defined,
+                r = lookup_variable(c, locals, self, name, &callable, &defined,
                                     &call_receiver);
                 if (r != FVM_OK)
                     return r;
@@ -1910,7 +1932,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = call_script(c, fn->first.c_str(), fn->second, argc, args.begin(), c->global,
                                     &result);
                 else
-                    r = fvm_call(c, name.c_str(), argc, args.begin(), &result);
+                    r = fvm_call_bytes(c, name.data(), name.size(), argc, args.begin(), &result);
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - argc - 2);

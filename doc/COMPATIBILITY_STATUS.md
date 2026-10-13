@@ -237,3 +237,14 @@ identity and AVM1 CallMethod/NewMethod path. Size-aware table property queries
 added. Default 245/245; headless ASan/UBSan targeted 4/4; portable new test 1/1.
 Global/function variable names and full stage-1 conformance remain open.
 RU/EN and regression scope: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
+
+## v0.83 — Counted global and lexical names
+
+Проверено / tested: global get/set/native registration/call, AVM1 local declaration,
+variable access/assignment and function lookup with full canonical names. Missing
+NUL-suffixed native constructors cannot invoke a terminated prefix. Legacy graph
+keys normalize during restore; graph version remains 8 and public layout ABI 3.
+AGG 246/246; Cairo Release 246/246; ASan/UBSan targeted 5/5 with stack/leak
+exclusions; portable targeted 2/2. Stages 1–9 remain open. RU/EN behavior and
+remaining scope: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
+Final acceptance gates: [RELEASE_ACCEPTANCE.md](RELEASE_ACCEPTANCE.md).
