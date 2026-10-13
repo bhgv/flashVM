@@ -1150,19 +1150,37 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
 FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned int n,
                                const FVM_Value *args, FVM_Value *out, void *userdata)
 {
-
+    FVM_Object *descriptor = (FVM_Object *)userdata;
+    /* [GC:] A setter may detach its own descriptor before returning; retain its private data graph. */
+    FVM_ObjectRootScope descriptor_roots(c, descriptor);
     /* Initialization / Инициализация локального состояния. */
     FVM_Value function;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)userdata, "set", &function);
     if (r != FVM_OK)
         return r;
-    /* Non-function setter Objects ignore assignment instead of reporting a call error. */
+    /* A non-function setter has no executable side effect but stored data still updates. */
     if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
-    {
         fvm_value_undefined(out);
-        return FVM_OK;
+    else
+    {
+        r = fvm_function_invoke(c, function.object, receiver, n, args, out);
+        if (r != FVM_OK)
+            return r;
     }
-    return fvm_function_invoke(c, function.object, receiver, n, args, out);
+    if (n)
+    {
+        FVM_Value stored = args[0];
+        if (stored.type == FVM_VALUE_STRING)
+        {
+            r = fvm_value_to_string(c, args, &stored);
+            if (r != FVM_OK)
+                return r;
+            stored.metatable = args[0].metatable;
+        }
+        /* [GC:] Own copied string storage and managed edges before native argument roots unwind. */
+        descriptor->properties["data"] = stored;
+    }
+    return FVM_OK;
 }
 /* Add property. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

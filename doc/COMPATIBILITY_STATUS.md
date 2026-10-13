@@ -757,3 +757,16 @@ profiles. Traced NUL strings, owner cycles and virtual length survive GC and
 queue transfer. All fourteen original selected SWFs still match exactly.
 Ordinary assignment latent-data updates, replacement flags, native accessor/
 method data and full version semantics remain open, as do all roadmap stages.
+
+## v0.137 — accessor assignment data / data при присваивании
+
+Successful ordinary setters update retained data, including non-function
+setter Objects; callable getters still execute and plain getters return stored
+data. Counted strings/cycles survive GC and transfer; readonly/error cases
+preserve data. An allocation-free descriptor root spans setter execution.
+[RU/EN details](OBJECT_ACCESSOR_ASSIGNMENT.md). Evidence: 305 core tests in
+AGG/Cairo plus the AGG runner; six focused checks in restricted sanitizer/
+portable profiles. Four AGG bitmap and three Cairo Function/inheritance launch
+failures passed after execute-bit restoration. All fourteen selected original
+SWFs still match exactly. Array mutation set_data, replacement flags, inherited
+setter data, thrown-setter/version rules and all stages remain open.

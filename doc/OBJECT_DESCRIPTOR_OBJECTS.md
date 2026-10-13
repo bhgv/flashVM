@@ -31,3 +31,9 @@ Existing descriptor capture roots and callback identities suffice; there is no
 C89 ABI or wire-format change. Rules follow the pinned primary implementation.
 Protected replacement, real Array index/length accessors, descriptor-version
 rules and complete prototype conformance remain open, as do all roadmap stages.
+
+## Follow-up v0.137 / Последующее исправление
+
+Non-function setters skip execution but ordinary assignment updates retained data;
+plain getters return it. See [OBJECT_ACCESSOR_ASSIGNMENT.md](OBJECT_ACCESSOR_ASSIGNMENT.md).
+Запись обычному setter-Object больше не теряет новое хранимое значение.

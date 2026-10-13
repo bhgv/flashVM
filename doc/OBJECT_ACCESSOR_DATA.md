@@ -43,3 +43,8 @@ slice/concat/join while public getter still returns 42. Rules follow pinned
 Property and ScriptObject implementations. Ordinary assignment latent-data
 updates, historical set_data/movement, replacement flags, method data, versions
 and every roadmap stage remain open.
+
+## Follow-up v0.137 / Последующее исправление
+
+Ordinary assignment data updates are implemented in
+[OBJECT_ACCESSOR_ASSIGNMENT.md](OBJECT_ACCESSOR_ASSIGNMENT.md). Other limits above remain open.
