@@ -417,3 +417,12 @@ Release 262/262 each (AGG five launch-permission failures and dependent timezone
 profile rerun); restricted headless ASan/UBSan and portable focused 4/4 each.
 Default-hint/version conformance and whole stages remain open.
 RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).
+
+## v0.102 — AVM1 primitive hint policy
+
+Проверено / tested: valueOf-only ordinary/numeric hints, versioned Date default
+hint, preserved default object results and early nonprimitive relational false.
+AGG/Cairo Release 263/263 each (AGG two launch-permission reruns); restricted
+headless ASan/UBSan and portable focused 5/5 each. Loose equality, player NaN,
+MovieClip paths and per-function version provenance remain open.
+RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).

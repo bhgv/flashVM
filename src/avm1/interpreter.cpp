@@ -1742,15 +1742,31 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     if (a.op == 0x47)
                     {
-                        r = fvm_to_primitive(c, &right, date_hint(right), &right);
+                        r = fvm_avm1_primitive(c, &right, true, &right);
                         if (r == FVM_OK)
-                            r = fvm_to_primitive(c, &left, date_hint(left), &left);
+                            r = fvm_avm1_primitive(c, &left, true, &left);
                     }
                     else
                     {
-                        r = fvm_to_primitive(c, &left, false, &left);
+                        r = fvm_avm1_primitive(c, &left, false, &left);
+                        if (r == FVM_OK && c->swf_loaded && left.type == FVM_VALUE_OBJECT &&
+                            left.object->resource_kind != 40)
+                        {
+                            stack.pop_back();
+                            fvm_value_boolean(&stack.back(), 0);
+                            ++pc;
+                            continue;
+                        }
                         if (r == FVM_OK)
-                            r = fvm_to_primitive(c, &right, false, &right);
+                            r = fvm_avm1_primitive(c, &right, false, &right);
+                        if (r == FVM_OK && c->swf_loaded && right.type == FVM_VALUE_OBJECT &&
+                            right.object->resource_kind != 40)
+                        {
+                            stack.pop_back();
+                            fvm_value_boolean(&stack.back(), 0);
+                            ++pc;
+                            continue;
+                        }
                     }
                     if (r == FVM_OK && a.op == 0x47 &&
                         (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))

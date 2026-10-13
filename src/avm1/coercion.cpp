@@ -1,6 +1,7 @@
 /* FlashVM: counted legacy numeric syntax and primitive version gates for AVM1 actions. */
 #include "coercion.hpp"
 #include "../core/string_internal.hpp"
+#include "../standard/primitive_state.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/function.h"
 #include <cstdio>
@@ -143,6 +144,57 @@ FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned
     return status == FVM_OK ? fvm_value_to_number(context, &value, out) : status;
 }
 }
+/* [GC:] Resolve a rooted object's one selected method without an ECMAScript fallback cascade. */
+FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
+                             bool default_hint, FVM_Value *out)
+{
+    if (!context || !value || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (!context->swf_loaded)
+        return fvm_to_primitive(context, value,
+                                default_hint && value->type == FVM_VALUE_OBJECT &&
+                                    value->object->resource_kind == 34, out);
+    if (value->type != FVM_VALUE_OBJECT ||
+        (!default_hint && value->object->resource_kind == 40))
+    {
+        *out = *value;
+        return FVM_OK;
+    }
+    if (context->primitive_depth >= 64)
+        return FVM_ERROR;
+    /* [GC:] Bound method/accessor reentry while invocation roots the owner and chosen function. */
+    struct ConversionScope
+    {
+        FVM_Context *context; /* Owner of the primitive recursion counter. */
+        /* Enter conversion before looking up a possibly scripted accessor. */
+        explicit ConversionScope(FVM_Context *owner) : context(owner)
+        {
+            ++context->primitive_depth;
+        }
+        /* Restore the counter on errors and C++ unwinding. */
+        ~ConversionScope()
+        {
+            --context->primitive_depth;
+        }
+    } conversion(context);
+    FVM_Value original = *value, method, result;
+    fvm_value_undefined(&result);
+    bool date_string = default_hint && original.object->resource_kind == 34 &&
+                       context->swf_info.version > 5;
+    FVM_Result status = fvm_object_get_bytes(context, original.object,
+                                             date_string ? "toString" : "valueOf",
+                                             date_string ? 8 : 7, &method);
+    if (status != FVM_OK)
+        return status;
+    if (method.type == FVM_VALUE_OBJECT &&
+        (method.object->invocable.callback || method.object->callable.callback))
+        status = fvm_function_invoke(context, method.object, original.object, 0, 0, &result);
+    if (status != FVM_OK)
+        return status;
+    *out = default_hint && result.type == FVM_VALUE_OBJECT ? original : result;
+    return FVM_OK;
+}
+
 /* [GC:] Convert rooted AVM1 operands while preserving the existing object primitive barrier. */
 FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double *out)
 {
@@ -158,40 +210,10 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
     }
     if (value->type == FVM_VALUE_OBJECT)
     {
-        if (context->primitive_depth >= 64)
-            return FVM_ERROR;
-        /* [GC:] Bound native/script reentry while the caller keeps this operand rooted. */
-        struct ConversionScope
-        {
-            FVM_Context *context; /* Context whose primitive recursion counter is scoped. */
-            /* Enter one numeric object conversion before invoking an accessor or function. */
-            explicit ConversionScope(FVM_Context *owner) : context(owner)
-            {
-                ++context->primitive_depth;
-            }
-            /* Restore the counter on success, callback failure or C++ unwinding. */
-            ~ConversionScope()
-            {
-                --context->primitive_depth;
-            }
-        } conversion(context);
-        FVM_Value method, primitive;
-        fvm_value_undefined(&primitive);
-        FVM_Result status = FVM_OK;
-        if (value->object->resource_kind != 40)
-        {
-            status = fvm_object_get_bytes(context, value->object, "valueOf", 7, &method);
-            if (status != FVM_OK)
-                return status;
-            if (method.type == FVM_VALUE_OBJECT &&
-                (method.object->invocable.callback || method.object->callable.callback))
-                status = fvm_function_invoke(context, method.object, value->object, 0, 0, &primitive);
-            if (status != FVM_OK)
-                return status;
-        }
-        else
-            primitive = *value;
-        /* Flash numeric coercion does not fall back to toString or recursively coerce objects. */
+        FVM_Value primitive;
+        FVM_Result status = fvm_avm1_primitive(context, value, false, &primitive);
+        if (status != FVM_OK)
+            return status;
         if (primitive.type == FVM_VALUE_OBJECT)
         {
             *out = version < 5 ? 0 : std::numeric_limits<double>::quiet_NaN();

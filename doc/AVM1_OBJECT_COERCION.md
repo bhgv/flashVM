@@ -36,3 +36,21 @@ open; this change fixes ordering and lifetimes independently.
 настоящего gc.collect в другом valueOf. После исправления тридцать повторов
 Add2/Less2/Greater сохраняют временные строки в traced режиме. Проверяется
 и порядок нативных valueOf в Add2. Полная семантика hint/Date пока открыта.
+
+## v0.102 — Default and numeric primitive policy
+
+Loaded AVM1 now selects one primitive method: valueOf for ordinary objects and
+numeric hints, toString for Date's default hint in SWF 6+, valueOf for Date in
+SWF 5. Default-hint object results preserve the original object; numeric-hint
+object results are retained for the operation's own nonprimitive rule. Add2
+performs later string coercion only when a string operand selects concatenation.
+Less2/Greater stop with false on a non-display object result, without coercing
+the next operand or retrying toString. Numeric conversion uses the same helper.
+Unloaded contexts retain their embedding primitive policy.
+
+В тесте avm1_primitive_policy проверяются SWF 5–8, единственный выбранный
+метод, Date hint, поздний строковый путь Add2 и остановка сравнения до второго
+valueOf. Тест с GC продолжает проверять живые временные результаты. Полные
+Equals2/player-specific NaN, MovieClip paths, standard constructors and function
+version provenance remain open. Source comparison follows the pinned Ruffle
+value implementation linked above; full external acceptance is still incomplete.
