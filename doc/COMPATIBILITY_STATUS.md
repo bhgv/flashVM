@@ -893,3 +893,15 @@ ASan+UBSan and portable Linux profiles. No launch failures. Existing C89 tests
 cover each selector/default path and all 512 mask combinations in each mode.
 Fifteen original SWFs still match. Full receiver/mask conversion and all stages
 remain open.
+
+## v0.148 — loaded watcher names/data / watcher в SWF
+
+Loaded watch/unwatch coerce names before callback validation, allow empty and
+virtual names, and read old values through stored own/prototype data without
+getters/metatable hooks. Native field/data restrictions remain explicit.
+[RU/EN details](OBJECT_LEGACY_WATCH.md). Evidence: 315 core tests in AGG/Cairo
+plus the AGG runner; five focused checks in restricted heap/global ASan+UBSan
+and portable Linux profiles. Three AGG bitmap launch failures passed after
+execute-bit restoration. Numeric/object/empty/counted NUL, GC and inherited
+setter ownership pass; fifteen original SWFs still match. Readonly and exception
+ordering, native accessor data, case/version rules and all stages stay open.

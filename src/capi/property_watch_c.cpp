@@ -21,6 +21,10 @@ bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
                 return false;
     }
 
+    /* Loaded script objects accept watchers on absent and virtual properties. */
+    if (object->owner->swf_loaded)
+        return true;
+
     /* Initialization / Инициализация локального состояния. */
     unsigned long index = 0;
     const bool indexed = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
@@ -35,6 +39,52 @@ bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
             return true;
     }
     return depth < 1024;
+}
+
+namespace
+{
+/* Read stored watcher data along the prototype chain without getter or metadata execution. */
+FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_detail::string &name,
+                              FVM_Value *out)
+{
+    fvm_value_undefined(out);
+    unsigned long index = 0;
+    bool indexed = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
+    unsigned int depth = 0;
+    for (FVM_Object *o = object; o && depth++ < 1024; o = o->prototype)
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(name);
+        if (property != o->properties.end())
+        {
+            *out = property->second;
+            return FVM_OK;
+        }
+        if (o->resource_kind == 28 && name == "length" && o->resource_result_valid)
+        {
+            *out = o->resource_result;
+            return FVM_OK;
+        }
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
+        if (accessor != o->accessors.end())
+        {
+            fvm_base_accessor_data(accessor->second, *out);
+            return FVM_OK;
+        }
+        if (indexed && (o->resource_kind == 28 || o->resource_kind == 30))
+        {
+            fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
+            if (slot != o->indexed.end())
+            {
+                *out = slot->second;
+                return FVM_OK;
+            }
+        }
+        /* Builtin lazy method handles are data; materializing one does not invoke its callback. */
+        if (o->methods.find(name) != o->methods.end())
+            return fvm_object_get_bytes(c, o, name.data(), name.size(), out);
+    }
+    return depth > 1024 ? FVM_ERROR : FVM_OK;
+}
 }
 
 /* Compute and return property watch prepare. */
@@ -139,7 +189,8 @@ FVM_Result fvm_property_watch_prepare(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_string_bytes(args, key.data(), key.size());
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Result r = fvm_object_get_bytes(c, object, key.data(), key.size(), args + 1);
+        FVM_Result r = c->swf_loaded ? stored_watch_value(c, object, key, args + 1)
+                                     : fvm_object_get_bytes(c, object, key.data(), key.size(), args + 1);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */

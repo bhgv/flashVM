@@ -1384,12 +1384,21 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
                  FVM_Value *out, void *)
 {
     fvm_value_boolean(out, 0);
-    if (n < 2 || a[0].type != FVM_VALUE_STRING || !fvm_string_size(a[0]) || a[1].type != FVM_VALUE_OBJECT ||
-        !a[1].object->invocable.callback)
+    if (!n)
+        return FVM_OK;
+    FVM_Value name = a[0];
+    if (c->swf_loaded)
+    {
+        FVM_Result status = fvm_avm1_string(c, a[0], &name);
+        if (status != FVM_OK)
+            return status;
+    }
+    if (n < 2 || name.type != FVM_VALUE_STRING || (!c->swf_loaded && !fvm_string_size(name)) ||
+        a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback)
         return FVM_OK;
 
     fvm_detail::string key;
-    FVM_Result normalized = fvm_property_key(a[0].string, fvm_string_size(a[0]), key);
+    FVM_Result normalized = fvm_property_key(name.string, fvm_string_size(name), key);
     if (normalized != FVM_OK)
         return normalized;
     if (!fvm_property_watchable(object, key))
@@ -1415,14 +1424,18 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
 }
 
 /* Remove the registered watcher for a property. */
-FVM_Result unwatch(FVM_Context *, FVM_Object *object, unsigned int n, const FVM_Value *a,
+FVM_Result unwatch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
     fvm_detail::string key;
     bool present = false;
-    if (n && a[0].type == FVM_VALUE_STRING)
+    if (n && (c->swf_loaded || a[0].type == FVM_VALUE_STRING))
     {
-        FVM_Result result = fvm_property_key(a[0].string, fvm_string_size(a[0]), key);
+        FVM_Value name = a[0];
+        FVM_Result result = c->swf_loaded ? fvm_avm1_string(c, a[0], &name) : FVM_OK;
+        if (result != FVM_OK)
+            return result;
+        result = fvm_property_key(name.string, fvm_string_size(name), key);
         if (result != FVM_OK)
             return result;
         present = object->watchers.find(key) != object->watchers.end();
