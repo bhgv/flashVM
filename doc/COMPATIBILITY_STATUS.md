@@ -693,3 +693,16 @@ plus the AGG runner; five focused checks in restricted sanitizer/portable
 profiles. All fourteen selected original SWF probes still complete with exact
 output. Original array_slice is SWF15 and is not accepted or patched. Full Array
 semantics, version provenance and every roadmap stage remain open.
+
+## v0.132 — loaded concat own data / исторический concat
+
+Loaded concat uses signed own-data length at each source turn, copies own stored
+slots and defines explicit undefined results for missing data. Plain Object
+arguments remain singletons; ordinary borrowed receivers spread. Unloaded
+property-aware sparse behavior remains available.
+[RU/EN details](ARRAY_LEGACY_CONCAT.md). Evidence: 299 core tests in AGG/Cairo
+plus the AGG runner; five focused checks in restricted sanitizer/portable
+profiles. Three AGG bitmap launch failures passed after execute-bit restoration.
+Loaded allocation retries preserve source/root state and collect after every
+attempt. All fourteen selected original SWFs still complete with exact outputs.
+Full Array/version/prototype semantics and every roadmap stage remain open.

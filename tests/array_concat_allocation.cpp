@@ -93,5 +93,33 @@ int main()
         }
     }
     assert(succeeded);
+    fvm_context_destroy(c);
+    assert(fvm_context_create(rt, &c) == FVM_OK);
+    const unsigned char swf[] = {'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};
+    assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK);
+    assert(fvm_standard_install(c) == FVM_OK);
+    fvm_value_number(&value, 17); assert(fvm_construct(c, "Array", 1, &value, &array) == FVM_OK);
+    assert(fvm_gc_pin(c, array) == FVM_OK);
+    fvm_value_number(&value, 16); assert(fvm_table_set_index(c, array, 16, &value) == FVM_OK);
+    succeeded = false;
+    for (long failure = 0; failure < 4096 && !succeeded; ++failure) {
+        allowance = failure;
+        FVM_Result r = fvm_object_call(c, array, "concat", 0, 0, &out);
+        allowance = -1;
+        assert(r == FVM_OK || r == FVM_OUT_OF_MEMORY);
+        assert(c->avm1_execution_depth == 0 && c->gc_frames == 0);
+        assert(fvm_object_get(c, array, "length", &value) == FVM_OK && value.number == 17);
+        assert(fvm_table_get_index(c, array, 16, &value) == FVM_OK && value.number == 16);
+        succeeded = r == FVM_OK;
+        if (succeeded) {
+            assert(fvm_object_get(c, out.object, "length", &value) == FVM_OK && value.number == 17);
+            int own = 0;
+            assert(fvm_object_has_own_bytes(c, out.object, "1", 1, &own) == FVM_OK && own);
+            assert(fvm_table_get_index(c, out.object, 1, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
+            assert(fvm_table_get_index(c, out.object, 16, &value) == FVM_OK && value.number == 16);
+        }
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
+    }
+    assert(succeeded);
     fvm_context_destroy(c); fvm_runtime_destroy(rt);
 }

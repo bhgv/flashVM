@@ -432,13 +432,30 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             bool spread = source && (source->resource_kind == 28 || (!k && (!source->resource_kind || source->resource_kind == 30)));
             unsigned long count = 1;
             if (spread)
-                status = length(c, source, count);
+                status = c->swf_loaded ? legacy_data_length(c, source, count)
+                                       : length(c, source, count);
             if (status != FVM_OK)
                 return status;
             if ((double)total + count > 4294967295.0)
                 return FVM_INVALID_ARGUMENT;
             if (spread)
-                status = sparse_slice(c, source, result, 0, count, work, total);
+            {
+                if (c->swf_loaded)
+                {
+                    /* Historical concat defines a stored result slot even for missing source data. */
+                    for (unsigned long i = 0; i < count && status == FVM_OK; ++i)
+                    {
+                        status = work.step();
+                        if (status != FVM_OK)
+                            break;
+                        FVM_Value element;
+                        legacy_data_element(source, i, element);
+                        status = fvm_array_store_own(c, result, total + i, element);
+                    }
+                }
+                else
+                    status = sparse_slice(c, source, result, 0, count, work, total);
+            }
             else
                 status = fvm_array_store_own(c, result, total, value);
             if (status != FVM_OK)

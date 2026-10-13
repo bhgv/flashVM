@@ -37,3 +37,9 @@ barriers. Signed-length history, hole materialization, result prototype and full
 receiver classification still require acceptance. All roadmap stages remain open.
 The tests above cover live array-argument getters, large sparse ranges, plain
 receiver/argument distinction, budgets and exhaustive allocation-failure retries.
+
+## Follow-up v0.132 / Последующее уточнение
+
+Loaded SWF uses own-data/Int32 copying with explicit undefined slots; see
+[ARRAY_LEGACY_CONCAT.md](ARRAY_LEGACY_CONCAT.md). Property-aware sparse behavior
+remains available in unloaded host contexts.
