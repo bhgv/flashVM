@@ -627,35 +627,6 @@ FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     return object_value(0, o, 0, 0, out, 0);
 }
 
-/* Compute and return index arg. */
-FVM_Result index_arg(FVM_Context *c, unsigned int n, const FVM_Value *a, unsigned int i,
-                     double fallback, double &v)
-{
-    if (i >= n)
-    {
-        v = fallback;
-        return FVM_OK;
-    }
-    FVM_Result r = fvm_value_to_number(c, a + i, &v);
-    if (v != v)
-        v = 0;
-    else
-        v = v < 0 ? -std::floor(-v) : std::floor(v);
-    return r;
-}
-
-/* Compute and return bound. */
-unsigned long bound(double v, unsigned long length)
-{
-    if (v < 0)
-        v += length;
-    if (v <= 0)
-        return 0;
-    if (v >= length)
-        return length;
-    return (unsigned long)v;
-}
-
 /* Snapshot slice bounds once and let the property-aware copier observe later callback mutations. */
 FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *)
@@ -671,52 +642,24 @@ FVM_Result slice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value 
 FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
-    /* Missing/undefined starts are rejected before reading length or converting arguments. */
-    if (!n || a[0].type == FVM_VALUE_UNDEFINED)
+    FVM_ArraySpliceBounds bounds;
+    FVM_Result r = fvm_array_splice_prepare(c, o, n, a, bounds);
+    if (r != FVM_OK)
+        return r;
+    if (bounds.rejected)
     {
         fvm_value_undefined(out);
         return FVM_OK;
     }
-    /* Coerce start before capturing length or choosing the sparse fast path. */
-    double first = 0, remove = 0;
-    FVM_Result r = index_arg(c, n, a, 0, 0, first);
-    if (r != FVM_OK)
-        return r;
+    /* Both conversions may install inherited indices; preserve captured inputs on fallback. */
     if (fvm_array_needs_generic(o))
-    {
-        /* Preserve the remaining arguments but do not call the original start conversion twice. */
-        fvm_detail::vector<FVM_Value> converted;
-        for (unsigned int i = 0; i < n; ++i)
-            converted.push_back(a[i]);
-        fvm_value_number(&converted[0], first);
-        return fvm_array_generic(c, o, "splice", n, converted.begin(), out, splice);
-    }
+        return fvm_array_generic(c, o, "splice", n, a, out, splice, &bounds);
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
-    unsigned long length = size(o);
-    unsigned long start = bound(first, length);
-    if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
-    {
-        fvm_value_undefined(out);
-        return FVM_OK;
-    }
-    r = index_arg(c, n, a, 1, length - start, remove);
-    if (r != FVM_OK)
-        return r;
-    /* Flash rejects an explicit undefined or negative deletion count without mutation. */
-    if (remove < 0)
-    {
-        fvm_value_undefined(out);
-        return FVM_OK;
-    }
-
-    /* Initialization / Инициализация локального состояния. */
-    unsigned long deleted = remove <= 0                ? 0
-                            : remove >= length - start ? length - start
-                                                       : (unsigned long)remove;
-    unsigned int added = n > 2 ? n - 2 : 0;
-    if ((double)length - deleted + added > 4294967295.0)
-        return FVM_INVALID_ARGUMENT;
+    unsigned long length = bounds.length;
+    unsigned long start = bounds.start;
+    unsigned long deleted = bounds.deleted;
+    unsigned int added = bounds.added;
     FVM_Object *removed = 0;
     r = fvm_array_create_like(c, o, deleted, &removed);
     if (r != FVM_OK)
@@ -724,6 +667,9 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     Slots next;
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
     {
+        /* A deletion callback may have extended the source beyond the captured interval. */
+        if (i->first >= length)
+            continue;
         if (i->first < start)
             next[i->first] = i->second;
         else if (i->first < start + deleted)

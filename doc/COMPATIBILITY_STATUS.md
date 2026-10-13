@@ -532,3 +532,15 @@ profiles. One AGG file-writer launch lacked execute permission and its dependent
 reader was skipped; both passed after permissions were restored. Delete-count
 coercion-driven prototype changes and other historic Array gaps remain open.
 All roadmap stages remain open.
+
+## v0.119 — prepared splice bounds / подготовленные границы splice
+
+A shared private preparation captures start, length and deletion once before
+choosing the copy path. Delete-count-installed getters now use generic reads
+without repeated conversions or length reads. Fast copies exclude late indices
+outside the captured source interval. [RU/EN details](ARRAY_SPLICE_BOUNDS.md).
+Evidence: 284 core tests in AGG/Cairo plus the AGG runner, four focused Array
+tests in restricted sanitizer/portable profiles. Two AGG JPEG tests lacked
+execute bits and passed after permission restoration. Getter installation,
+source growth/shrinkage and bounds retention are checked. Historic integer,
+hole, watcher and result-prototype semantics remain open; all stages are open.

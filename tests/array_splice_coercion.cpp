@@ -75,6 +75,24 @@ static FVM_Result read_length(FVM_Context *, FVM_Object *, unsigned int,
     fvm_value_number(out, 5);
     return FVM_OK;
 }
+static unsigned count_calls;
+static bool shrink_count;
+static bool install_count_getter = true;
+static FVM_Result convert_count(FVM_Context *c, FVM_Object *, unsigned int,
+                                const FVM_Value *, FVM_Value *out, void *)
+{
+    ++count_calls;
+    if (install_count_getter)
+        assert(fvm_object_define_accessor_rooted(c, new_proto, "1", getter, reject_destination, 0, 0) == FVM_OK);
+    FVM_Value v; fvm_value_number(&v, 44);
+    assert(fvm_table_set_index(c, source, 4, &v) == FVM_OK);
+    if (shrink_count) {
+        fvm_value_number(&v, 2);
+        assert(fvm_object_set(c, source, "length", &v) == FVM_OK);
+    }
+    fvm_value_number(out, 2);
+    return FVM_OK;
+}
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; FVM_Context *c = 0;
@@ -120,5 +138,38 @@ int main()
     assert(fvm_object_set(c, start, "valueOf", &v) == FVM_OK);
     order = 0;
     assert(borrow(c, array, "splice", source, 1, args, &out) == FVM_OUT_OF_MEMORY && order == 9);
+    FVM_Object *count = 0;
+    assert(fvm_construct(c, "Object", 0, 0, &count) == FVM_OK);
+    assert(fvm_function_create_native(c, convert_count, 0, 0, &fn) == FVM_OK);
+    v = object(fn);
+    assert(fvm_object_set(c, count, "valueOf", &v) == FVM_OK);
+    fvm_value_number(args, 0); args[1] = object(count);
+    for (unsigned i = 0; i < 3; ++i) {
+        shrink_count = i == 1;
+        install_count_getter = i != 2;
+        fvm_value_number(&v, 3);
+        assert(fvm_construct(c, "Array", 1, &v, &source) == FVM_OK);
+        assert(fvm_construct(c, "Object", 0, 0, &new_proto) == FVM_OK);
+        assert(fvm_object_set_prototype(c, source, new_proto) == FVM_OK);
+        fvm_value_number(&v, 7);
+        assert(fvm_table_set_index(c, source, 0, &v) == FVM_OK);
+        fvm_value_number(&v, 9);
+        assert(fvm_table_set_index(c, source, 2, &v) == FVM_OK);
+        reads = setters = count_calls = 0;
+        assert(borrow(c, array, "splice", source, 2, args, &out) == FVM_OK);
+        assert(count_calls == 1 && reads == (i == 2 ? 0U : 1U) && setters == 0);
+        number(c, out.object, "length", 2);
+        number(c, out.object, "0", 7);
+        if (i != 2)
+            number(c, out.object, "1", 4);
+        else
+            assert(fvm_object_has_own(c, out.object, "1", &own) == FVM_OK && !own);
+        number(c, source, "length", 1);
+        assert(fvm_object_has_own(c, source, "2", &own) == FVM_OK && !own);
+        if (i != 1)
+            number(c, source, "0", 9);
+        else
+            assert(fvm_object_has_own(c, source, "0", &own) == FVM_OK && !own);
+    }
     fvm_context_destroy(c); fvm_runtime_destroy(rt);
 }

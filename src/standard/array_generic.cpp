@@ -334,21 +334,24 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
 
 /* Run the current value. */
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
-               const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
+               const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
+               const FVM_ArraySpliceBounds *prepared)
 {
-    /* Splice rejects a missing start without invoking an observable length accessor. */
-    if (!std::strcmp(method, "splice") && (!n || a[0].type == FVM_VALUE_UNDEFINED))
-    {
-        fvm_value_undefined(out);
-        return FVM_OK;
-    }
-    /* Unlike slice, splice converts its start before the observable length read. */
-    double splice_start = 0;
+    FVM_ArraySpliceBounds local_bounds;
     if (!std::strcmp(method, "splice"))
     {
-        FVM_Result status = integer(c, n, a, 0, 0, splice_start);
-        if (status != FVM_OK)
-            return status;
+        if (!prepared)
+        {
+            FVM_Result status = fvm_array_splice_prepare(c, o, n, a, local_bounds);
+            if (status != FVM_OK)
+                return status;
+            prepared = &local_bounds;
+        }
+        if (prepared->rejected)
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
     }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
                                   !std::strcmp(method, "concat"));
@@ -396,7 +399,11 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
 
     /* Initialization / Инициализация локального состояния. */
     unsigned long count = 0;
-    FVM_Result r = length(c, o, count);
+    FVM_Result r = FVM_OK;
+    if (!std::strcmp(method, "splice"))
+        count = prepared->length;
+    else
+        r = length(c, o, count);
     if (r != FVM_OK)
         return r;
     if (!std::strcmp(method, "push"))
@@ -485,39 +492,27 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     if (!std::strcmp(method, "slice") || !std::strcmp(method, "splice"))
     {
         bool splice = !std::strcmp(method, "splice");
-        double first = splice_start, last = 0;
-        if (!splice)
-            r = integer(c, n, a, 0, 0, first);
-        if (r != FVM_OK)
-            return r;
-        unsigned long start = bound(first, count), deleted;
-        if (splice && n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
-        {
-            fvm_value_undefined(out);
-            return FVM_OK;
-        }
-        r = integer(c, n > 1 && !splice && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n, a, 1,
-                    splice ? count - start : count, last);
-        if (r != FVM_OK)
-            return r;
-        /* Validate deletion before enforcing the remaining mutating traversal cap. */
-        if (splice && last < 0)
-        {
-            fvm_value_undefined(out);
-            return FVM_OK;
-        }
+        unsigned long start = splice ? prepared->start : 0;
+        unsigned long deleted = splice ? prepared->deleted : 0;
+        unsigned long end = start + deleted;
+        unsigned int added = splice ? prepared->added : 0;
         if (splice && count > 65536)
             return FVM_UNSUPPORTED;
-        unsigned long end = splice ? (last <= 0               ? start
-                                      : last >= count - start ? count
-                                                              : start + (unsigned long)last)
-                                   : bound(last, count);
-        if (end < start)
-            end = start;
-        deleted = end - start;
-        unsigned int added = splice && n > 2 ? n - 2 : 0;
-        if ((double)count - deleted + added > 4294967295.0)
-            return FVM_INVALID_ARGUMENT;
+        if (!splice)
+        {
+            double first = 0, last = 0;
+            r = integer(c, n, a, 0, 0, first);
+            if (r == FVM_OK)
+                r = integer(c, n > 1 && a[1].type == FVM_VALUE_UNDEFINED ? 1 : n,
+                            a, 1, count, last);
+            if (r != FVM_OK)
+                return r;
+            start = bound(first, count);
+            end = bound(last, count);
+            if (end < start)
+                end = start;
+            deleted = end - start;
+        }
         FVM_Object *result = 0;
         r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result);
         if (!splice && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
@@ -657,6 +652,37 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     return r;
 }
 } // namespace
+/* Capture observable splice inputs once, leaving a rejected result without allocation. */
+FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n,
+                                    const FVM_Value *a, FVM_ArraySpliceBounds &out)
+{
+    out = FVM_ArraySpliceBounds();
+    if (!c || !o || o->owner != c || (n && !a))
+        return FVM_INVALID_ARGUMENT;
+    if (!n || a[0].type == FVM_VALUE_UNDEFINED)
+        return FVM_OK;
+    double first = 0, last = 0;
+    FVM_Result status = integer(c, n, a, 0, 0, first);
+    if (status == FVM_OK)
+        status = length(c, o, out.length);
+    if (status != FVM_OK)
+        return status;
+    out.start = bound(first, out.length);
+    if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+        return FVM_OK;
+    status = integer(c, n, a, 1, out.length - out.start, last);
+    if (status != FVM_OK)
+        return status;
+    if (last < 0)
+        return FVM_OK;
+    out.deleted = last >= out.length - out.start ? out.length - out.start : (unsigned long)last;
+    out.added = n > 2 ? n - 2 : 0;
+    if ((double)out.length - out.deleted + out.added > 4294967295.0)
+        return FVM_INVALID_ARGUMENT;
+    out.rejected = false;
+    return FVM_OK;
+}
+
 /* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
@@ -694,13 +720,14 @@ bool fvm_array_needs_generic(FVM_Object *o)
 
 /* Compute and return array generic. */
 FVM_Result fvm_array_generic(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
-                             const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
+                             const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
+                             const FVM_ArraySpliceBounds *prepared)
 {
     if (!c || !o || o->owner != c)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        return run(c, o, method, n, a, out, fast);
+        return run(c, o, method, n, a, out, fast, prepared);
     }
     catch (const std::bad_alloc &)
     {
