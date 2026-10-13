@@ -382,7 +382,13 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         if (flag_result != FVM_OK)
             return flag_result;
         if (flags & 4)
-            return FVM_OK;
+        {
+            if (c->swf_loaded && flag_cursor != o)
+                continue;
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+            if (!c->swf_loaded || script == o->accessors.end() || !fvm_base_script_accessor(script->second))
+                return FVM_OK;
+        }
     }
     if (flag_cursor)
         return FVM_INVALID_ARGUMENT;
@@ -395,7 +401,11 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         if (flag_result != FVM_OK)
             return flag_result;
         if (own_flags & 4)
-            return FVM_OK;
+        {
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+            if (!c->swf_loaded || script == o->accessors.end() || !fvm_base_script_accessor(script->second))
+                return FVM_OK;
+        }
     }
     FVM_Value watched;
     FVM_Result r = fvm_property_watch_prepare(c, o, name, v, &watched);
@@ -444,7 +454,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
                  * сборщик. */
                 /* [GC:] Retain lookup/capture ownership even if script detaches the descriptor. */
-                FVM_SetterScope setter_scope(c, cursor, o, entry.root);
+                FVM_SetterScope setter_scope(c, cursor, o, entry.root, name);
                 FVM_NativeCallGuard guard(c);
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_exception_complete(

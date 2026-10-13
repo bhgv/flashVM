@@ -1170,6 +1170,13 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
     /* An inherited setter runs with the receiver but does not write prototype descriptor data. */
     if (n && (!c->calling_setter_owner || c->calling_setter_owner == receiver))
     {
+        if (c->calling_setter_name)
+        {
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags =
+                receiver->attributes.find(*c->calling_setter_name);
+            if (flags != receiver->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
+                return FVM_OK;
+        }
         FVM_Value stored = args[0];
         if (stored.type == FVM_VALUE_STRING)
         {
@@ -1416,6 +1423,12 @@ bool fvm_as_index(const char *name, unsigned long *out)
     }
     *out = (unsigned long)value;
     return true;
+}
+
+/* Identify the internal script getter/setter bridge without inspecting user objects or invoking code. */
+bool fvm_base_script_accessor(const FVM_AccessorEntry &entry)
+{
+    return entry.getter == script_property_get && entry.setter == script_property_set && entry.root;
 }
 
 /* Read script descriptor data directly; older descriptors without data retain undefined. */

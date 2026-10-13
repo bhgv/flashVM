@@ -72,7 +72,12 @@ extern "C"
             if (status != FVM_OK)
                 return status;
             if (flags & 4)
-                return FVM_OK;
+            {
+                fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+                if (!c->swf_loaded || o->resource_kind != 30 || script == o->accessors.end() ||
+                    !fvm_base_script_accessor(script->second))
+                    return FVM_OK;
+            }
             if (o->resource_kind == 28 && key >= o->resource_result.number)
             {
                 status = fvm_object_property_flags(c, o, "length", &flags);

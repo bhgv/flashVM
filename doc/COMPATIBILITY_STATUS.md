@@ -810,3 +810,16 @@ execute-bit restoration. Nested setters, counted NUL, GC/queue transfer and
 owner restoration after errors pass; all fifteen original SWFs still match.
 Readonly callback rules, self-detachment/replacement, Array mutation set_data,
 versions and every roadmap stage remain open.
+
+## v0.141 — loaded readonly setter execution / readonly callback
+
+Loaded script setters execute on readonly descriptors while current own flags
+control retained data after callback. Clearing readonly inside the setter enables
+storage; inherited readonly data permits own shadowing. Unloaded C checks remain
+strict. A scoped owned counted key survives callback mutation/nesting; copy
+failure precedes metadata changes. [RU/EN details](OBJECT_READONLY_SETTER.md).
+Evidence: 309 core tests in AGG/Cairo plus the AGG runner; seven focused checks
+in restricted sanitizer/portable profiles. Three AGG GC launch failures passed
+after execute-bit restoration. Numeric/countеd NUL callbacks and metadata restore
+pass; all fifteen original SWFs still match. Readonly watcher order, self-replaced
+property storage, real Array virtual guards/version rules and all stages stay open.
