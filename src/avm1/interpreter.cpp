@@ -1541,6 +1541,122 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 for (size_t i = keys->indexed.size(); i > 0; --i)
                     stack.push_back(keys->indexed.find((unsigned long)i - 1)->second);
             }
+            else if (a.op == 0x13 || a.op == 0x21 || a.op == 0x29 || a.op == 0x68)
+            { /* StringEquals/StringAdd/StringLess/StringGreater use explicit string coercion. */
+                if (stack.size() < 2)
+                    return FVM_ERROR;
+                /* [GC:] Retain newly converted strings across collection in the second callback. */
+                fvm_detail::vector<FVM_Value> converted(2);
+                fvm_value_undefined(&converted[0]);
+                fvm_value_undefined(&converted[1]);
+                RootGuard converted_roots(c, &converted, 0, 0, &registers);
+                FVM_Value &left = converted[0], &right = converted[1];
+                FVM_Value output;
+                FVM_Result status;
+                if (a.op == 0x68)
+                {
+                    status = action_string(c, stack[stack.size() - 2], &left);
+                    if (status == FVM_OK)
+                        status = action_string(c, stack.back(), &right);
+                }
+                else
+                {
+                    status = action_string(c, stack.back(), &right);
+                    if (status == FVM_OK)
+                        status = action_string(c, stack[stack.size() - 2], &left);
+                }
+                if (status != FVM_OK)
+                    return status;
+                if (a.op == 0x21)
+                {
+                    size_t first = fvm_string_size(left), last = fvm_string_size(right);
+                    if (first > (size_t)-1 - last - 1)
+                        return FVM_OUT_OF_MEMORY;
+                    fvm_detail::vector<char> bytes(first + last + 1);
+                    std::memcpy(bytes.begin(), left.string, first);
+                    std::memcpy(bytes.begin() + first, right.string, last);
+                    bytes[first + last] = 0;
+                    status = own_string(c, bytes.begin(), &output, first + last);
+                }
+                else
+                {
+                    int order = 0;
+                    status = fvm_string_order(left, right, order);
+                    fvm_value_boolean(&output, a.op == 0x13 ? order == 0
+                                                  : a.op == 0x29 ? order < 0 : order > 0);
+                }
+                if (status != FVM_OK)
+                    return status;
+                stack.pop_back();
+                stack.back() = output;
+            }
+            else if (a.op == 0x14 || a.op == 0x31)
+            { /* StringLength/MBStringLength count UTF-16 units in SWF 6+ and ASCII legacy input. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value text;
+                FVM_Result status = action_string(c, stack.back(), &text);
+                if (status != FVM_OK)
+                    return status;
+                fvm_detail::vector<unsigned int> units;
+                status = fvm_string_units(text, units);
+                if (status != FVM_OK)
+                    return status;
+                if (c->swf_loaded && c->swf_info.version < 6)
+                    for (size_t unit = 0; unit < units.size(); ++unit)
+                        if (units[unit] > 127)
+                            return FVM_UNSUPPORTED;
+                fvm_value_number(&stack.back(), (double)units.size());
+            }
+            else if (a.op == 0x15 || a.op == 0x35)
+            { /* StringExtract/MBStringExtract convert length, one-based start, then input text. */
+                if (stack.size() < 3)
+                    return FVM_ERROR;
+                /* [GC:] Retain all three operands while conversion callbacks may invoke script. */
+                double length_number = 0, start_number = 0;
+                FVM_Result status = fvm_avm1_number(c, &stack.back(), &length_number);
+                if (status == FVM_OK)
+                    status = fvm_avm1_number(c, &stack[stack.size() - 2], &start_number);
+                FVM_Value text, output;
+                if (status == FVM_OK)
+                    status = action_string(c, stack[stack.size() - 3], &text);
+                if (status != FVM_OK)
+                    return status;
+                fvm_detail::vector<unsigned int> units;
+                status = fvm_string_units(text, units);
+                if (status != FVM_OK)
+                    return status;
+                if (c->swf_loaded && c->swf_info.version < 6)
+                    for (size_t unit = 0; unit < units.size(); ++unit)
+                        if (units[unit] > 127)
+                            return FVM_UNSUPPORTED;
+                double signed_start = signed_bits(integer_bits(start_number));
+                double signed_length = signed_bits(integer_bits(length_number));
+                size_t start = signed_start >= 1 ? (size_t)signed_start - 1 : 0;
+                size_t end = units.size();
+                if (signed_length >= 0 && start <= end && (size_t)signed_length <= end - start)
+                    end = start + (size_t)signed_length;
+                if (start > end)
+                    start = end;
+                fvm_detail::vector<unsigned short> selected(end - start);
+                for (size_t unit = start; unit < end; ++unit)
+                    selected[unit - start] = (unsigned short)units[unit];
+                status = fvm_value_string_utf16(c, selected.begin(), selected.size(), &output);
+                if (status != FVM_OK)
+                    return status;
+                stack.resize(stack.size() - 2);
+                stack.back() = output;
+            }
+            else if (a.op == 0x18)
+            { /* ToInteger uses signed Int32 wrapping, not an unsafe floating cast. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                double number = 0;
+                FVM_Result status = fvm_avm1_number(c, &stack.back(), &number);
+                if (status != FVM_OK)
+                    return status;
+                fvm_value_number(&stack.back(), signed_bits(integer_bits(number)));
+            }
             else if (a.op == 0x44 || a.op == 0x4a || a.op == 0x4b)
             {
                 if (stack.empty())

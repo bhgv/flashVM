@@ -398,3 +398,12 @@ table integer/named separation retained. AGG/Cairo Release 260/260 each after
 launch-permission reruns (3 and 1 tests); restricted headless ASan/UBSan and
 portable focused 5/5 each. Full standard type/API inventory remains open.
 RU/EN: [AVM1_NUMERIC_MEMBERS.md](AVM1_NUMERIC_MEMBERS.md).
+
+## v0.100 — Legacy counted UTF-16 string actions
+
+Проверено / tested: nine legacy string/integer actions, callback order and
+converted-string roots across real script-triggered traced GC. AGG/Cairo Release
+261/261 each (AGG six launch-permission reruns); restricted headless ASan/UBSan
+and portable focused 4/4 each. Non-ASCII pre-SWF-6 length/extract are explicitly
+unsupported; default-hint Add2 and remaining actions are open.
+RU/EN: [AVM1_LEGACY_STRINGS.md](AVM1_LEGACY_STRINGS.md).
