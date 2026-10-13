@@ -869,3 +869,15 @@ AGG/Cairo plus the AGG runner; five focused checks in restricted heap/global
 ASan+UBSan and portable Linux profiles. No launch failures in these suites.
 All fifteen original SWFs still match exactly. SetVariable/local scope, function
 versions and every roadmap stage remain open.
+
+## v0.146 — ASSetPropFlags set precedence / приоритет установки
+
+The AS builtin clears before setting overlapping flags; its set bits win.
+The direct C flag extension remains unchanged.
+[RU/EN details](STANDARD_PROPERTY_FLAGS.md). Evidence: 314 core tests in
+AGG/Cairo plus the AGG runner; four focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Exhaustive 512 flag combinations pass
+in unloaded mode and each SWF4..8; counted NUL, readonly and own selection pass.
+Four AGG and two Cairo launch failures plus an AGG runner PermissionError passed
+after execute-bit restoration. Fifteen original SWFs still match exactly.
+Selector/default coercions, version masks and all stages remain open.

@@ -358,7 +358,8 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
             continue;
         fvm_detail::map<fvm_detail::string, unsigned int>::iterator old = flags.find(names[i]);
         unsigned int bits = old == flags.end() ? 0 : old->second;
-        bits = (bits | (unsigned int)set) & ~(unsigned int)clear;
+        /* ASSetPropFlags clears first; requested set bits take precedence on overlap. */
+        bits = (bits & ~(unsigned int)clear) | (unsigned int)set;
         if (bits)
             flags[names[i]] = bits;
         else
