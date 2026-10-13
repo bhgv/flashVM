@@ -335,6 +335,15 @@ FVM_Result closed(const Entry &e, int *out)
                        : fvm_channel_is_closed((FVM_Channel *)e.handle, out);
 }
 
+/* Preserve a structured nested resource cause instead of replacing it with broker failure. */
+FVM_Result channel_result(FVM_Result result, FVM_Context *context, unsigned long &fault)
+{
+    if (result != FVM_OK && context && context->fault_pending &&
+        context->fault.code >= FVM_RESOURCE_CLOSED && context->fault.code <= FVM_RESOURCE_FAILURE)
+        fault = context->fault.code;
+    return result;
+}
+
 /* Dispatch the current value. */
 FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigned char *input,
                     size_t size, unsigned char **output, size_t *length, unsigned long &fault)
@@ -472,8 +481,9 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         if (size != 4)
             return FVM_INVALID_ARGUMENT;
         size_t index = (size_t)get(input);
-        return stream ? fvm_channel_file_peek_record((FVM_Channel *)e.handle, index, output, length)
-                      : fvm_channel_peek_wire(c, (FVM_Channel *)e.handle, index, output, length);
+        r = stream ? fvm_channel_file_peek_record((FVM_Channel *)e.handle, index, output, length)
+                   : fvm_channel_peek_wire(c, (FVM_Channel *)e.handle, index, output, length);
+        return channel_result(r, c, fault);
     }
     if (h[5] == 5)
     {
@@ -487,8 +497,11 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
                       : fvm_channel_send_wire((FVM_Channel *)e.handle, input, size);
     }
     if (h[5] == 6 && !size)
-        return stream ? fvm_channel_stream_receive(c, (FVM_Channel *)e.handle, output, length, 0)
-                      : fvm_channel_receive_wire(c, (FVM_Channel *)e.handle, output, length);
+    {
+        r = stream ? fvm_channel_stream_receive(c, (FVM_Channel *)e.handle, output, length, 0)
+                   : fvm_channel_receive_wire(c, (FVM_Channel *)e.handle, output, length);
+        return channel_result(r, c, fault);
+    }
     return FVM_INVALID_ARGUMENT;
 }
 

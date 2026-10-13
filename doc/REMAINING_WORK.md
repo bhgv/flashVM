@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.76 / Remaining work after v0.76
+# Оставшаяся работа после v0.77 / Remaining work after v0.77
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -161,3 +161,6 @@ v0.75 separates retryable finalizer preparation from once-only user-code entry a
 
 В v0.76 native-result snapshots/validation добавлены в Function/global/stack/callable/Lua paths, с userdata poison и OOM (GC_NATIVE_DISPATCH_RESULTS.md). Успешные native values проверяют enum/context/metatable ownership. Полная стадия 7 остаётся открыта.
 v0.76 closes additional native result lifetime/ownership paths; complete GC/debugger acceptance remains open.
+
+В v0.77 broker receive/peek сохраняет nested resource fault code для closed mutex/channel, с caller source и network URI (NETWORK_NESTED_FAULTS.md). Полный remote inner-resource context и transient broker graph cleanup ещё открыты.
+v0.77 preserves nested capability failure codes; full remote cause metadata and broker adapter graph lifetime remain open.
