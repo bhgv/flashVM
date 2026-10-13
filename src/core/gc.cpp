@@ -54,11 +54,24 @@ static void mark_value(const FVM_Value &value, fvm_detail::vector<FVM_Object *> 
 
 /* Mark graph. */
 /* [GC:] Обходим корни и все достижимые ссылки, включая циклические графы. */
-static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn_start = (size_t)-1)
+static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn_start = (size_t)-1,
+                       bool retain_previous = false)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
     fvm_detail::vector<FVM_Object *> pending;
+    /* [GC:] Rescan earlier survivors after native release without unmarking unreleased resources.
+     */
+    if (retain_previous)
+        /* [GC:] Existing survivors may have gained late edges even when their marks are unchanged.
+         */
+        for (size_t i = 0; i < c->objects.size(); ++i)
+            /* [GC:] Preserve the earlier live set until a later collection can release detached
+             * nodes. */
+            if (c->objects[i]->gc_marked)
+                /* [GC:] Force traversal of changed properties rather than skipping an
+                 * already-marked root. */
+                pending.push_back(c->objects[i]);
     /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
     mark_object(c->global, pending);
     /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
@@ -413,6 +426,9 @@ extern "C"
             mark_graph(c, strings, original_count);
             /* Resource callbacks see a coherent heap: do not delete objects until
                every unreachable resource has been released. */
+            /* [GC:] A late graph pass is necessary only if native release callbacks can publish
+             * roots. */
+            bool released_resources = false;
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (i = 0; i < c->objects.size(); ++i)
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -420,6 +436,14 @@ extern "C"
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
                     /* [GC:] Освобождаем ресурс объекта до удаления его записи из кучи. */
+                    /* [GC:] Record callback execution before release clears its function pointer.
+                     */
+                    if (c->objects[i]->release_resource)
+                        /* [GC:] Native cleanup may publish object/string roots after resurrection
+                         * remark. */
+                        released_resources = true;
+                    /* [GC:] Release native payloads while every managed graph node is still
+                     * allocated. */
                     FVM_Result r = fvm_release_object_resource(c, c->objects[i]);
                     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (finalizer_result == FVM_OK && r != FVM_OK)
@@ -431,8 +455,12 @@ extern "C"
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            /* [GC:] Preserve borrowed strings newly rooted by native release callbacks. */
-            strings.retain_release_roots();
+            /* [GC:] Preserve late object and string roots, including edges added to old survivors.
+             */
+            if (released_resources)
+                /* [GC:] Keep released object shells reachable while native resources stay
+                 * irreversibly closed. */
+                mark_graph(c, strings, original_count, true);
             /* [GC:] Count object reclamation separately from string-buffer reclamation. */
             unsigned long freed = 0;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

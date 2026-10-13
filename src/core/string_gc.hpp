@@ -29,9 +29,6 @@ class FVM_StringGCPlan
     void reset();
     /* [GC:] Retain the allocation containing a reachable exact or interior string view. */
     void mark(const char *);
-    /* [GC:] Retain string roots installed by native release callbacks without another allocation.
-     */
-    void retain_release_roots();
     /* [GC:] Free unmarked original buffers after resource release and compact both ownership
      * indexes. */
     void sweep();

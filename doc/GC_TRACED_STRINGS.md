@@ -107,3 +107,12 @@ run in AGG/Cairo; fonts-disabled sanitizer excludes live font cases. ASan
 heap/global instrumentation and UBSan active; leak detection and stack ASan
 disabled. No Windows/macOS/Android runtime certification. Initial failures
 and final passing logs are retained outside Git. Comment/GC-tag audits pass.
+
+## Обновление v0.73 / v0.73 update
+
+Отдельный allocation-free late string pass v0.72 заменён общим late object/value
+graph traversal после native release callbacks. Он сохраняет также object roots
+и новые edges у ранее reachable объектов; контракт и OOM: GC_RELEASE_GRAPH.md.
+
+The v0.72 string-only late pass is superseded by a full late graph traversal
+covering object roots and edges added to previous survivors. See GC_RELEASE_GRAPH.md.

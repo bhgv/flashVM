@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.72 / Remaining work after v0.72
+# Оставшаяся работа после v0.73 / Remaining work after v0.73
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -149,3 +149,6 @@ v0.71 exposes blocking remote mutex requests and endpoint-aware snapshots; compl
 
 В v0.72 добавлена opt-in traced string collection: существующие GC roots, interior views, resurrection/newborn buffers, implicit TextField roots (GC_TRACED_STRINGS.md). Legacy arena policy остаётся default; полная приёмка стадии 7 открыта.
 v0.72 adds opt-in traced context strings with resurrection and native TextField roots; full GC/debugger acceptance remains open.
+
+В v0.73 добавлен late native-release graph traversal: новые roots/edges после resource callbacks сохраняют object shells и строки (GC_RELEASE_GRAPH.md). Полная приёмка GC/debugger остаётся открыта.
+v0.73 retains graphs republished by native release callbacks and verifies late-pass allocation failures; complete stage 7 acceptance remains open.

@@ -2,8 +2,6 @@
  */
 #include "string_gc.hpp"
 #include "flashvm/gc.h"
-/* [GC:] Reachable native fields also contribute roots after resource callbacks. */
-#include "../standard/text_state.hpp"
 #include <cstdlib>
 #include <cstring>
 #include <climits>
@@ -98,61 +96,6 @@ void FVM_StringGCPlan::mark(const char *text)
      * overflow. */
     if (address - range.address <= range.length)
         live_[range.index] = 1;
-}
-
-/* [GC:] Native resource callbacks may copy old views into existing root stacks after remark. */
-void FVM_StringGCPlan::retain_release_roots()
-{
-    /* [GC:] Arena mode requires no additional root work. */
-    if (!enabled_)
-        return;
-    /* [GC:] A stack API push stores a borrowed value, so trace updated registered stacks again. */
-    for (size_t i = 0; i < context_->gc_stacks.size(); ++i)
-        /* [GC:] Revisit every current entry, including values appended by release callbacks. */
-        for (size_t j = 0; j < context_->gc_stacks[i]->size(); ++j)
-        {
-            /* [GC:] Borrow the registered root value without copying or allocating text. */
-            const FVM_Value &value = (*context_->gc_stacks[i])[j];
-            if (value.type == FVM_VALUE_STRING)
-                mark(value.string);
-        }
-    /* [GC:] Preserve any string roots published into still-active interpreter/API frames. */
-    for (FVM_GCRootFrame *frame = context_->gc_frames; frame; frame = frame->previous)
-    {
-        if (frame->stack)
-            for (size_t i = 0; i < frame->stack->size(); ++i)
-                if ((*frame->stack)[i].type == FVM_VALUE_STRING)
-                    mark((*frame->stack)[i].string);
-        if (frame->locals)
-            for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator value =
-                     frame->locals->begin();
-                 value != frame->locals->end(); ++value)
-                if (value->second.type == FVM_VALUE_STRING)
-                    mark(value->second.string);
-    }
-    /* [GC:] Newly published exception string roots must survive the release phase as well. */
-    if (context_->exception_pending && context_->exception_value.type == FVM_VALUE_STRING)
-        mark(context_->exception_value.string);
-    /* [GC:] Native field/property updates may retain old views in already-surviving objects. */
-    for (size_t i = 0; i < context_->objects.size(); ++i)
-    {
-        FVM_Object *object = context_->objects[i];
-        /* [GC:] Only surviving managed objects retain native/property string storage here. */
-        if (!object->gc_marked)
-            continue;
-        mark(fvm_textfield_string_root(object));
-        if (object->resource_result_valid && object->resource_result.type == FVM_VALUE_STRING)
-            mark(object->resource_result.string);
-        for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator value =
-                 object->properties.begin();
-             value != object->properties.end(); ++value)
-            if (value->second.type == FVM_VALUE_STRING)
-                mark(value->second.string);
-        for (fvm_detail::map<unsigned long, FVM_Value>::iterator value = object->indexed.begin();
-             value != object->indexed.end(); ++value)
-            if (value->second.type == FVM_VALUE_STRING)
-                mark(value->second.string);
-    }
 }
 
 /* [GC:] Reclaim only original unmarked strings; finalizer-created buffers survive this collection.
