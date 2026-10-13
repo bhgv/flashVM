@@ -34,6 +34,9 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &, FVM_Value &);
 /* Recognize the script-property bridge whose function setter can run on a readonly property. */
 bool fvm_base_script_accessor(const FVM_AccessorEntry &);
 
+/* Store own data without invoking virtual setters, honoring current own readonly flags. */
+FVM_Result fvm_base_store_data(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value &);
+
 /* Define an own Array result slot; copies strings and does not change the captured length. */
 FVM_Result fvm_array_store_own(FVM_Context *, FVM_Object *, unsigned long, const FVM_Value &);
 

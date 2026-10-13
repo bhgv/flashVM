@@ -612,7 +612,7 @@ FVM_Result unshift(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
 FVM_Result reverse(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
-    if (fvm_array_needs_generic(o))
+    if (c->swf_loaded || fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "reverse", n, a, out, reverse);
 
     if (!array(o))
@@ -1489,6 +1489,38 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
 {
     if (array(o) && key < 0xffffffffUL && key >= size(o))
         o->resource_result.number = (double)key + 1;
+}
+
+/* Store own ActionScript data while retaining virtual properties and bypassing callbacks. */
+FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
+                               const FVM_Value &input)
+{
+    if (!c || !o || o->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find(name);
+    if (flags != o->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
+        return FVM_OK;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
+    if (accessor == o->accessors.end())
+        return store_receiver_data(c, o, name, input);
+    if (!fvm_base_script_accessor(accessor->second))
+        return FVM_UNSUPPORTED;
+    FVM_Object *descriptor = accessor->second.root;
+    /* [GC:] Keep the private data target alive while copying counted strings. */
+    FVM_ObjectRootScope roots(c, descriptor);
+    FVM_Result status = fvm_validate_value(c, &input);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value value = input;
+    if (value.type == FVM_VALUE_STRING)
+    {
+        status = fvm_value_to_string(c, &input, &value);
+        if (status != FVM_OK)
+            return status;
+        value.metatable = input.metatable;
+    }
+    descriptor->properties["data"] = value;
+    return FVM_OK;
 }
 
 /* Define an own result index without inherited descriptors or assignment watchers. */

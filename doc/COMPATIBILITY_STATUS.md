@@ -835,3 +835,15 @@ heap/global ASan+UBSan and portable Linux profiles. One AGG blur-filter launch
 failure passed after execute-bit restoration. Fifteen original SWFs still match
 exactly. Native C accessor replacement remains UNSUPPORTED; callback side effects
 are not rolled back. Array mutation set_data and all stages stay open.
+
+## v0.143 — loaded reverse own data / reverse собственных данных
+
+Loaded reverse reads own signed length and raw element data, ignores prototypes
+and accessors, deletes paired positions before storing without setter callbacks,
+and materializes missing undefined values. Protected virtual data retains own
+flags. [RU/EN details](ARRAY_LEGACY_REVERSE.md). Evidence: 311 core tests in
+AGG/Cairo plus the AGG runner; five focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. One AGG bitmap-allocation launch failure
+passed after execute-bit restoration. All fifteen original SWFs still match
+exactly. The mutation size limit/native accessor model, other mutators and every
+roadmap stage remain open.

@@ -426,7 +426,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
                                   !std::strcmp(method, "concat") ||
-                                  (c->swf_loaded && !std::strcmp(method, "splice")));
+                                  (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse"))));
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
@@ -491,7 +491,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
         count = prepared->length;
-    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice")))
+    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse")))
         r = legacy_data_length(c, o, count);
     else
         r = length(c, o, count);
@@ -568,6 +568,26 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         {
             FVM_Value left, right;
             bool lp, rp;
+            if (c->swf_loaded)
+            {
+                r = work.step();
+                if (r != FVM_OK)
+                    break;
+                legacy_data_element(o, i, left);
+                legacy_data_element(o, count - i - 1, right);
+                char lower[32], upper[32];
+                std::sprintf(lower, "%lu", i);
+                std::sprintf(upper, "%lu", count - i - 1);
+                int removed = 0;
+                r = fvm_object_delete(c, o, lower, &removed);
+                if (r == FVM_OK)
+                    r = fvm_object_delete(c, o, upper, &removed);
+                if (r == FVM_OK)
+                    r = fvm_base_store_data(c, o, lower, right);
+                if (r == FVM_OK)
+                    r = fvm_base_store_data(c, o, upper, left);
+                continue;
+            }
             r = get(c, o, i, left, lp);
             if (r == FVM_OK)
                 r = get(c, o, count - i - 1, right, rp);
