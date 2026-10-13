@@ -93,9 +93,12 @@ void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
         out = slot->second;
 }
 
-/* Capture the positive portion of AVM1's signed, wrapping own-data length for copying and joining. */
-FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out)
+/* Capture positive own-data length for copying/joining, optionally exposing the full signed value. */
+FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
+                               long *signed_length = 0)
 {
+    if (signed_length)
+        *signed_length = 0;
     FVM_Value value;
     fvm_value_undefined(&value);
     if (o->resource_kind == 28 && o->resource_result_valid)
@@ -117,6 +120,8 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out)
     number = std::fmod(number, 4294967296.0);
     if (number < 0)
         number += 4294967296.0;
+    if (signed_length)
+        *signed_length = (long)(number < 2147483648.0 ? number : number - 4294967296.0);
     if (number < 2147483648.0)
         out = (unsigned long)number;
     return FVM_OK;
@@ -760,10 +765,15 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
     double first = 0, last = 0;
     FVM_Result status = c->swf_loaded ? legacy_index(c, n, a, 0, 0, first)
                                       : integer(c, n, a, 0, 0, first);
+    long signed_length = 0;
     if (status == FVM_OK)
-        status = length(c, o, out.length);
+        status = c->swf_loaded ? legacy_data_length(c, o, out.length, &signed_length)
+                              : length(c, o, out.length);
     if (status != FVM_OK)
         return status;
+    /* Negative lengths require signed destination indices; reject before mutating an unsupported case. */
+    if (c->swf_loaded && signed_length < 0)
+        return FVM_UNSUPPORTED;
     out.start = bound(first, out.length);
     if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
         return FVM_OK;

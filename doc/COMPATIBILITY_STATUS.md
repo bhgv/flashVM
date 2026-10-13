@@ -732,3 +732,15 @@ and root/depth state through success with GC; the initial GC fixture was fixed
 to pin its host method Array. All fourteen selected original SWFs still complete
 with exact outputs. Historical source movement/write and signed own-data length,
 generic mutation atomicity and all roadmap stages remain open.
+
+## v0.135 — splice own signed length / собственная signed-длина
+
+Loaded splice ignores virtual/inherited length, captures own data with Int32
+wrapping after start and before deleteCount, and explicitly rejects negative
+signed mutation lengths before deletion coercion/mutation. Unloaded mode stays
+property-aware/unsigned. [RU/EN details](ARRAY_LEGACY_SPLICE_LENGTH.md).
+Evidence: 303 core tests in AGG/Cairo plus the AGG runner; six focused checks
+in restricted sanitizer/portable profiles. Five AGG Array/bitmap and three Cairo
+bitmap launch failures passed after execute-bit restoration. Negative signed
+mutation indices remain unsupported; this early rejection is not claimed as
+full historical behavior. Source set_data/movement and all stages remain open.
