@@ -1334,6 +1334,15 @@ void *fvm_text_callback_userdata(unsigned long id, const char *name)
     return (void *)fvm_text_callback_selector(fvm_text_callback_from_id(id), (void *)name);
 }
 
+/* [GC:] Retain native TextField text only when its owning managed object is reachable. */
+const char *fvm_textfield_string_root(FVM_Object *object)
+{
+    /* [GC:] Other native kinds and released fields do not own context text buffers. */
+    return object && object->resource_kind == TEXT_FIELD && object->resource
+               ? ((Field *)object->resource)->text
+               : 0;
+}
+
 /* Capture snapshot of textfield size. */
 size_t fvm_textfield_snapshot_size(FVM_Object *object)
 {

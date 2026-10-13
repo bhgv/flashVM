@@ -67,3 +67,11 @@ consistency and teardown balance, alongside existing GC/UTF-16/serialization
 regressions.
 
 Проверено / Verified: full headless 246/246, AGG 262/262, Cairo 262/262, portable 237/237; targeted ASan/UBSan 33/33. Leak detection and stack ASan are disabled; actual Windows/macOS/Android execution and complete stage 7 acceptance remain open.
+
+## Обновление v0.72 / v0.72 update
+
+Описанная выше arena policy остаётся default. Opt-in traced collection добавлена
+в v0.72; контракт корней и проверенные случаи: [GC_TRACED_STRINGS.md](GC_TRACED_STRINGS.md).
+
+The historical arena lifetime remains the default. v0.72 adds opt-in tracing;
+see GC_TRACED_STRINGS.md for rooting contracts, verification and remaining limits.

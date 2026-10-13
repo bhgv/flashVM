@@ -24,6 +24,13 @@ extern "C"
 /* Define FVM GC FULL constant or compilation switch. */
 /* [GC:] Ограничиваем компиляцию объявлений и режимов сборщика. */
 #define FVM_GC_FULL 102
+#define FVM_GC_STRINGS_ARENA 0  /* [GC:] Default context-long string lifetime. */
+#define FVM_GC_STRINGS_TRACED 1 /* [GC:] Opt-in: unreachable string buffers are collected. */
+    /* [GC:] Change string policy outside collection/native callbacks. Traced mode requires roots
+       for borrowed values across collection; enabling the policy does not itself collect. */
+    FVM_API FVM_Result fvm_gc_string_mode(FVM_Context *, int);
+    /* [GC:] Return the current arena/traced string policy without collection. */
+    FVM_API FVM_Result fvm_gc_string_state(FVM_Context *, int *);
     /* -100..100: collection frequency; 0: normal. */
     /* Implement gc mode for this subsystem. */
     /* [GC:] Работаем с выбранным режимом планирования сборки. */

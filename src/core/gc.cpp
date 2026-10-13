@@ -4,6 +4,10 @@
 
 /* [GC:] Подключаем объявления, используемые сборщиком и защитой корней. */
 #include "../core/runtime.hpp"
+/* [GC:] Optional string plans share the object root and resurrection traversals. */
+#include "string_gc.hpp"
+/* [GC:] Reachable native TextFields contribute their implicit text buffer root. */
+#include "../standard/text_state.hpp"
 /* [GC:] Подключаем объявления, используемые сборщиком и защитой корней. */
 #include "flashvm/gc.h"
 /* [GC:] Подключаем объявления, используемые сборщиком и защитой корней. */
@@ -32,7 +36,8 @@ static void mark_object(FVM_Object *o, fvm_detail::vector<FVM_Object *> &pending
 
 /* Mark value. */
 /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-static void mark_value(const FVM_Value &value, fvm_detail::vector<FVM_Object *> &pending)
+static void mark_value(const FVM_Value &value, fvm_detail::vector<FVM_Object *> &pending,
+                       FVM_StringGCPlan &strings)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -41,12 +46,15 @@ static void mark_value(const FVM_Value &value, fvm_detail::vector<FVM_Object *> 
         mark_object(value.object, pending);
     /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
     mark_object(value.metatable, pending);
+    /* [GC:] Primitive strings retain their containing context buffer, including interior views. */
+    if (value.type == FVM_VALUE_STRING)
+        strings.mark(value.string);
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
 /* Mark graph. */
 /* [GC:] Обходим корни и все достижимые ссылки, включая циклические графы. */
-static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
+static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn_start = (size_t)-1)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
@@ -82,7 +90,7 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (c->exception_pending)
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-        mark_value(c->exception_value, pending);
+        mark_value(c->exception_value, pending, strings);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_StackEntry>::iterator stack_fn;
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -112,7 +120,7 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
             /* [GC:] Регистрируем временный стек значений среди корней контекста. */
             const FVM_Value &v = (*c->gc_stacks[i])[j];
             /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-            mark_value(v, pending);
+            mark_value(v, pending, strings);
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -136,7 +144,7 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 const FVM_Value &v = (*frame->stack)[j];
                 /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-                mark_value(v, pending);
+                mark_value(v, pending, strings);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -148,7 +156,7 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (it = frame->locals->begin(); it != frame->locals->end(); ++it)
                 /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-                mark_value(it->second, pending);
+                mark_value(it->second, pending, strings);
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -161,10 +169,12 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
         FVM_Object *o = pending.back();
         /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
         pending.pop_back();
+        /* [GC:] Mark native TextField storage that is not represented by ordinary properties. */
+        strings.mark(fvm_textfield_string_root(o));
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (o->resource_result_valid)
             /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-            mark_value(o->resource_result, pending);
+            mark_value(o->resource_result, pending, strings);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->callable.root, pending);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
@@ -216,13 +226,13 @@ static void mark_graph(FVM_Context *c, size_t newborn_start = (size_t)-1)
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (p = o->properties.begin(); p != o->properties.end(); ++p)
             /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-            mark_value(p->second, pending);
+            mark_value(p->second, pending, strings);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<unsigned long, FVM_Value>::iterator q;
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (q = o->indexed.begin(); q != o->indexed.end(); ++q)
             /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
-            mark_value(q->second, pending);
+            mark_value(q->second, pending, strings);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -356,12 +366,16 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* [GC:] Prepare optional string tracing before finalizers or heap mutation. */
+            FVM_StringGCPlan strings(c);
+            /* [GC:] Initial object traversal begins with no marked context strings. */
+            strings.reset();
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (i = 0; i < c->objects.size(); ++i)
                 /* [GC:] Сбрасываем метку перед очередным проходом достижимости. */
                 c->objects[i]->gc_marked = false;
             /* [GC:] Обходим корни и все достижимые ссылки, включая циклические графы. */
-            mark_graph(c);
+            mark_graph(c, strings);
             /* [GC:] Finalizers may resurrect objects by placing them into the global graph.
                Mark again after all finalizers, before deleting anything. */
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -393,7 +407,10 @@ extern "C"
                 c->objects[i]->gc_marked = false;
             /* Snapshot bounds finalization; newborn graphs survive this pass. */
             /* [GC:] Обходим корни и все достижимые ссылки, включая циклические графы. */
-            mark_graph(c, original_count);
+            /* [GC:] Discard obsolete string roots before tracing finalizer resurrection. */
+            strings.reset();
+            /* [GC:] Trace old and newborn managed objects with their string values. */
+            mark_graph(c, strings, original_count);
             /* Resource callbacks see a coherent heap: do not delete objects until
                every unreachable resource has been released. */
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -414,6 +431,9 @@ extern "C"
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            /* [GC:] Preserve borrowed strings newly rooted by native release callbacks. */
+            strings.retain_release_roots();
+            /* [GC:] Count object reclamation separately from string-buffer reclamation. */
             unsigned long freed = 0;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             size_t kept = 0;
@@ -441,6 +461,9 @@ extern "C"
             }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             c->objects.resize(kept);
+            /* [GC:] Native release callbacks and object destructors finish before string release.
+             */
+            strings.sweep();
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (reclaimed)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

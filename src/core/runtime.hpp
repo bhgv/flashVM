@@ -297,8 +297,9 @@ struct FVM_Context
     /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */
     unsigned long gc_allocations; /* Allocations charged since the last collection. */
     /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
-    bool gc_collecting; /* Whether collection is currently running. */
-    bool destroying;    /* [GC:] Whether context destruction is in progress. */
+    bool gc_collecting;     /* Whether collection is currently running. */
+    bool gc_strings_traced; /* [GC:] Opt-in reclamation of unreachable context string buffers. */
+    bool destroying;        /* [GC:] Whether context destruction is in progress. */
     /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
     bool gc_releasing; /* Whether collector resource release is in progress. */
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */

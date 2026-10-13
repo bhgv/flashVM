@@ -151,6 +151,8 @@ extern "C"
         context->gc_allocations = 0;
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         context->gc_collecting = false;
+        /* [GC:] Preserve historical context-long string ownership unless explicitly opted in. */
+        context->gc_strings_traced = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->destroying = false;
         /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */

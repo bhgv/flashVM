@@ -4,6 +4,7 @@
 #include "string_internal.hpp"
 #include <cstring>
 #include <new>
+#include <climits>
 
 /* [GC:] Sum physical payload/terminator bytes without reading text or changing arena ownership. */
 extern "C" FVM_Result fvm_gc_string_stats(FVM_Context *c, FVM_GCStringStats *out)
@@ -52,6 +53,10 @@ void fvm_context_adopt_string(FVM_Context *c, char *data, size_t length)
     {
         /* [GC:] One descriptor records ownership and counted payload length together. */
         c->strings.push_back(FVM_ContextString(data, length));
+        /* [GC:] String-only workloads contribute to automatic scheduling in traced mode. */
+        if (c->gc_strings_traced && c->gc_allocations < ULONG_MAX)
+            /* [GC:] Charge this successful traced-string allocation without counter overflow. */
+            ++c->gc_allocations;
     }
     catch (...)
     {

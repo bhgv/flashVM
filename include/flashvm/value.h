@@ -133,7 +133,8 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *root);
 
-/* Returned context-owned strings are borrowed until context destruction.
+/* [GC:] Default arena strings are borrowed until context destruction.
+   [GC:] Opt-in traced strings require reachable values or root scopes across collection.
    [GC:] Borrowed objects survive only while reachable, pinned or held in a GC root scope.
    [GC:] A returned C pointer alone is not a collector root. Object references cannot cross
    contexts. Context APIs are not thread-safe. */

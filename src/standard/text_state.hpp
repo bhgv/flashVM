@@ -62,4 +62,6 @@ const char *fvm_text_callback_selector(FVM_NativeFunction, void *);
 
 /* Restore text callback data from its serialized identifier and selector. */
 void *fvm_text_callback_userdata(unsigned long, const char *);
+/* [GC:] Expose the native text buffer as an implicit root of a reachable TextField. */
+const char *fvm_textfield_string_root(FVM_Object *);
 #endif
