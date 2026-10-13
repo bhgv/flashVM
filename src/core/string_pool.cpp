@@ -78,13 +78,17 @@ void fvm_context_forget_string(FVM_Context *c, const char *data)
  */
 FVM_Result fvm_native_result(FVM_Context *c, FVM_Result status, FVM_Value *value)
 {
-    /* [GC:] Preserve errors and nonstring values without introducing unrelated allocations. */
-    if (status != FVM_OK || !value || value->type != FVM_VALUE_STRING)
+    /* [GC:] Failed callbacks retain their existing status and do not publish successful results. */
+    if (status != FVM_OK || !value)
         return status;
     /* [GC:] Validate the returned string and any primitive metatable before retaining it. */
     FVM_Result result = fvm_validate_value(c, value);
     if (result != FVM_OK)
         return result;
+    /* [GC:] Validate object ownership, primitive metadata and enum representation before type
+     * access. */
+    if (value->type != FVM_VALUE_STRING)
+        return FVM_OK;
     /* [GC:] Keep counted NUL/surrogate bytes intact; legacy terminated results resolve their count.
      */
     size_t length = fvm_string_size(*value);

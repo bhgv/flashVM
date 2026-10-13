@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.75 / Remaining work after v0.75
+# Оставшаяся работа после v0.76 / Remaining work after v0.76
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -158,3 +158,6 @@ v0.74 removes finalizer key allocation and verifies native retry/teardown safety
 
 В v0.75 finalizer preparation OOM допускает retry до первого native callback/AVM1 dispatch, после entry действует once-only; VM call depth восстанавливается (GC_FINALIZER_PREPARATION.md). Function.invoke string-result audit остаётся следующим пунктом.
 v0.75 separates retryable finalizer preparation from once-only user-code entry and verifies collection/dispatch failures; full GC/debugger acceptance remains open.
+
+В v0.76 native-result snapshots/validation добавлены в Function/global/stack/callable/Lua paths, с userdata poison и OOM (GC_NATIVE_DISPATCH_RESULTS.md). Успешные native values проверяют enum/context/metatable ownership. Полная стадия 7 остаётся открыта.
+v0.76 closes additional native result lifetime/ownership paths; complete GC/debugger acceptance remains open.

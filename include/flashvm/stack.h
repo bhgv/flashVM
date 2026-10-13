@@ -23,6 +23,8 @@ extern "C"
     /* Indices start at 1; negative indices count from the top (-1 is top). */
     /* Read stack. */
     FVM_API FVM_Result fvm_stack_get(const FVM_Stack *, int, FVM_Value *);
+    /* [GC:] Copy a value into this context's root stack. String views remain borrowed;
+       successful native callback results are normalized to context storage at return. */
     /* Push stack. */
     FVM_API FVM_Result fvm_stack_push(FVM_Stack *, const FVM_Value *);
     /* Pop stack. */

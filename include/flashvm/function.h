@@ -20,6 +20,9 @@ extern "C"
                                                 unsigned int parameter_count,
                                                 const char *const *parameters,
                                                 FVM_Object *environment, FVM_Object **);
+    /* [GC:] Invoke with active function/capture roots. Successful native strings become
+       context-owned snapshots; returned objects and primitive metatables must belong to this
+       context. Callers must root retained results across GC, including strings in traced mode. */
     /* Invoke function. */
     FVM_API FVM_Result fvm_function_invoke(FVM_Context *, FVM_Object *function,
                                            FVM_Object *receiver, unsigned int argc,

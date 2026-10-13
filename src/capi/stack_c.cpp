@@ -284,6 +284,12 @@ extern "C"
                 else
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     r = entry.callback(c, s, entry.userdata);
+                /* [GC:] Normalize the single selected result before its native capture barrier
+                 * ends. */
+                if (r == FVM_OK && s->values.size() == 1)
+                    /* [GC:] Stack results may borrow foreign userdata bytes that later GC will
+                     * release. */
+                    r = fvm_native_result(c, r, &s->values[0]);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -418,6 +424,11 @@ extern "C"
                 FVM_NativeCallGuard native_guard(c);
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 r = entry.callback(c, stack, entry.userdata);
+                /* [GC:] A callable return must not depend on the lifetime of its native capture. */
+                if (r == FVM_OK && stack->values.size() == 1)
+                    /* [GC:] Copy foreign strings and validate primitive/object ownership before
+                     * return. */
+                    r = fvm_native_result(c, r, &stack->values[0]);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

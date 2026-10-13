@@ -905,13 +905,22 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
                 c,
                 /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
                    вызова. */
-                frame.receiver, entry.callback(c, frame.receiver, n, args, out, entry.userdata));
+                frame.receiver,
+                /* [GC:] Snapshot/validate the result while function/capture root frames are active.
+                 */
+                fvm_native_result(
+                    /* [GC:] Validate and retain the callback result before root-frame teardown. */
+                    c, entry.callback(c, frame.receiver, n, args, out, entry.userdata), out));
         /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return fvm_exception_complete(
             /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
-            c, frame.receiver, entry.callback(c, frame.receiver, n, args, out, entry.userdata));
+            c, frame.receiver,
+            /* [GC:] Copy foreign string views before the native barrier and capture roots unwind.
+             */
+            fvm_native_result(c, entry.callback(c, frame.receiver, n, args, out, entry.userdata),
+                              out));
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

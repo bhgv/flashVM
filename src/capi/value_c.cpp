@@ -1404,7 +1404,9 @@ extern "C"
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 c, c->global,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                it->second.callback(c, c->global, argc, argv, out, it->second.userdata));
+                fvm_native_result(
+                    c, it->second.callback(c, c->global, argc, argv, out, it->second.userdata),
+                    out));
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
