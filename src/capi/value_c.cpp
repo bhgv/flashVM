@@ -372,6 +372,10 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     if (!c || !o || o->owner != c || fvm_validate_value(c, v) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
 
+    /* Loaded Object.set ignores an empty name before descriptor, watcher or metadata dispatch. */
+    if (c->swf_loaded && name.empty())
+        return FVM_OK;
+
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
     FVM_Object *flag_cursor = start;

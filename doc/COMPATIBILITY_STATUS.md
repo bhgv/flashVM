@@ -858,3 +858,14 @@ plus the AGG runner; six focused checks in restricted heap/global ASan+UBSan
 and portable Linux profiles. One AGG broker-lifetime launch failure passed after
 execute-bit restoration. All fifteen original SWFs match exactly. Negative signed
 lengths, shift size limits, native accessor data and all stages remain open.
+
+## v0.145 — empty Object assignment / пустое имя свойства
+
+Loaded ordinary Object writes ignore empty keys before property callbacks,
+while SetMember still coerces the key once. Preexisting empty host properties
+remain readable; single counted NUL keys remain writable.
+[RU/EN details](OBJECT_EMPTY_ASSIGNMENT.md). Evidence: 313 core tests in
+AGG/Cairo plus the AGG runner; five focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. No launch failures in these suites.
+All fifteen original SWFs still match exactly. SetVariable/local scope, function
+versions and every roadmap stage remain open.
