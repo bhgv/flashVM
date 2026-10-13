@@ -807,7 +807,8 @@ struct SortItem
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
 {
-    if (a.value.type == FVM_VALUE_UNDEFINED || b.value.type == FVM_VALUE_UNDEFINED)
+    if (!c->swf_loaded &&
+        (a.value.type == FVM_VALUE_UNDEFINED || b.value.type == FVM_VALUE_UNDEFINED))
     {
         order = a.value.type == b.value.type ? 0 : a.value.type == FVM_VALUE_UNDEFINED ? 1 : -1;
         return FVM_OK;
@@ -947,7 +948,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 item.keys.push_back(key);
             }
         }
-        if (!spec && !callback && item.value.type != FVM_VALUE_UNDEFINED)
+        if (!spec && !callback && (c->swf_loaded || item.value.type != FVM_VALUE_UNDEFINED))
         {
             if (item.value.type == FVM_VALUE_NUMBER)
                 item.number = item.value.number;

@@ -35,8 +35,15 @@ int main()
             args[1] = object(watch_fn); assert(fvm_object_call(c, o, "watch", 2, args, &out) == FVM_OK && out.boolean);
             reads = writes = watched = 0; assert(borrow(c, array, "sort", o, 0, 0, &out) == FVM_OK && out.object == o && reads == 0 && writes == 0 && watched == 0);
             assert(fvm_gc_collect(c, 0) == FVM_OK); assert(borrow(c, array, "slice", o, 0, 0, &out) == FVM_OK);
-            number(c, out.object, "length", 4); number(c, out.object, "0", readonly ? 9 : 1); number(c, out.object, "1", 8); number(c, out.object, "2", 9);
-            assert(fvm_table_get_index(c, out.object, 3, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
+            number(c, out.object, "length", 4);
+            if (version <= 6) {
+                if (readonly) number(c, out.object, "0", 9);
+                else assert(fvm_table_get_index(c, out.object, 0, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
+                number(c, out.object, "1", 1); number(c, out.object, "2", 8); number(c, out.object, "3", 9);
+            } else {
+                number(c, out.object, "0", readonly ? 9 : 1); number(c, out.object, "1", 8); number(c, out.object, "2", 9);
+                assert(fvm_table_get_index(c, out.object, 3, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
+            }
         }
         fvm_context_destroy(c);
     }

@@ -4,8 +4,16 @@
 #include "flashvm/gc.h"
 static unsigned compared;
 static bool equal_keys;
+static unsigned undefined_compared;
 static FVM_Result compare(FVM_Context *, FVM_Object *, unsigned n, const FVM_Value *a, FVM_Value *out, void *)
-{ assert(n == 2); ++compared; fvm_value_number(out, equal_keys ? 0 : a[0].number - a[1].number); return FVM_OK; }
+{
+    assert(n == 2); ++compared;
+    if (a[0].type == FVM_VALUE_UNDEFINED || a[1].type == FVM_VALUE_UNDEFINED) {
+        ++undefined_compared;
+        fvm_value_number(out, a[0].type == a[1].type ? 0 : a[0].type == FVM_VALUE_UNDEFINED ? -1 : 1);
+    } else fvm_value_number(out, equal_keys ? 0 : a[0].number - a[1].number);
+    return FVM_OK;
+}
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; assert(fvm_config_init(&cfg) == FVM_OK); assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
@@ -37,6 +45,14 @@ int main()
         number(c, out.object, "1", 1);
         number(c, out.object, "2", version ? 0 : 2);
         equal_keys = false;
+        fvm_value_undefined(&value);
+        assert(fvm_table_set_index(c, array, 1, &value) == FVM_OK);
+        fvm_value_number(args + 1, 0); undefined_compared = 0;
+        assert(fvm_object_call(c, array, "sort", 2, args, &out) == FVM_OK);
+        assert((undefined_compared != 0) == (version != 0));
+        assert(fvm_table_get_index(c, array, version ? 0 : 2, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
+        number(c, array, version ? "1" : "0", 1);
+        number(c, array, version ? "2" : "1", 3);
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);
