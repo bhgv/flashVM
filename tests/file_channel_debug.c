@@ -6,6 +6,7 @@
 #include "../ports/thread_port.h"
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 static FVM_Result read_worker(FVM_Context *c,const FVM_Value *in,FVM_Value *out,void *ud)
 {
@@ -77,6 +78,29 @@ int main(void)
     assert(fvm_channel_open_file(path,"w",&ch)==FVM_OK);
     assert(fvm_debug_channel_message(c,ch,0,&out)==FVM_ERROR);
     assert(fvm_debug_channel_state(ch,&info)==FVM_ERROR);
+    fvm_channel_destroy(ch);
+    assert(!remove(path));
+    assert(fvm_channel_open_file(path,"rw",&ch)==FVM_OK);
+    {
+        size_t records=65537,bytes=records*16,i;unsigned char *data=(unsigned char *)calloc(bytes,1);
+        assert(data);for(i=0;i<records;++i)memcpy(data+i*16,"FVMG\0\0\0\7",8);
+        assert(fvm_channel_file_write(ch,data,bytes-16)==FVM_OK);
+        assert(fvm_debug_channel_state(ch,&info)==FVM_OK && info.pending==65536);
+        assert(fvm_channel_file_write(ch,data+bytes-16,16)==FVM_OK);free(data);
+        info.pending=987;info.identity=555;
+        assert(fvm_debug_channel_state(ch,&info)==FVM_UNSUPPORTED && info.pending==987 && info.identity==555);
+        assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_OK && count==1 && byte=='F');
+    }
+    fvm_channel_destroy(ch);
+    assert(!remove(path));assert(fvm_channel_open_file(path,"rw",&ch)==FVM_OK);
+    {
+        unsigned char headers[32]={0};memcpy(headers,"FVMG\0\0\0\7",8);memcpy(headers+16,headers,8);
+        headers[24]=3;headers[25]=255;headers[26]=255;headers[27]=240;
+        assert(fvm_channel_file_write(ch,headers,32)==FVM_OK);
+        info.pending=987;info.identity=555;
+        assert(fvm_debug_channel_state(ch,&info)==FVM_UNSUPPORTED && info.pending==987 && info.identity==555);
+        assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_OK && count==1 && byte=='F');
+    }
     fvm_channel_destroy(ch);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
     assert(!remove(path));return 0;

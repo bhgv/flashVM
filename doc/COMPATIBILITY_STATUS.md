@@ -200,3 +200,7 @@ Non-consuming local file pending/frozen/closed inspection implemented; malformed
 ## v0.66 — Managed fractional box blur
 
 BlurFilter constructor/properties/clone, bitmap application and expanded bounds implemented with staged premultiplied planes and private graph validation. Полная Flash/scene совместимость остаётся открытой. Проверки: blur_filter, blur_filter_allocation; BLUR_FILTER.md.
+
+## v0.67 — Remote channel debugger controls
+
+Compatible broker queue/file freeze/state implemented with validated controls and bounded file scans. Проверки: channel_debug_network, channel_debug_protocol, file_channel_debug. Remote payload inspection, distributed wait/deadlock graphs and complete acceptance remain open; REMOTE_CHANNEL_DEBUG.md.

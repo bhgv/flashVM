@@ -10,7 +10,8 @@
 extern "C"
 {
 #endif
-    /* Remote operation codes: 0 status, 4 close, 5 send graph, 6 receive graph. */
+    /* Remote operation codes: 0 status, 4 close, 5 send graph, 6 receive graph,
+       7 debugger freeze/resume, 8 debugger state snapshot. */
     typedef FVM_Result (*FVM_RemoteChannelFn)(void *, FVM_Context *, int, const unsigned char *,
                                               size_t, unsigned char **, size_t *, int);
     /* Create channel remote. */

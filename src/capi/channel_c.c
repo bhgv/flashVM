@@ -163,7 +163,7 @@ FVM_Result fvm_channel_file_send_record(FVM_Channel *c, const unsigned char *dat
    EOF is finite: blocking receive never waits for an external file writer. */
 /* Compute and return file record. */
 static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size, int blocking,
-                              int inspecting)
+                              int inspecting, size_t budget)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -198,6 +198,12 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
     body = ((size_t)header[8] << 24) | ((size_t)header[9] << 16) | ((size_t)header[10] << 8) |
            header[11];
     if (body > 64UL * 1024 * 1024 - 16)
+    {
+        result = FVM_UNSUPPORTED;
+        goto fail;
+    }
+    /* Reject a record beyond the inspection budget before allocating or reading its body. */
+    if (body + 16 > budget)
     {
         result = FVM_UNSUPPORTED;
         goto fail;
@@ -251,7 +257,7 @@ FVM_Result fvm_channel_file_peek_record(FVM_Channel *c, size_t index, unsigned c
     position = fvm_port_file_position(c->file);
     for (;;)
     {
-        result = file_record(c, data, size, 0, 1);
+        result = file_record(c, data, size, 0, 1, 64UL * 1024 * 1024);
         if (result != FVM_OK || !index)
             break;
         free(*data);
@@ -278,7 +284,8 @@ FVM_Result fvm_channel_file_receive_record(FVM_Channel *c, unsigned char **data,
     *data = 0;
     *size = 0;
     fvm_port_sync_lock(c->sync);
-    result = c->file_channel ? file_record(c, data, size, blocking, 0) : FVM_UNSUPPORTED;
+    result = c->file_channel ? file_record(c, data, size, blocking, 0, 64UL * 1024 * 1024)
+                             : FVM_UNSUPPORTED;
     fvm_port_sync_unlock(c->sync);
     return result;
 }
@@ -323,7 +330,7 @@ static FVM_Result file_primitive(FVM_Channel *c, FVM_Value *out, int blocking, i
 
     /* Computation / Вычисление и обновление состояния. */
     position = fvm_port_file_position(c->file);
-    result = file_record(c, &data, &size, blocking, 0);
+    result = file_record(c, &data, &size, blocking, 0, 64UL * 1024 * 1024);
     if (result == FVM_OK)
     {
         result = fvm_serialization_decode_primitive(data, size, out);
@@ -788,7 +795,16 @@ FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
     if (!c)
         return FVM_INVALID_ARGUMENT;
     if (c->remote_request)
-        return FVM_UNSUPPORTED;
+    {
+        unsigned char input = frozen != 0;
+        unsigned char *response = 0;
+        size_t size = 0;
+        FVM_Result result = c->remote_request(c->remote, 0, 7, &input, 1, &response, &size, 0);
+        if (result == FVM_OK && size)
+            result = FVM_ERROR;
+        free(response);
+        return result;
+    }
 
     /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
@@ -796,6 +812,13 @@ FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
     fvm_port_sync_signal_all(c->sync);
     fvm_port_sync_unlock(c->sync);
     return FVM_OK;
+}
+
+/* Decode a portable unsigned 32-bit control field without host endian or alignment assumptions. */
+static unsigned long debug_word(const unsigned char *data)
+{
+    return ((unsigned long)data[0] << 24) | ((unsigned long)data[1] << 16) |
+           ((unsigned long)data[2] << 8) | data[3];
 }
 
 /* Capture queue metadata or count framed unread local file records without consuming them.
@@ -806,12 +829,32 @@ FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
     FVM_DebugChannel state;
     FVM_Result result;
     unsigned char *data;
-    size_t size;
+    size_t size, scanned;
     long position;
     if (!c || !out)
         return FVM_INVALID_ARGUMENT;
     if (c->remote_request)
-        return FVM_UNSUPPORTED;
+    {
+        unsigned char *response = 0;
+        size_t length = 0;
+        result = c->remote_request(c->remote, 0, 8, 0, 0, &response, &length, 0);
+        if (result == FVM_OK)
+        {
+            if (length != 12 || !response || debug_word(response + 8) > 3)
+                result = FVM_ERROR;
+            else
+            {
+                state.identity = c->identity;
+                state.pending = (size_t)debug_word(response);
+                state.capacity = (size_t)debug_word(response + 4);
+                state.closed = (debug_word(response + 8) & 1) != 0;
+                state.frozen = (debug_word(response + 8) & 2) != 0;
+                *out = state;
+            }
+        }
+        free(response);
+        return result;
+    }
 
     fvm_port_sync_lock(c->sync);
     state.identity = c->identity;
@@ -827,17 +870,21 @@ FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
         if (!c->closed)
         {
             position = fvm_port_file_position(c->file);
+            scanned = 0;
             for (;;)
             {
-                result = file_record(c, &data, &size, 0, 1);
+                result = file_record(c, &data, &size, 0, 1,
+                                     state.pending >= 65536 ? 0 : 64UL * 1024 * 1024 - scanned);
                 if (result != FVM_OK)
                     break;
                 free(data);
-                if (state.pending == (size_t)-1)
+                /* Bound inspection even if another process continuously appends records. */
+                if (state.pending >= 65536 || size > 64UL * 1024 * 1024 - scanned)
                 {
                     result = FVM_UNSUPPORTED;
                     break;
                 }
+                scanned += size;
                 ++state.pending;
             }
             fvm_port_file_restore(c->file, position);

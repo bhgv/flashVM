@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.66 / Remaining work after v0.66
+# Оставшаяся работа после v0.67 / Remaining work after v0.67
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -131,3 +131,6 @@ v0.65 adds non-consuming local file channel state inspection; remote inspection 
 
 В v0.66 добавлены BlurFilter class/properties/clone, fractional box bitmap application и expanded bounds (BLUR_FILTER.md). Историческая Flash/scene сверка и остальные фильтры открыты.
 v0.66 adds managed blur filtering; full historical Flash and scene conformance remain open.
+
+В v0.67 добавлены remote channel freeze/state, неблокирующие broker controls и bounded file scans (REMOTE_CHANNEL_DEBUG.md). Remote peek/waiters/deadlock и полная приёмка стадий 6/7 открыты.
+v0.67 adds remote debugger controls; complete distributed inspection and acceptance remain open.

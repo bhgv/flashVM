@@ -17,12 +17,13 @@ Close пробуждает читателей с `FVM_ERROR`; закрытый �
 
 Ограничения: raw bytes без framing FVMG не являются сообщениями; индексация
 проходит предыдущие записи последовательно и использует ограничение 64 MiB
-на запись. Изменение файла внешним процессом не замораживается. Удалённые
-endpoints не поддерживают freeze/peek. В v0.65 `fvm_debug_channel_state` сканирует framed записи локального файла
+на запись. Изменение файла внешним процессом не замораживается. В v0.67 remote endpoints поддерживают freeze/state через совместимый broker,
+но remote peek остаётся открытым (REMOTE_CHANNEL_DEBUG.md). В v0.65 `fvm_debug_channel_state` сканирует framed записи локального файла
 под lock и возвращает pending/frozen/closed без изменения read cursor. Pending
 считает complete framed records, а не проверенные decoded payloads; capacity=0.
 Закрытый file handle имеет pending=0 (дальнейшее чтение через него невозможно).
-Read/framing/OOM ошибки не изменяют переданный output. Write-only file даёт
+Read/framing/OOM ошибки не изменяют переданный output. С v0.67 scan ограничен
+65536 records/64 MiB; превышение возвращает UNSUPPORTED и сохраняет cursor/output. Write-only file даёт
 FVM_ERROR при сканировании. Внешние изменения не защищены этим lock.
 Эта возможность не закрывает стадии 6 и 7 или полную приёмку отладчика.
 
@@ -45,8 +46,8 @@ after unlocking. Inspection creates a separate graph with preserved cycles.
 Callers must root inspected objects across GC. Embedded capabilities continue
 to refer to shared live resources; their state is not frozen by inspection.
 
-Raw unframed bytes, remote endpoints and external file mutations are not
-supported. v0.65 scans framed local file records under the channel lock and
+Raw unframed bytes and external file mutations are not supported. v0.67 adds
+compatible broker freeze/state controls; remote peek remains open. v0.65 scans framed local file records under the channel lock and
 reports pending/frozen/closed without advancing the cursor. Pending counts full
 framed records, not decoded/validated payload graphs; capacity is zero. Closed
 file handles report zero readable pending records. Read/framing/allocation

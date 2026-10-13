@@ -6,6 +6,7 @@
 #include "../core/capability_internal.hpp"
 #include "flashvm/capability.h"
 #include "flashvm/worker.h"
+#include "flashvm/debug.h"
 #include "../../ports/network_port.h"
 #include "../../ports/thread_port.h"
 #include "../../ports/channel_sync.h"
@@ -398,7 +399,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     FVM_Result r = closed(e, &state);
     if (r != FVM_OK)
         return r;
-    if (h[5] != 0 && state)
+    if (h[5] != 0 && h[5] != 8 && state)
     {
         fault = FVM_RESOURCE_CLOSED;
         return FVM_ERROR;
@@ -437,6 +438,32 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     }
     if (e.kind != 1)
         return FVM_INVALID_ARGUMENT;
+    /* Debug controls are nonblocking on the authority, including a frozen receive queue. */
+    if (h[5] == 7)
+    {
+        if (size != 1 || input[0] > 1)
+            return FVM_INVALID_ARGUMENT;
+        return fvm_debug_channel_freeze((FVM_Channel *)e.handle, input[0]);
+    }
+    if (h[5] == 8)
+    {
+        if (size)
+            return FVM_INVALID_ARGUMENT;
+        FVM_DebugChannel snapshot;
+        r = fvm_debug_channel_state((FVM_Channel *)e.handle, &snapshot);
+        if (r != FVM_OK)
+            return r;
+        if (snapshot.pending > 4294967295UL || snapshot.capacity > 4294967295UL)
+            return FVM_UNSUPPORTED;
+        *output = (unsigned char *)std::malloc(12);
+        if (!*output)
+            return FVM_OUT_OF_MEMORY;
+        put(*output, (unsigned long)snapshot.pending);
+        put(*output + 4, (unsigned long)snapshot.capacity);
+        put(*output + 8, (snapshot.closed ? 1UL : 0UL) | (snapshot.frozen ? 2UL : 0UL));
+        *length = 12;
+        return FVM_OK;
+    }
     int stream = 0;
     fvm_channel_is_stream((FVM_Channel *)e.handle, &stream);
     if (h[5] == 5)

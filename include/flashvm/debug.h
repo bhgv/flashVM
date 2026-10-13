@@ -54,11 +54,14 @@ extern "C"
             frozen; /* Whether debugger interception has frozen delivery. */
     } FVM_DebugChannel;
     /* Freeze queue delivery or local file reads; producers/writers remain active. Closed frozen
-       queues require explicit resume to drain. Remote endpoints do not support freezing. */
+       queues require explicit resume to drain. Compatible brokers control remote authority
+       freezing; remote closure still rejects receives even if the authority queue has buffered
+       records. */
     /* Implement debug channel freeze for this subsystem. */
     FVM_API FVM_Result fvm_debug_channel_freeze(FVM_Channel *, int);
-    /* Inspect queue state or scan framed local file records without consuming them. Remote
-       endpoints return UNSUPPORTED; file read/framing failures leave the output unchanged. */
+    /* Inspect local or compatible remote queue/file state without consuming records.
+       Remote identity denotes the local proxy; remote counters are bounded to Uint32.
+       Transport/read/framing failures leave output unchanged; older brokers reject new controls. */
     FVM_API FVM_Result fvm_debug_channel_state(FVM_Channel *, FVM_DebugChannel *);
     /* Decode an immutable packet snapshot without dequeueing. Resource capabilities
        remain live shared handles; this does not freeze their native state. Local file indexes
