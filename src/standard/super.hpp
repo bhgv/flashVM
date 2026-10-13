@@ -10,7 +10,7 @@ FVM_Result fvm_super_get(FVM_Context *, FVM_Object *, const fvm_detail::string &
 /* Write through parent setters while keeping the actual receiver. */
 FVM_Result fvm_super_set(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value *);
 /* Call a parent method with the actual receiver and its defining prototype owner. */
-FVM_Result fvm_super_method(FVM_Context *, FVM_Object *, const char *, unsigned int,
+FVM_Result fvm_super_method(FVM_Context *, FVM_Object *, const fvm_detail::string &, unsigned int,
                             const FVM_Value *, FVM_Value *);
 /* Recognize the native facade constructor callback for graph serialization. */
 FVM_NativeFunction fvm_super_callback();

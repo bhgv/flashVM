@@ -109,6 +109,15 @@ extern "C"
     /* Call object. */
     FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int,
                                        const FVM_Value *, FVM_Value *);
+    /* Call a native or script member using its complete counted WTF-8 name. */
+    FVM_API FVM_Result fvm_object_call_bytes(FVM_Context *, FVM_Object *, const char *, size_t,
+                                             unsigned int, const FVM_Value *, FVM_Value *);
+    /* [GC:] Define a native method with a counted name and a traced capture. */
+    FVM_API FVM_Result fvm_object_define_method_rooted_bytes(FVM_Context *, FVM_Object *,
+        const char *, size_t, FVM_NativeFunction, void *, FVM_Object *);
+    /* [GC:] Define a counted native accessor; getters/setters bind the receiver. */
+    FVM_API FVM_Result fvm_object_define_accessor_rooted_bytes(FVM_Context *, FVM_Object *,
+        const char *, size_t, FVM_NativeFunction, FVM_NativeFunction, void *, FVM_Object *);
     /* Call the current value. */
     FVM_API FVM_Result fvm_call(FVM_Context *, const char *, unsigned int, const FVM_Value *,
                                 FVM_Value *);

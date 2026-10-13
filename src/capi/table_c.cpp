@@ -276,6 +276,20 @@ extern "C"
         *out = it->second;
         return FVM_OK;
     }
+    /* Return the byte count alongside the borrowed complete own property name. */
+    FVM_Result fvm_table_named_at_bytes(FVM_Context *c, FVM_Object *o, size_t index,
+                                       const char **name, size_t *size, FVM_Value *out)
+    {
+        if (!valid(c, o) || !name || !size || !out || index >= o->properties.size())
+            return FVM_INVALID_ARGUMENT;
+        fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator entry = o->properties.begin();
+        while (index--)
+            ++entry;
+        *name = entry->first.data();
+        *size = entry->first.size();
+        *out = entry->second;
+        return FVM_OK;
+    }
     /* Compute and return table indexed at. */
     FVM_Result fvm_table_indexed_at(FVM_Context *c, FVM_Object *o, size_t index, unsigned long *key,
                                     FVM_Value *out)

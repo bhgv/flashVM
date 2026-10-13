@@ -228,3 +228,12 @@ allocation rollback checks. Default suite 244/244; portable 2/2; headless
 ASan/UBSan 5/5 with stack/leak exclusions. Stage 1 remains open; counted calls,
 native registrations and variable names are not covered yet.
 RU/EN: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
+
+## v0.82 — Counted native member dispatch
+
+Проверено / tested: native member/accessor registration and invocation with NUL
+and canonical UTF-16 keys, retained captures, inherited receivers, cached Function
+identity and AVM1 CallMethod/NewMethod path. Size-aware table property queries
+added. Default 245/245; headless ASan/UBSan targeted 4/4; portable new test 1/1.
+Global/function variable names and full stage-1 conformance remain open.
+RU/EN and regression scope: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).

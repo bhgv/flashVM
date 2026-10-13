@@ -15,6 +15,7 @@
 #include "try_record.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
+#include "../core/property_key.hpp"
 /* [GC:] Commit finalizer entry only after VM preparation completes. */
 #include "../core/finalizer_entry.hpp"
 #include "flashvm/avm1.h"
@@ -1800,8 +1801,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                      stack.back().type != FVM_VALUE_UNDEFINED) ||
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
-                fvm_detail::string name =
-                    stack.back().type == FVM_VALUE_STRING ? stack.back().string : "";
+                fvm_detail::string name;
+                if (stack.back().type == FVM_VALUE_STRING)
+                {
+                    FVM_Result normalized = fvm_property_key(stack.back().string,
+                                                               fvm_string_size(stack.back()), name);
+                    if (normalized != FVM_OK)
+                        return normalized;
+                }
                 FVM_Value owner = stack[stack.size() - 2];
                 FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
                 if (!receiver)
@@ -1829,14 +1836,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     c->script_functions.find(name);
                 FVM_NativeEntry native_method;
                 FVM_Result lookup =
-                    fvm_lookup_native_method(receiver, name.c_str(), &native_method);
+                    fvm_lookup_native_method(receiver, name, &native_method);
                 if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
                     return lookup;
                 if (a.op == 0x53)
                 {
                     FVM_Value function;
                     r = name.empty() ? FVM_OK
-                                     : fvm_object_get(c, receiver, name.c_str(), &function);
+                                     : fvm_object_get_bytes(c, receiver, name.data(), name.size(), &function);
                     if (name.empty())
                     {
                         fvm_value_undefined(&function);
@@ -1862,7 +1869,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = call_script(c, script->first.c_str(), script->second, argc,
                                     argc ? &args[0] : 0, receiver, &result);
                 else
-                    r = fvm_object_call(c, receiver, name.c_str(), argc, argc ? &args[0] : 0,
+                    r = fvm_object_call_bytes(c, receiver, name.data(), name.size(), argc, argc ? &args[0] : 0,
                                         &result);
                 if (r != FVM_OK)
                     return r;

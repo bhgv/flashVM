@@ -331,7 +331,7 @@ void fvm_standard_text_cleanup(FVM_Context *);
 /* Shared bounded method lookup for C API and AVM1. Noncallable own properties
  * shadow inherited callbacks; NOT_FOUND permits legacy named-function fallback. */
 /* Look up native method. */
-FVM_Result fvm_lookup_native_method(FVM_Object *, const char *, FVM_NativeEntry *);
+FVM_Result fvm_lookup_native_method(FVM_Object *, const fvm_detail::string &, FVM_NativeEntry *);
 
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction);

@@ -64,3 +64,29 @@ Headless ASan/UBSan: 5/5 new/property/serialization/string/generic-array checks.
 ASan stack instrumentation and LeakSanitizer are disabled: exception unwinding
 and task enumeration cannot read sandbox /proc. Heap/global ASan and UBSan
 remain enabled. No other-platform execution or full stack/leak proof is claimed.
+
+## v0.82 — Нативные методы / Native members
+
+Добавлены counted `fvm_object_call_bytes`,
+`fvm_object_define_method_rooted_bytes`,
+`fvm_object_define_accessor_rooted_bytes` и `fvm_table_named_at_bytes`.
+Старые terminated registration/call API также канонизируют WTF-8. Чтение
+нативного метода возвращает стабильный cached Function для полного ключа.
+Prototype dispatch, accessor receiver и traced capture сохраняют прежние
+правила. AVM1 CallMethod/NewMethod используют полный нормализованный ключ.
+Новые функции не меняют ABI layout или graph 8. Terminated глобальные
+функции/конструкторы и AVM1 variable names ещё требуют отдельного прохода.
+
+Counted native method/accessor registration, member calls and table name-size
+queries now preserve complete keys. Legacy registrations/calls normalize the
+same WTF-8 representation. Cached Function identity, inherited receiver binding,
+rooted captures and graph transport remain intact. AVM1 CallMethod/NewMethod
+use full normalized names. Global registration/calls and variable-name handling
+remain open; full stage-1 acceptance is not claimed.
+
+Verification: Linux default AGG 245/245, examples disabled. New
+native_counted_members covers embedded-NUL member names, scalar/pair/lone
+surrogates, invalid names, inherited dispatch, shadowing, setters, stable method
+Function identity, GC capture retention, AVM1 CallMethod, graph restore and queue
+transfer. Headless ASan/UBSan targeted 4/4; portable new test 1/1. Stack/leak
+sanitizer exclusions remain as above. No other-platform runtime certification.

@@ -216,7 +216,7 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
 }
 
 /* Invoke a named parent member and record the prototype that actually supplied it. */
-FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const char *name,
+FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
                             unsigned int count, const FVM_Value *args, FVM_Value *out)
 {
     FVM_Object *receiver = 0, *current = 0, *start = 0;

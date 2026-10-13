@@ -30,6 +30,9 @@ extern "C"
     /* Implement table named at for this subsystem. */
     FVM_API FVM_Result fvm_table_named_at(FVM_Context *, FVM_Object *, size_t, const char **,
                                           FVM_Value *);
+    /* Return a borrowed counted name and value; pointers expire on mutation. */
+    FVM_API FVM_Result fvm_table_named_at_bytes(FVM_Context *, FVM_Object *, size_t,
+                                               const char **, size_t *, FVM_Value *);
     /* Implement table indexed at for this subsystem. */
     FVM_API FVM_Result fvm_table_indexed_at(FVM_Context *, FVM_Object *, size_t, unsigned long *,
                                             FVM_Value *);

@@ -73,13 +73,13 @@ static FVM_Result copy_value(FVM_Context *context, const FVM_Value *src, FVM_Val
 }
 
 /* Look up native method. */
-FVM_Result fvm_lookup_native_method(FVM_Object *object, const char *name, FVM_NativeEntry *out)
+FVM_Result fvm_lookup_native_method(FVM_Object *object, const fvm_detail::string &name, FVM_NativeEntry *out)
 {
-    if (!object || !name || !out)
+    if (!object || !out)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        fvm_detail::string key(name);
+        const fvm_detail::string &key = name;
         for (unsigned int depth = 0; object && depth < 1024; ++depth)
         {
             /* Function-valued data/accessor dispatch is still unsupported. A data
@@ -949,6 +949,13 @@ extern "C"
     FVM_Result fvm_object_call(FVM_Context *c, FVM_Object *self, const char *name,
                                unsigned int argc, const FVM_Value *argv, FVM_Value *out)
     {
+        return name ? fvm_object_call_bytes(c, self, name, std::strlen(name), argc, argv, out)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve a canonical counted name through the native dispatch bridge. */
+    FVM_Result fvm_object_call_bytes(FVM_Context *c, FVM_Object *self, const char *name, size_t size,
+                               unsigned int argc, const FVM_Value *argv, FVM_Value *out)
+    {
         unsigned int i;
         if (!c || !self || self->owner != c || !name || !out || (argc && !argv))
             return FVM_INVALID_ARGUMENT;
@@ -959,9 +966,14 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             if (self->resource_kind == 37)
-                return fvm_super_method(c, self, name, argc, argv, out);
+                return fvm_super_method(c, self, key, argc, argv, out);
             FVM_Object *cursor = self;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             unsigned int levels = 0;
@@ -970,15 +982,15 @@ extern "C"
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (cursor->properties.find(name) != cursor->properties.end() ||
+                if (cursor->properties.find(key) != cursor->properties.end() ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    cursor->accessors.find(name) != cursor->accessors.end())
+                    cursor->accessors.find(key) != cursor->accessors.end())
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     FVM_Value member;
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    FVM_Result r = fvm_object_get(c, self, name, &member);
+                    FVM_Result r = fvm_object_get_bytes(c, self, key.data(), key.size(), &member);
                     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (r != FVM_OK)
                         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -992,7 +1004,7 @@ extern "C"
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (cursor->methods.find(name) != cursor->methods.end())
+                if (cursor->methods.find(key) != cursor->methods.end())
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     break;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1002,7 +1014,7 @@ extern "C"
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_NativeEntry entry;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            FVM_Result lookup = fvm_lookup_native_method(self, name, &entry);
+            FVM_Result lookup = fvm_lookup_native_method(self, key, &entry);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (lookup != FVM_OK && lookup != FVM_NOT_FOUND)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1014,7 +1026,7 @@ extern "C"
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c->functions.find(name);
+                    c->functions.find(key);
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (it == c->functions.end())
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1133,8 +1145,21 @@ extern "C"
         FVM_Object *root)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        return name ? fvm_object_define_method_rooted_bytes(c, object, name, std::strlen(name), callback, userdata, root)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve a canonical counted name through the native dispatch bridge. */
+    FVM_Result fvm_object_define_method_rooted_bytes(
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Context *c, FVM_Object *object, const char *name, size_t size,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_NativeFunction callback, void *userdata,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Object *root)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!c || !object || object->owner != c || !name || !*name || !callback ||
+        if (!c || !object || object->owner != c || !name || !size || !callback ||
             /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
             (root && root->owner != c) || c->destroying || c->gc_releasing)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1153,8 +1178,13 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_detail::string key(name);
+
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (object->properties.find(key) != object->properties.end() ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1190,12 +1220,25 @@ extern "C"
         FVM_Object *root)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        return name ? fvm_object_define_accessor_rooted_bytes(c, object, name, std::strlen(name), getter, setter, userdata, root)
+                    : FVM_INVALID_ARGUMENT;
+    }
+    /* Preserve a canonical counted name through the native dispatch bridge. */
+    FVM_Result fvm_object_define_accessor_rooted_bytes(
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Context *c, FVM_Object *object,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        const char *name, size_t size, FVM_NativeFunction getter,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_NativeFunction setter, void *userdata,
+        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        FVM_Object *root)
+    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!c || !object || object->owner != c || !name || !*name || (!getter && !setter) ||
+        if (!c || !object || object->owner != c || !name || !size || (!getter && !setter) ||
             /* [GC:] Учитываем фазу освобождения ресурсов сборщиком. */
-            (root && root->owner != c) || c->destroying || c->gc_releasing ||
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            object->properties.find(name) != object->properties.end())
+            (root && root->owner != c) || c->destroying || c->gc_releasing)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1214,8 +1257,15 @@ extern "C"
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            fvm_detail::string key;
+            FVM_Result normalized = fvm_property_key(name, size, key);
+            if (normalized != FVM_OK)
+                return normalized;
+
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            object->accessors[name] = entry;
+            if (object->properties.find(key) != object->properties.end())
+                return FVM_INVALID_ARGUMENT;
+            object->accessors[key] = entry;
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
