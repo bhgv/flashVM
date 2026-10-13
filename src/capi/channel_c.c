@@ -798,23 +798,57 @@ FVM_Result fvm_debug_channel_freeze(FVM_Channel *c, int frozen)
     return FVM_OK;
 }
 
-/* Compute and return debug channel state. */
+/* Capture queue metadata or count framed unread local file records without consuming them.
+ * File scanning runs under the channel lock; malformed data leaves both cursor and output intact.
+ */
 FVM_Result fvm_debug_channel_state(FVM_Channel *c, FVM_DebugChannel *out)
 {
+    FVM_DebugChannel state;
+    FVM_Result result;
+    unsigned char *data;
+    size_t size;
+    long position;
     if (!c || !out)
         return FVM_INVALID_ARGUMENT;
-    if (c->file_channel)
+    if (c->remote_request)
         return FVM_UNSUPPORTED;
 
-    /* Computation / Вычисление и обновление состояния. */
     fvm_port_sync_lock(c->sync);
-    out->identity = c->identity;
-    out->pending = c->pending;
-    out->capacity = c->capacity;
-    out->closed = c->closed;
-    out->frozen = c->frozen;
+    state.identity = c->identity;
+    state.pending = c->pending;
+    state.capacity = c->capacity;
+    state.closed = c->closed;
+    state.frozen = c->frozen;
+    result = FVM_OK;
+    if (c->file_channel)
+    {
+        state.pending = 0;
+        state.capacity = 0;
+        if (!c->closed)
+        {
+            position = fvm_port_file_position(c->file);
+            for (;;)
+            {
+                result = file_record(c, &data, &size, 0, 1);
+                if (result != FVM_OK)
+                    break;
+                free(data);
+                if (state.pending == (size_t)-1)
+                {
+                    result = FVM_UNSUPPORTED;
+                    break;
+                }
+                ++state.pending;
+            }
+            fvm_port_file_restore(c->file, position);
+            if (result == FVM_NOT_FOUND)
+                result = FVM_OK;
+        }
+    }
+    if (result == FVM_OK)
+        *out = state;
     fvm_port_sync_unlock(c->sync);
-    return FVM_OK;
+    return result;
 }
 
 /* Compute and return channel peek mixed. */

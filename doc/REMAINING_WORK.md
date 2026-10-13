@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.64 / Remaining work after v0.64
+# Оставшаяся работа после v0.65 / Remaining work after v0.65
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -125,3 +125,6 @@ v0.63 adds local file debugger freezing and non-consuming record inspection; sta
 
 В v0.64 реализована детерминированная модель pixelDissolve, но точный pixel order/seed Flash не подтверждён (BITMAP_DISSOLVE.md). API не считается завершённым.
 v0.64 adds a tested deterministic dissolve model; historical Flash order/seed acceptance remains open.
+
+В v0.65 добавлен coherent snapshot локального файлового канала: pending framed records/frozen/closed, cursor rollback и unchanged output при ошибках. Remote inspection и полная приёмка GC/debugger остаются открытыми.
+v0.65 adds non-consuming local file channel state inspection; remote inspection and full GC/debugger acceptance remain open.

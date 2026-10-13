@@ -17,7 +17,7 @@ int main(void)
     const char *path="file-channel-debug.bin";
     FVM_Config cfg;FVM_Runtime *rt;FVM_Context *c;FVM_Channel *ch;
     FVM_Object *o;FVM_Value v,peek,edge,in,out;FVM_Worker *worker;
-    FVM_WorkerState state;unsigned long n;size_t count;char byte;
+    FVM_WorkerState state;FVM_DebugChannel info;unsigned long n;size_t count;char byte;
     remove(path);
     assert(fvm_config_init(&cfg)==FVM_OK);
     assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
@@ -30,6 +30,7 @@ int main(void)
     assert(fvm_value_string(&v,"second")==FVM_OK);
     assert(fvm_channel_send(ch,&v)==FVM_OK);
     assert(fvm_debug_channel_freeze(ch,1)==FVM_OK);
+    assert(fvm_debug_channel_state(ch,&info)==FVM_OK && info.pending==2 && info.frozen && !info.closed && !info.capacity);
     assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_NOT_FOUND && count==0);
     assert(fvm_channel_try_receive(ch,&out)==FVM_NOT_FOUND);
     assert(fvm_channel_receive_value(c,ch,&out,0)==FVM_NOT_FOUND);
@@ -43,6 +44,7 @@ int main(void)
     assert(fvm_channel_receive_value(c,ch,&out,0)==FVM_OK && out.object!=peek.object);
     assert(fvm_object_get(c,out.object,"self",&edge)==FVM_OK && edge.object==out.object);
     assert(fvm_gc_unpin(c,peek.object)==FVM_OK);
+    assert(fvm_debug_channel_state(ch,&info)==FVM_OK && info.pending==1 && !info.frozen);
     assert(fvm_debug_channel_freeze(ch,1)==FVM_OK);
     fvm_value_undefined(&in);
     assert(fvm_worker_run(&cfg,read_worker,&in,ch,&worker)==FVM_OK);
@@ -53,8 +55,11 @@ int main(void)
     assert(fvm_worker_join(worker,&out)==FVM_OK && !strcmp(out.string,"second"));
     fvm_worker_destroy(worker);
     assert(fvm_debug_channel_message(c,ch,0,&out)==FVM_NOT_FOUND);
+    assert(fvm_debug_channel_state(ch,&info)==FVM_OK && !info.pending);
     /* Malformed record inspections, including skipping earlier records, never consume bytes. */
     assert(fvm_channel_file_write(ch,"bad",3)==FVM_OK);
+    info.pending=123;info.identity=456;
+    assert(fvm_debug_channel_state(ch,&info)==FVM_INVALID_ARGUMENT && info.pending==123 && info.identity==456);
     assert(fvm_debug_channel_message(c,ch,0,&out)==FVM_INVALID_ARGUMENT);
     assert(fvm_debug_channel_message(c,ch,1,&out)==FVM_INVALID_ARGUMENT);
     assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_OK && count==1 && byte=='b');
@@ -63,6 +68,7 @@ int main(void)
     fvm_port_thread_sleep_us(10000);
     assert(fvm_worker_state(worker,&state)==FVM_OK && state!=FVM_WORKER_FINISHED);
     fvm_channel_close(ch);
+    assert(fvm_debug_channel_state(ch,&info)==FVM_OK && info.closed && info.frozen && !info.pending);
     assert(fvm_worker_join(worker,&out)==FVM_ERROR);
     fvm_worker_destroy(worker);
     assert(fvm_channel_receive_owned(ch,&out,0)==FVM_ERROR);
@@ -70,6 +76,7 @@ int main(void)
     fvm_channel_destroy(ch);
     assert(fvm_channel_open_file(path,"w",&ch)==FVM_OK);
     assert(fvm_debug_channel_message(c,ch,0,&out)==FVM_ERROR);
+    assert(fvm_debug_channel_state(ch,&info)==FVM_ERROR);
     fvm_channel_destroy(ch);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
     assert(!remove(path));return 0;

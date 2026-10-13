@@ -47,7 +47,8 @@ extern "C"
     typedef struct FVM_DebugChannel
     {
         unsigned long identity; /* Stable identity of this shared resource. */
-        size_t pending /* Number of queued messages. */,
+        size_t
+            pending /* Queued messages or complete unread file records; zero after file closure. */,
             capacity; /* Allocated storage limit; zero may denote an unbounded queue. */
         int closed /* Whether further operations have been closed. */,
             frozen; /* Whether debugger interception has frozen delivery. */
@@ -56,7 +57,8 @@ extern "C"
        queues require explicit resume to drain. Remote endpoints do not support freezing. */
     /* Implement debug channel freeze for this subsystem. */
     FVM_API FVM_Result fvm_debug_channel_freeze(FVM_Channel *, int);
-    /* Inspect in-process queue state; file/remote channels return UNSUPPORTED. */
+    /* Inspect queue state or scan framed local file records without consuming them. Remote
+       endpoints return UNSUPPORTED; file read/framing failures leave the output unchanged. */
     FVM_API FVM_Result fvm_debug_channel_state(FVM_Channel *, FVM_DebugChannel *);
     /* Decode an immutable packet snapshot without dequeueing. Resource capabilities
        remain live shared handles; this does not freeze their native state. Local file indexes

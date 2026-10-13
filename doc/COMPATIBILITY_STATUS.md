@@ -192,3 +192,7 @@ Local file freeze and indexed inspection are implemented; remote inspection and 
 Реализована детерминированная модель pixelDissolve: continuation, clipped copy/fill, atomic staging, native callback transport. Полная Flash-семантика порядка/seed/count/premultiplied alpha **не подтверждена**; метод не завершён. См. BITMAP_DISSOLVE.md.
 
 Deterministic dissolve API implemented; exact historical Flash behavior is not certified and remains open.
+
+## v0.65 — Local file state snapshots
+
+Non-consuming local file pending/frozen/closed inspection implemented; malformed/read failures preserve output and cursor. Проверки в file_channel_debug; remote snapshot и полная приёмка стадии 7 открыты. См. FILE_CHANNEL_DEBUG.md.

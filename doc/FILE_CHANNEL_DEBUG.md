@@ -18,8 +18,12 @@ Close пробуждает читателей с `FVM_ERROR`; закрытый �
 Ограничения: raw bytes без framing FVMG не являются сообщениями; индексация
 проходит предыдущие записи последовательно и использует ограничение 64 MiB
 на запись. Изменение файла внешним процессом не замораживается. Удалённые
-endpoints не поддерживают freeze/peek. `fvm_debug_channel_state` пока сообщает
-состояние только очередей, а для файлов возвращает `FVM_UNSUPPORTED`.
+endpoints не поддерживают freeze/peek. В v0.65 `fvm_debug_channel_state` сканирует framed записи локального файла
+под lock и возвращает pending/frozen/closed без изменения read cursor. Pending
+считает complete framed records, а не проверенные decoded payloads; capacity=0.
+Закрытый file handle имеет pending=0 (дальнейшее чтение через него невозможно).
+Read/framing/OOM ошибки не изменяют переданный output. Write-only file даёт
+FVM_ERROR при сканировании. Внешние изменения не защищены этим lock.
 Эта возможность не закрывает стадии 6 и 7 или полную приёмку отладчика.
 
 Проверки: `tests/file_channel_debug.c` — frozen raw/primitive/graph reads,
@@ -41,8 +45,12 @@ after unlocking. Inspection creates a separate graph with preserved cycles.
 Callers must root inspected objects across GC. Embedded capabilities continue
 to refer to shared live resources; their state is not frozen by inspection.
 
-Raw unframed bytes, remote endpoints, external file mutations and file-state
-snapshots are not supported. Indexed lookup is sequential and bounded by the
+Raw unframed bytes, remote endpoints and external file mutations are not
+supported. v0.65 scans framed local file records under the channel lock and
+reports pending/frozen/closed without advancing the cursor. Pending counts full
+framed records, not decoded/validated payload graphs; capacity is zero. Closed
+file handles report zero readable pending records. Read/framing/allocation
+failures leave the caller output unchanged. Write-only scanning returns ERROR. Indexed lookup is sequential and bounded by the
 existing 64 MiB per-record limit. Stages 6 and 7 remain open.
 The regression test covers freezing, indexed inspection, cyclic graphs/GC,
 worker resume, EOF, malformed records, closed handles and write-only files.
@@ -50,3 +58,5 @@ worker resume, EOF, malformed records, closed handles and write-only files.
 Проверено: headless 237/237, AGG 253/253, Cairo 253/253, portable 228/228; targeted ASan/UBSan 27/27. Leak detection и stack ASan отключены из-за ограничений среды. Это Linux-профили, а не подтверждение запусков Windows/macOS/Android.
 
 Verified Linux profiles: headless 237/237, AGG 253/253, Cairo 253/253, portable 228/228; targeted ASan/UBSan 27/27. Leak detection and stack ASan are disabled in this environment; no Windows/macOS/Android runtime certification.
+
+Проверки v0.65 / v0.65 verification: headless full suite 239/239; targeted GC/resource/channel tests 28/28 in AGG, Cairo, portable and ASan/UBSan. The previously stated sanitizer and target-platform limits still apply.
