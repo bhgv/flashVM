@@ -1136,6 +1136,11 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
     if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
     {
         fvm_value_undefined(out);
+        /* A non-function getter falls back to retained stored data, initially undefined. */
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data =
+            ((FVM_Object *)userdata)->properties.find("data");
+        if (data != ((FVM_Object *)userdata)->properties.end())
+            *out = data->second;
         return FVM_OK;
     }
     return fvm_function_invoke(c, function.object, receiver, 0, 0, out);
@@ -1207,6 +1212,24 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *descriptor = 0;
+    /* [GC:] Preserve the previous stored value while the owning receiver still roots it. */
+    FVM_Value stored;
+    fvm_value_undefined(&stored);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator previous = receiver->properties.find(name);
+    if (previous != receiver->properties.end())
+        stored = previous->second;
+    else
+    {
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = receiver->accessors.find(name);
+        if (accessor != receiver->accessors.end())
+            fvm_base_accessor_data(accessor->second, stored);
+        else if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
+        {
+            fvm_detail::map<unsigned long, FVM_Value>::iterator slot = receiver->indexed.find(index);
+            if (slot != receiver->indexed.end())
+                stored = slot->second;
+        }
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result r = fvm_object_create(c, &descriptor);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -1219,6 +1242,8 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     if (r == FVM_OK)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_object_set(c, descriptor, "set", args + 2);
+    if (r == FVM_OK)
+        r = fvm_object_set(c, descriptor, "data", &stored);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1364,6 +1389,18 @@ bool fvm_as_index(const char *name, unsigned long *out)
             return false;
     }
     *out = (unsigned long)value;
+    return true;
+}
+
+/* Read script descriptor data directly; older descriptors without data retain undefined. */
+bool fvm_base_accessor_data(const FVM_AccessorEntry &entry, FVM_Value &out)
+{
+    if (entry.getter != script_property_get || !entry.root)
+        return false;
+    fvm_value_undefined(&out);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data = entry.root->properties.find("data");
+    if (data != entry.root->properties.end())
+        out = data->second;
     return true;
 }
 

@@ -86,8 +86,12 @@ void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
         out = property->second;
         return;
     }
-    if (o->accessors.find(key) != o->accessors.end())
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(key);
+    if (accessor != o->accessors.end())
+    {
+        fvm_base_accessor_data(accessor->second, out);
         return;
+    }
     fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
     if (slot != o->indexed.end())
         out = slot->second;
@@ -108,6 +112,12 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find("length");
         if (property != o->properties.end())
             value = property->second;
+        else
+        {
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find("length");
+            if (accessor != o->accessors.end())
+                fvm_base_accessor_data(accessor->second, value);
+        }
     }
     double number = 0;
     FVM_Result status = fvm_avm1_number(c, &value, &number);

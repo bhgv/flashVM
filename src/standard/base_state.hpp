@@ -29,6 +29,9 @@ bool fvm_as_index(const char *, unsigned long *);
 /* Update Array length after writing an indexed property. */
 void fvm_array_note_index(FVM_Object *, unsigned long);
 
+/* Read retained stored data from a script-property descriptor without invoking its getter. */
+bool fvm_base_accessor_data(const FVM_AccessorEntry &, FVM_Value &);
+
 /* Define an own Array result slot; copies strings and does not change the captured length. */
 FVM_Result fvm_array_store_own(FVM_Context *, FVM_Object *, unsigned long, const FVM_Value &);
 

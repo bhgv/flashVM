@@ -744,3 +744,16 @@ in restricted sanitizer/portable profiles. Five AGG Array/bitmap and three Cairo
 bitmap launch failures passed after execute-bit restoration. Negative signed
 mutation indices remain unsupported; this early rejection is not claimed as
 full historical behavior. Source set_data/movement and all stages remain open.
+
+## v0.136 — retained accessor data / data под getter
+
+addProperty retains prior own stored values separately from getter/setter and
+preserves them on descriptor replacement. Loaded Array reads/length use this
+data; plain getters fall back to it. Existing hidden descriptor roots preserve
+strings and cycles through graph transport without a wire-structure change.
+[RU/EN details](OBJECT_ACCESSOR_DATA.md). Evidence: 304 core tests in AGG/Cairo
+plus the AGG runner; seven focused checks in restricted sanitizer/portable
+profiles. Traced NUL strings, owner cycles and virtual length survive GC and
+queue transfer. All fourteen original selected SWFs still match exactly.
+Ordinary assignment latent-data updates, replacement flags, native accessor/
+method data and full version semantics remain open, as do all roadmap stages.
