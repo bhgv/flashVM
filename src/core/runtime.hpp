@@ -275,6 +275,7 @@ struct FVM_Context
     fvm_detail::vector<unsigned char> swf_bytes; /* [GC:] Stored bytes of the loaded SWF. */
     FVM_SWFInfo swf_info;                        /* [GC:] Parsed metadata of the loaded SWF. */
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
+    FVM_NativeEntry avm1_trace; /* [GC:] Host ActionTrace sink retaining its optional capture. */
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */
     fvm_detail::vector<FVM_QueuedInput> queued_input; /* [GC:] Input events awaiting delivery. */

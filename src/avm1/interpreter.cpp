@@ -16,6 +16,7 @@
 #include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
 #include "../core/property_key.hpp"
+#include "../core/native_call_guard.hpp"
 /* [GC:] Commit finalizer entry only after VM preparation completes. */
 #include "../core/finalizer_entry.hpp"
 #include "flashvm/avm1.h"
@@ -1776,6 +1777,27 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = result;
             }
+            else if (a.op == 0x26)
+            { /* Trace always coerces its operand, even when host delivery is disabled. */
+                if (stack.empty())
+                    return FVM_ERROR;
+                /* [GC:] The input remains in the rooted stack during toString execution. */
+                FVM_Value text, ignored;
+                FVM_Result status = fvm_value_to_string(c, &stack.back(), &text);
+                if (status != FVM_OK)
+                    return status;
+                FVM_NativeEntry sink = c->avm1_trace;
+                if (sink.callback)
+                {
+                    fvm_value_undefined(&ignored);
+                    /* [GC:] Prevent collection while the copied sink/capture and text are borrowed. */
+                    FVM_NativeCallGuard guard(c);
+                    status = sink.callback(c, c->global, 1, &text, &ignored, sink.userdata);
+                    if (status != FVM_OK)
+                        return status;
+                }
+                stack.pop_back();
+            }
             else if (a.op == 0x17)
             { /* Pop */
                 if (stack.empty())
@@ -2067,6 +2089,21 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
         return r;
     return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0);
 }
+/* [GC:] Replace a synchronous host trace sink after validating its retained capture. */
+extern "C" FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *c, FVM_NativeFunction callback,
+                                                void *userdata, FVM_Object *capture)
+{
+    if (!c || c->destroying || c->gc_collecting ||
+        (capture && capture->owner != c) || (!callback && (userdata || capture)))
+        return FVM_INVALID_ARGUMENT;
+    FVM_NativeEntry entry;
+    entry.callback = callback;
+    entry.userdata = userdata;
+    entry.root = capture;
+    c->avm1_trace = entry;
+    return FVM_OK;
+}
+
 /* Execute swf actions. */
 extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c)
 {

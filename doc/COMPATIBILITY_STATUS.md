@@ -309,3 +309,12 @@ Regression avm1_delete; AGG and Cairo Release 251/251 each (AGG launch-permissio
 failures and dependent process test rerun); focused restricted headless
 ASan/UBSan and portable 3/3 each. Stage 2 remains open.
 RU/EN: [AVM1_DELETE.md](AVM1_DELETE.md).
+
+## v0.90 — AVM1 host trace delivery
+
+Проверено / tested: ActionTrace and retained host sink, counted text, conversion
+without delivery, callback replacement/errors and GC capture lifetime.
+Regression avm1_trace; AGG/Cairo Release 252/252 each after launch-permission
+reruns (5 and 1 tests), restricted headless ASan/UBSan and portable 2/2 each.
+Historical formatting and reference corpus acceptance remain open.
+RU/EN: [AVM1_TRACE.md](AVM1_TRACE.md). ABI 3 / graph 8 unchanged.

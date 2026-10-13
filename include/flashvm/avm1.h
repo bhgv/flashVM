@@ -24,6 +24,12 @@ extern "C"
     /* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
     /* Execute avm1. */
     FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
+    /* [GC:] Set the ActionTrace sink and optional same-context retained capture.
+     * Callback receives one STRING argument and the global receiver; its result is ignored.
+     * NULL callback with NULL userdata/capture disables delivery. Do not destroy the context
+     * from the callback. Text is borrowed for the synchronous call; retain a copy if needed. */
+    FVM_API FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *, FVM_NativeFunction, void *,
+                                                 FVM_Object *);
     /* Execute avm1 receiver. */
     FVM_API FVM_Result fvm_avm1_execute_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
     /* Invoke a named AVM1 function with rooted parameter bindings and receiver. */

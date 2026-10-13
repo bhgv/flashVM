@@ -74,6 +74,8 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
                 pending.push_back(c->objects[i]);
     /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
     mark_object(c->global, pending);
+    /* [GC:] A registered trace sink keeps its capture alive between ActionTrace calls. */
+    mark_object(c->avm1_trace.root, pending);
     /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
     mark_object(c->calling_constructor, pending);
     /* [GC:] Retain the function used to resolve the current method owner. */
