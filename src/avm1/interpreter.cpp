@@ -3,6 +3,7 @@
  */
 
 #include "function_record.hpp"
+#include "block.hpp"
 #include "coercion.hpp"
 #include "target_scope.hpp"
 #include "../standard/function_state.hpp"
@@ -434,7 +435,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
-                          Execution *shared = 0, size_t base = 0, unsigned int depth = 0);
+                          Execution *shared = 0, size_t base = 0, unsigned int depth = 0,
+                          bool bounded = false);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
 /* Call script. */
@@ -780,7 +782,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
-                          Execution *shared, size_t base, unsigned int depth)
+                          Execution *shared, size_t base, unsigned int depth, bool bounded)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -920,8 +922,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             if (!a.op)
                 break;
         }
-        if ((!shared && (actions.empty() || actions.back().op != 0)) || pos != size)
+        if (pos != size || (!shared && !bounded && (actions.empty() || actions.back().op != 0)))
             return FVM_INVALID_ARGUMENT;
+        if (bounded && (actions.empty() || actions.back().op != 0))
+        {
+            /* Model the exact record boundary as a terminal action, without changing source bytes. */
+            Action terminal;
+            terminal.op = 0;
+            terminal.offset = terminal.next = terminal.payload = size;
+            terminal.length = 0;
+            actions.push_back(terminal);
+        }
         /* [GC:] Action parsing/root-frame preparation can fail without consuming finalization. */
         fvm_finalizer_enter(c);
         while (pc < actions.size())
@@ -2643,10 +2654,11 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
         return FVM_INVALID_ARGUMENT;
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
-    FVM_Result r = fvm_avm1_inspect(data, size, &info);
+    FVM_Result r = c->swf_loaded ? fvm_avm1_inspect_block(data, size, &info)
+                                 : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
-    return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0);
+    return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0, 0, 0, 0, c->swf_loaded);
 }
 /* [GC:] Replace a synchronous host trace sink after validating its retained capture. */
 extern "C" FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *c, FVM_NativeFunction callback,
@@ -2780,8 +2792,22 @@ extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data
         return FVM_INVALID_ARGUMENT;
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
-    FVM_Result r = fvm_avm1_inspect(data, size, &info);
+    FVM_Result r = c->swf_loaded ? fvm_avm1_inspect_block(data, size, &info)
+                                 : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
-    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0);
+    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0, 0, c->swf_loaded);
+}
+
+/* Execute an exact stored frame block independently of the receiving context's load state. */
+FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *c, const void *data, size_t size,
+                                          FVM_Object *receiver)
+{
+    if (!c || !receiver || receiver->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_AVM1Info info;
+    info.struct_size = sizeof(info);
+    FVM_Result result = fvm_avm1_inspect_block(data, size, &info);
+    return result == FVM_OK ? execute(c, (const unsigned char *)data, size, 0, 0,
+                                      receiver, 0, 0, 0, 0, true) : result;
 }

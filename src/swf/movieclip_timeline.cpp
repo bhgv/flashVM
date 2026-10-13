@@ -2,6 +2,7 @@
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "decode.hpp"
 #include "document.hpp"
+#include "../avm1/block.hpp"
 #include "reader.hpp"
 #include "shape_graph.hpp"
 #include "bitmap.hpp"
@@ -325,11 +326,11 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             }
             else if (tag == 12)
             {
-                if (!count || count > 65536)
+                if (count > 65536)
                     return FVM_INVALID_ARGUMENT;
                 FVM_AVM1Info action_info;
                 action_info.struct_size = sizeof(action_info);
-                FVM_Result r = fvm_avm1_inspect(p + at, count, &action_info);
+                FVM_Result r = fvm_avm1_inspect_block(p + at, count, &action_info);
                 if (r != FVM_OK)
                     return r;
                 ActionRange range;

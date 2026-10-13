@@ -30,10 +30,11 @@ extern "C"
      * explicitly retained before use after activation exit or a later collection. */
     FVM_API FVM_Result fvm_avm1_get_target_info(FVM_Context *, FVM_AVM1TargetInfo *);
     /* Validates instruction framing, not the full AVM1 operand semantics. */
-    /* Validate AVM1 instruction framing and count instructions, pushes and branches. */
+    /* Validate standalone framing (explicit ActionEnd required) and count encoded records. */
     FVM_API FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1Info *info);
     /* Executes the supported AVM1 subset; unsupported opcodes return FVM_UNSUPPORTED. */
-    /* Execute avm1. */
+    /* Loaded SWF contexts accept implicit End at the exact supplied block boundary.
+     * Unloaded standalone execution requires explicit ActionEnd. Source bytes are unchanged. */
     FVM_API FVM_Result fvm_avm1_execute(FVM_Context *, const void *, size_t);
     /* [GC:] Set the ActionTrace sink and optional same-context retained capture.
      * Callback receives one STRING argument and the global receiver; its result is ignored.
@@ -58,7 +59,7 @@ extern "C"
      * NULL callback/userdata/capture disables delivery. Do not destroy the context in callback. */
     FVM_API FVM_Result fvm_avm1_set_url_rooted(FVM_Context *, FVM_NativeFunction, void *,
                                                FVM_Object *);
-    /* Execute avm1 receiver. */
+    /* Execute with a retained receiver using the same loaded/unloaded block framing policy. */
     FVM_API FVM_Result fvm_avm1_execute_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
     /* Invoke a named AVM1 function with rooted parameter bindings and receiver. */
     /* Call avm1. */

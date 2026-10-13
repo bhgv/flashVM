@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
+#include "../avm1/block.hpp"
 #include "movieclip_scene.hpp"
 #include "transform_scene.hpp"
 #include "gradient.hpp"
@@ -2492,7 +2493,7 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
             return FVM_INVALID_ARGUMENT;
         bytes.push_back((unsigned char)(a * 16 + b));
     }
-    return fvm_avm1_execute_receiver(c, bytes.begin(), bytes.size(), o);
+    return fvm_avm1_execute_block_receiver(c, bytes.begin(), bytes.size(), o);
 }
 
 /* Advance one timeline tick, execute its independent action blocks, then visit children. */

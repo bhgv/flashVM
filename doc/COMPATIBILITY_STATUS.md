@@ -624,3 +624,15 @@ profiles. Two AGG channel/filter launch failures passed after execute-bit
 restoration. The unit test checks preserved stack Trace for both initializers.
 Original init_array_invalid remains blocked earlier by required ActionEnd;
 no fourteenth oracle success is claimed yet. All roadmap stages remain open.
+
+## v0.126 — bounded AVM1 blocks / ограниченные блоки
+
+SWF frame import and execution accept empty blocks and implicit End exactly at
+complete record boundaries; source bytes remain unchanged. Public inspect and
+unloaded raw execution stay strict. Branch/invalid payload/graph transfer with
+GC checks: [RU/EN details](AVM1_BOUNDED_BLOCKS.md). Evidence: 293 core tests in
+AGG/Cairo plus the AGG runner; four focused tests in restricted sanitizer and
+portable profiles. Three AGG channel test launches passed after execute-bit
+restoration. All fourteen original probes now complete with exact expected
+bytes, including init_array_invalid SWF8 (16 bytes, timeline mode). Semantic
+version provenance across clip transfer and all roadmap stages remain open.

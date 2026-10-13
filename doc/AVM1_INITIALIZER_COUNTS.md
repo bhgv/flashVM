@@ -34,3 +34,10 @@ destination descriptors, partially built object GC roots/name coercion and
 constructor/version provenance remain open. Original init_array_invalid still
 fails earlier because its bounded DoAction omits an explicit ActionEnd. No
 oracle success or roadmap-stage completion is claimed for that remaining case.
+
+## Последующее исправление / Follow-up v0.126
+
+Неявный конец DoAction исправлен отдельно: оригинальный init_array_invalid
+теперь проходит с точным выводом. См. [AVM1_BOUNDED_BLOCKS.md](AVM1_BOUNDED_BLOCKS.md).
+The previously documented framing blocker is fixed in v0.126; other initializer
+limitations above remain open.

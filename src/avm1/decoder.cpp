@@ -3,6 +3,7 @@
  */
 
 #include "function_record.hpp"
+#include "block.hpp"
 #include "flashvm/avm1.h"
 #include "try_record.hpp"
 namespace
@@ -80,4 +81,13 @@ extern "C" FVM_Result fvm_avm1_inspect(const void *data, size_t size, FVM_AVM1In
         return FVM_INVALID_ARGUMENT;
     info->instruction_count = info->push_count = info->branch_count = 0;
     return inspect((const unsigned char *)data, size, info, false, 0);
+}
+
+/* Inspect a length-delimited action block without requiring a synthetic input byte. */
+FVM_Result fvm_avm1_inspect_block(const void *data, size_t size, FVM_AVM1Info *info)
+{
+    if (!info || info->struct_size != sizeof(*info) || (!data && size))
+        return FVM_INVALID_ARGUMENT;
+    info->instruction_count = info->push_count = info->branch_count = 0;
+    return inspect((const unsigned char *)data, size, info, true, 0);
 }
