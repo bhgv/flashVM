@@ -957,3 +957,15 @@ native/borrowed lengths and combined valueOf+traversal budget pass. Three AGG
 bitmap/shape/mutex launch failures passed after execute-bit restoration. Fifteen
 original SWFs still match. Signed/size limits, native accessor data and all
 roadmap stages remain open; partial mutation is not rolled back.
+
+## v0.153 — loaded push raw data / push собственных данных
+
+Loaded push writes raw own data without descriptor deletion or accessor/watch
+callbacks and updates raw length under own flags. Native readonly length permits
+raw slots beyond it. [RU/EN details](ARRAY_LEGACY_PUSH.md). Evidence: 320 core
+tests in AGG/Cairo plus the AGG runner; six focused checks in restricted
+heap/global ASan+UBSan and portable Linux profiles. Virtual length/index, readonly
+data, no watchers and counted NUL/GC pass. One AGG error-transfer launch failure
+and its dependent subprocess PermissionError passed after execute-bit restoration.
+Fifteen original SWFs still match. Signed/native accessor limits, case/version
+and all stages remain open; no rollback on partial mutation is promised.

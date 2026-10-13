@@ -559,6 +559,39 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         return FVM_OK;
     }
 
+    /* Loaded push stores own data without deleting virtual slots or invoking their callbacks. */
+    if (c->swf_loaded && !std::strcmp(method, "push"))
+    {
+        FVM_ArrayWorkScope mutation_work(c);
+        unsigned long count = 0;
+        long signed_length = 0;
+        FVM_Result status = legacy_data_length(c, o, count, &signed_length);
+        if (status != FVM_OK)
+            return status;
+        if (signed_length < 0 || (double)count + n > 2147483647.0)
+            return FVM_UNSUPPORTED;
+        for (unsigned int i = 0; i < n; ++i)
+        {
+            status = mutation_work.step();
+            if (status == FVM_OK)
+                status = legacy_store_element(c, o, count + i, a[i]);
+            if (status != FVM_OK)
+                return status;
+        }
+        if (o->resource_kind == 28)
+            legacy_native_length(o, count + n);
+        else
+        {
+            FVM_Value value;
+            fvm_value_number(&value, (double)count + n);
+            status = fvm_base_store_data(c, o, "length", value, false);
+            if (status != FVM_OK)
+                return status;
+        }
+        fvm_value_number(out, (double)count + n);
+        return FVM_OK;
+    }
+
     /* Loaded unshift moves raw own values, including holes, without changing borrowed length. */
     if (c->swf_loaded && !std::strcmp(method, "unshift"))
     {

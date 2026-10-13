@@ -509,7 +509,7 @@ FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const
 FVM_Result push(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
-    if (fvm_array_needs_generic(o))
+    if (c->swf_loaded || fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "push", n, a, out, push);
 
     if (!array(o))
