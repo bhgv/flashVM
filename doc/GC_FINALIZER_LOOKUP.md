@@ -46,3 +46,8 @@ GC/metatable/resource/debugger/text tests 52/52 in AGG, Cairo, portable and
 ASan/UBSan. Existing feature exclusions apply: fonts in AGG/Cairo only,
 TCP disabled in portable; heap/global ASan and UBSan active, LSAN/stack
 ASan disabled. Linux profiles only; complete stage 7 remains open.
+
+## Обновление v0.75 / v0.75 update
+
+Script pre-entry OOM дополнительно проверен и исправлен в v0.75. Invocation entry
+markers, once-only boundary и retry: [GC_FINALIZER_PREPARATION.md](GC_FINALIZER_PREPARATION.md).

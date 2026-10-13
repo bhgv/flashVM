@@ -305,7 +305,9 @@ struct FVM_Context
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
     FVM_GCRootFrame *gc_frames; /* [GC:] Linked active collector root frames. */
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
-    unsigned int gc_native_depth; /* Current native-call collector barrier depth. */
+    unsigned int gc_native_depth;  /* Current native-call collector barrier depth. */
+    FVM_Object *pending_finalizer; /* [GC:] Resolved finalizer whose user-code entry is not yet
+                                      committed. */
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 };
 

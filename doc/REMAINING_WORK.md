@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.74 / Remaining work after v0.74
+# Оставшаяся работа после v0.75 / Remaining work after v0.75
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -155,3 +155,6 @@ v0.73 retains graphs republished by native release callbacks and verifies late-p
 
 В v0.74 lookup __gc не выделяет память, native finalizers не теряются из-за temporary-key OOM и C teardown защищён от dispatch exceptions (GC_FINALIZER_LOOKUP.md). Script pre-entry OOM и Function.invoke string-result audit — следующие GC задачи.
 v0.74 removes finalizer key allocation and verifies native retry/teardown safety; script preparation and remaining native dispatch paths still need auditing.
+
+В v0.75 finalizer preparation OOM допускает retry до первого native callback/AVM1 dispatch, после entry действует once-only; VM call depth восстанавливается (GC_FINALIZER_PREPARATION.md). Function.invoke string-result audit остаётся следующим пунктом.
+v0.75 separates retryable finalizer preparation from once-only user-code entry and verifies collection/dispatch failures; full GC/debugger acceptance remains open.

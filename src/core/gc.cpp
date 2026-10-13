@@ -403,6 +403,12 @@ extern "C"
                 {
                     /* [GC:] Вызываем финализатор; он может сделать объект снова достижимым. */
                     FVM_Result r = fvm_meta_finalize(c, o);
+                    /* [GC:] Do not sweep a finalizer lost to allocation failure before body entry.
+                     */
+                    if (r == FVM_OUT_OF_MEMORY && !o->finalized)
+                        /* [GC:] Abort through the existing collection rollback/state-reset handler.
+                         */
+                        throw std::bad_alloc();
                     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                     if (finalizer_result == FVM_OK && r != FVM_OK)
                         /* [GC:] Операция в блоке управления достижимостью и временем жизни

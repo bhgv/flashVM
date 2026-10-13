@@ -9,6 +9,8 @@
 #define FVM_NATIVE_CALL_GUARD_HPP
 /* [GC:] Подключаем объявления, используемые сборщиком и защитой корней. */
 #include "runtime.hpp"
+/* [GC:] User native callback entry commits an armed finalizer attempt. */
+#include "finalizer_entry.hpp"
 /* [GC:] C++98 scope guard: native callbacks must not reenter the collector.
    A callback may explicitly root objects and collect after it returns. */
 /* [GC:] Define FVM_NativeCallGuard class and its representation. */
@@ -34,6 +36,8 @@ class FVM_NativeCallGuard
     {
         /* [GC:] Включаем барьер сборки на время нативного вызова. */
         ++context_->gc_native_depth;
+        /* [GC:] Preparing roots may fail earlier; the native body starts only after this guard. */
+        fvm_finalizer_enter(context_);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Release the resources owned by this FVM_NativeCallGuard instance. */

@@ -57,12 +57,15 @@ extern "C"
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        o->finalized = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *m = o->metatable;
         /* [GC:] A missing metatable needs neither key construction nor finalizer dispatch. */
         if (!m)
+        {
+            /* [GC:] No handler exists, so no preparation retry is necessary. */
+            o->finalized = true;
             return FVM_OK;
+        }
 
         /* [GC:] Resolve the reserved key without allocating a temporary fvm_detail::string. */
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it = m->metamethods.begin();
@@ -86,8 +89,11 @@ extern "C"
               (script->second.type != FVM_VALUE_OBJECT ||
                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                !script->second.object->invocable.callback))))
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        {
+            /* [GC:] A missing or noncallable handler consumes finalization without user code. */
+            o->finalized = true;
             return FVM_OK;
+        }
 
         /* Initialization / Инициализация локального состояния. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -108,6 +114,9 @@ extern "C"
         args[2] = args[0];
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_value_undefined(&result);
+        /* [GC:] Commit finalized only after dispatch enters user code or a terminal error occurs.
+         */
+        FVM_FinalizerScope invocation(c, o);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (it == m->metamethods.end())
         {
@@ -117,26 +126,29 @@ extern "C"
             {
                 /* [GC:] Dispatch the previously resolved script finalizer without another key
                  * lookup. */
-                return script->second.type == FVM_VALUE_OBJECT
-                           /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                            * объектов.
-                            */
-                           ? fvm_function_invoke(c, script->second.object, o, 3, args, &result)
-                           /* [GC:] Операция в блоке управления достижимостью и временем жизни
-                            * объектов.
-                            */
-                           : fvm_avm1_call(c, script->second.string, o, 3, args, &result);
+                FVM_Result status =
+                    script->second.type == FVM_VALUE_OBJECT
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов.
+                         */
+                        ? fvm_function_invoke(c, script->second.object, o, 3, args, &result)
+                        /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                         * объектов.
+                         */
+                        : fvm_avm1_call(c, script->second.string, o, 3, args, &result);
+                /* [GC:] Pre-entry OOM leaves the object eligible for a later collection. */
+                return invocation.complete(status);
             }
             /* [GC:] Report preparation allocation failure through the C result contract. */
             catch (const std::bad_alloc &)
             {
-                return FVM_OUT_OF_MEMORY;
+                return invocation.complete(FVM_OUT_OF_MEMORY);
             }
             /* [GC:] Translate unexpected dispatch exceptions rather than unwinding through C
              * callers. */
             catch (...)
             {
-                return FVM_ERROR;
+                return invocation.complete(FVM_ERROR);
             }
         }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -151,7 +163,7 @@ extern "C"
              */
             FVM_NativeCallGuard native_guard(c);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return entry.callback(c, o, 3, args, &result, entry.userdata);
+            return invocation.complete(entry.callback(c, o, 3, args, &result, entry.userdata));
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -159,7 +171,7 @@ extern "C"
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return FVM_ERROR;
+            return invocation.complete(FVM_ERROR);
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

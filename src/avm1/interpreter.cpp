@@ -15,6 +15,8 @@
 #include "try_record.hpp"
 #include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
+/* [GC:] Commit finalizer entry only after VM preparation completes. */
+#include "../core/finalizer_entry.hpp"
 #include "flashvm/avm1.h"
 #include "flashvm/gc.h"
 #include "flashvm/metamethod.h"
@@ -559,7 +561,23 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         DebugFrame debug(c);
         c->debug_function = name;
         c->debug_line = 0;
-        ++c->script_depth;
+        /* [GC:] Restore script call depth after both successful execution and preparation OOM. */
+        struct DepthScope
+        {
+            FVM_Context *context;
+            unsigned int previous;
+            /* [GC:] Enter one script activation after preserving the caller's exact depth. */
+            explicit DepthScope(FVM_Context *c) : context(c), previous(c->script_depth)
+            {
+                ++context->script_depth;
+            }
+            /* [GC:] Restore depth even if lexical-scope registration throws before bytecode entry.
+             */
+            ~DepthScope()
+            {
+                context->script_depth = previous;
+            }
+        } depth(c);
         /* [GC:] The activation retains the function's captured lexical environment. */
         activation->prototype = closure;
         c->lexical_scopes.push_back(activation);
@@ -579,7 +597,6 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
         } scope(c);
         status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame, receiver,
                          &snapshot.constants, &execution);
-        --c->script_depth;
     }
     catch (...)
     {
@@ -753,6 +770,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         }
         if ((!shared && (actions.empty() || actions.back().op != 0)) || pos != size)
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Action parsing/root-frame preparation can fail without consuming finalization. */
+        fvm_finalizer_enter(c);
         while (pc < actions.size())
         {
             const Action &a = actions[pc];

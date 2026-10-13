@@ -161,6 +161,8 @@ extern "C"
         context->gc_frames = 0;
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         context->gc_native_depth = 0;
+        /* [GC:] New contexts have no armed finalizer preparation. */
+        context->pending_finalizer = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->pumping_input = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
