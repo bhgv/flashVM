@@ -902,6 +902,90 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
     return FVM_OK;
 }
 
+/* Exchange sort entries without allocation, retaining their original indices and cached keys. */
+void swap_sort_items(SortItem &left, SortItem &right)
+{
+    FVM_Value value = left.value;
+    unsigned long index = left.index;
+    double number = left.number;
+    left.value = right.value;
+    left.index = right.index;
+    left.number = right.number;
+    right.value = value;
+    right.index = index;
+    right.number = number;
+    left.key.swap(right.key);
+    left.keys.swap(right.keys);
+}
+
+/* Inclusive partition boundaries used by the loaded left-pivot quicksort. */
+struct SortRange
+{
+    size_t low; /* First element of the partition. */
+    size_t high; /* Last element, possibly below low for an empty partition. */
+    /* Initialize one pending partition without managed values. */
+    SortRange(size_t first = 0, size_t last = 0) : low(first), high(last) {}
+};
+
+/* Reproduce Flash's comparison order with an explicit stack and bounded native work. */
+FVM_Result loaded_sort(FVM_Context *c, fvm_detail::vector<SortItem> &items,
+                       unsigned int flags, FVM_Object *callback, const SortSpec *spec,
+                       FVM_ArrayWorkScope &work)
+{
+    if (items.size() < 2)
+        return FVM_OK;
+    fvm_detail::vector<SortRange> ranges;
+    ranges.push_back(SortRange(0, items.size() - 1));
+    while (!ranges.empty())
+    {
+        SortRange range = ranges.back();
+        ranges.pop_back();
+        FVM_Result result = work.step();
+        if (result != FVM_OK)
+            return result;
+        if (range.low >= range.high)
+            continue;
+        const SortItem &pivot = items[range.low];
+        size_t left = range.low + 1, right = range.high;
+        for (;;)
+        {
+            while (left < right)
+            {
+                int order = 0;
+                result = work.step();
+                if (result == FVM_OK)
+                    result = compare(c, pivot, items[left], flags, callback, order, spec);
+                if (result != FVM_OK)
+                    return result;
+                if (order <= 0)
+                    break;
+                ++left;
+            }
+            while (right > range.low)
+            {
+                int order = 0;
+                result = work.step();
+                if (result == FVM_OK)
+                    result = compare(c, pivot, items[right], flags, callback, order, spec);
+                if (result != FVM_OK)
+                    return result;
+                if (order > 0)
+                    break;
+                --right;
+            }
+            if (left >= right)
+                break;
+            swap_sort_items(items[left], items[right]);
+        }
+        swap_sort_items(items[range.low], items[right]);
+        /* Process the left partition first, matching the reference LIFO traversal. */
+        ranges.push_back(SortRange(right + 1, range.high));
+        if (right > 0)
+            ranges.push_back(SortRange(range.low, right - 1));
+    }
+    return FVM_OK;
+}
+
 /* Sort impl. */
 FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, const SortSpec *spec)
@@ -1010,54 +1094,53 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         }
         items.push_back(item);
     }
-    /* Stable bottom-up merge avoids worst-case quadratic sorting and does not
-     * require STL. A comparator exception aborts before committing the snapshot. */
-    fvm_detail::vector<SortItem> temp(items.size());
-    for (size_t width = 1; width < items.size(); width *= 2)
+    if (c->swf_loaded)
     {
-        for (size_t start = 0; start < items.size(); start += width * 2)
+        FVM_Result result = loaded_sort(c, items, spec ? flags : flags & ~2u,
+                                        callback, spec, work);
+        if (result != FVM_OK)
+            return result;
+    }
+    else
+    {
+        /* Stable bottom-up merge avoids worst-case quadratic sorting and does not
+         * require STL. A comparator exception aborts before committing the snapshot. */
+        fvm_detail::vector<SortItem> temp(items.size());
+        for (size_t width = 1; width < items.size(); width *= 2)
         {
-            size_t middle = start + width;
-            if (middle > items.size())
-                middle = items.size();
-            size_t end = middle + width;
-            if (end > items.size())
-                end = items.size();
-            size_t left = start, right = middle, write = start;
-            while (left < middle || right < end)
+            for (size_t start = 0; start < items.size(); start += width * 2)
             {
-                int order = 0;
-                FVM_Result r = FVM_OK;
-                if (left < middle && right < end)
-                    r = compare(c, items[left], items[right],
-                                c->swf_loaded && !spec ? flags & ~2u : flags,
-                                callback, order, spec);
-                if (r != FVM_OK)
-                    return r;
-                if (right == end || (left < middle && order <= 0))
-                    temp[write++] = items[left++];
-                else
-                    temp[write++] = items[right++];
+                size_t middle = start + width;
+                if (middle > items.size())
+                    middle = items.size();
+                size_t end = middle + width;
+                if (end > items.size())
+                    end = items.size();
+                size_t left = start, right = middle, write = start;
+                while (left < middle || right < end)
+                {
+                    int order = 0;
+                    FVM_Result r = FVM_OK;
+                    if (left < middle && right < end)
+                        r = compare(c, items[left], items[right],
+                                    c->swf_loaded && !spec ? flags & ~2u : flags,
+                                    callback, order, spec);
+                    if (r != FVM_OK)
+                        return r;
+                    if (right == end || (left < middle && order <= 0))
+                        temp[write++] = items[left++];
+                    else
+                        temp[write++] = items[right++];
+                }
             }
+            items.swap(temp);
         }
-        items.swap(temp);
     }
     /* Loaded Array.sort reverses the complete result, including equal keys. */
     if (c->swf_loaded && !spec && (flags & 2))
         for (size_t i = 0; i < items.size() / 2; ++i)
         {
-            SortItem &left = items[i], &right = items[items.size() - 1 - i];
-            FVM_Value value = left.value;
-            unsigned long index = left.index;
-            double number = left.number;
-            left.value = right.value;
-            left.index = right.index;
-            left.number = right.number;
-            right.value = value;
-            right.index = index;
-            right.number = number;
-            left.key.swap(right.key);
-            left.keys.swap(right.keys);
+            swap_sort_items(items[i], items[items.size() - 1 - i]);
         }
     if (flags & 4)
         for (size_t i = 1; i < items.size(); ++i)

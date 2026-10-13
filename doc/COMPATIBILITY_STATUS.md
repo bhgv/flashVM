@@ -1079,3 +1079,18 @@ custom UNIQUESORT and all roadmap stages remain open.
 Полный снимок захватывается до toString и сохраняется в корнях GC. Проверены
 очистка receiver из callback, сохранение исходных объектов и sparse native holes.
 Сборка выполняется после sort; GC внутри произвольного native callback не заявлен.
+
+## v0.163 — loaded quicksort / порядок сравнений
+
+Loaded sort/sortOn uses left-pivot quicksort with the reference LIFO comparison
+order; unloaded stable merge remains unchanged. Every comparison/partition shares
+the instruction budget and cancellation checks. [RU/EN details](ARRAY_LEGACY_SORT_ORDER.md).
+Evidence: AGG 327/Cairo 326, six focused portable/restricted heap-global ASan+UBSan
+checks, fifteen byte-exact original SWFs. Three AGG launch failures passed after
+execute-bit restoration. Seven pinned comparator pairs, DESCENDING/indexed return,
+third-comparison error, root/depth restoration, pre-callback budget exhaustion and
+sorted worst-case bounds pass. Eager builtin/field keys, custom UNIQUESORT and all
+stages remain open.
+
+Проверены эталонные пары comparator, ошибки и предел работы quicksort.
+Точная семантика преобразования ключей и все стадии пока открыты.

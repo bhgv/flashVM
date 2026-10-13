@@ -5,9 +5,17 @@
 static unsigned compared;
 static bool equal_keys;
 static unsigned undefined_compared;
+static bool tracing;
+static unsigned trace_count, error_after;
+static const int pairs[][2] = {{3,1},{3,4},{3,2},{3,2},{3,4},{3,2},{2,1}};
 static FVM_Result compare(FVM_Context *, FVM_Object *, unsigned n, const FVM_Value *a, FVM_Value *out, void *)
 {
     assert(n == 2); ++compared;
+    if (tracing) {
+        assert(trace_count < 7 && a[0].number == pairs[trace_count][0] && a[1].number == pairs[trace_count][1]);
+        ++trace_count;
+        if (error_after && trace_count == error_after) return FVM_ERROR;
+    }
     if (a[0].type == FVM_VALUE_UNDEFINED || a[1].type == FVM_VALUE_UNDEFINED) {
         ++undefined_compared;
         fvm_value_number(out, a[0].type == a[1].type ? 0 : a[0].type == FVM_VALUE_UNDEFINED ? -1 : 1);
@@ -60,6 +68,38 @@ int main()
         assert(borrow(c, array, "sortOn", o, 1, args, &out) == FVM_OK);
         if (version) assert(out.type == FVM_VALUE_OBJECT && out.object == o);
         else assert(out.type == FVM_VALUE_UNDEFINED);
+        if (version) {
+            FVM_Value input[4]; const int initial[] = {3,1,4,2};
+            for (unsigned i = 0; i < 4; ++i) fvm_value_number(input + i, initial[i]);
+            for (unsigned mode = 0; mode < 4; ++mode) {
+                assert(fvm_construct(c, "Array", 4, input, &array) == FVM_OK);
+                args[0] = object(fn); fvm_value_number(args + 1, mode == 1 ? 2 : mode == 2 ? 10 : 0);
+                trace_count = 0; error_after = mode == 3 ? 3 : 0; tracing = true;
+                assert(fvm_object_call(c, array, "sort", 2, args, &out) == (mode == 3 ? FVM_ERROR : FVM_OK));
+                tracing = false;
+                assert(trace_count == (mode == 3 ? 3U : 7U));
+                assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
+                if (mode == 2) {
+                    const int indices[] = {2,0,3,1};
+                    for (unsigned i = 0; i < 4; ++i) { char key[2] = {(char)('0' + i),0}; number(c, out.object, key, indices[i]); number(c, array, key, initial[i]); }
+                } else if (mode == 3) {
+                    for (unsigned i = 0; i < 4; ++i) { char key[2] = {(char)('0' + i),0}; number(c, array, key, initial[i]); }
+                } else { number(c, array, "0", mode == 1 ? 4 : 1); number(c, array, "3", mode == 1 ? 1 : 4); }
+            }
+            error_after = 0; compared = 0;
+            assert(fvm_construct(c, "Array", 4, input, &array) == FVM_OK);
+            unsigned long old_limit = rt->config.instruction_limit; rt->config.instruction_limit = 4;
+            fvm_value_number(args + 1, 0);
+            assert(fvm_object_call(c, array, "sort", 2, args, &out) == FVM_ERROR && compared == 0);
+            assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
+            rt->config.instruction_limit = old_limit; number(c, array, "0", 3);
+            FVM_Value ordered[16]; for (unsigned i = 0; i < 16; ++i) fvm_value_number(ordered + i, i);
+            assert(fvm_construct(c, "Array", 16, ordered, &array) == FVM_OK);
+            compared = 0; rt->config.instruction_limit = 64;
+            assert(fvm_object_call(c, array, "sort", 2, args, &out) == FVM_ERROR && compared > 0 && compared < 64);
+            assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
+            rt->config.instruction_limit = old_limit; number(c, array, "0", 0); number(c, array, "15", 15);
+        }
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);
