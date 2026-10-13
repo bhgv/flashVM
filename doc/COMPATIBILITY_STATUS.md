@@ -318,3 +318,12 @@ Regression avm1_trace; AGG/Cairo Release 252/252 each after launch-permission
 reruns (5 and 1 tests), restricted headless ASan/UBSan and portable 2/2 each.
 Historical formatting and reference corpus acceptance remain open.
 RU/EN: [AVM1_TRACE.md](AVM1_TRACE.md). ABI 3 / graph 8 unchanged.
+
+## v0.91 — Reproducible top-level SWF trace runner
+
+Реализовано / implemented: opt-in C89 runner for exact trace-byte comparison
+with separate failure status. Synthetic FWS/CWS, truncated input and usage
+checks passed on Linux AGG. External SWF 6 reference probe fails legacy string
+coercion/CallMethod; two selected Array corpus SWFs are version 15 and outside
+scope. No new conformance gate is closed.
+RU/EN: [SWF_REFERENCE_RUNNER.md](SWF_REFERENCE_RUNNER.md).
