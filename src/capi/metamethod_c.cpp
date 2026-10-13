@@ -60,20 +60,23 @@ extern "C"
         o->finalized = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *m = o->metatable;
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+        /* [GC:] A missing metatable needs neither key construction nor finalizer dispatch. */
         if (!m)
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
 
-        /* Initialization / Инициализация локального состояния. */
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            m->metamethods.find("__gc");
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator script =
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            m->properties.find("__gc");
+        /* [GC:] Resolve the reserved key without allocating a temporary fvm_detail::string. */
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it = m->metamethods.begin();
+        /* [GC:] Match the counted key exactly, excluding embedded-NUL or suffix lookalikes. */
+        while (it != m->metamethods.end() &&
+               (it->first.size() != 4 || std::memcmp(it->first.c_str(), "__gc", 4)))
+            ++it;
+        /* [GC:] Script finalizer resolution must also be safe when the allocator rejects every
+         * request. */
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator script = m->properties.begin();
+        /* [GC:] Inspect existing property metadata without allocating or invoking user code. */
+        while (script != m->properties.end() &&
+               (script->first.size() != 4 || std::memcmp(script->first.c_str(), "__gc", 4)))
+            ++script;
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (it == m->metamethods.end() &&
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -107,14 +110,35 @@ extern "C"
         fvm_value_undefined(&result);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (it == m->metamethods.end())
-            /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-            return script->second.type == FVM_VALUE_OBJECT
-                       /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов.
-                        */
-                       ? fvm_function_invoke(c, script->second.object, o, 3, args, &result)
-                       /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов.
-                        */
-                       : fvm_avm1_call(c, script->second.string, o, 3, args, &result);
+        {
+            /* [GC:] C API teardown must not leak C++ allocation exceptions from script preparation.
+             */
+            try
+            {
+                /* [GC:] Dispatch the previously resolved script finalizer without another key
+                 * lookup. */
+                return script->second.type == FVM_VALUE_OBJECT
+                           /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                            * объектов.
+                            */
+                           ? fvm_function_invoke(c, script->second.object, o, 3, args, &result)
+                           /* [GC:] Операция в блоке управления достижимостью и временем жизни
+                            * объектов.
+                            */
+                           : fvm_avm1_call(c, script->second.string, o, 3, args, &result);
+            }
+            /* [GC:] Report preparation allocation failure through the C result contract. */
+            catch (const std::bad_alloc &)
+            {
+                return FVM_OUT_OF_MEMORY;
+            }
+            /* [GC:] Translate unexpected dispatch exceptions rather than unwinding through C
+             * callers. */
+            catch (...)
+            {
+                return FVM_ERROR;
+            }
+        }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_NativeEntry entry = it->second;
         /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

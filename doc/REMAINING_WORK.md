@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.73 / Remaining work after v0.73
+# Оставшаяся работа после v0.74 / Remaining work after v0.74
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -152,3 +152,6 @@ v0.72 adds opt-in traced context strings with resurrection and native TextField 
 
 В v0.73 добавлен late native-release graph traversal: новые roots/edges после resource callbacks сохраняют object shells и строки (GC_RELEASE_GRAPH.md). Полная приёмка GC/debugger остаётся открыта.
 v0.73 retains graphs republished by native release callbacks and verifies late-pass allocation failures; complete stage 7 acceptance remains open.
+
+В v0.74 lookup __gc не выделяет память, native finalizers не теряются из-за temporary-key OOM и C teardown защищён от dispatch exceptions (GC_FINALIZER_LOOKUP.md). Script pre-entry OOM и Function.invoke string-result audit — следующие GC задачи.
+v0.74 removes finalizer key allocation and verifies native retry/teardown safety; script preparation and remaining native dispatch paths still need auditing.
