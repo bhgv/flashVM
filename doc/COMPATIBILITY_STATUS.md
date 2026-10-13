@@ -996,3 +996,15 @@ readonly length, watcher bypass and inherited getter holes pass. The final pinne
 prototype fixture passed all four profiles. Two AGG bitmap/broker launch failures
 passed after execute-bit restoration. Fifteen original SWFs still match. Routed
 flagged array size limits, sort mutation/case/version and all stages remain open.
+
+## v0.156 — native sort primitive keys / примитивные ключи sort
+
+Loaded native fast sort/sortOn skips commit watchers and converts primitive/field
+keys with the AVM1 string bridge. SWF4 Boolean and pre-SWF7 missing fields use
+versioned strings. [RU/EN details](ARRAY_LEGACY_SORT_KEYS.md). Evidence: 323 core
+tests in AGG/Cairo plus the AGG runner; four focused checks in restricted
+heap/global ASan+UBSan and portable Linux profiles. Unloaded/SWF4..8 watcher,
+Boolean and missing sortOn field ordering pass. Four AGG gradient/table/codec
+launch failures passed after execute-bit restoration. All fifteen original SWFs
+still match. Generic property/prototype reads/writes, callback order, flags/holes
+and all roadmap stages remain open.

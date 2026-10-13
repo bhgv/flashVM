@@ -926,7 +926,8 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                     key.number = field_value.number;
                 {
                     FVM_Value text;
-                    r = fvm_value_to_string(c, &field_value, &text);
+                    r = c->swf_loaded ? fvm_avm1_string(c, field_value, &text)
+                                      : fvm_value_to_string(c, &field_value, &text);
                     if (r != FVM_OK)
                         return r;
                     key.text = fvm_detail::string(text.string, fvm_string_size(text));
@@ -948,7 +949,8 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
                 item.number = item.value.number;
             {
                 FVM_Value text;
-                FVM_Result r = fvm_value_to_string(c, &item.value, &text);
+                FVM_Result r = c->swf_loaded ? fvm_avm1_string(c, item.value, &text)
+                                            : fvm_value_to_string(c, &item.value, &text);
                 if (r != FVM_OK)
                     return r;
                 item.key = fvm_detail::string(text.string, fvm_string_size(text));
@@ -1038,7 +1040,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
             }
         return object_value(c, indices, 0, 0, out, 0);
     }
-    FVM_Result committed = commit_slots(c, o, reordered, length, 0, length);
+    FVM_Result committed = commit_slots(c, o, reordered, length, 0, length, false, c->swf_loaded);
     if (committed != FVM_OK)
         return committed;
     if (spec)
@@ -1084,7 +1086,8 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         if (r != FVM_OK)
             return r;
         FVM_Value text;
-        r = fvm_value_to_string(c, &field_value, &text);
+        r = c->swf_loaded ? fvm_avm1_string(c, field_value, &text)
+                                      : fvm_value_to_string(c, &field_value, &text);
         if (r != FVM_OK)
             return r;
         fvm_detail::string key;
