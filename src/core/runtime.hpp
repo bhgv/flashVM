@@ -9,6 +9,7 @@
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
+#include "flashvm/raster.h"
 #include "flashvm/input_queue.h"
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
@@ -275,6 +276,8 @@ struct FVM_Context
     fvm_detail::vector<unsigned char> swf_bytes; /* [GC:] Stored bytes of the loaded SWF. */
     FVM_SWFInfo swf_info;                        /* [GC:] Parsed metadata of the loaded SWF. */
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
+    bool stage_background_set; /* Whether a host or encountered SWF control selected a color. */
+    FVM_RasterColor stage_background; /* Straight-alpha RGBA stage color, containing no managed edges. */
     FVM_NativeEntry avm1_trace; /* [GC:] Host ActionTrace sink retaining its optional capture. */
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */

@@ -169,6 +169,10 @@ extern "C"
         context->input_callback = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->input_userdata = 0;
+        /* Initialize stage selection before the new context becomes visible to host callbacks. */
+        context->stage_background_set = false;
+        context->stage_background.r = context->stage_background.g =
+            context->stage_background.b = context->stage_background.a = 0;
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_object_create(context, &context->global) != FVM_OK)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

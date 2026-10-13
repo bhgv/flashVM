@@ -36,17 +36,18 @@ unsigned long little(const unsigned char *p, unsigned int n)
 struct Placement
 {
     unsigned int frame;          /* One-based frame containing this control. */
-    unsigned int tag;            /* PlaceObject/PlaceObject2 or RemoveObject/RemoveObject2 code. */
+    unsigned int tag;            /* Placement/removal or SetBackgroundColor control code. */
     unsigned int flags;          /* PlaceObject2 field-presence and move flags. */
     unsigned int depth;          /* Raw positive SWF depth; public depth subtracts 16384. */
     unsigned int character;      /* Defined character ID when supplied by this operation. */
     unsigned long token;         /* Stable creation identity within this timeline. */
     unsigned int ratio;          /* Optional morph ratio, preserved for character-specific use. */
+    unsigned long background;   /* RGB24 payload for SetBackgroundColor, without a display depth. */
     FVM_Affine matrix;           /* Decoded pixel-space affine transform. */
     FVM_SWFColorTransform color; /* Optional RGBA color transform. */
     fvm_detail::string name;     /* Optional instance name. */
     /* Initialize omitted placement fields without inventing presence flags. */
-    Placement() : frame(0), tag(0), flags(0), depth(0), character(0), token(0), ratio(0)
+    Placement() : frame(0), tag(0), flags(0), depth(0), character(0), token(0), ratio(0), background(0)
     {
         matrix.xx = matrix.yy = 1;
         matrix.xy = matrix.yx = matrix.x0 = matrix.y0 = 0;
@@ -295,6 +296,17 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                     control.token = ++token;
                 timeline.controls.push_back(control);
             }
+            else if (tag == 9)
+            {
+                if (count != 3)
+                    return FVM_INVALID_ARGUMENT;
+                Placement control;
+                control.frame = frame;
+                control.tag = tag;
+                control.background = ((unsigned long)p[at] << 16) |
+                                     ((unsigned long)p[at + 1] << 8) | p[at + 2];
+                timeline.controls.push_back(control);
+            }
             else if (tag == 12)
             {
                 if (!count || count > 65536)
@@ -381,9 +393,9 @@ FVM_Result build_control(FVM_Context *c, const Placement &control, FVM_Object *d
     FVM_Result r = fvm_object_create(c, &record);
     if (r != FVM_OK)
         return r;
-    const char *fields[] = {"op", "flags", "depth", "token", "character", "ratio"};
+    const char *fields[] = {"op", "flags", "depth", "token", "character", "ratio", "background"};
     const unsigned long values[] = {control.tag,   control.flags,     control.depth,
-                                    control.token, control.character, control.ratio};
+                                    control.token, control.character, control.ratio, control.background};
     for (size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
     {
         FVM_Value value;

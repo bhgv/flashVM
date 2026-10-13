@@ -3,6 +3,7 @@
 #include "../core/native_call_guard.hpp"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
+#include "flashvm/stage.h"
 #include <cmath>
 #include <cstring>
 
@@ -97,11 +98,32 @@ FVM_Result record(FVM_Context *c, const Properties &properties, FVM_Object **out
     return r;
 }
 
+/* Select the first encountered opaque SWF color, preserving a host or earlier movie selection. */
+FVM_Result background(FVM_Context *context, FVM_Object *control)
+{
+    unsigned long rgb = 0;
+    FVM_Result status = integer(control, "background", 0xffffffUL, rgb);
+    if (status != FVM_OK)
+        return status;
+    if (!context->stage_background_set)
+    {
+        FVM_RasterColor color;
+        color.r = (unsigned char)(rgb >> 16);
+        color.g = (unsigned char)(rgb >> 8);
+        color.b = (unsigned char)rgb;
+        color.a = 255;
+        return fvm_stage_set_background(context, color);
+    }
+    return FVM_OK;
+}
+
 /* Apply one live control; sprite replacement changes pose while preserving the live timeline. */
 FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, FVM_Object *control)
 {
     unsigned long op = 0, depth = 0, flags = 0;
     FVM_Result r = integer(control, "op", 28, op);
+    if (r == FVM_OK && op == 9)
+        return background(c, control);
     if (r == FVM_OK)
         r = integer(control, "depth", 65535, depth);
     if (r != FVM_OK || !depth)
@@ -180,6 +202,8 @@ FVM_Result accumulate(FVM_Context *c, FVM_Object *control, Display &display)
 {
     unsigned long op = 0, depth = 0, flags = 0;
     FVM_Result r = integer(control, "op", 28, op);
+    if (r == FVM_OK && op == 9)
+        return background(c, control);
     if (r == FVM_OK)
         r = integer(control, "depth", 65535, depth);
     if (r != FVM_OK || !depth)
