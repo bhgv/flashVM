@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.68 / Remaining work after v0.68
+# Оставшаяся работа после v0.69 / Remaining work after v0.69
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -137,3 +137,6 @@ v0.67 adds remote debugger controls; complete distributed inspection and accepta
 
 В v0.68 добавлены exact string buffer accounting, atomic ownership indexes и snapshots native string results перед снятием roots (GC_STRING_STORAGE.md). Arena lifetime сохранён; traced string reclamation и полная приёмка стадии 7 открыты.
 v0.68 adds exact arena accounting and native string lifetime snapshots; full GC acceptance remains open.
+
+В v0.69 ограничен indexed file peek: 65536 записей и 64 MiB на запрос, с восстановлением позиции при отказе. Сетевой indexed peek остаётся открытым.
+v0.69 bounds indexed file inspection work and preserves the cursor on failure; remote indexed inspection remains open.

@@ -241,12 +241,16 @@ FVM_Result fvm_channel_file_peek_record(FVM_Channel *c, size_t index, unsigned c
                                         size_t *size)
 {
     long position;
+    size_t scanned = 0;
     FVM_Result result;
     if (!c || !data || !size)
         return FVM_INVALID_ARGUMENT;
     *data = 0;
     *size = 0;
     if (c->file_channel != 1)
+        return FVM_UNSUPPORTED;
+    /* At most 65536 records may be inspected in a single debugger lookup. */
+    if (index >= 65536UL)
         return FVM_UNSUPPORTED;
     fvm_port_sync_lock(c->sync);
     if (c->closed)
@@ -257,9 +261,11 @@ FVM_Result fvm_channel_file_peek_record(FVM_Channel *c, size_t index, unsigned c
     position = fvm_port_file_position(c->file);
     for (;;)
     {
-        result = file_record(c, data, size, 0, 1, 64UL * 1024 * 1024);
+        result = file_record(c, data, size, 0, 1, 64UL * 1024 * 1024 - scanned);
         if (result != FVM_OK || !index)
             break;
+        /* Include skipped framing and bodies in the shared 64 MiB lookup budget. */
+        scanned += *size;
         free(*data);
         *data = 0;
         *size = 0;

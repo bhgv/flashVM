@@ -61,3 +61,21 @@ worker resume, EOF, malformed records, closed handles and write-only files.
 Verified Linux profiles: headless 237/237, AGG 253/253, Cairo 253/253, portable 228/228; targeted ASan/UBSan 27/27. Leak detection and stack ASan are disabled in this environment; no Windows/macOS/Android runtime certification.
 
 Проверки v0.65 / v0.65 verification: headless full suite 239/239; targeted GC/resource/channel tests 28/28 in AGG, Cairo, portable and ASan/UBSan. The previously stated sanitizer and target-platform limits still apply.
+
+## v0.69 — ограниченный поиск / bounded indexed lookup
+
+Просмотр по индексу ограничен 65536 записями (индексы 0–65535) и суммарно
+64 MiB заголовков и тел. Индекс вне предела возвращает UNSUPPORTED до чтения;
+тело, превышающее оставшийся бюджет, отклоняется до выделения памяти и чтения.
+Позиция файла восстанавливается при любом результате. Это ограничение работы
+отладчика, а не размера канала. Обычное получение записей не меняется.
+
+Indexed inspection is bounded to 65536 records (indexes 0–65535) and an
+aggregate 64 MiB of framing and bodies. Out-of-range indexes return UNSUPPORTED
+before reading; a body exceeding the remaining budget is rejected before
+allocation or body reading. Every outcome restores the file cursor. These are
+debugger work limits, not channel size limits; normal receive is unchanged.
+
+Проверки v0.69 / v0.69 verification: headless 246/246; channel debugger
+regressions 4/4 under ASan/UBSan (heap/global instrumentation; leak detection
+and stack instrumentation disabled). Source comments and GC tags pass audits.

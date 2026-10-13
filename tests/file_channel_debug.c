@@ -87,6 +87,11 @@ int main(void)
         assert(fvm_channel_file_write(ch,data,bytes-16)==FVM_OK);
         assert(fvm_debug_channel_state(ch,&info)==FVM_OK && info.pending==65536);
         assert(fvm_channel_file_write(ch,data+bytes-16,16)==FVM_OK);free(data);
+        /* Out-of-budget indexes are rejected before malformed payload decoding. */
+        assert(fvm_debug_channel_message(c,ch,65536,&out)==FVM_UNSUPPORTED);
+        assert(fvm_debug_channel_message(c,ch,(size_t)-1,&out)==FVM_UNSUPPORTED);
+        /* The final allowed record reaches decoding, rather than the scan limit. */
+        assert(fvm_debug_channel_message(c,ch,65535,&out)==FVM_INVALID_ARGUMENT);
         info.pending=987;info.identity=555;
         assert(fvm_debug_channel_state(ch,&info)==FVM_UNSUPPORTED && info.pending==987 && info.identity==555);
         assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_OK && count==1 && byte=='F');
@@ -99,6 +104,8 @@ int main(void)
         assert(fvm_channel_file_write(ch,headers,32)==FVM_OK);
         info.pending=987;info.identity=555;
         assert(fvm_debug_channel_state(ch,&info)==FVM_UNSUPPORTED && info.pending==987 && info.identity==555);
+        /* Aggregate inspection fails before allocating/reading the oversized second body. */
+        assert(fvm_debug_channel_message(c,ch,1,&out)==FVM_UNSUPPORTED);
         assert(fvm_channel_file_read(ch,&byte,1,&count)==FVM_OK && count==1 && byte=='F');
     }
     fvm_channel_destroy(ch);
