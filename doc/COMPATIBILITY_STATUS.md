@@ -345,3 +345,13 @@ stages 1/2 remain open. RU/EN: [SWF_REFERENCE_RUNNER.md](SWF_REFERENCE_RUNNER.md
 Three original external SWF 5/6 traces exactly match pinned reference output.
 Historical rounding/object fallback/function provenance and remaining actions
 keep stage 2 open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.94 — Top-level declarations
+
+Проверено / tested: top-level clip/global DefineLocal/DeclareLocal, complete
+coerced names, inherited setters, non-getting declarations and preserved formals.
+AGG/Cairo Release 255/255 each (AGG four launch-permission reruns); restricted
+headless ASan/UBSan and portable focused 4/4 each. External SWF 8 biturshift
+now finishes but reveals a signed-result version difference; that probe still
+fails exact comparison. Scope/path conformance remains open.
+RU/EN: [AVM1_DECLARATIONS.md](AVM1_DECLARATIONS.md).

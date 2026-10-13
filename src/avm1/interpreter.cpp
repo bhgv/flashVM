@@ -302,6 +302,37 @@ static FVM_Result lookup_variable(FVM_Context *c,
     return r;
 }
 
+/* Declare a local cell or top-level clip/global binding without erasing an existing var declaration. */
+static FVM_Result declare_variable(FVM_Context *context,
+                                  fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
+                                  FVM_Object *self, const fvm_detail::string &name,
+                                  const FVM_Value &value, bool initialized)
+{
+    if (locals)
+    {
+        if (initialized || locals->find(name) == locals->end())
+            (*locals)[name] = value;
+        return FVM_OK;
+    }
+    FVM_Object *destination = self && self->resource_kind == 40 ? self : context->global;
+    if (!initialized)
+    {
+        FVM_Object *cursor = destination;
+        unsigned int depth = 0;
+        while (cursor && depth++ < 1024)
+        {
+            int own = 0;
+            FVM_Result status = fvm_object_has_own_bytes(context, cursor, name.data(), name.size(), &own);
+            if (status != FVM_OK || own)
+                return status;
+            cursor = cursor->prototype;
+        }
+        if (cursor)
+            return FVM_ERROR;
+    }
+    return fvm_object_set_bytes(context, destination, name.data(), name.size(), &value);
+}
+
 /* Resolve a string-valued variable reference using its complete canonical key. */
 static FVM_Result lookup_variable_value(FVM_Context *c,
                                         fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
@@ -1820,26 +1851,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
             }
             else if (a.op == 0x3c || a.op == 0x41)
-            { /* DefineLocal / DeclareLocal */
-                if (!locals)
-                    return FVM_UNSUPPORTED;
-                if (a.op == 0x3c)
-                {
-                    if (stack.size() < 2 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
-                        return FVM_ERROR;
-                }
-                else if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
+            { /* DefineLocal / DeclareLocal also bind top-level clip/global properties. */
+                if (stack.size() < (a.op == 0x3c ? 2U : 1U))
                     return FVM_ERROR;
+                /* [GC:] Retain the name and initialized value through coercion/setters. */
                 const FVM_Value &name_value = stack[a.op == 0x3c ? stack.size() - 2 : stack.size() - 1];
+                FVM_Value text;
+                FVM_Result status = action_string(c, name_value, &text);
+                if (status != FVM_OK)
+                    return status;
                 fvm_detail::string name;
-                FVM_Result normalized = fvm_property_key(name_value.string, fvm_string_size(name_value), name);
-                if (normalized != FVM_OK)
-                    return normalized;
-                FVM_Value v;
-                fvm_value_undefined(&v);
+                status = fvm_property_key(text.string, fvm_string_size(text), name);
+                if (status != FVM_OK)
+                    return status;
+                FVM_Value value;
+                fvm_value_undefined(&value);
                 if (a.op == 0x3c)
-                    v = stack.back();
-                (*locals)[name] = v;
+                    value = stack.back();
+                status = declare_variable(c, locals, self, name, value, a.op == 0x3c);
+                if (status != FVM_OK)
+                    return status;
                 stack.resize(stack.size() - (a.op == 0x3c ? 2 : 1));
             }
             else if (a.op == 0x1c)
