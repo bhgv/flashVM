@@ -25,8 +25,9 @@ alias indexed entries; leading zero names remain ordinary properties, as does
 4294967295. Numeric singleton construction specifies length, whereas an AVM1
 InitArray singleton is an element, including negative/fractional numbers.
 The methods are push, pop, shift, unshift, reverse, slice, splice, concat, join,
-toString, toLocaleString, sort and sortOn. Join bounds materialization and handles
-recursive arrays. Stable merge sorting supports numeric, descending, uniqueness,
+toString, toLocaleString, sort and sortOn. Slice/join/concat use charged work instead of the former range caps and
+read inherited indices; join handles recursive arrays. See the detailed
+[limitations](ARRAY_CONCAT_SPARSE.md). Stable merge sorting supports numeric, descending, uniqueness,
 index-preview and ASCII-insensitive options. Numeric strings retain text ordering;
 text comparisons use UTF-16 units. sortOn accepts field/option arrays and ignores
 an option-array length mismatch. Imported methods can create usable arrays even

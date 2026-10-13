@@ -278,7 +278,8 @@ FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end
 
 /* Copy huge sparse ranges, refreshing future indices after any getter or method materialization. */
 FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
-                         unsigned long start, unsigned long end, FVM_ArrayWorkScope &work)
+                         unsigned long start, unsigned long end, FVM_ArrayWorkScope &work,
+                         unsigned long offset = 0)
 {
     unsigned long cursor = start;
     while (cursor < end)
@@ -299,7 +300,7 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
                 bool present = false;
                 status = get(c, source, cursor, value, present);
                 if (status == FVM_OK && present)
-                    status = slice_store(c, result, cursor - start, value);
+                    status = slice_store(c, result, offset + cursor - start, value);
                 if (status != FVM_OK)
                     return status;
             }
@@ -315,7 +316,7 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
             bool present = false, observable = false;
             status = get(c, source, indices[i], value, present, &observable);
             if (status == FVM_OK && present)
-                status = slice_store(c, result, indices[i] - start, value);
+                status = slice_store(c, result, offset + indices[i] - start, value);
             if (status != FVM_OK)
                 return status;
             cursor = indices[i] + 1;
@@ -335,18 +336,48 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast)
 {
-    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join"));
-    if (!std::strcmp(method, "concat") && o->resource_kind != 28)
+    FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
+                                  !std::strcmp(method, "concat"));
+    if (!std::strcmp(method, "concat"))
     {
-        FVM_Object *snapshot = 0;
-        FVM_Result status = fvm_array_create_like(c, 0, 1, &snapshot);
+        FVM_Object *result = 0;
+        FVM_Result status = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, 0, &result);
         if (status != FVM_OK)
             return status;
-        snapshot->prototype = 0;
-        FVM_Value receiver;
-        object(&receiver, o);
-        status = fvm_table_set_index(c, snapshot, 0, &receiver);
-        return status == FVM_OK ? fast(c, snapshot, n, a, out, 0) : status;
+        unsigned long total = 0;
+        /* Read each array length at its turn, after earlier source getters have run. */
+        for (unsigned int k = 0; ; ++k)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
+            FVM_Value value;
+            if (!k)
+                object(&value, o);
+            else
+                value = a[k - 1];
+            FVM_Object *source = value.type == FVM_VALUE_OBJECT ? value.object : 0;
+            bool spread = source && (source->resource_kind == 28 || (!k && (!source->resource_kind || source->resource_kind == 30)));
+            unsigned long count = 1;
+            if (spread)
+                status = length(c, source, count);
+            if (status != FVM_OK)
+                return status;
+            if ((double)total + count > 4294967295.0)
+                return FVM_INVALID_ARGUMENT;
+            if (spread)
+                status = sparse_slice(c, source, result, 0, count, work, total);
+            else
+                status = slice_store(c, result, total, value);
+            if (status != FVM_OK)
+                return status;
+            total += count;
+            result->resource_result.number = total;
+            if (k == n)
+                break;
+        }
+        object(out, result);
+        return FVM_OK;
     }
 
     /* Initialization / Инициализация локального состояния. */

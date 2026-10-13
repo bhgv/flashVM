@@ -494,3 +494,16 @@ from a large fixture whose allocation count exceeded its injection-loop bound
 to exhaustive failure injection on a compact fixture; final tests pass in all
 four profiles. Two AGG execute-bit failures passed after restoring permissions.
 All stages and other Array semantic/size limitations remain open.
+
+## v0.116 — inherited concat / наследуемые индексы concat
+
+Concat now reads inherited indices in array arguments through the shared sparse
+copy path, refreshing after getters. Plain borrowed receivers spread by length;
+plain arguments stay single values, checked against pinned Ruffle source.
+[RU/EN details and remaining historic gaps](ARRAY_CONCAT_SPARSE.md).
+Evidence: 282 core tests in AGG/Cairo plus the AGG runner, four focused tests
+in restricted sanitizer/portable profiles. Five AGG execute-bit launch failures
+passed after permissions were restored. Final cases for later-argument length
+changes and uint32 overflow passed in all four profiles. Exhaustive allocation
+failures through success retain the source and restore execution nesting.
+All roadmap stages remain open; no native JIT or other-OS completion is claimed.

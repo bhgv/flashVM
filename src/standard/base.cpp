@@ -729,43 +729,11 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
 FVM_Result concat(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                   void *)
 {
-    if (fvm_array_needs_generic(o))
-        return fvm_array_generic(c, o, "concat", n, a, out, concat);
-
-    if (!array(o))
+    if (!c)
         return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *copy = 0;
-    FVM_Result r = fvm_array_create_like(c, o, size(o), &copy);
-    if (r != FVM_OK)
-        return r;
-    copy->indexed = o->indexed;
-    unsigned long length = size(o);
-    for (unsigned int k = 0; k < n; ++k)
-    {
-        if (a[k].type == FVM_VALUE_OBJECT && array(a[k].object))
-        {
-            FVM_Object *source = a[k].object;
-            if ((double)length + size(source) > 4294967295.0)
-                return FVM_INVALID_ARGUMENT;
-            for (Slots::iterator i = source->indexed.begin(); i != source->indexed.end(); ++i)
-                copy->indexed[length + i->first] = i->second;
-            length += size(source);
-        }
-        else
-        {
-            if (length == 0xffffffffUL)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Value v;
-            r = owned(c, a[k], v);
-            if (r != FVM_OK)
-                return r;
-            copy->indexed[length++] = v;
-        }
-    }
-    copy->resource_result.number = length;
-    return object_value(c, copy, 0, 0, out, 0);
+    FVM_ArrayWorkScope work(c);
+    FVM_Result status = work.step();
+    return status == FVM_OK ? fvm_array_generic(c, o, "concat", n, a, out, concat) : status;
 }
 
 /* Join the current value. */

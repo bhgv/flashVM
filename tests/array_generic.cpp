@@ -98,8 +98,9 @@ int main()
     number(c, o, "2", 9);
     fvm_value_number(args, 2);
     assert(borrow(c, array, "concat", o, 1, args, &out) == FVM_OK);
-    number(c, out.object, "length", 2);
-    assert(fvm_object_get(c, out.object, "0", &copy) == FVM_OK && copy.object == o);
+    number(c, out.object, "length", 4);
+    number(c, out.object, "0", 4);
+    number(c, out.object, "3", 2);
     /* A real Array reads inherited slots and creates destination own properties. */
     fvm_value_number(args, 4);
     assert(fvm_construct(c, "Array", 1, args, &inherited) == FVM_OK);

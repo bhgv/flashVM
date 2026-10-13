@@ -1,4 +1,4 @@
-/* FlashVM: shared execution-work accounting and worker cancellation for native Array slicing. */
+/* FlashVM: shared execution-work accounting and worker cancellation for native Array traversal. */
 #ifndef FVM_ARRAY_WORK_HPP
 #define FVM_ARRAY_WORK_HPP /* Guard for the C++98 native traversal budget scope. */
 #include "../core/runtime.hpp"
@@ -8,7 +8,7 @@
 class FVM_ArrayWorkScope
 {
     FVM_Context *context_; /* Context whose instruction/work counter is charged. */
-    bool enabled_; /* Whether this scope participates in native slice accounting. */
+    bool enabled_; /* Whether this scope participates in native Array accounting. */
     /* Keep execution-depth ownership unique. */
     FVM_ArrayWorkScope(const FVM_ArrayWorkScope &);
     /* Keep execution-depth ownership unique. */
