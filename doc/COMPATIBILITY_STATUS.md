@@ -208,3 +208,13 @@ Compatible broker queue/file freeze/state implemented with validated controls an
 ## v0.68 — Native string result lifetime
 
 Context-owned snapshots retain native string results across userdata finalization, with counted-byte arena descriptors and atomic indexes. Проверки: gc_string_pool, gc_native_string_result, gc_native_string_allocation. Arena strings remain retained to context teardown; traced reclamation and full GC acceptance remain open (GC_STRING_STORAGE.md).
+
+## v0.80 — Shared-proxy/local mutex cycle
+
+Проверено / tested: locally observed mixed wait cycle between one retained TCP
+proxy shared by two OS workers and one local mutex; owner/waiter locations,
+endpoint, cancellation cleanup and reuse. Regression: `mutex_mixed_deadlock.c`.
+Default AGG regression suite: 242/242 (examples disabled); mixed test 100 repeats;
+ASan/UBSan targeted 5/5, leak scanning unavailable; portable excludes live TCP.
+Separate proxy/process owners and full distributed deadlock detection remain
+open. RU/EN scope and validation: [REMOTE_MUTEX_DEBUG.md](REMOTE_MUTEX_DEBUG.md).

@@ -58,3 +58,30 @@ handle teardown. OS_PORTS-disabled profiles omit live TCP cases.
 debugger checks 35/35 in AGG, Cairo, portable and ASan/UBSan. Portable excludes
 live TCP. ASan covers heap/global memory, UBSan active; leak detection and stack
 ASan disabled. Linux profiles only, no other platform runtime certification.
+
+## v0.80 — Смешанный локальный цикл / Mixed local wait cycle
+
+Новый `mutex_mixed_deadlock.c` передаёт одну TCP proxy через retained queue двум
+OS workers. Один worker держит локальный mutex и ждёт proxy; второй держит эту
+же proxy и ждёт локальный mutex. Debugger обнаруживает обе стороны цикла и
+проверяет context IDs владельцев/ожидающих, строки захвата/ожидания и URI remote
+строки. После cancellation проверяются отсутствие wait/owner/cycle записей,
+освобождение authority и локального mutex, повторный цикл и полная очистка registry.
+Исправление реализации не потребовалось. Отдельные proxy/process owners по-прежнему
+не объединяются: тест не подтверждает распределённое обнаружение дедлоков.
+
+The new regression shares one retained TCP proxy between two OS workers and
+creates a cycle with a local mutex. Both cycle rows, requester/owner context IDs,
+acquisition/wait locations and the remote URI are checked. Cancellation releases
+both locks and removes waits; a second cycle verifies reuse, and teardown leaves
+an empty registry. No implementation change was needed. Owners reached through
+separate proxies/processes remain outside this locally observed graph.
+
+Проверки / verification (Linux): default AGG with fonts/codecs/SQLite,
+examples disabled: 242/242 tests; new mixed-cycle test: 100 consecutive passes,
+two cycles per run. Headless OS_PORTS ASan/UBSan: 5/5 targeted tests
+(mixed/local/remote mutex, nested network fault, broker adapter lifetime).
+LeakSanitizer cannot enumerate sandbox `/proc` tasks and is disabled through
+linked sanitizer defaults; stack use-after-scope instrumentation is disabled.
+Portable NO_OS_PORTS: new test builds/passes with the live TCP case excluded.
+These checks do not certify other platforms or full stages 6/7 acceptance.
