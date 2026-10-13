@@ -495,7 +495,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
                                   !std::strcmp(method, "concat") ||
-                                  (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse"))));
+                                  (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse") ||
+                                                    !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn"))));
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
@@ -692,7 +693,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
         count = prepared->length;
-    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse")))
+    else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse") ||
+                             !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn")))
         r = legacy_data_length(c, o, count);
     else
         r = length(c, o, count);
@@ -969,20 +971,32 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         r = fvm_value_string_bytes(&text, bytes.begin(), size);
         return r == FVM_OK ? fvm_value_to_string(c, &text, out) : r;
     }
-    /* Read all present slots, including inherited getters, for read-only joins
-     * and stable sorting. The native work array has no original prototype:
-     * callback results are committed through the actual receiver's property API. */
+    /* Build a sorting snapshot: loaded input/output uses raw own data; unloaded mode remains property-aware. */
     FVM_Object *snapshot = 0;
     r = fvm_array_create_like(c, 0, count, &snapshot, true);
+    /* [GC:] Keep the sorting input alive through custom comparator and field/string callbacks. */
+    FVM_ObjectRootScope snapshot_roots(c, snapshot);
     if (r == FVM_OK)
         snapshot->prototype = 0;
     for (unsigned long i = 0; i < count && r == FVM_OK; ++i)
     {
         FVM_Value value;
         bool present;
-        r = get(c, o, i, value, present);
-        if (r == FVM_OK && present)
-            r = fvm_table_set_index(c, snapshot, i, &value);
+        if (c->swf_loaded)
+        {
+            r = work.step();
+            if (r == FVM_OK)
+            {
+                legacy_data_element(o, i, value);
+                r = fvm_array_store_own(c, snapshot, i, value);
+            }
+        }
+        else
+        {
+            r = get(c, o, i, value, present);
+            if (r == FVM_OK && present)
+                r = fvm_table_set_index(c, snapshot, i, &value);
+        }
     }
     if (r != FVM_OK)
         return r;
@@ -999,9 +1013,21 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         {
             FVM_Value value;
             bool present;
-            r = get(c, snapshot, i, value, present);
-            if (r == FVM_OK)
-                r = write(c, o, i, present ? &value : 0);
+            if (c->swf_loaded)
+            {
+                r = work.step();
+                if (r == FVM_OK)
+                {
+                    legacy_data_element(snapshot, i, value);
+                    r = legacy_store_element(c, o, i, value);
+                }
+            }
+            else
+            {
+                r = get(c, snapshot, i, value, present);
+                if (r == FVM_OK)
+                    r = write(c, o, i, present ? &value : 0);
+            }
         }
         if (r == FVM_OK && out->type == FVM_VALUE_OBJECT)
             object(out, o);

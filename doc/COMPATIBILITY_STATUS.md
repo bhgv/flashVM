@@ -1008,3 +1008,16 @@ Boolean and missing sortOn field ordering pass. Four AGG gradient/table/codec
 launch failures passed after execute-bit restoration. All fifteen original SWFs
 still match. Generic property/prototype reads/writes, callback order, flags/holes
 and all roadmap stages remain open.
+
+## v0.157 — generic sort own snapshot / собственный снимок sort
+
+Loaded generic sort/sortOn snapshots own raw element data and signed length,
+materializes undefined holes and writes raw data without index getters/setters/
+watchers. Snapshot has an explicit GC root through callbacks/copyback.
+[RU/EN details](ARRAY_LEGACY_SORT_DATA.md). Evidence: 324 core tests in
+AGG/Cairo plus the AGG runner; five focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Borrowed virtual length/index, inherited
+holes, readonly data, no index callbacks and post-GC data pass. Five AGG Array/GC
+launch failures passed after execute-bit restoration. Fifteen original SWFs
+still match. Native sparse holes, callback/flag/return rules, native accessor data
+and all stages remain open.
