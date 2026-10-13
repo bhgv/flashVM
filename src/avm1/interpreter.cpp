@@ -1691,7 +1691,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_Value left = stack[stack.size() - 2], right = stack.back(), output;
+                if (a.op == 0x66)
+                {
+                    bool matches = strict_equal(stack[stack.size() - 2], stack.back());
+                    stack.pop_back();
+                    fvm_value_boolean(&stack.back(), matches);
+                    ++pc;
+                    continue;
+                }
+                /* [GC:] Retain transformed primitives and derived strings across subsequent callbacks. */
+                fvm_detail::vector<FVM_Value> converted(4);
+                converted[0] = stack[stack.size() - 2];
+                converted[1] = stack.back();
+                fvm_value_undefined(&converted[2]);
+                fvm_value_undefined(&converted[3]);
+                RootGuard converted_roots(c, &converted, 0, 0, &registers);
+                FVM_Value &left = converted[0], &right = converted[1];
+                FVM_Value output;
                 FVM_Result r = FVM_OK;
                 if (a.op != 0x66)
                 {
@@ -1716,23 +1732,30 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return r;
                     r = FVM_OK;
                 }
-                if (a.op == 0x66 || a.op == 0x49)
+                if (a.op == 0x49)
                 {
                     bool matches = false;
-                    r = a.op == 0x66 ? FVM_OK : equal(c, left, right, matches);
-                    if (a.op == 0x66)
-                        matches = strict_equal(left, right);
+                    r = equal(c, left, right, matches);
                     fvm_value_boolean(&output, matches);
                 }
                 else
                 {
-                    r = fvm_to_primitive(c, &left, a.op == 0x47 && date_hint(left), &left);
-                    if (r == FVM_OK)
-                        r = fvm_to_primitive(c, &right, a.op == 0x47 && date_hint(right), &right);
+                    if (a.op == 0x47)
+                    {
+                        r = fvm_to_primitive(c, &right, date_hint(right), &right);
+                        if (r == FVM_OK)
+                            r = fvm_to_primitive(c, &left, date_hint(left), &left);
+                    }
+                    else
+                    {
+                        r = fvm_to_primitive(c, &left, false, &left);
+                        if (r == FVM_OK)
+                            r = fvm_to_primitive(c, &right, false, &right);
+                    }
                     if (r == FVM_OK && a.op == 0x47 &&
                         (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
                     {
-                        FVM_Value x, y;
+                        FVM_Value &x = converted[2], &y = converted[3];
                         r = action_string(c, left, &x);
                         if (r == FVM_OK)
                             r = action_string(c, right, &y);

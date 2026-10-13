@@ -407,3 +407,13 @@ converted-string roots across real script-triggered traced GC. AGG/Cairo Release
 and portable focused 4/4 each. Non-ASCII pre-SWF-6 length/extract are explicitly
 unsupported; default-hint Add2 and remaining actions are open.
 RU/EN: [AVM1_LEGACY_STRINGS.md](AVM1_LEGACY_STRINGS.md).
+
+## v0.101 — Primitive coercion roots
+
+Проверено / tested: transient primitive/string roots across script-triggered
+traced GC and right-first Add2 conversion. The new regression reproduced the
+former failure and now passes thirty repeated coercion cycles. AGG/Cairo
+Release 262/262 each (AGG five launch-permission failures and dependent timezone
+profile rerun); restricted headless ASan/UBSan and portable focused 4/4 each.
+Default-hint/version conformance and whole stages remain open.
+RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).

@@ -22,3 +22,17 @@ covers the complementary numeric path. Full MovieClip/display-object paths,
 Add2 default-hint behavior, standard constructors' version coercion, exception
 fallback trace and historic global availability remain open. Stage 1/2 are not
 complete. Primary comparison: [pinned Ruffle value implementation](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/value.rs).
+
+## v0.101 — Roots across primitive coercion
+
+Add2/Less2/Equals2/Greater keep a temporary root vector for transformed operands
+and derived string results. An earlier callback's string must remain live while
+the next callback invokes script GC. StrictEquals has its separate non-coercing
+path without this allocation. Add2 now converts right first; numeric relational
+operators retain left-first conversion. Full default-hint object policy remains
+open; this change fixes ordering and lifetimes independently.
+
+Новый тест gc_avm1_primitive_coercion воспроизвёл ошибку сравнения после
+настоящего gc.collect в другом valueOf. После исправления тридцать повторов
+Add2/Less2/Greater сохраняют временные строки в traced режиме. Проверяется
+и порядок нативных valueOf в Add2. Полная семантика hint/Date пока открыта.
