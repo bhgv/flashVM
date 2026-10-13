@@ -52,3 +52,9 @@ execution and exact pinned expected output. Files were not patched or relabelled
 Три исходных SWF завершились успешно; вывод полностью совпал с эталоном.
 Other corpus probes remain open; top-level DefineLocal and missing actions still
 block selected SWF 4/8 tests. No stage is closed by these three matches.
+
+## v0.95 — SWF 8 shift probe
+
+Original SWF 8 biturshift_swf8 now completes with exact 93-byte expected output.
+Top-level declarations and the SWF 8 signed URShift result were both necessary.
+Четвёртый внешний SWF совпал с эталоном; полная AVM1 приёмка остаётся открытой.

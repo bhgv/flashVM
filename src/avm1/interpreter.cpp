@@ -1629,9 +1629,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 /* Coerce the original left operand first; user callbacks observe this order. */
                 double left = 0, right = 0;
-                FVM_Result r = fvm_avm1_number(c, &stack[stack.size() - 2], &left);
+                /* Remainder and bit operations convert the top/right operand first. */
+                FVM_Result r = fvm_avm1_number(c, &stack.back(), &right);
                 if (r == FVM_OK)
-                    r = fvm_avm1_number(c, &stack.back(), &right);
+                    r = fvm_avm1_number(c, &stack[stack.size() - 2], &left);
                 if (r != FVM_OK)
                     return r;
                 double result = 0;
@@ -1667,7 +1668,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         if (a.op == 0x64 && shift && (value & 0x80000000UL))
                             bits |= (0xffffffffUL << (32 - shift)) & 0xffffffffUL;
                     }
-                    result = a.op == 0x65 ? (double)bits : signed_bits(bits);
+                    bool unsigned_result = a.op == 0x65 &&
+                        (!c->swf_loaded || c->swf_info.version < 8);
+                    result = unsigned_result ? (double)bits : signed_bits(bits);
                 }
                 stack.pop_back();
                 fvm_value_number(&stack.back(), result);

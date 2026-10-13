@@ -355,3 +355,11 @@ headless ASan/UBSan and portable focused 4/4 each. External SWF 8 biturshift
 now finishes but reveals a signed-result version difference; that probe still
 fails exact comparison. Scope/path conformance remains open.
 RU/EN: [AVM1_DECLARATIONS.md](AVM1_DECLARATIONS.md).
+
+## v0.95 — SWF 8 shift result and bitwise coercion order
+
+Проверено / tested: signed SWF 8 URShift result and right-first bitwise/remainder
+coercion. AGG/Cairo Release 256/256 each (AGG three launch-permission reruns);
+restricted headless ASan/UBSan and portable focused 3/3 each. Fourth original
+external SWF trace matches: biturshift_swf8, 93 bytes. Other arithmetic/actions
+and whole-stage acceptance remain open. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).

@@ -88,3 +88,18 @@ NUL, object-returned strings and unchanged C embedding conversion. Three origina
 external SWFs now complete with byte-for-byte pinned expected output:
 undefined_to_string_swf6 (6), swf6_string_as_bool (6), equals_swf5 (5).
 This is targeted reference evidence, not full AVM1 compatibility.
+
+## v0.95 — SWF 8 unsigned-shift compatibility
+
+В загруженном SWF 8 URShift возвращает Int32, включая эффективный сдвиг 0.
+В SWF 5–7 и контексте без SWF сохраняется Uint32. Все битовые операции
+и Modulo преобразуют правый операнд первым; ошибки останавливают следующий
+вызов. Это уточняет ранее описанный порядок и безусловное Uint32 правило.
+
+Loaded SWF 8 URShift uses a signed result, while SWF 5–7/unloaded contexts
+retain unsigned results. The effective count remains masked to five bits.
+Bitwise/remainder coercion now runs right first, keeping both operands rooted.
+avm1_version_shifts covers signed boundaries, count 0/32, conversion order and
+right-side failure. Original SWF 8 biturshift_swf8 completes and exactly matches
+its pinned 93-byte reference output. Earlier notes about always-unsigned URShift
+and left-first remainder are superseded by this verified behavior.
