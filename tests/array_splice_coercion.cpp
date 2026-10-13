@@ -1,0 +1,124 @@
+#include "flashvm/standard.h"
+#include "flashvm/function.h"
+#include "flashvm/property.h"
+#include "flashvm/table.h"
+#include "flashvm/transfer.h"
+#include <cassert>
+#include <cstring>
+static unsigned int reads;
+static FVM_Result getter(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *,
+                         FVM_Value *out, void *)
+{
+    ++reads;
+    fvm_value_number(out, 4);
+    return FVM_OK;
+}
+static FVM_Value object(FVM_Object *o)
+{
+    FVM_Value v;
+    fvm_value_undefined(&v);
+    v.type = FVM_VALUE_OBJECT;
+    v.object = o;
+    return v;
+}
+static FVM_Result borrow(FVM_Context *c, FVM_Object *array, const char *name, FVM_Object *receiver,
+                         unsigned int n, const FVM_Value *args, FVM_Value *out)
+{
+    FVM_Value method, call[8];
+    assert(n < 7);
+    assert(fvm_object_get(c, array, name, &method) == FVM_OK && method.type == FVM_VALUE_OBJECT);
+    call[0] = object(receiver);
+    for (unsigned int i = 0; i < n; ++i)
+        call[i + 1] = args[i];
+    return fvm_object_call(c, method.object, "call", n + 1, call, out);
+}
+static void number(FVM_Context *c, FVM_Object *o, const char *name, double expected)
+{
+    FVM_Value v;
+    assert(fvm_object_get(c, o, name, &v) == FVM_OK && v.type == FVM_VALUE_NUMBER &&
+           v.number == expected);
+}
+static FVM_Object *source, *new_proto;
+static unsigned starts, order;
+static bool inherited_mode;
+static unsigned setters;
+static FVM_Result reject_destination(FVM_Context *, FVM_Object *, unsigned int,
+                                     const FVM_Value *, FVM_Value *, void *)
+{
+    ++setters;
+    return FVM_OUT_OF_MEMORY;
+}
+static FVM_Result reject_start(FVM_Context *, FVM_Object *, unsigned int,
+                               const FVM_Value *, FVM_Value *, void *)
+{
+    order = order * 10 + 9;
+    return FVM_OUT_OF_MEMORY;
+}
+static FVM_Result convert_start(FVM_Context *c, FVM_Object *, unsigned int,
+                                const FVM_Value *, FVM_Value *out, void *)
+{
+    ++starts; order = order * 10 + 1;
+    if (inherited_mode) {
+        assert(fvm_object_define_accessor_rooted(c, new_proto, "1", getter, reject_destination, 0, 0) == FVM_OK);
+        fvm_value_number(out, 0);
+    } else {
+        FVM_Value v; fvm_value_number(&v, 44);
+        assert(fvm_table_set_index(c, source, 4, &v) == FVM_OK);
+        fvm_value_number(out, 1);
+    }
+    return FVM_OK;
+}
+static FVM_Result read_length(FVM_Context *, FVM_Object *, unsigned int,
+                              const FVM_Value *, FVM_Value *out, void *)
+{
+    order = order * 10 + 2;
+    fvm_value_number(out, 5);
+    return FVM_OK;
+}
+int main()
+{
+    FVM_Config cfg; FVM_Runtime *rt = 0; FVM_Context *c = 0;
+    FVM_Object *array = 0, *start = 0, *fn = 0;
+    FVM_Value v, out, args[2];
+    assert(fvm_config_init(&cfg) == FVM_OK);
+    assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
+    assert(fvm_context_create(rt, &c) == FVM_OK);
+    assert(fvm_standard_install(c) == FVM_OK);
+    assert(fvm_construct(c, "Array", 0, 0, &array) == FVM_OK);
+    assert(fvm_construct(c, "Object", 0, 0, &start) == FVM_OK);
+    assert(fvm_function_create_native(c, convert_start, 0, 0, &fn) == FVM_OK);
+    v = object(fn);
+    assert(fvm_object_set(c, start, "valueOf", &v) == FVM_OK);
+    args[0] = object(start);
+    for (unsigned i = 0; i < 2; ++i) {
+        fvm_value_number(&v, 3);
+        assert(fvm_construct(c, i ? "Object" : "Array", i ? 0 : 1, i ? 0 : &v, &source) == FVM_OK);
+        if (i)
+            assert(fvm_object_define_accessor_rooted(c, source, "length", read_length, 0, 0, 0) == FVM_OK);
+        starts = order = 0;
+        assert(borrow(c, array, "splice", source, 1, args, &out) == FVM_OK);
+        assert(starts == 1 && order == (i ? 12U : 1U));
+        number(c, out.object, "length", 4);
+        number(c, out.object, "3", 44);
+    }
+    inherited_mode = true;
+    fvm_value_number(&v, 3);
+    assert(fvm_construct(c, "Array", 1, &v, &source) == FVM_OK);
+    assert(fvm_construct(c, "Object", 0, 0, &new_proto) == FVM_OK);
+    assert(fvm_object_set_prototype(c, source, new_proto) == FVM_OK);
+    starts = reads = 0;
+    assert(borrow(c, array, "splice", source, 1, args, &out) == FVM_OK);
+    assert(starts == 1 && reads == 1 && setters == 0);
+    int own = 0;
+    assert(fvm_object_has_own(c, out.object, "1", &own) == FVM_OK && own);
+    number(c, out.object, "1", 4);
+    number(c, source, "length", 0);
+    assert(fvm_construct(c, "Object", 0, 0, &source) == FVM_OK);
+    assert(fvm_object_define_accessor_rooted(c, source, "length", read_length, 0, 0, 0) == FVM_OK);
+    assert(fvm_function_create_native(c, reject_start, 0, 0, &fn) == FVM_OK);
+    v = object(fn);
+    assert(fvm_object_set(c, start, "valueOf", &v) == FVM_OK);
+    order = 0;
+    assert(borrow(c, array, "splice", source, 1, args, &out) == FVM_OUT_OF_MEMORY && order == 9);
+    fvm_context_destroy(c); fvm_runtime_destroy(rt);
+}

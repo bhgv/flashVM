@@ -677,18 +677,23 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         fvm_value_undefined(out);
         return FVM_OK;
     }
-    if (fvm_array_needs_generic(o))
-        return fvm_array_generic(c, o, "splice", n, a, out, splice);
-
-    if (!array(o))
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    unsigned long length = size(o);
+    /* Coerce start before capturing length or choosing the sparse fast path. */
     double first = 0, remove = 0;
     FVM_Result r = index_arg(c, n, a, 0, 0, first);
     if (r != FVM_OK)
         return r;
+    if (fvm_array_needs_generic(o))
+    {
+        /* Preserve the remaining arguments but do not call the original start conversion twice. */
+        fvm_detail::vector<FVM_Value> converted;
+        for (unsigned int i = 0; i < n; ++i)
+            converted.push_back(a[i]);
+        fvm_value_number(&converted[0], first);
+        return fvm_array_generic(c, o, "splice", n, converted.begin(), out, splice);
+    }
+    if (!array(o))
+        return FVM_INVALID_ARGUMENT;
+    unsigned long length = size(o);
     unsigned long start = bound(first, length);
     if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
     {

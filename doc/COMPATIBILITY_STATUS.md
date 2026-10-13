@@ -520,3 +520,15 @@ failures passed after permission restoration. Final null/omitted/huge-range
 cases passed in all four profiles. Initial development compiler errors in
 undefined/null value initialization were fixed before running final binaries.
 Historic integer/evaluation-order details and all roadmap stages remain open.
+
+## v0.118 — splice coercion order / порядок преобразований splice
+
+Coerce start before length and fast-path selection; avoid a second call to the
+original start object when falling back to inherited reads. Removed values are
+own result data without inherited setter calls. Errors precede length reads.
+[RU/EN details](ARRAY_SPLICE_COERCION.md). Evidence: 284 core tests in AGG/Cairo
+plus the AGG runner, four focused Array tests in restricted sanitizer/portable
+profiles. One AGG file-writer launch lacked execute permission and its dependent
+reader was skipped; both passed after permissions were restored. Delete-count
+coercion-driven prototype changes and other historic Array gaps remain open.
+All roadmap stages remain open.

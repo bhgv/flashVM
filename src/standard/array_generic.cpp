@@ -342,6 +342,14 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         fvm_value_undefined(out);
         return FVM_OK;
     }
+    /* Unlike slice, splice converts its start before the observable length read. */
+    double splice_start = 0;
+    if (!std::strcmp(method, "splice"))
+    {
+        FVM_Result status = integer(c, n, a, 0, 0, splice_start);
+        if (status != FVM_OK)
+            return status;
+    }
     FVM_ArrayWorkScope work(c, !std::strcmp(method, "slice") || !std::strcmp(method, "join") ||
                                   !std::strcmp(method, "concat"));
     if (!std::strcmp(method, "concat"))
@@ -477,8 +485,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     if (!std::strcmp(method, "slice") || !std::strcmp(method, "splice"))
     {
         bool splice = !std::strcmp(method, "splice");
-        double first = 0, last = 0;
-        r = integer(c, n, a, 0, 0, first);
+        double first = splice_start, last = 0;
+        if (!splice)
+            r = integer(c, n, a, 0, 0, first);
         if (r != FVM_OK)
             return r;
         unsigned long start = bound(first, count), deleted;
@@ -523,8 +532,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 if (r == FVM_OK)
                     r = get(c, o, start + i, value, present);
                 if (r == FVM_OK && present)
-                    r = splice ? fvm_table_set_index(c, result, i, &value)
-                               : slice_store(c, result, i, value);
+                    r = slice_store(c, result, i, value);
             }
         if (splice)
         {
