@@ -186,3 +186,9 @@ Opaque noise skips alpha RNG samples, matching the current Ruffle implementation
 Реализованы freeze чтения и indexed non-consuming peek локальных файлов; GC/циклы, блокирующие читатели и malformed input проверены в file_channel_debug. Remote inspection и file state snapshot отсутствуют. См. FILE_CHANNEL_DEBUG.md.
 
 Local file freeze and indexed inspection are implemented; remote inspection and file state snapshots remain absent. Full debugger acceptance remains open.
+
+## v0.64 — Bitmap dissolve model
+
+Реализована детерминированная модель pixelDissolve: continuation, clipped copy/fill, atomic staging, native callback transport. Полная Flash-семантика порядка/seed/count/premultiplied alpha **не подтверждена**; метод не завершён. См. BITMAP_DISSOLVE.md.
+
+Deterministic dissolve API implemented; exact historical Flash behavior is not certified and remains open.

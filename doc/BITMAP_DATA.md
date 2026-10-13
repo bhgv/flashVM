@@ -1,6 +1,6 @@
 # BitmapData: текущая реализация / Current implementation
 
-## Current development checkpoint: v0.62 / Текущая контрольная точка
+## Current development checkpoint: v0.64 / Текущая контрольная точка
 
 Ниже сохранены исторические проверки v0.37–v0.42. Более поздние реализации
 описаны отдельно: [bitmap resources and JPEG tables](SWF_JPEG_TABLES.md),
@@ -11,7 +11,7 @@
 [merge](BITMAP_MERGE.md), [paletteMap](BITMAP_PALETTE_MAP.md),
 [hitTest](BITMAP_HIT_TEST.md) и [ColorMatrixFilter](COLOR_MATRIX_FILTER.md) [ConvolutionFilter](CONVOLUTION_FILTER.md) и [noise](BITMAP_NOISE.md) и [perlinNoise](BITMAP_PERLIN.md).
 
-Остаются pixelDissolve, остальные applyFilter/generateFilterRect
+Остаются эталонная сверка pixelDissolve (модель v0.64 описана в BITMAP_DISSOLVE.md), остальные applyFilter/generateFilterRect
 варианты, полная premultiplied/coercion сверка и scene filter rendering.
 Наличие метода и успешные сценарии не означают полную Flash-совместимость.
 

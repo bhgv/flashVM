@@ -4,6 +4,7 @@
 #include "bitmap_draw.hpp"
 #include "bitmap_ops.hpp"
 #include "bitmap_perlin.hpp"
+#include "bitmap_dissolve.hpp"
 #include "filter_state.hpp"
 #include "color_transform_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -517,11 +518,11 @@ FVM_Result method(FVM_Context *c, FVM_Object *self, unsigned n, const FVM_Value 
 const char *const properties[] = {"width", "height", "transparent", "rectangle"};
 const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>};
 const char *const methods[] = {
-    "clone",      "dispose",    "getPixel",  "getPixel32",         "setPixel",
-    "setPixel32", "fillRect",   "scroll",    "colorTransform",     "copyChannel",
-    "copyPixels", "draw",       "floodFill", "getColorBoundsRect", "threshold",
-    "merge",      "paletteMap", "hitTest",   "applyFilter",        "generateFilterRect",
-    "noise",      "perlinNoise"};
+    "clone",      "dispose",     "getPixel",     "getPixel32",         "setPixel",
+    "setPixel32", "fillRect",    "scroll",       "colorTransform",     "copyChannel",
+    "copyPixels", "draw",        "floodFill",    "getColorBoundsRect", "threshold",
+    "merge",      "paletteMap",  "hitTest",      "applyFilter",        "generateFilterRect",
+    "noise",      "perlinNoise", "pixelDissolve"};
 const FVM_NativeFunction callbacks[] = {method<0>,
                                         method<1>,
                                         method<2>,
@@ -543,7 +544,8 @@ const FVM_NativeFunction callbacks[] = {method<0>,
                                         fvm_bitmap_apply_filter,
                                         fvm_bitmap_filter_rect,
                                         fvm_bitmap_noise,
-                                        fvm_bitmap_perlin_noise};
+                                        fvm_bitmap_perlin_noise,
+                                        fvm_bitmap_pixel_dissolve};
 } // namespace
 /* [GC:] Borrow the native pixel allocation only when its internal ownership callback matches. */
 FVM_BitmapState *fvm_bitmap_pixels(FVM_Object *object)

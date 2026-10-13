@@ -1,4 +1,4 @@
-# Оставшаяся работа после v0.63 / Remaining work after v0.63
+# Оставшаяся работа после v0.64 / Remaining work after v0.64
 
 Основной план: ROADMAP.md. Ни один этап ещё не закрыт. Уже проверенные части
 не нужно реализовывать заново; ниже перечислена оставшаяся работа и приёмка.
@@ -122,3 +122,6 @@ v0.62 adds staged Perlin turbulence; pixel dissolve and remaining filters/text/m
 
 В v0.63 добавлены freeze/peek для локальных файловых каналов: non-consuming indexed records, worker resume, cycles/GC (FILE_CHANNEL_DEBUG.md). Полная приёмка стадий 6/7 остаётся открытой.
 v0.63 adds local file debugger freezing and non-consuming record inspection; stages 6/7 remain open.
+
+В v0.64 реализована детерминированная модель pixelDissolve, но точный pixel order/seed Flash не подтверждён (BITMAP_DISSOLVE.md). API не считается завершённым.
+v0.64 adds a tested deterministic dissolve model; historical Flash order/seed acceptance remains open.
