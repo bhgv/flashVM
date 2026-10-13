@@ -289,12 +289,15 @@ FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FV
 FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, void *)
 {
-    if (n < 3 || args[0].type != FVM_VALUE_OBJECT)
+    fvm_value_undefined(out);
+    if (!n)
+        return FVM_OK;
+    if (args[0].type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
     double set = 0, clear = 0;
-    FVM_Result r = fvm_value_to_number(c, args + 2, &set);
+    FVM_Result r = n > 2 ? fvm_value_to_number(c, args + 2, &set) : FVM_OK;
     if (r != FVM_OK)
         return r;
     if (n > 3)
@@ -308,9 +311,11 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
+    if (n < 2)
+        return FVM_OK;
     FVM_Object *o = args[0].object;
     fvm_detail::vector<fvm_detail::string> names;
-    if (args[1].type == FVM_VALUE_NULL || args[1].type == FVM_VALUE_UNDEFINED)
+    if (args[1].type == FVM_VALUE_NULL)
     {
         for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.begin();
              i != o->properties.end(); ++i)
@@ -332,7 +337,8 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     else
     {
         FVM_Value text;
-        r = fvm_value_to_string(c, args + 1, &text);
+        r = c->swf_loaded ? fvm_avm1_string(c, args[1], &text)
+                          : fvm_value_to_string(c, args + 1, &text);
         if (r != FVM_OK)
             return r;
         size_t length = fvm_string_size(text), begin = 0;

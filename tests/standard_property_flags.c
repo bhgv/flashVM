@@ -20,13 +20,16 @@ int main(void)
     unsigned char swf[] = {'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};
     if (version && version < 4) continue;
     assert(fvm_context_create(rt, &c) == FVM_OK);
+    assert(fvm_object_create(c, &o) == FVM_OK);
+    assert(fvm_gc_pin(c, o) == FVM_OK);
+    fvm_value_number(&value, 9);
+    assert(fvm_object_set(c, o, "", &value) == FVM_OK);
+    assert(fvm_object_set(c, o, "undefined", &value) == FVM_OK);
     if (version) {
         swf[3] = (unsigned char)version;
         assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK);
     }
     assert(fvm_standard_install(c) == FVM_OK);
-    assert(fvm_construct(c, "Object", 0, 0, &o) == FVM_OK);
-    assert(fvm_gc_pin(c, o) == FVM_OK);
     fvm_value_number(&value, 9);
     assert(fvm_object_set(c, o, "x", &value) == FVM_OK);
     fvm_value_undefined(args); args[0].type = FVM_VALUE_OBJECT; args[0].object = o;
@@ -56,6 +59,19 @@ int main(void)
     assert(fvm_call(c, "ASSetPropFlags", 4, args, &out) == FVM_OK);
     assert(fvm_object_property_flags(c, o, "x", &flags) == FVM_OK && (flags & 2));
     assert(fvm_object_property_flags_bytes(c, o, nul, sizeof(nul), &flags) == FVM_OK && (flags & 2));
+    assert(fvm_object_set_property_flags(c, o, "x", 0, 7) == FVM_OK);
+    assert(fvm_object_set_property_flags(c, o, "", 0, 7) == FVM_OK);
+    assert(fvm_object_set_property_flags(c, o, "undefined", 0, 7) == FVM_OK);
+    fvm_value_undefined(args + 1); fvm_value_number(args + 2, 4); fvm_value_number(args + 3, 0);
+    assert(fvm_call(c, "ASSetPropFlags", 4, args, &out) == FVM_OK);
+    assert(fvm_object_property_flags(c, o, "", &flags) == FVM_OK && flags == (version && version < 7 ? 4U : 0U));
+    assert(fvm_object_property_flags(c, o, "undefined", &flags) == FVM_OK && flags == (version && version < 7 ? 0U : 4U));
+    assert(fvm_object_property_flags(c, o, "x", &flags) == FVM_OK && flags == 0);
+    assert(fvm_call(c, "ASSetPropFlags", 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
+    assert(fvm_call(c, "ASSetPropFlags", 1, args, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
+    args[1].type = FVM_VALUE_NULL;
+    assert(fvm_call(c, "ASSetPropFlags", 2, args, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
+    assert(fvm_object_property_flags(c, o, "x", &flags) == FVM_OK && flags == 0);
     fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

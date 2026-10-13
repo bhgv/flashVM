@@ -881,3 +881,15 @@ in unloaded mode and each SWF4..8; counted NUL, readonly and own selection pass.
 Four AGG and two Cairo launch failures plus an AGG runner PermissionError passed
 after execute-bit restoration. Fifteen original SWFs still match exactly.
 Selector/default coercions, version masks and all stages remain open.
+
+## v0.147 — ASSetPropFlags selectors/defaults / выбор свойств
+
+Only NULL selects all own fields. Undefined is converted with loaded AVM1
+string rules (empty in SWF4..6, "undefined" in SWF7..8); missing masks are zero,
+and missing object/list returns undefined without mutations.
+[RU/EN details](STANDARD_PROPERTY_FLAGS.md). Evidence: 314 core tests in
+AGG/Cairo plus the AGG runner; four focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. No launch failures. Existing C89 tests
+cover each selector/default path and all 512 mask combinations in each mode.
+Fifteen original SWFs still match. Full receiver/mask conversion and all stages
+remain open.
