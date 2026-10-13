@@ -146,6 +146,7 @@ extern "C"
         /* [GC:] Работаем с выбранным режимом планирования сборки. */
         /* [GC:] No constructor/method invocation is active in a new context. */
         context->calling_constructor = context->calling_function = context->calling_owner = 0;
+        context->calling_setter_owner = 0;
         /* [GC:] Start with the default collector scheduling mode. */
         context->gc_mode = 0;
         /* [GC:] Учитываем выделения для планирования следующего прохода сборки. */

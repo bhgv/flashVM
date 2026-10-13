@@ -42,6 +42,7 @@ int main()
     value = object(o); assert(fvm_object_set(c, o, "1", &value) == FVM_OK);
     fvm_value_number(&value, 81); assert(fvm_object_set(c, o, "2", &value) == FVM_OK);
     assert(fvm_object_set(c, o, "3", &value) == FVM_UNSUPPORTED);
+    assert(c->calling_setter_owner == 0);
     assert(fvm_gc_string_mode(c, FVM_GC_STRINGS_TRACED) == FVM_OK); assert(fvm_gc_collect(c, 0) == FVM_OK); verify(c, array, o);
     FVM_Channel *channel = 0; assert(fvm_channel_create(&channel) == FVM_OK);
     value = object(o); assert(fvm_channel_send_value(c, channel, &value, 0) == FVM_OK);

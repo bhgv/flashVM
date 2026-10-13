@@ -796,3 +796,17 @@ restoration. Full suites used serial CTest scheduling for this change.
 All fifteen selected original SWFs still match exactly. Corrected names and
 allocation fixtures now retain existing flags. Real Array index/length guards,
 readonly callbacks, inherited setter data and all roadmap stages remain open.
+
+## v0.140 — inherited setter ownership / владелец setter
+
+CAPI setter dispatch scopes actual lookup ownership with allocation-free roots
+for owner, receiver and capture. Inherited script setters execute with receiver
+without changing prototype data; nested own setters restore prior metadata.
+Existing descriptors need no new wire fields.
+[RU/EN details](OBJECT_INHERITED_SETTER_DATA.md). Evidence: 308 core tests in
+AGG/Cairo plus the AGG runner; seven focused checks in restricted sanitizer/
+portable profiles. Two AGG property/prototype launch failures passed after
+execute-bit restoration. Nested setters, counted NUL, GC/queue transfer and
+owner restoration after errors pass; all fifteen original SWFs still match.
+Readonly callback rules, self-detachment/replacement, Array mutation set_data,
+versions and every roadmap stage remain open.

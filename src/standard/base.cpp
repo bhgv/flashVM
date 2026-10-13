@@ -1167,7 +1167,8 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
         if (r != FVM_OK)
             return r;
     }
-    if (n)
+    /* An inherited setter runs with the receiver but does not write prototype descriptor data. */
+    if (n && (!c->calling_setter_owner || c->calling_setter_owner == receiver))
     {
         FVM_Value stored = args[0];
         if (stored.type == FVM_VALUE_STRING)

@@ -17,6 +17,7 @@
 #include "../core/property_key.hpp"
 #include <new>
 #include "../core/call_scope.hpp"
+#include "../core/setter_scope.hpp"
 #include "../standard/super.hpp"
 /* Validate value. */
 FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
@@ -442,6 +443,8 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                  * сборщик. */
                 /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
                  * сборщик. */
+                /* [GC:] Retain lookup/capture ownership even if script detaches the descriptor. */
+                FVM_SetterScope setter_scope(c, cursor, o, entry.root);
                 FVM_NativeCallGuard guard(c);
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_exception_complete(
