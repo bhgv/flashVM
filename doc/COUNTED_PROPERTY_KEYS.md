@@ -163,3 +163,11 @@ full-key global-call fallback, AVM1 NewObject and counted field/global/string
 helpers. Linux AGG 247/247; Cairo Release 247/247; focused headless ASan/UBSan
 4/4 with stack/leak exclusions; portable new test 1/1. Examples disabled in full
 profiles. Formal parameter alias identity and remaining conformance gates stay open.
+
+## v0.85 — Parameter aliases and named helpers
+
+UTF-16-equivalent duplicate formal names now select only the rightmost named
+arguments alias. Counted AVM1 factory/call, complete debug name queries and
+registered-class lookup preserve full identity. See
+[FUNCTION_PARAMETER_KEYS.md](FUNCTION_PARAMETER_KEYS.md) for RU/EN behavior,
+reproduced failure, test evidence and the remaining Function2/version gates.

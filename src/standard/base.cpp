@@ -1215,9 +1215,12 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     if (r != FVM_OK)
         return r;
     size_t size = fvm_string_size(name);
-    if (!size || std::memchr(name.string, 0, size))
+    if (!size)
         return FVM_OK;
-    fvm_detail::string key(name.string, size);
+    fvm_detail::string key;
+    r = fvm_property_key(name.string, size, key);
+    if (r != FVM_OK)
+        return r;
     if (a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED)
         registry->properties.erase(key);
     else
@@ -1851,6 +1854,16 @@ FVM_Result fvm_base_class_registry(FVM_Context *c, FVM_Object **out)
 /* Compute and return registered class. */
 extern "C" FVM_Result fvm_registered_class(FVM_Context *c, const char *name, FVM_Object **out)
 {
+    if (!name)
+    {
+        if (out) *out = 0;
+        return FVM_INVALID_ARGUMENT;
+    }
+    return fvm_registered_class_bytes(c, name, std::strlen(name), out);
+}
+/* Resolve the complete canonical registered symbol name without dropping its suffix. */
+extern "C" FVM_Result fvm_registered_class_bytes(FVM_Context *c, const char *name, size_t size, FVM_Object **out)
+{
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
@@ -1858,12 +1871,16 @@ extern "C" FVM_Result fvm_registered_class(FVM_Context *c, const char *name, FVM
         return FVM_INVALID_ARGUMENT;
     try
     {
+        fvm_detail::string key;
+        FVM_Result normalized = fvm_property_key(name, size, key);
+        if (normalized != FVM_OK)
+            return normalized;
         FVM_Object *registry = 0;
         FVM_Result r = fvm_base_class_registry(c, &registry);
         if (r != FVM_OK)
             return r;
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-            registry->properties.find(name);
+            registry->properties.find(key);
         if (entry == registry->properties.end())
             return FVM_NOT_FOUND;
         if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object->invocable.callback)

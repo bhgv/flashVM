@@ -303,7 +303,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
 /* Call script. */
-static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_ScriptFunction &fn,
+static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, const FVM_ScriptFunction &fn,
                               unsigned int argc, const FVM_Value *args, FVM_Object *receiver,
                               FVM_Value *result, FVM_Object *closure = 0, FVM_Object *callee = 0)
 {
@@ -470,7 +470,7 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
                 execution.registers[fn.parameter_registers[i]] = value;
                 continue;
             }
-            FVM_Result stored = fvm_object_set(c, activation, fn.parameters[i].c_str(), &value);
+            FVM_Result stored = fvm_object_set_bytes(c, activation, fn.parameters[i].data(), fn.parameters[i].size(), &value);
             if (stored != FVM_OK)
                 return stored;
         }
@@ -517,14 +517,16 @@ static FVM_Result call_script(FVM_Context *c, const char *name, const FVM_Script
             size_t index = i - 1;
             if (fn.function2 && fn.parameter_registers[index])
                 continue;
-            const fvm_detail::string &name = fn.parameters[index];
+            fvm_detail::string name;
+            stored = fvm_property_key(fn.parameters[index].data(), fn.parameters[index].size(), name);
+            if (stored != FVM_OK)
+                return stored;
             if (seen.find(name) != seen.end())
                 continue;
             seen[name] = true;
             if (index >= argc)
                 continue;
-            stored = fvm_function_map_argument(c, arguments, (unsigned long)index, activation,
-                                               name.c_str());
+            stored = fvm_function_map_argument(c, arguments, (unsigned long)index, activation, name);
             if (stored != FVM_OK)
                 return stored;
         }
@@ -965,7 +967,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 fn.register_count = record.register_count;
                 fn.flags = record.flags;
                 fn.constants = constants;
-                fn.name = fvm_detail::string((const char *)data + record.name, record.name_size);
+                FVM_Result named = fvm_property_key((const char *)data + record.name, record.name_size,
+                                                     fn.name);
+                if (named != FVM_OK)
+                    return named;
                 size_t p = record.parameters;
                 for (unsigned int parameter = 0; parameter < record.count; ++parameter)
                 {
@@ -975,8 +980,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     size_t begin = p;
                     while (data[p])
                         ++p;
-                    fn.parameters.push_back(
-                        fvm_detail::string((const char *)data + begin, p - begin));
+                    fvm_detail::string parameter_name;
+                    named = fvm_property_key((const char *)data + begin, p - begin, parameter_name);
+                    if (named != FVM_OK)
+                        return named;
+                    fn.parameters.push_back(parameter_name);
                     ++p;
                 }
                 fn.body.assign(data + record.body, data + record.body + record.size);
@@ -1001,7 +1009,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.object = object;
                 if (record.name_size)
                 {
-                    fvm_detail::string name((const char *)data + record.name, record.name_size);
+                    const fvm_detail::string &name = fn.name;
                     c->script_functions[name] = fn;
                     if (locals)
                         (*locals)[name] = value;
@@ -1885,7 +1893,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_function_invoke(c, receiver, self, argc, args.begin(), &result);
                 else if (receiver->resource_kind != 37 && lookup == FVM_NOT_FOUND &&
                          script != c->script_functions.end())
-                    r = call_script(c, script->first.c_str(), script->second, argc,
+                    r = call_script(c, script->first, script->second, argc,
                                     argc ? &args[0] : 0, receiver, &result);
                 else
                     r = fvm_object_call_bytes(c, receiver, name.data(), name.size(), argc, argc ? &args[0] : 0,
@@ -1929,7 +1937,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 else if (defined)
                     r = FVM_UNSUPPORTED;
                 else if (fn != c->script_functions.end())
-                    r = call_script(c, fn->first.c_str(), fn->second, argc, args.begin(), c->global,
+                    r = call_script(c, fn->first, fn->second, argc, args.begin(), c->global,
                                     &result);
                 else
                     r = fvm_call_bytes(c, name.data(), name.size(), argc, args.begin(), &result);
@@ -2034,27 +2042,51 @@ extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c)
 }
 
 /* Call avm1. */
+/* Invoke a legacy terminated AVM1 name through the counted call bridge. */
 extern "C" FVM_Result fvm_avm1_call(FVM_Context *c, const char *name, FVM_Object *self,
                                     unsigned int argc, const FVM_Value *args, FVM_Value *out)
+{
+    return name ? fvm_avm1_call_bytes(c, name, std::strlen(name), self, argc, args, out)
+                : FVM_INVALID_ARGUMENT;
+}
+/* [GC:] Resolve full named function identities while retaining native/script call roots. */
+extern "C" FVM_Result fvm_avm1_call_bytes(FVM_Context *c, const char *name, size_t size,
+                                          FVM_Object *self, unsigned int argc,
+                                          const FVM_Value *args, FVM_Value *out)
 {
     if (!c || !name || !out || (self && self->owner != c) || (argc && !args))
         return FVM_INVALID_ARGUMENT;
     for (unsigned int i = 0; i < argc; ++i)
-        if (fvm_validate_value(c, args + i) != FVM_OK)
+        if (fvm_validate_value(c, args+i) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value function;
-    FVM_Result lookup = fvm_get_global(c, name, &function);
-    if (lookup != FVM_OK)
-        return lookup;
-    if (function.type == FVM_VALUE_OBJECT && function.object->invocable.callback)
-        return fvm_function_invoke(c, function.object, self, argc, args, out);
-    fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::iterator it =
-        c->script_functions.find(name);
-    if (it == c->script_functions.end())
-        return FVM_NOT_FOUND;
-    return call_script(c, name, it->second, argc, args, self ? self : c->global, out);
+    fvm_value_undefined(out);
+    try
+    {
+        fvm_detail::string key;
+        FVM_Result result = fvm_property_key(name, size, key);
+        if (result != FVM_OK)
+            return result;
+        FVM_Value function;
+        result = fvm_get_global_bytes(c, key.data(), key.size(), &function);
+        if (result != FVM_OK)
+            return result;
+        if (function.type == FVM_VALUE_OBJECT && function.object->invocable.callback)
+            return fvm_function_invoke(c, function.object, self, argc, args, out);
+        fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::iterator found =
+            c->script_functions.find(key);
+        return found == c->script_functions.end() ? FVM_NOT_FOUND
+            : call_script(c, key, found->second, argc, args, self ? self : c->global, out);
+    }
+    catch (const std::bad_alloc &)
+    {
+        fvm_value_undefined(out);
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        fvm_value_undefined(out);
+        return FVM_ERROR;
+    }
 }
 
 /* Invoke avm1 script. */
@@ -2062,7 +2094,7 @@ FVM_Result fvm_avm1_invoke_script(FVM_Context *c, const FVM_ScriptFunction &body
                                   FVM_Object *closure, FVM_Object *receiver, unsigned int argc,
                                   const FVM_Value *args, FVM_Value *out, FVM_Object *callee)
 {
-    return call_script(c, body.name.empty() ? "<function>" : body.name.c_str(), body, argc, args,
+    return call_script(c, body.name.empty() ? fvm_detail::string("<function>") : body.name, body, argc, args,
                        receiver ? receiver : c->global, out, closure, callee);
 }
 

@@ -26,6 +26,13 @@ int main(void)
     assert(fvm_object_call(c, klass.object, "registerClass", 2, args, &out) == FVM_OK &&
            out.boolean);
     assert(fvm_registered_class(c, "Symbol", &found) == FVM_OK && found == ctor);
+    assert(fvm_value_string_bytes(args, "s\0x", 3) == FVM_OK);
+    assert(fvm_object_call(c, klass.object, "registerClass", 2, args, &out) == FVM_OK && out.boolean);
+    assert(fvm_registered_class_bytes(c, "s\0x", 3, &found) == FVM_OK && found == ctor);
+    fvm_value_string(args, "\xed\xa0\x80\xed\xb0\x80");
+    assert(fvm_object_call(c, klass.object, "registerClass", 2, args, &out) == FVM_OK && out.boolean);
+    assert(fvm_registered_class(c, "\xf0\x90\x80\x80", &found) == FVM_OK && found == ctor);
+    fvm_value_string(args, "Symbol");
     assert(fvm_gc_collect(c, 0) == FVM_OK);
     assert(fvm_registered_class(c, "Symbol", &found) == FVM_OK && found == ctor);
     assert(fvm_function_invoke(c, found, 0, 0, 0, &out) == FVM_OK && out.number == 11);
@@ -34,6 +41,9 @@ int main(void)
     assert(fvm_channel_receive_value(other, channel, &copy, 0) == FVM_OK);
     assert(fvm_set_global(other, "Object", &copy) == FVM_OK);
     assert(fvm_registered_class(other, "Symbol", &found) == FVM_OK);
+    assert(fvm_registered_class_bytes(other, "s\0x", 3, &found) == FVM_OK);
+    assert(fvm_function_invoke(other, found, 0, 0, 0, &out) == FVM_OK && out.number == 11);
+    assert(fvm_registered_class(other, "\xf0\x90\x80\x80", &found) == FVM_OK);
     assert(fvm_function_invoke(other, found, 0, 0, 0, &out) == FVM_OK && out.number == 11);
     fvm_value_undefined(args + 1);
     args[1].type = FVM_VALUE_NULL;

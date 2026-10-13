@@ -360,5 +360,27 @@ extern "C"
             ++it;
         *out = it->first.c_str();
         return FVM_OK;
+    }    /* Return the complete borrowed native registry key and its byte count. */
+    FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *c, size_t index,
+                                                  const char **out, size_t *size)
+    {
+        if (!c || !out || !size || index >= c->functions.size())
+            return FVM_INVALID_ARGUMENT;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::const_iterator entry = c->functions.begin();
+        while (index--) ++entry;
+        *out = entry->first.data();*size = entry->first.size();
+        return FVM_OK;
     }
+    /* Return the complete borrowed script registry key and its byte count. */
+    FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *c, size_t index,
+                                                  const char **out, size_t *size)
+    {
+        if (!c || !out || !size || index >= c->script_functions.size())
+            return FVM_INVALID_ARGUMENT;
+        fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator entry = c->script_functions.begin();
+        while (index--) ++entry;
+        *out = entry->first.data();*size = entry->first.size();
+        return FVM_OK;
+    }
+
 }

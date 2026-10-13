@@ -30,6 +30,9 @@ extern "C"
     /* Call avm1. */
     FVM_API FVM_Result fvm_avm1_call(FVM_Context *, const char *, FVM_Object *, unsigned int,
                                      const FVM_Value *, FVM_Value *);
+    /* Invoke a complete counted AVM1/global Function key with the same receiver contract. */
+    FVM_API FVM_Result fvm_avm1_call_bytes(FVM_Context *, const char *, size_t, FVM_Object *,
+                                           unsigned int, const FVM_Value *, FVM_Value *);
     /* Executes top-level DoAction tags from the loaded FWS file, in file order. */
     /* Execute swf actions. */
     FVM_API FVM_Result fvm_swf_execute_actions(FVM_Context *);

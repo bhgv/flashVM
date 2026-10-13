@@ -34,6 +34,8 @@ extern "C"
     /* Borrowed constructor registered by Object.registerClass; NOT_FOUND if absent. */
     /* Implement registered class for this subsystem. */
     FVM_API FVM_Result fvm_registered_class(FVM_Context *, const char *, FVM_Object **);
+    /* Resolve a complete counted UTF-16 symbol key; returned constructor is borrowed. */
+    FVM_API FVM_Result fvm_registered_class_bytes(FVM_Context *, const char *, size_t, FVM_Object **);
 #ifdef __cplusplus
 }
 #endif

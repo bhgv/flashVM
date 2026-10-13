@@ -126,6 +126,10 @@ extern "C"
     FVM_API FVM_Result fvm_debug_script_function_count(FVM_Context *, size_t *);
     /* Implement debug script function at for this subsystem. */
     FVM_API FVM_Result fvm_debug_script_function_at(FVM_Context *, size_t, const char **);
+    /* Return full borrowed registry names; views expire on registry mutation or destruction. */
+    FVM_API FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *, size_t, const char **, size_t *);
+    /* Return the counted script name using the same bounded registry snapshot order. */
+    FVM_API FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *, size_t, const char **, size_t *);
 #ifdef __cplusplus
 }
 #endif

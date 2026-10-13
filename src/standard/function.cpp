@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "function_state.hpp"
+#include "../core/property_key.hpp"
 #include "../avm1/function_record.hpp"
 #include "../core/call_scope.hpp"
 #include "super.hpp"
@@ -199,7 +200,7 @@ FVM_Result argument_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Va
         return r;
     if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
         return FVM_INVALID_ARGUMENT;
-    return fvm_object_get(c, scope.object, name.string, out);
+    return fvm_object_get_bytes(c, scope.object, name.string, fvm_string_size(name), out);
 }
 /* Update the named parameter bound to this arguments entry. */
 FVM_Result argument_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
@@ -215,7 +216,7 @@ FVM_Result argument_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_
         return r;
     if (scope.type != FVM_VALUE_OBJECT || name.type != FVM_VALUE_STRING)
         return FVM_INVALID_ARGUMENT;
-    r = fvm_object_set(c, scope.object, name.string, a);
+    r = fvm_object_set_bytes(c, scope.object, name.string, fvm_string_size(name), a);
     fvm_value_undefined(out);
     return r;
 }
@@ -279,9 +280,11 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
         if (v.type != FVM_VALUE_STRING)
             return FVM_INVALID_ARGUMENT;
 
-        if (std::memchr(v.string, 0, fvm_string_size(v)))
-            return FVM_INVALID_ARGUMENT;
-        body.parameters.push_back(fvm_detail::string(v.string, fvm_string_size(v)));
+        fvm_detail::string key;
+        r = fvm_property_key(v.string, fvm_string_size(v), key);
+        if (r != FVM_OK)
+            return r;
+        body.parameters.push_back(key);
     }
     r = fvm_object_get(c, constants.object, "length", &length);
     if (r != FVM_OK)
@@ -351,7 +354,11 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
     if (r != FVM_OK)
         return r;
     if (name.type == FVM_VALUE_STRING)
-        body.name = name.string;
+    {
+        r = fvm_property_key(name.string, fvm_string_size(name), body.name);
+        if (r != FVM_OK)
+            return r;
+    }
     return fvm_avm1_invoke_script(c, body, closure.type == FVM_VALUE_OBJECT ? closure.object : 0,
                                   receiver, n, a, out, fn);
 }
@@ -547,7 +554,11 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value v;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_value_string(&v, body.parameters[i].c_str());
+        fvm_detail::string key;
+        FVM_Result normalized = fvm_property_key(body.parameters[i].data(), body.parameters[i].size(), key);
+        if (normalized != FVM_OK)
+            return normalized;
+        fvm_value_string_bytes(&v, key.data(), key.size());
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         r = fvm_table_set_index(c, params, (unsigned long)i, &v);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -623,7 +634,7 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["closure"] = v;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_string(&v, body.name.c_str());
+    fvm_value_string_bytes(&v, body.name.data(), body.name.size());
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     r = fvm_object_set(c, data, "name", &v);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -771,38 +782,69 @@ extern "C" FVM_Result fvm_function_create_native(
 }
 
 /* Create function avm1. */
+/* Create a legacy terminated-parameter function through the counted factory. */
 extern "C" FVM_Result fvm_function_create_avm1(FVM_Context *c, const void *actions, size_t size,
                                                unsigned int count, const char *const *parameters,
-                                               FVM_Object *env, FVM_Object **out)
+                                               FVM_Object *environment, FVM_Object **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!c || (!actions && size) || (count && !parameters) || (env && env->owner != c) ||
-        size > 65536 || count > 65535)
+    if (!c || (!actions && size) || (count && !parameters) || count > 65535 || size > 65536 ||
+        (environment && environment->owner != c))
         return FVM_INVALID_ARGUMENT;
-    FVM_AVM1Info info;
-    info.struct_size = sizeof(info);
-    FVM_Result r = fvm_avm1_inspect(actions, size, &info);
-    if (r != FVM_OK)
-        return r;
     try
     {
-        FVM_ScriptFunction body;
-        body.body.assign((const unsigned char *)actions, (const unsigned char *)actions + size);
+        fvm_detail::vector<FVM_Value> names(count);
         for (unsigned int i = 0; i < count; ++i)
-        {
-            if (!parameters[i])
+            if (fvm_value_string(&names[i], parameters[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-            body.parameters.push_back(fvm_detail::string(parameters[i]));
-        }
-        return fvm_function_make_script(c, body, env, out);
+        return fvm_function_create_avm1_bytes(c, actions, size, count, names.begin(), environment, out);
     }
     catch (const std::bad_alloc &)
     {
         return FVM_OUT_OF_MEMORY;
     }
 }
+/* Copy complete UTF-16 parameter identities into a traced script-function snapshot. */
+extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c, const void *actions, size_t size,
+                                                     unsigned int count, const FVM_Value *parameters,
+                                                     FVM_Object *environment, FVM_Object **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    if (!c || (!actions && size) || (count && !parameters) ||
+        (environment && environment->owner != c) || size > 65536 || count > 65535)
+        return FVM_INVALID_ARGUMENT;
+    FVM_AVM1Info info;
+    info.struct_size = sizeof(info);
+    FVM_Result result = fvm_avm1_inspect(actions, size, &info);
+    if (result != FVM_OK)
+        return result;
+    try
+    {
+        FVM_ScriptFunction body;
+        if (size)
+            body.body.assign((const unsigned char *)actions, (const unsigned char *)actions + size);
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            if (fvm_validate_value(c, parameters+i) != FVM_OK || parameters[i].type != FVM_VALUE_STRING)
+                return FVM_INVALID_ARGUMENT;
+            fvm_detail::string key;
+            result = fvm_property_key(parameters[i].string, fvm_string_size(parameters[i]), key);
+            if (result != FVM_OK)
+                return result;
+            body.parameters.push_back(key);
+        }
+        return fvm_function_make_script(c, body, environment, out);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 
 /* Invoke function. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1098,7 +1140,7 @@ bool fvm_function_collector_callback(FVM_NativeFunction cb)
 
 /* [GC:] Link an arguments index to an activation using a traced accessor descriptor. */
 FVM_Result fvm_function_map_argument(FVM_Context *c, FVM_Object *arguments, unsigned long index,
-                                     FVM_Object *activation, const char *name)
+                                     FVM_Object *activation, const fvm_detail::string &name)
 {
     FVM_Object *descriptor = 0;
     FVM_Result r = fvm_object_create(c, &descriptor);
@@ -1111,7 +1153,7 @@ FVM_Result fvm_function_map_argument(FVM_Context *c, FVM_Object *arguments, unsi
     r = fvm_object_set(c, descriptor, "scope", &value);
     if (r != FVM_OK)
         return r;
-    fvm_value_string(&value, name);
+    fvm_value_string_bytes(&value, name.data(), name.size());
     r = fvm_object_set(c, descriptor, "name", &value);
     if (r != FVM_OK)
         return r;

@@ -11,7 +11,7 @@ FVM_Result fvm_function_stage(FVM_Context *, fvm_detail::map<fvm_detail::string,
                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 /* [GC:] Install a parameter alias whose descriptor retains the activation object. */
 FVM_Result fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long, FVM_Object *,
-                                     const char *);
+                                     const fvm_detail::string &);
 
 /* Validate function. */
 FVM_Result fvm_function_validate(FVM_Context *);

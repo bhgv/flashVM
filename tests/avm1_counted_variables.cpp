@@ -2,6 +2,7 @@
 #define FVM_AVM1_STANDARD_FIXTURE_ONLY
 #include "avm1_standard_types.cpp"
 #include "flashvm/gc.h"
+#include "flashvm/debug.h"
 static const char full[] = {'n', 0, 'x'};
 static int native_calls;
 static FVM_Result native(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
@@ -131,6 +132,19 @@ int main()
     assert(fvm_register_function_rooted_bytes(c, "t\0h", 3, thrower, 0, 0) == FVM_OK);
     assert(fvm_call_bytes(c, "t\0h", 3, 0, 0, &out) == FVM_ERROR);
     assert(out.type == FVM_VALUE_UNDEFINED);
+    {
+        size_t count;
+        bool found = false;
+        assert(fvm_debug_native_function_count(c, &count) == FVM_OK);
+        for (size_t i = 0; i < count; ++i)
+        {
+            const char *name;
+            size_t size;
+            assert(fvm_debug_native_function_at_bytes(c, i, &name, &size) == FVM_OK);
+            if (size == 3 && !std::memcmp(name, "f\0n", 3))found = true;
+        }
+        assert(found);
+    }
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
     return 0;
 }

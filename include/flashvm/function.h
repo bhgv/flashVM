@@ -20,6 +20,11 @@ extern "C"
                                                 unsigned int parameter_count,
                                                 const char *const *parameters,
                                                 FVM_Object *environment, FVM_Object **);
+    /* Create AVM1 with string-valued counted parameter names, including embedded NUL.
+     * UTF-16-equivalent formals share one lexical binding and rightmost arguments alias. */
+    FVM_API FVM_Result fvm_function_create_avm1_bytes(FVM_Context *, const void *, size_t,
+                                                      unsigned int, const FVM_Value *,
+                                                      FVM_Object *, FVM_Object **);
     /* [GC:] Invoke with active function/capture roots. Successful native strings become
        context-owned snapshots; returned objects and primitive metatables must belong to this
        context. Callers must root retained results across GC, including strings in traced mode. */

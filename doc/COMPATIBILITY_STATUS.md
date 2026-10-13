@@ -258,3 +258,14 @@ native_counted_construction. AGG 247/247, Cairo Release 247/247;
 headless ASan/UBSan targeted 4/4, portable new test 1/1. ABI 3 / graph 8 unchanged.
 Remaining parameter aliases and full standard-type/version conformance keep
 stage 1 open. RU/EN: [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
+
+## v0.85 — Canonical formal and registered-symbol identity
+
+Проверено / tested: rightmost named arguments alias for UTF-16-equivalent formal
+names, counted NUL formals and named calls, canonical script/debug keys and
+registered-class symbols. Regression function_parameter_identity reproduces the
+former wrong alias and verifies GC/graph restore; class/native-variable tests
+extend symbol/debug coverage. AGG/Cairo Release 248/248 each; restricted headless
+ASan/UBSan focused 4/4; portable focused 2/2. Function2 register-only aliases and
+remaining type/version conformance remain open. ABI 3 / graph 8 unchanged.
+RU/EN: [FUNCTION_PARAMETER_KEYS.md](FUNCTION_PARAMETER_KEYS.md).
