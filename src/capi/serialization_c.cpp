@@ -1167,7 +1167,8 @@ Graph read_graph(Reader &r, unsigned int version)
                     o.state.number == std::floor(o.state.number));
             for (fvm_detail::map<unsigned long, Value>::iterator slot = o.indexed.begin();
                  slot != o.indexed.end(); ++slot)
-                require(slot->first < o.state.number);
+                /* Native arrays may retain own slots outside readonly or reduced length. */
+                require(slot->first < 0xffffffffUL);
         }
         g.objects.push_back(o);
     }

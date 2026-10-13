@@ -1190,3 +1190,21 @@ lengths/callback effects, native GC barriers and all roadmap stages remain open.
 
 Проверены каждый C++ allocation boundary до успеха, очистка корней и временной
 памяти. Это не заменяет C malloc/leak-инструменты и не закрывает стадии.
+
+## v0.170 — indexed length / индекс и readonly length
+
+Loaded indexed assignment grows native Array length after watching and before data
+flags/setters; readonly length blocks growth but permits own outside slots and
+virtual setters. Shared note_index respects readonly length. Graph decode accepts
+valid outside slots while retaining reserved-index validation.
+[RU/EN details](ARRAY_LEGACY_INDEX_LENGTH.md). Evidence: AGG 331/Cairo 330,
+nine focused portable/restricted heap-global ASan+UBSan tests, fifteen byte-exact
+original SWFs. Outside child strings through traced GC/queue transfer, readonly
+virtual data/setter markers, growth ordering and CRC-valid reserved-index rejection
+without destination allocations pass. One AGG/four Cairo launch failures passed
+after execute-bit restoration. Unloaded guards remain unchanged. Virtual length,
+signed indices, ordinary truncation/nondelete, version masks and all stages remain
+open. Growth before allocation failure may persist; atomicity is not claimed.
+
+Проверены readonly length, own хвосты и согласованность decoder после передачи.
+Защита зарезервированного индекса сохранена; все стадии остаются открытыми.

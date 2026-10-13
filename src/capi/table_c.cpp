@@ -77,6 +77,9 @@ extern "C"
                     return r;
                 prepared_watch = true;
             }
+            /* Loaded Array growth precedes indexed data flags and virtual setter dispatch. */
+            if (c->swf_loaded && o->resource_kind == 28)
+                fvm_array_note_index(o, key);
             unsigned int flags = 0;
             FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
             if (status != FVM_OK)
@@ -89,7 +92,7 @@ extern "C"
                     !fvm_base_script_accessor(script->second))
                     return FVM_OK;
             }
-            if (o->resource_kind == 28 && key >= o->resource_result.number)
+            if (!c->swf_loaded && o->resource_kind == 28 && key >= o->resource_result.number)
             {
                 status = fvm_object_property_flags(c, o, "length", &flags);
                 if (status != FVM_OK)

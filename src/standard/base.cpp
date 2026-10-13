@@ -1826,7 +1826,15 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &entry, FVM_Value &out)
 void fvm_array_note_index(FVM_Object *o, unsigned long key)
 {
     if (array(o) && key < 0xffffffffUL && key >= size(o))
+    {
+        if (o->owner->swf_loaded)
+        {
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
+            if (flags != o->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
+                return;
+        }
         o->resource_result.number = (double)key + 1;
+    }
 }
 
 /* Store own ActionScript data while retaining virtual properties and bypassing callbacks. */
