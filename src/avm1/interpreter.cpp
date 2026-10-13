@@ -1280,7 +1280,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == 0x42 || a.op == 0x43)
             {
                 if (stack.empty())
-                    return FVM_ERROR;
+                {
+                    if (!c->swf_loaded)
+                        return FVM_ERROR;
+                    /* AVM1 pop on an empty operand stack produces undefined, including the count. */
+                    FVM_Value missing;
+                    fvm_value_undefined(&missing);
+                    stack.push_back(missing);
+                }
                 double count = 0;
                 if (c->swf_loaded)
                 {
@@ -1307,15 +1314,24 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return FVM_INVALID_ARGUMENT;
                 }
                 unsigned int width = a.op == 0x42 ? 1 : 2;
-                if (count * width > stack.size() - 1)
+                size_t available = stack.size() - 1;
+                if (!c->swf_loaded && count * width > available)
                     return FVM_INVALID_ARGUMENT;
+                size_t consumed = (size_t)count * width;
+                if (consumed > available)
+                    consumed = available;
                 FVM_Object *object = 0;
                 FVM_Result r = FVM_OK;
                 if (a.op == 0x42)
                 {
                     fvm_detail::vector<FVM_Value> values((size_t)count);
                     for (size_t j = 0; j < values.size(); ++j)
-                        values[j] = stack[stack.size() - 2 - j];
+                    {
+                        if (j < available)
+                            values[j] = stack[stack.size() - 2 - j];
+                        else
+                            fvm_value_undefined(&values[j]);
+                    }
                     /* Array literals never interpret a numeric element as a length. */
                     r = fvm_array_create_like(c, 0, (unsigned long)count, &object, true);
                     /* [GC:] Indexed assignment can enter script setters before the result reaches the stack. */
@@ -1334,8 +1350,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (r == FVM_OK)
                         for (unsigned int j = 0; j < (unsigned int)count; ++j)
                         {
-                            temporary[0] = stack[stack.size() - 2 - j * 2];
-                            temporary[1] = stack[stack.size() - 3 - j * 2];
+                            /* Missing pair members independently pop undefined, without index underflow. */
+                            if ((size_t)j * 2 < available)
+                                temporary[0] = stack[stack.size() - 2 - j * 2];
+                            else
+                                fvm_value_undefined(&temporary[0]);
+                            if ((size_t)j * 2 + 1 < available)
+                                temporary[1] = stack[stack.size() - 3 - j * 2];
+                            else
+                                fvm_value_undefined(&temporary[1]);
                             fvm_value_undefined(&temporary[2]);
                             r = c->swf_loaded ? fvm_avm1_string(c, temporary[1], &temporary[2])
                                               : fvm_value_to_string(c, &temporary[1], &temporary[2]);
@@ -1349,7 +1372,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 if (r != FVM_OK)
                     return r;
-                stack.resize(stack.size() - 1 - (size_t)count * width);
+                stack.resize(stack.size() - 1 - consumed);
                 FVM_Value value;
                 fvm_value_undefined(&value);
                 value.type = FVM_VALUE_OBJECT;

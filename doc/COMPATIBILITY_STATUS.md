@@ -649,3 +649,13 @@ retries. The final GC test was rebuilt and passed in all four profiles after
 strengthening its partially populated object fixture: every script collection
 collects at least one object, twenty times. Full literal setter semantics,
 missing operands, constructor/version provenance and all stages remain open.
+
+## v0.128 — initializer stack underflow / нехватка операндов
+
+Loaded literals use undefined for missing counts, elements and pair operands;
+Array results retain own undefined slots, Object names remain versioned.
+Unloaded embedding retains strict errors. [RU/EN details](AVM1_INITIALIZER_UNDERFLOW.md).
+Evidence: 295 core tests in AGG/Cairo plus the AGG runner, four focused checks
+in restricted sanitizer/portable profiles. Four AGG AVM1 launch failures passed
+after execute-bit restoration. Materialization, full constructor/descriptor
+semantics, version provenance and all roadmap stages remain open.
