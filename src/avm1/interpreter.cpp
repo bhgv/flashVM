@@ -117,6 +117,49 @@ static FVM_Result action_string(FVM_Context *context, const FVM_Value &value, FV
     if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
         context->swf_info.version < 5)
         return fvm_value_string(out, value.boolean ? "1" : "0");
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != 40)
+    {
+        if (value.object->resource_kind == 26 && value.object->resource_result_valid &&
+            value.object->resource_result.type == FVM_VALUE_STRING)
+        {
+            *out = value.object->resource_result;
+            return FVM_OK;
+        }
+        if (context->string_depth >= 64)
+            return FVM_ERROR;
+        /* [GC:] The caller retains the owner; invocation roots its selected method. */
+        struct StringScope
+        {
+            FVM_Context *context; /* Owner of the string-coercion recursion counter. */
+            /* Bound string callback reentry before resolving toString. */
+            explicit StringScope(FVM_Context *owner) : context(owner)
+            {
+                ++context->string_depth;
+            }
+            /* Restore recursion depth after invocation or allocation failure. */
+            ~StringScope()
+            {
+                --context->string_depth;
+            }
+        } coercion(context);
+        FVM_Value method, result;
+        fvm_value_undefined(&result);
+        FVM_Result status = fvm_object_get_bytes(context, value.object, "toString", 8, &method);
+        if (status != FVM_OK)
+            return status;
+        if (method.type == FVM_VALUE_OBJECT &&
+            (method.object->invocable.callback || method.object->callable.callback))
+            status = fvm_function_invoke(context, method.object, value.object, 0, 0, &result);
+        if (status != FVM_OK)
+            return status;
+        if (result.type == FVM_VALUE_STRING)
+        {
+            *out = result;
+            return FVM_OK;
+        }
+        return fvm_value_string(out, value.object->invocable.callback || value.object->callable.callback
+                                        ? "[type Function]" : "[type Object]");
+    }
     return fvm_value_to_string(context, &value, out);
 }
 
@@ -1690,7 +1733,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_table_get_index(c, owner.object, (unsigned long)member.number, &value);
                 else
                 {
-                    r = fvm_value_to_string(c, &member, &key);
+                    r = action_string(c, member, &key);
                     if (r == FVM_OK)
                         r = fvm_value_get_property_bytes(c, &owner, key.string, fvm_string_size(key), &value);
                 }
@@ -1714,7 +1757,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                             &stack.back());
                 else
                 {
-                    r = fvm_value_to_string(c, &member, &key);
+                    r = action_string(c, member, &key);
                     if (r == FVM_OK)
                         r = fvm_value_set_property_bytes(c, &owner, key.string, fvm_string_size(key), &stack.back());
                 }
@@ -1728,7 +1771,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 /* [GC:] Retain owner and coercible name in the stack until deletion completes. */
                 FVM_Value owner = stack[stack.size() - 2], key, result;
-                FVM_Result status = fvm_value_to_string(c, &stack.back(), &key);
+                FVM_Result status = action_string(c, stack.back(), &key);
                 if (status != FVM_OK)
                     return status;
                 int own = 0, deleted = 0;

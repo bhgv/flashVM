@@ -380,3 +380,12 @@ methods, object-result primitive gates and recursion recovery. AGG/Cairo Release
 ASan/UBSan and portable focused 4/4 each. Four prior exact external SWF matches
 reverified. equals_swf4 now completes but unversioned installed NaN/Infinity
 globals still differ from its reference. RU/EN: [AVM1_NUMERIC_ACTIONS.md](AVM1_NUMERIC_ACTIONS.md).
+
+## v0.98 — AVM1 string-only object conversion
+
+Проверено / tested: loaded AVM1 toString-only conversion, non-string fallback,
+boxed String bypass, counted results and recursion/error recovery. AGG/Cairo
+Release 259/259 each (AGG two launch-permission reruns); restricted headless
+ASan/UBSan and portable focused 4/4 each. MovieClip paths, Add2 hint behavior
+and standard constructor/global version gates remain open.
+RU/EN: [AVM1_OBJECT_COERCION.md](AVM1_OBJECT_COERCION.md).
