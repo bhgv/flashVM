@@ -157,7 +157,7 @@ FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long ind
     return fvm_base_store_data(c, o, key, value, false);
 }
 
-/* Move one splice source by own presence/data, deleting the source only after successful storage. */
+/* Copy one splice source by own presence/data; retain source properties until native length shrink. */
 FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from, unsigned long to)
 {
     char source[32], destination[32];
@@ -171,10 +171,8 @@ FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from,
         return fvm_object_delete(c, o, destination, &removed);
     FVM_Value value;
     legacy_data_element(o, from, value);
-    status = legacy_store_element(c, o, to, value);
-    if (status == FVM_OK && from != to)
-        status = fvm_object_delete(c, o, source, &removed);
-    return status;
+    /* Copy source data without deleting it; native set_length removes trailing indices later. */
+    return legacy_store_element(c, o, to, value);
 }
 
 /* Set raw splice length, deleting native Array tails while retaining borrowed tail properties. */

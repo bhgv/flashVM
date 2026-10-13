@@ -1043,3 +1043,22 @@ portable Linux and restricted ASan/UBSan, and fifteen byte-exact original SWFs.
 AGG execute-bit launch failures passed after restoring executable bits.
 Полные проверки AGG/Cairo и профильные portable/ASan/UBSan прошли;
 15 исходных SWF совпали побайтово. Это не подтверждает полную совместимость.
+
+## v0.161 — splice source retention / сохранение source index
+
+Corrected the v0.154/v0.155 source-deletion interpretation: pinned Ruffle
+2372a4e splice_internal copies values without deleting sources. Generic loaded
+splice now retains source properties/flags; native length shrinking separately
+removes trailing indices. Borrowed tails remain beyond the new length. All eight
+indexed masks now retain their flags, and readonly blocks subsequent writes.
+[RU/EN details](ARRAY_LEGACY_SPLICE_FLAGS.md). Comparator order, large/signed
+Array limits and all roadmap stages remain open.
+
+Исправлено прежнее ошибочное удаление источника: splice копирует данные,
+сохраняя флаги. Только native length удаляет хвост; borrowed хвост остаётся.
+Это исправляет описание и ожидания v0.154/v0.155. Все стадии открыты.
+
+Evidence v0.161: 326 AGG and 325 Cairo tests, eight focused checks each in
+portable Linux and restricted heap/global ASan+UBSan, fifteen byte-exact original
+SWFs. Cairo timezone launch failure and its dependent profile test passed after
+execute-bit restoration. Проверки пройдены; stage completion не заявлено.

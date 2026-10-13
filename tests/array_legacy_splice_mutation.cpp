@@ -35,7 +35,7 @@ int main()
             fvm_value_number(args, 1); fvm_value_number(args + 1, 1); reads = writes = watched = 0;
             assert(borrow(c, array, "splice", o, 2, args, &out) == FVM_OK && reads == 0 && writes == 0 && watched == 0);
             number(c, out.object, "0", 8); number(c, out.object, "length", 1);
-            int own = 0; assert(fvm_object_has_own(c, o, "3", &own) == FVM_OK && !own);
+            int own = 0; assert(fvm_object_has_own(c, o, "3", &own) == FVM_OK && own);
             assert(fvm_gc_collect(c, 0) == FVM_OK); assert(borrow(c, array, "slice", o, 0, 0, &out) == FVM_OK); number(c, out.object, "length", 3);
             assert(fvm_table_get_index(c, out.object, 1, &value) == FVM_OK);
             if (mode == 2) assert(value.type == FVM_VALUE_UNDEFINED);
@@ -65,6 +65,12 @@ int main()
         assert(fvm_object_set_property_flags(c, o, "3", 2, 0) == FVM_OK);
         fvm_value_number(args, 1); fvm_value_number(args + 1, 1); assert(borrow(c, array, "splice", o, 2, args, &out) == FVM_OK);
         number(c, o, "length", 3); number(c, o, "3", 6); number(c, o, "2", 6);
+        assert(fvm_construct(c, "Object", 0, 0, &o) == FVM_OK); assert(fvm_gc_pin(c, o) == FVM_OK);
+        fvm_value_number(&value, 3); assert(fvm_object_set(c, o, "length", &value) == FVM_OK);
+        for (unsigned i = 0; i < 3; ++i) { fvm_value_number(&value, 9 - i); assert(fvm_table_set_index(c, o, i, &value) == FVM_OK); }
+        fvm_value_number(args, 0); fvm_value_number(args + 1, 1);
+        assert(borrow(c, array, "splice", o, 2, args, &out) == FVM_OK);
+        number(c, o, "length", 2); number(c, o, "0", 8); number(c, o, "1", 7); number(c, o, "2", 7);
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

@@ -19,8 +19,8 @@ int main()
             assert(fvm_object_set_property_flags(c, o, "1", bits, 0) == FVM_OK);
             fvm_value_number(args, 0); fvm_value_number(args + 1, 1);
             assert(fvm_object_call(c, o, "splice", 2, args, &out) == FVM_OK);
-            number(c, o, "length", 2); number(c, o, "0", 8); number(c, o, "1", (bits & 6) == 6 ? 8 : 7);
-            unsigned flags = 0; assert(fvm_object_property_flags(c, o, "1", &flags) == FVM_OK && flags == (bits & 2 ? bits : 0));
+            number(c, o, "length", 2); number(c, o, "0", 8); number(c, o, "1", bits & 4 ? 8 : 7);
+            unsigned flags = 0; assert(fvm_object_property_flags(c, o, "1", &flags) == FVM_OK && flags == bits);
         }
         assert(fvm_construct(c, "Array", 3, values, &o) == FVM_OK);
         assert(fvm_object_set_property_flags(c, o, "2", 2, 0) == FVM_OK);
