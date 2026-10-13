@@ -905,3 +905,16 @@ and portable Linux profiles. Three AGG bitmap launch failures passed after
 execute-bit restoration. Numeric/object/empty/counted NUL, GC and inherited
 setter ownership pass; fifteen original SWFs still match. Readonly and exception
 ordering, native accessor data, case/version rules and all stages stay open.
+
+## v0.149 — watcher before readonly / watcher до readonly
+
+Loaded ordinary/indexed writes run watchers before current readonly checks.
+Callbacks can alter flags, indexed setter dispatch consumes prepared data once,
+and lookup ownership is rooted through detachment.
+[RU/EN details](OBJECT_READONLY_WATCH.md). Evidence: 316 core tests in
+AGG/Cairo plus the AGG runner; six focused checks in restricted heap/global
+ASan+UBSan and portable Linux profiles. Three AGG Array launch failures passed
+after execute-bit restoration. Named/numeric/countеd NUL, virtual setter flags,
+root unwind and post-write GC pass; all fifteen original SWFs still match.
+Native Array guard and watcher exception ordering, case/version and all stages
+remain open.

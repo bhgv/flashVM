@@ -363,7 +363,7 @@ FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const fvm_deta
 
 /* Write an ordinary property using accessors, attributes and metadata hooks. */
 FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const fvm_detail::string &name,
-                               const FVM_Value *v, bool allow_meta)
+                               const FVM_Value *v, bool allow_meta, bool prepared_watch)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -375,6 +375,17 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     /* Loaded Object.set ignores an empty name before descriptor, watcher or metadata dispatch. */
     if (c->swf_loaded && name.empty())
         return FVM_OK;
+
+    /* [GC:] Watchers may detach the selected prototype lookup owner; retain it through re-resolution. */
+    FVM_ObjectRootScope lookup_roots(c, start);
+    FVM_Value watched = *v;
+    FVM_Result r = FVM_OK;
+    if (c->swf_loaded && !prepared_watch)
+    {
+        r = fvm_property_watch_prepare(c, o, name, v, &watched);
+        if (r != FVM_OK)
+            return r;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
@@ -411,10 +422,12 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 return FVM_OK;
         }
     }
-    FVM_Value watched;
-    FVM_Result r = fvm_property_watch_prepare(c, o, name, v, &watched);
-    if (r != FVM_OK)
-        return r;
+    if (!c->swf_loaded && !prepared_watch)
+    {
+        r = fvm_property_watch_prepare(c, o, name, v, &watched);
+        if (r != FVM_OK)
+            return r;
+    }
     r = copy_value(c, &watched, &copy);
     if (r != FVM_OK)
         return r;

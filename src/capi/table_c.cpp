@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "../standard/base_state.hpp"
+#include "../standard/super.hpp"
 #include "../core/property_watch.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
@@ -57,6 +58,8 @@ extern "C"
         /* Initialization / Инициализация локального состояния. */
         FVM_Value x;
         FVM_Result r;
+        FVM_Value watched;
+        bool prepared_watch = false;
         if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
         if (o->resource_kind == 28 || o->resource_kind == 30)
@@ -67,6 +70,13 @@ extern "C"
             std::sprintf(name, "%lu", key);
             if (key == 0xffffffffUL)
                 return fvm_object_set(c, o, name, v);
+            if (c->swf_loaded)
+            {
+                r = fvm_property_watch_prepare(c, o, name, v, &watched);
+                if (r != FVM_OK)
+                    return r;
+                prepared_watch = true;
+            }
             unsigned int flags = 0;
             FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
             if (status != FVM_OK)
@@ -99,7 +109,8 @@ extern "C"
                     cursor->properties.find(name) != cursor->properties.end())
                     break;
                 if (cursor->accessors.find(name) != cursor->accessors.end())
-                    return fvm_object_set_no_index(c, o, name, v);
+                    return prepared_watch ? fvm_object_set_from(c, o, o, name, &watched, true, true)
+                                          : fvm_object_set_no_index(c, o, name, v);
                 cursor = cursor->prototype;
             }
             if (cursor && depth > 1024)
@@ -107,10 +118,12 @@ extern "C"
         }
         char watched_name[32];
         std::sprintf(watched_name, "%lu", key);
-        FVM_Value watched;
-        r = fvm_property_watch_prepare(c, o, watched_name, v, &watched);
-        if (r != FVM_OK)
-            return r;
+        if (!prepared_watch)
+        {
+            r = fvm_property_watch_prepare(c, o, watched_name, v, &watched);
+            if (r != FVM_OK)
+                return r;
+        }
         r = store(c, &watched, &x);
         if (r != FVM_OK)
             return r;
