@@ -82,3 +82,27 @@ there; its matching prefix is not acceptance evidence for the entire probe.
 число тактов. Шесть эталонов SWF 5–7 полностью совпали, включая `this`/`_root`.
 Теперь точно совпадают десять внешних проверок. Неизвестные теги, отсутствующие
 Action-коды и полная совместимость сцены остаются открытыми; этапы не закрыты.
+
+## v0.122 — explicit host quit acknowledgement / подтверждение quit
+
+`--acknowledge-quit` explicitly installs a host sink that accepts only the
+complete ASCII-case-insensitive `fscommand:quit` URL with zero flags. The tool
+continues bounded execution after the request; it does not exit, navigate or
+perform network/file requests. This is a selected host policy, not proof of
+actual player-quit semantics. Other URLs and request flags remain unsupported.
+The option precedes optional `--timeline TICKS`. Default behavior is unchanged.
+
+The C89 runner test checks default rejection, acknowledgement in both modes,
+continued post-request traces, GetURL/GetURL2, unknown URLs/flags and arguments.
+Original `add_swf5` completes with 229 exact expected bytes in action mode, and
+`array_trivial` SWF 6 completes with 1447 exact bytes through the actual root
+timeline, both with acknowledgement. No headers/tags/outputs were edited.
+Together with ten earlier matches this gives twelve whole-probe matches under
+the documented runner/host policies; no roadmap stage is closed.
+
+Явный параметр устанавливает обработчик только запроса `fscommand:quit` без
+флагов. Он подтверждает запрос и продолжает ограниченное выполнение, без выхода
+и внешних действий; остальные URL отклоняются. Это тестовая политика хоста,
+а не подтверждение поведения завершения настоящего проигрывателя. Два исходных
+SWF 5/6 полностью совпали с эталонами; теперь проверены двенадцать проб с
+указанными режимами и политиками, без изменения файлов. Все стадии открыты.

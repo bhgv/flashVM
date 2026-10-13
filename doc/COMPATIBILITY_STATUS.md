@@ -574,3 +574,15 @@ real timelines: Array/Object/InitArray mismatches and unhandled FSCommand remain
 array_trivial's matching Trace followed by failure does not count as acceptance.
 Graph transport, real GC, malformed input and allocation failures are covered.
 All roadmap stages remain open.
+
+## v0.122 — runner host policy / тестовая политика хоста
+
+Optional quit acknowledgement accepts only the exact counted FSCommand URL
+with zero flags and continues bounded execution without external operations.
+Default runner behavior is retained; unknown URLs/flags fail. The strict C89
+runner build and generated runner test pass. Two original pinned assets now
+finish successfully with exact output: add_swf5 (229 bytes, action mode) and
+array_trivial SWF 6 (1447 bytes, real root timeline). Twelve probes pass under
+explicitly documented modes/policies; actual player-quit behavior is not claimed.
+[RU/EN details](SWF_REFERENCE_RUNNER.md). Core code is unchanged from the v0.121
+288-test acceptance subset. Array/Object/InitArray gaps and all stages remain open.

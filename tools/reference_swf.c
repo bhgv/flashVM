@@ -26,6 +26,34 @@ static FVM_Result output_trace(FVM_Context *context, FVM_Object *receiver,
     return FVM_OK;
 }
 
+/* Acknowledge only an explicit quit request; continue bounded execution without host I/O. */
+static FVM_Result acknowledge_quit(FVM_Context *context, FVM_Object *receiver,
+                                   unsigned int count, const FVM_Value *args,
+                                   FVM_Value *result, void *userdata)
+{
+    const char *expected = "fscommand:quit"; /* Complete ASCII request accepted by this policy. */
+    size_t i;
+    unsigned char c;
+    (void)context;
+    (void)receiver;
+    (void)userdata;
+    fvm_value_undefined(result);
+    if (count != 3 || args[0].type != FVM_VALUE_STRING || args[1].type != FVM_VALUE_STRING ||
+        args[2].type != FVM_VALUE_NUMBER)
+        return FVM_INVALID_ARGUMENT;
+    if (args[2].number != 0 || fvm_value_string_size(args) != strlen(expected))
+        return FVM_UNSUPPORTED;
+    for (i = 0; expected[i]; ++i)
+    {
+        c = (unsigned char)args[0].string[i];
+        if (c >= 'A' && c <= 'Z')
+            c = (unsigned char)(c + ('a' - 'A'));
+        if (c != (unsigned char)expected[i])
+            return FVM_UNSUPPORTED;
+    }
+    return FVM_OK;
+}
+
 /* Read a bounded SWF into host memory; return no buffer on incomplete input. */
 static FVM_Result read_swf(const char *path, unsigned char **data, size_t *size)
 {
@@ -99,13 +127,21 @@ int main(int argc, char **argv)
     FVM_Value value;
     unsigned int ticks = 0;
     const char *path;
-    if (argc == 4 && strcmp(argv[1], "--timeline") == 0 && parse_ticks(argv[2], &ticks))
-        path = argv[3];
-    else if (argc == 2)
-        path = argv[1];
+    int argument = 1;
+    int allow_quit = 0;
+    if (argc > 1 && strcmp(argv[1], "--acknowledge-quit") == 0)
+    {
+        allow_quit = 1;
+        ++argument;
+    }
+    if (argc == argument + 3 && strcmp(argv[argument], "--timeline") == 0 &&
+        parse_ticks(argv[argument + 1], &ticks))
+        path = argv[argument + 2];
+    else if (argc == argument + 1)
+        path = argv[argument];
     else
     {
-        fprintf(stderr, "Usage: flashvm_reference_swf [--timeline TICKS] INPUT.swf\n");
+        fprintf(stderr, "Usage: flashvm_reference_swf [--acknowledge-quit] [--timeline TICKS] INPUT.swf\n");
         return 2;
     }
     status = read_swf(path, &data, &size);
@@ -124,6 +160,8 @@ int main(int argc, char **argv)
         status = fvm_standard_install(context);
     if (status == FVM_OK)
         status = fvm_avm1_set_trace_rooted(context, output_trace, stdout, NULL);
+    if (status == FVM_OK && allow_quit)
+        status = fvm_avm1_set_url_rooted(context, acknowledge_quit, NULL, NULL);
     if (status == FVM_OK && ticks)
         status = fvm_movieclip_load_swf(context, data, size, "root", &root);
     if (status == FVM_OK && ticks)

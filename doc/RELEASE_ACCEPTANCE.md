@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.121
+# Условия окончательной приёмки / Final acceptance gates — v0.122
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -17,7 +17,7 @@
 
 ## Проверки этой среды / Evidence from this environment
 
-| Среда | Доказательство v0.121 | Ограничение |
+| Среда | Доказательство v0.122 | Ограничение |
 | --- | --- | --- |
 | Linux x86_64 GCC/G++ 13.3, AGG/fonts/codecs/SQLite | 288/288 core CTest tests plus the optional runner test, strict C90/C++98 | Examples excluded; passing subset does not certify full Flash compatibility |
 | Linux x86_64 Cairo Release/fonts/codecs/SQLite | 288/288 core CTest tests with assertions retained | Same compatibility gaps; no other OS runtime proof |
