@@ -1318,21 +1318,31 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         values[j] = stack[stack.size() - 2 - j];
                     /* Array literals never interpret a numeric element as a length. */
                     r = fvm_array_create_like(c, 0, (unsigned long)count, &object, true);
+                    /* [GC:] Indexed assignment can enter script setters before the result reaches the stack. */
+                    RootGuard literal_roots(c, &values, 0, object, &registers);
                     for (size_t j = 0; r == FVM_OK && j < values.size(); ++j)
                         r = fvm_table_set_index(c, object, (unsigned long)j, &values[j]);
                 }
                 else
                 {
                     r = fvm_construct(c, "Object", 0, 0, &object);
+                    /* [GC:] Retain the partially built Object and coerced names through script and setters. */
+                    fvm_detail::vector<FVM_Value> temporary(3);
+                    for (size_t i = 0; i < temporary.size(); ++i)
+                        fvm_value_undefined(&temporary[i]);
+                    RootGuard literal_roots(c, &temporary, 0, object, &registers);
                     if (r == FVM_OK)
                         for (unsigned int j = 0; j < (unsigned int)count; ++j)
                         {
-                            FVM_Value value = stack[stack.size() - 2 - j * 2],
-                                      key = stack[stack.size() - 3 - j * 2], text;
-                            r = fvm_value_to_string(c, &key, &text);
+                            temporary[0] = stack[stack.size() - 2 - j * 2];
+                            temporary[1] = stack[stack.size() - 3 - j * 2];
+                            fvm_value_undefined(&temporary[2]);
+                            r = c->swf_loaded ? fvm_avm1_string(c, temporary[1], &temporary[2])
+                                              : fvm_value_to_string(c, &temporary[1], &temporary[2]);
                             if (r != FVM_OK)
                                 break;
-                            r = fvm_object_set_bytes(c, object, text.string, fvm_string_size(text), &value);
+                            r = fvm_object_set_bytes(c, object, temporary[2].string,
+                                                     fvm_string_size(temporary[2]), &temporary[0]);
                             if (r != FVM_OK)
                                 break;
                         }

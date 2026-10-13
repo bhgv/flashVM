@@ -636,3 +636,16 @@ portable profiles. Three AGG channel test launches passed after execute-bit
 restoration. All fourteen original probes now complete with exact expected
 bytes, including init_array_invalid SWF8 (16 bytes, timeline mode). Semantic
 version provenance across clip transfer and all roadmap stages remain open.
+
+## v0.127 — initializer GC roots and names / корни и имена
+
+InitObject roots the partial result and temporary names/values through script
+coercion and setters; InitArray roots its result through indexed assignment.
+Loaded Object keys use versioned AVM1 string conversion.
+[RU/EN details](AVM1_INITIALIZER_ROOTS.md). Evidence: 294 core tests in AGG/Cairo
+plus the AGG runner and four focused checks in restricted sanitizer/portable
+profiles. Four AGG bitmap/filter launch failures passed after restoration and
+retries. The final GC test was rebuilt and passed in all four profiles after
+strengthening its partially populated object fixture: every script collection
+collects at least one object, twenty times. Full literal setter semantics,
+missing operands, constructor/version provenance and all stages remain open.
