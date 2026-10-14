@@ -1422,6 +1422,78 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         return FVM_INVALID_ARGUMENT;
     }
 
+    /* Loaded overloads collect all field names before coercing option entries. */
+    if (c->swf_loaded)
+    {
+        FVM_ArrayWorkScope work(c);
+        SortSpec loaded;
+        bool fields_array = a[0].type == FVM_VALUE_OBJECT && array(a[0].object);
+        if (a[0].type == FVM_VALUE_OBJECT && !fields_array)
+            return sort_impl(c, o, 0, 0, out, 0);
+        unsigned long count = fields_array ? size(a[0].object) : 1;
+        if (fields_array && (!count || count >= 2147483648UL))
+            return object_value(c, o, 0, 0, out, 0);
+        if (count > 64)
+            return FVM_OUT_OF_MEMORY;
+        for (unsigned long i = 0; i < count; ++i)
+        {
+            FVM_Result r = work.step();
+            if (r != FVM_OK)
+                return r;
+            FVM_Value field = a[0], text;
+            if (fields_array)
+            {
+                char key[32];
+                std::sprintf(key, "%lu", i);
+                r = loaded_sort_field(c, a[0].object, key, field);
+                if (r != FVM_OK)
+                    return r;
+            }
+            r = fvm_avm1_string(c, field, &text);
+            if (r != FVM_OK)
+                return r;
+            fvm_detail::string key;
+            r = fvm_property_key(text.string, fvm_string_size(text), key);
+            if (r != FVM_OK)
+                return r;
+            loaded.fields.push_back(key);
+            loaded.flags.push_back(0);
+        }
+        if (n > 1)
+        {
+            bool options_array = a[1].type == FVM_VALUE_OBJECT && array(a[1].object);
+            if (fields_array && options_array && size(a[1].object) == count)
+            {
+                for (unsigned long i = 0; i < count; ++i)
+                {
+                    FVM_Result r = work.step();
+                    if (r != FVM_OK)
+                        return r;
+                    char key[32];
+                    std::sprintf(key, "%lu", i);
+                    FVM_Value option;
+                    r = loaded_sort_field(c, a[1].object, key, option);
+                    double flags = 0;
+                    if (r == FVM_OK)
+                        r = fvm_avm1_number(c, &option, &flags);
+                    if (r != FVM_OK)
+                        return r;
+                    loaded.flags[i] = loaded_sort_options(flags);
+                }
+            }
+            else if ((fields_array && a[1].type != FVM_VALUE_OBJECT) ||
+                     (!fields_array && a[1].type == FVM_VALUE_NUMBER))
+            {
+                double flags = 0;
+                FVM_Result r = fvm_avm1_number(c, a + 1, &flags);
+                if (r != FVM_OK)
+                    return r;
+                for (unsigned long i = 0; i < count; ++i)
+                    loaded.flags[i] = loaded_sort_options(flags);
+            }
+        }
+        return sort_impl(c, o, 0, 0, out, &loaded);
+    }
     /* Initialization / Инициализация локального состояния. */
     SortSpec spec;
     unsigned long count =

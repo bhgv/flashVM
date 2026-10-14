@@ -1256,3 +1256,21 @@ Four AGG launch failures passed after restoring executable permissions.
 
 Исправлены числовые flags и часть перегрузок загруженной сортировки;
 полнота Array и завершение стадий не заявлены.
+
+## v0.174 — sortOn overloads / перегрузки sortOn
+
+Loaded field/option Arrays read retained own data without getters. All field
+names are converted before option entries; a common primitive option is coerced
+once, mismatched Arrays/non-Array Object options are ignored, and a single
+primitive field accepts only Number options. Empty field Arrays return this;
+non-Array Object fields select ordinary comparison. Preparation shares the work
+budget. [RU/EN details](ARRAY_LEGACY_SORT_ON_ARGUMENTS.md).
+SWF4..8 tests cover overloads, virtual indices, getter bypass, wrapping flags,
+empty fields, fallback and restored root/depth state. The 64-field cap, full
+signed native length, arbitrary native GC and all roadmap stages remain open.
+Evidence: AGG 335/Cairo 334 tests, ten focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, fifteen byte-exact original SWFs.
+Three AGG launch failures passed after restoring executable permissions.
+
+Исправлены перегрузки и порядок подготовки полей/flags загруженного sortOn;
+проверены сохранённые данные виртуальных индексов без вызова getter.
