@@ -2,6 +2,7 @@
 #ifndef FVM_CORE_CALL_SCOPE_HPP
 #define FVM_CORE_CALL_SCOPE_HPP /* Include guard for invocation scope metadata. */
 #include "runtime.hpp"
+#include "call_scope_constants.h"
 
 /* [GC:] Save invocation identity and retain both old and new owner objects. */
 class FVM_CallScope
@@ -21,12 +22,12 @@ class FVM_CallScope
     /* [GC:] Publish the selected constructor or method owner for one nested call. */
     FVM_CallScope(FVM_Context *c, FVM_Object *constructor, FVM_Object *function, FVM_Object *owner)
         : context_(c), old_constructor_(c->calling_constructor), old_function_(c->calling_function),
-          old_owner_(c->calling_owner), roots_(6)
+          old_owner_(c->calling_owner), roots_(FVM_CALL_SCOPE_SNAPSHOT_COUNT)
     {
         /* [GC:] Build complete snapshots before changing context-visible metadata. */
-        FVM_Object *objects[6] = {old_constructor_, old_function_, old_owner_,
-                                  constructor,      function,      owner};
-        for (size_t i = 0; i < 6; ++i)
+        FVM_Object *objects[FVM_CALL_SCOPE_SNAPSHOT_COUNT] = {
+            old_constructor_, old_function_, old_owner_, constructor, function, owner};
+        for (size_t i = 0; i < FVM_CALL_SCOPE_SNAPSHOT_COUNT; ++i)
         {
             fvm_value_undefined(&roots_[i]);
             if (objects[i])

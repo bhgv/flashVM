@@ -209,6 +209,15 @@ extern "C"
                                               int local_scope, const FVM_Value *name,
                                               unsigned int argc, const FVM_Value *argv,
                                               FVM_Value *result);
+    /* Construct from an already-coerced counted name and ordered values. Loaded
+     * NewObject uses literal scoped lookup and returns undefined for nonconstructors.
+     * Host mode retains qualified lookup and named native-constructor fallback.
+     * [GC:] Retains environment, name, constructor and copied args through callbacks. */
+    FVM_API FVM_Result fvm_exec_new_object(FVM_Context *, FVM_Object *scope,
+                                          FVM_Object *target, FVM_Object *receiver,
+                                          int local_scope, const FVM_Value *name,
+                                          unsigned int argc, const FVM_Value *argv,
+                                          FVM_Value *result);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

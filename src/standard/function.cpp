@@ -9,6 +9,7 @@
 #include "../avm1/block.hpp"
 #include "../avm1/encoding_constants.h"
 #include "../core/call_scope.hpp"
+#include "../core/object_root_scope.hpp"
 #include "super.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
@@ -1080,6 +1081,9 @@ extern "C" FVM_Result fvm_function_construct(
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
+        /* [GC:] A script prototype getter can collect before the constructor call
+         * publishes this new instance as its receiver. Retain it across that gap. */
+        FVM_ObjectRootScope instance_root(c, instance);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         instance->resource_kind = FVM_RESOURCE_OBJECT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

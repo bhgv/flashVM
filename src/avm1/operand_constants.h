@@ -5,6 +5,9 @@
 #define FVM_AVM1_WORD_BYTES 2U   /* UI16 operand byte length. */
 #define FVM_AVM1_DWORD_BYTES 4U  /* UI32 operand and each half of an encoded double. */
 #define FVM_AVM1_DOUBLE_BYTES 8U /* Two little-endian words, high word first. */
+/* Named construction has a separate layout identity from ordinary invocation. */
+#define FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS 2U /* NewObject has count and name above arguments. */
+#define FVM_AVM1_NEW_OBJECT_FIRST_ARGUMENT 3U /* Offset below constructor name/count to arg zero. */
 #define FVM_AVM1_NAMED_CALL_FIXED_OPERANDS 2U /* CallFunction has count and name above arguments. */
 #define FVM_AVM1_NAMED_CALL_FIRST_ARGUMENT 3U /* Offset below name/count to the first call argument. */
 #define FVM_AVM1_DECLARE_INITIALIZED_OPERANDS 2U /* DefineLocal consumes name and initializer. */

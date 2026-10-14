@@ -2145,3 +2145,13 @@ functions in loaded calls. Host fallback remains compatible. Direct C, interpret
 GC, exception, inherited-super and allocator fixtures cover the implemented paths.
 Full virtual-super lookup, metatable/scope equivalence and all roadmap stages
 remain open. Вызовы по составным именам вынесены в общий C-слой.
+
+### v0.264 — scoped literal construction and prototype-getter root
+
+[NEW_OBJECT_NAMES.md](NEW_OBJECT_NAMES.md) records the common C89 named constructor
+service, literal loaded scope lookup and undefined nonconstructor results. Host
+qualified/native registry behavior remains separate. A reproduced ASan use-after-
+free during a script constructor's prototype getter is fixed by retaining the
+fresh instance until invocation. C89/interpreter, GC, thrown-body and allocator
+fixtures exercise the supported branches. Full boxing/scope/encoding and all
+roadmap gates remain open. Конструктор и промежуточный экземпляр защищены от GC.

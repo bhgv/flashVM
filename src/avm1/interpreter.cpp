@@ -1165,8 +1165,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
             }
             else if (a.op == FVM_AVM1_ACTION_NEW_OBJECT)
-            { /* NewObject: separate named native constructor registry. */
-                if (stack.size() < 2 || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
+            { /* NewObject: literal loaded name lookup and shared rooted construction. */
+                if (stack.size() < FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS ||
+                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
                 if (c->swf_loaded)
                 {
@@ -1179,34 +1180,39 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 unsigned int argc = 0;
                 if (c->swf_loaded)
                 {
-                    FVM_Result count_status = fvm_exec_argument_count(c, &stack[stack.size() - 2],
-                                                                      stack.size() - 2, &argc);
+                    FVM_Result count_status = fvm_exec_argument_count(
+                        c, &stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS],
+                        stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS, &argc);
                     if (count_status != FVM_OK)
                         return count_status;
                 }
                 else
                 {
-                    const FVM_Value &count = stack[stack.size() - 2];
+                    const FVM_Value &count =
+                        stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS];
                     if (count.type != FVM_VALUE_NUMBER ||
                         !(count.number >= 0 && count.number <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
-                        count.number != std::floor(count.number) || count.number > stack.size() - 2)
+                        count.number != std::floor(count.number) ||
+                        count.number > stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS)
                         return FVM_ERROR;
                     argc = (unsigned int)count.number;
                 }
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (unsigned int i = 0; i < argc; ++i)
-                    args[i] = stack[stack.size() - 3 - i];
+                    args[i] = stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIRST_ARGUMENT - i];
                 FVM_Value value;
-                FVM_Value constructor;
-                bool defined = false;
-                FVM_Result result =
-                    lookup_variable_value(c, locals, self, stack.back(), &constructor, &defined);
+                FVM_Object *target = 0;
+                FVM_Result result = variable_receiver(c, self, &target);
                 if (result == FVM_OK)
-                    result = fvm_exec_resolved_call(c, 1, &stack.back(), &constructor, defined,
-                                                    0, argc, argc ? args.begin() : 0, &value);
+                    result = fvm_exec_new_object(
+                        c, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), target,
+                        c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && c->script_this
+                            ? c->script_this
+                            : self,
+                        locals != 0, &stack.back(), argc, argc ? args.begin() : 0, &value);
                 if (result != FVM_OK)
                     return result;
-                stack.resize(stack.size() - argc - 2);
+                stack.resize(stack.size() - argc - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS);
                 stack.push_back(value);
             }
             else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)

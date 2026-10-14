@@ -38,7 +38,7 @@ FVM_Result unpack(FVM_Context *c, FVM_Object *facade, FVM_Object **receiver, FVM
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator depth = data->properties.find("depth");
     if (depth == data->properties.end() || depth->second.type != FVM_VALUE_NUMBER ||
-        !(depth->second.number >= 0 && depth->second.number <= 1024) ||
+        !(depth->second.number >= 0 && depth->second.number <= FVM_PROTOTYPE_MAX_DEPTH) ||
         depth->second.number != (unsigned int)depth->second.number)
         return FVM_INVALID_ARGUMENT;
     *owner = *receiver;
@@ -74,7 +74,7 @@ bool accessor_contains(FVM_Object *descriptor, FVM_Object *function)
     if (!descriptor)
         return false;
     const char *names[] = {"get", "set"};
-    for (size_t i = 0; i < 2; ++i)
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
     {
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it =
             descriptor->properties.find(names[i]);

@@ -177,3 +177,11 @@ calls avoid stale script-registry fallback. C89, interpreter, GC, exception and
 allocation-failure fixtures accompany the service. Full call/scope equivalence,
 six machine-code backends and non-Linux execution remain release gates.
 Все стадии 1–9 открыты; перенос обработчика не означает завершения JIT.
+
+## v0.264 — shared named construction and fresh-instance lifetime
+
+Loaded construction now uses literal scope resolution through the common C89
+service. A prototype-getter GC lifetime defect has a reproducing memory check and
+an allocation-free temporary root. Semantic root/count/depth constants are named.
+Complete construction/boxing semantics, six machine-code backends and all target
+platform executions remain release gates. Все стадии 1–9 остаются открытыми.
