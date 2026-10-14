@@ -43,6 +43,13 @@ double integer(double v)
     return v < 0 ? -std::floor(-v) : std::floor(v);
 }
 
+/* Loaded minute setters use signed 32-bit truncation with an invalid sentinel.
+ * NaN, infinities and values outside the signed range become INT32_MIN. */
+double minute_component(double v)
+{
+    return v >= -2147483648.0 && v <= 2147483647.0 ? integer(v) : -2147483648.0;
+}
+
 /* Compute and return clip. */
 double clip(double v)
 {
@@ -258,13 +265,18 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         if (i && i >= n)
             break;
         double v = 0;
-        FVM_Result r = number_arg(c, n ? n : 1, n ? a : &missing, i, 0, v);
+        /* Minute bounds must be checked before the general integer projection. */
+        FVM_Result r = c->swf_loaded && field == 4
+                           ? fvm_value_to_number(c, n ? a + i : &missing, &v)
+                           : number_arg(c, n ? n : 1, n ? a : &missing, i, 0, v);
         if (r != FVM_OK)
             return r;
         /* Loaded setMonth treats a NaN month as January, including missing input.
          * Other components and infinities retain the ordinary invalid-date rule. */
         if (c->swf_loaded && field == 1 && !i && v != v)
             v = 0;
+        if (c->swf_loaded && field == 4)
+            v = minute_component(v);
         if (!finite(v))
         {
             o->resource_result.number = invalid();
@@ -274,6 +286,14 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         if (field == 8 && v >= 0 && v <= 99)
             v += 1900;
         *slots[start + i] = v;
+    }
+
+    /* The minute-setter rule also applies to retained seconds/milliseconds. */
+    if (c->swf_loaded && field == 4)
+    {
+        f.minute = minute_component(f.minute);
+        f.second = minute_component(f.second);
+        f.ms = minute_component(f.ms);
     }
 
     /* Initialization / Инициализация локального состояния. */
