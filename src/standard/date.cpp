@@ -3,6 +3,7 @@
  */
 
 #include "date_state.hpp"
+#include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
 #include "../../ports/clock_port.h"
 #include <cmath>
@@ -14,7 +15,8 @@ namespace
 enum
 {
     DATE_OBJECT = 34,
-    DATE_CLASS = 35
+    DATE_CLASS = 35,
+    DATE_GENERIC_PROTOTYPE = 30 /* Loaded prototype has no native timestamp. */
 };
 
 /* Define Fields struct and its representation. */
@@ -432,44 +434,153 @@ struct Method
     const char *name;
     FVM_NativeFunction callback;
 };
-const Method methods[] = {{"getTime", value},
-                          {"valueOf", value},
-                          {"toString", text},
-                          {"getFullYear", get_year},
-                          {"getMonth", get_month},
-                          {"getDate", get_date},
-                          {"getHours", get_hours},
-                          {"getMinutes", get_minutes},
-                          {"getSeconds", get_seconds},
-                          {"getMilliseconds", get_milliseconds},
-                          {"getDay", get_day},
-                          {"getYear", get_old_year},
-                          {"getTimezoneOffset", get_offset},
-                          {"getUTCFullYear", get_utc_year},
-                          {"getUTCMonth", get_utc_month},
-                          {"getUTCDate", get_utc_date},
-                          {"getUTCHours", get_utc_hours},
-                          {"getUTCMinutes", get_utc_minutes},
-                          {"getUTCSeconds", get_utc_seconds},
-                          {"getUTCMilliseconds", get_utc_ms},
-                          {"getUTCDay", get_utc_day},
-                          {"getUTCYear", get_utc_old_year},
-                          {"setTime", set_time},
-                          {"setFullYear", set_year},
-                          {"setMonth", set_month},
-                          {"setDate", set_date},
-                          {"setHours", set_hours},
-                          {"setMinutes", set_minutes},
-                          {"setSeconds", set_seconds},
-                          {"setMilliseconds", set_milliseconds},
-                          {"setYear", set_old_year},
-                          {"setUTCFullYear", set_utc_year},
-                          {"setUTCMonth", set_utc_month},
-                          {"setUTCDate", set_utc_date},
-                          {"setUTCHours", set_utc_hours},
-                          {"setUTCMinutes", set_utc_minutes},
-                          {"setUTCSeconds", set_utc_seconds},
-                          {"setUTCMilliseconds", set_utc_ms}};
+/* [GC:] Numeric argument projections contain no object/string edges. The native
+ * invocation retains the original operands while conversions run in source order. */
+FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
+                         const FVM_Value *args, FVM_Value *out, void *userdata,
+                         FVM_NativeFunction callback)
+{
+    if (!c->swf_loaded)
+        return callback(c, self, count, args, out, userdata);
+    if (!self || self->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value numbers[7];
+    unsigned int used = 0;
+    while (used < count && used < 7 && args[used].type != FVM_VALUE_UNDEFINED)
+    {
+        double number = 0;
+        FVM_Result result = fvm_avm1_number(c, args + used, &number);
+        if (result != FVM_OK)
+            return result;
+        fvm_value_number(numbers + used, number);
+        ++used;
+    }
+    if (self->resource_kind != DATE_OBJECT)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    return callback(c, self, used, numbers, out, userdata);
+}
+
+/* Preserve one stable native callback identity per Date method implementation. */
+#define DATE_LOADED_WRAPPER(name) \
+    FVM_Result loaded_##name(FVM_Context *c, FVM_Object *self, unsigned int count, \
+                             const FVM_Value *args, FVM_Value *out, void *userdata) \
+    { return loaded_method(c, self, count, args, out, userdata, name); }
+/* Dispatch value through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(value)
+/* Dispatch text through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(text)
+/* Dispatch get_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_year)
+/* Dispatch get_month through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_month)
+/* Dispatch get_date through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_date)
+/* Dispatch get_hours through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_hours)
+/* Dispatch get_minutes through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_minutes)
+/* Dispatch get_seconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_seconds)
+/* Dispatch get_milliseconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_milliseconds)
+/* Dispatch get_day through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_day)
+/* Dispatch get_old_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_old_year)
+/* Dispatch get_offset through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_offset)
+/* Dispatch get_utc_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_year)
+/* Dispatch get_utc_month through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_month)
+/* Dispatch get_utc_date through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_date)
+/* Dispatch get_utc_hours through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_hours)
+/* Dispatch get_utc_minutes through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_minutes)
+/* Dispatch get_utc_seconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_seconds)
+/* Dispatch get_utc_ms through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_ms)
+/* Dispatch get_utc_day through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_day)
+/* Dispatch get_utc_old_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(get_utc_old_year)
+/* Dispatch set_time through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_time)
+/* Dispatch set_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_year)
+/* Dispatch set_month through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_month)
+/* Dispatch set_date through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_date)
+/* Dispatch set_hours through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_hours)
+/* Dispatch set_minutes through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_minutes)
+/* Dispatch set_seconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_seconds)
+/* Dispatch set_milliseconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_milliseconds)
+/* Dispatch set_old_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_old_year)
+/* Dispatch set_utc_year through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_year)
+/* Dispatch set_utc_month through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_month)
+/* Dispatch set_utc_date through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_date)
+/* Dispatch set_utc_hours through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_hours)
+/* Dispatch set_utc_minutes through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_minutes)
+/* Dispatch set_utc_seconds through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_seconds)
+/* Dispatch set_utc_ms through the versioned Date argument projection. */
+DATE_LOADED_WRAPPER(set_utc_ms)
+#undef DATE_LOADED_WRAPPER
+const Method methods[] = {{"getTime", loaded_value},
+                          {"valueOf", loaded_value},
+                          {"toString", loaded_text},
+                          {"getFullYear", loaded_get_year},
+                          {"getMonth", loaded_get_month},
+                          {"getDate", loaded_get_date},
+                          {"getHours", loaded_get_hours},
+                          {"getMinutes", loaded_get_minutes},
+                          {"getSeconds", loaded_get_seconds},
+                          {"getMilliseconds", loaded_get_milliseconds},
+                          {"getDay", loaded_get_day},
+                          {"getYear", loaded_get_old_year},
+                          {"getTimezoneOffset", loaded_get_offset},
+                          {"getUTCFullYear", loaded_get_utc_year},
+                          {"getUTCMonth", loaded_get_utc_month},
+                          {"getUTCDate", loaded_get_utc_date},
+                          {"getUTCHours", loaded_get_utc_hours},
+                          {"getUTCMinutes", loaded_get_utc_minutes},
+                          {"getUTCSeconds", loaded_get_utc_seconds},
+                          {"getUTCMilliseconds", loaded_get_utc_ms},
+                          {"getUTCDay", loaded_get_utc_day},
+                          {"getUTCYear", loaded_get_utc_old_year},
+                          {"setTime", loaded_set_time},
+                          {"setFullYear", loaded_set_year},
+                          {"setMonth", loaded_set_month},
+                          {"setDate", loaded_set_date},
+                          {"setHours", loaded_set_hours},
+                          {"setMinutes", loaded_set_minutes},
+                          {"setSeconds", loaded_set_seconds},
+                          {"setMilliseconds", loaded_set_milliseconds},
+                          {"setYear", loaded_set_old_year},
+                          {"setUTCFullYear", loaded_set_utc_year},
+                          {"setUTCMonth", loaded_set_utc_month},
+                          {"setUTCDate", loaded_set_utc_date},
+                          {"setUTCHours", loaded_set_utc_hours},
+                          {"setUTCMinutes", loaded_set_utc_minutes},
+                          {"setUTCSeconds", loaded_set_utc_seconds},
+                          {"setUTCMilliseconds", loaded_set_utc_ms}};
 } // namespace
 /* Build constructor and prototype for date. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -501,13 +612,16 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = DATE_CLASS;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    proto->resource_kind = DATE_OBJECT;
+    proto->resource_kind = c->swf_loaded ? DATE_GENERIC_PROTOTYPE : DATE_OBJECT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    proto->resource_result_valid = true;
+    proto->resource_result_valid = !c->swf_loaded;
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_number(&proto->resource_result, invalid());
+    if (c->swf_loaded)
+        fvm_value_undefined(&proto->resource_result);
+    else
+        fvm_value_number(&proto->resource_result, invalid());
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -565,6 +679,24 @@ FVM_Result fvm_date_validate(FVM_Context *c)
                    v.object->resource_kind == DATE_CLASS
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
+}
+
+/* [GC:] Prepare the unchanged invalid host Date prototype without mutation;
+ * its constructor capture retains it and allocating lookups may throw bad_alloc. */
+FVM_Object *fvm_date_prepare_loaded(FVM_Context *c)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Date");
+    if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+        return 0;
+    FVM_Object *klass = ctor->second.root;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+    if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return 0;
+    FVM_Object *proto = stored->second.object;
+    if (!date(proto) || proto->resource_result.number == proto->resource_result.number)
+        return 0;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("getTime");
+    return method != proto->methods.end() && method->second.callback == loaded_value ? proto : 0;
 }
 
 /* Map a native date callback to its stable serialization identifier. */

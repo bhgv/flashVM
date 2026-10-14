@@ -1669,3 +1669,23 @@ Evidence: AGG 358/Cairo 357 full tests, thirty-two focused checks each in Linux
 portable and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen
 byte-exact original SWFs. One AGG and two Cairo launch failures passed after
 restoring execute bits.
+
+## v0.198 — ordinary Date prototype and method arguments / Date
+
+Loaded Date prototype is ordinary Object without timestamp, with both installation
+orders and atomic joint activation. Instance methods coerce at most seven operands
+before checking the receiver, stopping at undefined; other native types return
+undefined and errors propagate. Existing timestamp engine receives numeric
+projections, retaining unloaded behavior and callback/wire IDs.
+[RU/EN details](DATE_LEGACY_PROTOTYPE.md). Tests cover old instances, wrong/valid
+receivers, callbacks/limits/errors, preserved timestamp after failed setTime,
+versioned strings, GC/channel/GC, class aliases and joint OOM recovery.
+Constructor/UTC coercion, Date() global semantics, calendar fidelity, customized
+layouts and all roadmap stages remain open.
+
+Исправлены Date.prototype и порядок аргументов instance methods; getter также
+преобразует аргументы, ошибка setter сохраняет старое timestamp.
+
+Evidence: AGG 359/Cairo 358 full tests, five focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Two Cairo launch failures passed after restoring execute bits.

@@ -10,6 +10,9 @@
 FVM_Result fvm_date_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 
+/* [GC:] Prepare the rooted invalid host prototype for atomic loaded activation; may throw. */
+FVM_Object *fvm_date_prepare_loaded(FVM_Context *);
+
 /* Validate date. */
 FVM_Result fvm_date_validate(FVM_Context *);
 
