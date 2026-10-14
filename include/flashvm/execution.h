@@ -121,6 +121,10 @@ extern "C"
     FVM_API FVM_Result fvm_exec_member(FVM_Context *, int write, const FVM_Value *owner,
                                        const FVM_Value *member, const FVM_Value *value,
                                        FVM_Value *result);
+    /* Invoke an already converted named member once; absent/noncallable values yield undefined.
+     * [GC:] Retains receiver, defining prototype, function and arguments through getters/body. */
+    FVM_API FVM_Result fvm_exec_invoke_member(FVM_Context *, FVM_Object *, const FVM_Value *name,
+                                               unsigned int argc, const FVM_Value *argv, FVM_Value *out);
     /* Execute a built-in frame command on an explicit clip. */
     FVM_API FVM_Result fvm_exec_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
                                               const FVM_Value *frame, int playing);

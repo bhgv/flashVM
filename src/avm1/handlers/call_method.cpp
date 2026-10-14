@@ -46,12 +46,18 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
         if (!receiver)
         {
-            const char *type = owner.type == FVM_VALUE_STRING    ? "String"
-                               : owner.type == FVM_VALUE_BOOLEAN ? "Boolean"
-                                                                 : "Number";
-            FVM_Result status = fvm_construct(c, type, 1, &owner, &receiver);
+            FVM_Value &boxed = roots.values[FVM_METHOD_BOX_ROOT];
+            FVM_Result status = fvm_exec_to_object(c, &owner, &boxed);
             if (status != FVM_OK)
                 return status;
+            if (boxed.type != FVM_VALUE_OBJECT)
+            {
+                status = fvm_object_create(c, &receiver);
+                if (status != FVM_OK)
+                    return status;
+            }
+            else
+                receiver = boxed.object;
         }
         /* [GC:] Retain the box before method lookup or a constructor getter can execute script. */
         roots.values[FVM_METHOD_BOX_ROOT].type = FVM_VALUE_OBJECT;
@@ -89,7 +95,10 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
                 status = fvm_object_get_bytes(c, receiver, name.data(), name.size(), &function);
             if (status != FVM_OK)
                 return status;
-            if (function.type != FVM_VALUE_OBJECT)
+            if (function.type != FVM_VALUE_OBJECT ||
+                (c->swf_loaded && !function.object->constructable.callback &&
+                 (function.object->resource_kind != FVM_RESOURCE_SCRIPT_FUNCTION ||
+                  !function.object->invocable.callback)))
             {
                 if (!c->swf_loaded)
                     return FVM_INVALID_ARGUMENT;
@@ -105,7 +114,14 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             }
         }
         else if (name.empty())
-            status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
+        {
+            if (c->swf_loaded && !receiver->invocable.callback)
+                status = FVM_OK;
+            else
+                status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
+        }
+        else if (c->swf_loaded)
+            status = fvm_exec_invoke_member(c, receiver, &text, argc, args, &result);
         else
         {
             fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator script =

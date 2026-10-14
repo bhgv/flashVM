@@ -2299,3 +2299,12 @@ and bare wrapped objects when a loaded class is unavailable. Actual With actions
 outer-parent GC, constructor exceptions and allocation failures are covered.
 Nullish body skipping and host constructor policy remain unchanged. Call boxing
 and remaining scope/conformance gates remain open. Все стадии 1–9 открыты.
+
+### v0.281 — single-read named method calls
+
+[NAMED_MEMBER_CALLS.md](NAMED_MEMBER_CALLS.md) records rooted defining owners,
+single getter evaluation, missing/noncallable undefined results and no stale
+loaded script-cache fallback. Method boxing shares current global constructors;
+invalid NewMethod constructors and anonymous noncallables yield undefined. C89,
+action, detached-prototype GC, exception and allocation fixtures cover the change.
+Super/casing and other conformance boundaries remain open. Все стадии открыты.

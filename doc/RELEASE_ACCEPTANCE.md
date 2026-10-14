@@ -302,3 +302,11 @@ Both Linux profiles pass 539 tests, five focused memory checks pass and all
 26 original SWFs match per profile. With uses value-based construction and
 retains its parent through GC. Machine-code JIT and real Windows/macOS/Android
 verification remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.281 — named method calls and receiver boxing
+
+Both Linux profiles pass 543 tests, eight focused memory checks pass and all
+26 original SWFs match per profile. Named calls retain the selected prototype
+and getter result and do not consult stale script caches in loaded execution.
+Machine-code JIT and actual Windows/macOS/Android runs remain absent.
+Все стадии 1–9 остаются открытыми.
