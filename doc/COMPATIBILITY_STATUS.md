@@ -1781,3 +1781,21 @@ host default UTC: 1. Проверены snapshot commit и сохранение 
 Evidence: AGG 364/Cairo 363 full tests, nine focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Three AGG launch failures passed after restoring execute bits.
+
+## v0.204 — numeric method/constant flags / Number и Boolean flags
+
+Loaded Number/Boolean methods use flags 3; canonical Number constants use
+readonly/nondelete flags 7. Both installation orders stage flags atomically;
+nondefault attributes/descriptors and changed constants remain. Commit swaps
+prepared maps without allocating. [RU/EN details](NUMERIC_LEGACY_ATTRIBUTES.md).
+Tests cover host defaults, writable protected methods, five constants, NaN
+write/delete guards, changed MAX_VALUE, nondefault MIN_VALUE flags, GC/channel
+and OOM preserving old flags before retry. Other metadata and all stages stay open.
+
+Исправлены Number/Boolean metadata и canonical constants. No-op установка
+нулевого default не считается отличающимся пользовательским состоянием.
+
+Evidence: AGG 365/Cairo 364 full tests, ten focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Two AGG and two Cairo launch failures passed after restoring
+execute bits.

@@ -263,6 +263,8 @@ fvm_number_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
         fvm_value_number(&value, values[i]);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         klass->properties[names[i]] = value;
+        if (c->swf_loaded)
+            klass->attributes[names[i]] = 7;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -273,10 +275,14 @@ fvm_number_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
     entry.callback = number_value;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->methods["valueOf"] = entry;
+    if (c->swf_loaded)
+        prototype->attributes["valueOf"] = 3;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.callback = number_string;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->methods["toString"] = entry;
+    if (c->swf_loaded)
+        prototype->attributes["toString"] = 3;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.callback = number_constructor;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
@@ -336,24 +342,64 @@ FVM_Result fvm_number_validate(FVM_Context *c)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
-/* [GC:] Find an unchanged host Number prototype without mutating it. The constructor
- * capture roots it until the caller commits; allocating lookups may throw bad_alloc. */
-FVM_Object *fvm_number_prepare_loaded(FVM_Context *c)
+/* [GC:] Prepare the unchanged zero-valued prototype and numeric attributes before
+ * any mutation. Constructor capture retains both objects throughout preparation. */
+void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Number");
     if (ctor == c->constructors.end() || ctor->second.callback != number_constructor || !ctor->second.root)
-        return 0;
-    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = ctor->second.root->properties.find("prototype");
-    if (stored == ctor->second.root->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
-        return 0;
+        return;
+    FVM_Object *klass = ctor->second.root;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+    if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return;
     FVM_Object *proto = stored->second.object;
     if (!proto || proto->resource_kind != NUMBER_OBJECT || !proto->resource_result_valid ||
         proto->resource_result.type != FVM_VALUE_NUMBER || proto->resource_result.number != 0)
-        return 0;
+        return;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value = proto->methods.find("valueOf");
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text = proto->methods.find("toString");
-    return value != proto->methods.end() && value->second.callback == number_value &&
-           text != proto->methods.end() && text->second.callback == number_string ? proto : 0;
+    if (value == proto->methods.end() || value->second.callback != number_value ||
+        text == proto->methods.end() || text->second.callback != number_string)
+        return;
+    out.prototype_attributes = proto->attributes;
+    out.class_attributes = klass->attributes;
+    const char *method_names[] = {"valueOf", "toString"};
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(method_names[i]);
+        if (flags != out.prototype_attributes.end() && flags->second == 1 &&
+            proto->properties.find(method_names[i]) == proto->properties.end() &&
+            proto->accessors.find(method_names[i]) == proto->accessors.end())
+            flags->second = 3;
+    }
+    const char *constant_names[] = {"MAX_VALUE", "MIN_VALUE", "NaN", "NEGATIVE_INFINITY", "POSITIVE_INFINITY"};
+    const double constants[] = {std::numeric_limits<double>::max(), std::numeric_limits<double>::denorm_min(),
+                               std::numeric_limits<double>::quiet_NaN(), -std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::infinity()};
+    for (unsigned int i = 0; i < 5; ++i)
+    {
+        stored = klass->properties.find(constant_names[i]);
+        if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_NUMBER &&
+            (stored->second.number == constants[i] || (stored->second.number != stored->second.number && constants[i] != constants[i])) &&
+            klass->attributes.find(constant_names[i]) == klass->attributes.end() &&
+            klass->accessors.find(constant_names[i]) == klass->accessors.end())
+            out.class_attributes[constant_names[i]] = 7;
+    }
+    out.prototype = proto;
+    out.klass = klass;
+}
+
+/* Commit the prepared Number native state and flag maps without a failing operation. */
+void fvm_number_commit_loaded(FVM_NumberPrototypeActivation &prepared)
+{
+    if (!prepared.prototype)
+        return;
+    prepared.prototype->resource_kind = NUMBER_GENERIC_PROTOTYPE;
+    prepared.prototype->resource_result_valid = false;
+    fvm_value_undefined(&prepared.prototype->resource_result);
+    prepared.prototype->attributes.swap(prepared.prototype_attributes);
+    prepared.klass->attributes.swap(prepared.class_attributes);
 }
 
 /* Map a native number callback to its stable serialization identifier. */

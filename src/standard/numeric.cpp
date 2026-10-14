@@ -624,7 +624,10 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
     {
         FVM_ArrayPrototypeActivation array;
         fvm_array_prepare_loaded(c, array);
-        FVM_Object *number = fvm_number_prepare_loaded(c), *boolean = 0;
+        FVM_NumberPrototypeActivation number;
+        fvm_number_prepare_loaded(c, number);
+        FVM_Object *boolean = 0;
+        fvm_detail::map<fvm_detail::string, unsigned int> boolean_attributes;
         FVM_DatePrototypeActivation date;
         fvm_date_prepare_loaded(c, date);
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Boolean");
@@ -646,19 +649,32 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
                 }
             }
         }
+        if (boolean)
+        {
+            boolean_attributes = boolean->attributes;
+            const char *names[] = {"valueOf", "toString"};
+            for (unsigned int i = 0; i < 2; ++i)
+            {
+                fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = boolean_attributes.find(names[i]);
+                if (flags != boolean_attributes.end() && flags->second == 1 &&
+                    boolean->properties.find(names[i]) == boolean->properties.end() &&
+                    boolean->accessors.find(names[i]) == boolean->accessors.end())
+                    flags->second = 3;
+            }
+        }
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
         fvm_array_commit_loaded(array);
         fvm_date_commit_loaded(date);
-        FVM_Object *prototypes[] = {number, boolean};
-        for (unsigned int i = 0; i < 2; ++i)
-            if (prototypes[i])
-            {
-                prototypes[i]->resource_kind = GENERIC_PRIMITIVE_PROTOTYPE;
-                prototypes[i]->resource_result_valid = false;
-                fvm_value_undefined(&prototypes[i]->resource_result);
-            }
+        fvm_number_commit_loaded(number);
+        if (boolean)
+        {
+            boolean->resource_kind = GENERIC_PRIMITIVE_PROTOTYPE;
+            boolean->resource_result_valid = false;
+            fvm_value_undefined(&boolean->resource_result);
+            boolean->attributes.swap(boolean_attributes);
+        }
         return FVM_OK;
     }
     catch (const std::bad_alloc &)
@@ -1014,8 +1030,12 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         constructors["Boolean"] = constructor;
         method.callback = boolean_value;
         prototype->methods["valueOf"] = method;
+        if (c->swf_loaded)
+            prototype->attributes["valueOf"] = 3;
         method.callback = boolean_string;
         prototype->methods["toString"] = method;
+        if (c->swf_loaded)
+            prototype->attributes["toString"] = 3;
         result = fvm_error_stage(c, globals, constructors);
         if (result != FVM_OK)
             return result;
