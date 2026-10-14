@@ -241,10 +241,27 @@ FVM_Result object_value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
 }
 
 /* Implement the default Object.prototype.toString representation. */
-FVM_Result object_string(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *,
+FVM_Result object_string(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
-    return fvm_value_string(out, "[object Object]");
+    return fvm_value_string(out, c->swf_loaded && self &&
+                                     (self->invocable.callback || self->callable.callback)
+                                 ? "[type Function]" : "[object Object]");
+}
+
+/* Loaded locale conversion uses the receiver's AVM1 string projection once. */
+FVM_Result object_locale(FVM_Context *c, FVM_Object *self, unsigned int count,
+                         const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return object_string(c, self, count, args, out, userdata);
+    if (!self || self->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    value.type = FVM_VALUE_OBJECT;
+    value.object = self;
+    return fvm_avm1_string(c, value, out);
 }
 
 /* Implement Object.prototype.hasOwnProperty. */
@@ -1956,7 +1973,7 @@ struct Method
 };
 const Method object_methods[] = {{"valueOf", object_value},
                                  {"toString", object_string},
-                                 {"toLocaleString", object_string},
+                                 {"toLocaleString", object_locale},
                                  {"hasOwnProperty", object_own},
                                  {"propertyIsEnumerable", enumerable},
                                  {"isPropertyEnumerable", enumerable},
@@ -2434,6 +2451,8 @@ FVM_Result fvm_base_validate(FVM_Context *c)
 /* Map a native base callback to its stable serialization identifier. */
 unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == object_locale)
+        return 627;
     if (callback == register_class)
         return 626;
     if (callback == script_property_get)
@@ -2468,6 +2487,11 @@ unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 /* Restore a native base callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
 {
+    if (id == 627)
+        return object_locale;
+    /* Legacy locale aliases used the ordinary string callback at this ID. */
+    if (id == 612)
+        return object_string;
     if (id == 626)
         return register_class;
     if (id == 608)

@@ -1817,3 +1817,22 @@ Evidence: AGG 366/Cairo 365 full tests, thirty-seven focused checks each in Linu
 portable and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen
 byte-exact original SWFs. Two Cairo focused and one Cairo full launch failures
 passed after restoring execute bits.
+
+## v0.206 — Object locale projection / Object.toLocaleString
+
+Loaded toLocaleString projects its receiver through AVM1 instead of the old
+ordinary-string alias; operands are ignored. Selected toString runs once without
+operands, counted strings/type labels/errors follow coercion and recursion
+restores state. Borrowed Object.toString recognizes functions. Callback 627 is
+new; legacy 611/612 retain the ordinary string callback. [RU/EN details](OBJECT_LEGACY_LOCALE.md).
+Tests cover host/SWF4–8, NUL, nonstring returns, errors, noncallable method data,
+function receiver, GC/graph callback restoration, recursion and legacy IDs.
+Raw __proto__, case/version availability and all stages remain open.
+
+Исправлен существовавший alias locale method, а не добавлен отсутствующий API;
+проверены coercion, исключения и bounded recursion без утраты callback identity.
+
+Evidence: AGG 367/Cairo 366 full tests, six focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Five AGG and seven Cairo launch/permission failures (including
+two dependent process checks) passed after restoring execute bits.
