@@ -32,7 +32,8 @@ FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry
             context->script_this = previous;
         }
     } identity(c, frame.implicit_this);
-    FVM_AVM1TargetScope target(c, frame.receiver, false);
+    /* The shared activation builder already selected its definition timeline. */
+    FVM_AVM1TargetScope target(c, frame.receiver, true);
     FVM_Value ignored;
     if (!out)
         out = &ignored;

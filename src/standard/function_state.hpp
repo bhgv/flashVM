@@ -27,7 +27,7 @@ FVM_Result fvm_function_make_script(FVM_Context *, const FVM_ScriptFunction &, F
 /* Invoke avm1 script. */
 FVM_Result fvm_avm1_invoke_script(FVM_Context *, const FVM_ScriptFunction &, FVM_Object *,
                                   FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *,
-                                  FVM_Object *);
+                                  FVM_Object *, FVM_Object *);
 
 /* Map a native function callback to its stable serialization identifier. */
 unsigned long fvm_function_callback_id(FVM_NativeFunction);

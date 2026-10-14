@@ -18,7 +18,7 @@
 FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                                 const FVM_ScriptFunction &fn, unsigned int argc,
                                 const FVM_Value *args, FVM_Object *receiver, FVM_Value *result,
-                                FVM_Object *closure, FVM_Object *callee)
+                                FVM_Object *closure, FVM_Object *callee, FVM_Object *base_clip)
 {
     if (c->script_depth >= FVM_AVM1_MAX_SCRIPT_DEPTH)
         return FVM_ERROR;
@@ -31,6 +31,10 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     if (c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && fn.function2 &&
         (fn.flags & FVM_AVM1_F2_THIS_FLAGS))
         local_this = c->script_this ? c->script_this : c->global;
+    /* [GC:] Root the definition timeline and restore the caller's target metadata
+     * across both activation preparation and body execution. */
+    FVM_AVM1TargetScope targets(c, base_clip ? base_clip : c->avm1_target_active ? 0 : receiver,
+                                false);
     FVM_ScriptBodyEntry native_entry;
     if (callee)
         native_entry = callee->script_body;
@@ -38,6 +42,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     FVM_Value implicit_super;
     fvm_value_undefined(&implicit_super);
     Execution execution;
+    execution.target_initialized = true;
     try
     {
         execution.constants = fn.constants;
@@ -260,9 +265,9 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 fvm_value_undefined(common + 2);
             /* Match the activation's base-clip selection before its bytecode starts.
              * Display preloads bypass mutable _root/_parent script properties. */
-            FVM_Object *preload_clip = receiver && receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
-                                           ? receiver
-                                           : c->avm1_base_clip;
+            FVM_Object *preload_clip = base_clip ? base_clip
+                                      : receiver && receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
+                                           ? receiver : c->avm1_base_clip;
             if ((fn.flags & FVM_AVM1_F2_DISPLAY_FLAGS) && !preload_clip)
             {
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root =
@@ -417,10 +422,6 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 c->lexical_scopes.pop_back();
             }
         } scope(c);
-        /* The function receiver supplies this; its display operations start at the
-         * caller's base timeline, rather than a caller-selected target. */
-        FVM_AVM1TargetScope targets(c, c->avm1_target_active ? 0 : receiver, false);
-        execution.target_initialized = true;
         if (native_entry.callback)
         {
             FVM_ScriptFrame prepared;
@@ -476,9 +477,10 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
 /* Invoke avm1 script. */
 FVM_Result fvm_avm1_invoke_script(FVM_Context *c, const FVM_ScriptFunction &body,
                                   FVM_Object *closure, FVM_Object *receiver, unsigned int argc,
-                                  const FVM_Value *args, FVM_Value *out, FVM_Object *callee)
+                                  const FVM_Value *args, FVM_Value *out, FVM_Object *callee,
+                                  FVM_Object *base_clip)
 {
     return fvm_avm1_call_script(c, body.name.empty() ? fvm_detail::string("<function>") : body.name,
                                 body, argc, args, receiver ? receiver : c->global, out, closure,
-                                callee);
+                                callee, base_clip);
 }

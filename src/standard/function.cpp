@@ -238,7 +238,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = fn->resource_result.object;
-    FVM_Value code, params, constants, closure;
+    FVM_Value code, params, constants, closure, base_clip;
     FVM_Result r = fvm_object_get(c, data, "code", &code);
     if (r != FVM_OK)
         return r;
@@ -251,6 +251,12 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
     r = fvm_object_get(c, data, "closure", &closure);
     if (r != FVM_OK)
         return r;
+    r = fvm_object_get(c, data, "base_clip", &base_clip);
+    if (r != FVM_OK) return r;
+    if (base_clip.type != FVM_VALUE_UNDEFINED && base_clip.type != FVM_VALUE_NULL &&
+        (base_clip.type != FVM_VALUE_OBJECT || !base_clip.object ||
+         base_clip.object->owner != c || base_clip.object->resource_kind != FVM_RESOURCE_MOVIECLIP))
+        return FVM_INVALID_ARGUMENT;
     if (code.type != FVM_VALUE_STRING || params.type != FVM_VALUE_OBJECT ||
         constants.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
@@ -361,7 +367,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
             return r;
     }
     return fvm_avm1_invoke_script(c, body, closure.type == FVM_VALUE_OBJECT ? closure.object : 0,
-                                  receiver, n, a, out, fn);
+                                  receiver, n, a, out, fn, base_clip.type == FVM_VALUE_OBJECT ? base_clip.object : 0);
 }
 } // namespace
 /* Build constructor and prototype for function. */
@@ -634,6 +640,10 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
     v.object = closure;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["closure"] = v;
+    /* [GC:] A loaded function retains the timeline on which its body was defined. */
+    v.type = c->swf_loaded && c->avm1_base_clip ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
+    v.object = c->swf_loaded ? c->avm1_base_clip : 0;
+    data->properties["base_clip"] = v;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_string_bytes(&v, body.name.data(), body.name.size());
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
