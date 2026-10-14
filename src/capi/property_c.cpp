@@ -102,6 +102,10 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
             o->indexed.erase(index);
         /* Canonical numeric accessors/methods are own properties too. */
+        /* [GC:] Deleting a writable/deletable raw prototype slot removes its inheritance edge. */
+        if (c->swf_loaded && key == fvm_detail::string("__proto__") &&
+            o->properties.find(key) != o->properties.end())
+            o->prototype = 0;
         o->properties.erase(key);
         o->methods.erase(key);
         o->accessors.erase(key);

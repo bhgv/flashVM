@@ -7,6 +7,7 @@
 #include "array_work.hpp"
 #include "../avm1/coercion.hpp"
 #include "base_state.hpp"
+#include "../core/prototype_data.hpp"
 #include "attribute_stage.hpp"
 #include "function_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -311,7 +312,7 @@ FVM_Result enumerable(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_V
 }
 
 /* Read prototype. */
-FVM_Result prototype_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *,
+FVM_Result prototype_get(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
@@ -320,7 +321,7 @@ FVM_Result prototype_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_V
         out->type = FVM_VALUE_OBJECT;
         out->object = o->prototype;
     }
-    else
+    else if (!c->swf_loaded)
         out->type = FVM_VALUE_NULL;
     return FVM_OK;
 }
@@ -331,6 +332,12 @@ FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FV
 {
     if (n != 1)
         return FVM_INVALID_ARGUMENT;
+    /* Loaded script assignment retains primitive/null/undefined raw data without coercion. */
+    if (c->swf_loaded)
+    {
+        fvm_value_undefined(out);
+        return fvm_object_store_raw_prototype(c, o, a[0]);
+    }
     FVM_Result r = FVM_OK;
     if (a[0].type == FVM_VALUE_OBJECT)
         r = fvm_object_set_prototype(c, o, a[0].object);

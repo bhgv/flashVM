@@ -1,4 +1,4 @@
-Версия разработки: **0.226** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.227** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -211,3 +211,5 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 AVM1 decomposition / Декомпозиция: value-based C services and prepared native script
 bodies for future JIT reuse; file map, GC contract, tests and limitations:
 [AVM1_DECOMPOSITION.md](doc/AVM1_DECOMPOSITION.md).
+
+Raw prototype primitive retention / Raw-значения прототипа: [RU/EN](doc/OBJECT_RAW_PROTOTYPE.md).

@@ -10,6 +10,7 @@
 #include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
 #include "../core/runtime.hpp"
+#include "../core/prototype_data.hpp"
 #include "../core/exception_internal.hpp"
 #include "flashvm/stack.h"
 #include <cstring>
@@ -614,6 +615,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             return FVM_ERROR;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
+    /* Loaded raw __proto__ data also controls inheritance when no user setter intercepts it. */
+    if (c->swf_loaded && name == fvm_detail::string("__proto__"))
+        return fvm_object_store_raw_prototype(c, o, copy);
     try
     {
         o->properties[name] = copy;
@@ -787,6 +791,16 @@ extern "C"
         }
         if (cursor)
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Keep an existing loaded raw data slot consistent with explicit host relinking. */
+        if (c->swf_loaded)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator raw = o->properties.find("__proto__");
+            if (raw != o->properties.end())
+            {
+                fvm_value_undefined(&raw->second);
+                if (proto) { raw->second.type = FVM_VALUE_OBJECT; raw->second.object = proto; }
+            }
+        }
         o->prototype = proto;
         return FVM_OK;
     }
