@@ -1291,3 +1291,19 @@ Four AGG and two Cairo launch failures passed after restoring execute bits.
 
 Ранний выход выполняется без чтения и перезаписи receiver; проверены порядок
 пользовательских преобразований и их побочные эффекты при ошибках.
+
+## v0.176 — plain sort comparator / обычный Object comparator
+
+Loaded sort accepts a noncallable Object comparator and treats its undefined
+call result as equal keys without invoking call/valueOf properties. Descending,
+indexed output and builtin uniqueness retain their existing rules. Unloaded
+noncallable guarding is preserved. [RU/EN details](ARRAY_LEGACY_SORT_PLAIN_COMPARATOR.md).
+SWF4..8/unloaded tests cover trap methods, flags 0/2/8/10/4/12, ordering, index
+no-copyback, distinct/duplicate values and restored root/depth state. Full
+Array/AVM1 semantics and all roadmap stages remain open.
+Evidence: AGG 338/Cairo 337 tests, thirteen focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, fifteen byte-exact original SWFs.
+Three AGG launch failures passed after restoring execute bits.
+
+Обычный Object больше не вызывает UNSUPPORTED в загруженном sort; его
+свойства call/valueOf не участвуют в сравнении.

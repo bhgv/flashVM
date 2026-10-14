@@ -1024,6 +1024,19 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
     }
     if (callback)
     {
+        /* Calling a plain loaded AVM1 Object yields undefined, hence equal keys. */
+        if (c->swf_loaded)
+        {
+            int callable = 0;
+            FVM_Result r = fvm_callable_is(c, callback, &callable);
+            if (r != FVM_OK)
+                return r;
+            if (!callable)
+            {
+                order = 0;
+                return FVM_OK;
+            }
+        }
         FVM_Value args[2], out;
         args[0] = a.value;
         args[1] = b.value;
@@ -1177,7 +1190,7 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         FVM_Result r = fvm_callable_is(c, args[0].object, &callable);
         if (r != FVM_OK)
             return r;
-        if (!callable)
+        if (!callable && !c->swf_loaded)
             return FVM_UNSUPPORTED;
         callback = args[0].object;
     }
