@@ -14,6 +14,7 @@
 #include "../standard/movieclip_state.hpp"
 #include "flashvm/function.h"
 #include "../standard/string_order.hpp"
+#include "../../external/flash_case/case_table.hpp"
 #include "flashvm/property.h"
 #include "flashvm/standard.h"
 #include "try_record.hpp"
@@ -282,6 +283,39 @@ static FVM_Result variable_receiver(FVM_Context *c, FVM_Object *self, FVM_Object
                            : status;
 }
 
+/* Match the implicit this keyword using the SWF scope/version case rules.
+ * Counted WTF-8 decoding and Flash UCS2 lowercase mappings preserve NULs and
+ * reject supplementary characters instead of treating them as ASCII letters. */
+static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
+{
+    if (!c->swf_loaded || c->swf_info.version < 5 || c->swf_info.version >= 7 ||
+        (c->swf_info.version <= 5 && local_scope))
+        return name == fvm_detail::string("this");
+    size_t offset = 0;
+    const char expected[] = "this";
+    for (unsigned int i = 0; i < 4; ++i)
+    {
+        unsigned long unit = 0;
+        if (fvm_string_read(name.data(), name.size(), offset, unit) != FVM_OK)
+            return false;
+        size_t first = 0, last = sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
+        while (first < last)
+        {
+            size_t middle = first + (last - first) / 2;
+            if (fvm_flash_lowercase[middle][0] < unit)
+                first = middle + 1;
+            else
+                last = middle;
+        }
+        if (first < sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]) &&
+            fvm_flash_lowercase[first][0] == unit)
+            unit = fvm_flash_lowercase[first][1];
+        if (unit != (unsigned char)expected[i])
+            return false;
+    }
+    return offset == name.size();
+}
+
 /* Look up variable. */
 static FVM_Result lookup_variable(FVM_Context *c,
                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
@@ -308,7 +342,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
         out->object = c->global;
         return FVM_OK;
     }
-    if (self && name == fvm_detail::string("this"))
+    if (self && this_keyword(c, locals != 0, name))
     {
         fvm_value_undefined(out);
         out->type = FVM_VALUE_OBJECT;

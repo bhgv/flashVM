@@ -124,3 +124,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
   пока имеет консервативные границы и приближённую отрисовку.
 - Фактические сборки/запуски этого этапа выполнены на Linux. Наличие исходников
   Windows/macOS/Android не является подтверждением работы на этих платформах.
+
+Регистр неявного this: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) описывает различия timeline/локальной области SWF5, правила SWF6–8 и открытые ограничения областей видимости.
