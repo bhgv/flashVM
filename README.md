@@ -1,5 +1,5 @@
-Development version: **0.224** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.224 ` and an English description. Increase the subversion before each
+Development version: **0.225** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.225 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -10,8 +10,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.224** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.224 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.225** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.225 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

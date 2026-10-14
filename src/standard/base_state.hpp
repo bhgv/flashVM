@@ -56,6 +56,9 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &, FVM_Value &);
 /* Recognize the script-property bridge whose function setter can run on a readonly property. */
 bool fvm_base_script_accessor(const FVM_AccessorEntry &);
 
+/* Recognize the builtin prototype getter without executing user code. */
+bool fvm_base_prototype_accessor(const FVM_AccessorEntry &);
+
 /* Recognize the native Array length bridge whose loaded truncation precedes readonly data checks. */
 bool fvm_base_array_length_accessor(const FVM_AccessorEntry &);
 

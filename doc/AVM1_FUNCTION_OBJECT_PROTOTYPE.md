@@ -47,3 +47,7 @@ stack/leak checks remain disabled. All 17 unchanged selected original SWF<=8
 probes retained byte-exact traces, zero exits and empty stderr. The separately
 measured AS2 v6/v8 exit successfully but remain excluded because traces differ.
 No roadmap stage or non-Linux runtime certification is claimed.
+
+Subsequent builtin super projection makes original AS2 v8 byte-exact; see
+[AVM1_SUPER_PROTOTYPE.md](AVM1_SUPER_PROTOTYPE.md). После следующей правки
+проекции super исходный AS2 v8 совпадает с эталоном.

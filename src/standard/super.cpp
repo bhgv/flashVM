@@ -212,6 +212,36 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
         fvm_value_undefined(out);
         return FVM_OK;
     }
+    /* Loaded super reads the selected ancestor's intrinsic proto slot. User
+     * data/accessors still dispatch normally with the original receiver. This
+     * does not implement the still-open ordinary raw __proto__ property model. */
+    if (c->swf_loaded && name == fvm_detail::string("__proto__"))
+    {
+        FVM_Object *cursor = start;
+        for (unsigned int depth = 0; cursor && depth < 1024; ++depth)
+        {
+            if (cursor->properties.find(name) != cursor->properties.end() ||
+                cursor->methods.find(name) != cursor->methods.end())
+                break;
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator entry =
+                cursor->accessors.find(name);
+            if (entry != cursor->accessors.end())
+            {
+                if (fvm_base_prototype_accessor(entry->second))
+                {
+                    fvm_value_undefined(out);
+                    if (start->prototype)
+                    {
+                        out->type = FVM_VALUE_OBJECT;
+                        out->object = start->prototype;
+                    }
+                    return FVM_OK;
+                }
+                break;
+            }
+            cursor = cursor->prototype;
+        }
+    }
     return fvm_object_get_from(c, start, receiver, name, out, false);
 }
 

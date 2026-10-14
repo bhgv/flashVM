@@ -2011,6 +2011,12 @@ bool fvm_base_script_accessor(const FVM_AccessorEntry &entry)
     return entry.getter == script_property_get && entry.setter == script_property_set && entry.root;
 }
 
+/* Identify the builtin prototype getter so super can select the ancestor slot. */
+bool fvm_base_prototype_accessor(const FVM_AccessorEntry &entry)
+{
+    return entry.getter == prototype_get;
+}
+
 /* Identify the builtin length accessor without executing its getter or setter. */
 bool fvm_base_array_length_accessor(const FVM_AccessorEntry &entry)
 {
