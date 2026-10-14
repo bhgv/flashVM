@@ -69,4 +69,10 @@
 #define FVM_UTF8_CONTINUATION_MARKER 0x80U
 /* Smallest non-overlong two-byte scalar value. */
 #define FVM_UTF8_TWO_BYTE_SCALAR_MIN 0x80UL
+/* Double-exact modulus for wrapping String.fromCharCode arguments to one UTF-16 unit. */
+#define FVM_UTF16_UNIT_MODULUS 65536.0
+/* Capital Greek sigma requiring contextual lowercase handling in Unicode host casing. */
+#define FVM_UNICODE_CAPITAL_SIGMA 0x3a3UL
+/* Lowercase final sigma selected when no following cased scalar is present. */
+#define FVM_UNICODE_FINAL_SIGMA 0x3c2UL
 #endif

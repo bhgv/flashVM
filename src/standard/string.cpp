@@ -3,6 +3,9 @@
  */
 
 #include "string_state.hpp"
+#include "string_constants.h"
+#include "../core/unicode_constants.h"
+#include "../core/numeric_constants.h"
 #include "attribute_stage.hpp"
 #include "../core/string_internal.hpp"
 #include "../../external/unicode/case_table.hpp"
@@ -23,7 +26,8 @@ enum
 {
     STRING_OBJECT = FVM_RESOURCE_STRING,
     STRING_CLASS = FVM_RESOURCE_STRING_CLASS,
-    STRING_GENERIC_PROTOTYPE = FVM_RESOURCE_OBJECT /* Loaded prototype is an ordinary Object, without native text. */
+    STRING_GENERIC_PROTOTYPE =
+        FVM_RESOURCE_OBJECT /* Loaded prototype is an ordinary Object, without native text. */
 };
 typedef fvm_detail::vector<unsigned int> Units;
 
@@ -40,10 +44,13 @@ FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, 
     for (size_t i = start; i < end; ++i)
     {
         unsigned long cp = units[i];
-        if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < end && units[i + 1] >= 0xdc00 &&
-            units[i + 1] <= 0xdfff)
+        if (cp >= FVM_UTF16_HIGH_SURROGATE_BASE && cp <= FVM_UTF16_HIGH_SURROGATE_MAX &&
+            i + 1 < end && units[i + 1] >= FVM_UTF16_LOW_SURROGATE_BASE &&
+            units[i + 1] <= FVM_UTF16_LOW_SURROGATE_MAX)
         {
-            cp = 0x10000 + ((cp - 0xd800) << 10) + units[++i] - 0xdc00;
+            cp = FVM_UTF16_SUPPLEMENTARY_OFFSET +
+                 ((cp - FVM_UTF16_HIGH_SURROGATE_BASE) << FVM_UTF16_PAIR_PAYLOAD_BITS) +
+                 units[++i] - FVM_UTF16_LOW_SURROGATE_BASE;
         }
         FVM_Result r = fvm_string_append(cp, text);
         if (r != FVM_OK)
@@ -100,10 +107,10 @@ double loaded_index(double number)
     if (number != number || std::fabs(number) == std::numeric_limits<double>::infinity())
         return 0;
     number = number < 0 ? std::ceil(number) : std::floor(number);
-    number = std::fmod(number, 4294967296.0);
+    number = std::fmod(number, FVM_UINT32_MODULUS);
     if (number < 0)
-        number += 4294967296.0;
-    return number >= 2147483648.0 ? number - 4294967296.0 : number;
+        number += FVM_UINT32_MODULUS;
+    return number >= (-FVM_INT32_MIN_NUMBER) ? number - FVM_UINT32_MODULUS : number;
 }
 
 /* Coerce a present index using loaded AVM1 rules or the unloaded host contract. */
@@ -179,8 +186,10 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
     if (index < 0 || index >= (double)units.size())
     {
         if (code)
-            fvm_value_number(out, c->swf_loaded && c->swf_info.version == FVM_SWF_VERSION_5 && index >= 0
-                                     ? 0 : std::numeric_limits<double>::quiet_NaN());
+            fvm_value_number(out,
+                             c->swf_loaded && c->swf_info.version == FVM_SWF_VERSION_5 && index >= 0
+                                 ? 0
+                                 : std::numeric_limits<double>::quiet_NaN());
         else
             fvm_value_string(out, "");
         return FVM_OK;
@@ -291,7 +300,7 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     FVM_Value absent, text;
     fvm_value_undefined(&absent);
     result = c->swf_loaded ? fvm_avm1_string(c, args[0], &text)
-                            : fvm_value_to_string(c, count ? args : &absent, &text);
+                           : fvm_value_to_string(c, count ? args : &absent, &text);
     if (result != FVM_OK)
         return result;
     result = decode(text, needle);
@@ -301,7 +310,7 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     if (count > 1 && (!c->swf_loaded || args[1].type != FVM_VALUE_UNDEFINED))
     {
         result = c->swf_loaded ? fvm_avm1_number(c, args + 1, &position)
-                                : fvm_value_to_number(c, args + 1, &position);
+                               : fvm_value_to_number(c, args + 1, &position);
         if (result != FVM_OK)
             return result;
         if (c->swf_loaded)
@@ -312,8 +321,8 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
             position = position < 0 ? -std::floor(-position) : std::floor(position);
     }
     /* Preserve the reference's rejected ranges rather than clamping them to an endpoint. */
-    if (c->swf_loaded && ((backwards && position < 0) ||
-                         (!backwards && position > (double)haystack.size())))
+    if (c->swf_loaded &&
+        ((backwards && position < 0) || (!backwards && position > (double)haystack.size())))
     {
         fvm_value_number(out, -1);
         return FVM_OK;
@@ -387,7 +396,7 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     {
         FVM_Value text;
         result = c->swf_loaded ? fvm_avm1_string(c, args[i], &text)
-                                : fvm_value_to_string(c, args + i, &text);
+                               : fvm_value_to_string(c, args + i, &text);
         if (result != FVM_OK)
             return result;
         result = decode(text, joined);
@@ -410,9 +419,9 @@ FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, cons
             return result;
         if (std::fabs(number) == std::numeric_limits<double>::infinity())
             number = 0;
-        number = std::fmod(number, 65536.0);
+        number = std::fmod(number, FVM_UTF16_UNIT_MODULUS);
         if (number < 0)
-            number += 65536.0;
+            number += FVM_UTF16_UNIT_MODULUS;
         units.push_back((unsigned int)number);
     }
     return encode(c, units, 0, units.size(), out);
@@ -428,7 +437,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     FVM_Result r = receiver(c, self, input);
     if (r != FVM_OK)
         return r;
-    unsigned long limit = 0xffffffffUL;
+    unsigned long limit = FVM_UINT32_MASK;
     if (n > 1 && a[1].type != FVM_VALUE_UNDEFINED)
     {
         double value = 0;
@@ -446,9 +455,10 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
             if (!(value == value) || value == std::numeric_limits<double>::infinity() ||
                 value == -std::numeric_limits<double>::infinity())
                 value = 0;
-            value = std::fmod(value < 0 ? -std::floor(-value) : std::floor(value), 4294967296.0);
+            value =
+                std::fmod(value < 0 ? -std::floor(-value) : std::floor(value), FVM_UINT32_MODULUS);
             if (value < 0)
-                value += 4294967296.0;
+                value += FVM_UINT32_MODULUS;
             limit = (unsigned long)value;
         }
     }
@@ -462,8 +472,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     else if (!absent)
     {
         FVM_Value text;
-        r = c->swf_loaded ? fvm_avm1_string(c, a[0], &text)
-                          : fvm_value_to_string(c, a, &text);
+        r = c->swf_loaded ? fvm_avm1_string(c, a[0], &text) : fvm_value_to_string(c, a, &text);
         if (r == FVM_OK)
             r = decode(text, separator);
         if (r != FVM_OK)
@@ -473,7 +482,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     }
     /* A missing effective delimiter returns one whole value even when limit is zero. */
     if (c->swf_loaded && absent)
-        limit = 0xffffffffUL;
+        limit = FVM_UINT32_MASK;
     FVM_Object *result = 0;
     r = fvm_array_create_like(c, 0, 0, &result, true);
     if (r != FVM_OK)
@@ -516,7 +525,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
             ++position;
             continue;
         }
-        if (count >= 65536)
+        if (count >= FVM_STRING_SPLIT_MAX_FIELDS)
             return FVM_OUT_OF_MEMORY;
         FVM_Value part;
         r = encode(c, input, start, end, &part);
@@ -591,9 +600,12 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
     for (size_t i = 0; i < units.size(); ++i)
     {
         unsigned long cp = units[i];
-        if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < units.size() && units[i + 1] >= 0xdc00 &&
-            units[i + 1] <= 0xdfff)
-            cp = 0x10000 + ((cp - 0xd800) << 10) + units[++i] - 0xdc00;
+        if (cp >= FVM_UTF16_HIGH_SURROGATE_BASE && cp <= FVM_UTF16_HIGH_SURROGATE_MAX &&
+            i + 1 < units.size() && units[i + 1] >= FVM_UTF16_LOW_SURROGATE_BASE &&
+            units[i + 1] <= FVM_UTF16_LOW_SURROGATE_MAX)
+            cp = FVM_UTF16_SUPPLEMENTARY_OFFSET +
+                 ((cp - FVM_UTF16_HIGH_SURROGATE_BASE) << FVM_UTF16_PAIR_PAYLOAD_BITS) +
+                 units[++i] - FVM_UTF16_LOW_SURROGATE_BASE;
         scalars.push_back(cp);
     }
 
@@ -615,7 +627,7 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
         /* Unicode default casing uses the original surrounding text. Locale
          * specific mappings do not participate in AS's nonlocale methods. */
         bool final_sigma = false;
-        if (!upper && cp == 0x3a3 && preceding_cased)
+        if (!upper && cp == FVM_UNICODE_CAPITAL_SIGMA && preceding_cased)
         {
             size_t next = i + 1;
             while (next < scalars.size() && in_ranges(scalars[next], fvm_case_ignored))
@@ -623,7 +635,7 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
             final_sigma = next == scalars.size() || !in_ranges(scalars[next], fvm_case_cased);
         }
         if (final_sigma)
-            r = fvm_string_append(0x3c2, bytes);
+            r = fvm_string_append(FVM_UNICODE_FINAL_SIGMA, bytes);
         else if (first < sizeof(fvm_case_mappings) / sizeof(fvm_case_mappings[0]) &&
                  fvm_case_mappings[first].cp == cp)
         {
@@ -980,26 +992,28 @@ FVM_Result fvm_string_activate_loaded(FVM_Context *c)
 unsigned long fvm_string_callback_id(FVM_NativeFunction callback)
 {
     if (callback == constructor)
-        return 503;
+        return FVM_STRING_CALLBACK_CONSTRUCTOR;
     if (callback == length)
-        return 501;
+        return FVM_STRING_CALLBACK_LENGTH;
     if (callback == from_char_code)
-        return 502;
+        return FVM_STRING_CALLBACK_FROM_CHAR_CODE;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (callback == methods[i].callback)
-            return 510 + (unsigned long)i;
+            return FVM_STRING_CALLBACK_METHOD_BASE + (unsigned long)i;
     return 0;
 }
 
 /* Restore a native string callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_string_callback_from_id(unsigned long id)
 {
-    if (id == 503)
+    if (id == FVM_STRING_CALLBACK_CONSTRUCTOR)
         return constructor;
-    if (id == 501)
+    if (id == FVM_STRING_CALLBACK_LENGTH)
         return length;
-    if (id == 502)
+    if (id == FVM_STRING_CALLBACK_FROM_CHAR_CODE)
         return from_char_code;
-    return id >= 510 && id < 510 + sizeof(methods) / sizeof(methods[0]) ? methods[id - 510].callback
-                                                                        : 0;
+    return id >= FVM_STRING_CALLBACK_METHOD_BASE &&
+                   id < FVM_STRING_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
+               ? methods[id - FVM_STRING_CALLBACK_METHOD_BASE].callback
+               : 0;
 }

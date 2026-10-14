@@ -267,3 +267,10 @@ Canonical property names and string ordering share documented bounds and masks.
 Both Linux profiles pass 526 tests; four targeted memory checks and 26 original
 SWFs per profile pass. Stack/leak checks, JIT and other target platforms remain
 open. Все стадии 1–9 остаются открытыми.
+
+## v0.276 — documented builtin String constants
+
+Both Linux profiles pass 526 tests; six affected memory checks and 26 unchanged
+original SWFs in each profile pass. Callback transport IDs and existing limits
+are preserved. JIT machine-code generation and real Windows/macOS/Android runs
+remain absent. Все стадии 1–9 остаются открытыми.

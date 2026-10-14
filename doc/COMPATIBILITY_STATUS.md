@@ -2258,3 +2258,10 @@ fields, mutable this and all roadmap gates remain open. Неявные свой�
 UTF-16 constants for canonical property names and allocation-free comparison.
 Existing representation and order remain unchanged; broad legacy string
 conformance and all roadmap gates remain open. Макросы заменяют границы и маски.
+
+### v0.276 — builtin String semantic constants
+
+[STRING_CODEC_CONSTANTS.md](STRING_CODEC_CONSTANTS.md) records named String
+wrap/encoding/casing bounds, split allocation limit and stable callback IDs.
+Existing wire values and version rules remain unchanged. Full string/standard
+object compatibility and all nine roadmap stages remain open.

@@ -36,3 +36,18 @@ Linux AGG/Cairo each pass 526 tests. Four AGG binaries needed execute-bit repair
 and rerun. An incomplete Cairo log was rejected and a fresh full run passed.
 Four selected heap/global ASan+UBSan checks pass (no stack/leak coverage); all
 26 original SWFs match in each profile. No roadmap stage is completed.
+
+## v0.276 — builtin String bounds and callback IDs
+
+String encoding/casing now uses the same UTF-16 pair constants as property keys.
+Numeric conversions name their Uint32 modulus/mask and UTF-16 unit modulus.
+Unicode host casing names capital/final sigma; loaded Flash casing still uses
+its existing versioned table. `src/standard/string_constants.h` documents the
+existing split allocation bound and stable serialized callback identities.
+Nothing renumbers callbacks or changes split policy. Числовые параметры строк
+заменены смысловыми макросами; форматы и ограничения остаются прежними.
+
+Linux AGG/Cairo each pass 526 tests after execute-bit repair and successful
+reruns for 1/8 binaries respectively. Six affected heap/global ASan+UBSan checks
+pass (no stack/leak coverage). All 26 original SWFs match in both profiles.
+The remaining standard library and roadmap acceptance gates stay open.
