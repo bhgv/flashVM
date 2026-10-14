@@ -199,6 +199,16 @@ extern "C"
                                                  FVM_Object *activation, FVM_Object *target,
                                                  FVM_Object *receiver, int initialized,
                                                  const FVM_Value *name, const FVM_Value *value);
+    /* Resolve/call an already-coerced counted name with ordered arguments. Loaded
+     * qualified names preserve their owning receiver; missing/noncallable loaded
+     * bindings return undefined and do not consult stale script records. Host mode
+     * keeps literal named lookup/fallback. Null default_receiver uses global.
+     * [GC:] Retains environment, name, callee, receiver and copied args through callbacks. */
+    FVM_API FVM_Result fvm_exec_call_function(FVM_Context *, FVM_Object *scope, FVM_Object *target,
+                                              FVM_Object *receiver, FVM_Object *default_receiver,
+                                              int local_scope, const FVM_Value *name,
+                                              unsigned int argc, const FVM_Value *argv,
+                                              FVM_Value *result);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

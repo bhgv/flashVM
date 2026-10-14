@@ -169,3 +169,11 @@ Declarations and named function publication share a C89 managed-value interface,
 including With own-slot selection and rooted callback/error/allocator behavior.
 Full scope/prototype/call equivalence, all JIT backends and non-Linux execution
 remain release gates. Все стадии 1–9 остаются открытыми.
+
+## v0.263 — shared scoped function calls
+
+Named calls now retain qualified receivers and defining prototypes, and loaded
+calls avoid stale script-registry fallback. C89, interpreter, GC, exception and
+allocation-failure fixtures accompany the service. Full call/scope equivalence,
+six machine-code backends and non-Linux execution remain release gates.
+Все стадии 1–9 открыты; перенос обработчика не означает завершения JIT.

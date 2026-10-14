@@ -2135,3 +2135,13 @@ rooted coercion/new-function setters and OOM publication are exercised. Host own
 data declarations remain separate. Complete local prototype/casing, cached named-
 call fallback and qualified-call receivers remain open. Объявления вынесены в
 общую службу; полный AVM1, JIT и все стадии роудмапа ещё не завершены.
+
+### v0.263 — scoped named calls and defining-method ownership
+
+[CALL_FUNCTION_PATHS.md](CALL_FUNCTION_PATHS.md) records the common C89 named-call
+service, qualified receiver/prototype selection and loaded undefined results for
+missing or noncallable names. Deleted script-cache entries no longer resurrect
+functions in loaded calls. Host fallback remains compatible. Direct C, interpreter,
+GC, exception, inherited-super and allocator fixtures cover the implemented paths.
+Full virtual-super lookup, metatable/scope equivalence and all roadmap stages
+remain open. Вызовы по составным именам вынесены в общий C-слой.

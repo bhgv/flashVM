@@ -1647,7 +1647,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL_FUNCTION)
             { /* CallFunction: args, argc, name (top) */
-                if (stack.size() < 2 || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
+                if (stack.size() < FVM_AVM1_NAMED_CALL_FIXED_OPERANDS ||
+                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
                 if (c->swf_loaded)
                 {
@@ -1657,33 +1658,31 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return name_status;
                     stack.back() = name;
                 }
-                fvm_detail::string name;
-                FVM_Result normalized =
-                    fvm_property_key(stack.back().string, fvm_string_size(stack.back()), name);
-                if (normalized != FVM_OK)
-                    return normalized;
                 unsigned int argc = 0;
-                FVM_Result count_status = fvm_exec_argument_count(c, &stack[stack.size() - 2],
-                                                                  stack.size() - 2, &argc);
+                FVM_Result count_status = fvm_exec_argument_count(
+                    c, &stack[stack.size() - FVM_AVM1_NAMED_CALL_FIXED_OPERANDS],
+                    stack.size() - FVM_AVM1_NAMED_CALL_FIXED_OPERANDS, &argc);
                 if (count_status != FVM_OK)
                     return count_status;
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (i = 0; i < argc; ++i)
-                    args[i] = stack[stack.size() - 3 - i];
+                    args[i] = stack[stack.size() - FVM_AVM1_NAMED_CALL_FIRST_ARGUMENT - i];
                 FVM_Value result;
-                FVM_Result r;
-                FVM_Value callable;
-                fvm_value_undefined(&callable);
-                bool defined = false;
-                FVM_Object *call_receiver = c->global;
-                r = lookup_variable(c, locals, self, name, &callable, &defined, &call_receiver);
+                FVM_Object *target = 0, *default_receiver = c->global;
+                FVM_Result r = variable_receiver(c, self, &target);
+                if (r == FVM_OK && c->swf_loaded && c->avm1_base_clip)
+                    r = variable_receiver(c, c->avm1_base_clip, &default_receiver);
+                if (r == FVM_OK)
+                    r = fvm_exec_call_function(
+                        c, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), target,
+                        c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && c->script_this
+                            ? c->script_this
+                            : self,
+                        default_receiver, locals != 0, &stack.back(), argc, argc ? args.begin() : 0,
+                        &result);
                 if (r != FVM_OK)
                     return r;
-                r = fvm_exec_resolved_call(c, 0, &stack.back(), &callable, defined,
-                                            call_receiver, argc, argc ? args.begin() : 0, &result);
-                if (r != FVM_OK)
-                    return r;
-                stack.resize(stack.size() - argc - 2);
+                stack.resize(stack.size() - argc - FVM_AVM1_NAMED_CALL_FIXED_OPERANDS);
                 stack.push_back(result);
             }
             else if (a.op == FVM_AVM1_ACTION_JUMP || a.op == FVM_AVM1_ACTION_IF)

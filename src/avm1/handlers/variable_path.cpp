@@ -1,15 +1,19 @@
 /* FlashVM: version-aware qualified/slash variable-path phase shared by execution clients. */
 #include "support.hpp"
+#include "variable_path.hpp"
+#include "scope_member.hpp"
 #include "variable_path_constants.h"
 #include "reference_path_constants.h"
 /* Handle qualified paths; leave the value output untouched when simple lookup must follow. */
-extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
-                                             FVM_Object *receiver, const FVM_Value *name,
-                                             FVM_Value *out, int *handled, int *present)
+FVM_Result fvm_avm1_read_variable_path(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
+                                       FVM_Object *receiver, const FVM_Value *name, FVM_Value *out,
+                                       FVM_Object **owner, FVM_Object **source_owner, int *handled,
+                                       int *present)
 {
-    if (!c || !out || !handled || !present || (scope && scope->owner != c) ||
-        (target && target->owner != c) || (receiver && receiver->owner != c) ||
-        fvm_validate_value(c, name) != FVM_OK || name->type != FVM_VALUE_STRING)
+    if (!c || !out || !owner || !source_owner || !handled || !present ||
+        (scope && scope->owner != c) || (target && target->owner != c) ||
+        (receiver && receiver->owner != c) || fvm_validate_value(c, name) != FVM_OK ||
+        name->type != FVM_VALUE_STRING)
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -31,6 +35,8 @@ extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, 
         }
         if (separator == size && !(modern && slash))
         {
+            *owner = 0;
+            *source_owner = 0;
             *handled = 0;
             *present = 0;
             return FVM_OK;
@@ -49,6 +55,7 @@ extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, 
         const FVM_Value &text = roots.values[FVM_VARIABLE_PATH_NAME_ROOT];
         FVM_Value &result = roots.values[FVM_VARIABLE_PATH_RESULT_ROOT];
         int found = 0;
+        FVM_Object *resolved_owner = 0, *resolved_source = 0;
         if (separator != size)
         {
             if (separator)
@@ -60,12 +67,15 @@ extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, 
                     status = fvm_value_string_bytes(&member, text.string + separator + 1,
                                                     size - separator - 1);
                 if (status == FVM_OK)
-                    status = fvm_exec_scope_member(c, scope, target, receiver, &prefix, &member,
-                                                   &result, &found);
+                    status = fvm_avm1_read_scope_member(c, scope, target, receiver, &prefix,
+                                                        &member, &result, &resolved_owner,
+                                                        &resolved_source, &found);
                 if (status != FVM_OK)
                     return status;
             }
             *out = result;
+            *owner = resolved_owner;
+            *source_owner = resolved_source;
             *handled = 1;
             *present = found;
             return FVM_OK;
@@ -78,11 +88,15 @@ extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, 
             if (result.type == FVM_VALUE_OBJECT)
             {
                 *out = result;
+                *owner = 0;
+                *source_owner = 0;
                 *handled = 1;
                 *present = 1;
                 return FVM_OK;
             }
         }
+        *owner = 0;
+        *source_owner = 0;
         *handled = 0;
         *present = 0;
         return FVM_OK;
@@ -91,4 +105,14 @@ extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, 
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Preserve the public path-phase interface while discarding private callable-owner metadata. */
+extern "C" FVM_Result fvm_exec_variable_path(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
+                                             FVM_Object *receiver, const FVM_Value *name,
+                                             FVM_Value *out, int *handled, int *present)
+{
+    FVM_Object *owner = 0, *source_owner = 0;
+    return fvm_avm1_read_variable_path(c, scope, target, receiver, name, out, &owner, &source_owner,
+                                       handled, present);
 }

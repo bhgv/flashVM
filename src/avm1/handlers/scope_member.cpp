@@ -1,5 +1,6 @@
 /* FlashVM: scoped path reads distinguish missing final members from undefined values. */
 #include "support.hpp"
+#include "scope_member.hpp"
 #include "scope_member_constants.h"
 #include "../../core/object_root_scope.hpp"
 #include "../../core/property_key.hpp"
@@ -7,7 +8,7 @@
 static FVM_Result visit_member(FVM_Context *c, FVM_Object *start, FVM_Object *display_root,
                                FVM_Object *receiver, const FVM_Value &path,
                                const fvm_detail::string &name, bool prototypes, FVM_Value &result,
-                               bool &found)
+                               bool &found, FVM_Object *&owner, FVM_Object *&source_owner)
 {
     FVM_Object *object = 0;
     FVM_Result status = fvm_movieclip_resolve_path(c, start, path, &object, display_root, receiver);
@@ -26,23 +27,30 @@ static FVM_Result visit_member(FVM_Context *c, FVM_Object *start, FVM_Object *di
             return status;
         if (own)
         {
+            /* [GC:] A getter may detach its defining prototype while collecting. */
+            FVM_ObjectRootScope defining_owner(c, cursor);
             status = fvm_object_get_bytes(c, object, name.data(), name.size(), &result);
             if (status == FVM_OK)
+            {
                 found = true;
+                owner = object;
+                source_owner = cursor;
+            }
             return status;
         }
     }
     return FVM_OK;
 }
 /* Retry complete prefix/member pairs; report presence independently from the returned value. */
-extern "C" FVM_Result fvm_exec_scope_member(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
-                                            FVM_Object *receiver, const FVM_Value *path,
-                                            const FVM_Value *name, FVM_Value *out, int *present)
+FVM_Result fvm_avm1_read_scope_member(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
+                                      FVM_Object *receiver, const FVM_Value *path,
+                                      const FVM_Value *name, FVM_Value *out, FVM_Object **owner,
+                                      FVM_Object **source_owner, int *present)
 {
-    if (!c || !out || !present || (scope && scope->owner != c) || (target && target->owner != c) ||
-        (receiver && receiver->owner != c) || fvm_validate_value(c, path) != FVM_OK ||
-        path->type != FVM_VALUE_STRING || fvm_validate_value(c, name) != FVM_OK ||
-        name->type != FVM_VALUE_STRING)
+    if (!c || !out || !owner || !source_owner || !present || (scope && scope->owner != c) ||
+        (target && target->owner != c) || (receiver && receiver->owner != c) ||
+        fvm_validate_value(c, path) != FVM_OK || path->type != FVM_VALUE_STRING ||
+        fvm_validate_value(c, name) != FVM_OK || name->type != FVM_VALUE_STRING)
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -73,6 +81,7 @@ extern "C" FVM_Result fvm_exec_scope_member(FVM_Context *c, FVM_Object *scope, F
         FVM_Value result;
         fvm_value_undefined(&result);
         bool found = false;
+        FVM_Object *resolved_owner = 0, *resolved_source = 0;
         unsigned int depth = 0;
         for (FVM_Object *node = scope; node; node = node->prototype)
         {
@@ -91,23 +100,25 @@ extern "C" FVM_Result fvm_exec_scope_member(FVM_Context *c, FVM_Object *scope, F
             status = visit_member(
                 c, start, display_root, receiver, roots.values[FVM_SCOPE_MEMBER_PATH_ROOT], key,
                 with || fvm_string_size(roots.values[FVM_SCOPE_MEMBER_PATH_ROOT]) != 0, result,
-                found);
+                found, resolved_owner, resolved_source);
             if (status != FVM_OK)
                 return status;
             if (found)
                 break;
         }
         if (!found && target && target != c->global)
-            status =
-                visit_member(c, target, display_root, receiver,
-                             roots.values[FVM_SCOPE_MEMBER_PATH_ROOT], key, true, result, found);
+            status = visit_member(c, target, display_root, receiver,
+                                  roots.values[FVM_SCOPE_MEMBER_PATH_ROOT], key, true, result,
+                                  found, resolved_owner, resolved_source);
         if (status == FVM_OK && !found)
-            status =
-                visit_member(c, c->global, display_root, receiver,
-                             roots.values[FVM_SCOPE_MEMBER_PATH_ROOT], key, true, result, found);
+            status = visit_member(c, c->global, display_root, receiver,
+                                  roots.values[FVM_SCOPE_MEMBER_PATH_ROOT], key, true, result,
+                                  found, resolved_owner, resolved_source);
         if (status != FVM_OK)
             return status;
         *out = result;
+        *owner = resolved_owner;
+        *source_owner = resolved_source;
         *present = found ? 1 : 0;
         return FVM_OK;
     }
@@ -115,4 +126,14 @@ extern "C" FVM_Result fvm_exec_scope_member(FVM_Context *c, FVM_Object *scope, F
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Preserve the public value/presence interface for clients which do not need receiver identity. */
+extern "C" FVM_Result fvm_exec_scope_member(FVM_Context *c, FVM_Object *scope, FVM_Object *target,
+                                            FVM_Object *receiver, const FVM_Value *path,
+                                            const FVM_Value *name, FVM_Value *out, int *present)
+{
+    FVM_Object *owner = 0, *source_owner = 0;
+    return fvm_avm1_read_scope_member(c, scope, target, receiver, path, name, out, &owner,
+                                      &source_owner, present);
 }
