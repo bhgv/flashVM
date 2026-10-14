@@ -1942,3 +1942,12 @@ callback/GC/exception checks and remaining dispatch/count limitations.
 
 Проверены значения имён методов для SWF4–8 и исполнение преобразования имени
 через подготовленное нативное тело; общая совместимость AVM1 остаётся открытой.
+
+## v0.242 — deletion, legacy comparison and logical C services
+
+Interpreter and future generated bodies share value-based deletion, old numeric
+comparison and logical operations. See [EXECUTION_VALUE_OPERATIONS.md](EXECUTION_VALUE_OPERATIONS.md)
+for conversion order, roots, C89 checks and remaining scope/casing limitations.
+
+Крупные ветви удалены из основного цикла; байткод и стек остаются в адаптере,
+а семантика доступна через общий C-интерфейс. Девять стадий остаются открытыми.

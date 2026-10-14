@@ -80,26 +80,6 @@ static double signed_bits(unsigned long value)
     value &= FVM_UINT32_MASK;
     return value >= FVM_UINT32_SIGN_BIT ? (double)value - FVM_UINT32_MODULUS : (double)value;
 }
-/* Bytecode buffers and function snapshots can disappear after execution.
- * Any string escaping into VM properties must have context lifetime. */
-/* Compute and return truth. */
-static bool truth(const FVM_Value &value)
-{
-    switch (value.type)
-    {
-    case FVM_VALUE_BOOLEAN:
-        return value.boolean != 0;
-    case FVM_VALUE_NUMBER:
-        return value.number != 0.0 && value.number == value.number;
-    case FVM_VALUE_STRING:
-        return value.string && fvm_string_size(value) != 0;
-    case FVM_VALUE_OBJECT:
-        return true;
-    default:
-        return false;
-    }
-}
-
 /* Use numeric string truth in loaded SWFs below version 7, preserving conversion failures. */
 static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
 {
@@ -1577,24 +1557,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             { /* Delete: owner and property name; absent/inherited members report false. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                /* [GC:] Retain owner and coercible name in the stack until deletion completes. */
-                FVM_Value owner = stack[stack.size() - 2], key, result;
-                FVM_Result status = fvm_avm1_string(c, stack.back(), &key);
+                FVM_Value result;
+                FVM_Result status = fvm_exec_delete_member(c, &stack[stack.size() - 2],
+                                                           &stack.back(), &result);
                 if (status != FVM_OK)
                     return status;
-                int own = 0, deleted = 0;
-                if (owner.type == FVM_VALUE_OBJECT &&
-                    owner.object->resource_kind != FVM_RESOURCE_SUPER)
-                {
-                    status = fvm_object_has_own_bytes(c, owner.object, key.string,
-                                                      fvm_string_size(key), &own);
-                    if (status == FVM_OK && own)
-                        status = fvm_object_delete_bytes(c, owner.object, key.string,
-                                                         fvm_string_size(key), &deleted);
-                    if (status != FVM_OK)
-                        return status;
-                }
-                fvm_value_boolean(&result, deleted);
                 stack.pop_back();
                 stack.back() = result;
             }
@@ -1616,12 +1583,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             { /* Not */
                 if (stack.empty())
                     return FVM_ERROR;
-                FVM_Value &v = stack.back();
-                bool converted = false;
-                FVM_Result status = action_truth(c, v, converted);
+                FVM_Value result;
+                FVM_Result status = fvm_exec_logical(c, FVM_EXEC_LOGICAL_NOT, &stack.back(), 0, &result);
                 if (status != FVM_OK)
                     return status;
-                fvm_value_boolean(&v, !converted);
+                stack.back() = result;
             }
             else if (a.op == FVM_AVM1_ACTION_EQUALS || a.op == FVM_AVM1_ACTION_LESS ||
                      a.op == FVM_AVM1_ACTION_AND || a.op == FVM_AVM1_ACTION_OR)
@@ -1629,52 +1595,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 /* [GC:] Keep both operands in the rooted stack through native coercion. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_Value operands[2] = {stack[stack.size() - 2], stack.back()}, result;
-                bool value = false;
+                FVM_Value result;
+                FVM_Result status;
                 if (a.op == FVM_AVM1_ACTION_EQUALS || a.op == FVM_AVM1_ACTION_LESS)
-                {
-                    const char *hook = a.op == FVM_AVM1_ACTION_EQUALS ? "__eq" : "__lt";
-                    FVM_Result status =
-                        fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
-                    if (status == FVM_NOT_FOUND)
-                        status = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &result);
-                    if (status == FVM_OK)
-                        value = truth(result);
-                    else if (status != FVM_NOT_FOUND)
-                        return status;
-                    else
-                    {
-                        double left = 0, right = 0;
-                        /* Legacy Equals converts the top operand first; Less converts left first.
-                         */
-                        if (a.op == FVM_AVM1_ACTION_EQUALS)
-                        {
-                            status = fvm_avm1_number(c, operands + 1, &right);
-                            if (status == FVM_OK)
-                                status = fvm_avm1_number(c, operands, &left);
-                        }
-                        else
-                        {
-                            status = fvm_avm1_number(c, operands, &left);
-                            if (status == FVM_OK)
-                                status = fvm_avm1_number(c, operands + 1, &right);
-                        }
-                        if (status != FVM_OK)
-                            return status;
-                        value = a.op == FVM_AVM1_ACTION_EQUALS ? left == right : left < right;
-                    }
-                }
+                    status = fvm_exec_legacy_compare(c, a.op == FVM_AVM1_ACTION_EQUALS
+                        ? FVM_EXEC_LEGACY_EQUAL : FVM_EXEC_LEGACY_LESS,
+                        &stack[stack.size() - 2], &stack.back(), &result);
                 else
-                {
-                    bool left = false, right = false;
-                    FVM_Result status = action_truth(c, operands[0], left);
-                    if (status == FVM_OK)
-                        status = action_truth(c, operands[1], right);
-                    if (status != FVM_OK)
-                        return status;
-                    value = a.op == FVM_AVM1_ACTION_AND ? left && right : left || right;
-                }
-                fvm_value_boolean(&result, value);
+                    status = fvm_exec_logical(c, a.op == FVM_AVM1_ACTION_AND
+                        ? FVM_EXEC_LOGICAL_AND : FVM_EXEC_LOGICAL_OR,
+                        &stack[stack.size() - 2], &stack.back(), &result);
+                if (status != FVM_OK)
+                    return status;
                 stack.pop_back();
                 stack.back() = result;
             }

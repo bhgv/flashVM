@@ -48,6 +48,28 @@ extern "C"
     /* Execute dynamic addition or comparison; output may alias either input. */
     FVM_API FVM_Result fvm_exec_compare(FVM_Context *, FVM_ExecutionCompare, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Legacy numeric comparisons have different coercion rules from dynamic comparison. */
+    typedef enum FVM_ExecutionLegacyCompare
+    {
+        FVM_EXEC_LEGACY_EQUAL = 1, /* Convert right before left, then compare numbers. */
+        FVM_EXEC_LEGACY_LESS       /* Convert left before right, then compare numbers. */
+    } FVM_ExecutionLegacyCompare;
+    /* Logical operations return Boolean values under the loaded SWF version policy. */
+    typedef enum FVM_ExecutionLogical
+    {
+        FVM_EXEC_LOGICAL_NOT = 1, /* Unary negation; right operand may be NULL. */
+        FVM_EXEC_LOGICAL_AND,     /* Convert both operands left to right. */
+        FVM_EXEC_LOGICAL_OR       /* Convert both operands left to right. */
+    } FVM_ExecutionLogical;
+    /* Compare with legacy numeric rules and optional comparison metamethods. */
+    FVM_API FVM_Result fvm_exec_legacy_compare(FVM_Context *, FVM_ExecutionLegacyCompare,
+                                               const FVM_Value *, const FVM_Value *, FVM_Value *);
+    /* Execute a logical operation; outputs may alias either retained input. */
+    FVM_API FVM_Result fvm_exec_logical(FVM_Context *, FVM_ExecutionLogical,
+                                       const FVM_Value *, const FVM_Value *, FVM_Value *);
+    /* Delete an own member after name conversion; absent/inherited members report false. */
+    FVM_API FVM_Result fvm_exec_delete_member(FVM_Context *, const FVM_Value *,
+                                             const FVM_Value *, FVM_Value *);
     /* Built-in timeline commands independent of instruction encoding. */
     typedef enum FVM_ExecutionFrame
     {
