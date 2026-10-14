@@ -12,6 +12,7 @@
 #include "string_state.hpp"
 #include "global_parsing.hpp"
 #include "number_state.hpp"
+#include "../avm1/coercion.hpp"
 #include "error_state.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
@@ -439,19 +440,19 @@ FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
 }
 
 /* Implement the Boolean() global conversion call. */
-FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_Value *a,
+FVM_Result boolean_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                         FVM_Value *o, void *)
 {
-    bool truth = false;
-    if (n)
+    if (!n && c->swf_loaded)
     {
-        const FVM_Value &v = a[0];
-        truth = (v.type == FVM_VALUE_BOOLEAN && v.boolean) ||
-                (v.type == FVM_VALUE_NUMBER && v.number != 0 && v.number == v.number) ||
-                (v.type == FVM_VALUE_STRING && fvm_string_size(v)) || v.type == FVM_VALUE_OBJECT;
+        fvm_value_undefined(o);
+        return FVM_OK;
     }
-    fvm_value_boolean(o, truth);
-    return FVM_OK;
+    bool truth = false;
+    FVM_Result result = n ? fvm_avm1_boolean(c, a[0], &truth) : FVM_OK;
+    if (result == FVM_OK)
+        fvm_value_boolean(o, truth);
+    return result;
 }
 
 /* Unbox Boolean data; loaded non-Boolean receivers return undefined without coercion. */
@@ -502,7 +503,10 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
         return result;
     if (prototype.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
-    result = boolean_call(c, 0, n, args, &value, 0);
+    /* A missing constructor argument stores false, unlike the global function. */
+    bool truth = false;
+    result = n ? fvm_avm1_boolean(c, args[0], &truth) : FVM_OK;
+    fvm_value_boolean(&value, truth);
     if (result != FVM_OK)
         return result;
 

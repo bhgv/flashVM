@@ -97,18 +97,7 @@ static bool truth(const FVM_Value &value)
 /* Use numeric string truth in loaded SWFs below version 7, preserving conversion failures. */
 static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
 {
-    if (value.type == FVM_VALUE_STRING && context->swf_loaded &&
-        context->swf_info.version < 7)
-    {
-        double number = 0;
-        FVM_Result result = fvm_avm1_number(context, &value, &number);
-        if (result != FVM_OK)
-            return result;
-        out = number != 0 && number == number;
-    }
-    else
-        out = truth(value);
-    return FVM_OK;
+    return fvm_avm1_boolean(context, value, &out);
 }
 
 /* Compute and return own string. */

@@ -10,4 +10,6 @@ FVM_Result fvm_avm1_primitive(FVM_Context *, const FVM_Value *, bool default_hin
 FVM_Result fvm_avm1_string(FVM_Context *, const FVM_Value &, FVM_Value *);
 /* Convert an action operand using loaded SWF rules; unloaded contexts retain host semantics. */
 FVM_Result fvm_avm1_number(FVM_Context *, const FVM_Value *, double *);
+/* Convert truth without invoking object methods; old loaded SWFs parse string numbers. */
+FVM_Result fvm_avm1_boolean(FVM_Context *, const FVM_Value &, bool *);
 #endif

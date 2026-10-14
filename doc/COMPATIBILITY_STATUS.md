@@ -1564,3 +1564,19 @@ Nondecimal formatting limitations and all roadmap stages remain open.
 Evidence: AGG 352/Cairo 351 full tests; three focused checks each in Linux
 portable and restricted heap/global ASan+UBSan (no stack/leak coverage);
 sixteen byte-exact original SWFs. No launch failures in these runs.
+
+## v0.192 — Boolean versioned conversion / преобразования по версии
+
+Boolean function/constructor and AVM1 branches share truth conversion: numeric
+strings in SWF4–6, nonempty strings in SWF7–8, objects true without callbacks.
+Loaded Boolean() returns undefined; new Boolean() stores false. Host behavior
+is preserved. [RU/EN details](BOOLEAN_LEGACY_CONVERSION.md). Tests cover missing
+arguments, strings, null/undefined, NaN/Infinity, trap object conversions and GC.
+Prototype layouts, clip/function versions and all roadmap stages remain open.
+
+Исправлены version-dependent строки и различие function/constructor без
+аргументов; правила truth conversion объединены с интерпретатором.
+
+Evidence: AGG 353/Cairo 352 full tests, six focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Four AGG launch failures passed after restoring execute bits.

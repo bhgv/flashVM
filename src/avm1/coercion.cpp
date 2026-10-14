@@ -299,3 +299,22 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
     }
     return fvm_value_to_string(context, &value, out);
 }
+
+/* Share version-aware truth conversion between AVM1 branches and Boolean builtins. */
+FVM_Result fvm_avm1_boolean(FVM_Context *context, const FVM_Value &value, bool *out)
+{
+    if (value.type == FVM_VALUE_STRING && context->swf_loaded && context->swf_info.version < 7)
+    {
+        double number = 0;
+        FVM_Result result = fvm_avm1_number(context, &value, &number);
+        if (result != FVM_OK)
+            return result;
+        *out = number != 0 && number == number;
+    }
+    else
+        *out = (value.type == FVM_VALUE_BOOLEAN && value.boolean) ||
+               (value.type == FVM_VALUE_NUMBER && value.number != 0 && value.number == value.number) ||
+               (value.type == FVM_VALUE_STRING && value.string && fvm_string_size(value)) ||
+               value.type == FVM_VALUE_OBJECT;
+    return FVM_OK;
+}
