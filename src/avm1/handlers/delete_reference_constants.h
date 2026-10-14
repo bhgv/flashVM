@@ -10,6 +10,5 @@
 #define FVM_DELETE_REFERENCE_BASE_ROOT 6U   /* [GC:] Resolved owner value across final deletion. */
 #define FVM_DELETE_REFERENCE_MEMBER_ROOT 7U /* [GC:] Final property to delete without reading. */
 #define FVM_DELETE_REFERENCE_PATH_ROOT 8U   /* [GC:] Prefix of the variable reference. */
-#define FVM_DELETE_REFERENCE_KEY_ROOT 9U    /* [GC:] Last member read while resolving the owner. */
-#define FVM_DELETE_REFERENCE_ROOT_COUNT 10U /* [GC:] All input and intermediate root slots. */
+#define FVM_DELETE_REFERENCE_ROOT_COUNT 9U  /* [GC:] All input and intermediate root slots. */
 #endif

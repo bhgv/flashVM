@@ -132,3 +132,10 @@ now live in C89 services usable from native bodies. This corrects overly broad
 v0.256 parsing while reducing interpreter dispatch. GC/exception/allocation
 fixtures accompany the change; all roadmap stages and final release gates remain
 open. Обновление общего C-слоя не заменяет JIT и реальные проверки остальных ОС.
+
+## v0.258 — qualified variable reads
+
+Counted GetVariable and Delete2 owner lookup now share the versioned C path phase.
+Fallback/undefined-presence and rooted callback behavior have focused fixtures;
+this does not close general assignment/call semantics, JIT or platform gates.
+Все стадии роудмапа остаются открытыми; итоговая приёмка не подменяется фикстурами.

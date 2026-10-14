@@ -1,7 +1,7 @@
 /* FlashVM: complete Delete2 operand handling over explicit managed scopes and values. */
 #include "support.hpp"
 #include "delete_reference_constants.h"
-#include "delete_path_constants.h"
+#include "reference_path_constants.h"
 #include <cstring>
 /* Resolve a variable-valued prefix under SWF version rules, then delete its final member. */
 extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scope,
@@ -33,9 +33,10 @@ extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scop
         size_t size = fvm_string_size(text), last = size;
         unsigned int segments = 1;
         for (size_t at = 0; at < size; ++at)
-            if (text.string[at] == FVM_DELETE_PATH_DOT || text.string[at] == FVM_DELETE_PATH_COLON)
+            if (text.string[at] == FVM_REFERENCE_PATH_DOT ||
+                text.string[at] == FVM_REFERENCE_PATH_COLON)
             {
-                if (++segments > FVM_DELETE_PATH_MAX_SEGMENTS)
+                if (++segments > FVM_REFERENCE_PATH_MAX_SEGMENTS)
                     return FVM_ERROR;
                 last = at;
             }
@@ -49,60 +50,29 @@ extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scop
         if (status != FVM_OK)
             return status;
         bool modern = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5;
-        size_t separator = last;
-        bool slash = false;
-        for (size_t at = 0; at < last; ++at)
-        {
-            if (prefix.string[at] == FVM_DELETE_PATH_COLON ||
-                (modern && prefix.string[at] == FVM_DELETE_PATH_DOT))
-                separator = at;
-            if (prefix.string[at] == FVM_DELETE_PATH_SLASH)
-                slash = true;
-        }
         FVM_Value &base = roots.values[FVM_DELETE_REFERENCE_BASE_ROOT];
         FVM_Value &path = roots.values[FVM_DELETE_REFERENCE_PATH_ROOT];
-        FVM_Value &key = roots.values[FVM_DELETE_REFERENCE_KEY_ROOT];
-        int present = 0;
-        if (separator != last)
+        int handled = 0, present = 0;
+        status =
+            fvm_exec_variable_path(c, scope, target, receiver, &prefix, &base, &handled, &present);
+        if (status == FVM_OK && !handled)
         {
-            if (separator)
+            if (modern && receiver && last == sizeof("this") - 1 &&
+                !std::memcmp(prefix.string, "this", sizeof("this") - 1))
             {
-                status = fvm_value_string_bytes(&path, prefix.string, separator);
-                if (status == FVM_OK)
-                    status = fvm_value_string_bytes(&key, prefix.string + separator + 1,
-                                                    last - separator - 1);
-                if (status == FVM_OK)
-                    status = fvm_exec_scope_member(c, scope, target, receiver, &path, &key, &base,
-                                                   &present);
+                base.type = FVM_VALUE_OBJECT;
+                base.object = receiver;
             }
-        }
-        else
-        {
-            if (modern && slash)
+            else
             {
-                status = fvm_exec_scope_target(c, scope, target, receiver, &prefix, &base);
-                present = status == FVM_OK && base.type == FVM_VALUE_OBJECT;
-            }
-            if (status == FVM_OK && !present)
-            {
-                if (modern && receiver && last == sizeof("this") - 1 &&
-                    !std::memcmp(prefix.string, "this", sizeof("this") - 1))
+                fvm_value_string(&path, "");
+                status = fvm_exec_scope_member(c, scope, target, receiver, &path, &prefix, &base,
+                                               &present);
+                if (status == FVM_OK && !present && last == sizeof("_global") - 1 &&
+                    !std::memcmp(prefix.string, "_global", sizeof("_global") - 1))
                 {
                     base.type = FVM_VALUE_OBJECT;
-                    base.object = receiver;
-                    present = 1;
-                }
-                else
-                {
-                    fvm_value_string(&path, "");
-                    status = fvm_exec_scope_member(c, scope, target, receiver, &path, &prefix,
-                                                   &base, &present);
-                    if (status == FVM_OK && !present && last == sizeof("_global") - 1 &&
-                        !std::memcmp(prefix.string, "_global", sizeof("_global") - 1))
-                    {
-                        base.type = FVM_VALUE_OBJECT;
-                        base.object = c->global;
-                    }
+                    base.object = c->global;
                 }
             }
         }

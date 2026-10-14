@@ -157,6 +157,14 @@ extern "C"
     FVM_API FVM_Result fvm_exec_delete_reference(FVM_Context *, FVM_Object *scope,
                                                  FVM_Object *target, FVM_Object *receiver,
                                                  const FVM_Value *name, FVM_Value *out);
+    /* Resolve the versioned qualified/slash phase of a counted variable reference.
+     * handled=0 requests simple binding lookup and leaves out untouched; present
+     * distinguishes a handled missing path from a present undefined value.
+     * [GC:] Retains inputs and allows out/name aliasing; errors preserve all outputs. */
+    FVM_API FVM_Result fvm_exec_variable_path(FVM_Context *, FVM_Object *scope,
+                                              FVM_Object *target, FVM_Object *receiver,
+                                              const FVM_Value *name, FVM_Value *out,
+                                              int *handled, int *present);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

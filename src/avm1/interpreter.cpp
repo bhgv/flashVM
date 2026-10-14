@@ -311,14 +311,27 @@ static FVM_Result declare_variable(FVM_Context *context,
     return fvm_object_set_bytes(context, destination, name.data(), name.size(), &value);
 }
 
-/* Resolve a string-valued variable reference using its complete canonical key. */
+/* Resolve qualified paths through the shared C service, then ordinary counted bindings. */
 static FVM_Result lookup_variable_value(FVM_Context *c,
                                         fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
                                         FVM_Object *self, const FVM_Value &value, FVM_Value *out,
                                         bool *defined = 0)
 {
+    FVM_Object *target = 0;
+    FVM_Result result = variable_receiver(c, self, &target);
+    int handled = 0, present = 0;
+    if (result == FVM_OK)
+        result = fvm_exec_variable_path(c, c->lexical_scopes.empty()
+            ? 0 : c->lexical_scopes.back(), target, c->script_this ? c->script_this : self,
+            &value, out, &handled, &present);
+    if (result != FVM_OK || handled)
+    {
+        if (result == FVM_OK && defined)
+            *defined = present != 0;
+        return result;
+    }
     fvm_detail::string key;
-    FVM_Result result = fvm_property_key(value.string, fvm_string_size(value), key);
+    result = fvm_property_key(value.string, fvm_string_size(value), key);
     return result == FVM_OK ? lookup_variable(c, locals, self, key, out, defined) : result;
 }
 

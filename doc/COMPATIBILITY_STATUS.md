@@ -2086,3 +2086,13 @@ reference parsing supersedes v0.256's broader direct-path interpretation; SWF4
 literal dotted prefixes and SWF5+ slash cases have explicit fixtures. General
 variable lookup and historical casing/this-cell rules remain open. Обработчик
 вынесен из цикла; полная совместимость AVM1 и готовность JIT не заявляются.
+
+### v0.258 — shared GetVariable path phase
+
+[VARIABLE_PATH_PHASE.md](VARIABLE_PATH_PHASE.md) records C89 qualified/slash
+reference resolution shared by counted interpreter reads and Delete2 owner reads.
+Simple/literal fallback preserves previous binding lookup; presence, aliasing,
+versioned separators, GC and allocation behavior have focused fixtures. Common
+syntax/bounds use FVM_REFERENCE_PATH_* macros. SetVariable/named CallFunction and
+full legacy case semantics remain open. Общий разбор подключён к чтению, но вся
+семантика областей/переменных и стадии 1–9 ещё не завершены.

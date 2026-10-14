@@ -287,6 +287,12 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                     value.type = FVM_VALUE_OBJECT;
                     value.object = path_this;
                 }
+                else if (first && modern && cursor == c->global &&
+                         name == fvm_detail::string("_global"))
+                {
+                    value.type = FVM_VALUE_OBJECT;
+                    value.object = c->global;
+                }
                 else if (first && modern && (sensitive ? name == fvm_detail::string("_root")
                                                  : ascii_equal(name, "_root")))
                 {
