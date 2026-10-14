@@ -95,4 +95,6 @@
 #define FVM_AVM1_PUSH_CONSTANT16 9U
 /* Maximum retained body size accepted by the standalone script-function constructor. */
 #define FVM_AVM1_MAX_BODY_BYTES 65536UL
+/* ActionWith carries a UI16 body size before its nested bytecode. */
+#define FVM_AVM1_WITH_HEADER_BYTES 2U
 #endif

@@ -135,7 +135,7 @@ bool known_kind(unsigned long kind)
     return kind == FVM_GRAPH_REMOTE_CHANNEL || kind == FVM_GRAPH_REMOTE_MUTEX || kind == FVM_GRAPH_LOCAL_CHANNEL || kind == FVM_GRAPH_LOCAL_MUTEX || kind == FVM_RESOURCE_PLAIN_OBJECT ||
            kind == FVM_RESOURCE_MATH_NAMESPACE || kind == FVM_RESOURCE_BOOLEAN || kind == FVM_RESOURCE_BOOLEAN_CLASS || kind == FVM_RESOURCE_ERROR || kind == FVM_RESOURCE_ERROR_CLASS || kind == FVM_RESOURCE_NUMBER ||
            kind == FVM_RESOURCE_NUMBER_CLASS || kind == FVM_RESOURCE_STRING || kind == FVM_RESOURCE_STRING_CLASS || kind == FVM_RESOURCE_ARRAY || kind == FVM_RESOURCE_ARRAY_CLASS || kind == FVM_RESOURCE_OBJECT ||
-           kind == FVM_RESOURCE_OBJECT_CLASS || kind == FVM_RESOURCE_DATE || kind == FVM_RESOURCE_DATE_CLASS || kind == FVM_RESOURCE_SUPER || kind == FVM_RESOURCE_SCRIPT_FUNCTION || kind == FVM_RESOURCE_FUNCTION_CLASS ||
+           kind == FVM_RESOURCE_OBJECT_CLASS || kind == FVM_RESOURCE_DATE || kind == FVM_RESOURCE_DATE_CLASS || kind == FVM_RESOURCE_SUPER || kind == FVM_RESOURCE_WITH_SCOPE || kind == FVM_RESOURCE_SCRIPT_FUNCTION || kind == FVM_RESOURCE_FUNCTION_CLASS ||
            kind == FVM_RESOURCE_NATIVE_FUNCTION || kind == FVM_RESOURCE_MOVIECLIP || kind == FVM_RESOURCE_MOVIECLIP_CLASS || kind == FVM_RESOURCE_TEXT_FORMAT || kind == FVM_RESOURCE_TEXT_FORMAT_CLASS || kind == FVM_RESOURCE_TEXT_FIELD_CLASS ||
            kind == FVM_RESOURCE_TEXT_FIELD || kind == FVM_RESOURCE_POINT || kind == FVM_RESOURCE_MATRIX || kind == FVM_RESOURCE_POINT_CLASS || kind == FVM_RESOURCE_MATRIX_CLASS || kind == FVM_RESOURCE_RECTANGLE ||
            kind == FVM_RESOURCE_RECTANGLE_CLASS || kind == FVM_RESOURCE_COLOR_TRANSFORM || kind == FVM_RESOURCE_COLOR_TRANSFORM_CLASS || kind == FVM_RESOURCE_TRANSFORM || kind == FVM_RESOURCE_TRANSFORM_CLASS || kind == FVM_RESOURCE_BITMAP_DATA ||
@@ -415,7 +415,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(result == FVM_OK, result);
         }
         if (dst.kind == FVM_RESOURCE_BOOLEAN || dst.kind == FVM_RESOURCE_NUMBER || dst.kind == FVM_RESOURCE_STRING || dst.kind == FVM_RESOURCE_ARRAY ||
-            dst.kind == FVM_RESOURCE_DATE || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_MOVIECLIP ||
+            dst.kind == FVM_RESOURCE_DATE || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_WITH_SCOPE || dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_MOVIECLIP ||
             dst.kind == FVM_RESOURCE_COLOR_TRANSFORM || dst.kind == FVM_RESOURCE_TRANSFORM ||
             (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || dst.kind == FVM_RESOURCE_BLUR_FILTER || dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
         {
@@ -424,7 +424,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                     src->resource_result.type ==
                         (dst.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
                          : dst.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
-                         : (dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_MOVIECLIP || dst.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
+                         : (dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_WITH_SCOPE || dst.kind == FVM_RESOURCE_MOVIECLIP || dst.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
                             dst.kind == FVM_RESOURCE_TRANSFORM || (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || dst.kind == FVM_RESOURCE_BLUR_FILTER || dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
                              ? FVM_VALUE_OBJECT
                              : FVM_VALUE_NUMBER),
@@ -1037,12 +1037,12 @@ Graph read_graph(Reader &r, unsigned int version)
         else if (o.kind == FVM_GRAPH_REMOTE_CHANNEL || o.kind == FVM_GRAPH_REMOTE_MUTEX)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == FVM_RESOURCE_BOOLEAN || o.kind == FVM_RESOURCE_NUMBER || o.kind == FVM_RESOURCE_STRING || o.kind == FVM_RESOURCE_ARRAY || o.kind == FVM_RESOURCE_SCRIPT_FUNCTION ||
-                 o.kind == FVM_RESOURCE_DATE || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM || o.kind == FVM_RESOURCE_TRANSFORM ||
+                 o.kind == FVM_RESOURCE_DATE || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_WITH_SCOPE || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM || o.kind == FVM_RESOURCE_TRANSFORM ||
                  (o.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || o.kind == FVM_RESOURCE_BLUR_FILTER || o.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
             require(o.state.type ==
                     (o.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
                      : o.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
-                     : (o.kind == FVM_RESOURCE_SCRIPT_FUNCTION || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
+                     : (o.kind == FVM_RESOURCE_SCRIPT_FUNCTION || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_WITH_SCOPE || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
                         o.kind == FVM_RESOURCE_TRANSFORM || (o.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || o.kind == FVM_RESOURCE_BLUR_FILTER || o.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
                          ? FVM_VALUE_OBJECT
                          : FVM_VALUE_NUMBER));
@@ -1661,7 +1661,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             }
             if (src.kind == FVM_RESOURCE_BOOLEAN || src.kind == FVM_RESOURCE_NUMBER || src.kind == FVM_RESOURCE_STRING || src.kind == FVM_RESOURCE_ARRAY ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                src.kind == FVM_RESOURCE_DATE || src.kind == FVM_RESOURCE_SUPER || src.kind == FVM_RESOURCE_SCRIPT_FUNCTION || src.kind == FVM_RESOURCE_MOVIECLIP ||
+                src.kind == FVM_RESOURCE_DATE || src.kind == FVM_RESOURCE_SUPER || src.kind == FVM_RESOURCE_WITH_SCOPE || src.kind == FVM_RESOURCE_SCRIPT_FUNCTION || src.kind == FVM_RESOURCE_MOVIECLIP ||
                 src.kind == FVM_RESOURCE_COLOR_TRANSFORM || src.kind == FVM_RESOURCE_TRANSFORM ||
                 (src.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || src.kind == FVM_RESOURCE_BLUR_FILTER || src.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

@@ -167,6 +167,8 @@
 #define FVM_AVM1_ACTION_JUMP 0x99U
 /* Deliver coerced URL/target values and request flags. */
 #define FVM_AVM1_ACTION_GET_URL2 0x9aU
+/* With executes a bounded body under an additional object scope. */
+#define FVM_AVM1_ACTION_WITH 0x94U
 /* Define the legacy function record. */
 #define FVM_AVM1_ACTION_DEFINE_FUNCTION 0x9bU
 /* Branch when the converted operand is true. */

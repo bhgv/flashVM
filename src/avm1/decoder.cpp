@@ -8,6 +8,7 @@
 #include "block.hpp"
 #include "flashvm/avm1.h"
 #include "try_record.hpp"
+#include "with_record.hpp"
 namespace
 {
 /* Compute and return inspect. */
@@ -45,7 +46,16 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
                     return FVM_INVALID_ARGUMENT;
                 ++info->branch_count;
             }
-            if (op == FVM_AVM1_ACTION_TRY)
+            if (op == FVM_AVM1_ACTION_WITH)
+            {
+                size_t body = 0, count = 0, next = 0;
+                if (!fvm_with_record(p, size, pos, len, body, count, next))
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Result result = inspect(p + body, count, info, true, depth + 1);
+                if (result != FVM_OK) return result;
+                pos = next;
+            }
+            else if (op == FVM_AVM1_ACTION_TRY)
             {
                 FVM_TryRecord record;
                 if (!fvm_try_record(p, size, pos, len, record))

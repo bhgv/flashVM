@@ -111,4 +111,6 @@
 #define FVM_RESOURCE_CONVOLUTION_FILTER 60
 /* Stable managed identity for convolution filter class. */
 #define FVM_RESOURCE_CONVOLUTION_FILTER_CLASS 61
+/* Private lexical With node: resource_result retains its object, prototype its parent scope. */
+#define FVM_RESOURCE_WITH_SCOPE 38
 #endif

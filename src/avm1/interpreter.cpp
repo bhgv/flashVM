@@ -3,6 +3,7 @@
  */
 
 #include "function_record.hpp"
+#include "with_record.hpp"
 #include "action_codes.h"
 #include "encoding_constants.h"
 #include "handlers/script_call.hpp"
@@ -213,6 +214,27 @@ static FVM_Result lookup_variable(FVM_Context *c,
         out->object = c->script_this ? c->script_this : self;
         return FVM_OK;
     }
+    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
+    if (binding)
+    {
+        FVM_Value key;
+        fvm_value_string_bytes(&key, name.data(), name.size());
+        FVM_Object *owner = 0;
+        int found = 0;
+        FVM_Result status = fvm_exec_scope_lookup(c, binding, &key, out, &owner, &found);
+        if (status != FVM_OK || found)
+        {
+            if (status == FVM_OK && call_receiver && owner)
+                for (FVM_Object *scope = binding; scope; scope = scope->prototype)
+                    if (scope->resource_kind == FVM_RESOURCE_WITH_SCOPE &&
+                        scope->resource_result.object == owner)
+                    {
+                        *call_receiver = owner;
+                        break;
+                    }
+            return status;
+        }
+    }
     if (locals)
     {
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local = locals->find(name);
@@ -237,17 +259,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
         return FVM_OK;
     }
 
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
     unsigned int depth = 0;
-    while (binding && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
-    {
-        if (binding->properties.find(name) != binding->properties.end())
-            return fvm_object_get_bytes(c, binding, name.data(), name.size(), out);
-        binding = binding->prototype;
-    }
-    if (binding)
-        return FVM_ERROR;
 
     /* Computation / Вычисление и обновление состояния. */
     FVM_Object *scope_receiver = 0;
@@ -479,6 +491,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return FVM_INVALID_ARGUMENT;
                     pos = record.next;
                 }
+                if (a.op == FVM_AVM1_ACTION_WITH)
+                {
+                    size_t body = 0, count = 0, next = 0;
+                    if (!fvm_with_record(data, size, a.payload, a.length, body, count, next))
+                        return FVM_INVALID_ARGUMENT;
+                    pos = next;
+                }
                 if (a.op == FVM_AVM1_ACTION_TRY)
                 {
                     FVM_TryRecord record;
@@ -538,6 +557,37 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result result = fvm_exception_raise(c, &value);
                 stack.pop_back();
                 return result;
+            }
+            if (a.op == FVM_AVM1_ACTION_WITH)
+            {
+                size_t body = 0, count = 0, next = 0;
+                if (!fvm_with_record(data, size, a.payload, a.length, body, count, next))
+                    return FVM_INVALID_ARGUMENT;
+                if (stack.empty()) return FVM_ERROR;
+                FVM_Value value = stack.back();
+                if (value.type != FVM_VALUE_NULL && value.type != FVM_VALUE_UNDEFINED)
+                {
+                    FVM_Object *parent = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
+                    FVM_Object *scope = 0;
+                    FVM_Result status = fvm_exec_with_scope(c, parent, &value, &scope);
+                    if (status != FVM_OK) return status;
+                    /* [GC:] Publish the scope before dropping the operand which retains its object. */
+                    c->lexical_scopes.push_back(scope);
+                    struct ScopeExit
+                    {
+                        FVM_Context *context; /* [GC:] Context retaining the active scope. */
+                        explicit ScopeExit(FVM_Context *c) : context(c) {}
+                        /* [GC:] Restore the enclosing scope after return, exception or OOM. */
+                        ~ScopeExit() { context->lexical_scopes.pop_back(); }
+                    } scope_exit(c);
+                    stack.pop_back();
+                    status = execute(c, data + body, count, returned, locals, self, 0,
+                                     &execution, base + body, depth + 1);
+                    if (status != FVM_OK || execution.returned) return status;
+                }
+                else stack.pop_back();
+                ++pc;
+                continue;
             }
             if (a.op == FVM_AVM1_ACTION_TRY)
             {
@@ -1669,27 +1719,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (normalized != FVM_OK)
                     return normalized;
                 FVM_Result r = FVM_OK;
-                if (locals && locals->find(name) != locals->end())
+                FVM_Object *scope = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
+                FVM_Object *owner = 0;
+                int found = 0;
+                FVM_Value existing;
+                r = fvm_exec_scope_lookup(c, scope, &name_value, &existing, &owner, &found);
+                if (r == FVM_OK && found)
+                    r = fvm_object_set_bytes(c, owner, name.data(), name.size(), &stack.back());
+                else if (r == FVM_OK && locals && locals->find(name) != locals->end())
                     (*locals)[name] = stack.back();
-                else
+                else if (r == FVM_OK)
                 {
-                    FVM_Object *captured =
-                        c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back()->prototype;
-                    unsigned int levels = 0;
-                    while (captured && levels++ < FVM_PROTOTYPE_MAX_DEPTH &&
-                           captured->properties.find(name) == captured->properties.end())
-                        captured = captured->prototype;
-                    if (captured && levels > FVM_PROTOTYPE_MAX_DEPTH)
-                        return FVM_ERROR;
                     FVM_Object *scope_receiver = 0;
                     r = variable_receiver(c, self, &scope_receiver);
                     if (r == FVM_OK)
-                        r = captured ? fvm_object_set_bytes(c, captured, name.data(), name.size(),
-                                                            &stack.back())
-                            : scope_receiver &&
-                                    scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
-                                ? fvm_object_set_bytes(c, scope_receiver, name.data(), name.size(),
-                                                       &stack.back())
+                        r = scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
+                                ? fvm_object_set_bytes(c, scope_receiver, name.data(), name.size(), &stack.back())
                                 : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
                 }
                 if (r != FVM_OK)

@@ -85,6 +85,15 @@ extern "C"
     /* Call frame actions, including clip:frame paths, without seeking the timeline. */
     FVM_API FVM_Result fvm_exec_call_frame(FVM_Context *, FVM_Object *scope_receiver,
                                            const FVM_Value *frame);
+/* [GC:] Create a retained object scope; null/undefined keep the parent unchanged.
+     * Primitive values are boxed. Callers retain the returned scope across collections. */
+    FVM_API FVM_Result fvm_exec_with_scope(FVM_Context *, FVM_Object *parent,
+                                           const FVM_Value *, FVM_Object **scope);
+    /* Resolve a counted variable name in a lexical chain. found distinguishes an
+     * undefined binding from absence; owner identifies its object for assignment/calls. */
+    FVM_API FVM_Result fvm_exec_scope_lookup(FVM_Context *, FVM_Object *scope,
+                                             const FVM_Value *name, FVM_Value *result,
+                                             FVM_Object **owner, int *found);
 #ifdef __cplusplus
 }
 #endif
