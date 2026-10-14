@@ -188,6 +188,17 @@ extern "C"
                                                 FVM_Object *default_receiver, int local_scope,
                                                 const FVM_Value *name, FVM_Value *result,
                                                 FVM_Object **call_receiver, int *found);
+    /* Declaration modes distinguish an absent initializer from an explicit undefined. */
+#define FVM_EXEC_DECLARE_UNINITIALIZED 0 /* Preserve applicable existing declarations. */
+#define FVM_EXEC_DECLARE_INITIALIZED 1 /* Declare/write the supplied value. */
+    /* Declare a counted/coercible local name. activation identifies a function/local
+     * frame; top-level qualified names use path assignment. Uninitialized value may
+     * be null. Loaded With declarations distinguish own from inherited properties.
+     * [GC:] Retains all inputs, converted text and qualified reads through callbacks. */
+    FVM_API FVM_Result fvm_exec_variable_declare(FVM_Context *, FVM_Object *scope,
+                                                 FVM_Object *activation, FVM_Object *target,
+                                                 FVM_Object *receiver, int initialized,
+                                                 const FVM_Value *name, const FVM_Value *value);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

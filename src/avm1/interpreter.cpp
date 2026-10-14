@@ -163,43 +163,18 @@ static FVM_Result lookup_variable(FVM_Context *c,
     return status;
 }
 
-/* Declare a local cell or top-level clip/global binding without erasing an existing var
- * declaration. */
-static FVM_Result declare_variable(FVM_Context *context,
-                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
-                                   FVM_Object *self, const fvm_detail::string &name,
-                                   const FVM_Value &value, bool initialized)
+/* Find the managed activation corresponding to the interpreter's existing frame root. */
+static FVM_Object *local_activation(FVM_Context *c,
+                                     fvm_detail::map<fvm_detail::string, FVM_Value> *locals)
 {
     if (locals)
-    {
-        if (initialized || locals->find(name) == locals->end())
-            (*locals)[name] = value;
-        return FVM_OK;
-    }
-    FVM_Object *scope_receiver = 0;
-    FVM_Result selected = variable_receiver(context, self, &scope_receiver);
-    if (selected != FVM_OK)
-        return selected;
-    FVM_Object *destination =
-        scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP ? scope_receiver
-                                                                                  : context->global;
-    if (!initialized)
-    {
-        FVM_Object *cursor = destination;
-        unsigned int depth = 0;
-        while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
+        for (size_t at = c->lexical_scopes.size(); at; --at)
         {
-            int own = 0;
-            FVM_Result status =
-                fvm_object_has_own_bytes(context, cursor, name.data(), name.size(), &own);
-            if (status != FVM_OK || own)
-                return status;
-            cursor = cursor->prototype;
+            FVM_Object *scope = c->lexical_scopes[at - 1];
+            if (scope && &scope->properties == locals)
+                return scope;
         }
-        if (cursor)
-            return FVM_ERROR;
-    }
-    return fvm_object_set_bytes(context, destination, name.data(), name.size(), &value);
+    return 0;
 }
 
 /* Resolve qualified paths through the shared C service, then ordinary counted bindings. */
@@ -689,14 +664,20 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     const fvm_detail::string &name = fn.name;
                     c->script_functions[name] = fn;
-                    if (locals)
-                        (*locals)[name] = value;
-                    else
-                    {
-                        r = fvm_set_global_bytes(c, name.data(), name.size(), &value);
-                        if (r != FVM_OK)
-                            return r;
-                    }
+                    FVM_Object *target = 0;
+                    r = variable_receiver(c, self, &target);
+                    FVM_Value binding_name;
+                    if (r == FVM_OK)
+                        r = fvm_value_string_bytes(&binding_name, name.data(), name.size());
+                    if (r == FVM_OK)
+                        r = fvm_exec_variable_declare(c, c->lexical_scopes.empty()
+                            ? 0 : c->lexical_scopes.back(), local_activation(c, locals),
+                            target && target->resource_kind == FVM_RESOURCE_MOVIECLIP
+                                ? target : c->global,
+                            c->script_this ? c->script_this : self,
+                            FVM_EXEC_DECLARE_INITIALIZED, &binding_name, &value);
+                    if (r != FVM_OK)
+                        return r;
                 }
                 else
                     stack.push_back(value);
@@ -1564,30 +1545,25 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
             }
             else if (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL || a.op == FVM_AVM1_ACTION_DEFINE_LOCAL2)
-            { /* DefineLocal / DeclareLocal also bind top-level clip/global properties. */
-                if (stack.size() < (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? 2U : 1U))
+            {
+                size_t operands = a.op == FVM_AVM1_ACTION_DEFINE_LOCAL
+                    ? FVM_AVM1_DECLARE_INITIALIZED_OPERANDS : FVM_AVM1_DECLARE_ONLY_OPERANDS;
+                if (stack.size() < operands)
                     return FVM_ERROR;
-                /* [GC:] Retain the name and initialized value through coercion/setters. */
-                const FVM_Value &name_value =
-                    stack[a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? stack.size() - 2
-                                                               : stack.size() - 1];
-                FVM_Value text;
-                FVM_Result status = fvm_avm1_string(c, name_value, &text);
+                FVM_Object *target = 0;
+                FVM_Result status = variable_receiver(c, self, &target);
+                if (status == FVM_OK)
+                    status = fvm_exec_variable_declare(c, c->lexical_scopes.empty()
+                        ? 0 : c->lexical_scopes.back(), local_activation(c, locals),
+                        target && target->resource_kind == FVM_RESOURCE_MOVIECLIP ? target : c->global,
+                        c->script_this ? c->script_this : self,
+                        a.op == FVM_AVM1_ACTION_DEFINE_LOCAL
+                            ? FVM_EXEC_DECLARE_INITIALIZED : FVM_EXEC_DECLARE_UNINITIALIZED,
+                        &stack[stack.size() - operands],
+                        a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? &stack.back() : 0);
                 if (status != FVM_OK)
                     return status;
-                fvm_detail::string name;
-                status = fvm_property_key(text.string, fvm_string_size(text), name);
-                if (status != FVM_OK)
-                    return status;
-                FVM_Value value;
-                fvm_value_undefined(&value);
-                if (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL)
-                    value = stack.back();
-                status = declare_variable(c, locals, self, name, value,
-                                          a.op == FVM_AVM1_ACTION_DEFINE_LOCAL);
-                if (status != FVM_OK)
-                    return status;
-                stack.resize(stack.size() - (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? 2 : 1));
+                stack.resize(stack.size() - operands);
             }
             else if (a.op == FVM_AVM1_ACTION_GET_VARIABLE)
             {

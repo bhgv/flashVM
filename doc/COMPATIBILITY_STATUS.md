@@ -2125,3 +2125,13 @@ temporary restoration remains separate. The external corpus gains unchanged SWF8
 catch_references_registers; SWF15 Try originals stay excluded. Source-based
 fixtures do not claim full Flash conformance. this-cell/encoding/base-target and
 all roadmap gates remain open. Присваивание catch уточнено по версии исполнения.
+
+### v0.262 — shared declarations and With-aware function publication
+
+[VARIABLE_DECLARATIONS.md](VARIABLE_DECLARATIONS.md) records C89 initialized/
+uninitialized declaration and named function binding over managed activation inputs.
+Own/inherited With distinctions, top-level qualified names, existing undefined,
+rooted coercion/new-function setters and OOM publication are exercised. Host own-
+data declarations remain separate. Complete local prototype/casing, cached named-
+call fallback and qualified-call receivers remain open. Объявления вынесены в
+общую службу; полный AVM1, JIT и все стадии роудмапа ещё не завершены.

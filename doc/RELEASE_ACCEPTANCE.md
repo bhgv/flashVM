@@ -162,3 +162,10 @@ host temporary bindings remain compatible. Setter GC/error and scope restoration
 fixtures accompany it. The unchanged external SWF<=8 corpus expands to 26 cases.
 Full catch/this/encoding and all JIT/platform/release acceptance gates remain open.
 Все стадии 1–9 остаются открытыми; новые проверки не означают завершения выпуска.
+
+## v0.262 — common local declaration service
+
+Declarations and named function publication share a C89 managed-value interface,
+including With own-slot selection and rooted callback/error/allocator behavior.
+Full scope/prototype/call equivalence, all JIT backends and non-Linux execution
+remain release gates. Все стадии 1–9 остаются открытыми.
