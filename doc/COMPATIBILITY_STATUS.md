@@ -2308,3 +2308,11 @@ loaded script-cache fallback. Method boxing shares current global constructors;
 invalid NewMethod constructors and anonymous noncallables yield undefined. C89,
 action, detached-prototype GC, exception and allocation fixtures cover the change.
 Super/casing and other conformance boundaries remain open. Все стадии открыты.
+
+### v0.282 — shared CastOp and discarded primitive boxing
+
+[CAST_SERVICE.md](CAST_SERVICE.md) records C89 casts, original-value preservation,
+loaded primitive boxing side effects, constructor GC/exceptions and allocation
+failures. The interpreter retains only operand adaptation. General constructor
+and prototype coercions in InstanceOf remain open, alongside all nine stages.
+Приведение примитива вызывает упаковку, но возвращает null.

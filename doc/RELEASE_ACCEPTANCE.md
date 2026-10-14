@@ -310,3 +310,10 @@ Both Linux profiles pass 543 tests, eight focused memory checks pass and all
 and getter result and do not consult stale script caches in loaded execution.
 Machine-code JIT and actual Windows/macOS/Android runs remain absent.
 Все стадии 1–9 остаются открытыми.
+
+## v0.282 — value-based CastOp
+
+Both Linux profiles pass 546 tests, four focused memory checks pass and all
+26 original SWFs match per profile. Primitive casts retain constructor side
+effects without replacing the tested original value with a wrapper. Real JIT
+and Windows/macOS/Android validation remain absent. Все стадии 1–9 открыты.

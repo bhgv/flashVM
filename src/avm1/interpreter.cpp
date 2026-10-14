@@ -940,21 +940,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CAST)
             {
-                /* CastOp pops the value first, then preserves it or replaces it with null. */
-                if (stack.size() < 2)
+                if (stack.size() < FVM_AVM1_CAST_OPERANDS)
                     return FVM_ERROR;
-                FVM_Value value = stack.back();
-                int match = 0;
-                FVM_Result r = fvm_value_instance_of(c, &value, &stack[stack.size() - 2], &match);
-                if (r != FVM_OK)
-                    return r;
-                if (!match)
-                {
-                    fvm_value_undefined(&value);
-                    value.type = FVM_VALUE_NULL;
-                }
+                FVM_Value result;
+                FVM_Result status = fvm_exec_cast(c, &stack.back(),
+                    &stack[stack.size() - FVM_AVM1_CAST_OPERANDS], &result);
+                if (status != FVM_OK)
+                    return status;
                 stack.pop_back();
-                stack.back() = value;
+                stack.back() = result;
             }
             else if (a.op == FVM_AVM1_ACTION_INSTANCE_OF)
             { /* InstanceOf: native constructor metadata and prototype identity. */

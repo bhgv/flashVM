@@ -19,4 +19,5 @@
 #define FVM_AVM1_BRANCH_BYTES 2U /* Signed UI16 relative jump payload length. */
 #define FVM_AVM1_BRANCH_SIGN_BIT 0x8000L /* Upper half of the signed branch encoding. */
 #define FVM_AVM1_BRANCH_MODULUS 65536L    /* Subtract 2^16 to sign-extend a branch into long. */
+#define FVM_AVM1_CAST_OPERANDS 2U /* CastOp consumes class followed by the original value. */
 #endif
