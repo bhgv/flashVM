@@ -1532,3 +1532,20 @@ failure coverage and all roadmap stage completion states remain open.
 
 Проверены границы C++ allocation, отсутствие частичной активации при OOM и
 успешный retry того же контекста. Код VM не изменялся; все стадии открыты.
+
+## v0.190 — borrowed numeric value methods / Number и Boolean
+
+Loaded numeric valueOf/toString return undefined for wrong native receiver types
+without evaluating receiver conversions or Number radix. Typed stored data,
+invalid-owner/corrupt-state checks and unloaded guards are preserved.
+[RU/EN details](NUMERIC_LEGACY_VALUE.md). Tests cover SWF4..8/host multiple receiver
+types, trap conversion/radix methods, both projections, valid overridden values,
+traced GC and restored state. Prototype layouts, full radix semantics, separate
+function/clip versions and all roadmap stages remain open.
+
+Числовые borrowed value methods не преобразуют receiver другого типа;
+проверены undefined, отсутствие вызовов radix и сохранение boxed data.
+
+Evidence for v0.190: AGG 351/Cairo 350 tests, six focused checks each in Linux
+portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
+Three AGG launch failures passed after restoring execute bits.

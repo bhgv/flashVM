@@ -16,12 +16,18 @@ enum
     NUMBER_CLASS = 25
 };
 
-/* Compute and return number value. */
+/* Read stored Number data; loaded value methods do not coerce other receivers. */
 FVM_Result number_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
                         FVM_Value *out, void *)
 {
-    if (!self || self->owner != c || self->resource_kind != NUMBER_OBJECT ||
-        !self->resource_result_valid || self->resource_result.type != FVM_VALUE_NUMBER)
+    if (!self || self->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    if (self->resource_kind != NUMBER_OBJECT)
+    {
+        fvm_value_undefined(out);
+        return c->swf_loaded ? FVM_OK : FVM_INVALID_ARGUMENT;
+    }
+    if (!self->resource_result_valid || self->resource_result.type != FVM_VALUE_NUMBER)
         return FVM_INVALID_ARGUMENT;
     *out = self->resource_result;
     return FVM_OK;
@@ -78,6 +84,11 @@ FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
     FVM_Result result = number_value(c, self, 0, 0, &primitive, 0);
     if (result != FVM_OK)
         return result;
+    if (primitive.type == FVM_VALUE_UNDEFINED)
+    {
+        *out = primitive;
+        return FVM_OK;
+    }
     double radix = 10;
     if (count && args[0].type != FVM_VALUE_UNDEFINED)
     {

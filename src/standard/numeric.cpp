@@ -454,12 +454,18 @@ FVM_Result boolean_call(FVM_Context *, FVM_Object *, unsigned int n, const FVM_V
     return FVM_OK;
 }
 
-/* Unbox the receiver for Boolean.prototype.valueOf. */
+/* Unbox Boolean data; loaded non-Boolean receivers return undefined without coercion. */
 FVM_Result boolean_value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *,
                          FVM_Value *out, void *)
 {
-    if (!self || self->owner != c || self->resource_kind != BOOLEAN_OBJECT ||
-        !self->resource_result_valid || self->resource_result.type != FVM_VALUE_BOOLEAN)
+    if (!self || self->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    if (self->resource_kind != BOOLEAN_OBJECT)
+    {
+        fvm_value_undefined(out);
+        return c->swf_loaded ? FVM_OK : FVM_INVALID_ARGUMENT;
+    }
+    if (!self->resource_result_valid || self->resource_result.type != FVM_VALUE_BOOLEAN)
         return FVM_INVALID_ARGUMENT;
     *out = self->resource_result;
     return FVM_OK;
@@ -475,6 +481,11 @@ FVM_Result boolean_string(FVM_Context *c, FVM_Object *self, unsigned int n, cons
     FVM_Result result = boolean_value(c, self, n, args, &value, 0);
     if (result != FVM_OK)
         return result;
+    if (value.type == FVM_VALUE_UNDEFINED)
+    {
+        *out = value;
+        return FVM_OK;
+    }
     return fvm_value_string(out, value.boolean ? "true" : "false");
 }
 
