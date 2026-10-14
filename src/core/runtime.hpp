@@ -116,6 +116,8 @@ struct FVM_Object
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>
         metamethods; /* [GC:] Native metamethod callbacks keyed by name. */
+    unsigned long swf_initializer_next; /* Context-local next init block; new graph copies start at zero. */
+    bool swf_initializer_running; /* Prevent recursive initialization of the same source library. */
     bool finalized;  /* [GC:] Whether finalization has already run. */
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
     bool gc_marked; /* Reachability mark for the current collection. */

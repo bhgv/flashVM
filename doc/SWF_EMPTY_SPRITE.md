@@ -45,3 +45,7 @@ The original AS2 v6/v8 fixtures now pass their empty sprite definitions and stop
 with UNSUPPORTED at DoInitAction rather than INVALID_ARGUMENT. The separate
 function_suppress_and_preload fixture still fails its declared nonzero sprite
 frame-count validation. None of these failing originals is counted as passing.
+
+Subsequent root DoInitAction support and its timing/error limitations are recorded
+in [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md). Корневой DoInitAction и ограничения
+его времени запуска/обработки ошибок уточнены в указанном документе.

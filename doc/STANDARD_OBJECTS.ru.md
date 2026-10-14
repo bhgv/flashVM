@@ -132,3 +132,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Объектное наследуемое this Function2: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) разделяет вызывающий объект и получателя preload, описывает корни GC и восстановление. Изменяемые ячейки остаются открытыми.
 
 Определения спрайтов без кадров: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) описывает загрузку словаря/export, GC и перенос. DoInitAction и создание экземпляров остаются открытыми.
+
+Корневой DoInitAction: [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md) описывает отложенный запуск в исходном корне, порядок, повторный вход, GC/перенос и политику ошибок. Полная семантика preload/import/классов остаётся открытой.

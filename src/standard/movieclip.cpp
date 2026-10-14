@@ -25,6 +25,7 @@
 #include "../core/native_call_guard.hpp"
 #include <cmath>
 #include <cfloat>
+#include <climits>
 #include <cstring>
 #include <cstdio>
 #include <new>
@@ -2496,6 +2497,69 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
     return fvm_avm1_execute_block_receiver(c, bytes.begin(), bytes.size(), o);
 }
 
+/* Run source-library init blocks before placement/frame actions, once per graph.
+ * Progress is private context state, so transferred libraries initialize afresh.
+ * A failed block is not retried: its script side effects cannot be rolled back. */
+FVM_Result run_initializers(FVM_Context *c, FVM_Object *data)
+{
+    if (data->properties.find("library") == data->properties.end())
+        return FVM_OK;
+    FVM_Value holder;
+    FVM_Result r = field(data, "library", holder);
+    if (r != FVM_OK)
+        return r;
+    if (holder.type == FVM_VALUE_UNDEFINED)
+        return FVM_OK;
+    if (holder.type != FVM_VALUE_OBJECT || !holder.object)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *library = holder.object;
+    /* Imported graphs from earlier versions contain no initializer metadata. */
+    if (library->properties.find("initializers") == library->properties.end())
+        return FVM_OK;
+    r = field(library, "initializers", holder);
+    if (r != FVM_OK || holder.type == FVM_VALUE_UNDEFINED)
+        return r;
+    if (holder.type != FVM_VALUE_OBJECT || !holder.object)
+        return FVM_INVALID_ARGUMENT;
+    if (library->swf_initializer_running)
+        return FVM_OK;
+    FVM_Value source;
+    r = field(library, "root", source);
+    if (r != FVM_OK || source.type != FVM_VALUE_OBJECT || !source.object ||
+        source.object->owner != c || source.object->resource_kind != CLIP)
+        return FVM_INVALID_ARGUMENT;
+    /* Restore the reentry guard on every interpreter/exception/OOM result. */
+    struct InitScope
+    {
+        FVM_Object *library; /* Source library protected by the owning clip's roots. */
+        /* Enter a source-library initializer sequence. */
+        explicit InitScope(FVM_Object *value) : library(value)
+        {
+            library->swf_initializer_running = true;
+        }
+        /* Leave initialization on success or failure. */
+        ~InitScope()
+        {
+            library->swf_initializer_running = false;
+        }
+    } scope(library);
+    /* [GC:] Snapshot retained strings before callbacks can alter library properties. */
+    Slots blocks = holder.object->indexed;
+    if (blocks.size() > ULONG_MAX)
+        return FVM_INVALID_ARGUMENT;
+    for (unsigned long index = library->swf_initializer_next; index < blocks.size(); ++index)
+    {
+        Slots::iterator block = blocks.find(index);
+        if (block == blocks.end() || index == ULONG_MAX)
+            return FVM_INVALID_ARGUMENT;
+        library->swf_initializer_next = index + 1;
+        r = execute_frame_block(c, source.object, block->second);
+        if (r != FVM_OK)
+            return r;
+    }
+    return FVM_OK;
+}
+
 /* Advance one timeline tick, execute its independent action blocks, then visit children. */
 FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
 {
@@ -2522,6 +2586,9 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     r = integer_field(data, "total", 65535, total);
     if (r != FVM_OK || !total || current < 1 || current > total)
         return FVM_INVALID_ARGUMENT;
+    r = run_initializers(c, data);
+    if (r != FVM_OK)
+        return r;
     FVM_Value entered, playing;
 
     /* Computation / Вычисление и обновление состояния. */

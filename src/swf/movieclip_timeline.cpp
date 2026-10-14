@@ -122,6 +122,7 @@ struct Timeline
     FVM_SWFDocument document; /* Borrowed root metadata copied into managed frame storage later. */
     fvm_detail::vector<Placement> controls;  /* Ordered display-list controls for all frames. */
     fvm_detail::vector<ActionRange> actions; /* Independent DoAction byte ranges. */
+    fvm_detail::vector<ActionRange> initializers; /* Root DoInitAction blocks in source order. */
     fvm_detail::vector<fvm_detail::string> labels; /* Optional label at each frame. */
     /* Initialize a parsed timeline without allocating managed state. */
     Timeline() : id(0), frames(0)
@@ -278,6 +279,28 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 return r;
             sprites->push_back(sprite);
             known[sprite.id] = true;
+        }
+        else if (tag == 59)
+        {
+            if (!sprites || version < 6 || count < 2 || count - 2 > 65536)
+                return FVM_INVALID_ARGUMENT;
+            unsigned int id = (unsigned int)little(p + at, 2);
+            bool found = false;
+            for (size_t i = 0; i < sprites->size(); ++i)
+                if ((*sprites)[i].id == id)
+                    found = true;
+            if (!found)
+                return FVM_INVALID_ARGUMENT;
+            FVM_AVM1Info info;
+            info.struct_size = sizeof(info);
+            FVM_Result r = fvm_avm1_inspect_block(p + at + 2, count - 2, &info);
+            if (r != FVM_OK)
+                return r;
+            ActionRange range;
+            range.frame = frame;
+            range.offset = at + 2;
+            range.size = count - 2;
+            timeline.initializers.push_back(range);
         }
         else if (tag == 56 && exports)
         {
@@ -690,6 +713,8 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
     library->properties["prototype"] = managed(clip->prototype);
     library->properties["sprites"] = managed(definitions);
     library->properties["exports"] = managed(names);
+    /* [GC:] Descendants retain the source root used by importer-scope init actions. */
+    library->properties["root"] = managed(clip);
     /* [GC:] Publishing this edge makes the library travel with any owning clip. */
     clip->resource_result.object->properties["library"] = managed(library);
     return FVM_OK;
@@ -738,6 +763,21 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         if (r != FVM_OK)
             return r;
         /* [GC:] The root frame controls refer to the same dictionary identities as sprites. */
+        /* [GC:] Store initializer bytecode in the library graph before publication.
+         * Execution waits for first advance, after the host can install standard objects. */
+        FVM_Object *initializers = 0;
+        r = fvm_object_create(c, &initializers);
+        if (r != FVM_OK)
+            return r;
+        FVM_Object *library = clip->resource_result.object->properties["library"].object;
+        library->properties["initializers"] = managed(initializers);
+        for (size_t i = 0; i < main_timeline.initializers.size(); ++i)
+        {
+            const ActionRange &range = main_timeline.initializers[i];
+            r = store_block(c, initializers, (unsigned long)i, bytes.begin() + range.offset, range.size);
+            if (r != FVM_OK)
+                return r;
+        }
         FVM_Object *definitions = clip->resource_result.object->properties["library"]
                                       .object->properties["sprites"]
                                       .object;

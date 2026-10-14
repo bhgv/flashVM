@@ -140,3 +140,5 @@ Implicit this binding precedence: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) c
 Object-valued inherited Function2 this: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) separates caller identity and actual preload receiver, with GC roots and restoration. Mutable cells remain open.
 
 Zero-frame sprite definitions: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) covers dictionary/export loading and GC/transfer. DoInitAction and zero-frame instantiation remain open.
+
+Root DoInitAction: [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md) records deferred source-root initialization, order/reentry/GC/transfer and explicit error policies. Full preload/import/class semantics remain open.
