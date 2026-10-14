@@ -307,13 +307,9 @@ SET(set_utc_hours, 3, true) SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5
     return r;
 }
 
-/* Compute and return text. */
-FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
-                void *)
+/* Format one timestamp through the existing local calendar adapter. */
+FVM_Result format_time(FVM_Context *c, double t, FVM_Value *out)
 {
-    if (!date(o))
-        return FVM_INVALID_ARGUMENT;
-    double t = o->resource_result.number;
     if (!finite(t))
         return fvm_value_string(out, "Invalid Date");
     double east = 0;
@@ -336,6 +332,13 @@ FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, 
     FVM_Value v;
     fvm_value_string(&v, buffer);
     return fvm_value_to_string(c, &v, out);
+}
+
+/* Format native Date data; unloaded wrong receivers retain the host guard. */
+FVM_Result text(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+                void *)
+{
+    return date(o) ? format_time(c, o->resource_result.number, out) : FVM_INVALID_ARGUMENT;
 }
 
 /* Compute and return components. */
@@ -426,6 +429,19 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
+}
+
+/* Loaded Date() returns current local time as text without coercing arguments.
+ * The captured class retains the historical unloaded constructor fallback. */
+FVM_Result date_call(FVM_Context *c, FVM_Object *self, unsigned int count,
+                     const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return constructor(c, self, count, args, out, userdata);
+    double timestamp = 0;
+    if (!fvm_port_clock_ms(&timestamp))
+        return FVM_ERROR;
+    return format_time(c, timestamp, out);
 }
 
 /* Define Method struct and its representation. */
@@ -630,7 +646,8 @@ FVM_Result
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -708,6 +725,9 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     e.userdata = klass;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["Date"] = e;
+    /* [GC:] Retain the class for unloaded function fallback and transported aliases. */
+    e.callback = date_call;
+    functions["Date"] = e;
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -744,6 +764,8 @@ FVM_Object *fvm_date_prepare_loaded(FVM_Context *c)
 /* Map a native date callback to its stable serialization identifier. */
 unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == date_call)
+        return 752;
     if (callback == loaded_constructor)
         return 751;
     if (callback == loaded_utc)
@@ -757,6 +779,8 @@ unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 /* Restore a native date callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_date_callback_from_id(unsigned long id)
 {
+    if (id == 752)
+        return date_call;
     if (id == 751)
         return loaded_constructor;
     if (id == 750)

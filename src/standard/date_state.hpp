@@ -8,6 +8,7 @@
 #include "../core/runtime.hpp"
 /* Build constructor and prototype for date. */
 FVM_Result fvm_date_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
+                          fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 
 /* [GC:] Prepare the rooted invalid host prototype for atomic loaded activation; may throw. */

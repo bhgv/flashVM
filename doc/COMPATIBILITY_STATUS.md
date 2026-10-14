@@ -1707,3 +1707,21 @@ Date() global semantics, precise time/calendar behavior and all stages remain op
 Evidence: AGG 360/Cairo 359 full tests, five focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Three AGG launch failures passed after restoring execute bits.
+
+## v0.200 — Date function vs constructor / обычный вызов Date
+
+Loaded Date() returns local-time text and ignores arguments; construction remains
+separate. Unloaded host fallback is retained. Staged function registration selects
+the class invocable callback separately; new stable callback 752 transports the
+captured class while 751 remains construction. Graph/API formats are unchanged.
+[RU/EN details](DATE_LEGACY_CALL.md). Tests cover host/SWF4–8, trap arguments,
+direct class invocation, AVM1 CallFunction/NewObject, retained strings after
+traced GC and GC/channel restored call/construct paths. Exact text/calendar/
+clock fidelity, remaining Date semantics and all stages remain open.
+
+Исправлен Date() в загруженном SWF: строка текущего времени без coercion;
+проверено отдельное создание native Date и перенос обоих callback.
+
+Evidence: AGG 361/Cairo 360 full tests, six focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. One AGG launch failure passed after restoring execute bits.
