@@ -554,6 +554,15 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
                 return stored;
             arguments->attributes["callee"] = 1;
         }
+        /* [GC:] The arguments graph retains the previous script function identity,
+         * including after its caller frame has returned or been collected. */
+        fvm_value_undefined(&value);
+        value.type = c->script_callee ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
+        value.object = c->script_callee;
+        stored = fvm_object_set(c, arguments, "caller", &value);
+        if (stored != FVM_OK)
+            return stored;
+        arguments->attributes["caller"] = 1;
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;
         value.object = arguments;
@@ -707,23 +716,27 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
         DebugFrame debug(c);
         c->debug_function = name;
         c->debug_line = 0;
-        /* [GC:] Restore script call depth after both successful execution and preparation OOM. */
+        /* [GC:] Restore depth and caller identity after execution or preparation OOM. */
         struct DepthScope
         {
-            FVM_Context *context;
-            unsigned int previous;
+            FVM_Context *context;       /* [GC:] Context whose active frame is scoped. */
+            unsigned int previous;     /* Suspended script recursion depth. */
+            FVM_Object *previous_callee; /* [GC:] Caller retained by its suspended root frame. */
             /* [GC:] Enter one script activation after preserving the caller's exact depth. */
-            explicit DepthScope(FVM_Context *c) : context(c), previous(c->script_depth)
+            DepthScope(FVM_Context *c, FVM_Object *callee)
+                : context(c), previous(c->script_depth), previous_callee(c->script_callee)
             {
                 ++context->script_depth;
+                context->script_callee = callee;
             }
             /* [GC:] Restore depth even if lexical-scope registration throws before bytecode entry.
              */
             ~DepthScope()
             {
                 context->script_depth = previous;
+                context->script_callee = previous_callee;
             }
-        } depth(c);
+        } depth(c, callee);
         /* [GC:] The activation retains the function's captured lexical environment. */
         activation->prototype = closure;
         c->lexical_scopes.push_back(activation);

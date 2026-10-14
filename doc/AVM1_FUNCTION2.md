@@ -15,8 +15,8 @@ v0.23; see [super checkpoint](AVM1_SUPER.md).
 
 Named formal parameters and their corresponding `arguments` indices share an
 activation binding through native accessors. Duplicate names alias only the last
-named occurrence. Unpassed arguments do not acquire aliases. Register-assigned
-parameters have no named activation binding and are currently not aliased through
+named occurrence. Unpassed arguments do not acquire aliases. `arguments.caller` is added in v0.215; see [caller identity](AVM1_ARGUMENTS_CALLER.md).
+Register-assigned parameters have no named activation binding and are currently not aliased through
 `arguments`. Deleting an indexed accessor breaks its binding through the existing
 property deletion API.
 
@@ -68,8 +68,9 @@ v0.23: [контрольная точка super](AVM1_SUPER.md).
 
 Именованные параметры связаны с индексами `arguments` через аксессоры и общий
 объект активации. Для повторяющихся имён связан только последний именованный
-параметр. Отсутствующие аргументы не получают связей. Регистровые параметры пока
-не связаны с индексами `arguments`. Удаление индексного аксессора разрывает связь.
+параметр. Отсутствующие аргументы не получают связей. `arguments.caller` добавлен в v0.215:
+[идентичность вызывающей функции](AVM1_ARGUMENTS_CALLER.md). Регистровые параметры
+пока не связаны с индексами `arguments`. Удаление индексного аксессора разрывает связь.
 
 [GC:] При подготовке вызова удерживаются активация, arguments, получатель,
 вызываемая функция и регистры. Дескриптор аксессора удерживает активацию через

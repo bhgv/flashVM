@@ -136,6 +136,8 @@ extern "C"
         context->swf_loaded = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
+        /* [GC:] A new context has no active script caller identity. */
+        context->script_callee = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->string_depth = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
