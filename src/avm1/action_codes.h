@@ -99,6 +99,8 @@
 #define FVM_AVM1_ACTION_INIT_OBJECT 0x43U
 /* Report the AVM1 type label. */
 #define FVM_AVM1_ACTION_TYPE_OF 0x44U
+/* Return the dot path of a boxed display object, or undefined. */
+#define FVM_AVM1_ACTION_TARGET_PATH 0x45U
 /* Enumerate a named variable object. */
 #define FVM_AVM1_ACTION_ENUMERATE 0x46U
 /* Dynamic primitive/string-aware addition. */

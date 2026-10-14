@@ -402,3 +402,15 @@ wrap, clock rollback, failure/recovery and allocation-free reads. A separate
 fixture runs the actual Linux clock adapter. Windows/macOS/Android adapter
 sources are unverified on target; real JIT and all nine acceptance stages remain
 open. Все стадии 1–9 остаются открытыми.
+
+## v0.292 — TargetPath and dispatch catalog
+
+Both Linux profiles pass all 574 tests after executable permission repairs and
+reruns for seven AGG and one Cairo launch failures; original and retry logs are
+retained separately. Four focused heap/global ASan+UBSan checks pass, without
+stack/leak coverage, and all 26 original SWFs match per profile. TargetPath has
+C89/Action, rooted boxing, GC/exception, counted-name and allocation coverage.
+The new source audit finds 92 dispatch references in a pinned 100-action catalog;
+its require-all gate correctly fails for eight missing actions. Source presence
+is not behavioral certification. Real JIT and actual Windows/macOS/Android runs
+remain absent. Все стадии 1–9 остаются открытыми.

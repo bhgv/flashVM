@@ -2396,3 +2396,12 @@ fractional truncation, unsigned 32-bit wrap, rollback, read failure and recovery
 A real Linux adapter fixture and allocation/root checks accompany the change.
 Date retains calendar time. Other target adapters await real builds and suspend/
 resume behavior remains open. Добавлен отсутствовавший таймер, стадии не закрыты.
+
+### v0.292 — TargetPath and bounded dispatch inventory
+
+[TARGET_PATH_SERVICE.md](TARGET_PATH_SERVICE.md) records the new Action/C service,
+rooted primitive boxing, native counted paths and failure/alias policy. Direct C,
+Action/GC/exception and allocation fixtures cover SWF4–8. The separate
+[dispatch inventory](AVM1_DISPATCH_INVENTORY.md) audits 100 pinned catalog entries:
+92 source references and eight absent actions. Source presence is not semantic
+certification. Другие display-типы, удалённые клипы и все стадии остаются открытыми.

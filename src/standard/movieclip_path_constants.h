@@ -7,8 +7,11 @@
 #define FVM_MOVIECLIP_PATH_DISPLAY_ROOT 1U  /* [GC:] Display root for absolute paths. */
 #define FVM_MOVIECLIP_PATH_TEXT_ROOT 2U     /* [GC:] Counted input survives getter callbacks. */
 #define FVM_MOVIECLIP_PATH_CURRENT_ROOT 3U  /* [GC:] Current object survives a getter call. */
-#define FVM_MOVIECLIP_PATH_THIS_ROOT 4U /* [GC:] Explicit this object for variable paths. */
+#define FVM_MOVIECLIP_PATH_THIS_ROOT 4U     /* [GC:] Explicit this object for variable paths. */
 #define FVM_MOVIECLIP_PATH_ROOT_COUNT 5U    /* [GC:] Number of resolver root slots. */
-#define FVM_MOVIECLIP_PATH_STATIC_ART 1 /* Private static-art marker resolves to its parent clip.  \
-                                         */
+#define FVM_MOVIECLIP_PATH_STATIC_ART                                                              \
+    1 /* Private static-art marker resolves to its parent clip.                                    \
+       */
+#define FVM_MOVIECLIP_PATH_LEVEL_PREFIX_BYTES 40U /* Decimal signed level, _level prefix and NUL.  \
+                                                   */
 #endif

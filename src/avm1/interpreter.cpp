@@ -1206,6 +1206,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - argc - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS);
                 stack.push_back(value);
             }
+            else if (a.op == FVM_AVM1_ACTION_TARGET_PATH)
+            {
+                if (stack.empty())
+                {
+                    if (!c->swf_loaded)
+                        return FVM_ERROR;
+                    FVM_Value missing;
+                    fvm_value_undefined(&missing);
+                    stack.push_back(missing);
+                }
+                FVM_Value result;
+                FVM_Result status = fvm_exec_target_path(c, &stack.back(), &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = result;
+            }
             else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)
             {
                 if (stack.empty())

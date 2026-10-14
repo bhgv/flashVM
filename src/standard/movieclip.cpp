@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_constants.h"
+#include "movieclip_path_constants.h"
 #include "../avm1/display_property_ids.h"
 #include "../avm1/block.hpp"
 #include "movieclip_scene.hpp"
@@ -467,7 +468,7 @@ FVM_Result display_path(FVM_Context *c, FVM_Object *clip, FVM_Value *out, bool s
         unsigned int visited = 0;
         while (cursor)
         {
-            if (++visited > 1024)
+            if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
             FVM_Object *data = 0;
             FVM_Result status = state(cursor, data);
@@ -496,7 +497,7 @@ FVM_Result display_path(FVM_Context *c, FVM_Object *clip, FVM_Value *out, bool s
         fvm_detail::vector<char> bytes;
         if (!slash || (level && !names.empty()))
         {
-            char prefix[40];
+            char prefix[FVM_MOVIECLIP_PATH_LEVEL_PREFIX_BYTES];
             std::sprintf(prefix, "_level%ld", level);
             for (size_t i = 0; prefix[i]; ++i)
                 bytes.push_back(prefix[i]);

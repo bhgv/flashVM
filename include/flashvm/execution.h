@@ -95,6 +95,9 @@ extern "C"
     /* Execute numeric semantics and preserve the operation's historical coercion order. */
     FVM_API FVM_Result fvm_exec_numeric(FVM_Context *, FVM_ExecutionNumeric, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Return a native display dot path after boxing; nonclips and the class prototype yield undefined.
+     * [GC:] Retains the supplied value and boxed object; failures preserve aliased output. */
+    FVM_API FVM_Result fvm_exec_target_path(FVM_Context *, const FVM_Value *, FVM_Value *);
     /* Read context-relative monotonic integer milliseconds modulo 2^32, without allocation.
      * Clock errors leave output and the previous elapsed sample intact; no GC roots are needed. */
     FVM_API FVM_Result fvm_exec_get_time(FVM_Context *, FVM_Value *);
