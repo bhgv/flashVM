@@ -85,7 +85,19 @@ FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
     return result == FVM_OK ? decode(text, units) : result;
 }
 
-/* Compute and return argument. */
+/* Wrap a finite numeric index through AVM1 signed Int32, truncating toward zero. */
+double loaded_index(double number)
+{
+    if (number != number || std::fabs(number) == std::numeric_limits<double>::infinity())
+        return 0;
+    number = number < 0 ? std::ceil(number) : std::floor(number);
+    number = std::fmod(number, 4294967296.0);
+    if (number < 0)
+        number += 4294967296.0;
+    return number >= 2147483648.0 ? number - 4294967296.0 : number;
+}
+
+/* Coerce a present index using loaded AVM1 rules or the unloaded host contract. */
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double fallback, double &number)
 {
@@ -94,9 +106,15 @@ FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, u
         number = fallback;
         return FVM_OK;
     }
-    FVM_Result result = fvm_value_to_number(c, args + index, &number);
+    FVM_Result result = c->swf_loaded ? fvm_avm1_number(c, args + index, &number)
+                                      : fvm_value_to_number(c, args + index, &number);
     if (result != FVM_OK)
         return result;
+    if (c->swf_loaded)
+    {
+        number = loaded_index(number);
+        return FVM_OK;
+    }
     if (number != number)
         number = 0;
     else if (number > 0)
@@ -152,7 +170,8 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
     if (index < 0 || index >= (double)units.size())
     {
         if (code)
-            fvm_value_number(out, std::numeric_limits<double>::quiet_NaN());
+            fvm_value_number(out, c->swf_loaded && c->swf_info.version == 5 && index >= 0
+                                     ? 0 : std::numeric_limits<double>::quiet_NaN());
         else
             fvm_value_string(out, "");
         return FVM_OK;
@@ -184,6 +203,12 @@ FVM_Result char_code(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Va
 FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                    FVM_Value *out, int mode)
 {
+    /* Loaded slice/substr/substring reject missing arguments before receiver coercion. */
+    if (c->swf_loaded && !count)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     Units units;
@@ -200,7 +225,8 @@ FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const F
         return result;
     size_t start = clamp(first, units.size(), mode != 0), end;
     if (mode == 2) /* substr's second argument is a count. */
-        end = start + clamp(last, units.size() - start, false);
+        end = c->swf_loaded ? clamp(loaded_index((double)start + last), units.size(), true)
+                            : start + clamp(last, units.size() - start, false);
     else
         end = clamp(last, units.size(), mode == 1);
     if (mode == 0 && start > end)

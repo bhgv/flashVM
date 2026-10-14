@@ -1398,3 +1398,21 @@ valueOf fallback; проверены пользовательские резул
 Evidence for v0.181: AGG 342/Cairo 341 tests, five focused checks each in Linux
 portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
 Four AGG launch failures passed after restoring execute bits.
+
+## v0.182 — signed String indices / знаковые индексы строк
+
+Loaded character/portion/fromCharCode indices use AVM1 numeric coercion and
+wrapping signed Int32. Substr uses a signed wrapping relative end; missing
+portion arguments return undefined before receiver coercion. SWF5 nonnegative
+out-of-range charCodeAt returns zero; negatives remain NaN. Host rules are
+preserved. [RU/EN details](STRING_LEGACY_INDICES.md). Tests cover SWF4..8/host,
+fractions/overflow/infinity, SWF6+ octal syntax, Object fallback, SWF5 boundaries,
+negative substr count, empty arguments and restored state. Search/split argument
+rules, boxed overrides and all roadmap stages remain open.
+Evidence: AGG 343/Cairo 342 tests, six focused checks each in Linux portable and
+restricted heap/global ASan+UBSan, sixteen byte-exact original SWFs. Five AGG
+launch failures passed after restoring execute bits. The initial octal test
+expectation was corrected to SWF6+; final fixtures pass in all four profiles.
+
+Исправлены AVM1 ToInt32, исторический substr и charCodeAt SWF5; незагруженный
+контракт сохранён, полнота String и завершение стадий не заявлены.
