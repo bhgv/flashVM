@@ -3,6 +3,8 @@
 #ifndef FLASHVM_EXECUTION_H
 #define FLASHVM_EXECUTION_H /* Public execution service guard. */
 #include "value.h"
+/* Context-local legacy register bank shared by generated and interpreted activations. */
+#define FVM_EXEC_GLOBAL_REGISTER_COUNT 4U
 #ifdef __cplusplus
 extern "C"
 {
@@ -94,6 +96,11 @@ extern "C"
     FVM_API FVM_Result fvm_exec_scope_lookup(FVM_Context *, FVM_Object *scope,
                                              const FVM_Value *name, FVM_Value *result,
                                              FVM_Object **owner, int *found);
+    /* Read/write a context-global value slot. Missing slots read undefined and
+     * discard valid writes. Stored strings are owned; out may alias value. */
+    FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
+                                                unsigned int index, const FVM_Value *value,
+                                                FVM_Value *out);
 #ifdef __cplusplus
 }
 #endif

@@ -148,6 +148,9 @@ extern "C"
         context->avm1_execution_depth = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->avm1_steps = 0;
+        /* [GC:] Initialize persistent value roots before any context objects are published. */
+        for (unsigned int i = 0; i < FVM_EXEC_GLOBAL_REGISTER_COUNT; ++i)
+            fvm_value_undefined(context->avm1_global_registers + i);
         /* [GC:] Работаем с выбранным режимом планирования сборки. */
         /* [GC:] No constructor/method invocation is active in a new context. */
         context->calling_constructor = context->calling_function = context->calling_owner = 0;

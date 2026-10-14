@@ -461,7 +461,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         {
             if (inherited)
                 constants = *inherited;
-            registers.resize(4);
+            execution.global_registers = c->swf_loaded;
+            registers.resize(FVM_AVM1_LEGACY_REGISTER_COUNT);
             for (size_t reg = 0; reg < registers.size(); ++reg)
                 fvm_value_undefined(&registers[reg]);
         }
@@ -617,7 +618,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     bool had_binding = false;
                     if (record.flags & FVM_AVM1_TRY_CATCH_REGISTER)
                     {
-                        if (record.reg < registers.size())
+                        if (execution.global_registers)
+                        {
+                            FVM_Value ignored;
+                            FVM_Result stored = fvm_exec_global_register(c, 1, record.reg, &saved[0], &ignored);
+                            if (stored != FVM_OK) return stored;
+                        }
+                        else if (record.reg < registers.size())
                             registers[record.reg] = saved[0];
                         else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;
@@ -708,7 +715,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 unsigned int reg = data[a.payload];
-                if (reg < registers.size())
+                if (execution.global_registers)
+                {
+                    FVM_Value ignored;
+                    FVM_Result stored = fvm_exec_global_register(c, 1, reg, &stack.back(), &ignored);
+                    if (stored != FVM_OK) return stored;
+                }
+                else if (reg < registers.size())
                     registers[reg] = stack.back();
                 else if (!c->swf_loaded)
                     return FVM_INVALID_ARGUMENT;
@@ -827,7 +840,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         if (end - p < 1)
                             return FVM_INVALID_ARGUMENT;
                         unsigned int reg = data[p++];
-                        if (reg < registers.size())
+                        if (execution.global_registers)
+                        {
+                            FVM_Result read = fvm_exec_global_register(c, 0, reg, 0, &v);
+                            if (read != FVM_OK) return read;
+                        }
+                        else if (reg < registers.size())
                             v = registers[reg];
                         else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;

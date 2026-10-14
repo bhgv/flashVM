@@ -6,6 +6,7 @@
 /* Define FLASHVM INTERNAL RUNTIME HPP constant or compilation switch. */
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
+#include "flashvm/execution.h"
 #include "resource_kinds.h"
 #include "numeric_constants.h"
 #include "../swf/format_constants.h"
@@ -257,6 +258,7 @@ struct FVM_Context
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned int
         avm1_execution_depth; /* [GC:] avm  execution depth: stored state of the enclosing type. */
+    FVM_Value avm1_global_registers[FVM_EXEC_GLOBAL_REGISTER_COUNT]; /* [GC:] Persistent context-local value roots. */
     unsigned long avm1_steps; /* [GC:] avm  steps: stored state of the enclosing type. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, FVM_Object *>

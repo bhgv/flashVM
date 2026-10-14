@@ -43,6 +43,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     fvm_value_undefined(&implicit_super);
     Execution execution;
     execution.target_initialized = true;
+    execution.global_registers = c->swf_loaded && (!fn.function2 || !fn.register_count);
     try
     {
         execution.constants = fn.constants;
@@ -440,8 +441,10 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 fvm_value_undefined(&prepared.super_value);
             prepared.argc = argc;
             prepared.argv = args;
-            prepared.register_count = (unsigned int)execution.registers.size();
-            prepared.registers = execution.registers.begin();
+            prepared.register_count = execution.global_registers ? FVM_EXEC_GLOBAL_REGISTER_COUNT
+                                                                 : (unsigned int)execution.registers.size();
+            prepared.registers = execution.global_registers ? c->avm1_global_registers
+                                                            : execution.registers.begin();
             prepared.capture = native_entry.capture;
             status = fvm_exec_native_body(c, native_entry, prepared, result);
         }

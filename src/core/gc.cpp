@@ -78,6 +78,9 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
     mark_object(c->script_callee, pending);
     /* [GC:] Retain the active implicit this independently of the method receiver. */
     mark_object(c->script_this, pending);
+    /* [GC:] Registers retain objects, metatables and traced strings between activations. */
+    for (unsigned int i = 0; i < FVM_EXEC_GLOBAL_REGISTER_COUNT; ++i)
+        mark_value(c->avm1_global_registers[i], pending, strings);
     /* [GC:] Native Array results retain the original prototype after public prototype replacement. */
     mark_object(c->array_builtin_prototype, pending);
     /* [GC:] Constructor prototype creation uses the retained original Object prototype. */

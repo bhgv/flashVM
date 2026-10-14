@@ -1900,3 +1900,15 @@ remain open; JIT and non-Linux execution are not claimed.
 
 Все девять стадий остаются открытыми. Эти контрольные точки уточняют проверенные
 части, но не заменяют полную приёмку роудмапа.
+
+
+## v0.238 — context-global register values
+
+Loaded legacy and zero-private-bank functions now share context-owned registers,
+including prepared native bodies. AVM1_GLOBAL_REGISTERS.md documents C89 value
+access, owned strings, GC roots and context isolation. Private count boundaries
+and broader historical register semantics remain open.
+
+Общие регистры сохраняются между активациями и доступны через C-слой. Данные
+принадлежат контексту; GC и отказы памяти проверяются вместе с новой службой.
+Полная семантика частных наборов и общая приёмка роудмапа остаются открытыми.

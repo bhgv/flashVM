@@ -26,7 +26,7 @@ extern "C"
         unsigned int argc;           /* Actual input argument count. */
         const FVM_Value *argv;       /* Borrowed original argument values. */
         unsigned int register_count; /* Number of mutable register slots, including slot zero. */
-        FVM_Value *registers;        /* [GC:] Rooted slots prepared from parameters and preloads. */
+        FVM_Value *registers;        /* [GC:] Rooted private slots or a live context-global bank; adopt borrowed text through execution.h. */
         FVM_Object
             *capture; /* [GC:] Optional retained body capture, stable during self-unbinding. */
     } FVM_ScriptFrame;
