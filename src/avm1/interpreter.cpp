@@ -1784,8 +1784,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_CALL_METHOD || a.op == FVM_AVM1_ACTION_NEW_METHOD)
             { /* CallMethod: args, argc, receiver, method name */
                 if (stack.size() < 3 ||
-                    (stack.back().type != FVM_VALUE_STRING && stack.back().type != FVM_VALUE_NULL &&
-                     stack.back().type != FVM_VALUE_UNDEFINED) ||
+                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING &&
+                     stack.back().type != FVM_VALUE_NULL && stack.back().type != FVM_VALUE_UNDEFINED) ||
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
                 double n = stack[stack.size() - 3].number;
@@ -1794,7 +1794,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_ERROR;
                 unsigned int argc = (unsigned int)n;
                 const FVM_Value &owner = stack[stack.size() - 2];
-                if (a.op == FVM_AVM1_ACTION_CALL_METHOD &&
+                if ((a.op == FVM_AVM1_ACTION_CALL_METHOD || c->swf_loaded) &&
                     (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED))
                 {
                     /* Preserve the allocation-free discard of a nullish call's operands. */

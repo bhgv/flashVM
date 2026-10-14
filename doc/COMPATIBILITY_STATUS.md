@@ -1932,3 +1932,13 @@ GC, allocation checks and retained compatibility limitations.
 
 Вызов метода и создание через метод вынесены в общий C-слой. Все девять
 стадий роудмапа остаются открытыми.
+
+## v0.241 — loaded method-name values
+
+Loaded method names use version-aware string coercion and distinguish null from
+undefined. Nullish NewMethod receivers and nonobject constructor members return
+undefined. [AVM1_METHOD_NAME_VALUES.md](AVM1_METHOD_NAME_VALUES.md) records
+callback/GC/exception checks and remaining dispatch/count limitations.
+
+Проверены значения имён методов для SWF4–8 и исполнение преобразования имени
+через подготовленное нативное тело; общая совместимость AVM1 остаётся открытой.

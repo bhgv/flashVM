@@ -11,6 +11,8 @@
 #define FVM_METHOD_BOX_ROOT 3U
 /* Constructor function returned by a getter is retained until invocation. */
 #define FVM_METHOD_FUNCTION_ROOT 4U
+/* Converted method text survives callbacks and counted-key normalization. */
+#define FVM_METHOD_TEXT_ROOT 5U
 /* Arguments occupy the remaining contiguous root slots. */
-#define FVM_METHOD_ARGUMENT_ROOT_BASE 5U
+#define FVM_METHOD_ARGUMENT_ROOT_BASE 6U
 #endif

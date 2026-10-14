@@ -16,15 +16,15 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         fvm_validate_value(c, name_value) != FVM_OK ||
         (anonymous_this && anonymous_this->owner != c) || argc > FVM_EXEC_MAX_METHOD_ARGUMENTS ||
         (argc && !argv) ||
-        (name_value->type != FVM_VALUE_STRING && name_value->type != FVM_VALUE_NULL &&
-         name_value->type != FVM_VALUE_UNDEFINED))
+        (!c->swf_loaded && name_value->type != FVM_VALUE_STRING &&
+         name_value->type != FVM_VALUE_NULL && name_value->type != FVM_VALUE_UNDEFINED))
         return FVM_INVALID_ARGUMENT;
     for (unsigned int i = 0; i < argc; ++i)
         if (fvm_validate_value(c, argv + i) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
     if (owner_value->type == FVM_VALUE_NULL || owner_value->type == FVM_VALUE_UNDEFINED)
     {
-        if (construct)
+        if (construct && !c->swf_loaded)
             return FVM_INVALID_ARGUMENT;
         fvm_value_undefined(out);
         return FVM_OK;
@@ -43,14 +43,6 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             roots.values[FVM_METHOD_ARGUMENT_ROOT_BASE + i] = argv[i];
         const FVM_Value *args = argc ? roots.values.begin() + FVM_METHOD_ARGUMENT_ROOT_BASE : 0;
         const FVM_Value &owner = roots.values[FVM_METHOD_OWNER_ROOT];
-        fvm_detail::string name;
-        if (name_value->type == FVM_VALUE_STRING)
-        {
-            FVM_Result status =
-                fvm_property_key(name_value->string, fvm_string_size(*name_value), name);
-            if (status != FVM_OK)
-                return status;
-        }
         FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
         if (!receiver)
         {
@@ -64,6 +56,19 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         /* [GC:] Retain the box before method lookup or a constructor getter can execute script. */
         roots.values[FVM_METHOD_BOX_ROOT].type = FVM_VALUE_OBJECT;
         roots.values[FVM_METHOD_BOX_ROOT].object = receiver;
+        fvm_detail::string name;
+        const FVM_Value &source_name = roots.values[FVM_METHOD_NAME_ROOT];
+        FVM_Value &text = roots.values[FVM_METHOD_TEXT_ROOT];
+        if (source_name.type != FVM_VALUE_UNDEFINED &&
+            (c->swf_loaded || source_name.type != FVM_VALUE_NULL))
+        {
+            FVM_Result converted = fvm_avm1_string(c, source_name, &text);
+            if (converted != FVM_OK)
+                return converted;
+            converted = fvm_property_key(text.string, fvm_string_size(text), name);
+            if (converted != FVM_OK)
+                return converted;
+        }
         FVM_NativeEntry native_method;
         FVM_Result lookup = fvm_lookup_native_method(receiver, name, &native_method);
         if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
@@ -85,7 +90,12 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             if (status != FVM_OK)
                 return status;
             if (function.type != FVM_VALUE_OBJECT)
-                return FVM_INVALID_ARGUMENT;
+            {
+                if (!c->swf_loaded)
+                    return FVM_INVALID_ARGUMENT;
+                *out = result;
+                return FVM_OK;
+            }
             FVM_Object *instance = 0;
             status = fvm_function_construct(c, function.object, argc, args, &instance);
             if (status == FVM_OK)

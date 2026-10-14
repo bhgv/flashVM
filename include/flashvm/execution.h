@@ -103,9 +103,11 @@ extern "C"
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
                                                 unsigned int index, const FVM_Value *value,
                                                 FVM_Value *out);
-    /* Invoke or construct a value member. Null/undefined/empty names select an
-     * anonymous call; anonymous_this supplies its explicit receiver. Inputs are
-     * rooted through coercion, lookup and calls; failures leave out unchanged. */
+    /* Invoke or construct a value member. Loaded SWFs coerce names to text;
+     * undefined/empty names select an anonymous call. Unloaded host contexts
+     * also treat null as anonymous and accept only string/null/undefined names.
+     * anonymous_this supplies the explicit receiver. [GC:] Inputs and converted
+     * text remain rooted through callbacks; failures leave out unchanged. */
     FVM_API FVM_Result fvm_exec_call_method(FVM_Context *, int construct,
                                             const FVM_Value *owner, const FVM_Value *name,
                                             FVM_Object *anonymous_this, unsigned int argc,
