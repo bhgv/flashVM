@@ -222,6 +222,14 @@ extern "C"
                                               int local_scope, const FVM_Value *name,
                                               unsigned int argc, const FVM_Value *argv,
                                               FVM_Value *result);
+    /* Complete GetVariable: loaded names are string-coerced, paths/plain names
+     * resolve through explicit scopes, and loaded SWF4 MovieClip values become undefined.
+     * Host names must already be strings. Raw path/lookup services do not apply this filter.
+     * [GC:] Retains environment, name and intermediates; failure preserves result. */
+    FVM_API FVM_Result fvm_exec_get_variable(FVM_Context *, FVM_Object *scope,
+                                            FVM_Object *target, FVM_Object *receiver,
+                                            int local_scope, const FVM_Value *name,
+                                            FVM_Value *result);
     /* Construct from an already-coerced counted name and ordered values. Loaded
      * NewObject uses literal scoped lookup and returns undefined for nonconstructors.
      * Host mode retains qualified lookup and named native-constructor fallback.

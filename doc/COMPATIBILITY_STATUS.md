@@ -2183,3 +2183,13 @@ exception, alias, UTF-16 order and allocator/depth-boundary fixtures accompany
 the decomposition. Numeric/dynamic operators remain separate. Legacy locale
 semantics and every roadmap completion gate stay open. Двухместные строковые
 обработчики доступны через общий C-интерфейс.
+
+### v0.268 — complete value-based GetVariable entry
+
+[GET_VARIABLE_SERVICE.md](GET_VARIABLE_SERVICE.md) records loaded name coercion,
+qualified/plain lookup and the SWF4 MovieClip result filter through a C89 service.
+C/interpreter numeric and counted names, target-only roots through conversion GC,
+exceptions and allocation restoration are covered. The generated SWF4 target-scope
+fixture now uses explicit clip paths; modern this assertions and independent SWF
+oracles remain intact. Other display kinds, Enumerate, full this/encoding semantics
+and all roadmap stages remain open. GetVariable вынесен в отдельный C-обработчик.

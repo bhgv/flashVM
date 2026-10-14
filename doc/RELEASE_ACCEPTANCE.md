@@ -207,3 +207,10 @@ Input graphs and converted text remain retained across the other callback's GC;
 concatenation preserves exact bytes and avoids an extra coercion-depth gate.
 Complete compatibility, six machine-code backends and target-platform runs still
 require acceptance evidence. Все стадии 1–9 остаются открытыми.
+
+## v0.268 — GetVariable name coercion and SWF4 MovieClip filtering
+
+The complete action uses an explicit C89 environment/value interface, with rooted
+coercion and lookup. Generated fixtures distinguish raw reads from action result
+filtering. Other display objects, legacy Enumerate/encoding, all JIT backends and
+all requested platform runs remain release gates. Все стадии 1–9 открыты.

@@ -1507,17 +1507,27 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_GET_VARIABLE)
             {
-                if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
+                if (stack.empty() || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
+                FVM_Object *target = 0;
+                FVM_Result r = variable_receiver(c, self, &target);
                 FVM_Value value;
-                FVM_Result r = lookup_variable_value(c, locals, self, stack.back(), &value);
+                if (r == FVM_OK)
+                    r = fvm_exec_get_variable(
+                        c, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), target,
+                        c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && c->script_this
+                            ? c->script_this
+                            : self,
+                        locals != 0, &stack.back(), &value);
                 if (r != FVM_OK)
                     return r;
                 stack.back() = value;
             }
             else if (a.op == FVM_AVM1_ACTION_SET_VARIABLE)
             {
-                if (stack.size() < FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT || stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type != FVM_VALUE_STRING)
+                if (stack.size() < FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT ||
+                    stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type !=
+                        FVM_VALUE_STRING)
                     return FVM_ERROR;
                 FVM_Object *target = 0;
                 FVM_Result status = variable_receiver(c, self, &target);

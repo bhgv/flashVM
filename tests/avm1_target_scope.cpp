@@ -10,8 +10,8 @@ static void target(Bytes &b,const char *name)
 { b.push_back(0x8b);unsigned n=(unsigned)std::strlen(name)+1;b.push_back((unsigned char)n);b.push_back((unsigned char)(n>>8));do{b.push_back((unsigned char)*name);}while(*name++); }
 static void variable(Bytes &b,const char *name,unsigned n)
 { text(b,name);integer(b,n);b.push_back(0x1d); }
-static void read(Bytes &b,const char *field,const char *name)
-{ global(b,"this");text(b,field);global(b,name);b.push_back(0x4f); }
+static void read(Bytes &b,const char *field,const char *name,const char *legacy_owner=0)
+{ if(legacy_owner){fvm_detail::vector<char> path(std::strlen(legacy_owner)+std::strlen(field)+2);std::strcpy(path.begin(),legacy_owner);std::strcat(path.begin(),":");std::strcat(path.begin(),field);text(b,path.begin());global(b,name);b.push_back(0x1d);}else{global(b,"this");text(b,field);global(b,name);b.push_back(0x4f);} }
 static FVM_Result execute(FVM_Context *c,FVM_Object *clip,Bytes b)
 { b.push_back(0);return fvm_avm1_execute_receiver(c,b.begin(),b.size(),clip); }
 static void number(FVM_Context *c,FVM_Object *clip,const char *name,double expected)
@@ -32,9 +32,9 @@ int main()
  for(unsigned version=4;version<=8;++version){FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};swf[3]=(unsigned char)version;assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);assert(fvm_standard_install(c)==FVM_OK);FVM_Object *root=0;assert(fvm_movieclip_create(c,"root",3,&root)==FVM_OK);FVM_Value value;fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=root;assert(fvm_set_global(c,"root",&value)==FVM_OK);FVM_Object *selected=child(c,root,"child",1),*other=child(c,root,"other",2);
  fvm_value_number(&value,3);selected->resource_result.object->properties["total"]=value;unsigned char empty[]={0};for(unsigned frame=1;frame<=3;++frame)assert(fvm_movieclip_define_frame(c,selected,frame,frame==3?"third":"",empty,sizeof(empty))==FVM_OK);
  fvm_value_number(&value,5);assert(fvm_object_set(c,root,"identifier",&value)==FVM_OK);fvm_value_number(&value,7);assert(fvm_object_set(c,selected,"identifier",&value)==FVM_OK);
- Bytes b;target(b,"child");variable(b,"mark",42);read(b,"read","identifier");assert(execute(c,root,b)==FVM_OK);number(c,selected,"mark",42);number(c,root,"read",7);assert(!c->avm1_target_active && !c->avm1_target_clip && !c->avm1_base_clip);
- b.clear();target(b,"missing");read(b,"read","identifier");variable(b,"fallback",9);assert(execute(c,selected,b)==FVM_OK);number(c,selected,"read",5);number(c,root,"fallback",9);
- b.clear();b.push_back(0x96);b.push_back(1);b.push_back(0);b.push_back(3);b.push_back(0x20);read(b,"read","identifier");assert(execute(c,selected,b)==FVM_OK);number(c,selected,"read",version<=6?7:5);
+ Bytes b;target(b,"child");variable(b,"mark",42);read(b,"read","identifier",version==4?"root":0);assert(execute(c,root,b)==FVM_OK);number(c,selected,"mark",42);number(c,root,"read",7);assert(!c->avm1_target_active && !c->avm1_target_clip && !c->avm1_base_clip);
+ b.clear();target(b,"missing");read(b,"read","identifier",version==4?"root/child":0);variable(b,"fallback",9);assert(execute(c,selected,b)==FVM_OK);number(c,selected,"read",5);number(c,root,"fallback",9);
+ b.clear();b.push_back(0x96);b.push_back(1);b.push_back(0);b.push_back(3);b.push_back(0x20);read(b,"read","identifier",version==4?"root/child":0);assert(execute(c,selected,b)==FVM_OK);number(c,selected,"read",version<=6?7:5);
  b.clear();text(b,"child");b.push_back(0x20);variable(b,"dynamic",99);target(b,"");variable(b,"reset",10);assert(execute(c,root,b)==FVM_OK);number(c,selected,"dynamic",99);number(c,root,"reset",10);
  assert(fvm_object_define_method_rooted(c,selected,"stop",override_stop,0,0)==FVM_OK);b.clear();target(b,"child");b.push_back(0x07);assert(execute(c,root,b)==FVM_OK && overridden==0);private_number(selected,"playing",0);private_number(root,"playing",1);
  b.clear();target(b,"child");b.push_back(0x81);b.push_back(2);b.push_back(0);b.push_back(1);b.push_back(0);assert(execute(c,root,b)==FVM_OK);number(c,selected,"_currentframe",2);private_number(selected,"playing",0);number(c,root,"_currentframe",1);
