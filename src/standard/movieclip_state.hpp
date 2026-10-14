@@ -12,6 +12,8 @@ FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string
 
 /* Validate movieclip. */
 FVM_Result fvm_movieclip_validate(FVM_Context *);
+/* Read intrinsic parent/root for AVM1 preloads, bypassing replaceable script properties. */
+FVM_Result fvm_movieclip_preload_display(FVM_Context *, FVM_Object *, bool parent, FVM_Value *);
 
 /* Map a native movieclip callback to its stable serialization identifier. */
 unsigned long fvm_movieclip_callback_id(FVM_NativeFunction);

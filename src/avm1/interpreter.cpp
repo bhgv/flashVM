@@ -624,9 +624,22 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
                 fvm_value_undefined(common);
             if (fn.flags & 32)
                 fvm_value_undefined(common + 2);
-            if (receiver && (fn.flags & 64))
+            /* Match the activation's base-clip selection before its bytecode starts.
+             * Display preloads bypass mutable _root/_parent script properties. */
+            FVM_Object *preload_clip = receiver && receiver->resource_kind == 40 ? receiver
+                                                                                : c->avm1_base_clip;
+            if ((fn.flags & 192) && !preload_clip)
             {
-                stored = fvm_object_get(c, receiver, "_root", common + 3);
+                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root =
+                    c->global->properties.find("_root");
+                if (root != c->global->properties.end() && root->second.type == FVM_VALUE_OBJECT &&
+                    root->second.object && root->second.object->resource_kind == 40)
+                    preload_clip = root->second.object;
+            }
+            if ((preload_clip || receiver) && (fn.flags & 64))
+            {
+                stored = preload_clip ? fvm_movieclip_preload_display(c, preload_clip, false, common + 3)
+                                      : fvm_object_get(c, receiver, "_root", common + 3);
                 if (stored != FVM_OK)
                     return stored;
                 /* [GC:] Retain this value while subsequent call setup may execute script code. */
@@ -638,9 +651,10 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
                 if (stored != FVM_OK)
                     return stored;
             }
-            if (receiver && (fn.flags & 128))
+            if ((preload_clip || receiver) && (fn.flags & 128))
             {
-                stored = fvm_object_get(c, receiver, "_parent", common + 4);
+                stored = preload_clip ? fvm_movieclip_preload_display(c, preload_clip, true, common + 4)
+                                      : fvm_object_get(c, receiver, "_parent", common + 4);
                 if (stored != FVM_OK)
                     return stored;
             }
@@ -650,7 +664,13 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
             unsigned int slot = 1;
             for (unsigned int i = 0; i < 6; ++i)
                 if (fn.flags & bits[i])
+                {
+                    /* A parentless timeline leaves this preload slot available to _global. */
+                    if (i == 4 && (common[i].type == FVM_VALUE_UNDEFINED ||
+                                   common[i].type == FVM_VALUE_NULL))
+                        continue;
                     execution.registers[slot++] = common[i];
+                }
         }
         fvm_detail::map<fvm_detail::string, bool> seen;
         for (size_t i = fn.parameters.size(); i; --i)

@@ -10,6 +10,11 @@
 #include <cassert>
 #include <cstring>
 typedef fvm_detail::vector<unsigned char> Bytes;
+static FVM_Result preload_trap(FVM_Context *, FVM_Object *, unsigned int,
+                              const FVM_Value *, FVM_Value *, void *)
+{
+    return FVM_ERROR;
+}
 static void u16(Bytes &b, unsigned int n)
 {
     b.push_back((unsigned char)n);
@@ -175,6 +180,20 @@ int main()
         end(body);
         fn = define(c, 2, 64 | 128, 0, 0, 0, body);
         assert(fvm_function_invoke(c, fn, child, 0, 0, &out) == FVM_OK && out.object == root);
+        assert(fvm_object_define_accessor_rooted(c, child, "_root", preload_trap, 0, 0, 0) == FVM_OK);
+        assert(fvm_object_define_accessor_rooted(c, child, "_parent", preload_trap, 0, 0, 0) == FVM_OK);
+        assert(fvm_function_invoke(c, fn, child, 0, 0, &out) == FVM_OK && out.object == root);
+        Bytes global_body;
+        reg(global_body, 1); end(global_body);
+        fn = define(c, 2, 128 | 256, 0, 0, 0, global_body);
+        assert(fvm_function_invoke(c, fn, root, 0, 0, &out) == FVM_OK);
+        FVM_Value global;
+        assert(out.type == FVM_VALUE_OBJECT);
+        assert(fvm_object_get(c, out.object, "marker", &global) == FVM_OK && global.number == 123);
+        Bytes empty_body;
+        reg(empty_body, 2); end(empty_body);
+        fn = define(c, 2, 128 | 256, 0, 0, 0, empty_body);
+        assert(fvm_function_invoke(c, fn, root, 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
     }
     {
         /* The highest register remains private and is shared with try blocks. */

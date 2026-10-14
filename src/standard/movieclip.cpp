@@ -3684,6 +3684,16 @@ FVM_Result fvm_movieclip_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
+/* Read display provenance directly; parentless clips return the existing null sentinel. */
+FVM_Result fvm_movieclip_preload_display(FVM_Context *c, FVM_Object *clip, bool want_parent,
+                                       FVM_Value *out)
+{
+    if (!c || !clip || clip->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    return want_parent ? parent_get(c, clip, 0, 0, out, 0)
+                       : root_get(c, clip, 0, 0, out, 0);
+}
+
 /* Map a native movieclip callback to its stable serialization identifier. */
 unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
 {
