@@ -6,6 +6,7 @@
 #include "../core/native_call_guard.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/property.h"
+#include "property_enumerate_constants.h"
 #include "flashvm/table.h"
 #include <cstdio>
 #include <new>
@@ -24,7 +25,7 @@ void add(FVM_Object *object, const fvm_detail::string &name,
         object->attributes.find(name);
     if (flag == object->attributes.end() || !(flag->second & FVM_PROPERTY_DONT_ENUM))
         keys.push_back(name);
-    if (seen.size() > 65536)
+    if (seen.size() > FVM_PROPERTY_ENUMERATE_MAX_NAMES)
         throw std::bad_alloc();
 }
 } // namespace
@@ -71,7 +72,7 @@ extern "C" FVM_Result fvm_object_enumerate(
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                char name[32];
+                char name[FVM_PROPERTY_ENUMERATE_INDEX_BYTES];
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 std::sprintf(name, "%lu", i->first);
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -116,7 +117,7 @@ extern "C" FVM_Result fvm_object_enumerate(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Object *result = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        FVM_Result r = fvm_array_create_like(c, 0, (unsigned long)keys.size(), &result);
+        FVM_Result r = fvm_array_create_like(c, 0, (unsigned long)keys.size(), &result, c->swf_loaded);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -130,7 +131,9 @@ extern "C" FVM_Result fvm_object_enumerate(
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_value_string_bytes(&value, keys[i].data(), keys[i].size());
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            r = fvm_table_set_index(c, result, (unsigned long)i, &value);
+            /* Loaded key snapshots define own slots without inherited index setters. */
+            r = c->swf_loaded ? fvm_array_store_own(c, result, (unsigned long)i, value)
+                              : fvm_table_set_index(c, result, (unsigned long)i, &value);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */

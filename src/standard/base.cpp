@@ -2117,96 +2117,53 @@ FVM_Result fvm_array_store_own(FVM_Context *c, FVM_Object *result, unsigned long
     return FVM_OK;
 }
 
-/* Create array like. */
-/* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-FVM_Result fvm_array_create_like(
-    FVM_Context *c, FVM_Object *source, unsigned long length,
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Object **out, bool builtin_result)
-/* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+/* Build a native Array using cached internal or legacy source/public prototype policy. */
+FVM_Result fvm_array_create_like(FVM_Context *c, FVM_Object *source, unsigned long length,
+                                 FVM_Object **out, bool builtin_result)
 {
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !out || (source && source->owner != c))
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     *out = 0;
-    /* Prototype getters are user code. Defer GC until this not-yet-published
-     * object, and any enclosing function being built, enter VM roots. */
-    /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
+    /* [GC:] Legacy public prototype getters may run script before the new result is published. */
     FVM_NativeCallGuard construction(c);
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    FVM_Result r = fvm_object_create(c, out);
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (r != FVM_OK)
-        /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-        return r;
-
-    /* Computation / Вычисление и обновление состояния. */
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    (*out)->resource_kind = ARRAY_OBJECT;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    (*out)->resource_result_valid = true;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_number(&(*out)->resource_result, length);
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    /* [GC:] Result builders use the cached system prototype without executing constructor getters. */
-    (*out)->prototype = builtin_result && c->array_builtin_prototype
-                           ? c->array_builtin_prototype : source ? source->prototype : 0;
-    /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!source && !(builtin_result && c->array_builtin_prototype))
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+    FVM_Result status = fvm_object_create(c, out);
+    if (status != FVM_OK)
+        return status;
+    FVM_Object *result = *out;
+    result->resource_kind = ARRAY_OBJECT;
+    result->resource_result_valid = true;
+    fvm_value_number(&result->resource_result, length);
+    /* Internal results never consult constructor properties, even without installed builtins. */
+    result->prototype = builtin_result ? c->array_builtin_prototype : source ? source->prototype : 0;
+    if (!source)
     {
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            c->constructors.find("Array");
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (ctor != c->constructors.end() && ctor->second.root)
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+        if (!builtin_result)
         {
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            FVM_Value prototype;
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            r = fvm_object_get(c, ctor->second.root, "prototype", &prototype);
-            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (r != FVM_OK)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return r;
-            /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (prototype.type == FVM_VALUE_OBJECT)
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                (*out)->prototype = prototype.object;
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-        }
-        /* Imported methods may create arrays in a context without globals.
-         * Such results still provide the native Array API and wire callbacks. */
-        /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (!(*out)->prototype)
-            /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-            for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor =
+                c->constructors.find("Array");
+            if (ctor != c->constructors.end() && ctor->second.root)
             {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                FVM_Value prototype;
+                status = fvm_object_get(c, ctor->second.root, "prototype", &prototype);
+                if (status != FVM_OK)
+                    return status;
+                if (prototype.type == FVM_VALUE_OBJECT)
+                    result->prototype = prototype.object;
+            }
+        }
+        /* Imported/internal results without a system prototype still expose native Array methods. */
+        if (!result->prototype)
+            for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
+            {
                 FVM_NativeEntry entry;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 entry.callback = c->swf_loaded && !std::strcmp(array_methods[i].name, "toLocaleString")
                                      ? object_locale : array_methods[i].callback;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                (*out)->methods[array_methods[i].name] = entry;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                (*out)->attributes[array_methods[i].name] = 1;
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+                result->methods[array_methods[i].name] = entry;
+                result->attributes[array_methods[i].name] = FVM_PROPERTY_DONT_ENUM;
             }
-        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    length_accessor(*out);
-    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    length_accessor(result);
     return FVM_OK;
-    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
 /* [GC:] Prepare only the unchanged empty native Array prototype captured by its

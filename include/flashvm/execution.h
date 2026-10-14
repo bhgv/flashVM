@@ -71,6 +71,11 @@ extern "C"
     /* Execute a logical operation; outputs may alias either retained input. */
     FVM_API FVM_Result fvm_exec_logical(FVM_Context *, FVM_ExecutionLogical,
                                        const FVM_Value *, const FVM_Value *, FVM_Value *);
+    /* Snapshot enumerable names into a native Array; loaded nonobjects return an empty Array.
+     * No primitive boxing or target getters run; loaded snapshots avoid script dispatch.
+     * Caller retains the result across later GC; host-only construction policy is preserved.
+     * [GC:] Input remains rooted; failure leaves output intact, including aliases. */
+    FVM_API FVM_Result fvm_exec_enumerate(FVM_Context *, const FVM_Value *, FVM_Value *);
     /* Delete an own member after name conversion; absent/inherited members report false. */
     FVM_API FVM_Result fvm_exec_delete_member(FVM_Context *, const FVM_Value *,
                                              const FVM_Value *, FVM_Value *);

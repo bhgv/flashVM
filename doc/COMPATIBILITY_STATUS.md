@@ -2368,3 +2368,13 @@ names and each currently accepted leading whitespace code point. SWF5/6/7 gates
 use existing version macros. The accepted set and conversion behavior are
 unchanged; full historical Unicode/coercion equivalence remains open.
 Числовые коды снабжены комментариями; разные назначения имеют отдельные имена.
+
+### v0.289 — value-based enumeration and loaded sentinel policy
+
+[ENUMERATION_SERVICE.md](ENUMERATION_SERVICE.md) records the shared C89 key
+snapshot service, loaded nonobject/empty-stack behavior and undefined sentinel.
+Enumerate stringifies its variable name once under roots; primitive enumeration
+does not call boxing constructors. Direct C, Action/GC and allocation fixtures
+cover SWF4–8, counted names and failure atomicity. Existing native key ordering
+is preserved; historical ordering and removed clips remain open.
+Примитивы больше не приводят к ошибке перечисления в загруженном SWF.

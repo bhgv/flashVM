@@ -369,3 +369,14 @@ ASan+UBSan checks pass (no stack/leak coverage), and all 26 original SWFs match
 per profile. Named numeric syntax and whitespace constants preserve the existing
 accepted set. Real JIT and Windows/macOS/Android verification remain absent.
 Все стадии 1–9 остаются открытыми.
+
+## v0.289 — value-based property enumeration
+
+Both Linux profiles pass all 565 tests after executable-launch repairs and
+reruns; original and retry logs remain separate. Four focused heap/global
+ASan+UBSan checks pass, without stack/leak coverage, and all 26 original SWFs
+match per profile. Loaded primitives/empty stacks now enumerate without errors,
+using undefined sentinels; name coercion, GC/exceptions, counted keys, allocation
+failures and callback-free snapshot construction are covered. Native key order
+is unchanged and historical ordering remains open. Real machine-code JIT and
+Windows/macOS/Android runs remain absent. Все стадии 1–9 остаются открытыми.

@@ -1209,30 +1209,43 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)
             {
                 if (stack.empty())
-                    return FVM_ERROR;
+                {
+                    if (!c->swf_loaded)
+                        return FVM_ERROR;
+                    FVM_Value missing;
+                    fvm_value_undefined(&missing);
+                    stack.push_back(missing);
+                }
                 FVM_Value target = stack.back();
-                FVM_Result r = FVM_OK;
+                FVM_Result status = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_ENUMERATE)
                 {
-                    if (target.type != FVM_VALUE_STRING)
+                    if (c->swf_loaded)
+                    {
+                        status = fvm_exec_to_string(c, &stack.back(), &target);
+                        if (status != FVM_OK)
+                            return status;
+                        /* [GC:] Keep the converted name alive through variable lookup getters. */
+                        stack.back() = target;
+                    }
+                    else if (target.type != FVM_VALUE_STRING)
                         return FVM_INVALID_ARGUMENT;
-                    r = lookup_variable_value(c, locals, self, target, &target);
+                    status = lookup_variable_value(c, locals, self, target, &target);
                 }
-                if (r != FVM_OK)
-                    return r;
-                if (target.type != FVM_VALUE_OBJECT)
-                    return FVM_INVALID_ARGUMENT;
-                FVM_Object *keys = 0;
-                r = fvm_object_enumerate(c, target.object, 1, &keys);
-                if (r != FVM_OK)
-                    return r;
+                if (status != FVM_OK)
+                    return status;
+                FVM_Value snapshot;
+                status = fvm_exec_enumerate(c, &target, &snapshot);
+                if (status != FVM_OK)
+                    return status;
                 stack.pop_back();
                 FVM_Value end;
                 fvm_value_undefined(&end);
-                end.type = FVM_VALUE_NULL;
+                if (!c->swf_loaded)
+                    end.type = FVM_VALUE_NULL;
                 stack.push_back(end);
-                for (size_t i = keys->indexed.size(); i > 0; --i)
-                    stack.push_back(keys->indexed.find((unsigned long)i - 1)->second);
+                for (size_t i = snapshot.object->indexed.size(); i > 0; --i)
+                    stack.push_back(snapshot.object->indexed.find((unsigned long)i - 1)->second);
             }
             else if (a.op == FVM_AVM1_ACTION_STRING_EQUALS || a.op == FVM_AVM1_ACTION_STRING_ADD ||
                      a.op == FVM_AVM1_ACTION_STRING_LESS || a.op == FVM_AVM1_ACTION_STRING_GREATER)
