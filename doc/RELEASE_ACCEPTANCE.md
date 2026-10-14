@@ -235,3 +235,11 @@ Member, qualified path and Delete2 services share concrete MovieClip namespace
 recognition while preserving has-own distinction and host aliases. Other virtual
 display fields, full path/property semantics, machine-code JIT and requested
 platform executions remain release gates. Все стадии 1–9 остаются открытыми.
+
+## v0.272 — display path bindings and SWF4 variable names
+
+Loaded root/parent references share explicit value lookup, preserving own fields
+and private preload provenance. SWF4 timeline this remains an ordinary binding;
+host compatibility descriptors remain separate. Full display/system fields,
+modern this cells, JIT and target-platform runs remain release gates.
+Все стадии 1–9 остаются открытыми.

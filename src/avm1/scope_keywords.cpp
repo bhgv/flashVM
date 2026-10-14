@@ -8,7 +8,7 @@ bool fvm_avm1_keyword_name(const fvm_detail::string &name, const char *expected,
                            bool sensitive)
 {
     if (sensitive)
-        return name == fvm_detail::string(expected);
+        return name.size() == units && !std::memcmp(name.data(), expected, units);
     size_t offset = 0;
     for (size_t i = 0; i < units; ++i)
     {
@@ -42,9 +42,50 @@ bool fvm_avm1_global_keyword(FVM_Context *c, const fvm_detail::string &name)
                                  !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7);
 }
 
-/* A concrete loaded MovieClip supplies its namespace after own slots and before prototypes. */
-bool fvm_avm1_movieclip_global(FVM_Context *c, FVM_Object *object, const fvm_detail::string &name)
+/* Resolve intrinsic display paths from private provenance, independently of replaceable fields. */
+FVM_Result fvm_avm1_movieclip_path_property(FVM_Context *c, FVM_Object *object,
+                                            const fvm_detail::string &name, FVM_Value *out,
+                                            int *present)
 {
-    return c->swf_loaded && object && object->resource_kind == FVM_RESOURCE_MOVIECLIP &&
-           !fvm_movieclip_is_class_prototype(object) && fvm_avm1_global_keyword(c, name);
+    if (!c || !out || !present || (object && object->owner != c))
+        return FVM_INVALID_ARGUMENT;
+    if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 || !object ||
+        object->resource_kind != FVM_RESOURCE_MOVIECLIP || fvm_movieclip_is_class_prototype(object))
+    {
+        *present = 0;
+        return FVM_OK;
+    }
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    if (fvm_avm1_global_keyword(c, name))
+    {
+        value.type = FVM_VALUE_OBJECT;
+        value.object = c->global;
+    }
+    else
+    {
+        bool sensitive = c->swf_info.version >= FVM_SWF_VERSION_7;
+        bool root = fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_ROOT_NAME,
+                                          FVM_SCOPE_KEYWORD_ROOT_UNITS, sensitive);
+        bool parent = !root && fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_PARENT_NAME,
+                                                     FVM_SCOPE_KEYWORD_PARENT_UNITS, sensitive);
+        if (!root && !parent)
+        {
+            *present = 0;
+            return FVM_OK;
+        }
+        FVM_Result status = fvm_movieclip_preload_display(c, object, parent, &value);
+        if (status != FVM_OK)
+            return status;
+        /* The low-level provenance helper retains its host null sentinel; property reads
+         * expose undefined for a parentless loaded clip. */
+        if (parent && value.type == FVM_VALUE_NULL)
+            fvm_value_undefined(&value);
+    }
+    FVM_Result validated = fvm_validate_value(c, &value);
+    if (validated != FVM_OK)
+        return validated;
+    *out = value;
+    *present = 1;
+    return FVM_OK;
 }

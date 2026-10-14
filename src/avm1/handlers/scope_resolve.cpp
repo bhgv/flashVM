@@ -57,11 +57,14 @@ extern "C" FVM_Result fvm_exec_scope_resolve(FVM_Context *c, FVM_Object *scope,
                     *with_scope = with ? 1 : 0;
                     return FVM_OK;
                 }
-                if (fvm_avm1_movieclip_global(c, cursor, key))
+                FVM_Value path_value;
+                int intrinsic = 0;
+                status = fvm_avm1_movieclip_path_property(c, cursor, key, &path_value, &intrinsic);
+                if (status != FVM_OK)
+                    return status;
+                if (intrinsic)
                 {
-                    fvm_value_undefined(out);
-                    out->type = FVM_VALUE_OBJECT;
-                    out->object = c->global;
+                    *out = path_value;
                     *owner = object;
                     *found = 1;
                     *with_scope = with ? 1 : 0;

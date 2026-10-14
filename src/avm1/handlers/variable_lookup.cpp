@@ -44,7 +44,9 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
             return status;
         FVM_Value &result = roots.values[FVM_VARIABLE_LOOKUP_RESULT_ROOT];
         FVM_Object *selected_receiver = default_receiver ? default_receiver : c->global;
-        bool implicit_this = receiver && this_keyword(c, local_scope != 0, key);
+        bool implicit_this = receiver &&
+                             (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5) &&
+                             this_keyword(c, local_scope != 0, key);
         int found = 0;
         if (implicit_this && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5)
         {
@@ -99,10 +101,12 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
                         found = 1;
                         break;
                     }
-                    if (fvm_avm1_movieclip_global(c, cursor, key))
+                    int intrinsic = 0;
+                    status = fvm_avm1_movieclip_path_property(c, cursor, key, &result, &intrinsic);
+                    if (status != FVM_OK)
+                        return status;
+                    if (intrinsic)
                     {
-                        result.type = FVM_VALUE_OBJECT;
-                        result.object = c->global;
                         selected_receiver = target;
                         found = 1;
                         break;

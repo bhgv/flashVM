@@ -3776,6 +3776,12 @@ FVM_Result fvm_movieclip_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
+/* Loaded reads/writes use intrinsic paths; only unloaded host execution exposes these descriptors. */
+bool fvm_movieclip_hidden_path_accessor(FVM_Context *c, const FVM_AccessorEntry &entry)
+{
+    return c->swf_loaded && (entry.getter == parent_get || entry.getter == root_get);
+}
+
 /* Read display provenance directly; parentless clips return the existing null sentinel. */
 FVM_Result fvm_movieclip_preload_display(FVM_Context *c, FVM_Object *clip, bool want_parent,
                                        FVM_Value *out)

@@ -22,6 +22,7 @@
 #include "../core/setter_scope.hpp"
 #include "../standard/super.hpp"
 #include "../avm1/scope_keywords.hpp"
+#include "../standard/movieclip_state.hpp"
 /* Validate value. */
 FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
 {
@@ -140,7 +141,8 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 o->accessors.find(name);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (accessor != o->accessors.end())
+            if (accessor != o->accessors.end() &&
+                !fvm_movieclip_hidden_path_accessor(c, accessor->second))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -210,13 +212,11 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_function_wrap_entry(c, o, name, method->second, out);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            /* Intrinsic display namespaces follow ordinary own members, before prototypes. */
-            if (fvm_avm1_movieclip_global(c, o, name))
-            {
-                out->type = FVM_VALUE_OBJECT;
-                out->object = c->global;
-                return FVM_OK;
-            }
+            /* Intrinsic display paths follow ordinary own members, before prototypes. */
+            int intrinsic = 0;
+            FVM_Result path_status = fvm_avm1_movieclip_path_property(c, o, name, out, &intrinsic);
+            if (path_status != FVM_OK || intrinsic)
+                return path_status;
             o = o->prototype;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
@@ -470,7 +470,8 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             cursor->accessors.find(name);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (found != cursor->accessors.end())
+        if (found != cursor->accessors.end() &&
+            !fvm_movieclip_hidden_path_accessor(c, found->second))
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -865,8 +866,11 @@ extern "C"
                 *out = o->prototype != 0;
                 return FVM_OK;
             }
-            *out = o->properties.find(key) != o->properties.end() ||
-                   o->accessors.find(key) != o->accessors.end() ||
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::const_iterator accessor =
+                o->accessors.find(key);
+            bool visible_accessor = accessor != o->accessors.end() &&
+                !fvm_movieclip_hidden_path_accessor(c, accessor->second);
+            *out = o->properties.find(key) != o->properties.end() || visible_accessor ||
                    o->methods.find(key) != o->methods.end();
             return FVM_OK;
         }

@@ -2223,3 +2223,13 @@ own/undefined/inherited, namespace-start and allocation fixtures accompany it.
 Generated SWF5 namespace expectations are corrected; independent oracle data is
 untouched. Ordinary property case folding, other display fields and all roadmap
 gates remain open. Общие правила `_global` применены к членам и путям.
+
+### v0.272 — ordinary SWF4 names and loaded root/parent intrinsics
+
+[DISPLAY_PATH_BINDINGS.md](DISPLAY_PATH_BINDINGS.md) records ordinary timeline
+this below SWF5, shared root/parent/global intrinsic lookup, own-slot precedence,
+parentless undefined and private preload identity. Loaded execution bypasses the
+host root/parent compatibility descriptors; custom accessors remain visible.
+C89/action, legacy assigned-name, modern root-shadow and four-path allocator
+fixtures cover the change. Other system fields, levels/casing, mutable this and
+all roadmap gates remain open. Уточнены версии и собственные привязки путей.

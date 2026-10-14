@@ -98,12 +98,14 @@ FVM_Result property(FVM_Context *c, FVM_Object *receiver, const fvm_detail::stri
                 *present = true;
             return fvm_object_get_bytes(c, receiver, spelling.data(), spelling.size(), &out);
         }
-        if (fvm_avm1_movieclip_global(c, cursor, name))
+        int intrinsic = 0;
+        FVM_Result status = fvm_avm1_movieclip_path_property(c, cursor, name, &out, &intrinsic);
+        if (status != FVM_OK)
+            return status;
+        if (intrinsic)
         {
             if (present)
                 *present = true;
-            out.type = FVM_VALUE_OBJECT;
-            out.object = c->global;
             return FVM_OK;
         }
         cursor = cursor->prototype;

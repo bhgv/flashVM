@@ -39,10 +39,12 @@ static FVM_Result visit_member(FVM_Context *c, FVM_Object *start, FVM_Object *di
             }
             return status;
         }
-        if (fvm_avm1_movieclip_global(c, cursor, name))
+        int intrinsic = 0;
+        status = fvm_avm1_movieclip_path_property(c, cursor, name, &result, &intrinsic);
+        if (status != FVM_OK)
+            return status;
+        if (intrinsic)
         {
-            result.type = FVM_VALUE_OBJECT;
-            result.object = c->global;
             found = true;
             owner = object;
             source_owner = cursor;
