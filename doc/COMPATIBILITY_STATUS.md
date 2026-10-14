@@ -2334,3 +2334,11 @@ channels. Graph v9 is emitted only for new snapshot state; ordinary graphs remai
 byte-compatible v8 and schemas 1–8 still decode. Allocation rollback and malformed
 flags are covered. Historical player/count differences and full roadmap gates
 remain open. Снимки интерфейсов сохраняются при смене поля конструктора и переносе.
+
+### v0.285 — value-based Extends
+
+[EXTENDS_SERVICE.md](EXTENDS_SERVICE.md) records ordered primitive boxing,
+ordinary superclass prototype getters, fresh own metadata and final subclass
+setters. Direct C and Action fixtures cover SWF4–8; GC, exception and allocation
+fixtures cover intermediate lifetimes. Host strict class policy is preserved.
+Полная совместимость и все девять стадий остаются открытыми.

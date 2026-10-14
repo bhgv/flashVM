@@ -127,6 +127,10 @@ extern "C"
      * [GC:] Retains receiver, defining prototype, function and arguments through getters/body. */
     FVM_API FVM_Result fvm_exec_invoke_member(FVM_Context *, FVM_Object *, const FVM_Value *name,
                                                unsigned int argc, const FVM_Value *argv, FVM_Value *out);
+    /* Establish loaded prototype inheritance with superclass-before-subclass boxing.
+     * [GC:] Retains operands, getter results and fresh metadata through subclass setters. */
+    FVM_API FVM_Result fvm_exec_extends(FVM_Context *, const FVM_Value *subclass,
+                                         const FVM_Value *superclass);
     /* Convert an ImplementsOp count; loaded objects yield zero without valueOf callbacks. */
     FVM_API FVM_Result fvm_exec_interface_count(FVM_Context *, const FVM_Value *,
                                                  size_t available, unsigned int *out);

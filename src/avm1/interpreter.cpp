@@ -907,15 +907,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_EXTENDS)
             {
-                /* Extends pops superclass first and does not execute either constructor. */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT ||
-                    stack[stack.size() - 2].type != FVM_VALUE_OBJECT)
-                    return FVM_INVALID_ARGUMENT;
-                FVM_Result r =
-                    fvm_class_extend(c, stack[stack.size() - 2].object, stack.back().object);
-                if (r != FVM_OK)
-                    return r;
-                stack.resize(stack.size() - 2);
+                if (stack.size() < FVM_AVM1_EXTENDS_OPERANDS)
+                    return FVM_ERROR;
+                FVM_Result status = fvm_exec_extends(c,
+                    &stack[stack.size() - FVM_AVM1_EXTENDS_OPERANDS], &stack.back());
+                if (status != FVM_OK)
+                    return status;
+                stack.resize(stack.size() - FVM_AVM1_EXTENDS_OPERANDS);
             }
             else if (a.op == FVM_AVM1_ACTION_IMPLEMENTS)
             {

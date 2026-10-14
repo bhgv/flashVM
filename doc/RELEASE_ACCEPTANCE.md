@@ -334,3 +334,12 @@ survive graph validation, GC, memory/file channels and localhost broker transfer
 New snapshot graphs require a schema-9-capable reader; ordinary graphs remain
 schema 8. Real JIT and Windows/macOS/Android runs remain absent.
 Все стадии 1–9 остаются открытыми.
+
+## v0.285 — ordered Extends service
+
+Both Linux profiles pass all 559 tests; AGG required executable-permission repair
+and reruns for launch failures, with original and retry logs retained separately.
+Four focused heap/global ASan+UBSan checks pass (no stack/leak coverage), and all
+26 original SWFs match per profile. Loaded Extends now shares a value-based C ABI
+with ordered boxing and rooted getter/setter dispatch. Actual machine-code JIT
+and Windows/macOS/Android runs remain absent. Все стадии 1–9 остаются открытыми.
