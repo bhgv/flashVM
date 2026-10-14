@@ -125,6 +125,10 @@ extern "C"
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
                                                 unsigned int index, const FVM_Value *value,
                                                 FVM_Value *out);
+    /* Convert with loaded SWF string policy; otherwise use ordinary host conversion.
+     * [GC:] Retains input through callbacks; errors preserve out and aliasing is allowed.
+     * An unchanged input string remains borrowed under the ordinary value ownership contract. */
+    FVM_API FVM_Result fvm_exec_to_string(FVM_Context *, const FVM_Value *, FVM_Value *out);
     /* Convert a count and cap it to available values under loaded AVM1 policy.
      * Unloaded hosts require a nonnegative integral number and sufficient values.
      * Actual counts above the method-service bound fail; errors preserve out. */

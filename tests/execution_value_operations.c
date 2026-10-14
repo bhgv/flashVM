@@ -3,6 +3,7 @@
 #include "flashvm/standard.h"
 #include "flashvm/property.h"
 #include <assert.h>
+#include <string.h>
 int main(void)
 {
     FVM_Config cfg;FVM_Runtime *rt;unsigned version;
@@ -11,6 +12,8 @@ int main(void)
         FVM_Context *c;FVM_Object *o,*p;FVM_Value a,b,out,owner,key;unsigned count;
         unsigned char swf[]={'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};swf[3]=(unsigned char)version;
         assert(fvm_context_create(rt,&c)==FVM_OK && fvm_load_memory(c,swf,sizeof(swf))==FVM_OK && fvm_standard_install(c)==FVM_OK);
+        fvm_value_boolean(&a,1);assert(fvm_exec_to_string(c,&a,&a)==FVM_OK && a.type==FVM_VALUE_STRING && !strcmp(a.string,version==4?"1":"true"));
+        fvm_value_undefined(&a);assert(fvm_exec_to_string(c,&a,&out)==FVM_OK && !strcmp(out.string,version<7?"":"undefined"));
         fvm_value_string(&a,"9");assert(fvm_exec_argument_count(c,&a,2,&count)==FVM_OK && count==2);
         fvm_value_string(&a,"0");
         assert(fvm_exec_logical(c,FVM_EXEC_LOGICAL_NOT,&a,0,&a)==FVM_OK && a.type==FVM_VALUE_BOOLEAN && a.boolean==(version<7));

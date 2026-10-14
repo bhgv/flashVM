@@ -1258,8 +1258,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_NEW_OBJECT)
             { /* NewObject: separate named native constructor registry. */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
+                if (stack.size() < 2 || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
+                if (c->swf_loaded)
+                {
+                    FVM_Value name;
+                    FVM_Result name_status = fvm_exec_to_string(c, &stack.back(), &name);
+                    if (name_status != FVM_OK)
+                        return name_status;
+                    stack.back() = name;
+                }
                 unsigned int argc = 0;
                 if (c->swf_loaded)
                 {
@@ -1485,7 +1493,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     r = fvm_value_string(&output, name);
                 }
                 else if (a.op == FVM_AVM1_ACTION_TO_STRING)
-                    r = fvm_avm1_string(c, input, &output);
+                    r = fvm_exec_to_string(c, &input, &output);
                 else
                 {
                     double number = 0;
@@ -1761,8 +1769,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL_FUNCTION)
             { /* CallFunction: args, argc, name (top) */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
+                if (stack.size() < 2 || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
+                if (c->swf_loaded)
+                {
+                    FVM_Value name;
+                    FVM_Result name_status = fvm_exec_to_string(c, &stack.back(), &name);
+                    if (name_status != FVM_OK)
+                        return name_status;
+                    stack.back() = name;
+                }
                 fvm_detail::string name;
                 FVM_Result normalized =
                     fvm_property_key(stack.back().string, fvm_string_size(stack.back()), name);

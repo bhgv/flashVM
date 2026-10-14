@@ -25,5 +25,9 @@ int main()
     assert(fvm_exec_argument_count(c,&a,1,&count)==FVM_OUT_OF_MEMORY);
     allowance=-1;assert(count==99 && c->gc_frames==roots);
     assert(fvm_exec_argument_count(c,&a,1,&count)==FVM_OK && count==1);
+    fvm_value_number(&out,99);allowance=0;
+    assert(fvm_exec_to_string(c,&a,&out)==FVM_OUT_OF_MEMORY);
+    allowance=-1;assert(out.type==FVM_VALUE_NUMBER && out.number==99 && c->gc_frames==roots);
+    assert(fvm_exec_to_string(c,&a,&out)==FVM_OK && out.type==FVM_VALUE_STRING);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
 }

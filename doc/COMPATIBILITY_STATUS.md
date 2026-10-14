@@ -1969,3 +1969,12 @@ SWF4–8 cases, retained unloaded-host bounds and open name/dispatch policies.
 
 Подключены оставшиеся именованные виды вызовов к преобразованию счётчика;
 это проверенная часть стадии 2, не закрытие общей приёмки.
+
+## v0.245 — shared string coercion and named-call names
+
+Loaded named calls/constructors, method names and ToString share the C89
+string-conversion service. [AVM1_NAMED_NAME_VALUES.md](AVM1_NAMED_NAME_VALUES.md)
+records callback order, result ownership, GC/exception checks and open lookup policy.
+
+Преобразование имени выполняется до счётчика, а полученная строка удерживается
+до дальнейших callbacks. Это частичная проверка стадии 2; JIT ещё отсутствует.

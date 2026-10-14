@@ -62,7 +62,7 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         if (source_name.type != FVM_VALUE_UNDEFINED &&
             (c->swf_loaded || source_name.type != FVM_VALUE_NULL))
         {
-            FVM_Result converted = fvm_avm1_string(c, source_name, &text);
+            FVM_Result converted = fvm_exec_to_string(c, &source_name, &text);
             if (converted != FVM_OK)
                 return converted;
             converted = fvm_property_key(text.string, fvm_string_size(text), name);
