@@ -138,8 +138,22 @@ FVM_Result value(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, 
     return FVM_OK;
 }
 
+/* Read the Flash hour projection, including its half-millisecond boundary rule. */
+double loaded_hours(double time)
+{
+    double hour = std::fmod(std::floor((time + 0.5) / 3600000.0), 24.0);
+    return hour < 0 ? hour + 24.0 : hour;
+}
+
+/* Read integer milliseconds using truncation before negative remainder normalization. */
+double loaded_milliseconds(double time)
+{
+    int millisecond = (int)std::fmod(time, 1000.0);
+    return millisecond < 0 ? millisecond + 1000 : millisecond;
+}
+
 /* Read the current value. */
-FVM_Result get(FVM_Context *, FVM_Object *o, FVM_Value *out, int field, bool utc)
+FVM_Result get(FVM_Context *c, FVM_Object *o, FVM_Value *out, int field, bool utc)
 {
     if (!date(o))
         return FVM_INVALID_ARGUMENT;
@@ -165,6 +179,10 @@ FVM_Result get(FVM_Context *, FVM_Object *o, FVM_Value *out, int field, bool utc
                : field == 7 ? f.weekday
                : field == 8 ? f.year - 1900
                             : -east;
+    if (c->swf_loaded && field == 3)
+        v = loaded_hours(t + east * 60000);
+    else if (c->swf_loaded && field == 6)
+        v = loaded_milliseconds(t + east * 60000);
     fvm_value_number(out, v);
     return FVM_OK;
 }
@@ -322,6 +340,8 @@ FVM_Result format_time(FVM_Context *c, double t, FVM_Value *out)
 
     /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
+    if (c->swf_loaded)
+        f.hour = loaded_hours(t + east * 60000);
     const char *week[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};

@@ -1745,3 +1745,21 @@ Evidence: AGG 362/Cairo 361 full tests, ten focused checks each in Linux portabl
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Two AGG and two Cairo launch failures passed after restoring
 execute bits. Expanded invalid-Date fixture passed separately in all profiles.
+
+## v0.202 — fractional Date field projections / поля Date
+
+Loaded millisecond getters truncate signed remainders before normalization;
+hours use the half-millisecond boundary projection, shared with local Date text.
+Timestamp data and unloaded behavior remain unchanged. [RU/EN details](DATE_LEGACY_FIELDS.md).
+Tests cover SWF4–8 exact UTC fractions/hour/day boundaries, positive zero,
+integer local milliseconds and hour/text consistency. Original Date SWF has
+header 17 and is excluded unchanged from the SWF≤8 corpus; source and its 5.5-ms
+output support the projection rules. Actual Player boundary verification,
+calendar setters/version arithmetic, timezone fidelity and all stages stay open.
+
+Исправлены целые milliseconds и историческая граница hours; первоначальное
+ожидание равенства local/UTC milliseconds заменено корректной проверкой диапазона.
+
+Evidence: AGG 363/Cairo 362 full tests, eight focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. No launch failures in the full runs.
