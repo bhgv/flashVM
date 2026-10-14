@@ -8,6 +8,8 @@ preload/suppression flags. Each invocation has private registers; nested try
 blocks share the current invocation's registers. Parameters are copied first;
 selected preloads overwrite their assigned register positions afterwards.
 `this`, `arguments`, `_root`, `_parent` and `_global` preloads are supported.
+v0.218 preserves enclosing arguments/super names when preload/suppress is set:
+[named scope](AVM1_FUNCTION2_NAMED_SCOPE.md).
 v0.216 corrects display provenance and absent-parent slot allocation:
 [display preloads](AVM1_DISPLAY_PRELOADS.md).
 Reserved flag bits, insufficient register capacity and out-of-range parameter
@@ -61,7 +63,9 @@ The flag and preload layout follows Adobe's SWF file-format specification
 ## Русский
 
 Добавлены разбор `ActionDefineFunction2`, приватные регистры каждого вызова,
-регистровые параметры и preloads `this`, `arguments`, `_root`, `_parent`, `_global`. В v0.216 уточнены базовый клип и регистр при
+регистровые параметры и preloads `this`, `arguments`, `_root`, `_parent`, `_global`. Именованные arguments/super при preload/suppress
+с v0.218 наследуются из окружающей области: [named scope](AVM1_FUNCTION2_NAMED_SCOPE.md).
+В v0.216 уточнены базовый клип и регистр при
 отсутствующем родителе: [display preloads](AVM1_DISPLAY_PRELOADS.md).
 Вложенные блоки try используют регистры текущего вызова. Параметры записываются
 раньше preloads; пересечение регистров приводит к перезаписи параметра preload.

@@ -592,9 +592,13 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
         FVM_Value implicit_arguments = value;
         if (fn.function2 && (fn.flags & 8))
             fvm_value_undefined(&value);
-        stored = fvm_object_set(c, activation, "arguments", &value);
-        if (stored != FVM_OK)
-            return stored;
+        /* Loaded preload/suppression leaves the named lookup in its enclosing scope. */
+        if (!c->swf_loaded || !fn.function2 || !(fn.flags & 12))
+        {
+            stored = fvm_object_set(c, activation, "arguments", &value);
+            if (stored != FVM_OK)
+                return stored;
+        }
         /* Explicit parameters can shadow the implicit arguments binding. */
 
         {
@@ -611,9 +615,12 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
             FVM_Value named_super = implicit_super;
             if (fn.function2 && (fn.flags & 32))
                 fvm_value_undefined(&named_super);
-            stored = fvm_object_set(c, activation, "super", &named_super);
-            if (stored != FVM_OK)
-                return stored;
+            if (!c->swf_loaded || !fn.function2 || !(fn.flags & 48))
+            {
+                stored = fvm_object_set(c, activation, "super", &named_super);
+                if (stored != FVM_OK)
+                    return stored;
+            }
         }
         for (size_t i = 0; i < fn.parameters.size(); ++i)
         {
