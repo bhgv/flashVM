@@ -2274,3 +2274,11 @@ conversion exceptions and allocation failures. Real SWF4–8 action dispatch
 accepts numeric names; unloaded host calls retain their String requirement.
 Mutable this, removed clips and target mutation remain open. Преобразование
 выполняется до записи; все стадии роудмапа остаются открытыми.
+
+### v0.278 — qualified DefineLocal2 undefined results
+
+[VARIABLE_DECLARATIONS.md](VARIABLE_DECLARATIONS.md) records value-based qualified
+initialization checks, getter/setter dispatch, exceptions and SWF4 display-value
+filtering. C89/action/allocator fixtures cover the change. The old generated
+undefined-getter assertion is corrected against the pinned primary implementation.
+Simple declarations remain presence-based. Все стадии роудмапа остаются открытыми.

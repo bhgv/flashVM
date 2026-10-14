@@ -73,17 +73,12 @@ extern "C" FVM_Result fvm_exec_variable_declare(FVM_Context *c, FVM_Object *scop
         {
             if (!initialized)
             {
-                int handled = 0, present = 0;
                 FVM_Value &existing = roots.values[FVM_VARIABLE_DECLARE_EXISTING_ROOT];
-                status = fvm_exec_variable_path(c, scope, destination, receiver, &text, &existing,
-                                                &handled, &present);
-                if (status == FVM_OK && !handled)
-                {
-                    FVM_Object *ignored_receiver = 0;
-                    status = fvm_exec_variable_lookup(c, scope, destination, receiver, 0, 0, &text,
-                                                      &existing, &ignored_receiver, &present);
-                }
-                if (status != FVM_OK || present)
+                status =
+                    fvm_exec_get_variable(c, scope, destination, receiver, 0, &text, &existing);
+                /* Qualified DefineLocal2 tests the read value, including getters, rather
+                 * than membership. An existing undefined value still receives a write. */
+                if (status != FVM_OK || existing.type != FVM_VALUE_UNDEFINED)
                     return status;
             }
             return fvm_exec_variable_set(c, scope, destination, receiver, &text,

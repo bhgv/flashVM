@@ -15,8 +15,9 @@ write undefined to an existing outer binding when an inner With object lacks it,
 following the reference implementation's current-object check.
 
 At top level, dot/colon declarations use shared path assignment. The uninitialized
-variant first performs the corresponding variable read and skips an existing
-binding, including a present undefined. This qualified read can invoke getters or
+variant first performs the corresponding variable read and skips a value other
+than undefined. Since v0.278 an existing undefined value receives a write too;
+this corrects the earlier membership-based qualified check. This qualified read can invoke getters or
 throw; it is different from the getter-free simple declaration check. In local
 activations, separator-containing declaration names are literal. Loaded empty names
 are ignored after coercion. Unloaded host activation declarations retain their
@@ -59,3 +60,27 @@ original SWF<=8 traces matched in each profile. Fixtures include new-function GC
 inside a setter and qualified uninitialized getter/exception behavior.
 Проверено по 497 тестов AGG/Cairo, 13 выбранных проверок памяти и 26 исходных
 эталонов каждого профиля. Полная совместимость и стадии роудмапа ещё открыты.
+
+## v0.278 — qualified undefined read results
+
+Qualified DefineLocal2 now calls the complete GetVariable service before deciding
+whether to assign. A getter returning undefined triggers the setter; a non-undefined
+result skips it. Getter exceptions prevent assignment. SWF4 concrete MovieClip
+read results pass through its existing undefined filter, unlike SWF5–8 results.
+Simple-name declarations keep their getter-free presence test. The v0.262 generated
+callback fixture incorrectly forbade a setter after an undefined read; that
+expectation is corrected against the same pinned primary action implementation.
+Independent SWFs/oracles are unchanged.
+
+Верхнеуровневый DefineLocal2 с составным именем проверяет результат чтения, а не
+наличие свойства. Getter с результатом undefined вызывает последующую запись;
+исключение прерывает её. Локальные имена и обычная проверка наличия не изменены.
+Новые тесты вызывают C-интерфейс и реальные Action-коды SWF4–8, проверяют GC в
+скриптовом getter и границы отказов памяти. Полная семантика областей ещё открыта.
+
+Validation v0.278: 532 tests pass in each Linux AGG/Cairo profile, after restoring
+execute permissions and rerunning 14 BAD_COMMAND cases per profile. Six focused
+heap/global ASan+UBSan checks pass (stack/leak coverage excluded). The first new
+fixture incorrectly requested collection inside a protected native accessor; it
+was replaced with a bound script getter so the GC assertion exercises supported
+reentrancy. All 26 unchanged original SWFs match in both profiles.
