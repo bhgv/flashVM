@@ -80,6 +80,10 @@ int main()
     FVM_Value suppressed = define(c, "suppressed", 0, 32, suppressed_body);
     assert(fvm_object_set(c, prototype(c, sub), "suppressed", &suppressed) == FVM_OK);
     assert(fvm_object_call(c, instance, "suppressed", 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
+    Bytes paired_body; reg(paired_body, 1); result(paired_body);
+    FVM_Value paired = define(c, "paired", 1, 48, paired_body);
+    assert(fvm_object_set(c, prototype(c, sub), "paired", &paired) == FVM_OK);
+    assert(fvm_object_call(c, instance, "paired", 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
     Bytes throwing_body; text(throwing_body, "parent failure"); throwing_body.push_back(0x2a); throwing_body.push_back(0);
     FVM_Value throwing = define(c, "throwing", 0, 32, throwing_body);
     assert(fvm_object_set(c, prototype(c, base), "throwing", &throwing) == FVM_OK);

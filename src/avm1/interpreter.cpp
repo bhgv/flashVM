@@ -609,6 +609,12 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
             common[0].object = receiver ? receiver : c->global;
             common[1] = implicit_arguments;
             common[2] = implicit_super;
+            /* Paired flags suppress preloaded this/super, but arguments still
+             * preloads its object even when its named binding is suppressed. */
+            if (fn.flags & 2)
+                fvm_value_undefined(common);
+            if (fn.flags & 32)
+                fvm_value_undefined(common + 2);
             if (receiver && (fn.flags & 64))
             {
                 stored = fvm_object_get(c, receiver, "_root", common + 3);

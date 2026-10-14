@@ -8,8 +8,10 @@ preload/suppression flags. Each invocation has private registers; nested try
 blocks share the current invocation's registers. Parameters are copied first;
 selected preloads overwrite their assigned register positions afterwards.
 `this`, `arguments`, `_root`, `_parent` and `_global` preloads are supported.
-Reserved flag bits, conflicting preload/suppress pairs, insufficient register
-capacity and out-of-range parameter registers are rejected.
+Reserved flag bits, insufficient register capacity and out-of-range parameter
+registers are rejected. v0.214 accepts simultaneous preload/suppress flags; see
+[paired flags](AVM1_FUNCTION2_FLAGS.md). Super dispatch/preloads were added in
+v0.23; see [super checkpoint](AVM1_SUPER.md).
 
 Named formal parameters and their corresponding `arguments` indices share an
 activation binding through native accessors. Duplicate names alias only the last
@@ -46,11 +48,10 @@ when repeated after restoring permissions. Sanitizer constraints remain: no stac
 ASan or LeakSanitizer, container allocation-failure tests use UBSan only, and SQLite
 is excluded from this sanitizer profile.
 
-Remaining work: genuine `super` dispatch and its constructor/method receiver rules,
-register-parameter alias policy, exact suppression/scope behavior across SWF
-versions, exhaustive malformed-input and independent-process transfer coverage.
-`PreloadSuper` returns `FVM_UNSUPPORTED`; the named `super` binding is currently
-undefined. This checkpoint does not complete Function2, AVM1 or roadmap stage 2.
+Remaining work: full native superclass payloads, register-parameter alias policy,
+exact inherited suppression/scope behavior across SWF versions, exhaustive
+malformed-input and independent-process transfer coverage. Super preloads and
+receiver/owner dispatch now follow the v0.23 checkpoint. This checkpoint does not complete Function2, AVM1 or roadmap stage 2.
 The flag and preload layout follows Adobe's SWF file-format specification
 ([archived Adobe PDF](https://www.flashrealtime.com/content/dam/Adobe/en/devnet/swf/pdf/swf_file_format_spec_v10.pdf)).
 
@@ -60,8 +61,10 @@ The flag and preload layout follows Adobe's SWF file-format specification
 регистровые параметры и preloads `this`, `arguments`, `_root`, `_parent`, `_global`.
 Вложенные блоки try используют регистры текущего вызова. Параметры записываются
 раньше preloads; пересечение регистров приводит к перезаписи параметра preload.
-Проверяются зарезервированные биты, конфликтующие preload/suppress-флаги,
-недостаточное число регистров и неверные номера регистров параметров.
+Проверяются зарезервированные биты, недостаточное число регистров и неверные
+номера регистров параметров. С v0.214 совместные preload/suppress допустимы:
+[правила парных флагов](AVM1_FUNCTION2_FLAGS.md). Super/preloads добавлены в
+v0.23: [контрольная точка super](AVM1_SUPER.md).
 
 Именованные параметры связаны с индексами `arguments` через аксессоры и общий
 объект активации. Для повторяющихся имён связан только последний именованный
@@ -85,7 +88,7 @@ arguments/дескриптор/активация собирается. Масс
 повторно собран и выполнен во всех профилях; запуск бинарников с утраченными правами
 доступа повторён после восстановления прав. Ограничения санитайзеров указаны явно.
 
-Открыты полноценный `super`, связанность регистровых параметров, точные правила
-suppress/областей видимости для версий SWF и исчерпывающие проверки повреждённых
-данных и межпроцессной передачи. `PreloadSuper` возвращает `FVM_UNSUPPORTED`,
-именованный `super` пока равен undefined. Этап 2 плана и Function2 целиком не закрыты.
+Открыты нативные суперклассы, связанность регистровых параметров, точные правила
+унаследованных suppress/областей видимости для версий SWF и исчерпывающие проверки
+повреждённых данных и межпроцессной передачи. Super/preloads уже реализованы в
+объёме v0.23. Этап 2 плана и Function2 целиком не закрыты.

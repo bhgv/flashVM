@@ -5,6 +5,7 @@
 #include "flashvm/transfer.h"
 #include "flashvm/gc.h"
 #include "flashvm/property.h"
+#include "flashvm/table.h"
 #include "../src/details/vector.hpp"
 #include <cassert>
 #include <cstring>
@@ -88,7 +89,7 @@ static void end(Bytes &b)
 }
 int main()
 {
-    const unsigned int invalid_flags[] = {3, 12, 48, 512};
+    const unsigned int invalid_flags[] = {512, 1024, 65535};
     for (size_t i = 0; i < sizeof(invalid_flags) / sizeof(invalid_flags[0]); ++i)
     {
         Bytes code;
@@ -270,6 +271,41 @@ int main()
         fn = define(c, 1, 16, 0, 0, 0, body);
         assert(fvm_function_invoke(c, fn, self, 0, 0, &out) == FVM_OK &&
                out.type == FVM_VALUE_UNDEFINED);
+    }
+    {
+        const unsigned int paired[] = {3, 12, 48, 63, 63, 63};
+        const unsigned int selected[] = {1, 1, 1, 1, 2, 3};
+        fvm_value_number(&arg, 17);
+        for (unsigned int i = 0; i < 6; ++i)
+        {
+            Bytes body;
+            reg(body, selected[i]);
+            end(body);
+            fn = define(c, paired[i] == 63 ? 3 : 1, paired[i], 0, 0, 0, body);
+            assert(fvm_gc_pin(c, fn) == FVM_OK);
+            assert(fvm_gc_collect(c, 0) == FVM_OK);
+            bool is_arguments = paired[i] == 12 || selected[i] == 2;
+            assert(fvm_function_invoke(c, fn, self, 1, &arg, &out) == FVM_OK);
+            if (is_arguments)
+            {
+                assert(out.type == FVM_VALUE_OBJECT);
+                assert(fvm_table_get_index(c, out.object, 0, &copy) == FVM_OK && copy.number == 17);
+            }
+            else
+                assert(out.type == FVM_VALUE_UNDEFINED);
+            fvm_value_undefined(&copy); copy.type = FVM_VALUE_OBJECT; copy.object = fn;
+            assert(fvm_channel_send_value(c, channel, &copy, 0) == FVM_OK);
+            assert(fvm_channel_receive_value(other, channel, &copy, 0) == FVM_OK);
+            assert(fvm_function_invoke(other, copy.object, 0, 1, &arg, &out) == FVM_OK);
+            if (is_arguments)
+            {
+                assert(out.type == FVM_VALUE_OBJECT);
+                assert(fvm_table_get_index(other, out.object, 0, &copy) == FVM_OK && copy.number == 17);
+            }
+            else
+                assert(out.type == FVM_VALUE_UNDEFINED);
+            assert(fvm_gc_unpin(c, fn) == FVM_OK);
+        }
     }
     assert(fvm_gc_unpin(c, self) == FVM_OK);
     fvm_channel_destroy(channel);

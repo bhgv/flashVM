@@ -20,10 +20,10 @@ struct FVM_FunctionRecord
     unsigned int flags;          /* Preload and implicit-binding suppression bits. */
     bool function2;              /* Whether this record uses the DefineFunction2 layout. */
 };
-/* Reject reserved bits and mutually exclusive preload/suppress pairs. */
+/* Reject reserved bits; preload and suppression may be set simultaneously. */
 inline bool fvm_function2_flags_valid(unsigned int flags)
 {
-    return !(flags & ~511U) && (flags & 3U) != 3U && (flags & 12U) != 12U && (flags & 48U) != 48U;
+    return !(flags & ~511U);
 }
 
 /* Standard DefineFunction puts its code after the action header. Accept the
