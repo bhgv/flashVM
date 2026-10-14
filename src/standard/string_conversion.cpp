@@ -3,6 +3,7 @@
  */
 
 #include "primitive_state.hpp"
+#include "../avm1/number_text.hpp"
 #include "../core/string_internal.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
@@ -45,6 +46,8 @@ FVM_Result owned_string(FVM_Context *c, const char *text, FVM_Value *out,
 /* Compute and return number string. */
 FVM_Result number_string(FVM_Context *c, double number, FVM_Value *out)
 {
+    if (c->swf_loaded)
+        return fvm_avm1_number_text(c, number, out);
     if (number != number)
         return fvm_value_string(out, "NaN");
     if (number == 0)

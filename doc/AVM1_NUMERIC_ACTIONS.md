@@ -154,3 +154,7 @@ avm1_relational_results проверяет undefined для NaN/нечислов
 расходятся из-за this/root и других версионных правил, поэтому не закрыты.
 Primary cross-check: pinned Ruffle abstract_lt/action_greater implementations
 linked in this document; original external expected traces also require undefined.
+
+Subsequent correction / Позднейшее исправление v0.229: loaded StrictEquals also
+recognizes a pair of numeric NaNs. See AVM1_NUMBER_TEXT.md and the unchanged
+strictequals_swf6 oracle; earlier StrictEquals distinctions describe the old implementation.

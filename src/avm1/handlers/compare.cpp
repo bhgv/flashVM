@@ -198,7 +198,13 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
     {
         if (operation == FVM_EXEC_STRICT_EQUAL)
         {
-            fvm_value_boolean(out, strict_equal(*left_value, *right_value));
+            bool matches = strict_equal(*left_value, *right_value);
+            /* Loaded AVM1 strict equality uses the player's same-type NaN pair rule. */
+            if (c->swf_loaded && left_value->type == FVM_VALUE_NUMBER &&
+                right_value->type == FVM_VALUE_NUMBER && left_value->number != left_value->number &&
+                right_value->number != right_value->number)
+                matches = true;
+            fvm_value_boolean(out, matches);
             return FVM_OK;
         }
         /* [GC:] Retain transformed primitives and derived strings across subsequent callbacks. */

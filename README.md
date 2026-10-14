@@ -1,5 +1,5 @@
-Development version: **0.228** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.228 ` and an English description. Increase the subversion before each
+Development version: **0.229** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.229 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -10,8 +10,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.228** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.228 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.229** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.229 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -443,3 +443,5 @@ bodies for future JIT reuse; file map, GC contract, tests and limitations:
 Raw prototype primitive retention / Raw-значения прототипа: [RU/EN](doc/OBJECT_RAW_PROTOTYPE.md).
 
 Shared execution budget/GC/stop checkpoints / Общие контрольные точки: [RU/EN](doc/EXECUTION_CHECKPOINT.md).
+
+Loaded numeric text and strict NaN / Числовой текст и строгий NaN: [RU/EN](doc/AVM1_NUMBER_TEXT.md).
