@@ -1650,3 +1650,22 @@ customized native layouts, C malloc failures and all stages remain open.
 Evidence: AGG 357/Cairo 356 full tests, five focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. No launch failures in the full runs.
+
+## v0.197 — ordinary Array prototype / прототип Array
+
+Loaded Array.prototype is ordinary Object without native length. Both install
+orders preserve identity/methods/properties and the cached result prototype;
+existing Arrays remain native. Generic push creates ordinary writable length.
+Array preparation joins the atomic primitive activation, with retained keys
+for allocation-free commit. [RU/EN details](ARRAY_LEGACY_PROTOTYPE.md). Tests cover
+invalid loads, NUL marker, old instances, slice results, GC/channel/GC, restored
+class construction and joint OOM recovery/allocation balance. Customized layouts,
+other prototypes, C malloc failures and all roadmap stages remain open.
+
+Исправлены Array.prototype и его совместная активация без native length;
+проверены методы generic объекта и прототипы результата slice.
+
+Evidence: AGG 358/Cairo 357 full tests, thirty-two focused checks each in Linux
+portable and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen
+byte-exact original SWFs. One AGG and two Cairo launch failures passed after
+restoring execute bits.

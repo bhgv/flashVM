@@ -11,6 +11,21 @@ FVM_Result fvm_base_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 
+/* [GC:] Prepared Array prototype references remain owned by its constructor root.
+ * Stored key addresses let the commit erase descriptors without allocating strings. */
+struct FVM_ArrayPrototypeActivation
+{
+    FVM_Object *prototype; /* Candidate native empty prototype, or null to skip activation. */
+    const fvm_detail::string *length_key; /* Native length accessor key retained until commit. */
+    const fvm_detail::string *flags_key; /* Matching default length attributes key. */
+    /* Start with no candidate or retained descriptor keys. */
+    FVM_ArrayPrototypeActivation() : prototype(0), length_key(0), flags_key(0) {}
+};
+/* Prepare an unchanged host Array prototype without mutation; allocating lookups may throw. */
+void fvm_array_prepare_loaded(FVM_Context *, FVM_ArrayPrototypeActivation &);
+/* Apply the prepared ordinary-object layout without allocation or callbacks. */
+void fvm_array_commit_loaded(const FVM_ArrayPrototypeActivation &);
+
 /* Return the registry backing Object.registerClass in this context. */
 FVM_Result fvm_base_class_registry(FVM_Context *, FVM_Object **);
 

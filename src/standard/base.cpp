@@ -2176,6 +2176,46 @@ FVM_Result fvm_array_create_like(
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+/* [GC:] Prepare only the unchanged empty native Array prototype captured by its
+ * constructor; retain descriptor keys so no lookup is needed after other commits. */
+void fvm_array_prepare_loaded(FVM_Context *c, FVM_ArrayPrototypeActivation &out)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Array");
+    if (ctor == c->constructors.end() || ctor->second.callback != array_constructor || !ctor->second.root)
+        return;
+    FVM_Object *klass = ctor->second.root;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+    if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return;
+    FVM_Object *proto = stored->second.object;
+    if (!array(proto) || size(proto) || !proto->indexed.empty())
+        return;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("push");
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = proto->accessors.find("length");
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = proto->attributes.find("length");
+    if (method == proto->methods.end() || method->second.callback != push ||
+        accessor == proto->accessors.end() || accessor->second.getter != array_length ||
+        accessor->second.setter != array_resize || flags == proto->attributes.end() ||
+        flags->second != 3 || proto->properties.find("length") != proto->properties.end())
+        return;
+    out.prototype = proto;
+    out.length_key = &accessor->first;
+    out.flags_key = &flags->first;
+}
+
+/* Publish an already prepared Array prototype as an ordinary object. */
+void fvm_array_commit_loaded(const FVM_ArrayPrototypeActivation &prepared)
+{
+    FVM_Object *proto = prepared.prototype;
+    if (!proto)
+        return;
+    proto->accessors.erase(*prepared.length_key);
+    proto->attributes.erase(*prepared.flags_key);
+    proto->resource_kind = OBJECT_OBJECT;
+    proto->resource_result_valid = false;
+    fvm_value_undefined(&proto->resource_result);
+}
+
 /* Build constructor and prototype for base. */
 FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
@@ -2193,7 +2233,8 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     r = fvm_object_create(c, &array_class);
     if (r != FVM_OK)
         return r;
-    r = fvm_array_create_like(c, 0, 0, &array_proto);
+    r = c->swf_loaded ? fvm_object_create(c, &array_proto)
+                      : fvm_array_create_like(c, 0, 0, &array_proto);
     if (r != FVM_OK)
         return r;
 
@@ -2215,6 +2256,8 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     object_class->resource_kind = OBJECT_CLASS;
     object_proto->resource_kind = OBJECT_OBJECT;
     array_class->resource_kind = ARRAY_CLASS;
+    if (c->swf_loaded)
+        array_proto->resource_kind = OBJECT_OBJECT;
     array_proto->prototype = object_proto;
     object_class->prototype = object_proto;
     array_class->prototype = object_proto;

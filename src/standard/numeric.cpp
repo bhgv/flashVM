@@ -614,7 +614,7 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"parseFloat", fvm_builtin_parse_float},
                                    {"String", fvm_builtin_string}};
 } // namespace
-/* [GC:] Prepare Number/Boolean roots before String activation. No allocation or
+/* [GC:] Prepare Array/Number/Boolean roots before String activation. No allocation or
  * callback occurs after String commits, so load failures preserve every prototype. */
 FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 {
@@ -622,6 +622,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         return FVM_OK;
     try
     {
+        FVM_ArrayPrototypeActivation array;
+        fvm_array_prepare_loaded(c, array);
         FVM_Object *number = fvm_number_prepare_loaded(c), *boolean = 0;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Boolean");
         if (ctor != c->constructors.end() && ctor->second.callback == boolean_constructor && ctor->second.root)
@@ -645,6 +647,7 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
+        fvm_array_commit_loaded(array);
         FVM_Object *prototypes[] = {number, boolean};
         for (unsigned int i = 0; i < 2; ++i)
             if (prototypes[i])
