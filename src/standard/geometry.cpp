@@ -88,9 +88,9 @@ FVM_Result add(FVM_Context *c, const FVM_Value &left, const FVM_Value &right, FV
 {
     FVM_Value a, b;
     bool left_date =
-        left.type == FVM_VALUE_OBJECT && left.object && left.object->resource_kind == 34;
+        left.type == FVM_VALUE_OBJECT && left.object && left.object->resource_kind == FVM_RESOURCE_DATE;
     bool right_date =
-        right.type == FVM_VALUE_OBJECT && right.object && right.object->resource_kind == 34;
+        right.type == FVM_VALUE_OBJECT && right.object && right.object->resource_kind == FVM_RESOURCE_DATE;
     FVM_Result r = fvm_to_primitive(c, &left, left_date, &a);
     if (r == FVM_OK)
         r = fvm_to_primitive(c, &right, right_date, &b);

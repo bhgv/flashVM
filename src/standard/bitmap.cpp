@@ -128,7 +128,7 @@ FVM_Result resource_clip(FVM_Context *c, FVM_Object *&clip)
      */
     for (FVM_GCRootFrame *frame = c->gc_frames; frame; frame = frame->previous)
         /* [GC:] The selected receiver already belongs to the active traced call chain. */
-        if (frame->receiver && frame->receiver->owner == c && frame->receiver->resource_kind == 40)
+        if (frame->receiver && frame->receiver->owner == c && frame->receiver->resource_kind == FVM_RESOURCE_MOVIECLIP)
         {
             /* [GC:] Borrow the current clip only while the enclosing native barrier remains active.
              */
@@ -144,7 +144,7 @@ FVM_Result resource_clip(FVM_Context *c, FVM_Object *&clip)
     /* [GC:] Select only a context-owned MovieClip retained through the global root edge. */
     if (root.type == FVM_VALUE_OBJECT && root.object && root.object->owner == c &&
         /* [GC:] Reject non-clip objects as resource scopes. */
-        root.object->resource_kind == 40)
+        root.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
         /* [GC:] Borrow its identity until native callback completion. */
         clip = root.object;
     return FVM_OK;

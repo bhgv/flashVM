@@ -1,5 +1,6 @@
 /* FlashVM: encode decoded solid SWF shapes as managed vector records without native handles. */
 #include "shape_graph.hpp"
+#include "format_constants.h"
 #include "../core/native_call_guard.hpp"
 
 namespace
@@ -33,7 +34,8 @@ FVM_Result gradient(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *
         r = fvm_object_create(c, &stops);
     if (r != FVM_OK)
         return r;
-    record->properties["type"] = number(paint.gradient_type == 0x10 ? 0 : 1);
+    record->properties["type"] =
+        number(paint.gradient_type == FVM_SWF_FILL_LINEAR_GRADIENT ? 0 : 1);
     record->properties["xx"] = number(paint.gradient_matrix.xx);
     record->properties["yx"] = number(paint.gradient_matrix.yx);
     record->properties["xy"] = number(paint.gradient_matrix.xy);
@@ -93,7 +95,10 @@ FVM_Result bitmap(FVM_Context *c, const FVM_SWFShapePaint &paint, FVM_Object *pa
     record->properties["x0"] = number(paint.bitmap_matrix.x0);
     record->properties["y0"] = number(paint.bitmap_matrix.y0);
     record->properties["repeat"] =
-        number(paint.bitmap_type == 0x40 || paint.bitmap_type == 0x42 ? 1 : 0);
+        number(paint.bitmap_type == FVM_SWF_FILL_BITMAP_REPEAT ||
+                       paint.bitmap_type == FVM_SWF_FILL_BITMAP_REPEAT_NEAREST
+                   ? 1
+                   : 0);
     record->properties["smoothing"] = number(paint.bitmap_type < 0x42 ? 1 : 0);
     /* [GC:] The paint owns the completed descriptor before the next path is constructed. */
     part->properties["bitmap"] = object(record);

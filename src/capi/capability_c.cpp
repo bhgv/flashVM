@@ -816,7 +816,7 @@ extern "C" void fvm_broker_release(FVM_ResourceBroker *b)
 FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::string &uri)
 {
     if (!c || c->destroying || !o || o->owner != c || !o->resource ||
-        (o->resource_kind != 1 && o->resource_kind != 8))
+        (o->resource_kind != FVM_RESOURCE_CHANNEL && o->resource_kind != FVM_RESOURCE_MUTEX))
         return FVM_INVALID_ARGUMENT;
     Entry entry;
 

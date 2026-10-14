@@ -30,14 +30,17 @@ extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_rece
         /* [GC:] Keep the converted label live until the nested frame has finished. */
         roots.values[0] = argument;
         FVM_Object *target =
-            scope_receiver && scope_receiver->resource_kind == 40 ? scope_receiver : 0;
+            scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
+                ? scope_receiver
+                : 0;
         if (!target)
         {
             FVM_Value root;
             status = fvm_get_global(c, "_root", &root);
             if (status != FVM_OK)
                 return status;
-            if (root.type == FVM_VALUE_OBJECT && root.object->resource_kind == 40)
+            if (root.type == FVM_VALUE_OBJECT &&
+                root.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
                 target = root.object;
         }
         if (!target)
@@ -60,7 +63,8 @@ extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_rece
                     status = fvm_movieclip_resolve_path(c, target, path, &resolved);
                 if (status != FVM_OK)
                     return status;
-                target = resolved && resolved->resource_kind == 40 ? resolved : 0;
+                target =
+                    resolved && resolved->resource_kind == FVM_RESOURCE_MOVIECLIP ? resolved : 0;
                 argument = frame;
             }
         }

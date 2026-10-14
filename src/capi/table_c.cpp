@@ -62,7 +62,7 @@ extern "C"
         bool prepared_watch = false;
         if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
-        if (o->resource_kind == 28 || o->resource_kind == 30)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
         {
             if (key > 0xffffffffUL)
                 return FVM_INVALID_ARGUMENT;
@@ -78,7 +78,7 @@ extern "C"
                 prepared_watch = true;
             }
             /* Loaded Array growth precedes indexed data flags and virtual setter dispatch. */
-            if (c->swf_loaded && o->resource_kind == 28)
+            if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
                 fvm_array_note_index(o, key);
             unsigned int flags = 0;
             FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
@@ -92,7 +92,7 @@ extern "C"
                     !fvm_base_script_accessor(script->second))
                     return FVM_OK;
             }
-            if (!c->swf_loaded && o->resource_kind == 28 && key >= o->resource_result.number)
+            if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && key >= o->resource_result.number)
             {
                 status = fvm_object_property_flags(c, o, "length", &flags);
                 if (status != FVM_OK)
@@ -101,13 +101,13 @@ extern "C"
                     return FVM_OK;
             }
         }
-        if (o->resource_kind == 28 || o->resource_kind == 30)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
         {
             char name[32];
             std::sprintf(name, "%lu", key);
             FVM_Object *cursor = o;
             unsigned int depth = 0;
-            while (cursor && depth++ < 1024)
+            while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
             {
                 if (cursor->indexed.find(key) != cursor->indexed.end() ||
                     cursor->properties.find(name) != cursor->properties.end())
@@ -117,7 +117,7 @@ extern "C"
                                           : fvm_object_set_no_index(c, o, name, v);
                 cursor = cursor->prototype;
             }
-            if (cursor && depth > 1024)
+            if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
                 return FVM_ERROR;
         }
         char watched_name[32];
@@ -150,7 +150,7 @@ extern "C"
 
         /* Initialization / Инициализация локального состояния. */
         FVM_Object *receiver = o;
-        bool standard_indices = o->resource_kind == 28 || o->resource_kind == 30;
+        bool standard_indices = o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT;
         if (standard_indices)
         {
             char name[32];
@@ -165,7 +165,7 @@ extern "C"
             }
             FVM_Object *cursor = o;
             unsigned int depth = 0;
-            while (cursor && depth++ < 1024)
+            while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
             {
                 fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.find(key);
                 if (i != cursor->indexed.end())
@@ -182,7 +182,7 @@ extern "C"
             if (cursor)
                 return FVM_ERROR;
         }
-        for (unsigned int depth = 0; o && depth < 1024; ++depth)
+        for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
             fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.find(key);
             if (it != o->indexed.end())
@@ -248,7 +248,7 @@ extern "C"
         /* Initialization / Инициализация локального состояния. */
         FVM_Object *cursor = meta;
         unsigned int depth = 0;
-        while (cursor && depth++ < 1024)
+        while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {
             if (cursor == o)
                 return FVM_INVALID_ARGUMENT;

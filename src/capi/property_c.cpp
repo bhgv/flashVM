@@ -98,7 +98,7 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
         if (flags & 2)
             return FVM_OK;
         unsigned long index;
-        if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+        if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
             o->indexed.erase(index);
         /* Canonical numeric accessors/methods are own properties too. */

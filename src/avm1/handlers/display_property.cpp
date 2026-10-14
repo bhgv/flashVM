@@ -1,5 +1,6 @@
 /* FlashVM: display property semantics for C callers and generated code. */
 #include "support.hpp"
+#include "../display_property_ids.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
                                                 const FVM_Value *target_value,
@@ -25,7 +26,8 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
             return status;
         FVM_Object *clip = 0;
         const FVM_Value &target = roots.values[3];
-        if (target.type == FVM_VALUE_OBJECT && target.object->resource_kind == 40)
+        if (target.type == FVM_VALUE_OBJECT &&
+            target.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
             clip = target.object;
         else
         {
@@ -39,7 +41,7 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
                 status = fvm_movieclip_resolve_path(c, start, converted[0], &clip);
             if (status != FVM_OK)
                 return status;
-            if (clip && clip->resource_kind != 40)
+            if (clip && clip->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 clip = 0;
         }
         if (clip)
@@ -47,7 +49,7 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
             converted[2].type = FVM_VALUE_OBJECT;
             converted[2].object = clip;
         }
-        bool valid = number == number && number > -1 && number < 22;
+        bool valid = number == number && number > -1 && number < FVM_AVM1_PROPERTY_COUNT;
         unsigned int index = valid ? (unsigned int)(number < 0 ? 0 : std::floor(number)) : 0;
         FVM_Value result;
         fvm_value_undefined(&result);
@@ -56,15 +58,18 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
         {
             if (!write)
                 status = fvm_movieclip_get_action_property(c, clip, index, &result);
-            else if (index == 8 || index == 9 || index > 13)
+            else if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
+                     index > FVM_AVM1_PROPERTY_NAME)
                 status = FVM_UNSUPPORTED;
-            else if (index != 4 && index != 5 && index != 11 && index != 12)
+            else if (index != FVM_AVM1_PROPERTY_CURRENT_FRAME &&
+                     index != FVM_AVM1_PROPERTY_TOTAL_FRAMES && index != FVM_AVM1_PROPERTY_TARGET &&
+                     index != FVM_AVM1_PROPERTY_FRAMES_LOADED)
             {
                 const FVM_Value &input = roots.values[5];
-                if (index == 13)
+                if (index == FVM_AVM1_PROPERTY_NAME)
                 {
                     if (input.type == FVM_VALUE_NUMBER && input.number != input.number &&
-                        c->swf_loaded && c->swf_info.version >= 7)
+                        c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_7)
                     {
                         FVM_Value zero;
                         fvm_value_number(&zero, 0);

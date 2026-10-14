@@ -49,7 +49,7 @@ FVM_Result get(FVM_Context *c, FVM_Object *o, unsigned long index, FVM_Value &ou
     FVM_Object *cursor = o;
     present = false;
     fvm_value_undefined(&out);
-    for (unsigned int depth = 0; cursor && depth < 1024; ++depth, cursor = cursor->prototype)
+    for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, cursor = cursor->prototype)
     {
         fvm_detail::map<unsigned long, FVM_Value>::iterator slot = cursor->indexed.find(index);
         if (slot != cursor->indexed.end())
@@ -105,7 +105,7 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
         *signed_length = 0;
     FVM_Value value;
     fvm_value_undefined(&value);
-    if (o->resource_kind == 28 && o->resource_result_valid)
+    if (o->resource_kind == FVM_RESOURCE_ARRAY && o->resource_result_valid)
         value = o->resource_result;
     else
     {
@@ -140,7 +140,7 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
 /* Update native Array stored length without callback dispatch, respecting its own readonly flag. */
 void legacy_native_length(FVM_Object *o, unsigned long count)
 {
-    if (o->resource_kind != 28)
+    if (o->resource_kind != FVM_RESOURCE_ARRAY)
         return;
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
     if (flags == o->attributes.end() || !(flags->second & FVM_PROPERTY_READ_ONLY))
@@ -150,7 +150,7 @@ void legacy_native_length(FVM_Object *o, unsigned long count)
 /* Extend native Array length before raw own element storage without invoking accessors/watchers. */
 FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value &value)
 {
-    if (o->resource_kind == 28 && index >= o->resource_result.number)
+    if (o->resource_kind == FVM_RESOURCE_ARRAY && index >= o->resource_result.number)
         legacy_native_length(o, index + 1);
     char key[32];
     std::sprintf(key, "%lu", index);
@@ -178,7 +178,7 @@ FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from,
 /* Set raw splice length, deleting native Array tails while retaining borrowed tail properties. */
 FVM_Result legacy_splice_length(FVM_Context *c, FVM_Object *o, unsigned long count, FVM_ArrayWorkScope &work)
 {
-    if (o->resource_kind == 28)
+    if (o->resource_kind == FVM_RESOURCE_ARRAY)
     {
         unsigned long old = 0;
         FVM_Result status = legacy_data_length(c, o, old);
@@ -375,7 +375,7 @@ FVM_Result candidates(FVM_Object *source, unsigned long start, unsigned long end
     fvm_detail::map<unsigned long, bool> indices;
     FVM_Object *cursor = source;
     unsigned int depth = 0;
-    while (cursor && depth++ < 1024)
+    while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     {
         FVM_Result status = work.step();
         if (status != FVM_OK)
@@ -499,7 +499,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
-        FVM_Result status = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, 0, &result, true);
+        FVM_Result status = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0, 0, &result, true);
         if (status != FVM_OK)
             return status;
         unsigned long total = 0;
@@ -515,7 +515,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             else
                 value = a[k - 1];
             FVM_Object *source = value.type == FVM_VALUE_OBJECT ? value.object : 0;
-            bool spread = source && (source->resource_kind == 28 || (!k && (!source->resource_kind || source->resource_kind == 30)));
+            bool spread = source && (source->resource_kind == FVM_RESOURCE_ARRAY || (!k && (!source->resource_kind || source->resource_kind == FVM_RESOURCE_OBJECT)));
             unsigned long count = 1;
             if (spread)
                 status = c->swf_loaded ? legacy_data_length(c, source, count)
@@ -590,7 +590,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                 if (status != FVM_OK)
                     return status;
             }
-        if (!shifting || o->resource_kind == 28)
+        if (!shifting || o->resource_kind == FVM_RESOURCE_ARRAY)
         {
             char key[32];
             std::sprintf(key, "%lu", count - 1);
@@ -599,7 +599,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             if (status != FVM_OK)
                 return status;
         }
-        if (o->resource_kind == 28)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY)
         {
             /* Native length data changes without setter/watcher dispatch or a nondeletable clamp. */
             legacy_native_length(o, count - 1);
@@ -627,7 +627,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             if (status != FVM_OK)
                 return status;
         }
-        if (o->resource_kind == 28)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY)
             legacy_native_length(o, count + n);
         else
         {
@@ -831,10 +831,10 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             deleted = end - start;
         }
         FVM_Object *result = 0;
-        r = fvm_array_create_like(c, o->resource_kind == 28 ? o : 0, deleted, &result, true);
+        r = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0, deleted, &result, true);
         /* [GC:] Keep the removed/copy result alive through source mutation callbacks. */
         FVM_ObjectRootScope result_roots(c, result);
-        if (!splice && !c->swf_loaded && (deleted > 65536 || o->resource_kind == 28) && r == FVM_OK)
+        if (!splice && !c->swf_loaded && (deleted > 65536 || o->resource_kind == FVM_RESOURCE_ARRAY) && r == FVM_OK)
             r = sparse_slice(c, o, result, start, end, work);
         else
             for (unsigned long i = 0; i < deleted && r == FVM_OK; ++i)
@@ -1082,9 +1082,9 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
 /* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
-    if (!o || o->resource_kind != 28)
+    if (!o || o->resource_kind != FVM_RESOURCE_ARRAY)
         return true;
-    for (unsigned int depth = 0; o && depth < 1024; ++depth, o = o->prototype)
+    for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, o = o->prototype)
     {
         if (depth && !o->indexed.empty())
             return true;

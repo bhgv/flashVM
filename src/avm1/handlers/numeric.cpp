@@ -7,14 +7,14 @@ static unsigned long integer_bits(double value)
         value == -std::numeric_limits<double>::infinity())
         return 0;
     value = value < 0 ? std::ceil(value) : std::floor(value);
-    value = std::fmod(value, 4294967296.0);
-    return (unsigned long)(value < 0 ? value + 4294967296.0 : value);
+    value = std::fmod(value, FVM_UINT32_MODULUS);
+    return (unsigned long)(value < 0 ? value + FVM_UINT32_MODULUS : value);
 }
 /* Represent a low 32-bit result as a signed ActionScript Number on both 32/64-bit hosts. */
 static double signed_bits(unsigned long value)
 {
-    value &= 0xffffffffUL;
-    return value >= 0x80000000UL ? (double)value - 4294967296.0 : (double)value;
+    value &= FVM_UINT32_MASK;
+    return value >= FVM_UINT32_SIGN_BIT ? (double)value - FVM_UINT32_MODULUS : (double)value;
 }
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric operation,
@@ -62,7 +62,7 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
                 if (status != FVM_OK)
                     return status;
                 if (operation == FVM_EXEC_DIVIDE && right == 0 && c->swf_loaded &&
-                    c->swf_info.version < 5)
+                    c->swf_info.version < FVM_SWF_VERSION_5)
                     status = fvm_value_string(&result, "#ERROR#");
                 else
                     fvm_value_number(&result, operation == FVM_EXEC_ADD        ? left + right
@@ -97,7 +97,7 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
         else
         {
             unsigned long value = integer_bits(left), operand = integer_bits(right);
-            unsigned int shift = (unsigned int)(operand & 31);
+            unsigned int shift = (unsigned int)(operand & FVM_UINT32_SHIFT_MASK);
             unsigned long bits = 0;
             if (operation == FVM_EXEC_BIT_AND)
                 bits = value & operand;
@@ -106,18 +106,18 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
             else if (operation == FVM_EXEC_BIT_XOR)
                 bits = value ^ operand;
             else if (operation == FVM_EXEC_SHIFT_LEFT)
-                bits = (value << shift) & 0xffffffffUL;
+                bits = (value << shift) & FVM_UINT32_MASK;
             else
             {
                 bits = value >> shift;
                 /* Arithmetic right shift is implemented with unsigned masks, avoiding
                  * implementation-defined signed shifts and shifts by the host word width.
                  */
-                if (operation == FVM_EXEC_SHIFT_RIGHT && shift && (value & 0x80000000UL))
-                    bits |= (0xffffffffUL << (32 - shift)) & 0xffffffffUL;
+                if (operation == FVM_EXEC_SHIFT_RIGHT && shift && (value & FVM_UINT32_SIGN_BIT))
+                    bits |= (FVM_UINT32_MASK << (FVM_UINT32_BIT_COUNT - shift)) & FVM_UINT32_MASK;
             }
-            bool unsigned_result =
-                operation == FVM_EXEC_SHIFT_UNSIGNED && (!c->swf_loaded || c->swf_info.version < 8);
+            bool unsigned_result = operation == FVM_EXEC_SHIFT_UNSIGNED &&
+                                   (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_8);
             result = unsigned_result ? (double)bits : signed_bits(bits);
         }
         fvm_value_number(out, result);

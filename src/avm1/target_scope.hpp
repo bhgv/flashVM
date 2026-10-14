@@ -24,13 +24,13 @@ class FVM_AVM1TargetScope
         FVM_Object *base = base_, *target = target_;
         if (!inherit || !active_)
         {
-            base = receiver && receiver->resource_kind == 40 ? receiver : active_ ? base_ : 0;
+            base = receiver && receiver->resource_kind == FVM_RESOURCE_MOVIECLIP ? receiver : active_ ? base_ : 0;
             if (!base)
             {
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root =
                     c->global->properties.find("_root");
                 if (root != c->global->properties.end() && root->second.type == FVM_VALUE_OBJECT &&
-                    root->second.object && root->second.object->resource_kind == 40)
+                    root->second.object && root->second.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
                     base = root->second.object;
             }
             target = base;

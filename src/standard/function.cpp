@@ -6,6 +6,7 @@
 #include "function_state.hpp"
 #include "../core/property_key.hpp"
 #include "../avm1/function_record.hpp"
+#include "../avm1/encoding_constants.h"
 #include "../core/call_scope.hpp"
 #include "super.hpp"
 #include "base_state.hpp"
@@ -25,9 +26,9 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    SCRIPT_FUNCTION = 32,
-    FUNCTION_CLASS = 33,
-    NATIVE_FUNCTION = 36
+    SCRIPT_FUNCTION = FVM_RESOURCE_SCRIPT_FUNCTION,
+    FUNCTION_CLASS = FVM_RESOURCE_FUNCTION_CLASS,
+    NATIVE_FUNCTION = FVM_RESOURCE_NATIVE_FUNCTION
 };
 
 /* Compute and return function prototype. */
@@ -268,7 +269,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
     r = fvm_object_get(c, params.object, "length", &length);
     if (r != FVM_OK)
         return r;
-    if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= 65535) ||
+    if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= FVM_AVM1_MAX_CALL_ARGUMENTS) ||
         length.number != std::floor(length.number))
         return FVM_INVALID_ARGUMENT;
     for (unsigned int i = 0; i < (unsigned int)length.number; ++i)
@@ -289,7 +290,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
     r = fvm_object_get(c, constants.object, "length", &length);
     if (r != FVM_OK)
         return r;
-    if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= 65535) ||
+    if (length.type != FVM_VALUE_NUMBER || !(length.number >= 0 && length.number <= FVM_AVM1_MAX_CALL_ARGUMENTS) ||
         length.number != std::floor(length.number))
         return FVM_INVALID_ARGUMENT;
     for (unsigned int i = 0; i < (unsigned int)length.number; ++i)
@@ -316,9 +317,9 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
             r = fvm_object_get(c, data, "parameter_registers", &registers);
         if (r != FVM_OK)
             return r;
-        if (count.type != FVM_VALUE_NUMBER || count.number < 0 || count.number > 255 ||
+        if (count.type != FVM_VALUE_NUMBER || count.number < 0 || count.number > FVM_AVM1_MAX_REGISTER_INDEX ||
             count.number != std::floor(count.number) || flags.type != FVM_VALUE_NUMBER ||
-            flags.number < 0 || flags.number > 511 || flags.number != std::floor(flags.number) ||
+            flags.number < 0 || flags.number > FVM_AVM1_F2_VALID_FLAGS || flags.number != std::floor(flags.number) ||
             registers.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
         r = fvm_object_get(c, registers.object, "length", &register_length);
@@ -331,7 +332,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
         body.register_count = (unsigned int)count.number;
         body.flags = (unsigned int)flags.number;
         unsigned int preload = 0;
-        const unsigned int bits[] = {1, 4, 16, 64, 128, 256};
+        const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS, FVM_AVM1_F2_PRELOAD_ARGUMENTS, FVM_AVM1_F2_PRELOAD_SUPER, FVM_AVM1_F2_PRELOAD_ROOT, FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
         for (unsigned int i = 0; i < 6; ++i)
             if (body.flags & bits[i])
                 ++preload;
@@ -797,7 +798,7 @@ extern "C" FVM_Result fvm_function_create_avm1(FVM_Context *c, const void *actio
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!c || (!actions && size) || (count && !parameters) || count > 65535 || size > 65536 ||
+    if (!c || (!actions && size) || (count && !parameters) || count > FVM_AVM1_MAX_CALL_ARGUMENTS || size > FVM_AVM1_MAX_BODY_BYTES ||
         (environment && environment->owner != c))
         return FVM_INVALID_ARGUMENT;
     try
@@ -822,7 +823,7 @@ extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c, const void 
         return FVM_INVALID_ARGUMENT;
     *out = 0;
     if (!c || (!actions && size) || (count && !parameters) ||
-        (environment && environment->owner != c) || size > 65536 || count > 65535)
+        (environment && environment->owner != c) || size > FVM_AVM1_MAX_BODY_BYTES || count > FVM_AVM1_MAX_CALL_ARGUMENTS)
         return FVM_INVALID_ARGUMENT;
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
@@ -1069,7 +1070,7 @@ extern "C" FVM_Result fvm_function_construct(
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        instance->resource_kind = 30;
+        instance->resource_kind = FVM_RESOURCE_OBJECT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value proto;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

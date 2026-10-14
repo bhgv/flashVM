@@ -29,10 +29,10 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    ARRAY_OBJECT = 28,
-    ARRAY_CLASS = 29,
-    OBJECT_OBJECT = 30,
-    OBJECT_CLASS = 31
+    ARRAY_OBJECT = FVM_RESOURCE_ARRAY,
+    ARRAY_CLASS = FVM_RESOURCE_ARRAY_CLASS,
+    OBJECT_OBJECT = FVM_RESOURCE_OBJECT,
+    OBJECT_CLASS = FVM_RESOURCE_OBJECT_CLASS
 };
 typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
 
@@ -447,7 +447,7 @@ FVM_Result is_prototype(FVM_Context *, FVM_Object *o, unsigned int n, const FVM_
     {
         FVM_Object *cursor = a[0].object->prototype;
         unsigned int depth = 0;
-        while (cursor && depth++ < 1024)
+        while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {
             if (cursor == o)
             {
@@ -2098,7 +2098,7 @@ FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::
 FVM_Result fvm_array_store_own(FVM_Context *c, FVM_Object *result, unsigned long index,
                         const FVM_Value &input)
 {
-    if (!c || !result || result->owner != c || result->resource_kind != 28 || index >= 0xffffffffUL)
+    if (!c || !result || result->owner != c || result->resource_kind != FVM_RESOURCE_ARRAY || index >= 0xffffffffUL)
         return FVM_INVALID_ARGUMENT;
     FVM_Result status = fvm_validate_value(c, &input);
     if (status != FVM_OK)

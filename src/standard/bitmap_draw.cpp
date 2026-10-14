@@ -241,7 +241,7 @@ FVM_Result fvm_bitmap_draw(FVM_Context *c, FVM_Object *self, unsigned n, const F
     FVM_BitmapState *bitmap = fvm_bitmap_pixels(source);
     if (!target || target->disposed || (bitmap && bitmap->disposed))
         return FVM_INVALID_ARGUMENT;
-    if (!bitmap && source->resource_kind != 40)
+    if (!bitmap && source->resource_kind != FVM_RESOURCE_MOVIECLIP)
         return FVM_INVALID_ARGUMENT;
     paint.matrix.xx = matrix[0];
     paint.matrix.yx = matrix[1];

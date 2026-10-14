@@ -3,6 +3,8 @@
  */
 
 #include "function_record.hpp"
+#include "action_codes.h"
+#include "encoding_constants.h"
 #include "handlers/script_call.hpp"
 #include "block.hpp"
 #include "coercion.hpp"
@@ -68,14 +70,14 @@ static unsigned long integer_bits(double value)
         value == -std::numeric_limits<double>::infinity())
         return 0;
     value = value < 0 ? std::ceil(value) : std::floor(value);
-    value = std::fmod(value, 4294967296.0);
-    return (unsigned long)(value < 0 ? value + 4294967296.0 : value);
+    value = std::fmod(value, FVM_UINT32_MODULUS);
+    return (unsigned long)(value < 0 ? value + FVM_UINT32_MODULUS : value);
 }
 /* Represent a low 32-bit result as a signed ActionScript Number on both 32/64-bit hosts. */
 static double signed_bits(unsigned long value)
 {
-    value &= 0xffffffffUL;
-    return value >= 0x80000000UL ? (double)value - 4294967296.0 : (double)value;
+    value &= FVM_UINT32_MASK;
+    return value >= FVM_UINT32_SIGN_BIT ? (double)value - FVM_UINT32_MODULUS : (double)value;
 }
 /* Bytecode buffers and function snapshots can disappear after execution.
  * Any string escaping into VM properties must have context lifetime. */
@@ -152,8 +154,9 @@ static FVM_Result variable_receiver(FVM_Context *c, FVM_Object *self, FVM_Object
  * reject supplementary characters instead of treating them as ASCII letters. */
 static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
 {
-    if (!c->swf_loaded || c->swf_info.version < 5 || c->swf_info.version >= 7 ||
-        (c->swf_info.version <= 5 && local_scope))
+    if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 ||
+        c->swf_info.version >= FVM_SWF_VERSION_7 ||
+        (c->swf_info.version <= FVM_SWF_VERSION_5 && local_scope))
         return name == fvm_detail::string("this");
     size_t offset = 0;
     const char expected[] = "this";
@@ -192,7 +195,8 @@ static FVM_Result lookup_variable(FVM_Context *c,
         *call_receiver = c->global;
     /* Loaded SWF5+ resolves implicit this before ordinary local bindings.
      * This changes lookup precedence, not the unresolved inherited this-cell model. */
-    if (self && c->swf_loaded && c->swf_info.version >= 5 && this_keyword(c, locals != 0, name))
+    if (self && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 &&
+        this_keyword(c, locals != 0, name))
     {
         fvm_value_undefined(out);
         out->type = FVM_VALUE_OBJECT;
@@ -226,7 +230,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
     unsigned int depth = 0;
-    while (binding && depth++ < 1024)
+    while (binding && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     {
         if (binding->properties.find(name) != binding->properties.end())
             return fvm_object_get_bytes(c, binding, name.data(), name.size(), out);
@@ -242,7 +246,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
         return selected;
     binding = scope_receiver && scope_receiver != c->global ? scope_receiver : 0;
     depth = 0;
-    while (binding && depth++ < 1024)
+    while (binding && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     {
         if (binding->properties.find(name) != binding->properties.end() ||
             binding->methods.find(name) != binding->methods.end() ||
@@ -284,12 +288,13 @@ static FVM_Result declare_variable(FVM_Context *context,
     if (selected != FVM_OK)
         return selected;
     FVM_Object *destination =
-        scope_receiver && scope_receiver->resource_kind == 40 ? scope_receiver : context->global;
+        scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP ? scope_receiver
+                                                                                  : context->global;
     if (!initialized)
     {
         FVM_Object *cursor = destination;
         unsigned int depth = 0;
-        while (cursor && depth++ < 1024)
+        while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {
             int own = 0;
             FVM_Result status =
@@ -421,7 +426,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
     } roots(c, &stack, locals, self, &registers, implicit_this);
     size_t pos = 0, pc = 0, i;
     unsigned long &steps = execution.steps;
-    if (!c || (!data && size) || depth > 64)
+    if (!c || (!data && size) || depth > FVM_AVM1_MAX_BLOCK_DEPTH)
         return FVM_INVALID_ARGUMENT;
     if (returned && !shared)
         fvm_value_undefined(returned);
@@ -445,7 +450,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             a.op = data[pos++];
             a.payload = pos;
             a.length = 0;
-            if (a.op >= 0x80)
+            if (a.op >= FVM_AVM1_LONG_ACTION_BASE)
             {
                 if (size - pos < 2)
                     return FVM_INVALID_ARGUMENT;
@@ -455,34 +460,39 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.length > size - pos)
                     return FVM_INVALID_ARGUMENT;
                 pos += a.length;
-                if (a.op == 0x9b || a.op == 0x8e)
+                if (a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION ||
+                    a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
                 {
                     FVM_FunctionRecord record;
-                    if (!fvm_function_record(data, size, a.payload, a.length, record, a.op == 0x8e))
+                    if (!fvm_function_record(data, size, a.payload, a.length, record,
+                                             a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2))
                         return FVM_INVALID_ARGUMENT;
                     pos = record.next;
                 }
-                if (a.op == 0x8f)
+                if (a.op == FVM_AVM1_ACTION_TRY)
                 {
                     FVM_TryRecord record;
                     if (!fvm_try_record(data, size, a.payload, a.length, record))
                         return FVM_INVALID_ARGUMENT;
-                    pos += record.sizes[0] + record.sizes[1] + record.sizes[2];
+                    pos += record.sizes[FVM_AVM1_TRY_BODY_INDEX] +
+                           record.sizes[FVM_AVM1_TRY_CATCH_INDEX] +
+                           record.sizes[FVM_AVM1_TRY_FINALLY_INDEX];
                 }
             }
             a.next = pos;
             actions.push_back(a);
-            if (!a.op)
+            if (a.op == FVM_AVM1_ACTION_END)
                 break;
         }
-        if (pos != size || (!shared && !bounded && (actions.empty() || actions.back().op != 0)))
+        if (pos != size ||
+            (!shared && !bounded && (actions.empty() || actions.back().op != FVM_AVM1_ACTION_END)))
             return FVM_INVALID_ARGUMENT;
-        if (bounded && (actions.empty() || actions.back().op != 0))
+        if (bounded && (actions.empty() || actions.back().op != FVM_AVM1_ACTION_END))
         {
             /* Model the exact record boundary as a terminal action, without changing source bytes.
              */
             Action terminal;
-            terminal.op = 0;
+            terminal.op = FVM_AVM1_ACTION_END;
             terminal.offset = terminal.next = terminal.payload = size;
             terminal.length = 0;
             actions.push_back(terminal);
@@ -494,13 +504,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             const Action &a = actions[pc];
             ++steps;
             /* [GC:] Poll at the established deterministic boundary with all operand roots live. */
-            FVM_Result checkpoint = fvm_exec_checkpoint(c, 1, (unsigned long)(base + a.offset),
-                                                        (steps & 63UL) == 1UL ? FVM_EXEC_POLL : 0);
+            FVM_Result checkpoint = fvm_exec_checkpoint(
+                c, 1, (unsigned long)(base + a.offset),
+                (steps & FVM_AVM1_POLL_INTERVAL_MASK) == 1UL ? FVM_EXEC_POLL : 0);
             if (checkpoint != FVM_OK)
                 return checkpoint;
-            if (a.op == 0)
+            if (a.op == FVM_AVM1_ACTION_END)
                 return FVM_OK;
-            if (a.op == 0x3e)
+            if (a.op == FVM_AVM1_ACTION_RETURN)
             { /* Return */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -509,7 +520,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 execution.returned = true;
                 return FVM_OK;
             }
-            if (a.op == 0x2a)
+            if (a.op == FVM_AVM1_ACTION_THROW)
             { /* Throw: preserve the value while unwinding. */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -518,7 +529,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 return result;
             }
-            if (a.op == 0x8f)
+            if (a.op == FVM_AVM1_ACTION_TRY)
             {
                 FVM_TryRecord record;
                 if (!fvm_try_record(data, size, a.payload, a.length, record))
@@ -526,8 +537,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 fvm_detail::vector<FVM_Value> baseline = stack;
                 RootGuard baseline_roots(c, &baseline, 0, 0, &registers);
                 FVM_Result result =
-                    execute(c, data + record.body, record.sizes[0], returned, locals, self, 0,
-                            &execution, base + record.body, depth + 1);
+                    execute(c, data + record.body, record.sizes[FVM_AVM1_TRY_BODY_INDEX], returned,
+                            locals, self, 0, &execution, base + record.body, depth + 1);
                 /* Values saved across catch/finally need roots independent of the
                  * operand stack, which is restored during exception unwinding. */
                 fvm_detail::vector<FVM_Value> saved;
@@ -535,7 +546,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 for (size_t n = 0; n < saved.size(); ++n)
                     fvm_value_undefined(&saved[n]);
                 RootGuard saved_roots(c, &saved, 0, 0, &registers);
-                if (result == FVM_EXCEPTION && (record.flags & 1))
+                if (result == FVM_EXCEPTION && (record.flags & FVM_AVM1_TRY_CATCH))
                 {
                     saved[0] = c->exception_value;
                     stack = baseline;
@@ -544,7 +555,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     fvm_detail::map<fvm_detail::string, FVM_Value> *bindings =
                         locals ? locals : &top_catch;
                     bool had_binding = false;
-                    if (record.flags & 4)
+                    if (record.flags & FVM_AVM1_TRY_CATCH_REGISTER)
                     {
                         if (record.reg >= registers.size())
                             return FVM_INVALID_ARGUMENT;
@@ -559,10 +570,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             saved[1] = old->second;
                         (*bindings)[record.name] = saved[0];
                     }
-                    result = execute(c, data + record.body + record.sizes[0], record.sizes[1],
-                                     returned, bindings, self, 0, &execution,
-                                     base + record.body + record.sizes[0], depth + 1);
-                    if (!(record.flags & 4))
+                    result = execute(c, data + record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX],
+                                     record.sizes[FVM_AVM1_TRY_CATCH_INDEX], returned, bindings,
+                                     self, 0, &execution,
+                                     base + record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX],
+                                     depth + 1);
+                    if (!(record.flags & FVM_AVM1_TRY_CATCH_REGISTER))
                     {
                         if (had_binding)
                             (*bindings)[record.name] = saved[1];
@@ -570,7 +583,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             bindings->erase(record.name);
                     }
                 }
-                if ((record.flags & 2) && (result == FVM_OK || result == FVM_EXCEPTION))
+                if ((record.flags & FVM_AVM1_TRY_FINALLY) &&
+                    (result == FVM_OK || result == FVM_EXCEPTION))
                 {
                     bool was_return = execution.returned;
                     bool was_exception = c->exception_pending;
@@ -581,10 +595,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     saved[2] = c->exception_value;
                     execution.returned = false;
                     fvm_exception_clear(c);
-                    size_t start = record.body + record.sizes[0] + record.sizes[1];
+                    size_t start = record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX] +
+                                   record.sizes[FVM_AVM1_TRY_CATCH_INDEX];
                     FVM_Result final_result =
-                        execute(c, data + start, record.sizes[2], returned, locals, self, 0,
-                                &execution, base + start, depth + 1);
+                        execute(c, data + start, record.sizes[FVM_AVM1_TRY_FINALLY_INDEX], returned,
+                                locals, self, 0, &execution, base + start, depth + 1);
                     if (final_result != FVM_OK || execution.returned)
                         result = final_result;
                     else
@@ -603,7 +618,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 ++pc;
                 continue;
             }
-            if (a.op == 0x88)
+            if (a.op == FVM_AVM1_ACTION_CONSTANT_POOL)
             { /* ConstantPool: replace the current pool atomically. */
                 size_t p = a.payload, end = p + a.length;
                 if (end - p < 2)
@@ -625,7 +640,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_INVALID_ARGUMENT;
                 constants.swap(pool);
             }
-            else if (a.op == 0x87)
+            else if (a.op == FVM_AVM1_ACTION_STORE_REGISTER)
             { /* StoreRegister leaves the operand on stack. */
                 if (a.length != 1)
                     return FVM_INVALID_ARGUMENT;
@@ -636,10 +651,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_INVALID_ARGUMENT;
                 registers[reg] = stack.back();
             }
-            else if (a.op == 0x9b || a.op == 0x8e)
+            else if (a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION ||
+                     a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
             {
                 FVM_FunctionRecord record;
-                if (!fvm_function_record(data, size, a.payload, a.length, record, a.op == 0x8e))
+                if (!fvm_function_record(data, size, a.payload, a.length, record,
+                                         a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2))
                     return FVM_INVALID_ARGUMENT;
                 FVM_ScriptFunction fn;
                 fn.function2 = record.function2;
@@ -702,7 +719,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 else
                     stack.push_back(value);
             }
-            else if (a.op == 0x96)
+            else if (a.op == FVM_AVM1_ACTION_PUSH)
             { /* Push: strings, null, undefined, boolean, double, integer */
                 size_t p = a.payload, end = p + a.length;
                 while (p < end)
@@ -710,7 +727,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     FVM_Value v;
                     fvm_value_undefined(&v);
                     unsigned int type = data[p++];
-                    if (type == 0)
+                    if (type == FVM_AVM1_PUSH_STRING)
                     {
                         size_t start = p;
                         while (p < end && data[p])
@@ -723,24 +740,27 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             return result;
                         ++p;
                     }
-                    else if (type == 1)
+                    else if (type == FVM_AVM1_PUSH_FLOAT)
                     {
                         if (end - p < 4)
                             return FVM_INVALID_ARGUMENT;
                         unsigned long bits = u32(data + p);
-                        unsigned int exponent = (unsigned int)((bits >> 23) & 255);
-                        unsigned long fraction = bits & 0x7fffffUL;
+                        unsigned int exponent = (unsigned int)((bits >> FVM_FLOAT_FRACTION_BITS) &
+                                                               FVM_FLOAT_EXPONENT_MASK);
+                        unsigned long fraction = bits & FVM_FLOAT_FRACTION_MASK;
                         double number;
-                        if (exponent == 255)
+                        if (exponent == FVM_FLOAT_EXPONENT_MASK)
                             number = fraction ? std::numeric_limits<double>::quiet_NaN()
                                               : std::numeric_limits<double>::infinity();
                         else
-                            number = std::ldexp((double)(fraction + (exponent ? 0x800000UL : 0)),
-                                                exponent ? (int)exponent - 150 : -149);
-                        fvm_value_number(&v, (bits & 0x80000000UL) ? -number : number);
+                            number = std::ldexp(
+                                (double)(fraction + (exponent ? FVM_FLOAT_IMPLICIT_ONE : 0)),
+                                exponent ? (int)exponent - FVM_FLOAT_NORMAL_SCALE_BIAS
+                                         : -FVM_FLOAT_SUBNORMAL_SCALE_BIAS);
+                        fvm_value_number(&v, (bits & FVM_UINT32_SIGN_BIT) ? -number : number);
                         p += 4;
                     }
-                    else if (type == 4)
+                    else if (type == FVM_AVM1_PUSH_REGISTER)
                     {
                         if (end - p < 1)
                             return FVM_INVALID_ARGUMENT;
@@ -749,31 +769,38 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             return FVM_INVALID_ARGUMENT;
                         v = registers[reg];
                     }
-                    else if (type == 6)
+                    else if (type == FVM_AVM1_PUSH_DOUBLE)
                     {
                         if (end - p < 8)
                             return FVM_INVALID_ARGUMENT;
                         /* AVM1 stores the high 32-bit word first, each word LE.
                          * Decode arithmetically to avoid alignment/endian casts. */
                         unsigned long high = u32(data + p), low = u32(data + p + 4);
-                        unsigned int exponent = (unsigned int)((high >> 20) & 2047);
-                        double fraction = (double)(high & 0xfffffUL) * 4294967296.0 + (double)low;
+                        unsigned int exponent =
+                            (unsigned int)((high >> FVM_DOUBLE_HIGH_FRACTION_BITS) &
+                                           FVM_DOUBLE_EXPONENT_MASK);
+                        double fraction =
+                            (double)(high & FVM_DOUBLE_HIGH_FRACTION_MASK) * FVM_UINT32_MODULUS +
+                            (double)low;
                         double number;
-                        if (exponent == 2047)
+                        if (exponent == FVM_DOUBLE_EXPONENT_MASK)
                             number = fraction ? std::numeric_limits<double>::quiet_NaN()
                                               : std::numeric_limits<double>::infinity();
                         else
-                            number = std::ldexp(fraction + (exponent ? 4503599627370496.0 : 0.0),
-                                                exponent ? (int)exponent - 1075 : -1074);
-                        fvm_value_number(&v, (high & 0x80000000UL) ? -number : number);
+                            number =
+                                std::ldexp(fraction + (exponent ? FVM_DOUBLE_IMPLICIT_ONE : 0.0),
+                                           exponent ? (int)exponent - FVM_DOUBLE_NORMAL_SCALE_BIAS
+                                                    : -FVM_DOUBLE_SUBNORMAL_SCALE_BIAS);
+                        fvm_value_number(&v, (high & FVM_UINT32_SIGN_BIT) ? -number : number);
                         p += 8;
                     }
-                    else if (type == 8 || type == 9)
+                    else if (type == FVM_AVM1_PUSH_CONSTANT8 || type == FVM_AVM1_PUSH_CONSTANT16)
                     {
-                        size_t width = type == 8 ? 1 : 2;
+                        size_t width = type == FVM_AVM1_PUSH_CONSTANT8 ? 1 : 2;
                         if (end - p < width)
                             return FVM_INVALID_ARGUMENT;
-                        unsigned int index = type == 8 ? data[p] : u16(data + p);
+                        unsigned int index =
+                            type == FVM_AVM1_PUSH_CONSTANT8 ? data[p] : u16(data + p);
                         p += width;
                         if (index >= constants.size())
                             return FVM_INVALID_ARGUMENT;
@@ -781,25 +808,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         if (result != FVM_OK)
                             return result;
                     }
-                    else if (type == 2)
+                    else if (type == FVM_AVM1_PUSH_NULL)
                         v.type = FVM_VALUE_NULL;
-                    else if (type == 3)
+                    else if (type == FVM_AVM1_PUSH_UNDEFINED)
                     { /* undefined */
                     }
-                    else if (type == 5)
+                    else if (type == FVM_AVM1_PUSH_BOOLEAN)
                     {
                         if (end - p < 1)
                             return FVM_INVALID_ARGUMENT;
                         fvm_value_boolean(&v, data[p++]);
                     }
-                    else if (type == 7)
+                    else if (type == FVM_AVM1_PUSH_INTEGER)
                     {
                         if (end - p < 4)
                             return FVM_INVALID_ARGUMENT;
-                        fvm_value_number(&v, (double)((u32(data + p) & 0x80000000UL)
-                                                          ? (long)(u32(data + p) & 0x7fffffffUL) -
-                                                                2147483647L - 1L
-                                                          : (long)u32(data + p)));
+                        fvm_value_number(
+                            &v, (double)((u32(data + p) & FVM_UINT32_SIGN_BIT)
+                                             ? (long)(u32(data + p) & FVM_UINT32_MAGNITUDE_MASK) -
+                                                   FVM_INT32_MAX_LONG - 1L
+                                             : (long)u32(data + p)));
                         p += 4;
                     }
                     else
@@ -807,7 +835,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     stack.push_back(v);
                 }
             }
-            else if (a.op == 0x42 || a.op == 0x43)
+            else if (a.op == FVM_AVM1_ACTION_INIT_ARRAY || a.op == FVM_AVM1_ACTION_INIT_OBJECT)
             {
                 if (stack.empty())
                 {
@@ -834,7 +862,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         continue;
                     }
                     count = count == count ? std::floor(count) : 0;
-                    if (count > 65536)
+                    if (count > FVM_AVM1_MAX_LITERAL_ENTRIES)
                         return FVM_UNSUPPORTED;
                 }
                 else
@@ -842,10 +870,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (stack.back().type != FVM_VALUE_NUMBER)
                         return FVM_ERROR;
                     count = stack.back().number;
-                    if (!(count >= 0 && count <= 65536) || count != std::floor(count))
+                    if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
+                        count != std::floor(count))
                         return FVM_INVALID_ARGUMENT;
                 }
-                unsigned int width = a.op == 0x42 ? 1 : 2;
+                unsigned int width = a.op == FVM_AVM1_ACTION_INIT_ARRAY ? 1 : 2;
                 size_t available = stack.size() - 1;
                 if (!c->swf_loaded && count * width > available)
                     return FVM_INVALID_ARGUMENT;
@@ -854,7 +883,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     consumed = available;
                 FVM_Object *object = 0;
                 FVM_Result r = FVM_OK;
-                if (a.op == 0x42)
+                if (a.op == FVM_AVM1_ACTION_INIT_ARRAY)
                 {
                     fvm_detail::vector<FVM_Value> values((size_t)count);
                     for (size_t j = 0; j < values.size(); ++j)
@@ -918,7 +947,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.object = object;
                 stack.push_back(value);
             }
-            else if (a.op == 0x69)
+            else if (a.op == FVM_AVM1_ACTION_EXTENDS)
             {
                 /* Extends pops superclass first and does not execute either constructor. */
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT ||
@@ -930,7 +959,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.resize(stack.size() - 2);
             }
-            else if (a.op == 0x2c)
+            else if (a.op == FVM_AVM1_ACTION_IMPLEMENTS)
             {
                 /* ImplementsOp pops the class, count, then interface constructors. */
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT)
@@ -939,8 +968,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result r = fvm_avm1_number(c, &stack[stack.size() - 2], &count);
                 if (r != FVM_OK)
                     return r;
-                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
-                    count > stack.size() - 2)
+                if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
+                    count != std::floor(count) || count > stack.size() - 2)
                     return FVM_INVALID_ARGUMENT;
                 unsigned int n = (unsigned int)count;
                 fvm_detail::vector<FVM_Value> interfaces;
@@ -951,7 +980,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.resize(stack.size() - n - 2);
             }
-            else if (a.op == 0x2b)
+            else if (a.op == FVM_AVM1_ACTION_CAST)
             {
                 /* CastOp pops the value first, then preserves it or replaces it with null. */
                 if (stack.size() < 2)
@@ -969,7 +998,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = value;
             }
-            else if (a.op == 0x54)
+            else if (a.op == FVM_AVM1_ACTION_INSTANCE_OF)
             { /* InstanceOf: native constructor metadata and prototype identity. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
@@ -981,8 +1010,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 fvm_value_boolean(&stack.back(), matches);
             }
-            else if (a.op == 0x04 || a.op == 0x05 || a.op == 0x06 || a.op == 0x07 || a.op == 0x81 ||
-                     a.op == 0x8c || a.op == 0x9f)
+            else if (a.op == FVM_AVM1_ACTION_NEXT_FRAME || a.op == FVM_AVM1_ACTION_PREVIOUS_FRAME ||
+                     a.op == FVM_AVM1_ACTION_PLAY || a.op == FVM_AVM1_ACTION_STOP ||
+                     a.op == FVM_AVM1_ACTION_GOTO_FRAME || a.op == FVM_AVM1_ACTION_GOTO_LABEL ||
+                     a.op == FVM_AVM1_ACTION_GOTO_FRAME2)
             { /* Timeline controls use the selected display target, independently from script
                  methods. */
                 FVM_Object *target = c->avm1_target_clip;
@@ -991,27 +1022,28 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 /* [GC:] Keep a coerced frame label live while resolving the target root. */
                 RootGuard frame_roots(c, &frame, 0, 0, &registers);
                 FVM_Result status = FVM_OK;
-                if (a.op == 0x81)
+                if (a.op == FVM_AVM1_ACTION_GOTO_FRAME)
                 {
                     if (a.length != 2)
                         return FVM_INVALID_ARGUMENT;
                     fvm_value_number(&frame[0], u16(data + a.payload) + 1);
                 }
-                else if (a.op == 0x8c)
+                else if (a.op == FVM_AVM1_ACTION_GOTO_LABEL)
                 {
                     if (!a.length || data[a.payload + a.length - 1] ||
                         std::memchr(data + a.payload, 0, a.length - 1))
                         return FVM_INVALID_ARGUMENT;
                     status = own_string(c, (const char *)data + a.payload, &frame[0], a.length - 1);
                 }
-                else if (a.op == 0x9f)
+                else if (a.op == FVM_AVM1_ACTION_GOTO_FRAME2)
                 {
-                    if ((a.length != 1 && a.length != 3) || (data[a.payload] & ~3) ||
-                        a.length != ((data[a.payload] & 2) ? 3U : 1U))
+                    if ((a.length != 1 && a.length != 3) ||
+                        (data[a.payload] & ~FVM_AVM1_GOTO_VALID_FLAGS) ||
+                        a.length != ((data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS) ? 3U : 1U))
                         return FVM_INVALID_ARGUMENT;
                     if (stack.empty())
                         return FVM_ERROR;
-                    playing = (data[a.payload] & 1) != 0;
+                    playing = (data[a.payload] & FVM_AVM1_GOTO_PLAY) != 0;
                     if (stack.back().type == FVM_VALUE_NUMBER)
                         fvm_value_number(&frame[0], stack.back().number);
                     else
@@ -1033,7 +1065,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             fvm_value_number(&frame[0], number);
                         }
                     }
-                    if ((data[a.payload] & 2) && frame[0].type == FVM_VALUE_NUMBER)
+                    if ((data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS) &&
+                        frame[0].type == FVM_VALUE_NUMBER)
                         frame[0].number += u16(data + a.payload + 1);
                     status = variable_receiver(c, self, &target);
                     stack.pop_back();
@@ -1042,45 +1075,47 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return FVM_INVALID_ARGUMENT;
                 if (status != FVM_OK)
                     return status;
-                if (!target || target->resource_kind != 40)
+                if (!target || target->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 {
                     if (!c->avm1_base_clip)
                         return FVM_UNSUPPORTED;
                 }
                 else
                 {
-                    FVM_ExecutionFrame command = a.op == 0x04   ? FVM_EXEC_NEXT_FRAME
-                                                 : a.op == 0x05 ? FVM_EXEC_PREVIOUS_FRAME
-                                                 : a.op == 0x06 ? FVM_EXEC_PLAY
-                                                 : a.op == 0x07 ? FVM_EXEC_STOP
-                                                                : FVM_EXEC_GOTO_FRAME;
-                    status = fvm_exec_frame_control(c, target, command,
-                                                    a.op >= 0x80 ? &frame[0] : 0, playing);
+                    FVM_ExecutionFrame command =
+                        a.op == FVM_AVM1_ACTION_NEXT_FRAME       ? FVM_EXEC_NEXT_FRAME
+                        : a.op == FVM_AVM1_ACTION_PREVIOUS_FRAME ? FVM_EXEC_PREVIOUS_FRAME
+                        : a.op == FVM_AVM1_ACTION_PLAY           ? FVM_EXEC_PLAY
+                        : a.op == FVM_AVM1_ACTION_STOP           ? FVM_EXEC_STOP
+                                                                 : FVM_EXEC_GOTO_FRAME;
+                    status = fvm_exec_frame_control(
+                        c, target, command, a.op >= FVM_AVM1_LONG_ACTION_BASE ? &frame[0] : 0,
+                        playing);
                     if (status != FVM_OK && status != FVM_NOT_FOUND)
                         return status;
                 }
             }
-            else if (a.op == 0x22 || a.op == 0x23)
+            else if (a.op == FVM_AVM1_ACTION_GET_PROPERTY || a.op == FVM_AVM1_ACTION_SET_PROPERTY)
             { /* GetProperty/SetProperty resolve display targets after numeric index coercion. */
-                const size_t count = a.op == 0x22 ? 2 : 3;
+                const size_t count = a.op == FVM_AVM1_ACTION_GET_PROPERTY ? 2 : 3;
                 if (stack.size() < count)
                     return FVM_ERROR;
                 size_t first = stack.size() - count;
                 FVM_Value result;
-                FVM_Result status =
-                    fvm_exec_display_property(c, a.op == 0x23, &stack[first], &stack[first + 1],
-                                              a.op == 0x23 ? &stack[first + 2] : 0, &result);
+                FVM_Result status = fvm_exec_display_property(
+                    c, a.op == FVM_AVM1_ACTION_SET_PROPERTY, &stack[first], &stack[first + 1],
+                    a.op == FVM_AVM1_ACTION_SET_PROPERTY ? &stack[first + 2] : 0, &result);
                 if (status != FVM_OK)
                     return status;
                 stack.resize(first);
-                if (a.op == 0x22)
+                if (a.op == FVM_AVM1_ACTION_GET_PROPERTY)
                     stack.push_back(result);
             }
-            else if (a.op == 0x8b || a.op == 0x20)
+            else if (a.op == FVM_AVM1_ACTION_SET_TARGET || a.op == FVM_AVM1_ACTION_SET_TARGET2)
             { /* SetTarget/SetTarget2 replace the display scope without changing the this receiver.
                */
                 FVM_Value path;
-                if (a.op == 0x8b)
+                if (a.op == FVM_AVM1_ACTION_SET_TARGET)
                 {
                     if (!a.length || data[a.payload + a.length - 1] ||
                         std::memchr(data + a.payload, 0, a.length - 1))
@@ -1096,22 +1131,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result status = fvm_exec_select_target(c, &path);
                 if (status != FVM_OK)
                     return status;
-                if (a.op == 0x20)
+                if (a.op == FVM_AVM1_ACTION_SET_TARGET2)
                     stack.pop_back();
             }
-            else if (a.op == 0x83 || a.op == 0x9a)
+            else if (a.op == FVM_AVM1_ACTION_GET_URL || a.op == FVM_AVM1_ACTION_GET_URL2)
             { /* GetURL/GetURL2 delegate counted requests to an explicitly registered host sink. */
                 fvm_detail::vector<FVM_Value> request(3);
                 /* [GC:] The first converted target survives URL coercion that can collect. */
                 RootGuard request_roots(c, &request, 0, 0, &registers);
                 unsigned int flags = 0;
                 FVM_Result status = FVM_OK;
-                if (a.op == 0x9a)
+                if (a.op == FVM_AVM1_ACTION_GET_URL2)
                 {
                     if (a.length != 1)
                         return FVM_INVALID_ARGUMENT;
                     flags = data[a.payload];
-                    if ((flags & 0x3c) || (flags & 3) == 3)
+                    if ((flags & FVM_AVM1_URL_RESERVED_MASK) ||
+                        (flags & FVM_AVM1_URL_METHOD_MASK) == FVM_AVM1_URL_INVALID_METHOD)
                         return FVM_INVALID_ARGUMENT;
                     if (stack.size() < 2)
                         return FVM_ERROR;
@@ -1130,7 +1166,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (!remaining || payload[a.length - 1] ||
                         std::memchr(separator + 1, 0, remaining - 1))
                         return FVM_INVALID_ARGUMENT;
-                    if (c->swf_loaded && c->swf_info.version < 6)
+                    if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
                         for (size_t i = 0; i < a.length; ++i)
                             if (payload[i] > 127)
                                 return FVM_UNSUPPORTED;
@@ -1144,10 +1180,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 status = fvm_exec_url(c, &request[0], &request[1], flags);
                 if (status != FVM_OK)
                     return status;
-                if (a.op == 0x9a)
+                if (a.op == FVM_AVM1_ACTION_GET_URL2)
                     stack.resize(stack.size() - 2);
             }
-            else if (a.op == 0x9e)
+            else if (a.op == FVM_AVM1_ACTION_CALL)
             { /* Call executes frame actions without seeking or placing frame controls. */
                 if (a.length || stack.empty())
                     return a.length ? FVM_INVALID_ARGUMENT : FVM_ERROR;
@@ -1159,14 +1195,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 stack.pop_back();
             }
-            else if (a.op == 0x40)
+            else if (a.op == FVM_AVM1_ACTION_NEW_OBJECT)
             { /* NewObject: separate named native constructor registry. */
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
                     stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
                 double count = stack[stack.size() - 2].number;
-                if (!(count >= 0 && count <= 65536) || count != std::floor(count) ||
-                    count > stack.size() - 2)
+                if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
+                    count != std::floor(count) || count > stack.size() - 2)
                     return FVM_ERROR;
                 unsigned int argc = (unsigned int)count;
                 fvm_detail::vector<FVM_Value> args(argc);
@@ -1194,13 +1230,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 value.object = object;
                 stack.push_back(value);
             }
-            else if (a.op == 0x46 || a.op == 0x55)
+            else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)
             {
                 if (stack.empty())
                     return FVM_ERROR;
                 FVM_Value target = stack.back();
                 FVM_Result r = FVM_OK;
-                if (a.op == 0x46)
+                if (a.op == FVM_AVM1_ACTION_ENUMERATE)
                 {
                     if (target.type != FVM_VALUE_STRING)
                         return FVM_INVALID_ARGUMENT;
@@ -1222,7 +1258,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 for (size_t i = keys->indexed.size(); i > 0; --i)
                     stack.push_back(keys->indexed.find((unsigned long)i - 1)->second);
             }
-            else if (a.op == 0x13 || a.op == 0x21 || a.op == 0x29 || a.op == 0x68)
+            else if (a.op == FVM_AVM1_ACTION_STRING_EQUALS || a.op == FVM_AVM1_ACTION_STRING_ADD ||
+                     a.op == FVM_AVM1_ACTION_STRING_LESS || a.op == FVM_AVM1_ACTION_STRING_GREATER)
             { /* StringEquals/StringAdd/StringLess/StringGreater use explicit string coercion. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
@@ -1234,7 +1271,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value &left = converted[0], &right = converted[1];
                 FVM_Value output;
                 FVM_Result status;
-                if (a.op == 0x68)
+                if (a.op == FVM_AVM1_ACTION_STRING_GREATER)
                 {
                     status = fvm_avm1_string(c, stack[stack.size() - 2], &left);
                     if (status == FVM_OK)
@@ -1248,7 +1285,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 if (status != FVM_OK)
                     return status;
-                if (a.op == 0x21)
+                if (a.op == FVM_AVM1_ACTION_STRING_ADD)
                 {
                     size_t first = fvm_string_size(left), last = fvm_string_size(right);
                     if (first > (size_t)-1 - last - 1)
@@ -1263,16 +1300,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     int order = 0;
                     status = fvm_string_order(left, right, order);
-                    fvm_value_boolean(&output, a.op == 0x13   ? order == 0
-                                               : a.op == 0x29 ? order < 0
-                                                              : order > 0);
+                    fvm_value_boolean(&output, a.op == FVM_AVM1_ACTION_STRING_EQUALS ? order == 0
+                                               : a.op == FVM_AVM1_ACTION_STRING_LESS ? order < 0
+                                                                                     : order > 0);
                 }
                 if (status != FVM_OK)
                     return status;
                 stack.pop_back();
                 stack.back() = output;
             }
-            else if (a.op == 0x14 || a.op == 0x31)
+            else if (a.op == FVM_AVM1_ACTION_STRING_LENGTH ||
+                     a.op == FVM_AVM1_ACTION_MB_STRING_LENGTH)
             { /* StringLength/MBStringLength count UTF-16 units in SWF 6+ and ASCII legacy input. */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1284,13 +1322,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 status = fvm_string_units(text, units);
                 if (status != FVM_OK)
                     return status;
-                if (c->swf_loaded && c->swf_info.version < 6)
+                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
                     for (size_t unit = 0; unit < units.size(); ++unit)
                         if (units[unit] > 127)
                             return FVM_UNSUPPORTED;
                 fvm_value_number(&stack.back(), (double)units.size());
             }
-            else if (a.op == 0x15 || a.op == 0x35)
+            else if (a.op == FVM_AVM1_ACTION_STRING_EXTRACT ||
+                     a.op == FVM_AVM1_ACTION_MB_STRING_EXTRACT)
             { /* StringExtract/MBStringExtract convert length, one-based start, then input text. */
                 if (stack.size() < 3)
                     return FVM_ERROR;
@@ -1302,7 +1341,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - 2);
                 stack.back() = output;
             }
-            else if (a.op == 0x32 || a.op == 0x36)
+            else if (a.op == FVM_AVM1_ACTION_CHAR_TO_ASCII ||
+                     a.op == FVM_AVM1_ACTION_MB_CHAR_TO_ASCII)
             { /* CharToAscii/MBCharToAscii return the first UTF-16 unit, replacing surrogates. */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1316,13 +1356,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 unsigned int code = units.empty() ? 0 : units[0];
                 /* Legacy byte/locale encodings remain unsupported for non-ASCII input. */
-                if (c->swf_loaded && c->swf_info.version < 6 && code > 127)
+                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6 && code > 127)
                     return FVM_UNSUPPORTED;
                 if (code >= 0xd800 && code <= 0xdfff)
                     code = 0xfffd;
                 fvm_value_number(&stack.back(), code);
             }
-            else if (a.op == 0x33 || a.op == 0x37)
+            else if (a.op == FVM_AVM1_ACTION_ASCII_TO_CHAR ||
+                     a.op == FVM_AVM1_ACTION_MB_ASCII_TO_CHAR)
             { /* AsciiToChar/MBAsciiToChar wrap to Uint16; zero is empty and surrogates are
                  replaced. */
                 if (stack.empty())
@@ -1331,8 +1372,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result status = fvm_avm1_number(c, &stack.back(), &number);
                 if (status != FVM_OK)
                     return status;
-                unsigned short code = (unsigned short)(integer_bits(number) & 0xffffUL);
-                if (c->swf_loaded && c->swf_info.version < 6 && code > 127)
+                unsigned short code = (unsigned short)(integer_bits(number) & FVM_UTF16_UNIT_MASK);
+                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6 && code > 127)
                     return FVM_UNSUPPORTED;
                 if (code >= 0xd800 && code <= 0xdfff)
                     code = 0xfffd;
@@ -1342,7 +1383,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 stack.back() = output;
             }
-            else if (a.op == 0x18)
+            else if (a.op == FVM_AVM1_ACTION_TO_INTEGER)
             { /* ToInteger uses signed Int32 wrapping, not an unsafe floating cast. */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1352,13 +1393,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 fvm_value_number(&stack.back(), signed_bits(integer_bits(number)));
             }
-            else if (a.op == 0x44 || a.op == 0x4a || a.op == 0x4b)
+            else if (a.op == FVM_AVM1_ACTION_TYPE_OF || a.op == FVM_AVM1_ACTION_TO_NUMBER ||
+                     a.op == FVM_AVM1_ACTION_TO_STRING)
             {
                 if (stack.empty())
                     return FVM_ERROR;
                 FVM_Value input = stack.back(), output;
                 FVM_Result r = FVM_OK;
-                if (a.op == 0x44)
+                if (a.op == FVM_AVM1_ACTION_TYPE_OF)
                 {
                     const char *types[] = {"undefined", "null",   "boolean",
                                            "number",    "string", "object"};
@@ -1366,11 +1408,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (input.type == FVM_VALUE_OBJECT)
                         name = input.object->invocable.callback || input.object->callable.callback
                                    ? "function"
-                               : input.object->resource_kind == 40 ? "movieclip"
-                                                                   : "object";
+                               : input.object->resource_kind == FVM_RESOURCE_MOVIECLIP ? "movieclip"
+                                                                                       : "object";
                     r = fvm_value_string(&output, name);
                 }
-                else if (a.op == 0x4b)
+                else if (a.op == FVM_AVM1_ACTION_TO_STRING)
                     r = fvm_avm1_string(c, input, &output);
                 else
                 {
@@ -1382,15 +1424,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.back() = output;
             }
-            else if (a.op == 0x47 || a.op == 0x48 || a.op == 0x49 || a.op == 0x66 || a.op == 0x67)
+            else if (a.op == FVM_AVM1_ACTION_ADD2 || a.op == FVM_AVM1_ACTION_LESS2 ||
+                     a.op == FVM_AVM1_ACTION_EQUALS2 || a.op == FVM_AVM1_ACTION_STRICT_EQUALS ||
+                     a.op == FVM_AVM1_ACTION_GREATER)
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_ExecutionCompare operation = a.op == 0x47   ? FVM_EXEC_ADD_DYNAMIC
-                                                 : a.op == 0x48 ? FVM_EXEC_LESS
-                                                 : a.op == 0x49 ? FVM_EXEC_EQUAL
-                                                 : a.op == 0x66 ? FVM_EXEC_STRICT_EQUAL
-                                                                : FVM_EXEC_GREATER;
+                FVM_ExecutionCompare operation = a.op == FVM_AVM1_ACTION_ADD2 ? FVM_EXEC_ADD_DYNAMIC
+                                                 : a.op == FVM_AVM1_ACTION_LESS2   ? FVM_EXEC_LESS
+                                                 : a.op == FVM_AVM1_ACTION_EQUALS2 ? FVM_EXEC_EQUAL
+                                                 : a.op == FVM_AVM1_ACTION_STRICT_EQUALS
+                                                     ? FVM_EXEC_STRICT_EQUAL
+                                                     : FVM_EXEC_GREATER;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_compare(c, operation, &stack[stack.size() - 2],
                                                      &stack.back(), &output);
@@ -1399,7 +1444,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = output;
             }
-            else if (a.op == 0x50 || a.op == 0x51)
+            else if (a.op == FVM_AVM1_ACTION_INCREMENT || a.op == FVM_AVM1_ACTION_DECREMENT)
             {
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1407,19 +1452,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result r = fvm_avm1_number(c, &stack.back(), &value);
                 if (r != FVM_OK)
                     return r;
-                fvm_value_number(&stack.back(), value + (a.op == 0x50 ? 1 : -1));
+                fvm_value_number(&stack.back(),
+                                 value + (a.op == FVM_AVM1_ACTION_INCREMENT ? 1 : -1));
             }
-            else if (a.op == 0x3f || (a.op >= 0x60 && a.op <= 0x65))
+            else if (a.op == FVM_AVM1_ACTION_MODULO ||
+                     (a.op >= FVM_AVM1_ACTION_BIT_AND && a.op <= FVM_AVM1_ACTION_BIT_URSHIFT))
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_ExecutionNumeric operation = a.op == 0x3f   ? FVM_EXEC_REMAINDER
-                                                 : a.op == 0x60 ? FVM_EXEC_BIT_AND
-                                                 : a.op == 0x61 ? FVM_EXEC_BIT_OR
-                                                 : a.op == 0x62 ? FVM_EXEC_BIT_XOR
-                                                 : a.op == 0x63 ? FVM_EXEC_SHIFT_LEFT
-                                                 : a.op == 0x64 ? FVM_EXEC_SHIFT_RIGHT
-                                                                : FVM_EXEC_SHIFT_UNSIGNED;
+                FVM_ExecutionNumeric operation =
+                    a.op == FVM_AVM1_ACTION_MODULO       ? FVM_EXEC_REMAINDER
+                    : a.op == FVM_AVM1_ACTION_BIT_AND    ? FVM_EXEC_BIT_AND
+                    : a.op == FVM_AVM1_ACTION_BIT_OR     ? FVM_EXEC_BIT_OR
+                    : a.op == FVM_AVM1_ACTION_BIT_XOR    ? FVM_EXEC_BIT_XOR
+                    : a.op == FVM_AVM1_ACTION_BIT_LSHIFT ? FVM_EXEC_SHIFT_LEFT
+                    : a.op == FVM_AVM1_ACTION_BIT_RSHIFT ? FVM_EXEC_SHIFT_RIGHT
+                                                         : FVM_EXEC_SHIFT_UNSIGNED;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_numeric(c, operation, &stack[stack.size() - 2],
                                                      &stack.back(), &result);
@@ -1428,23 +1476,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = result;
             }
-            else if (a.op == 0x4e || a.op == 0x4f)
+            else if (a.op == FVM_AVM1_ACTION_GET_MEMBER || a.op == FVM_AVM1_ACTION_SET_MEMBER)
             {
-                size_t count = a.op == 0x4e ? 2 : 3;
+                size_t count = a.op == FVM_AVM1_ACTION_GET_MEMBER ? 2 : 3;
                 if (stack.size() < count)
                     return FVM_ERROR;
                 size_t first = stack.size() - count;
                 FVM_Value result;
-                FVM_Result status =
-                    fvm_exec_member(c, a.op == 0x4f, &stack[first], &stack[first + 1],
-                                    a.op == 0x4f ? &stack[first + 2] : 0, &result);
+                FVM_Result status = fvm_exec_member(
+                    c, a.op == FVM_AVM1_ACTION_SET_MEMBER, &stack[first], &stack[first + 1],
+                    a.op == FVM_AVM1_ACTION_SET_MEMBER ? &stack[first + 2] : 0, &result);
                 if (status != FVM_OK)
                     return status;
                 stack.resize(first);
-                if (a.op == 0x4e)
+                if (a.op == FVM_AVM1_ACTION_GET_MEMBER)
                     stack.push_back(result);
             }
-            else if (a.op == 0x3a)
+            else if (a.op == FVM_AVM1_ACTION_DELETE)
             { /* Delete: owner and property name; absent/inherited members report false. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
@@ -1454,7 +1502,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (status != FVM_OK)
                     return status;
                 int own = 0, deleted = 0;
-                if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind != 37)
+                if (owner.type == FVM_VALUE_OBJECT &&
+                    owner.object->resource_kind != FVM_RESOURCE_SUPER)
                 {
                     status = fvm_object_has_own_bytes(c, owner.object, key.string,
                                                       fvm_string_size(key), &own);
@@ -1468,13 +1517,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = result;
             }
-            else if (a.op == 0x4c)
+            else if (a.op == FVM_AVM1_ACTION_PUSH_DUPLICATE)
             { /* PushDuplicate */
                 if (stack.empty())
                     return FVM_ERROR;
                 stack.push_back(stack.back());
             }
-            else if (a.op == 0x4d)
+            else if (a.op == FVM_AVM1_ACTION_STACK_SWAP)
             { /* StackSwap */
                 if (stack.size() < 2)
                     return FVM_ERROR;
@@ -1482,7 +1531,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.back() = stack[stack.size() - 2];
                 stack[stack.size() - 2] = tmp;
             }
-            else if (a.op == 0x12)
+            else if (a.op == FVM_AVM1_ACTION_NOT)
             { /* Not */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1493,16 +1542,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 fvm_value_boolean(&v, !converted);
             }
-            else if (a.op == 0x0e || a.op == 0x0f || a.op == 0x10 || a.op == 0x11)
+            else if (a.op == FVM_AVM1_ACTION_EQUALS || a.op == FVM_AVM1_ACTION_LESS ||
+                     a.op == FVM_AVM1_ACTION_AND || a.op == FVM_AVM1_ACTION_OR)
             {
                 /* [GC:] Keep both operands in the rooted stack through native coercion. */
                 if (stack.size() < 2)
                     return FVM_ERROR;
                 FVM_Value operands[2] = {stack[stack.size() - 2], stack.back()}, result;
                 bool value = false;
-                if (a.op == 0x0e || a.op == 0x0f)
+                if (a.op == FVM_AVM1_ACTION_EQUALS || a.op == FVM_AVM1_ACTION_LESS)
                 {
-                    const char *hook = a.op == 0x0e ? "__eq" : "__lt";
+                    const char *hook = a.op == FVM_AVM1_ACTION_EQUALS ? "__eq" : "__lt";
                     FVM_Result status =
                         fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
                     if (status == FVM_NOT_FOUND)
@@ -1516,7 +1566,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         double left = 0, right = 0;
                         /* Legacy Equals converts the top operand first; Less converts left first.
                          */
-                        if (a.op == 0x0e)
+                        if (a.op == FVM_AVM1_ACTION_EQUALS)
                         {
                             status = fvm_avm1_number(c, operands + 1, &right);
                             if (status == FVM_OK)
@@ -1530,7 +1580,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         }
                         if (status != FVM_OK)
                             return status;
-                        value = a.op == 0x0e ? left == right : left < right;
+                        value = a.op == FVM_AVM1_ACTION_EQUALS ? left == right : left < right;
                     }
                 }
                 else
@@ -1541,13 +1591,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         status = action_truth(c, operands[1], right);
                     if (status != FVM_OK)
                         return status;
-                    value = a.op == 0x10 ? left && right : left || right;
+                    value = a.op == FVM_AVM1_ACTION_AND ? left && right : left || right;
                 }
                 fvm_value_boolean(&result, value);
                 stack.pop_back();
                 stack.back() = result;
             }
-            else if (a.op == 0x26)
+            else if (a.op == FVM_AVM1_ACTION_TRACE)
             { /* Trace always coerces its operand, even when host delivery is disabled. */
                 if (stack.empty())
                     return FVM_ERROR;
@@ -1556,19 +1606,20 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 stack.pop_back();
             }
-            else if (a.op == 0x17)
+            else if (a.op == FVM_AVM1_ACTION_POP)
             { /* Pop */
                 if (stack.empty())
                     return FVM_ERROR;
                 stack.pop_back();
             }
-            else if (a.op == 0x3c || a.op == 0x41)
+            else if (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL || a.op == FVM_AVM1_ACTION_DEFINE_LOCAL2)
             { /* DefineLocal / DeclareLocal also bind top-level clip/global properties. */
-                if (stack.size() < (a.op == 0x3c ? 2U : 1U))
+                if (stack.size() < (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? 2U : 1U))
                     return FVM_ERROR;
                 /* [GC:] Retain the name and initialized value through coercion/setters. */
                 const FVM_Value &name_value =
-                    stack[a.op == 0x3c ? stack.size() - 2 : stack.size() - 1];
+                    stack[a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? stack.size() - 2
+                                                               : stack.size() - 1];
                 FVM_Value text;
                 FVM_Result status = fvm_avm1_string(c, name_value, &text);
                 if (status != FVM_OK)
@@ -1579,14 +1630,15 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return status;
                 FVM_Value value;
                 fvm_value_undefined(&value);
-                if (a.op == 0x3c)
+                if (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL)
                     value = stack.back();
-                status = declare_variable(c, locals, self, name, value, a.op == 0x3c);
+                status = declare_variable(c, locals, self, name, value,
+                                          a.op == FVM_AVM1_ACTION_DEFINE_LOCAL);
                 if (status != FVM_OK)
                     return status;
-                stack.resize(stack.size() - (a.op == 0x3c ? 2 : 1));
+                stack.resize(stack.size() - (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL ? 2 : 1));
             }
-            else if (a.op == 0x1c)
+            else if (a.op == FVM_AVM1_ACTION_GET_VARIABLE)
             {
                 if (stack.empty() || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
@@ -1596,7 +1648,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     return r;
                 stack.back() = value;
             }
-            else if (a.op == 0x1d)
+            else if (a.op == FVM_AVM1_ACTION_SET_VARIABLE)
             { /* SetVariable: name, value */
                 if (stack.size() < 2 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
                     return FVM_ERROR;
@@ -1614,17 +1666,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     FVM_Object *captured =
                         c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back()->prototype;
                     unsigned int levels = 0;
-                    while (captured && levels++ < 1024 &&
+                    while (captured && levels++ < FVM_PROTOTYPE_MAX_DEPTH &&
                            captured->properties.find(name) == captured->properties.end())
                         captured = captured->prototype;
-                    if (captured && levels > 1024)
+                    if (captured && levels > FVM_PROTOTYPE_MAX_DEPTH)
                         return FVM_ERROR;
                     FVM_Object *scope_receiver = 0;
                     r = variable_receiver(c, self, &scope_receiver);
                     if (r == FVM_OK)
                         r = captured ? fvm_object_set_bytes(c, captured, name.data(), name.size(),
                                                             &stack.back())
-                            : scope_receiver && scope_receiver->resource_kind == 40
+                            : scope_receiver &&
+                                    scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
                                 ? fvm_object_set_bytes(c, scope_receiver, name.data(), name.size(),
                                                        &stack.back())
                                 : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
@@ -1634,14 +1687,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.pop_back();
             }
-            else if (a.op == 0x0a || a.op == 0x0b || a.op == 0x0c || a.op == 0x0d)
+            else if (a.op == FVM_AVM1_ACTION_ADD || a.op == FVM_AVM1_ACTION_SUBTRACT ||
+                     a.op == FVM_AVM1_ACTION_MULTIPLY || a.op == FVM_AVM1_ACTION_DIVIDE)
             {
                 if (stack.size() < 2)
                     return FVM_ERROR;
-                FVM_ExecutionNumeric operation = a.op == 0x0a   ? FVM_EXEC_ADD
-                                                 : a.op == 0x0b ? FVM_EXEC_SUBTRACT
-                                                 : a.op == 0x0c ? FVM_EXEC_MULTIPLY
-                                                                : FVM_EXEC_DIVIDE;
+                FVM_ExecutionNumeric operation =
+                    a.op == FVM_AVM1_ACTION_ADD        ? FVM_EXEC_ADD
+                    : a.op == FVM_AVM1_ACTION_SUBTRACT ? FVM_EXEC_SUBTRACT
+                    : a.op == FVM_AVM1_ACTION_MULTIPLY ? FVM_EXEC_MULTIPLY
+                                                       : FVM_EXEC_DIVIDE;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_numeric(c, operation, &stack[stack.size() - 2],
                                                      &stack.back(), &result);
@@ -1650,7 +1705,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = result;
             }
-            else if (a.op == 0x52 || a.op == 0x53)
+            else if (a.op == FVM_AVM1_ACTION_CALL_METHOD || a.op == FVM_AVM1_ACTION_NEW_METHOD)
             { /* CallMethod: args, argc, receiver, method name */
                 if (stack.size() < 3 ||
                     (stack.back().type != FVM_VALUE_STRING && stack.back().type != FVM_VALUE_NULL &&
@@ -1658,10 +1713,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
                     return FVM_ERROR;
                 double n = stack[stack.size() - 3].number;
-                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 3)
+                if (!(n >= 0 && n <= FVM_AVM1_MAX_CALL_ARGUMENTS) || n != std::floor(n) ||
+                    stack.size() < (size_t)n + 3)
                     return FVM_ERROR;
                 FVM_Value owner = stack[stack.size() - 2];
-                if (a.op == 0x52 &&
+                if (a.op == FVM_AVM1_ACTION_CALL_METHOD &&
                     (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED))
                 {
                     /* A nullish receiver consumes valid arguments without invoking a method. */
@@ -1707,7 +1763,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result lookup = fvm_lookup_native_method(receiver, name, &native_method);
                 if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
                     return lookup;
-                if (a.op == 0x53)
+                if (a.op == FVM_AVM1_ACTION_NEW_METHOD)
                 {
                     FVM_Value function;
                     r = name.empty() ? FVM_OK
@@ -1733,7 +1789,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 else if (name.empty())
                     r = fvm_function_invoke(c, receiver, self, argc, args.begin(), &result);
-                else if (receiver->resource_kind != 37 && lookup == FVM_NOT_FOUND &&
+                else if (receiver->resource_kind != FVM_RESOURCE_SUPER && lookup == FVM_NOT_FOUND &&
                          script != c->script_functions.end())
                     r = fvm_avm1_call_script(c, script->first, script->second, argc,
                                              argc ? &args[0] : 0, receiver, &result);
@@ -1745,7 +1801,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - argc - 3);
                 stack.push_back(result);
             }
-            else if (a.op == 0x3d)
+            else if (a.op == FVM_AVM1_ACTION_CALL_FUNCTION)
             { /* CallFunction: args, argc, name (top) */
                 if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
                     stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
@@ -1756,7 +1812,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (normalized != FVM_OK)
                     return normalized;
                 double n = stack[stack.size() - 2].number;
-                if (!(n >= 0 && n <= 65535) || n != std::floor(n) || stack.size() < (size_t)n + 2)
+                if (!(n >= 0 && n <= FVM_AVM1_MAX_CALL_ARGUMENTS) || n != std::floor(n) ||
+                    stack.size() < (size_t)n + 2)
                     return FVM_ERROR;
                 unsigned int argc = (unsigned int)n;
                 fvm_detail::vector<FVM_Value> args(argc);
@@ -1788,12 +1845,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(stack.size() - argc - 2);
                 stack.push_back(result);
             }
-            else if (a.op == 0x99 || a.op == 0x9d)
+            else if (a.op == FVM_AVM1_ACTION_JUMP || a.op == FVM_AVM1_ACTION_IF)
             { /* Jump / If */
                 if (a.length != 2)
                     return FVM_INVALID_ARGUMENT;
                 int take = 1;
-                if (a.op == 0x9d)
+                if (a.op == FVM_AVM1_ACTION_IF)
                 {
                     if (stack.empty())
                         return FVM_ERROR;

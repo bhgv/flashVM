@@ -2,6 +2,7 @@
  * File: src/capi/serialization_c.cpp.
  */
 
+#include "graph_constants.h"
 #include "../core/string_internal.hpp"
 #include "../core/property_key.hpp"
 #include "../standard/movieclip_state.hpp"
@@ -131,15 +132,15 @@ struct Graph
 /* Compute and return known kind. */
 bool known_kind(unsigned long kind)
 {
-    return kind == 4001 || kind == 4008 || kind == 3001 || kind == 3008 || kind == 0 ||
-           kind == 10 || kind == 20 || kind == 21 || kind == 22 || kind == 23 || kind == 24 ||
-           kind == 25 || kind == 26 || kind == 27 || kind == 28 || kind == 29 || kind == 30 ||
-           kind == 31 || kind == 34 || kind == 35 || kind == 37 || kind == 32 || kind == 33 ||
-           kind == 36 || kind == 40 || kind == 41 || kind == 1001 || kind == 1003 || kind == 1004 ||
-           kind == 1002 || kind == 42 || kind == 43 || kind == 44 || kind == 45 || kind == 46 ||
-           kind == 47 || kind == 48 || kind == 49 || kind == 50 || kind == 51 || kind == 52 ||
-           kind == 53 || kind == 54 || kind == 55 || kind == 56 || kind == 57 || kind == 58 ||
-           kind == 59 || kind == 60 || kind == 61;
+    return kind == FVM_GRAPH_REMOTE_CHANNEL || kind == FVM_GRAPH_REMOTE_MUTEX || kind == FVM_GRAPH_LOCAL_CHANNEL || kind == FVM_GRAPH_LOCAL_MUTEX || kind == FVM_RESOURCE_PLAIN_OBJECT ||
+           kind == FVM_RESOURCE_MATH_NAMESPACE || kind == FVM_RESOURCE_BOOLEAN || kind == FVM_RESOURCE_BOOLEAN_CLASS || kind == FVM_RESOURCE_ERROR || kind == FVM_RESOURCE_ERROR_CLASS || kind == FVM_RESOURCE_NUMBER ||
+           kind == FVM_RESOURCE_NUMBER_CLASS || kind == FVM_RESOURCE_STRING || kind == FVM_RESOURCE_STRING_CLASS || kind == FVM_RESOURCE_ARRAY || kind == FVM_RESOURCE_ARRAY_CLASS || kind == FVM_RESOURCE_OBJECT ||
+           kind == FVM_RESOURCE_OBJECT_CLASS || kind == FVM_RESOURCE_DATE || kind == FVM_RESOURCE_DATE_CLASS || kind == FVM_RESOURCE_SUPER || kind == FVM_RESOURCE_SCRIPT_FUNCTION || kind == FVM_RESOURCE_FUNCTION_CLASS ||
+           kind == FVM_RESOURCE_NATIVE_FUNCTION || kind == FVM_RESOURCE_MOVIECLIP || kind == FVM_RESOURCE_MOVIECLIP_CLASS || kind == FVM_RESOURCE_TEXT_FORMAT || kind == FVM_RESOURCE_TEXT_FORMAT_CLASS || kind == FVM_RESOURCE_TEXT_FIELD_CLASS ||
+           kind == FVM_RESOURCE_TEXT_FIELD || kind == FVM_RESOURCE_POINT || kind == FVM_RESOURCE_MATRIX || kind == FVM_RESOURCE_POINT_CLASS || kind == FVM_RESOURCE_MATRIX_CLASS || kind == FVM_RESOURCE_RECTANGLE ||
+           kind == FVM_RESOURCE_RECTANGLE_CLASS || kind == FVM_RESOURCE_COLOR_TRANSFORM || kind == FVM_RESOURCE_COLOR_TRANSFORM_CLASS || kind == FVM_RESOURCE_TRANSFORM || kind == FVM_RESOURCE_TRANSFORM_CLASS || kind == FVM_RESOURCE_BITMAP_DATA ||
+           kind == FVM_RESOURCE_BITMAP_DATA_CLASS || kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || kind == FVM_RESOURCE_COLOR_MATRIX_FILTER_CLASS || kind == FVM_RESOURCE_BITMAP_FILTER || kind == FVM_RESOURCE_BITMAP_FILTER_CLASS || kind == FVM_RESOURCE_BLUR_FILTER ||
+           kind == FVM_RESOURCE_BLUR_FILTER_CLASS || kind == FVM_RESOURCE_CONVOLUTION_FILTER || kind == FVM_RESOURCE_CONVOLUTION_FILTER_CLASS;
 }
 
 /* Compute and return identify. */
@@ -328,7 +329,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         FVM_Object *src = seen[i];
         charge(budget, 40);
         Object dst;
-        if (src->resource_kind == 1 || src->resource_kind == 8)
+        if (src->resource_kind == FVM_RESOURCE_CHANNEL || src->resource_kind == FVM_RESOURCE_MUTEX)
         {
             require(src->watchers.empty(), FVM_UNSUPPORTED);
             FVM_Result result;
@@ -336,14 +337,14 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             {
                 unsigned long token = 0;
                 result = fvm_transfer_capture_resource(c, src, &token);
-                dst.kind = 3000 + (unsigned long)src->resource_kind;
+                dst.kind = FVM_GRAPH_LOCAL_CAPABILITY_BASE + (unsigned long)src->resource_kind;
                 dst.state.type = FVM_VALUE_NUMBER;
                 dst.state.number = (double)token;
             }
             else
             {
                 result = fvm_capability_export(c, src, dst.state.string);
-                dst.kind = 4000 + (unsigned long)src->resource_kind;
+                dst.kind = FVM_GRAPH_REMOTE_CAPABILITY_BASE + (unsigned long)src->resource_kind;
                 dst.state.type = FVM_VALUE_STRING;
             }
             require(result == FVM_OK, result);
@@ -351,9 +352,9 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             continue;
         }
         require(src->resource_kind >= 0 && known_kind((unsigned long)src->resource_kind) &&
-                    (!src->resource || src->resource_kind == 1002 || src->resource_kind == 52) &&
-                    (!src->release_resource || src->resource_kind == 1002 ||
-                     src->resource_kind == 52) &&
+                    (!src->resource || src->resource_kind == FVM_RESOURCE_TEXT_FIELD || src->resource_kind == FVM_RESOURCE_BITMAP_DATA) &&
+                    (!src->release_resource || src->resource_kind == FVM_RESOURCE_TEXT_FIELD ||
+                     src->resource_kind == FVM_RESOURCE_BITMAP_DATA) &&
                     !src->callable.callback,
                 FVM_UNSUPPORTED);
         dst.kind = (unsigned long)src->resource_kind;
@@ -400,54 +401,54 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             ++entries;
             require(entries <= max_entries, FVM_UNSUPPORTED);
         }
-        if (dst.kind == 52)
+        if (dst.kind == FVM_RESOURCE_BITMAP_DATA)
         {
             FVM_Result result = fvm_bitmap_snapshot(src, dst.state.string);
             require(result == FVM_OK, result);
             dst.state.type = FVM_VALUE_STRING;
             charge(budget, dst.state.string.size());
         }
-        if (dst.kind == 1002)
+        if (dst.kind == FVM_RESOURCE_TEXT_FIELD)
         {
             charge(budget, fvm_textfield_snapshot_size(src));
             FVM_Result result = fvm_textfield_snapshot(src, dst.text);
             require(result == FVM_OK, result);
         }
-        if (dst.kind == 20 || dst.kind == 24 || dst.kind == 26 || dst.kind == 28 ||
-            dst.kind == 34 || dst.kind == 37 || dst.kind == 32 || dst.kind == 40 ||
-            dst.kind == 48 || dst.kind == 50 ||
-            (dst.kind == 54 || dst.kind == 58 || dst.kind == 60))
+        if (dst.kind == FVM_RESOURCE_BOOLEAN || dst.kind == FVM_RESOURCE_NUMBER || dst.kind == FVM_RESOURCE_STRING || dst.kind == FVM_RESOURCE_ARRAY ||
+            dst.kind == FVM_RESOURCE_DATE || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_MOVIECLIP ||
+            dst.kind == FVM_RESOURCE_COLOR_TRANSFORM || dst.kind == FVM_RESOURCE_TRANSFORM ||
+            (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || dst.kind == FVM_RESOURCE_BLUR_FILTER || dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
         {
             require(
                 src->resource_result_valid &&
                     src->resource_result.type ==
-                        (dst.kind == 20   ? FVM_VALUE_BOOLEAN
-                         : dst.kind == 26 ? FVM_VALUE_STRING
-                         : (dst.kind == 32 || dst.kind == 37 || dst.kind == 40 || dst.kind == 48 ||
-                            dst.kind == 50 || (dst.kind == 54 || dst.kind == 58 || dst.kind == 60))
+                        (dst.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
+                         : dst.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
+                         : (dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_MOVIECLIP || dst.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
+                            dst.kind == FVM_RESOURCE_TRANSFORM || (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || dst.kind == FVM_RESOURCE_BLUR_FILTER || dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
                              ? FVM_VALUE_OBJECT
                              : FVM_VALUE_NUMBER),
                 FVM_UNSUPPORTED);
-            if (dst.kind == 48)
+            if (dst.kind == FVM_RESOURCE_COLOR_TRANSFORM)
             {
                 double native_channels[8];
                 /* [GC:] Reject malformed private color storage before capturing its owned graph. */
                 require(fvm_color_transform_values(c, src, native_channels), FVM_UNSUPPORTED);
             }
-            if (dst.kind == 54)
+            if (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER)
             {
                 double coefficients[20];
                 /* [GC:] Reject invalid private filter storage before capturing its managed edge. */
                 require(fvm_filter_matrix(c, src, coefficients), FVM_UNSUPPORTED);
             }
-            if (dst.kind == 58)
+            if (dst.kind == FVM_RESOURCE_BLUR_FILTER)
             {
                 FVM_Convolution convolution;
                 /* [GC:] Reject malformed convolution data before capturing its managed private
                  * edge. */
                 require(fvm_convolution_values(c, src, convolution), FVM_UNSUPPORTED);
             }
-            if (dst.kind == 60)
+            if (dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER)
             {
                 double options[3];
                 /* [GC:] Reject malformed private blur data before capturing its owned graph. */
@@ -455,7 +456,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             }
             dst.state = capture_value(c, src->resource_result, seen, budget);
         }
-        else if (dst.kind == 10)
+        else if (dst.kind == FVM_RESOURCE_MATH_NAMESPACE)
         {
             dst.state.type = FVM_VALUE_NUMBER;
             dst.state.number = c->random_state;
@@ -718,7 +719,7 @@ void write_graph(const Graph &g, Writer &w)
         const Object &o = g.objects[i];
         w.u32(o.kind);
         w.value(o.state);
-        if (o.kind == 1002)
+        if (o.kind == FVM_RESOURCE_TEXT_FIELD)
             w.text_field(o.text);
         w.ref(o.prototype);
         w.ref(o.metatable);
@@ -1019,9 +1020,9 @@ Graph read_graph(Reader &r, unsigned int version)
         o.kind = r.u32();
         require(known_kind(o.kind), FVM_UNSUPPORTED);
         /* Bitmap native payload is validated as binary storage, not as ActionScript text. */
-        o.state = r.value(o.kind == 52);
+        o.state = r.value(o.kind == FVM_RESOURCE_BITMAP_DATA);
         require(o.state.metatable == none);
-        if (o.kind == 1002)
+        if (o.kind == FVM_RESOURCE_TEXT_FIELD)
             o.text = r.text_field();
         o.prototype = r.ref();
         o.metatable = r.ref();
@@ -1031,27 +1032,27 @@ Graph read_graph(Reader &r, unsigned int version)
             for (size_t j = 0; j < count; ++j)
                 o.implemented_interfaces.push_back(r.ref());
         }
-        if (o.kind == 52)
+        if (o.kind == FVM_RESOURCE_BITMAP_DATA)
             require(o.state.type == FVM_VALUE_STRING && fvm_bitmap_snapshot_valid(o.state.string));
-        else if (o.kind == 4001 || o.kind == 4008)
+        else if (o.kind == FVM_GRAPH_REMOTE_CHANNEL || o.kind == FVM_GRAPH_REMOTE_MUTEX)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
-        else if (o.kind == 20 || o.kind == 24 || o.kind == 26 || o.kind == 28 || o.kind == 32 ||
-                 o.kind == 34 || o.kind == 37 || o.kind == 40 || o.kind == 48 || o.kind == 50 ||
-                 (o.kind == 54 || o.kind == 58 || o.kind == 60))
+        else if (o.kind == FVM_RESOURCE_BOOLEAN || o.kind == FVM_RESOURCE_NUMBER || o.kind == FVM_RESOURCE_STRING || o.kind == FVM_RESOURCE_ARRAY || o.kind == FVM_RESOURCE_SCRIPT_FUNCTION ||
+                 o.kind == FVM_RESOURCE_DATE || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM || o.kind == FVM_RESOURCE_TRANSFORM ||
+                 (o.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || o.kind == FVM_RESOURCE_BLUR_FILTER || o.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
             require(o.state.type ==
-                    (o.kind == 20   ? FVM_VALUE_BOOLEAN
-                     : o.kind == 26 ? FVM_VALUE_STRING
-                     : (o.kind == 32 || o.kind == 37 || o.kind == 40 || o.kind == 48 ||
-                        o.kind == 50 || (o.kind == 54 || o.kind == 58 || o.kind == 60))
+                    (o.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
+                     : o.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
+                     : (o.kind == FVM_RESOURCE_SCRIPT_FUNCTION || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
+                        o.kind == FVM_RESOURCE_TRANSFORM || (o.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || o.kind == FVM_RESOURCE_BLUR_FILTER || o.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
                          ? FVM_VALUE_OBJECT
                          : FVM_VALUE_NUMBER));
-        else if (o.kind == 10 || o.kind == 3001 || o.kind == 3008)
+        else if (o.kind == FVM_RESOURCE_MATH_NAMESPACE || o.kind == FVM_GRAPH_LOCAL_CHANNEL || o.kind == FVM_GRAPH_LOCAL_MUTEX)
             require(o.state.type == FVM_VALUE_NUMBER && o.state.number >= 0 &&
                     o.state.number <= 4294967295.0 &&
                     o.state.number == (unsigned long)o.state.number);
         else
             require(o.state.type == FVM_VALUE_UNDEFINED);
-        if (o.kind == 26)
+        if (o.kind == FVM_RESOURCE_STRING)
         {
             FVM_Value text;
             require(fvm_value_string_bytes(&text, o.state.string.data(), o.state.string.size()) ==
@@ -1158,10 +1159,10 @@ Graph read_graph(Reader &r, unsigned int version)
                 o.watchers[name] = descriptor;
             }
         }
-        if (o.kind == 34)
+        if (o.kind == FVM_RESOURCE_DATE)
             require(o.state.number != o.state.number ||
                     std::fabs(o.state.number) <= 8640000000000000.0);
-        if (o.kind == 28)
+        if (o.kind == FVM_RESOURCE_ARRAY)
         {
             require(o.state.number >= 0 && o.state.number <= 4294967295.0 &&
                     o.state.number == std::floor(o.state.number));
@@ -1219,13 +1220,13 @@ Graph read_graph(Reader &r, unsigned int version)
     for (size_t i = 0; i < n; ++i)
     {
         const Object &color = g.objects[i];
-        if (color.kind != 48 && color.kind != 54)
+        if (color.kind != FVM_RESOURCE_COLOR_TRANSFORM && color.kind != FVM_RESOURCE_COLOR_MATRIX_FILTER)
             continue;
         require(color.state.type == FVM_VALUE_OBJECT && color.state.object != none);
         const Object &data = g.objects[color.state.object];
-        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+        require(data.kind == FVM_RESOURCE_PLAIN_OBJECT && data.prototype == none && data.metatable == none &&
                 data.state.type == FVM_VALUE_UNDEFINED &&
-                data.properties.size() == (color.kind == 54 ? 20 : 8) && data.indexed.empty() &&
+                data.properties.size() == (color.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER ? 20 : 8) && data.indexed.empty() &&
                 data.methods.empty() && data.metamethods.empty() && data.accessors.empty() &&
                 data.method_values.empty() && data.watchers.empty() && data.attributes.empty() &&
                 data.implemented_interfaces.empty() && !data.invocable.builtin &&
@@ -1236,14 +1237,14 @@ Graph read_graph(Reader &r, unsigned int version)
                                "blueOffset",      "alphaOffset"};
         const char *matrix_names[] = {"0",  "1",  "2",  "3",  "4",  "5",  "6",  "7",  "8",  "9",
                                       "10", "11", "12", "13", "14", "15", "16", "17", "18", "19"};
-        unsigned int channels = color.kind == 54 ? 20 : 8;
+        unsigned int channels = color.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER ? 20 : 8;
         for (unsigned int channel = 0; channel < channels; ++channel)
         {
             fvm_detail::map<fvm_detail::string, Value>::const_iterator entry =
-                data.properties.find(color.kind == 54 ? matrix_names[channel] : names[channel]);
+                data.properties.find(color.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER ? matrix_names[channel] : names[channel]);
             require(entry != data.properties.end() && entry->second.type == FVM_VALUE_NUMBER &&
                     entry->second.metatable == none);
-            if (color.kind == 54)
+            if (color.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER)
                 require(entry->second.number >= -1000000.0 && entry->second.number <= 1000000.0);
         }
     }
@@ -1251,11 +1252,11 @@ Graph read_graph(Reader &r, unsigned int version)
     for (size_t i = 0; i < n; ++i)
     {
         const Object &filter = g.objects[i];
-        if (filter.kind != 60)
+        if (filter.kind != FVM_RESOURCE_CONVOLUTION_FILTER)
             continue;
         require(filter.state.type == FVM_VALUE_OBJECT && filter.state.object != none);
         const Object &data = g.objects[filter.state.object];
-        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+        require(data.kind == FVM_RESOURCE_PLAIN_OBJECT && data.prototype == none && data.metatable == none &&
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 3 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
@@ -1278,11 +1279,11 @@ Graph read_graph(Reader &r, unsigned int version)
     for (size_t i = 0; i < n; ++i)
     {
         const Object &filter = g.objects[i];
-        if (filter.kind != 58)
+        if (filter.kind != FVM_RESOURCE_BLUR_FILTER)
             continue;
         require(filter.state.type == FVM_VALUE_OBJECT && filter.state.object != none);
         const Object &data = g.objects[filter.state.object];
-        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+        require(data.kind == FVM_RESOURCE_PLAIN_OBJECT && data.prototype == none && data.metatable == none &&
                 data.state.type == FVM_VALUE_UNDEFINED && data.indexed.empty() &&
                 data.methods.empty() && data.metamethods.empty() && data.accessors.empty() &&
                 data.method_values.empty() && data.watchers.empty() && data.attributes.empty() &&
@@ -1332,11 +1333,11 @@ Graph read_graph(Reader &r, unsigned int version)
     for (size_t i = 0; i < n; ++i)
     {
         const Object &transform = g.objects[i];
-        if (transform.kind != 50)
+        if (transform.kind != FVM_RESOURCE_TRANSFORM)
             continue;
         require(transform.state.type == FVM_VALUE_OBJECT && transform.state.object != none);
         const Object &data = g.objects[transform.state.object];
-        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+        require(data.kind == FVM_RESOURCE_PLAIN_OBJECT && data.prototype == none && data.metatable == none &&
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 1 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
@@ -1348,19 +1349,19 @@ Graph read_graph(Reader &r, unsigned int version)
         require(reference != data.properties.end() && reference->second.metatable == none &&
                 (reference->second.type == FVM_VALUE_UNDEFINED ||
                  (reference->second.type == FVM_VALUE_OBJECT && reference->second.object != none &&
-                  g.objects[reference->second.object].kind == 40)));
+                  g.objects[reference->second.object].kind == FVM_RESOURCE_MOVIECLIP)));
     }
     /* Superclass facade metadata is a private receiver/depth record, never executable data. */
     for (size_t i = 0; i < n; ++i)
     {
         const Object &facade = g.objects[i];
-        if (facade.kind != 37)
+        if (facade.kind != FVM_RESOURCE_SUPER)
             continue;
         require(facade.invocable.builtin == 808 && facade.invocable.name.empty() &&
                 /* [GC:] The callback capture must retain exactly this facade identity. */
                 facade.invocable.root == i && facade.invocable.root_userdata);
         const Object &data = g.objects[facade.state.object];
-        require(data.kind == 0 && data.prototype == none && data.metatable == none &&
+        require(data.kind == FVM_RESOURCE_PLAIN_OBJECT && data.prototype == none && data.metatable == none &&
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 2 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
@@ -1384,7 +1385,7 @@ Graph read_graph(Reader &r, unsigned int version)
              watcher != g.objects[i].watchers.end(); ++watcher)
         {
             const Object &descriptor = g.objects[watcher->second.object];
-            require(descriptor.kind == 0 && descriptor.implemented_interfaces.empty() &&
+            require(descriptor.kind == FVM_RESOURCE_PLAIN_OBJECT && descriptor.implemented_interfaces.empty() &&
                     descriptor.prototype == none && descriptor.metatable == none);
             fvm_detail::map<fvm_detail::string, Value>::iterator handler =
                 descriptor.properties.find("handler");
@@ -1609,7 +1610,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             FVM_Object *o = 0;
             const Object &src = g.objects[i];
             FVM_Result r;
-            if (src.kind == 3001 || src.kind == 3008 || src.kind == 4001 || src.kind == 4008)
+            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
             {
                 require(src.properties.empty() && src.indexed.empty() && src.methods.empty() &&
                         src.metamethods.empty() && src.accessors.empty() && src.prototype == none &&
@@ -1622,7 +1623,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             else
                 r = fvm_object_create(c, &o);
             require(r == FVM_OK, r);
-            if (src.kind == 4001 || src.kind == 4008)
+            if (src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
                 o->resource_path = c->resource_receive_path;
             objects.push_back(o);
         }
@@ -1636,13 +1637,13 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Object *dst = objects[i];
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (src.kind == 3001 || src.kind == 3008 || src.kind == 4001 || src.kind == 4008)
+            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 continue;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->resource_kind = (int)src.kind;
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (src.kind == 1002)
+            if (src.kind == FVM_RESOURCE_TEXT_FIELD)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1652,17 +1653,17 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (src.kind == 52)
+            if (src.kind == FVM_RESOURCE_BITMAP_DATA)
             {
                 /* [GC:] Attach a restored bitmap's separately owned pixel allocation. */
                 FVM_Result restored = fvm_bitmap_restore(dst, src.state.string);
                 require(restored == FVM_OK, restored);
             }
-            if (src.kind == 20 || src.kind == 24 || src.kind == 26 || src.kind == 28 ||
+            if (src.kind == FVM_RESOURCE_BOOLEAN || src.kind == FVM_RESOURCE_NUMBER || src.kind == FVM_RESOURCE_STRING || src.kind == FVM_RESOURCE_ARRAY ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                src.kind == 34 || src.kind == 37 || src.kind == 32 || src.kind == 40 ||
-                src.kind == 48 || src.kind == 50 ||
-                (src.kind == 54 || src.kind == 58 || src.kind == 60))
+                src.kind == FVM_RESOURCE_DATE || src.kind == FVM_RESOURCE_SUPER || src.kind == FVM_RESOURCE_SCRIPT_FUNCTION || src.kind == FVM_RESOURCE_MOVIECLIP ||
+                src.kind == FVM_RESOURCE_COLOR_TRANSFORM || src.kind == FVM_RESOURCE_TRANSFORM ||
+                (src.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || src.kind == FVM_RESOURCE_BLUR_FILTER || src.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1672,7 +1673,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (src.kind == 10)
+            if (src.kind == FVM_RESOURCE_MATH_NAMESPACE)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1760,7 +1761,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 /* Old graphs shared callback 1010 for toString and _target. Preserve the
                  * accessor role while the method now restores the corrected dot-path callback. */
-                if (src.kind == 40 && p->first == fvm_detail::string("_target") &&
+                if (src.kind == FVM_RESOURCE_MOVIECLIP && p->first == fvm_detail::string("_target") &&
                     p->second.getter.builtin == 1010)
                     get.callback = fvm_movieclip_callback_from_id(1005);
                 require(!get.callback || !set.callback || get.userdata == set.userdata);

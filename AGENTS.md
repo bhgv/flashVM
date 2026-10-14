@@ -29,6 +29,12 @@
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.
+- Use documented uppercase semantic macros in scoped .h headers for protocol/action IDs,
+  resource identities, flags, numeric masks and execution/representation bounds.
+  Apply this rule to new code and to meaningful numeric constants in code being edited.
+  Keep distinct meanings in separate macro namespaces even when values happen to match;
+  ordinary counter initialization and array traversal arithmetic need no artificial aliases.
+  Preserve third-party source and independent raw-byte/oracle fixtures.
 - Write readable code with useful comments, verify affected builds and tests,
   and document supported behavior and remaining limitations in Russian and English.
 - Format and document all first-party source files for human readers. Describe

@@ -304,7 +304,7 @@ FVM_Result fvm_exception_complete(FVM_Context *c, FVM_Object *self, FVM_Result r
         return result;
     if (!c->fault_pending && !c->exception_pending)
         return result;
-    if (self && self->resource && (self->resource_kind == 1 || self->resource_kind == 8) &&
+    if (self && self->resource && (self->resource_kind == FVM_RESOURCE_CHANNEL || self->resource_kind == FVM_RESOURCE_MUTEX) &&
         c->fault_pending && !c->exception_pending)
     {
         FVM_ExceptionInfo &f = c->fault;

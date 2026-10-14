@@ -5,10 +5,10 @@
 /* Append-only graph resource kinds for filter instances and constructor identities. */
 enum FVM_FilterKind
 {
-    FVM_COLOR_MATRIX_FILTER = 54, /* ColorMatrixFilter with private numeric coefficient storage. */
-    FVM_COLOR_MATRIX_FILTER_CLASS = 55, /* Callable ColorMatrixFilter constructor identity. */
-    FVM_BITMAP_FILTER = 56,             /* Empty BitmapFilter base instance. */
-    FVM_BITMAP_FILTER_CLASS = 57        /* Callable BitmapFilter base constructor identity. */
+    FVM_COLOR_MATRIX_FILTER = FVM_RESOURCE_COLOR_MATRIX_FILTER, /* ColorMatrixFilter with private numeric coefficient storage. */
+    FVM_COLOR_MATRIX_FILTER_CLASS = FVM_RESOURCE_COLOR_MATRIX_FILTER_CLASS, /* Callable ColorMatrixFilter constructor identity. */
+    FVM_BITMAP_FILTER = FVM_RESOURCE_BITMAP_FILTER,             /* Empty BitmapFilter base instance. */
+    FVM_BITMAP_FILTER_CLASS = FVM_RESOURCE_BITMAP_FILTER_CLASS        /* Callable BitmapFilter base constructor identity. */
 };
 /* [GC:] Stage filter classes, inheritance and captured Array factories before publishing flash. */
 FVM_Result fvm_filter_stage(FVM_Context *, FVM_Object *, FVM_Object *, FVM_Object *, FVM_Object *,

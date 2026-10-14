@@ -14,9 +14,9 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    DATE_OBJECT = 34,
-    DATE_CLASS = 35,
-    DATE_GENERIC_PROTOTYPE = 30 /* Loaded prototype has no native timestamp. */
+    DATE_OBJECT = FVM_RESOURCE_DATE,
+    DATE_CLASS = FVM_RESOURCE_DATE_CLASS,
+    DATE_GENERIC_PROTOTYPE = FVM_RESOURCE_OBJECT /* Loaded prototype has no native timestamp. */
 };
 
 /* Define Fields struct and its representation. */
@@ -311,7 +311,7 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         /* Calendar setters retain signed time-within-day through SWF7;
          * SWF8 normalizes that remainder into the nonnegative day range. */
         double remainder = std::fmod(t + east * 60000.0, 86400000.0);
-        if (c->swf_info.version > 7 && remainder < 0)
+        if (c->swf_info.version > FVM_SWF_VERSION_7 && remainder < 0)
             remainder += 86400000.0;
         double projected = days(f.year, f.month, f.day) * 86400000.0 + remainder;
         result = clip(projected);

@@ -50,7 +50,8 @@ FVM_Result fvm_avm1_number_text(FVM_Context *c, double number, FVM_Value *out)
     char text[64];
     size_t used = 0;
     bool negative = number < 0;
-    if (number >= -2147483648.0 && number <= 2147483647.0 && std::floor(number) == number)
+    if (number >= FVM_INT32_MIN_NUMBER && number <= FVM_INT32_MAX_NUMBER &&
+        std::floor(number) == number)
         used = (size_t)std::sprintf(text, "%.0f", number);
     else
     {
@@ -61,7 +62,7 @@ FVM_Result fvm_avm1_number_text(FVM_Context *c, double number, FVM_Value *out)
         }
         int binary_exponent = 0;
         std::frexp(number, &binary_exponent);
-        double estimate = (binary_exponent - 1) * 0.301029995663981;
+        double estimate = (binary_exponent - 1) * FVM_AVM1_LOG10_2;
         int exponent =
             (int)(estimate < 0 ? -std::floor(-estimate + 0.5) : std::floor(estimate + 0.5));
         double mantissa = decimal_shift(number, -exponent);
@@ -69,11 +70,11 @@ FVM_Result fvm_avm1_number_text(FVM_Context *c, double number, FVM_Value *out)
             mantissa = decimal_shift(number, -(--exponent));
         if ((int)mantissa >= 10)
             mantissa = decimal_shift(number, -(++exponent));
-        if (exponent >= 15)
+        if (exponent > FVM_AVM1_FIXED_EXPONENT_MAX)
         {
             text[used++] = next_digit(mantissa);
             text[used++] = '.';
-            for (int i = 0; i < 14; ++i)
+            for (int i = 0; i < FVM_AVM1_DECIMAL_DIGITS - 1; ++i)
                 text[used++] = next_digit(mantissa);
         }
         else if (exponent >= 0)
@@ -82,18 +83,18 @@ FVM_Result fvm_avm1_number_text(FVM_Context *c, double number, FVM_Value *out)
             for (int i = 0; i <= exponent; ++i)
                 text[used++] = next_digit(mantissa);
             text[used++] = '.';
-            for (int i = 0; i < 14 - exponent; ++i)
+            for (int i = 0; i < FVM_AVM1_DECIMAL_DIGITS - 1 - exponent; ++i)
                 text[used++] = next_digit(mantissa);
             exponent = 0;
         }
-        else if (exponent >= -5)
+        else if (exponent >= FVM_AVM1_FIXED_EXPONENT_MIN)
         {
             text[used++] = '0';
             text[used++] = '0';
             text[used++] = '.';
             for (int i = 0; i < -exponent - 1; ++i)
                 text[used++] = '0';
-            for (int i = 0; i < 15; ++i)
+            for (int i = 0; i < FVM_AVM1_DECIMAL_DIGITS; ++i)
                 text[used++] = next_digit(mantissa);
             exponent = 0;
         }
@@ -104,7 +105,7 @@ FVM_Result fvm_avm1_number_text(FVM_Context *c, double number, FVM_Value *out)
             if (digit != '0')
                 text[used++] = digit;
             text[used++] = '.';
-            for (int i = 0; i < 14; ++i)
+            for (int i = 0; i < FVM_AVM1_DECIMAL_DIGITS - 1; ++i)
                 text[used++] = next_digit(mantissa);
         }
         /* The historical carry lacks a spare leading digit in large exponential notation. */

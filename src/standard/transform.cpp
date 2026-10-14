@@ -17,7 +17,7 @@ const char *const rectangle_names[] = {"x", "y", "width", "height"};
 /* Recognize a script-visible MovieClip, excluding private static display-art nodes. */
 bool movieclip(FVM_Context *c, FVM_Object *o)
 {
-    if (!o || o->owner != c || o->resource_kind != 40 || !o->resource_result_valid ||
+    if (!o || o->owner != c || o->resource_kind != FVM_RESOURCE_MOVIECLIP || !o->resource_result_valid ||
         o->resource_result.type != FVM_VALUE_OBJECT || !o->resource_result.object ||
         o->resource_result.object->owner != c)
         return false;

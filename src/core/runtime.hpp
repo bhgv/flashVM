@@ -6,6 +6,9 @@
 /* Define FLASHVM INTERNAL RUNTIME HPP constant or compilation switch. */
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
+#include "resource_kinds.h"
+#include "numeric_constants.h"
+#include "../swf/format_constants.h"
 #include "flashvm/function.h"
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"

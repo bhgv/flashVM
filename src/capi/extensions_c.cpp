@@ -25,11 +25,11 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    CHANNEL = 1,
-    WORKER = 2,
-    GC_NAMESPACE = 3,
-    THREAD_NAMESPACE = 4,
-    CHANNEL_NAMESPACE = 5
+    CHANNEL = FVM_RESOURCE_CHANNEL,
+    WORKER = FVM_RESOURCE_WORKER,
+    GC_NAMESPACE = FVM_RESOURCE_GC_NAMESPACE,
+    THREAD_NAMESPACE = FVM_RESOURCE_THREAD_NAMESPACE,
+    CHANNEL_NAMESPACE = FVM_RESOURCE_CHANNEL_NAMESPACE
 };
 
 /* Define ScriptTask struct and its representation. */
@@ -876,7 +876,7 @@ void release_mutex(void *p)
 FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                        FVM_Value *out, void *)
 {
-    if (n || s->resource_kind != 8 || !s->resource)
+    if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -896,7 +896,7 @@ FVM_Result mutex_state(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_
 FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                         FVM_Value *out, void *)
 {
-    if (n || s->resource_kind != 8 || !s->resource)
+    if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
         return FVM_INVALID_ARGUMENT;
     const char *address = fvm_mutex_remote_address((FVM_Mutex *)s->resource);
     if (address)
@@ -912,7 +912,7 @@ FVM_Result mutex_origin(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM
 FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                      FVM_Value *out, void *)
 {
-    if (n || s->resource_kind != 8 || !s->resource)
+    if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -925,7 +925,7 @@ FVM_Result mutex_set(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Va
 FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                        FVM_Value *out, void *)
 {
-    if (n || s->resource_kind != 8 || !s->resource)
+    if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -938,7 +938,7 @@ FVM_Result mutex_reset(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_
 FVM_Result mutex_close(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *,
                        FVM_Value *out, void *)
 {
-    if (n || s->resource_kind != 8 || !s->resource)
+    if (n || s->resource_kind != FVM_RESOURCE_MUTEX || !s->resource)
         return FVM_INVALID_ARGUMENT;
     FVM_Result r = fvm_mutex_close((FVM_Mutex *)s->resource);
     if (r == FVM_ERROR)
@@ -999,7 +999,7 @@ FVM_Result mutex_list(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Va
         for (size_t i = 0; i < c->objects.size(); ++i)
         {
             FVM_Object *o = c->objects[i];
-            if (o->resource_kind == 8 && o->resource)
+            if (o->resource_kind == FVM_RESOURCE_MUTEX && o->resource)
             {
                 FVM_Value v;
                 fvm_value_undefined(&v);
@@ -1030,7 +1030,7 @@ extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FV
     *out = 0;
     /* Repeated receipt in one interpreter preserves wrapper identity. */
     for (size_t i = 0; i < c->objects.size(); ++i)
-        if (c->objects[i]->resource_kind == 8 && c->objects[i]->resource == m)
+        if (c->objects[i]->resource_kind == FVM_RESOURCE_MUTEX && c->objects[i]->resource == m)
         {
             *out = c->objects[i];
             return FVM_OK;
@@ -1046,7 +1046,7 @@ extern "C" FVM_Result fvm_extensions_wrap_mutex(FVM_Context *c, FVM_Mutex *m, FV
         return r;
 
     /* Computation / Вычисление и обновление состояния. */
-    o->resource_kind = 8;
+    o->resource_kind = FVM_RESOURCE_MUTEX;
     o->resource = m;
     o->release_resource = release_mutex;
     try

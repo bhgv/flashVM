@@ -13,9 +13,9 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    NUMBER_OBJECT = 24,
-    NUMBER_CLASS = 25,
-    NUMBER_GENERIC_PROTOTYPE = 30 /* Ordinary loaded prototype has no boxed primitive. */
+    NUMBER_OBJECT = FVM_RESOURCE_NUMBER,
+    NUMBER_CLASS = FVM_RESOURCE_NUMBER_CLASS,
+    NUMBER_GENERIC_PROTOTYPE = FVM_RESOURCE_OBJECT /* Ordinary loaded prototype has no boxed primitive. */
 };
 
 /* Read stored Number data; loaded value methods do not coerce other receivers. */

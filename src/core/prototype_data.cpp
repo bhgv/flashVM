@@ -10,7 +10,7 @@ FVM_Result fvm_object_store_raw_prototype(FVM_Context *c, FVM_Object *object,
     FVM_Object *prototype = value.type == FVM_VALUE_OBJECT ? value.object : 0;
     FVM_Object *cursor = prototype;
     unsigned int depth = 0;
-    while (cursor && depth++ < 1024)
+    while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     {
         if (cursor == object)
             return FVM_INVALID_ARGUMENT;

@@ -1,4 +1,5 @@
 /* FlashVM: bounded SWF shape decoding and directed-edge assembly for solid vector paints. */
+#include "format_constants.h"
 #include "shape.hpp"
 #include "reader.hpp"
 #include "../details/hash_table.hpp"
@@ -55,7 +56,7 @@ FVM_Result gradient(FVM_SWFReader &reader, unsigned int tag, FVM_SWFShapePaint &
         stop.color.r = (unsigned char)reader.integer(1);
         stop.color.g = (unsigned char)reader.integer(1);
         stop.color.b = (unsigned char)reader.integer(1);
-        stop.color.a = tag == 32 ? (unsigned char)reader.integer(1) : 255;
+        stop.color.a = tag == FVM_SWF_TAG_DEFINE_SHAPE3 ? (unsigned char)reader.integer(1) : 255;
         if (!reader.good() || (i && stop.ratio < paint.stops[i - 1].ratio))
             return FVM_INVALID_ARGUMENT;
         paint.stops.push_back(stop);
@@ -70,7 +71,7 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
                   unsigned long &line_count)
 {
     fill_count = reader.integer(1);
-    if (fill_count == 255 && tag != 2)
+    if (fill_count == 255 && tag != FVM_SWF_TAG_DEFINE_SHAPE)
         fill_count = reader.integer(2);
     if (!reader.good())
         return FVM_INVALID_ARGUMENT;
@@ -82,19 +83,19 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         if (!reader.good())
             return FVM_INVALID_ARGUMENT;
         FVM_SWFShapePaint paint;
-        if (type == 0)
+        if (type == FVM_SWF_FILL_SOLID)
         {
-            if (!color(reader, tag == 32, paint))
+            if (!color(reader, tag == FVM_SWF_TAG_DEFINE_SHAPE3, paint))
                 return FVM_INVALID_ARGUMENT;
         }
-        else if (type == 0x10 || type == 0x12)
+        else if (type == FVM_SWF_FILL_LINEAR_GRADIENT || type == FVM_SWF_FILL_RADIAL_GRADIENT)
         {
             paint.gradient_type = (unsigned int)type;
             FVM_Result r = gradient(reader, tag, paint);
             if (r != FVM_OK)
                 return r;
         }
-        else if (type >= 0x40 && type <= 0x43)
+        else if (type >= FVM_SWF_FILL_BITMAP_REPEAT && type <= FVM_SWF_FILL_BITMAP_CLIPPED_NEAREST)
         {
             paint.bitmap_type = (unsigned int)type;
             paint.bitmap_id = (unsigned int)reader.integer(2);
@@ -112,7 +113,7 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         fills.push_back(paint);
     }
     line_count = reader.integer(1);
-    if (line_count == 255 && tag != 2)
+    if (line_count == 255 && tag != FVM_SWF_TAG_DEFINE_SHAPE)
         line_count = reader.integer(2);
     if (!reader.good())
         return FVM_INVALID_ARGUMENT;
@@ -123,7 +124,7 @@ FVM_Result styles(FVM_SWFReader &reader, unsigned int tag,
         FVM_SWFShapePaint paint;
         paint.stroke = true;
         paint.width = reader.integer(2) / 20.0;
-        if (!color(reader, tag == 32, paint))
+        if (!color(reader, tag == FVM_SWF_TAG_DEFINE_SHAPE3, paint))
             return FVM_INVALID_ARGUMENT;
         lines.push_back(paint);
     }
@@ -304,7 +305,7 @@ FVM_Result decode(const unsigned char *bytes, size_t size, unsigned int tag, FVM
                 return FVM_INVALID_ARGUMENT;
             if (flags & 16)
             {
-                if (tag == 2)
+                if (tag == FVM_SWF_TAG_DEFINE_SHAPE)
                     return FVM_INVALID_ARGUMENT;
                 reader.align();
                 fill_offset = (unsigned long)fills.size();
@@ -390,7 +391,8 @@ FVM_Result decode(const unsigned char *bytes, size_t size, unsigned int tag, FVM
 FVM_Result fvm_swf_read_shape(const unsigned char *bytes, size_t size, unsigned int tag,
                               FVM_SWFShape &out)
 {
-    if (!bytes || (tag != 2 && tag != 22 && tag != 32))
+    if (!bytes || (tag != FVM_SWF_TAG_DEFINE_SHAPE && tag != FVM_SWF_TAG_DEFINE_SHAPE2 &&
+                   tag != FVM_SWF_TAG_DEFINE_SHAPE3))
         return FVM_INVALID_ARGUMENT;
     try
     {

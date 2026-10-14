@@ -20,9 +20,10 @@ extern "C" FVM_Result fvm_exec_member(FVM_Context *c, int write, const FVM_Value
         FVM_Value result;
         fvm_value_undefined(&result);
         FVM_Result status;
-        if (owner.type == FVM_VALUE_OBJECT && owner.object->resource_kind == 0 &&
-            owner.object != c->global && member.type == FVM_VALUE_NUMBER && member.number >= 0 &&
-            member.number <= 4294967295.0 && member.number == std::floor(member.number))
+        if (owner.type == FVM_VALUE_OBJECT &&
+            owner.object->resource_kind == FVM_RESOURCE_PLAIN_OBJECT && owner.object != c->global &&
+            member.type == FVM_VALUE_NUMBER && member.number >= 0 &&
+            member.number <= FVM_UINT32_MAX_NUMBER && member.number == std::floor(member.number))
         {
             if (write)
                 status = fvm_table_set_index(c, owner.object, (unsigned long)member.number,

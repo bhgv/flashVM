@@ -82,7 +82,7 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const fvm_detail::string
     try
     {
         const fvm_detail::string &key = name;
-        for (unsigned int depth = 0; object && depth < 1024; ++depth)
+        for (unsigned int depth = 0; object && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
             /* Function-valued data/accessor dispatch is still unsupported. A data
              * assignment must nevertheless shadow a previously registered method. */
@@ -118,7 +118,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
     fvm_value_undefined(out);
     try
     {
-        while (o && depth++ < 1024)
+        while (o && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -211,7 +211,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
         if (!allow_meta)
             return FVM_OK;
         o = receiver;
-        for (depth = 0; o && depth < 1024; ++depth)
+        for (depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -391,7 +391,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
     FVM_Object *flag_cursor = start;
-    for (; flag_cursor && flag_depth++ < 1024; flag_cursor = flag_cursor->prototype)
+    for (; flag_cursor && flag_depth++ < FVM_PROTOTYPE_MAX_DEPTH; flag_cursor = flag_cursor->prototype)
     {
         unsigned int flags = 0;
         FVM_Result flag_result = fvm_object_property_flags_bytes(c, flag_cursor, name.data(), name.size(), &flags);
@@ -402,7 +402,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             if (c->swf_loaded && flag_cursor != o)
                 continue;
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-            bool native_length = c->swf_loaded && o->resource_kind == 28 && name == "length" &&
+            bool native_length = c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" &&
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
                                    !fvm_base_script_accessor(script->second)))
@@ -422,7 +422,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         if (own_flags & 4)
         {
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-            bool native_length = c->swf_loaded && o->resource_kind == 28 && name == "length" &&
+            bool native_length = c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" &&
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
                                    !fvm_base_script_accessor(script->second)))
@@ -444,7 +444,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
      * over prototype data, and setters bind the original receiver. */
     FVM_Object *cursor = start;
     unsigned int accessor_depth = 0;
-    while (cursor && accessor_depth++ < 1024)
+    while (cursor && accessor_depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -508,14 +508,14 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         cursor = cursor->prototype;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
-    if (accessor_depth > 1024)
+    if (accessor_depth > FVM_PROTOTYPE_MAX_DEPTH)
         return FVM_ERROR;
     /* An existing own property is always written directly. */
     if (allow_meta && o->properties.find(name) == o->properties.end())
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-        while (o->metatable && depth++ < 1024)
+        while (o->metatable && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -610,7 +610,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (depth >= 1024)
+        if (depth >= FVM_PROTOTYPE_MAX_DEPTH)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_ERROR;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -742,7 +742,7 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->resource_origin = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        o->resource_kind = 0;
+        o->resource_kind = FVM_RESOURCE_PLAIN_OBJECT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->resource = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -783,7 +783,7 @@ extern "C"
             return FVM_INVALID_ARGUMENT;
         cursor = proto;
         unsigned int prototype_depth = 0;
-        while (cursor && prototype_depth++ < 1024)
+        while (cursor && prototype_depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {
             if (cursor == o)
                 return FVM_INVALID_ARGUMENT;
@@ -831,7 +831,7 @@ extern "C"
             if (normalized != FVM_OK)
                 return normalized;
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+            if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
             {
                 if (o->indexed.find(index) != o->indexed.end())
@@ -872,10 +872,10 @@ extern "C"
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
                 return normalized;
-            if (o->resource_kind == 37)
+            if (o->resource_kind == FVM_RESOURCE_SUPER)
                 return fvm_super_get(c, o, key, out);
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+            if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_get_index(c, o, index, out);
             return fvm_object_get_no_index(c, o, key, out);
@@ -909,10 +909,10 @@ extern "C"
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
                 return normalized;
-            if (o->resource_kind == 37)
+            if (o->resource_kind == FVM_RESOURCE_SUPER)
                 return fvm_super_set(c, o, key, v);
             unsigned long index;
-            if ((o->resource_kind == 28 || o->resource_kind == 30) &&
+            if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_set_index(c, o, index, v);
             return fvm_object_set_no_index(c, o, key, v);
@@ -1039,7 +1039,7 @@ extern "C"
                 return normalized;
 
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            if (self->resource_kind == 37)
+            if (self->resource_kind == FVM_RESOURCE_SUPER)
                 return fvm_super_method(c, self, key, argc, argv, out);
             FVM_Object *cursor = self;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

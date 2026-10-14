@@ -2,6 +2,7 @@
  * File: src/swf/parser.cpp.
  */
 
+#include "format_constants.h"
 #include "decode.hpp"
 #include "document.hpp"
 #include <cstring>
@@ -50,10 +51,10 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
         if (size - pos < 2)
             return FVM_INVALID_ARGUMENT;
         unsigned int header = read16(p + pos);
-        unsigned int code = header >> 6;
-        unsigned long length = header & 63;
+        unsigned int code = header >> FVM_SWF_TAG_CODE_SHIFT;
+        unsigned long length = header & FVM_SWF_TAG_LENGTH_MASK;
         pos += 2;
-        if (length == 63)
+        if (length == FVM_SWF_TAG_LENGTH_MASK)
         {
             if (size - pos < 4)
                 return FVM_INVALID_ARGUMENT;
@@ -67,10 +68,10 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
         if (document_status != FVM_OK)
             return document_status;
         ++parsed.tag_count;
-        if (code == 12)
+        if (code == FVM_SWF_TAG_DO_ACTION)
             ++parsed.action_tag_count;
         pos += (size_t)length;
-        if (code == 0)
+        if (code == FVM_SWF_TAG_END)
         {
             /* End is a zero-length tag and must terminate the file. */
             if (length != 0 || pos != size)
@@ -81,7 +82,7 @@ FVM_Result inspect_fws(const unsigned char *p, size_t size, FVM_SWFInfo *info)
             *info = parsed;
             return FVM_OK;
         }
-        if (code == 1 && length != 0)
+        if (code == FVM_SWF_TAG_SHOW_FRAME && length != 0)
             return FVM_INVALID_ARGUMENT;
     }
     return FVM_INVALID_ARGUMENT;

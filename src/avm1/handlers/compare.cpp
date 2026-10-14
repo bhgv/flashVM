@@ -51,7 +51,7 @@ static FVM_Result own_string(FVM_Context *context, const char *text, FVM_Value *
 /* Compute and return date hint. */
 static bool date_hint(const FVM_Value &value)
 {
-    return value.type == FVM_VALUE_OBJECT && value.object->resource_kind == 34;
+    return value.type == FVM_VALUE_OBJECT && value.object->resource_kind == FVM_RESOURCE_DATE;
 }
 
 /* Compute and return strict equal. */
@@ -119,7 +119,7 @@ static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bo
         return FVM_ERROR;
     EqualityRoots roots(c, input_a, input_b);
     FVM_Value &a = roots.values[0], &b = roots.values[1];
-    if (c->swf_loaded && c->swf_info.version <= 5)
+    if (c->swf_loaded && c->swf_info.version <= FVM_SWF_VERSION_5)
     {
         FVM_Result status = fvm_avm1_primitive(c, &b, false, &b);
         if (status == FVM_OK)
@@ -258,7 +258,7 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                 FVM_Value &second = operation == FVM_EXEC_GREATER ? left : right;
                 r = fvm_avm1_primitive(c, &first, false, &first);
                 if (r == FVM_OK && c->swf_loaded && first.type == FVM_VALUE_OBJECT &&
-                    first.object->resource_kind != 40)
+                    first.object->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 {
                     fvm_value_boolean(out, 0);
                     return FVM_OK;
@@ -266,7 +266,7 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                 if (r == FVM_OK)
                     r = fvm_avm1_primitive(c, &second, false, &second);
                 if (r == FVM_OK && c->swf_loaded && second.type == FVM_VALUE_OBJECT &&
-                    second.object->resource_kind != 40)
+                    second.object->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 {
                     fvm_value_boolean(out, 0);
                     return FVM_OK;

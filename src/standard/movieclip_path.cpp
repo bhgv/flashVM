@@ -9,7 +9,7 @@ namespace
 /* Read validated private MovieClip state without invoking script accessors. */
 FVM_Result state(FVM_Object *clip, FVM_Object *&out)
 {
-    if (!clip || clip->resource_kind != 40 || !clip->resource_result_valid ||
+    if (!clip || clip->resource_kind != FVM_RESOURCE_MOVIECLIP || !clip->resource_result_valid ||
         clip->resource_result.type != FVM_VALUE_OBJECT || !clip->resource_result.object)
         return FVM_INVALID_ARGUMENT;
     out = clip->resource_result.object;
@@ -33,7 +33,7 @@ FVM_Result edge(FVM_Object *object, const char *key, FVM_Object *&out)
 FVM_Result parent(FVM_Object *clip, FVM_Object *&out)
 {
     out = 0;
-    if (clip && clip->resource_kind != 40)
+    if (clip && clip->resource_kind != FVM_RESOURCE_MOVIECLIP)
         return FVM_OK;
     FVM_Object *data = 0;
     FVM_Result status = state(clip, data);
@@ -100,7 +100,7 @@ FVM_Result child(FVM_Object *receiver, const fvm_detail::string &name, bool sens
                  FVM_Object *&out)
 {
     out = 0;
-    if (receiver->resource_kind != 40)
+    if (receiver->resource_kind != FVM_RESOURCE_MOVIECLIP)
         return FVM_OK;
     FVM_Object *data = 0, *children = 0;
     FVM_Result status = state(receiver, data);
@@ -209,8 +209,8 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         scope.values[1].type = FVM_VALUE_OBJECT;
         scope.values[1].object = root;
         fvm_detail::string text(path.string, fvm_string_size(path));
-        bool modern = !c->swf_loaded || c->swf_info.version >= 5;
-        bool sensitive = !c->swf_loaded || c->swf_info.version >= 7;
+        bool modern = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5;
+        bool sensitive = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7;
         /* Historical non-ASCII case tables are a separate unresolved compatibility boundary. */
         if (!sensitive)
             for (size_t i = 0; i < text.size(); ++i)

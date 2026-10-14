@@ -3,6 +3,8 @@
  */
 
 #include "function_record.hpp"
+#include "action_codes.h"
+#include "encoding_constants.h"
 #include "block.hpp"
 #include "flashvm/avm1.h"
 #include "try_record.hpp"
@@ -12,7 +14,7 @@ namespace
 FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool block,
                    unsigned int depth)
 {
-    if (depth > 64)
+    if (depth > FVM_AVM1_MAX_BLOCK_DEPTH)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -22,12 +24,12 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
     {
         unsigned int op = p[pos++];
         ++info->instruction_count;
-        if (!op)
+        if (op == FVM_AVM1_ACTION_END)
         {
             ended = true;
             break;
         }
-        if (op >= 0x80)
+        if (op >= FVM_AVM1_LONG_ACTION_BASE)
         {
             if (size - pos < 2)
                 return FVM_INVALID_ARGUMENT;
@@ -35,15 +37,15 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
             pos += 2;
             if (len > size - pos)
                 return FVM_INVALID_ARGUMENT;
-            if (op == 0x96)
+            if (op == FVM_AVM1_ACTION_PUSH)
                 ++info->push_count;
-            if (op == 0x99 || op == 0x9d)
+            if (op == FVM_AVM1_ACTION_JUMP || op == FVM_AVM1_ACTION_IF)
             {
                 if (len != 2)
                     return FVM_INVALID_ARGUMENT;
                 ++info->branch_count;
             }
-            if (op == 0x8f)
+            if (op == FVM_AVM1_ACTION_TRY)
             {
                 FVM_TryRecord record;
                 if (!fvm_try_record(p, size, pos, len, record))
@@ -57,10 +59,12 @@ FVM_Result inspect(const unsigned char *p, size_t size, FVM_AVM1Info *info, bool
                     pos += record.sizes[i];
                 }
             }
-            else if (op == 0x9b || op == 0x8e)
+            else if (op == FVM_AVM1_ACTION_DEFINE_FUNCTION ||
+                     op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
             {
                 FVM_FunctionRecord record;
-                if (!fvm_function_record(p, size, pos, len, record, op == 0x8e))
+                if (!fvm_function_record(p, size, pos, len, record,
+                                         op == FVM_AVM1_ACTION_DEFINE_FUNCTION2))
                     return FVM_INVALID_ARGUMENT;
                 FVM_Result result = inspect(p + record.body, record.size, info, true, depth + 1);
                 if (result != FVM_OK)

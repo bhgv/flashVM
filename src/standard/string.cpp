@@ -21,9 +21,9 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    STRING_OBJECT = 26,
-    STRING_CLASS = 27,
-    STRING_GENERIC_PROTOTYPE = 30 /* Loaded prototype is an ordinary Object, without native text. */
+    STRING_OBJECT = FVM_RESOURCE_STRING,
+    STRING_CLASS = FVM_RESOURCE_STRING_CLASS,
+    STRING_GENERIC_PROTOTYPE = FVM_RESOURCE_OBJECT /* Loaded prototype is an ordinary Object, without native text. */
 };
 typedef fvm_detail::vector<unsigned int> Units;
 
@@ -179,7 +179,7 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
     if (index < 0 || index >= (double)units.size())
     {
         if (code)
-            fvm_value_number(out, c->swf_loaded && c->swf_info.version == 5 && index >= 0
+            fvm_value_number(out, c->swf_loaded && c->swf_info.version == FVM_SWF_VERSION_5 && index >= 0
                                      ? 0 : std::numeric_limits<double>::quiet_NaN());
         else
             fvm_value_string(out, "");
@@ -453,7 +453,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         }
     }
     bool absent = !n || a[0].type == FVM_VALUE_UNDEFINED;
-    if (absent && c->swf_loaded && c->swf_info.version == 5)
+    if (absent && c->swf_loaded && c->swf_info.version == FVM_SWF_VERSION_5)
     {
         /* SWF5 defaults to comma, while its empty explicit delimiter returns the whole string. */
         separator.push_back(',');
@@ -468,7 +468,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
             r = decode(text, separator);
         if (r != FVM_OK)
             return r;
-        if (c->swf_loaded && c->swf_info.version == 5 && separator.empty())
+        if (c->swf_loaded && c->swf_info.version == FVM_SWF_VERSION_5 && separator.empty())
             absent = true;
     }
     /* A missing effective delimiter returns one whole value even when limit is zero. */

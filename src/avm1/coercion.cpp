@@ -1,4 +1,5 @@
 /* FlashVM: counted legacy numeric syntax and shared versioned primitive/string coercion. */
+#include "encoding_constants.h"
 #include "coercion.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/primitive_state.hpp"
@@ -49,11 +50,11 @@ double integer(const char *text, size_t size, unsigned int base)
         int value = digit((unsigned char)text[at]);
         if (value < 0 || (unsigned int)value >= base)
             return std::numeric_limits<double>::quiet_NaN();
-        bits = (bits * base + (unsigned int)value) & 0xffffffffUL;
+        bits = (bits * base + (unsigned int)value) & FVM_UINT32_MASK;
     }
     if (negative)
-        bits = (0UL - bits) & 0xffffffffUL;
-    return bits >= 0x80000000UL ? (double)bits - 4294967296.0 : (double)bits;
+        bits = (0UL - bits) & FVM_UINT32_MASK;
+    return bits >= FVM_UINT32_SIGN_BIT ? (double)bits - FVM_UINT32_MODULUS : (double)bits;
 }
 /* Recognize the currently supported leading whitespace set in decimal action strings. */
 bool space(unsigned long value)
@@ -109,9 +110,9 @@ FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned
         if (at < size && (text[at] == '+' || text[at] == '-'))
             ++at;
         while (at < size && text[at] >= '0' && text[at] <= '9')
-            exponent = (exponent * 10 + (unsigned int)(text[at++] - '0')) & 0xffffffffUL;
+            exponent = (exponent * 10 + (unsigned int)(text[at++] - '0')) & FVM_UINT32_MASK;
         if (minus)
-            exponent = (0UL - exponent) & 0xffffffffUL;
+            exponent = (0UL - exponent) & FVM_UINT32_MASK;
     }
     if (!accepted || (version >= 5 && at != size))
     {
@@ -126,8 +127,8 @@ FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned
     fvm_detail::string token(text + start, mantissa_end - start);
     if (exponent)
     {
-        double signed_exponent = exponent >= 0x80000000UL
-                                     ? (double)exponent - 4294967296.0 : (double)exponent;
+        double signed_exponent = exponent >= FVM_UINT32_SIGN_BIT
+                                     ? (double)exponent - FVM_UINT32_MODULUS : (double)exponent;
         char suffix[32];
         std::sprintf(suffix, "e%.0f", signed_exponent);
         size_t length = std::strlen(suffix);
@@ -154,14 +155,14 @@ FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
     if (!context->swf_loaded)
         return fvm_to_primitive(context, value,
                                 default_hint && value->type == FVM_VALUE_OBJECT &&
-                                    value->object->resource_kind == 34, out);
+                                    value->object->resource_kind == FVM_RESOURCE_DATE, out);
     if (value->type != FVM_VALUE_OBJECT ||
-        (!default_hint && value->object->resource_kind == 40))
+        (!default_hint && value->object->resource_kind == FVM_RESOURCE_MOVIECLIP))
     {
         *out = *value;
         return FVM_OK;
     }
-    if (context->primitive_depth >= 64)
+    if (context->primitive_depth >= FVM_AVM1_MAX_SCRIPT_DEPTH)
         return FVM_ERROR;
     /* [GC:] Bound method/accessor reentry while invocation roots the owner and chosen function. */
     struct ConversionScope
@@ -180,8 +181,8 @@ FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
     } conversion(context);
     FVM_Value original = *value, method, result;
     fvm_value_undefined(&result);
-    bool date_string = default_hint && original.object->resource_kind == 34 &&
-                       context->swf_info.version > 5;
+    bool date_string = default_hint && original.object->resource_kind == FVM_RESOURCE_DATE &&
+                       context->swf_info.version > FVM_SWF_VERSION_5;
     FVM_Result status = fvm_object_get_bytes(context, original.object,
                                              date_string ? "toString" : "valueOf",
                                              date_string ? 8 : 7, &method);
@@ -247,22 +248,22 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
 FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Value *out)
 {
     if (value.type == FVM_VALUE_UNDEFINED && context->swf_loaded &&
-        context->swf_info.version < 7)
+        context->swf_info.version < FVM_SWF_VERSION_7)
         return fvm_value_string(out, "");
     if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
-        context->swf_info.version < 5)
+        context->swf_info.version < FVM_SWF_VERSION_5)
         return fvm_value_string(out, value.boolean ? "1" : "0");
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == 40)
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
         return fvm_movieclip_reference_string(context, value.object, out);
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != 40)
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != FVM_RESOURCE_MOVIECLIP)
     {
-        if (value.object->resource_kind == 26 && value.object->resource_result_valid &&
+        if (value.object->resource_kind == FVM_RESOURCE_STRING && value.object->resource_result_valid &&
             value.object->resource_result.type == FVM_VALUE_STRING)
         {
             *out = value.object->resource_result;
             return FVM_OK;
         }
-        if (context->string_depth >= 64)
+        if (context->string_depth >= FVM_AVM1_MAX_SCRIPT_DEPTH)
             return FVM_ERROR;
         /* [GC:] The caller retains the owner; invocation roots its selected method. */
         struct StringScope
@@ -303,7 +304,7 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
 /* Share version-aware truth conversion between AVM1 branches and Boolean builtins. */
 FVM_Result fvm_avm1_boolean(FVM_Context *context, const FVM_Value &value, bool *out)
 {
-    if (value.type == FVM_VALUE_STRING && context->swf_loaded && context->swf_info.version < 7)
+    if (value.type == FVM_VALUE_STRING && context->swf_loaded && context->swf_info.version < FVM_SWF_VERSION_7)
     {
         double number = 0;
         FVM_Result result = fvm_avm1_number(context, &value, &number);

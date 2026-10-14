@@ -36,8 +36,8 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    CLIP = 40,
-    CLIP_CLASS = 41
+    CLIP = FVM_RESOURCE_MOVIECLIP,
+    CLIP_CLASS = FVM_RESOURCE_MOVIECLIP_CLASS
 };
 typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
 typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
@@ -423,9 +423,9 @@ FVM_Result root_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value 
     if (state(o, data) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
     unsigned int depth = 0;
-    while (parent(o) && depth++ < 1024)
+    while (parent(o) && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         o = parent(o);
-    if (depth >= 1024)
+    if (depth >= FVM_PROTOTYPE_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
     *out = object(o);
     return FVM_OK;

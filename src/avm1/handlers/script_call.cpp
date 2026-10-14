@@ -1,4 +1,5 @@
 /* FlashVM: version-aware script activation preparation for interpreted and generated bodies. */
+#include "../encoding_constants.h"
 #include "script_call.hpp"
 #include "support.hpp"
 #include "flashvm/standard.h"
@@ -18,7 +19,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                                 const FVM_Value *args, FVM_Object *receiver, FVM_Value *result,
                                 FVM_Object *closure, FVM_Object *callee)
 {
-    if (c->script_depth >= 64)
+    if (c->script_depth >= FVM_AVM1_MAX_SCRIPT_DEPTH)
         return FVM_ERROR;
 
     /* Initialization / Инициализация локального состояния. */
@@ -26,7 +27,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     /* [GC:] A flagged loaded Function2 inherits the caller cell; its register
      * preload still receives the actual receiver according to the flags. */
     FVM_Object *local_this = receiver ? receiver : c->global;
-    if (c->swf_loaded && c->swf_info.version >= 5 && fn.function2 && (fn.flags & 3))
+    if (c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && fn.function2 &&
+        (fn.flags & FVM_AVM1_F2_THIS_FLAGS))
         local_this = c->script_this ? c->script_this : c->global;
     FVM_ScriptBodyEntry native_entry;
     if (callee)
@@ -38,7 +40,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     try
     {
         execution.constants = fn.constants;
-        execution.registers.resize(fn.function2 ? fn.register_count + 1 : 4);
+        execution.registers.resize(fn.function2 ? fn.register_count + 1
+                                                : FVM_AVM1_LEGACY_REGISTER_COUNT);
         for (size_t i = 0; i < execution.registers.size(); ++i)
             fvm_value_undefined(&execution.registers[i]);
     }
@@ -116,7 +119,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             /* [GC:] Retain the entry snapshot before any setup callback can unbind it. */
             constructing.push_back(capture);
         }
-        if (!fn.function2 || !(fn.flags & 32) || (fn.flags & 16))
+        if (!fn.function2 || !(fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER) ||
+            (fn.flags & FVM_AVM1_F2_PRELOAD_SUPER))
         {
             FVM_Result made = fvm_super_create(c, callee, receiver, &implicit_super);
             if (made != FVM_OK)
@@ -129,7 +133,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         if (stored != FVM_OK)
             return stored;
         if (!c->swf_loaded)
-            arguments->resource_kind = 30;
+            arguments->resource_kind = FVM_RESOURCE_OBJECT;
         capture.object = arguments;
         /* [GC:] Retain this value while subsequent call setup may execute script code. */
         constructing.push_back(capture);
@@ -189,10 +193,10 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         value.object = arguments;
 
         FVM_Value implicit_arguments = value;
-        if (fn.function2 && (fn.flags & 8))
+        if (fn.function2 && (fn.flags & FVM_AVM1_F2_SUPPRESS_ARGUMENTS))
             fvm_value_undefined(&value);
         /* Loaded preload/suppression leaves the named lookup in its enclosing scope. */
-        if (!c->swf_loaded || !fn.function2 || !(fn.flags & 12))
+        if (!c->swf_loaded || !fn.function2 || !(fn.flags & FVM_AVM1_F2_ARGUMENTS_FLAGS))
         {
             stored = fvm_object_set(c, activation, "arguments", &value);
             if (stored != FVM_OK)
@@ -203,7 +207,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         {
             FVM_Value named_this;
             fvm_value_undefined(&named_this);
-            if (!fn.function2 || !(fn.flags & 2))
+            if (!fn.function2 || !(fn.flags & FVM_AVM1_F2_SUPPRESS_THIS))
             {
                 named_this.type = FVM_VALUE_OBJECT;
                 named_this.object = receiver ? receiver : c->global;
@@ -212,9 +216,9 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             if (stored != FVM_OK)
                 return stored;
             FVM_Value named_super = implicit_super;
-            if (fn.function2 && (fn.flags & 32))
+            if (fn.function2 && (fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER))
                 fvm_value_undefined(&named_super);
-            if (!c->swf_loaded || !fn.function2 || !(fn.flags & 48))
+            if (!c->swf_loaded || !fn.function2 || !(fn.flags & FVM_AVM1_F2_SUPER_FLAGS))
             {
                 stored = fvm_object_set(c, activation, "super", &named_super);
                 if (stored != FVM_OK)
@@ -249,23 +253,25 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             common[2] = implicit_super;
             /* Paired flags suppress preloaded this/super, but arguments still
              * preloads its object even when its named binding is suppressed. */
-            if (fn.flags & 2)
+            if (fn.flags & FVM_AVM1_F2_SUPPRESS_THIS)
                 fvm_value_undefined(common);
-            if (fn.flags & 32)
+            if (fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER)
                 fvm_value_undefined(common + 2);
             /* Match the activation's base-clip selection before its bytecode starts.
              * Display preloads bypass mutable _root/_parent script properties. */
-            FVM_Object *preload_clip =
-                receiver && receiver->resource_kind == 40 ? receiver : c->avm1_base_clip;
-            if ((fn.flags & 192) && !preload_clip)
+            FVM_Object *preload_clip = receiver && receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
+                                           ? receiver
+                                           : c->avm1_base_clip;
+            if ((fn.flags & FVM_AVM1_F2_DISPLAY_FLAGS) && !preload_clip)
             {
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator root =
                     c->global->properties.find("_root");
                 if (root != c->global->properties.end() && root->second.type == FVM_VALUE_OBJECT &&
-                    root->second.object && root->second.object->resource_kind == 40)
+                    root->second.object &&
+                    root->second.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
                     preload_clip = root->second.object;
             }
-            if ((preload_clip || receiver) && (fn.flags & 64))
+            if ((preload_clip || receiver) && (fn.flags & FVM_AVM1_F2_PRELOAD_ROOT))
             {
                 stored = preload_clip
                              ? fvm_movieclip_preload_display(c, preload_clip, false, common + 3)
@@ -275,13 +281,13 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 /* [GC:] Retain this value while subsequent call setup may execute script code. */
                 constructing.push_back(common[3]);
             }
-            if ((fn.flags & 64) && common[3].type == FVM_VALUE_UNDEFINED)
+            if ((fn.flags & FVM_AVM1_F2_PRELOAD_ROOT) && common[3].type == FVM_VALUE_UNDEFINED)
             {
                 stored = fvm_get_global(c, "_root", common + 3);
                 if (stored != FVM_OK)
                     return stored;
             }
-            if ((preload_clip || receiver) && (fn.flags & 128))
+            if ((preload_clip || receiver) && (fn.flags & FVM_AVM1_F2_PRELOAD_PARENT))
             {
                 stored = preload_clip
                              ? fvm_movieclip_preload_display(c, preload_clip, true, common + 4)
@@ -291,7 +297,9 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             }
             common[5].type = FVM_VALUE_OBJECT;
             common[5].object = c->global;
-            const unsigned int bits[] = {1, 4, 16, 64, 128, 256};
+            const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS,   FVM_AVM1_F2_PRELOAD_ARGUMENTS,
+                                         FVM_AVM1_F2_PRELOAD_SUPER,  FVM_AVM1_F2_PRELOAD_ROOT,
+                                         FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
             unsigned int slot = 1;
             for (unsigned int i = 0; i < 6; ++i)
                 if (fn.flags & bits[i])
@@ -419,7 +427,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             prepared.activation = activation;
             prepared.arguments = arguments;
             prepared.super_value = implicit_super;
-            if (fn.function2 && (fn.flags & 32))
+            if (fn.function2 && (fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER))
                 fvm_value_undefined(&prepared.super_value);
             prepared.argc = argc;
             prepared.argv = args;

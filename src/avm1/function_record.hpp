@@ -5,6 +5,7 @@
 #ifndef FVM_AVM1_FUNCTION_RECORD_HPP
 /* Define FVM AVM1 FUNCTION RECORD HPP constant or compilation switch. */
 #define FVM_AVM1_FUNCTION_RECORD_HPP
+#include "encoding_constants.h"
 #include <stddef.h>
 /* Define FVM_FunctionRecord struct and its representation. */
 struct FVM_FunctionRecord
@@ -23,7 +24,7 @@ struct FVM_FunctionRecord
 /* Reject reserved bits; preload and suppression may be set simultaneously. */
 inline bool fvm_function2_flags_valid(unsigned int flags)
 {
-    return !(flags & ~511U);
+    return !(flags & ~FVM_AVM1_F2_VALID_FLAGS);
 }
 
 /* Standard DefineFunction puts its code after the action header. Accept the
@@ -63,7 +64,9 @@ inline bool fvm_function_record(const unsigned char *data, size_t size, size_t s
         if (!fvm_function2_flags_valid(r.flags))
             return false;
         unsigned int preload = 0;
-        const unsigned int bits[] = {1, 4, 16, 64, 128, 256};
+        const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS,   FVM_AVM1_F2_PRELOAD_ARGUMENTS,
+                                     FVM_AVM1_F2_PRELOAD_SUPER,  FVM_AVM1_F2_PRELOAD_ROOT,
+                                     FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
         for (unsigned int i = 0; i < 6; ++i)
             if (r.flags & bits[i])
                 ++preload;

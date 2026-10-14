@@ -5,9 +5,9 @@ extern "C" FVM_Result fvm_function_set_body(FVM_Context *c, FVM_Object *function
                                             FVM_ScriptBody body, void *userdata,
                                             FVM_Object *capture)
 {
-    if (!c || c->destroying || !function || function->owner != c || function->resource_kind != 32 ||
-        !function->invocable.callback || (capture && capture->owner != c) ||
-        (!body && (userdata || capture)))
+    if (!c || c->destroying || !function || function->owner != c ||
+        function->resource_kind != FVM_RESOURCE_SCRIPT_FUNCTION || !function->invocable.callback ||
+        (capture && capture->owner != c) || (!body && (userdata || capture)))
         return FVM_INVALID_ARGUMENT;
     function->script_body.callback = body;
     function->script_body.userdata = userdata;

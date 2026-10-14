@@ -80,7 +80,7 @@ extern "C" FVM_Result fvm_value_meta_invoke(
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-        for (unsigned int depth = 0; meta && depth < 1024; ++depth, meta = meta->metatable)
+        for (unsigned int depth = 0; meta && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, meta = meta->metatable)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

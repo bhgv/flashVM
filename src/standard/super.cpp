@@ -29,7 +29,7 @@ FVM_Result edge(FVM_Object *data, const char *key, FVM_Object **out)
 FVM_Result unpack(FVM_Context *c, FVM_Object *facade, FVM_Object **receiver, FVM_Object **owner,
                   FVM_Object **start)
 {
-    if (!facade || facade->owner != c || facade->resource_kind != 37 ||
+    if (!facade || facade->owner != c || facade->resource_kind != FVM_RESOURCE_SUPER ||
         !facade->resource_result_valid || facade->resource_result.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *data = facade->resource_result.object;
@@ -87,7 +87,7 @@ bool accessor_contains(FVM_Object *descriptor, FVM_Object *function)
 /* Locate the defining property owner for direct calls lacking an explicit call-site scope. */
 FVM_Result method_owner(FVM_Object *receiver, FVM_Object *function, FVM_Object **out)
 {
-    for (unsigned int depth = 0; receiver && depth < 1024; ++depth)
+    for (unsigned int depth = 0; receiver && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
         for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p =
                  receiver->properties.begin();
@@ -158,7 +158,7 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
             return FVM_OK;
         unsigned int depth = 0;
         FVM_Object *cursor = receiver;
-        while (cursor && cursor != owner && depth < 1024)
+        while (cursor && cursor != owner && depth < FVM_PROTOTYPE_MAX_DEPTH)
         {
             cursor = cursor->prototype;
             ++depth;
@@ -179,7 +179,7 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
         if (result != FVM_OK)
             return result;
         facade->prototype = 0;
-        facade->resource_kind = 37;
+        facade->resource_kind = FVM_RESOURCE_SUPER;
         facade->resource_result_valid = true;
         facade->resource_result.type = FVM_VALUE_OBJECT;
         /* [GC:] Retain all metadata through the facade's managed state edge. */
@@ -218,7 +218,7 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     if (c->swf_loaded && name == fvm_detail::string("__proto__"))
     {
         FVM_Object *cursor = start;
-        for (unsigned int depth = 0; cursor && depth < 1024; ++depth)
+        for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
             if (cursor->properties.find(name) != cursor->properties.end() ||
                 cursor->methods.find(name) != cursor->methods.end())
@@ -256,7 +256,7 @@ FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const fvm_detail
     if (!start)
         return FVM_UNSUPPORTED;
     FVM_Object *owner = start;
-    for (unsigned int depth = 0; owner && depth < 1024; ++depth)
+    for (unsigned int depth = 0; owner && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
         if (owner->properties.find(name) != owner->properties.end() ||
             owner->accessors.find(name) != owner->accessors.end() ||

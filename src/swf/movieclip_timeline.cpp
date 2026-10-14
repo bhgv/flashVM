@@ -1,5 +1,6 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
+#include "format_constants.h"
 #include "decode.hpp"
 #include "document.hpp"
 #include "../avm1/block.hpp"
@@ -63,17 +64,17 @@ FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned i
 {
     FVM_SWFReader reader(bytes, size);
     out.tag = tag;
-    if (tag == 5 || tag == 28)
+    if (tag == FVM_SWF_TAG_REMOVE_OBJECT || tag == FVM_SWF_TAG_REMOVE_OBJECT2)
     {
-        if (tag == 5)
+        if (tag == FVM_SWF_TAG_REMOVE_OBJECT)
             out.character = (unsigned int)reader.integer(2);
         out.depth = (unsigned int)reader.integer(2);
         if (!reader.finished() || !out.depth ||
-            (tag == 5 && known.find(out.character) == known.end()))
+            (tag == FVM_SWF_TAG_REMOVE_OBJECT && known.find(out.character) == known.end()))
             return FVM_INVALID_ARGUMENT;
         return FVM_OK;
     }
-    if (tag == 4)
+    if (tag == FVM_SWF_TAG_PLACE_OBJECT)
     {
         out.flags = 6;
         out.character = (unsigned int)reader.integer(2);
@@ -163,10 +164,10 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         if (end - at < 2)
             return FVM_INVALID_ARGUMENT;
         unsigned int header = (unsigned int)little(p + at, 2);
-        unsigned int tag = header >> 6;
-        size_t count = header & 63;
+        unsigned int tag = header >> FVM_SWF_TAG_CODE_SHIFT;
+        size_t count = header & FVM_SWF_TAG_LENGTH_MASK;
         at += 2;
-        if (count == 63)
+        if (count == FVM_SWF_TAG_LENGTH_MASK)
         {
             if (end - at < 4)
                 return FVM_INVALID_ARGUMENT;
@@ -177,7 +178,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             return FVM_INVALID_ARGUMENT;
         bool document_first = first_tag;
         first_tag = false;
-        if (tag == 0)
+        if (tag == FVM_SWF_TAG_END)
         {
             if (count || frame != timeline.frames + 1)
                 return FVM_INVALID_ARGUMENT;
@@ -194,10 +195,10 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             }
             return fvm_swf_document_finish(timeline.document);
         }
-        if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32 ||
-                         tag == 20 || tag == 36 || tag == 21 || tag == 35 || tag == 6 || tag == 8))
+        if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 ||
+                         tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS || tag == FVM_SWF_TAG_JPEG_TABLES))
             return FVM_INVALID_ARGUMENT;
-        if (tag == 69 || tag == 77)
+        if (tag == FVM_SWF_TAG_FILE_ATTRIBUTES || tag == FVM_SWF_TAG_METADATA)
         {
             if (!sprites)
                 return FVM_INVALID_ARGUMENT;
@@ -205,7 +206,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             if (r != FVM_OK)
                 return r;
         }
-        else if (tag == 8 && bitmaps)
+        else if (tag == FVM_SWF_TAG_JPEG_TABLES && bitmaps)
         {
             if (have_jpeg_tables)
                 return FVM_INVALID_ARGUMENT;
@@ -214,9 +215,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 return r;
             have_jpeg_tables = true;
         }
-        else if ((tag == 20 || tag == 36 || tag == 21 || tag == 35 || tag == 6) && bitmaps)
+        else if ((tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS) && bitmaps)
         {
-            if (version < (tag == 6 ? 1U : tag == 20 || tag == 21 ? 2U : 3U))
+            if (version < (tag == FVM_SWF_TAG_DEFINE_BITS ? 1U : tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 ? 2U : 3U))
                 return FVM_INVALID_ARGUMENT;
             size_t used = 0;
             for (size_t i = 0; i < bitmaps->size(); ++i)
@@ -225,9 +226,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 return FVM_OUT_OF_MEMORY;
             FVM_SWFBitmap bitmap;
             FVM_Result r =
-                tag == 6 ? fvm_swf_read_legacy_jpeg(p + at, count, jpeg_tables, version,
+                tag == FVM_SWF_TAG_DEFINE_BITS ? fvm_swf_read_legacy_jpeg(p + at, count, jpeg_tables, version,
                                                     bitmap_limit - used, bitmap)
-                : tag == 21 || tag == 35
+                : tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3
                     ? fvm_swf_read_jpeg(p + at, count, tag, version, bitmap_limit - used, bitmap)
                     : fvm_swf_read_bitmap(p + at, count, tag, bitmap_limit - used, bitmap);
             if (r != FVM_OK)
@@ -237,9 +238,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             bitmaps->push_back(bitmap);
             known[bitmap.id] = true;
         }
-        else if ((tag == 2 || tag == 22 || tag == 32) && shapes)
+        else if ((tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3) && shapes)
         {
-            if ((tag == 22 && version < 2) || (tag == 32 && version < 3))
+            if ((tag == FVM_SWF_TAG_DEFINE_SHAPE2 && version < 2) || (tag == FVM_SWF_TAG_DEFINE_SHAPE3 && version < 3))
                 return FVM_INVALID_ARGUMENT;
             FVM_SWFShape shape;
             FVM_Result r = fvm_swf_read_shape(p + at, count, tag, shape);
@@ -248,7 +249,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             for (size_t i = 0; i < shape.paints.size(); ++i)
                 if (shape.paints[i].bitmap_type)
                 {
-                    if (version < 8 && shape.paints[i].bitmap_type >= 0x42)
+                    if (version < 8 && shape.paints[i].bitmap_type >= FVM_SWF_FILL_BITMAP_REPEAT_NEAREST)
                         return FVM_INVALID_ARGUMENT;
                     bool found = false;
                     for (size_t j = 0; bitmaps && j < bitmaps->size(); ++j)
@@ -262,7 +263,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             shapes->push_back(shape);
             known[shape.id] = true;
         }
-        else if (tag == 39 && sprites)
+        else if (tag == FVM_SWF_TAG_DEFINE_SPRITE && sprites)
         {
             if (version < 3 || count < 6)
                 return FVM_INVALID_ARGUMENT;
@@ -280,7 +281,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             sprites->push_back(sprite);
             known[sprite.id] = true;
         }
-        else if (tag == 59)
+        else if (tag == FVM_SWF_TAG_DO_INIT_ACTION)
         {
             if (!sprites || version < 6 || count < 2 || count - 2 > 65536)
                 return FVM_INVALID_ARGUMENT;
@@ -302,7 +303,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
             range.size = count - 2;
             timeline.initializers.push_back(range);
         }
-        else if (tag == 56 && exports)
+        else if (tag == FVM_SWF_TAG_EXPORT_ASSETS && exports)
         {
             if (version < 5 || count < 2)
                 return FVM_INVALID_ARGUMENT;
@@ -332,13 +333,13 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         {
             if (frame > timeline.frames)
                 return FVM_INVALID_ARGUMENT;
-            if (tag == 1)
+            if (tag == FVM_SWF_TAG_SHOW_FRAME)
             {
                 if (count)
                     return FVM_INVALID_ARGUMENT;
                 ++frame;
             }
-            else if (tag == 4 || tag == 5 || tag == 26 || tag == 28)
+            else if (tag == FVM_SWF_TAG_PLACE_OBJECT || tag == FVM_SWF_TAG_REMOVE_OBJECT || tag == FVM_SWF_TAG_PLACE_OBJECT2 || tag == FVM_SWF_TAG_REMOVE_OBJECT2)
             {
                 Placement control;
                 FVM_Result r = inspect_placement(p + at, count, tag, version, known, control);
@@ -349,7 +350,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                     control.token = ++token;
                 timeline.controls.push_back(control);
             }
-            else if (tag == 9)
+            else if (tag == FVM_SWF_TAG_SET_BACKGROUND_COLOR)
             {
                 if (count != 3)
                     return FVM_INVALID_ARGUMENT;
@@ -360,7 +361,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                                      ((unsigned long)p[at + 1] << 8) | p[at + 2];
                 timeline.controls.push_back(control);
             }
-            else if (tag == 12)
+            else if (tag == FVM_SWF_TAG_DO_ACTION)
             {
                 if (count > 65536)
                     return FVM_INVALID_ARGUMENT;
@@ -375,7 +376,7 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 range.size = count;
                 timeline.actions.push_back(range);
             }
-            else if (tag == 43)
+            else if (tag == FVM_SWF_TAG_FRAME_LABEL)
             {
                 const unsigned char *zero = (const unsigned char *)std::memchr(p + at, 0, count);
                 if (!zero || labelled[frame - 1])
@@ -799,7 +800,7 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
 extern "C" FVM_Result fvm_movieclip_swf_document_info(FVM_Context *c, FVM_Object *clip,
                                                        FVM_SWFDocumentInfo *out)
 {
-    if (!c || !clip || clip->owner != c || clip->resource_kind != 40 ||
+    if (!c || !clip || clip->owner != c || clip->resource_kind != FVM_RESOURCE_MOVIECLIP ||
         !clip->resource_result_valid || clip->resource_result.type != FVM_VALUE_OBJECT ||
         !clip->resource_result.object || clip->resource_result.object->owner != c ||
         !out || out->struct_size != sizeof(*out))

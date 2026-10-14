@@ -181,7 +181,7 @@ const FVM_NativeFunction callbacks[] = {matrix_constructor, matrix_clone,     ma
 bool fvm_filter_matrix(FVM_Context *c, FVM_Object *self, double *values)
 {
     FVM_Object *data = state(c, self);
-    if (!data || data->resource_kind != 0 || data->properties.size() != 20)
+    if (!data || data->resource_kind != FVM_RESOURCE_PLAIN_OBJECT || data->properties.size() != 20)
         return false;
     for (unsigned i = 0; i < 20; ++i)
     {

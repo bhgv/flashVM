@@ -26,10 +26,10 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    TEXT_FORMAT = 1001,
-    TEXT_FIELD = 1002,
-    TEXT_FORMAT_CLASS = 1003,
-    TEXT_FIELD_CLASS = 1004
+    TEXT_FORMAT = FVM_RESOURCE_TEXT_FORMAT,
+    TEXT_FIELD = FVM_RESOURCE_TEXT_FIELD,
+    TEXT_FORMAT_CLASS = FVM_RESOURCE_TEXT_FORMAT_CLASS,
+    TEXT_FIELD_CLASS = FVM_RESOURCE_TEXT_FIELD_CLASS
 };
 const char *properties[] = {"font",        "size",          "color",   "bold",        "italic",
                             "underline",   "url",           "target",  "align",       "leftMargin",

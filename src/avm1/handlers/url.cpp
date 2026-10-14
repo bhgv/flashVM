@@ -1,11 +1,13 @@
 /* FlashVM: url semantics for C callers and generated code. */
+#include "../encoding_constants.h"
 #include "support.hpp"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_url(FVM_Context *c, const FVM_Value *url, const FVM_Value *target,
                                    unsigned int flags)
 {
     if (!c || fvm_validate_value(c, url) != FVM_OK || fvm_validate_value(c, target) != FVM_OK ||
-        (flags & ~195U) || (flags & 3) == 3)
+        (flags & ~FVM_AVM1_URL_VALID_FLAGS) ||
+        (flags & FVM_AVM1_URL_METHOD_MASK) == FVM_AVM1_URL_INVALID_METHOD)
         return FVM_INVALID_ARGUMENT;
     try
     {

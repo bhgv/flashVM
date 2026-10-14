@@ -1,4 +1,5 @@
 /* FlashVM: strict size-bounded lossless SWF bitmap decoding with palette/15-bit/ARGB layouts. */
+#include "format_constants.h"
 #include "bitmap.hpp"
 #include "zlib.h"
 #include "../capi/swf_jpeg_internal.h"
@@ -28,25 +29,30 @@ unsigned char straight(unsigned color, unsigned alpha)
 FVM_Result fvm_swf_read_bitmap(const unsigned char *bytes, size_t size, unsigned tag, size_t limit,
                                FVM_SWFBitmap &out)
 {
-    if (!bytes || size < 7 || (tag != 20 && tag != 36))
+    if (!bytes || size < 7 ||
+        (tag != FVM_SWF_TAG_DEFINE_BITS_LOSSLESS && tag != FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2))
         return FVM_INVALID_ARGUMENT;
     FVM_SWFBitmap result;
     result.id = word(bytes);
     unsigned format = bytes[2];
     result.width = word(bytes + 3);
     result.height = word(bytes + 5);
-    result.transparent = tag == 36;
+    result.transparent = tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2;
     if (!result.id || !result.width || !result.height ||
-        (format != 3 && format != 4 && format != 5) || (tag == 36 && format == 4))
+        (format != FVM_SWF_LOSSLESS_COLORMAP && format != FVM_SWF_LOSSLESS_RGB15 &&
+         format != FVM_SWF_LOSSLESS_RGB32) ||
+        (tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 && format == FVM_SWF_LOSSLESS_RGB15))
         return FVM_INVALID_ARGUMENT;
     if (result.width > 2880 || result.height > 2880)
         return FVM_UNSUPPORTED;
-    size_t header = format == 3 ? 8 : 7;
+    size_t header = format == FVM_SWF_LOSSLESS_COLORMAP ? 8 : 7;
     if (size <= header || size - header > ULONG_MAX)
         return FVM_INVALID_ARGUMENT;
-    unsigned colors = format == 3 ? (unsigned)bytes[7] + 1 : 0;
+    unsigned colors = format == FVM_SWF_LOSSLESS_COLORMAP ? (unsigned)bytes[7] + 1 : 0;
     size_t palette = (size_t)colors * (result.transparent ? 4 : 3);
-    unsigned bytes_per_pixel = format == 3 ? 1 : format == 4 ? 2 : 4;
+    unsigned bytes_per_pixel = format == FVM_SWF_LOSSLESS_COLORMAP ? 1
+                               : format == FVM_SWF_LOSSLESS_RGB15  ? 2
+                                                                   : 4;
     size_t stride = ((size_t)result.width * bytes_per_pixel + 3) & ~(size_t)3;
     size_t expected = palette + stride * result.height,
            pixel_bytes = (size_t)result.width * result.height * 4;
@@ -69,7 +75,7 @@ FVM_Result fvm_swf_read_bitmap(const unsigned char *bytes, size_t size, unsigned
                 const unsigned char *source =
                     data.begin() + palette + y * stride + x * bytes_per_pixel;
                 unsigned char *dest = result.pixels.begin() + ((size_t)y * result.width + x) * 4;
-                if (format == 3)
+                if (format == FVM_SWF_LOSSLESS_COLORMAP)
                 {
                     unsigned index = source[0];
                     if (index >= colors)
@@ -80,7 +86,7 @@ FVM_Result fvm_swf_read_bitmap(const unsigned char *bytes, size_t size, unsigned
                         dest[channel] = result.transparent ? straight(source[channel], dest[3])
                                                            : source[channel];
                 }
-                else if (format == 4)
+                else if (format == FVM_SWF_LOSSLESS_RGB15)
                 {
                     unsigned value = ((unsigned)source[0] << 8) | source[1];
                     if (value & 0x8000)
@@ -117,13 +123,15 @@ FVM_Result fvm_swf_read_bitmap(const unsigned char *bytes, size_t size, unsigned
 FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned tag,
                              unsigned version, size_t limit, FVM_SWFBitmap &out)
 {
-    if (!bytes || (tag != 21 && tag != 35) || size <= (tag == 35 ? 6U : 2U) ||
-        version < (tag == 35 ? 3U : 2U) || !word(bytes))
+    if (!bytes || (tag != FVM_SWF_TAG_DEFINE_BITS_JPEG2 && tag != FVM_SWF_TAG_DEFINE_BITS_JPEG3) ||
+        size <= (tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 ? 6U : 2U) ||
+        version < (tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 ? 3U : 2U) || !word(bytes))
         return FVM_INVALID_ARGUMENT;
-    size_t header = tag == 35 ? 6 : 2;
-    size_t image_size = tag == 35 ? (size_t)bytes[2] | ((size_t)bytes[3] << 8) |
-                                        ((size_t)bytes[4] << 16) | ((size_t)bytes[5] << 24)
-                                  : size - header;
+    size_t header = tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 ? 6 : 2;
+    size_t image_size = tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3
+                            ? (size_t)bytes[2] | ((size_t)bytes[3] << 8) |
+                                  ((size_t)bytes[4] << 16) | ((size_t)bytes[5] << 24)
+                            : size - header;
     if (!image_size || image_size > size - header)
         return FVM_INVALID_ARGUMENT;
     size_t alpha_at = header + image_size;
@@ -136,7 +144,7 @@ FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned t
     }
     bool png = image_size >= 8 && !std::memcmp(image, "\211PNG\r\n\032\n", 8);
     bool gif = image_size >= 6 && !std::memcmp(image, "GIF89a", 6);
-    if ((png || gif) && (version < 8 || (tag == 35 && alpha_at != size)))
+    if ((png || gif) && (version < 8 || (tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 && alpha_at != size)))
         return FVM_INVALID_ARGUMENT;
     FVM_SWFBitmap result;
     unsigned char *pixels = 0;
@@ -150,13 +158,13 @@ FVM_Result fvm_swf_read_jpeg(const unsigned char *bytes, size_t size, unsigned t
     try
     {
         result.id = word(bytes);
-        result.transparent = tag == 35 || png || gif;
+        result.transparent = tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || png || gif;
         size_t count = (size_t)result.width * result.height;
         result.pixels.resize(count * 4);
         std::memcpy(result.pixels.begin(), pixels, count * 4);
         std::free(pixels);
         pixels = 0;
-        if (tag == 35 && !png && !gif)
+        if (tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 && !png && !gif)
         {
             if (alpha_at >= size || size - alpha_at > ULONG_MAX)
                 return FVM_INVALID_ARGUMENT;

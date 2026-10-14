@@ -1,4 +1,4 @@
-Версия разработки: **0.229** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.230** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -217,3 +217,5 @@ Raw prototype primitive retention / Raw-значения прототипа: [RU
 Shared execution budget/GC/stop checkpoints / Общие контрольные точки: [RU/EN](doc/EXECUTION_CHECKPOINT.md).
 
 Loaded numeric text and strict NaN / Числовой текст и строгий NaN: [RU/EN](doc/AVM1_NUMBER_TEXT.md).
+
+Named uppercase constants / Смысловые макросы: [header map and evidence](doc/SEMANTIC_CONSTANTS.md).

@@ -11,8 +11,8 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    ERROR_OBJECT = 22,
-    ERROR_CLASS = 23
+    ERROR_OBJECT = FVM_RESOURCE_ERROR,
+    ERROR_CLASS = FVM_RESOURCE_ERROR_CLASS
 };
 
 /* Compute and return error string. */

@@ -12,7 +12,7 @@
 /* Compute and return property watchable. */
 bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
 {
-    if (object->resource_kind == 40)
+    if (object->resource_kind == FVM_RESOURCE_MOVIECLIP)
     {
         const char *fields[] = {"_x",     "_y",       "_xscale", "_yscale", "_rotation",
                                 "_alpha", "_visible", "_name",   "enabled", "useHandCursor"};
@@ -29,7 +29,7 @@ bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
     unsigned long index = 0;
     const bool indexed = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
     unsigned int depth = 0;
-    for (FVM_Object *o = object; o && depth++ < 1024; o = o->prototype)
+    for (FVM_Object *o = object; o && depth++ < FVM_PROTOTYPE_MAX_DEPTH; o = o->prototype)
     {
         if (indexed && o->indexed.find(index) != o->indexed.end())
             return true;
@@ -38,7 +38,7 @@ bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
         if (o->properties.find(name) != o->properties.end())
             return true;
     }
-    return depth < 1024;
+    return depth < FVM_PROTOTYPE_MAX_DEPTH;
 }
 
 namespace
@@ -51,7 +51,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
     unsigned long index = 0;
     bool indexed = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
     unsigned int depth = 0;
-    for (FVM_Object *o = object; o && depth++ < 1024; o = o->prototype)
+    for (FVM_Object *o = object; o && depth++ < FVM_PROTOTYPE_MAX_DEPTH; o = o->prototype)
     {
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(name);
         if (property != o->properties.end())
@@ -59,7 +59,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
             *out = property->second;
             return FVM_OK;
         }
-        if (o->resource_kind == 28 && name == "length" && o->resource_result_valid)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" && o->resource_result_valid)
         {
             *out = o->resource_result;
             return FVM_OK;
@@ -70,7 +70,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
             fvm_base_accessor_data(accessor->second, *out);
             return FVM_OK;
         }
-        if (indexed && (o->resource_kind == 28 || o->resource_kind == 30))
+        if (indexed && (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT))
         {
             fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
             if (slot != o->indexed.end())
@@ -83,7 +83,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
         if (o->methods.find(name) != o->methods.end())
             return fvm_object_get_bytes(c, o, name.data(), name.size(), out);
     }
-    return depth > 1024 ? FVM_ERROR : FVM_OK;
+    return depth > FVM_PROTOTYPE_MAX_DEPTH ? FVM_ERROR : FVM_OK;
 }
 }
 

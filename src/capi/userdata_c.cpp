@@ -22,7 +22,7 @@ fvm_userdata_attach(FVM_Context *c, FVM_Object *o, void *data,
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    o->resource_kind = 6;
+    o->resource_kind = FVM_RESOURCE_USERDATA;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     o->resource = data;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -35,7 +35,7 @@ fvm_userdata_attach(FVM_Context *c, FVM_Object *o, void *data,
 /* Read userdata. */
 extern "C" FVM_Result fvm_userdata_get(FVM_Context *c, FVM_Object *o, void **out)
 {
-    if (!c || !o || o->owner != c || !out || o->resource_kind != 6)
+    if (!c || !o || o->owner != c || !out || o->resource_kind != FVM_RESOURCE_USERDATA)
         return FVM_INVALID_ARGUMENT;
     *out = o->resource;
     return FVM_OK;

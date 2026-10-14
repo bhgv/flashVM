@@ -179,7 +179,7 @@ struct ResourceScope
 /* Capture transfer resource. */
 FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned long *token)
 {
-    if (!c->transfer_resources || !o->resource || (o->resource_kind != 1 && o->resource_kind != 8))
+    if (!c->transfer_resources || !o->resource || (o->resource_kind != FVM_RESOURCE_CHANNEL && o->resource_kind != FVM_RESOURCE_MUTEX))
         return FVM_UNSUPPORTED;
     Packet *p = (Packet *)c->transfer_resources;
     for (size_t i = 0; i < p->resources.size(); ++i)
@@ -191,7 +191,7 @@ FVM_Result fvm_transfer_capture_resource(FVM_Context *c, FVM_Object *o, unsigned
 
     /* Initialization / Инициализация локального состояния. */
     int closed = 0;
-    FVM_Result status = o->resource_kind == 8
+    FVM_Result status = o->resource_kind == FVM_RESOURCE_MUTEX
                             ? fvm_mutex_is_closed((FVM_Mutex *)o->resource, &closed)
                             : fvm_channel_is_closed((FVM_Channel *)o->resource, &closed);
     if (status != FVM_OK || closed)

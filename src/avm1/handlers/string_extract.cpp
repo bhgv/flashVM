@@ -7,14 +7,14 @@ static unsigned long integer_bits(double value)
         value == -std::numeric_limits<double>::infinity())
         return 0;
     value = value < 0 ? std::ceil(value) : std::floor(value);
-    value = std::fmod(value, 4294967296.0);
-    return (unsigned long)(value < 0 ? value + 4294967296.0 : value);
+    value = std::fmod(value, FVM_UINT32_MODULUS);
+    return (unsigned long)(value < 0 ? value + FVM_UINT32_MODULUS : value);
 }
 /* Represent a low 32-bit result as a signed ActionScript Number on both 32/64-bit hosts. */
 static double signed_bits(unsigned long value)
 {
-    value &= 0xffffffffUL;
-    return value >= 0x80000000UL ? (double)value - 4294967296.0 : (double)value;
+    value &= FVM_UINT32_MASK;
+    return value >= FVM_UINT32_SIGN_BIT ? (double)value - FVM_UINT32_MODULUS : (double)value;
 }
 /* Extract counted UTF-16 units after length/start/text conversion in player order. */
 extern "C" FVM_Result fvm_exec_string_extract(FVM_Context *c, const FVM_Value *input,
@@ -44,7 +44,7 @@ extern "C" FVM_Result fvm_exec_string_extract(FVM_Context *c, const FVM_Value *i
         status = fvm_string_units(text, units);
         if (status != FVM_OK)
             return status;
-        if (c->swf_loaded && c->swf_info.version < 6)
+        if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
             for (size_t unit = 0; unit < units.size(); ++unit)
                 if (units[unit] > 127)
                     return FVM_UNSUPPORTED;

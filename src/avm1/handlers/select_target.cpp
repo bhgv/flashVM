@@ -15,7 +15,7 @@ extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *in
         bool reset = false, invalid = false;
         if (input->type == FVM_VALUE_UNDEFINED)
         {
-            reset = c->swf_loaded && c->swf_info.version <= 6;
+            reset = c->swf_loaded && c->swf_info.version <= FVM_SWF_VERSION_6;
             invalid = !reset;
         }
         else
@@ -31,7 +31,7 @@ extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *in
             status = fvm_movieclip_resolve_path(c, c->avm1_base_clip, path, &target);
             if (status != FVM_OK)
                 return status;
-            if (target && target->resource_kind != 40)
+            if (target && target->resource_kind != FVM_RESOURCE_MOVIECLIP)
                 target = 0;
         }
         /* [GC:] Adopt the selected clip before operand roots are released. */

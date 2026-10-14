@@ -26,9 +26,9 @@ namespace
 /* Define anonymous enum and its representation. */
 enum
 {
-    BOOLEAN_OBJECT = 20,
-    BOOLEAN_CLASS = 21,
-    GENERIC_PRIMITIVE_PROTOTYPE = 30 /* Existing ordinary Object graph kind. */
+    BOOLEAN_OBJECT = FVM_RESOURCE_BOOLEAN,
+    BOOLEAN_CLASS = FVM_RESOURCE_BOOLEAN_CLASS,
+    GENERIC_PRIMITIVE_PROTOTYPE = FVM_RESOURCE_OBJECT /* Existing ordinary Object graph kind. */
 };
 
 /* Construct a quiet not-a-number value using the portable numeric helper. */
@@ -60,7 +60,7 @@ FVM_Result global_constant_get(FVM_Context *c, bool is_nan, FVM_Value *out, void
     if (!c->swf_loaded)
         return fvm_object_get(c, state, "value", out);
     fvm_value_undefined(out);
-    if (c->swf_info.version > 4)
+    if (c->swf_info.version > FVM_SWF_VERSION_4)
         fvm_value_number(out, is_nan ? nan_value() : infinity());
     return FVM_OK;
 }
@@ -301,7 +301,7 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
             status = math_argument(c, count, args, 1, &y);
         if (status != FVM_OK)
             return status;
-        if (c->swf_info.version <= 6 && op != RANDOM &&
+        if (c->swf_info.version <= FVM_SWF_VERSION_6 && op != RANDOM &&
             !((op == MIN || op == MAX) && !count) &&
             !(op == POW && count == 1 && x == 1) &&
             (!count || ((op == MIN || op == MAX || op == POW || op == ATAN2) && count < 2)))
@@ -825,7 +825,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (result != FVM_OK || math.type != FVM_VALUE_OBJECT ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                math.object->resource_kind != 10)
+                math.object->resource_kind != FVM_RESOURCE_MATH_NAMESPACE)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
@@ -955,7 +955,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         FVM_Result result = fvm_object_create(c, &math);
         if (result != FVM_OK)
             return result;
-        math->resource_kind = 10;
+        math->resource_kind = FVM_RESOURCE_MATH_NAMESPACE;
         for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
         {
             FVM_NativeEntry entry;
