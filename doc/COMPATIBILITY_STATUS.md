@@ -2387,3 +2387,12 @@ Int32 limit. Math.random retains its existing sequence and shares the same state
 C89/Action/GC/exception/allocation fixtures cover SWF4–8; Math graph transport
 resumes bounded draws correctly. Historical player RNG sequences and locale
 behavior remain open. Добавлен отсутствовавший код Action, а не только адаптер.
+
+### v0.291 — GetTime and separate monotonic adapters
+
+[GET_TIME_SERVICE.md](GET_TIME_SERVICE.md) records the new Action and allocation-free
+C89 elapsed-time service. Deterministic SWF4–8 fixtures cover origins, load retention,
+fractional truncation, unsigned 32-bit wrap, rollback, read failure and recovery.
+A real Linux adapter fixture and allocation/root checks accompany the change.
+Date retains calendar time. Other target adapters await real builds and suspend/
+resume behavior remains open. Добавлен отсутствовавший таймер, стадии не закрыты.

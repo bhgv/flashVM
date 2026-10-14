@@ -391,3 +391,14 @@ atomicity and shared Math state including graph transport. Existing Math.random
 sequences are preserved; historical player/locale RNG equivalence remains open.
 Machine-code JIT and real Windows/macOS/Android runs remain absent.
 Все стадии 1–9 остаются открытыми.
+
+## v0.291 — elapsed monotonic GetTime
+
+Both final Linux profiles pass all 571 tests without launch failures in those
+final runs. Three focused heap/global ASan+UBSan checks pass (no stack/leak
+coverage), and all 26 original SWFs match per profile. Deterministic clock
+fixtures cover SWF4–8 Action dispatch, context origins, load retention, unsigned
+wrap, clock rollback, failure/recovery and allocation-free reads. A separate
+fixture runs the actual Linux clock adapter. Windows/macOS/Android adapter
+sources are unverified on target; real JIT and all nine acceptance stages remain
+open. Все стадии 1–9 остаются открытыми.

@@ -27,7 +27,7 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
-  ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
+  ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)

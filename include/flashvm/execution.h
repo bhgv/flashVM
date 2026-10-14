@@ -95,6 +95,9 @@ extern "C"
     /* Execute numeric semantics and preserve the operation's historical coercion order. */
     FVM_API FVM_Result fvm_exec_numeric(FVM_Context *, FVM_ExecutionNumeric, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Read context-relative monotonic integer milliseconds modulo 2^32, without allocation.
+     * Clock errors leave output and the previous elapsed sample intact; no GC roots are needed. */
+    FVM_API FVM_Result fvm_exec_get_time(FVM_Context *, FVM_Value *);
     /* Return a bounded random integer after numeric conversion and saturating Int32 clamping.
      * Nonpositive/NaN bounds return zero without drawing; shares Math.random context state.
      * [GC:] Coercion roots input; failure preserves output, including aliases. */

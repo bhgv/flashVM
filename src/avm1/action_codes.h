@@ -69,6 +69,8 @@
 #define FVM_AVM1_ACTION_CHAR_TO_ASCII 0x32U
 /* Convert a numeric character code to text. */
 #define FVM_AVM1_ACTION_ASCII_TO_CHAR 0x33U
+/* Push elapsed integer milliseconds modulo 2^32. */
+#define FVM_AVM1_ACTION_GET_TIME 0x34U
 /* Multibyte extraction variant under the supported version policy. */
 #define FVM_AVM1_ACTION_MB_STRING_EXTRACT 0x35U
 /* Multibyte character-code extraction variant. */

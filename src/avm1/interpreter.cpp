@@ -1365,6 +1365,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = output;
             }
+            else if (a.op == FVM_AVM1_ACTION_GET_TIME)
+            {
+                FVM_Value result;
+                FVM_Result status = fvm_exec_get_time(c, &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.push_back(result);
+            }
             else if (a.op == FVM_AVM1_ACTION_RANDOM_NUMBER)
             {
                 if (stack.empty())

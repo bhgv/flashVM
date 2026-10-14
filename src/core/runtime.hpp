@@ -273,6 +273,9 @@ struct FVM_Context
     fvm_detail::map<fvm_detail::string, FVM_FontSource *>
         fonts;                       /* [GC:] Font sources registered by name. */
     fvm_detail::string default_font; /* [GC:] Default registered font name. */
+    double timer_origin_ms; /* Monotonic sample establishing this context's timer origin. */
+    double timer_elapsed_ms; /* Last unwrapped elapsed sample, retaining monotonicity on rollback. */
+    bool timer_clock_valid; /* Whether a valid timer origin has been captured. */
     unsigned long random_state;      /* [GC:] State of the context-local pseudo-random generator. */
     FVM_Runtime *runtime;            /* [GC:] Runtime owning this context. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

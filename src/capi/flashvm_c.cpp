@@ -4,6 +4,7 @@
 
 #include "../core/runtime.hpp"
 #include "../core/random_constants.h"
+#include "../core/timer.hpp"
 #include "../core/capability_internal.hpp"
 #include "../swf/decode.hpp"
 #include "../standard/primitive_state.hpp"
@@ -130,6 +131,8 @@ extern "C"
         context->standard_text_library = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->random_state = FVM_RANDOM_INITIAL_STATE;
+        context->timer_origin_ms = context->timer_elapsed_ms = 0;
+        context->timer_clock_valid = fvm_timer_read(&context->timer_origin_ms);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->runtime = runtime;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
