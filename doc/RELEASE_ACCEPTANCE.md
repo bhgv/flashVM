@@ -343,3 +343,11 @@ Four focused heap/global ASan+UBSan checks pass (no stack/leak coverage), and al
 26 original SWFs match per profile. Loaded Extends now shares a value-based C ABI
 with ordered boxing and rooted getter/setter dispatch. Actual machine-code JIT
 and Windows/macOS/Android runs remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.286 — documented operand and literal constants
+
+Both Linux profiles pass all 559 tests after restoring executable permissions
+for six AGG and two Cairo launch failures. Original and retry logs remain separate.
+Six focused heap/global ASan+UBSan checks pass, without stack/leak coverage;
+all 26 original SWFs still match per profile. This constants-only checkpoint
+adds no compatibility or platform claim. Все стадии 1–9 остаются открытыми.

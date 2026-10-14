@@ -2342,3 +2342,12 @@ ordinary superclass prototype getters, fresh own metadata and final subclass
 setters. Direct C and Action fixtures cover SWF4–8; GC, exception and allocation
 fixtures cover intermediate lifetimes. Host strict class policy is preserved.
 Полная совместимость и все девять стадий остаются открытыми.
+
+### v0.286 — named AVM1 operand layouts
+
+Documented uppercase constants in operand_constants.h and literal_constants.h
+replace literal widths/offsets for comparisons, arithmetic, members, deletion,
+swap, URL operands, method calls and Array/Object literal roots. The signed
+literal count limit now uses the existing shared Int32 bound. Values, action
+semantics and independent raw fixtures are unchanged. Смысловые макросы разделяют
+назначение одинаковых чисел; это улучшение читаемости, не закрытие стадии.
