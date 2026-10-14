@@ -16,6 +16,9 @@ FVM_Result fvm_string_case(FVM_Context *, const FVM_Value &, FVM_Value *, bool);
 /* Validate string. */
 FVM_Result fvm_string_validate(FVM_Context *);
 
+/* Convert an untouched host String prototype before successful SWF publication; no callbacks. */
+FVM_Result fvm_string_activate_loaded(FVM_Context *);
+
 /* Map a native string callback to its stable serialization identifier. */
 unsigned long fvm_string_callback_id(FVM_NativeFunction);
 

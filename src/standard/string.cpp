@@ -21,7 +21,8 @@ namespace
 enum
 {
     STRING_OBJECT = 26,
-    STRING_CLASS = 27
+    STRING_CLASS = 27,
+    STRING_GENERIC_PROTOTYPE = 30 /* Loaded prototype is an ordinary Object, without native text. */
 };
 typedef fvm_detail::vector<unsigned int> Units;
 
@@ -793,13 +794,14 @@ fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = STRING_CLASS;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    prototype->resource_kind = STRING_OBJECT;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    prototype->resource_result_valid = true;
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_string(&prototype->resource_result, "");
-    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    attach_length(prototype);
+    prototype->resource_kind = c->swf_loaded ? STRING_GENERIC_PROTOTYPE : STRING_OBJECT;
+    if (!c->swf_loaded)
+    {
+        /* [GC:] Unloaded host prototypes retain the original boxed empty text. */
+        prototype->resource_result_valid = true;
+        fvm_value_string(&prototype->resource_result, "");
+        attach_length(prototype);
+    }
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -865,7 +867,9 @@ FVM_Result fvm_string_validate(FVM_Context *c)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_object_get(c, klass.object, "prototype", &prototype) != FVM_OK ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        prototype.type != FVM_VALUE_OBJECT || prototype.object->resource_kind != STRING_OBJECT)
+        prototype.type != FVM_VALUE_OBJECT ||
+        (prototype.object->resource_kind != STRING_OBJECT &&
+         prototype.object->resource_kind != STRING_GENERIC_PROTOTYPE))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -905,14 +909,57 @@ FVM_Result fvm_string_validate(FVM_Context *c)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         prototype.object->accessors.find("length");
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (accessor == prototype.object->accessors.end() || accessor->second.getter != length ||
+    if (prototype.object->resource_kind == STRING_OBJECT &&
+        (accessor == prototype.object->accessors.end() || accessor->second.getter != length ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        accessor->second.setter)
+         accessor->second.setter))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* [GC:] Drop only the default host prototype's native text/length after all allocating lookups.
+ * Class roots keep the candidate alive; this operation performs no user callbacks. */
+FVM_Result fvm_string_activate_loaded(FVM_Context *c)
+{
+    if (!c->standard_library)
+        return FVM_OK;
+    try
+    {
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("String");
+        if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+            return FVM_OK;
+        FVM_Object *klass = ctor->second.root;
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+        if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+            return FVM_OK;
+        FVM_Object *proto = stored->second.object;
+        if (proto->resource_kind != STRING_OBJECT || !proto->resource_result_valid ||
+            proto->resource_result.type != FVM_VALUE_STRING || fvm_string_size(proto->resource_result))
+            return FVM_OK;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("charAt");
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = proto->accessors.find("length");
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = proto->attributes.find("length");
+        if (method == proto->methods.end() || method->second.callback != char_at ||
+            accessor == proto->accessors.end() || accessor->second.getter != length || accessor->second.setter ||
+            proto->properties.find("length") != proto->properties.end() ||
+            (flags != proto->attributes.end() && flags->second))
+            return FVM_OK;
+        /* Commit without further allocation; callers publish decoded SWF state immediately afterwards. */
+        proto->accessors.erase(accessor->first);
+        if (flags != proto->attributes.end())
+            proto->attributes.erase(flags->first);
+        proto->resource_kind = STRING_GENERIC_PROTOTYPE;
+        proto->resource_result_valid = false;
+        fvm_value_undefined(&proto->resource_result);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }
 
 /* Map a native string callback to its stable serialization identifier. */

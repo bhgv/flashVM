@@ -1499,3 +1499,22 @@ boxed overrides and all roadmap stages remain open.
 Evidence for v0.187: AGG 348/Cairo 347 tests, fourteen focused checks each in Linux
 portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
 Four AGG launch failures passed after restoring execute bits.
+
+## v0.188 — generic String prototype / обычный Object прототип
+
+Loaded String prototypes are ordinary Objects without native text/length.
+Untouched host prototypes transition on successful SWF loading after allocating
+lookups, before allocation-free SWF publication. Identity/user properties persist;
+invalid loads and explicitly replaced/customized length shapes are preserved.
+Validation accepts both layouts; wire/ABI versions are unchanged.
+[RU/EN details](STRING_LEGACY_PROTOTYPE.md). SWF4..8 tests cover installation
+order, invalid SWFs, identity/NUL marker, missing length/value methods/casing,
+GC/channel/GC, restored constructor alias and String construction. Customized
+overrides, pre-load host instances, property case and all stages remain open.
+
+Исправлен native тип String.prototype и переход стандартного host прототипа
+при загрузке SWF; сохранены identity, свойства и alias восстановленного класса.
+
+Evidence for v0.188: AGG 349/Cairo 348 tests, seventeen focused checks each in Linux
+portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
+Three AGG launch failures passed after restoring execute bits.
