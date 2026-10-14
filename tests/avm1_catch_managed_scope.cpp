@@ -1,4 +1,4 @@
-/* Top-level catch bindings remain visible to C lookup, GC and escaped closures. */
+/* Host catch closures retain locals; loaded catches keep ordinary global assignment semantics. */
 #define main exceptions_fixture_main
 #include "actionscript_exceptions.cpp"
 #undef main
@@ -13,9 +13,9 @@ int main()
  integer(body,42);body.push_back(0x2a);method(caught,"gc","collect");caught.push_back(0x17);string(caught,"observed");variable(caught,"error");caught.push_back(0x1d);
  string(caught,"retained");integer(caught,73);caught.push_back(0x3c);variable(closure,"retained");closure.push_back(0x3e);closure.push_back(0);define(caught,"capture",closure);string(caught,"saved");variable(caught,"capture");caught.push_back(0x1d);
  string(final,"after");variable(final,"error");final.push_back(0x1d);attempt(code,body,caught,final,3,"error");run(c,code,FVM_OK);
- assert(global(c,"observed")==42 && global(c,"after")==17 && global(c,"error")==17 && c->lexical_scopes.empty() && !c->gc_frames);
+ assert(global(c,"observed")==42 && global(c,"after")== (version?42:17) && global(c,"error")== (version?42:17) && c->lexical_scopes.empty() && !c->gc_frames);
  assert(fvm_gc_collect(c,0)==FVM_OK && fvm_get_global(c,"saved",&value)==FVM_OK && value.type==FVM_VALUE_OBJECT && fvm_function_invoke(c,value.object,0,0,0,&out)==FVM_OK && out.number==73);
- FVM_Context *other=0;assert(fvm_context_create(rt,&other)==FVM_OK);if(version)assert(fvm_load_memory(other,swf,sizeof(swf))==FVM_OK);assert(fvm_extensions_install(other)==FVM_OK);FVM_Channel *channel=0;assert(fvm_channel_create(&channel)==FVM_OK && fvm_channel_send_value(c,channel,&value,0)==FVM_OK && fvm_channel_receive_value(other,channel,&value,0)==FVM_OK && fvm_gc_pin(other,value.object)==FVM_OK && fvm_gc_collect(other,0)==FVM_OK && fvm_function_invoke(other,value.object,0,0,0,&out)==FVM_OK && out.number==73);fvm_channel_destroy(channel);fvm_context_destroy(other);
+ FVM_Context *other=0;assert(fvm_context_create(rt,&other)==FVM_OK);if(version)assert(fvm_load_memory(other,swf,sizeof(swf))==FVM_OK);assert(fvm_extensions_install(other)==FVM_OK);fvm_value_number(&out,91);assert(fvm_set_global(other,"retained",&out)==FVM_OK);FVM_Channel *channel=0;assert(fvm_channel_create(&channel)==FVM_OK && fvm_channel_send_value(c,channel,&value,0)==FVM_OK && fvm_channel_receive_value(other,channel,&value,0)==FVM_OK && fvm_gc_pin(other,value.object)==FVM_OK && fvm_gc_collect(other,0)==FVM_OK && fvm_function_invoke(other,value.object,0,0,0,&out)==FVM_OK && out.number==(version?91:73));fvm_channel_destroy(channel);fvm_context_destroy(other);
  assert(c->lexical_scopes.empty() && !c->gc_frames);fvm_context_destroy(c);}
  fvm_runtime_destroy(rt);return 0;
 }

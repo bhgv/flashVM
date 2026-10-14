@@ -12,6 +12,7 @@
 #include "block.hpp"
 #include "coercion.hpp"
 #include "target_scope.hpp"
+#include "lexical_scope.hpp"
 #include "../standard/function_state.hpp"
 #include "../standard/inheritance.hpp"
 #include "../standard/super.hpp"
@@ -455,15 +456,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     FVM_Object *scope = 0;
                     FVM_Result status = fvm_exec_with_scope(c, parent, &value, &scope);
                     if (status != FVM_OK) return status;
-                    /* [GC:] Publish the scope before dropping the operand which retains its object. */
-                    c->lexical_scopes.push_back(scope);
-                    struct ScopeExit
-                    {
-                        FVM_Context *context; /* [GC:] Context retaining the active scope. */
-                        explicit ScopeExit(FVM_Context *c) : context(c) {}
-                        /* [GC:] Restore the enclosing scope after return, exception or OOM. */
-                        ~ScopeExit() { context->lexical_scopes.pop_back(); }
-                    } scope_exit(c);
+                    /* [GC:] Publish before dropping the operand retaining its wrapped object. */
+                    FVM_AVM1LexicalScope scope_exit(c);
+                    scope_exit.publish(scope);
                     stack.pop_back();
                     status = execute(c, data + body, count, returned, locals, self, 0,
                                      &execution, base + body, depth + 1);
@@ -495,28 +490,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     saved[FVM_AVM1_TRY_THROWN_ROOT] = c->exception_value;
                     stack = baseline;
                     fvm_exception_clear(c);
-                    /* [GC:] Top-level catch bindings need a managed lexical scope. */
-                    struct CatchScope
-                    {
-                        FVM_Context *context; /* [GC:] Context retaining the temporary scope. */
-                        bool active; /* Whether a new scope was published. */
-                        /* [GC:] Leave the caller chain unchanged until publication. */
-                        explicit CatchScope(FVM_Context *c) : context(c), active(false) {}
-                        /* [GC:] Publish only after vector allocation succeeds. */
-                        void publish(FVM_Object *scope)
-                        {
-                            context->lexical_scopes.push_back(scope);
-                            active = true;
-                        }
-                        /* [GC:] Restore the enclosing scope on return, exception and OOM. */
-                        ~CatchScope()
-                        {
-                            if (active)
-                                context->lexical_scopes.pop_back();
-                        }
-                    } catch_scope(c);
+                    /* [GC:] Unloaded host catches retain their temporary managed scope. */
+                    FVM_AVM1LexicalScope catch_scope(c);
                     fvm_detail::map<fvm_detail::string, FVM_Value> *bindings = locals;
-                    if (!bindings)
+                    if (!c->swf_loaded && !bindings)
                     {
                         FVM_Object *activation = 0;
                         FVM_Result created = fvm_object_create(c, &activation);
@@ -542,6 +519,23 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;
                     }
+                    else if (c->swf_loaded)
+                    {
+                        FVM_Value name;
+                        FVM_Result bound = fvm_value_string(&name, record.name);
+                        FVM_Object *target = 0;
+                        if (bound == FVM_OK)
+                            bound = variable_receiver(c, self, &target);
+                        if (bound == FVM_OK)
+                            bound = fvm_exec_variable_set(c, c->lexical_scopes.empty()
+                                ? 0 : c->lexical_scopes.back(),
+                                target && target->resource_kind == FVM_RESOURCE_MOVIECLIP
+                                    ? target : c->global,
+                                c->script_this ? c->script_this : self,
+                                &name, &saved[FVM_AVM1_TRY_THROWN_ROOT]);
+                        if (bound != FVM_OK)
+                            return bound;
+                    }
                     else
                     {
                         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator old =
@@ -556,7 +550,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                      self, 0, &execution,
                                      base + record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX],
                                      depth + 1);
-                    if (!(record.flags & FVM_AVM1_TRY_CATCH_REGISTER))
+                    if (!c->swf_loaded && !(record.flags & FVM_AVM1_TRY_CATCH_REGISTER))
                     {
                         if (had_binding)
                             (*bindings)[record.name] = saved[FVM_AVM1_TRY_BINDING_ROOT];

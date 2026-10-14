@@ -2115,3 +2115,13 @@ interpreter fixtures cover it. Versioned this spelling, undefined presence and
 error/OOM root restoration are exercised. Full this-cell/casing/qualified-call and
 removed-target equivalence remain open. Основной поиск вынесен из интерпретатора;
 все девять стадий остаются открытыми.
+
+### v0.261 — persistent loaded catch assignment
+
+[LOADED_CATCH_ASSIGNMENT.md](LOADED_CATCH_ASSIGNMENT.md) records loaded named
+catch binding through common variable writes, persistent local/With/global and
+qualified assignments, rooted setter GC and binding-error propagation. Host-mode
+temporary restoration remains separate. The external corpus gains unchanged SWF8
+catch_references_registers; SWF15 Try originals stay excluded. Source-based
+fixtures do not claim full Flash conformance. this-cell/encoding/base-target and
+all roadmap gates remain open. Присваивание catch уточнено по версии исполнения.

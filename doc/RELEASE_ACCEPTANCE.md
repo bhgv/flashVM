@@ -154,3 +154,11 @@ A getter's scope mutation/GC no longer loses its original With classification.
 Focused C/interpreter fixtures accompany the decomposition. Complete scope/case/
 this equivalence, actual JIT backends and non-Linux execution still gate release.
 Все стадии 1–9 открыты; общий C-слой не означает завершения JIT или выпуска.
+
+## v0.261 — loaded catch assignments and original register probe
+
+Loaded named catch uses normal scoped writes and retains its assigned value;
+host temporary bindings remain compatible. Setter GC/error and scope restoration
+fixtures accompany it. The unchanged external SWF<=8 corpus expands to 26 cases.
+Full catch/this/encoding and all JIT/platform/release acceptance gates remain open.
+Все стадии 1–9 остаются открытыми; новые проверки не означают завершения выпуска.
