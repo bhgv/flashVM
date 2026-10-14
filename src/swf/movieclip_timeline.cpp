@@ -203,7 +203,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 ||
                          tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS || tag == FVM_SWF_TAG_JPEG_TABLES))
             return FVM_INVALID_ARGUMENT;
-        if (tag == FVM_SWF_TAG_FILE_ATTRIBUTES || tag == FVM_SWF_TAG_METADATA)
+        if (tag == FVM_SWF_TAG_FILE_ATTRIBUTES || tag == FVM_SWF_TAG_METADATA ||
+            tag == FVM_SWF_TAG_ENABLE_DEBUGGER || tag == FVM_SWF_TAG_ENABLE_DEBUGGER2 ||
+            tag == FVM_SWF_TAG_DEBUG_ID)
         {
             if (!sprites)
                 return FVM_INVALID_ARGUMENT;
@@ -504,6 +506,25 @@ FVM_Result build_control(FVM_Context *c, const Placement &control, FVM_Object *d
     return FVM_OK;
 }
 
+/* [GC:] Retain opaque authoring bytes without interpreting them as UTF-8 or executing them. */
+FVM_Result store_document_bytes(FVM_Context *c, FVM_Object *frames, const char *key,
+                                 const unsigned char *bytes, size_t size)
+{
+    FVM_Object *data = 0;
+    FVM_Result result = fvm_object_create(c, &data);
+    if (result != FVM_OK) return result;
+    FVM_Value value;
+    for (size_t i = 0; i < size; ++i)
+    {
+        fvm_value_number(&value, bytes[i]);
+        data->indexed[(unsigned long)i] = value;
+    }
+    fvm_value_number(&value, (double)size);
+    data->properties["length"] = value;
+    frames->properties[key] = managed(data);
+    return FVM_OK;
+}
+
 /* [GC:] Build frame records whose labels and action strings belong to the managed graph. */
 FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> &bytes,
                         const Timeline &timeline, FVM_Object *definitions, FVM_Object **out)
@@ -529,6 +550,22 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
             return r;
     }
     size_t next = 0, next_control = 0;
+    if (timeline.document.debugger_tag)
+    {
+        FVM_Value value;
+        fvm_value_number(&value, timeline.document.debugger_tag);
+        frames->properties["swf_debugger_tag"] = value;
+        r = store_document_bytes(c, frames, "swf_debugger_password",
+                                  (const unsigned char *)timeline.document.debugger_password,
+                                  timeline.document.debugger_password_size);
+        if (r != FVM_OK) return r;
+    }
+    if (timeline.document.debug_id)
+    {
+        r = store_document_bytes(c, frames, "swf_debug_id", timeline.document.debug_id,
+                                  FVM_SWF_DEBUG_ID_BYTES);
+        if (r != FVM_OK) return r;
+    }
     for (unsigned int frame = 1; frame <= timeline.frames; ++frame)
     {
         FVM_Object *record = 0, *blocks = 0;

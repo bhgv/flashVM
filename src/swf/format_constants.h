@@ -87,4 +87,20 @@
 #define FVM_SWF_TAG_LENGTH_MASK 63U
 /* Tag identifier starts after the six short-length bits. */
 #define FVM_SWF_TAG_CODE_SHIFT 6U
+/* Authoring debugger password tag (legacy form). */
+#define FVM_SWF_TAG_ENABLE_DEBUGGER 58U
+/* Opaque authoring debugger identifier tag. */
+#define FVM_SWF_TAG_DEBUG_ID 63U
+/* Authoring debugger password tag with a reserved UI16 prefix. */
+#define FVM_SWF_TAG_ENABLE_DEBUGGER2 64U
+/* DebugID is exactly one 128-bit opaque identifier. */
+#define FVM_SWF_DEBUG_ID_BYTES 16U
+/* EnableDebugger2 begins with a reserved UI16, ignored by playback. */
+#define FVM_SWF_DEBUGGER2_PREFIX_BYTES 2U
+/* FileAttributes contains one UI32 flag word. */
+#define FVM_SWF_FILE_ATTRIBUTES_BYTES 4U
+/* Valid FileAttributes bits in the supported SWF layouts. */
+#define FVM_SWF_FILE_ATTRIBUTES_VALID_FLAGS 0x79UL
+/* Metadata is the neutral document capability supported by this loader. */
+#define FVM_SWF_FILE_ATTRIBUTES_METADATA 0x10UL
 #endif
