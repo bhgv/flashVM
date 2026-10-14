@@ -317,3 +317,11 @@ Both Linux profiles pass 546 tests, four focused memory checks pass and all
 26 original SWFs match per profile. Primitive casts retain constructor side
 effects without replacing the tested original value with a wrapper. Real JIT
 and Windows/macOS/Android validation remain absent. Все стадии 1–9 открыты.
+
+## v0.283 — value-based InstanceOf
+
+Both Linux profiles pass 550 tests, eight focused memory checks pass, and all
+26 original SWFs match per profile. InstanceOf and object CastOp share rooted
+coercion and own prototype data semantics. Interface metadata snapshots and
+other compatibility gates remain open. JIT and real Windows/macOS/Android runs
+remain absent. Все стадии 1–9 остаются открытыми.

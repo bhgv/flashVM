@@ -20,4 +20,5 @@
 #define FVM_AVM1_BRANCH_SIGN_BIT 0x8000L /* Upper half of the signed branch encoding. */
 #define FVM_AVM1_BRANCH_MODULUS 65536L    /* Subtract 2^16 to sign-extend a branch into long. */
 #define FVM_AVM1_CAST_OPERANDS 2U /* CastOp consumes class followed by the original value. */
+#define FVM_AVM1_INSTANCE_OF_OPERANDS 2U /* InstanceOf consumes value followed by class. */
 #endif

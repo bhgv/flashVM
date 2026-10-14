@@ -951,16 +951,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.back() = result;
             }
             else if (a.op == FVM_AVM1_ACTION_INSTANCE_OF)
-            { /* InstanceOf: native constructor metadata and prototype identity. */
-                if (stack.size() < 2)
+            {
+                if (stack.size() < FVM_AVM1_INSTANCE_OF_OPERANDS)
                     return FVM_ERROR;
-                int matches = 0;
-                FVM_Result result =
-                    fvm_value_instance_of(c, &stack[stack.size() - 2], &stack.back(), &matches);
-                if (result != FVM_OK)
-                    return result;
+                FVM_Value membership;
+                FVM_Result status = fvm_exec_instance_of(c,
+                    &stack[stack.size() - FVM_AVM1_INSTANCE_OF_OPERANDS], &stack.back(), &membership);
+                if (status != FVM_OK)
+                    return status;
                 stack.pop_back();
-                fvm_value_boolean(&stack.back(), matches);
+                stack.back() = membership;
             }
             else if (a.op == FVM_AVM1_ACTION_NEXT_FRAME || a.op == FVM_AVM1_ACTION_PREVIOUS_FRAME ||
                      a.op == FVM_AVM1_ACTION_PLAY || a.op == FVM_AVM1_ACTION_STOP ||

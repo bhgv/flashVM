@@ -125,6 +125,10 @@ extern "C"
      * [GC:] Retains receiver, defining prototype, function and arguments through getters/body. */
     FVM_API FVM_Result fvm_exec_invoke_member(FVM_Context *, FVM_Object *, const FVM_Value *name,
                                                unsigned int argc, const FVM_Value *argv, FVM_Value *out);
+    /* Test class/prototype identity; loaded operands use versioned boxing and own stored prototype.
+     * [GC:] Retains original values through coercion; errors preserve output and aliasing is allowed. */
+    FVM_API FVM_Result fvm_exec_instance_of(FVM_Context *, const FVM_Value *,
+                                             const FVM_Value *constructor, FVM_Value *out);
     /* Preserve a matching value or return null; loaded primitive casts box for side effects.
      * [GC:] Retains original operands through constructor callbacks. Output may alias either. */
     FVM_API FVM_Result fvm_exec_cast(FVM_Context *, const FVM_Value *value,

@@ -2316,3 +2316,11 @@ loaded primitive boxing side effects, constructor GC/exceptions and allocation
 failures. The interpreter retains only operand adaptation. General constructor
 and prototype coercions in InstanceOf remain open, alongside all nine stages.
 Приведение примитива вызывает упаковку, но возвращает null.
+
+### v0.283 — own-data InstanceOf and rooted class/prototype coercion
+
+[INSTANCE_OF_SERVICE.md](INSTANCE_OF_SERVICE.md) records noncallable class objects,
+raw own prototype lookup, versioned field spelling, both boxing phases and
+separate interface edges. C89, action, GC/exception, three-phase allocator and
+host-policy fixtures cover the change. Interface snapshots, full property folding,
+super and removed clips remain open. Проверка не вызывает getter prototype.

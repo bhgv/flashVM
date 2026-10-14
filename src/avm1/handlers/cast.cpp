@@ -23,8 +23,13 @@ extern "C" FVM_Result fvm_exec_cast(FVM_Context *c, const FVM_Value *value,
                                         &roots.values[FVM_CAST_BOX_ROOT]);
         }
         else
-            status = fvm_value_instance_of(c, &roots.values[FVM_CAST_VALUE_ROOT],
-                                           &roots.values[FVM_CAST_CLASS_ROOT], &match);
+        {
+            FVM_Value membership;
+            status = fvm_exec_instance_of(c, &roots.values[FVM_CAST_VALUE_ROOT],
+                                          &roots.values[FVM_CAST_CLASS_ROOT], &membership);
+            if (status == FVM_OK)
+                match = membership.boolean;
+        }
         if (status != FVM_OK)
             return status;
         FVM_Value result;
