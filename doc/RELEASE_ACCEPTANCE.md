@@ -199,3 +199,11 @@ runs remain release gates. Все стадии 1–9 остаются откры
 Internal string representation literals have named documented macros without
 changing the runtime or transport format. This readability change does not close
 compatibility, JIT or target-platform acceptance gates. Все стадии 1–9 открыты.
+
+## v0.267 — rooted binary string services
+
+StringAdd and string comparison actions use bytecode-independent C89 services.
+Input graphs and converted text remain retained across the other callback's GC;
+concatenation preserves exact bytes and avoids an extra coercion-depth gate.
+Complete compatibility, six machine-code backends and target-platform runs still
+require acceptance evidence. Все стадии 1–9 остаются открытыми.

@@ -2173,3 +2173,13 @@ surrogate, continuation and payload macros in the shared codec, plus the borrowe
 terminated-size marker. Representation/decoding/transport behavior is unchanged;
 this is a readability checkpoint, not new compatibility coverage. Historical
 encodings and all nine roadmap gates remain open. Константы вынесены в `.h`.
+
+### v0.267 — shared StringAdd and explicit string comparisons
+
+[STRING_BINARY_SERVICES.md](STRING_BINARY_SERVICES.md) records two C89 services
+and four interpreter adapters, with separate input/text roots, exact counted-byte
+concatenation and preserved comparison order. Direct C, traced-string GC, callback
+exception, alias, UTF-16 order and allocator/depth-boundary fixtures accompany
+the decomposition. Numeric/dynamic operators remain separate. Legacy locale
+semantics and every roadmap completion gate stay open. Двухместные строковые
+обработчики доступны через общий C-интерфейс.

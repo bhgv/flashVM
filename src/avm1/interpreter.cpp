@@ -21,7 +21,6 @@
 #include "../standard/movieclip_state.hpp"
 #include "flashvm/function.h"
 #include "flashvm/execution.h"
-#include "../standard/string_order.hpp"
 #include "flashvm/property.h"
 #include "flashvm/standard.h"
 #include "try_record.hpp"
@@ -1235,50 +1234,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_STRING_EQUALS || a.op == FVM_AVM1_ACTION_STRING_ADD ||
                      a.op == FVM_AVM1_ACTION_STRING_LESS || a.op == FVM_AVM1_ACTION_STRING_GREATER)
-            { /* StringEquals/StringAdd/StringLess/StringGreater use explicit string coercion. */
-                if (stack.size() < 2)
+            { /* Explicit string operations use shared rooted value services. */
+                if (stack.size() < FVM_AVM1_STRING_BINARY_OPERANDS)
                     return FVM_ERROR;
-                /* [GC:] Retain newly converted strings across collection in the second callback. */
-                fvm_detail::vector<FVM_Value> converted(2);
-                fvm_value_undefined(&converted[0]);
-                fvm_value_undefined(&converted[1]);
-                RootGuard converted_roots(c, &converted, 0, 0, &registers);
-                FVM_Value &left = converted[0], &right = converted[1];
+                const FVM_Value *left = &stack[stack.size() - FVM_AVM1_STRING_BINARY_OPERANDS];
                 FVM_Value output;
                 FVM_Result status;
-                if (a.op == FVM_AVM1_ACTION_STRING_GREATER)
-                {
-                    status = fvm_avm1_string(c, stack[stack.size() - 2], &left);
-                    if (status == FVM_OK)
-                        status = fvm_avm1_string(c, stack.back(), &right);
-                }
-                else
-                {
-                    status = fvm_avm1_string(c, stack.back(), &right);
-                    if (status == FVM_OK)
-                        status = fvm_avm1_string(c, stack[stack.size() - 2], &left);
-                }
-                if (status != FVM_OK)
-                    return status;
                 if (a.op == FVM_AVM1_ACTION_STRING_ADD)
-                {
-                    size_t first = fvm_string_size(left), last = fvm_string_size(right);
-                    if (first > (size_t)-1 - last - 1)
-                        return FVM_OUT_OF_MEMORY;
-                    fvm_detail::vector<char> bytes(first + last + 1);
-                    std::memcpy(bytes.begin(), left.string, first);
-                    std::memcpy(bytes.begin() + first, right.string, last);
-                    bytes[first + last] = 0;
-                    status = own_string(c, bytes.begin(), &output, first + last);
-                }
+                    status = fvm_exec_string_add(c, left, &stack.back(), &output);
                 else
-                {
-                    int order = 0;
-                    status = fvm_string_order(left, right, order);
-                    fvm_value_boolean(&output, a.op == FVM_AVM1_ACTION_STRING_EQUALS ? order == 0
-                                               : a.op == FVM_AVM1_ACTION_STRING_LESS ? order < 0
-                                                                                     : order > 0);
-                }
+                    status = fvm_exec_string_compare(
+                        c,
+                        a.op == FVM_AVM1_ACTION_STRING_EQUALS ? FVM_EXEC_EQUAL
+                        : a.op == FVM_AVM1_ACTION_STRING_LESS ? FVM_EXEC_LESS
+                                                              : FVM_EXEC_GREATER,
+                        left, &stack.back(), &output);
                 if (status != FVM_OK)
                     return status;
                 stack.pop_back();

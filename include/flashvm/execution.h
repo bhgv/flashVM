@@ -96,6 +96,13 @@ extern "C"
     FVM_API FVM_Result fvm_exec_string_extract(FVM_Context *, const FVM_Value *input,
                                                const FVM_Value *start, const FVM_Value *length,
                                                FVM_Value *result);
+    /* Concatenate after right-before-left string conversion, preserving counted bytes. */
+    FVM_API FVM_Result fvm_exec_string_add(FVM_Context *, const FVM_Value *,
+                                          const FVM_Value *, FVM_Value *);
+    /* Explicit-string comparison accepts EQUAL/LESS/GREATER only. Greater converts
+     * left first; other modes convert right first. Output is Boolean in every SWF version. */
+    FVM_API FVM_Result fvm_exec_string_compare(FVM_Context *, FVM_ExecutionCompare,
+                                              const FVM_Value *, const FVM_Value *, FVM_Value *);
     /* Count UTF-16 units after string coercion. Loaded SWF<6 non-ASCII remains unsupported. */
     FVM_API FVM_Result fvm_exec_string_length(FVM_Context *, const FVM_Value *, FVM_Value *);
     /* Read the first UTF-16 unit, replacing surrogates; empty strings yield zero. */
