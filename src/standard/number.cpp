@@ -14,7 +14,8 @@ namespace
 enum
 {
     NUMBER_OBJECT = 24,
-    NUMBER_CLASS = 25
+    NUMBER_CLASS = 25,
+    NUMBER_GENERIC_PROTOTYPE = 30 /* Ordinary loaded prototype has no boxed primitive. */
 };
 
 /* Read stored Number data; loaded value methods do not coerce other receivers. */
@@ -211,13 +212,16 @@ fvm_number_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->resource_kind = NUMBER_CLASS;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    prototype->resource_kind = NUMBER_OBJECT;
+    prototype->resource_kind = c->swf_loaded ? NUMBER_GENERIC_PROTOTYPE : NUMBER_OBJECT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    prototype->resource_result_valid = true;
+    prototype->resource_result_valid = !c->swf_loaded;
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_number(&prototype->resource_result, 0);
+    if (c->swf_loaded)
+        fvm_value_undefined(&prototype->resource_result);
+    else
+        fvm_value_number(&prototype->resource_result, 0);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value value;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -300,7 +304,9 @@ FVM_Result fvm_number_validate(FVM_Context *c)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_object_get(c, klass.object, "prototype", &prototype) != FVM_OK ||
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        prototype.type != FVM_VALUE_OBJECT || prototype.object->resource_kind != NUMBER_OBJECT)
+        prototype.type != FVM_VALUE_OBJECT ||
+        (prototype.object->resource_kind != NUMBER_OBJECT &&
+         prototype.object->resource_kind != NUMBER_GENERIC_PROTOTYPE))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -328,6 +334,26 @@ FVM_Result fvm_number_validate(FVM_Context *c)
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* [GC:] Find an unchanged host Number prototype without mutating it. The constructor
+ * capture roots it until the caller commits; allocating lookups may throw bad_alloc. */
+FVM_Object *fvm_number_prepare_loaded(FVM_Context *c)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Number");
+    if (ctor == c->constructors.end() || ctor->second.callback != number_constructor || !ctor->second.root)
+        return 0;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = ctor->second.root->properties.find("prototype");
+    if (stored == ctor->second.root->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return 0;
+    FVM_Object *proto = stored->second.object;
+    if (!proto || proto->resource_kind != NUMBER_OBJECT || !proto->resource_result_valid ||
+        proto->resource_result.type != FVM_VALUE_NUMBER || proto->resource_result.number != 0)
+        return 0;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value = proto->methods.find("valueOf");
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text = proto->methods.find("toString");
+    return value != proto->methods.end() && value->second.callback == number_value &&
+           text != proto->methods.end() && text->second.callback == number_string ? proto : 0;
 }
 
 /* Map a native number callback to its stable serialization identifier. */

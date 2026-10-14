@@ -5,7 +5,7 @@
 #include "../core/runtime.hpp"
 #include "../core/capability_internal.hpp"
 #include "../swf/decode.hpp"
-#include "../standard/string_state.hpp"
+#include "../standard/primitive_state.hpp"
 #include <new>
 #include <cstring>
 #include "flashvm/metamethod.h"
@@ -256,7 +256,7 @@ extern "C"
             return result;
 
         /* Computation / Вычисление и обновление состояния. */
-        result = fvm_string_activate_loaded(context);
+        result = fvm_primitive_activate_loaded(context);
         if (result != FVM_OK)
             return result;
         context->swf_bytes.swap(decoded);

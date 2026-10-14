@@ -75,14 +75,18 @@ int main()
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK); assert(fvm_standard_install(c) == FVM_OK);
         FVM_Value klass, value; assert(fvm_get_global(c, "String", &klass) == FVM_OK); assert(fvm_object_get(c, klass.object, "prototype", &value) == FVM_OK); FVM_Object *proto = value.object;
         fvm_value_string_bytes(&value, "a\0b", 3); assert(fvm_object_set(c, proto, "marker", &value) == FVM_OK);
+        FVM_Object *numeric[2]; const char *names[] = {"Number", "Boolean"};
+        for (unsigned i = 0; i < 2; ++i) { FVM_Value k, v; assert(fvm_get_global(c, names[i], &k) == FVM_OK); assert(fvm_object_get(c, k.object, "prototype", &v) == FVM_OK); numeric[i] = v.object; }
         allowance = failpoint; FVM_Result result = fvm_load_memory(c, swf, sizeof(swf)); allowance = -1;
         assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
         if (result == FVM_OUT_OF_MEMORY) {
             assert(!c->swf_loaded && c->swf_bytes.empty() && proto->resource_kind == 26 && proto->resource_result_valid);
+            for (unsigned i = 0; i < 2; ++i) { assert(numeric[i]->resource_kind == (i ? 20 : 24) && numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == (i ? FVM_VALUE_BOOLEAN : FVM_VALUE_NUMBER)); }
             assert(proto->accessors.find("length") != proto->accessors.end());
             assert(fvm_object_call(c, proto, "valueOf", 0, 0, &value) == FVM_OK && value.type == FVM_VALUE_STRING && !fvm_value_string_size(&value));
             assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK);
         } else succeeded = true;
+        for (unsigned i = 0; i < 2; ++i) { assert(numeric[i]->resource_kind == 30 && !numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED); }
         assert(c->swf_loaded && c->swf_info.version == 8 && proto->resource_kind == 30 && !proto->resource_result_valid);
         assert(fvm_object_get(c, klass.object, "prototype", &value) == FVM_OK && value.object == proto);
         assert(fvm_object_call(c, proto, "valueOf", 0, 0, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);

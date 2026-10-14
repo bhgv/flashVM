@@ -27,7 +27,8 @@ namespace
 enum
 {
     BOOLEAN_OBJECT = 20,
-    BOOLEAN_CLASS = 21
+    BOOLEAN_CLASS = 21,
+    GENERIC_PRIMITIVE_PROTOTYPE = 30 /* Existing ordinary Object graph kind. */
 };
 
 /* Construct a quiet not-a-number value using the portable numeric helper. */
@@ -613,6 +614,53 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"parseFloat", fvm_builtin_parse_float},
                                    {"String", fvm_builtin_string}};
 } // namespace
+/* [GC:] Prepare Number/Boolean roots before String activation. No allocation or
+ * callback occurs after String commits, so load failures preserve every prototype. */
+FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
+{
+    if (!c->standard_library)
+        return FVM_OK;
+    try
+    {
+        FVM_Object *number = fvm_number_prepare_loaded(c), *boolean = 0;
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Boolean");
+        if (ctor != c->constructors.end() && ctor->second.callback == boolean_constructor && ctor->second.root)
+        {
+            FVM_Object *klass = ctor->second.root;
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+            if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_OBJECT && stored->second.object)
+            {
+                FVM_Object *proto = stored->second.object;
+                if (proto->resource_kind == BOOLEAN_OBJECT && proto->resource_result_valid &&
+                    proto->resource_result.type == FVM_VALUE_BOOLEAN && !proto->resource_result.boolean)
+                {
+                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value = proto->methods.find("valueOf");
+                    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text = proto->methods.find("toString");
+                    if (value != proto->methods.end() && value->second.callback == boolean_value &&
+                        text != proto->methods.end() && text->second.callback == boolean_string)
+                        boolean = proto;
+                }
+            }
+        }
+        FVM_Result result = fvm_string_activate_loaded(c);
+        if (result != FVM_OK)
+            return result;
+        FVM_Object *prototypes[] = {number, boolean};
+        for (unsigned int i = 0; i < 2; ++i)
+            if (prototypes[i])
+            {
+                prototypes[i]->resource_kind = GENERIC_PRIMITIVE_PROTOTYPE;
+                prototypes[i]->resource_result_valid = false;
+                fvm_value_undefined(&prototypes[i]->resource_result);
+            }
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
@@ -801,7 +849,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 prototype.type != FVM_VALUE_OBJECT ||
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                prototype.object->resource_kind != BOOLEAN_OBJECT)
+                (prototype.object->resource_kind != BOOLEAN_OBJECT && prototype.object->resource_kind != GENERIC_PRIMITIVE_PROTOTYPE))
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_INVALID_ARGUMENT;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -939,9 +987,12 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         if (result != FVM_OK)
             return result;
         boolean_class->resource_kind = BOOLEAN_CLASS;
-        prototype->resource_kind = BOOLEAN_OBJECT;
-        prototype->resource_result_valid = true;
-        fvm_value_boolean(&prototype->resource_result, 0);
+        prototype->resource_kind = c->swf_loaded ? GENERIC_PRIMITIVE_PROTOTYPE : BOOLEAN_OBJECT;
+        prototype->resource_result_valid = !c->swf_loaded;
+        if (c->swf_loaded)
+            fvm_value_undefined(&prototype->resource_result);
+        else
+            fvm_value_boolean(&prototype->resource_result, 0);
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;
         value.object = prototype;

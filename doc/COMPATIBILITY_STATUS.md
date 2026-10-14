@@ -1631,3 +1631,22 @@ state. Property metadata, function/clip versions and all stages remain open.
 Evidence: AGG 356/Cairo 355 full tests, five focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Four AGG launch failures passed after restoring execute bits.
+
+## v0.196 — ordinary numeric prototypes / прототипы без boxed data
+
+Loaded Number/Boolean prototypes are ordinary objects; value methods return
+undefined. Installation after load creates that layout; load after installation
+preserves identity/properties and atomically activates unchanged host layouts.
+Number/Boolean preparation precedes String commit, leaving no allocating step
+after any mutation. Validation accepts both layouts. Graph/API versions remain.
+[RU/EN details](NUMERIC_LEGACY_PROTOTYPE.md). Tests cover installation order,
+invalid loads, old instances, NUL marker, GC/channel/GC, constructor aliases and
+joint allocation-failure recovery/balanced allocations. Array/other prototypes,
+customized native layouts, C malloc failures and all stages remain open.
+
+Исправлены Number.prototype/Boolean.prototype и совместная активация примитивных
+прототипов без частичных изменений при OOM; boxed экземпляры сохраняются.
+
+Evidence: AGG 357/Cairo 356 full tests, five focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. No launch failures in the full runs.
