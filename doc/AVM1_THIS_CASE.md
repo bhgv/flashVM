@@ -19,13 +19,15 @@ and unloaded host contexts: lowercase, uppercase, mixed case, Turkish U+0130,
 suffixes and a counted name containing NUL. This source-based fixture does not
 certify complete Flash Player conformance.
 
-The existing local-binding precedence, inherited/mutable this-cell behavior,
+Local-binding precedence is covered separately in [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md).
+Inherited/mutable this-cell behavior,
 Function2 this suppression/preload scope, full versioned property-name casing,
 and SWF4 keyword availability remain open. Original this_swf5/6/7 probes still
 fail later execution; AS2 class fixtures still fail loading. None is claimed as
 a passing full reference test, and no roadmap stage is complete.
 
-Приоритет локальных записей, наследуемая/изменяемая this-cell, область this при
+Приоритет локальных записей уточнён в [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md).
+Наследуемая/изменяемая this-cell, область this при
 Function2 preload/suppress, регистр всех имён свойств и доступность ключевого
 слова в SWF4 остаются открытыми. Исходные this_swf5/6/7 ещё не проходят целиком;
 AS2-классы по-прежнему не загружаются. Завершение стадии не заявляется.

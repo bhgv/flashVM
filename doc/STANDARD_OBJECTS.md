@@ -134,3 +134,5 @@ References: [AS2 Array reference](https://open-flash.github.io/mirrors/as2-langu
 [Adobe SWF specification](https://www.flashrealtime.com/content/dam/Adobe/en/devnet/swf/pdf/swf_file_format_spec_v10.pdf).
 
 Implicit this name casing: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) records SWF5 timeline/local differences and SWF6–8 rules, with remaining scope limitations.
+
+Implicit this binding precedence: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) covers formal/local shadowing in SWF5–8; inherited this cells remain open.

@@ -326,6 +326,16 @@ static FVM_Result lookup_variable(FVM_Context *c,
         *defined = true;
     if (call_receiver)
         *call_receiver = c->global;
+    /* Loaded SWF5+ resolves implicit this before ordinary local bindings.
+     * This changes lookup precedence, not the unresolved inherited this-cell model. */
+    if (self && c->swf_loaded && c->swf_info.version >= 5 &&
+        this_keyword(c, locals != 0, name))
+    {
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = self;
+        return FVM_OK;
+    }
     if (locals)
     {
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local = locals->find(name);

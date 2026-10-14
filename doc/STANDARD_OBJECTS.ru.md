@@ -126,3 +126,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
   Windows/macOS/Android не является подтверждением работы на этих платформах.
 
 Регистр неявного this: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) описывает различия timeline/локальной области SWF5, правила SWF6–8 и открытые ограничения областей видимости.
+
+Приоритет неявного this: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) проверяет затенение параметром/локальной записью SWF5–8; наследуемые ячейки остаются открытыми.
