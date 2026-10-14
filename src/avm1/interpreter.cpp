@@ -21,10 +21,10 @@
 #include "flashvm/function.h"
 #include "flashvm/execution.h"
 #include "../standard/string_order.hpp"
-#include "../../external/flash_case/case_table.hpp"
 #include "flashvm/property.h"
 #include "flashvm/standard.h"
 #include "try_record.hpp"
+#include "try_constants.h"
 #include "../core/exception_internal.hpp"
 #include "../core/runtime.hpp"
 #include "../core/property_key.hpp"
@@ -130,146 +130,36 @@ static FVM_Result variable_receiver(FVM_Context *c, FVM_Object *self, FVM_Object
                             : status;
 }
 
-/* Match the implicit this keyword using the SWF scope/version case rules.
- * Counted WTF-8 decoding and Flash UCS2 lowercase mappings preserve NULs and
- * reject supplementary characters instead of treating them as ASCII letters. */
-static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
-{
-    if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 ||
-        c->swf_info.version >= FVM_SWF_VERSION_7 ||
-        (c->swf_info.version <= FVM_SWF_VERSION_5 && local_scope))
-        return name == fvm_detail::string("this");
-    size_t offset = 0;
-    const char expected[] = "this";
-    for (unsigned int i = 0; i < 4; ++i)
-    {
-        unsigned long unit = 0;
-        if (fvm_string_read(name.data(), name.size(), offset, unit) != FVM_OK)
-            return false;
-        size_t first = 0, last = sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
-        while (first < last)
-        {
-            size_t middle = first + (last - first) / 2;
-            if (fvm_flash_lowercase[middle][0] < unit)
-                first = middle + 1;
-            else
-                last = middle;
-        }
-        if (first < sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]) &&
-            fvm_flash_lowercase[first][0] == unit)
-            unit = fvm_flash_lowercase[first][1];
-        if (unit != (unsigned char)expected[i])
-            return false;
-    }
-    return offset == name.size();
-}
-
-/* Look up variable. */
+/* Resolve ordinary bindings through the C layer while choosing the caller's default receiver. */
 static FVM_Result lookup_variable(FVM_Context *c,
                                   fvm_detail::map<fvm_detail::string, FVM_Value> *locals,
                                   FVM_Object *self, const fvm_detail::string &name, FVM_Value *out,
                                   bool *defined = 0, FVM_Object **call_receiver = 0)
 {
-    if (defined)
-        *defined = true;
-    if (call_receiver)
+    FVM_Object *target = 0, *default_receiver = c->global;
+    FVM_Result status = variable_receiver(c, self, &target);
+    if (status == FVM_OK && c->swf_loaded && c->avm1_base_clip)
+        status = variable_receiver(c, c->avm1_base_clip, &default_receiver);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value key;
+    status = fvm_value_string_bytes(&key, name.data(), name.size());
+    FVM_Object *selected_receiver = 0;
+    int found = 0;
+    if (status == FVM_OK)
+        status = fvm_exec_variable_lookup(c, c->lexical_scopes.empty()
+            ? 0 : c->lexical_scopes.back(), target,
+            c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && c->script_this
+                ? c->script_this : self,
+            default_receiver, locals != 0, &key, out, &selected_receiver, &found);
+    if (status == FVM_OK)
     {
-        /* Loaded CallFunction defaults to the selected timeline, including root
-         * fallback after an invalid SetTarget; host calls keep their global receiver. */
-        *call_receiver = c->global;
-        if (c->swf_loaded && c->avm1_base_clip)
-        {
-            FVM_Result selected = variable_receiver(c, c->avm1_base_clip, call_receiver);
-            if (selected != FVM_OK)
-                return selected;
-        }
+        if (defined)
+            *defined = found != 0;
+        if (call_receiver)
+            *call_receiver = selected_receiver;
     }
-    /* Loaded SWF5+ resolves implicit this before ordinary local bindings.
-     * This changes lookup precedence, not the unresolved inherited this-cell model. */
-    if (self && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 &&
-        this_keyword(c, locals != 0, name))
-    {
-        fvm_value_undefined(out);
-        out->type = FVM_VALUE_OBJECT;
-        out->object = c->script_this ? c->script_this : self;
-        return FVM_OK;
-    }
-    FVM_Object *binding = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
-    if (binding)
-    {
-        FVM_Value key;
-        fvm_value_string_bytes(&key, name.data(), name.size());
-        FVM_Object *owner = 0;
-        int found = 0;
-        FVM_Result status = fvm_exec_scope_lookup(c, binding, &key, out, &owner, &found);
-        if (status != FVM_OK || found)
-        {
-            if (status == FVM_OK && call_receiver && owner)
-                for (FVM_Object *scope = binding; scope; scope = scope->prototype)
-                    if (scope->resource_kind == FVM_RESOURCE_WITH_SCOPE &&
-                        scope->resource_result.object == owner)
-                    {
-                        *call_receiver = owner;
-                        break;
-                    }
-            return status;
-        }
-    }
-    if (locals)
-    {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator local = locals->find(name);
-        if (local != locals->end())
-        {
-            *out = local->second;
-            return FVM_OK;
-        }
-    }
-    if (name == fvm_detail::string("_global"))
-    {
-        fvm_value_undefined(out);
-        out->type = FVM_VALUE_OBJECT;
-        out->object = c->global;
-        return FVM_OK;
-    }
-    if (self && this_keyword(c, locals != 0, name))
-    {
-        fvm_value_undefined(out);
-        out->type = FVM_VALUE_OBJECT;
-        out->object = self;
-        return FVM_OK;
-    }
-
-    unsigned int depth = 0;
-
-    /* Computation / Вычисление и обновление состояния. */
-    FVM_Object *scope_receiver = 0;
-    FVM_Result selected = variable_receiver(c, self, &scope_receiver);
-    if (selected != FVM_OK)
-        return selected;
-    binding = scope_receiver && scope_receiver != c->global ? scope_receiver : 0;
-    depth = 0;
-    while (binding && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
-    {
-        if (binding->properties.find(name) != binding->properties.end() ||
-            binding->methods.find(name) != binding->methods.end() ||
-            binding->accessors.find(name) != binding->accessors.end())
-        {
-            if (call_receiver)
-                *call_receiver = scope_receiver;
-            return fvm_object_get_bytes(c, scope_receiver, name.data(), name.size(), out);
-        }
-        binding = binding->prototype;
-    }
-    if (binding)
-        return FVM_ERROR;
-    FVM_Result r = fvm_get_global_bytes(c, name.data(), name.size(), out);
-    if (r == FVM_OK && defined && out->type == FVM_VALUE_UNDEFINED)
-    {
-        int own = 0;
-        r = fvm_object_has_own_bytes(c, c->global, name.data(), name.size(), &own);
-        *defined = own != 0;
-    }
-    return r;
+    return status;
 }
 
 /* Declare a local cell or top-level clip/global binding without erasing an existing var
@@ -593,32 +483,62 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Result result =
                     execute(c, data + record.body, record.sizes[FVM_AVM1_TRY_BODY_INDEX], returned,
                             locals, self, 0, &execution, base + record.body, depth + 1);
-                /* Values saved across catch/finally need roots independent of the
+                /* [GC:] Values saved across catch/finally need roots independent of the
                  * operand stack, which is restored during exception unwinding. */
                 fvm_detail::vector<FVM_Value> saved;
-                saved.resize(3);
+                saved.resize(FVM_AVM1_TRY_ROOT_COUNT);
                 for (size_t n = 0; n < saved.size(); ++n)
                     fvm_value_undefined(&saved[n]);
                 RootGuard saved_roots(c, &saved, 0, 0, &registers);
                 if (result == FVM_EXCEPTION && (record.flags & FVM_AVM1_TRY_CATCH))
                 {
-                    saved[0] = c->exception_value;
+                    saved[FVM_AVM1_TRY_THROWN_ROOT] = c->exception_value;
                     stack = baseline;
                     fvm_exception_clear(c);
-                    fvm_detail::map<fvm_detail::string, FVM_Value> top_catch;
-                    fvm_detail::map<fvm_detail::string, FVM_Value> *bindings =
-                        locals ? locals : &top_catch;
+                    /* [GC:] Top-level catch bindings need a managed lexical scope. */
+                    struct CatchScope
+                    {
+                        FVM_Context *context; /* [GC:] Context retaining the temporary scope. */
+                        bool active; /* Whether a new scope was published. */
+                        /* [GC:] Leave the caller chain unchanged until publication. */
+                        explicit CatchScope(FVM_Context *c) : context(c), active(false) {}
+                        /* [GC:] Publish only after vector allocation succeeds. */
+                        void publish(FVM_Object *scope)
+                        {
+                            context->lexical_scopes.push_back(scope);
+                            active = true;
+                        }
+                        /* [GC:] Restore the enclosing scope on return, exception and OOM. */
+                        ~CatchScope()
+                        {
+                            if (active)
+                                context->lexical_scopes.pop_back();
+                        }
+                    } catch_scope(c);
+                    fvm_detail::map<fvm_detail::string, FVM_Value> *bindings = locals;
+                    if (!bindings)
+                    {
+                        FVM_Object *activation = 0;
+                        FVM_Result created = fvm_object_create(c, &activation);
+                        if (created != FVM_OK)
+                            return created;
+                        activation->prototype = c->lexical_scopes.empty()
+                            ? 0 : c->lexical_scopes.back();
+                        catch_scope.publish(activation);
+                        bindings = &activation->properties;
+                    }
                     bool had_binding = false;
                     if (record.flags & FVM_AVM1_TRY_CATCH_REGISTER)
                     {
                         if (execution.global_registers)
                         {
                             FVM_Value ignored;
-                            FVM_Result stored = fvm_exec_global_register(c, 1, record.reg, &saved[0], &ignored);
+                            FVM_Result stored = fvm_exec_global_register(
+                                c, 1, record.reg, &saved[FVM_AVM1_TRY_THROWN_ROOT], &ignored);
                             if (stored != FVM_OK) return stored;
                         }
                         else if (record.reg < registers.size())
-                            registers[record.reg] = saved[0];
+                            registers[record.reg] = saved[FVM_AVM1_TRY_THROWN_ROOT];
                         else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;
                     }
@@ -628,8 +548,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                             bindings->find(record.name);
                         had_binding = old != bindings->end();
                         if (had_binding)
-                            saved[1] = old->second;
-                        (*bindings)[record.name] = saved[0];
+                            saved[FVM_AVM1_TRY_BINDING_ROOT] = old->second;
+                        (*bindings)[record.name] = saved[FVM_AVM1_TRY_THROWN_ROOT];
                     }
                     result = execute(c, data + record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX],
                                      record.sizes[FVM_AVM1_TRY_CATCH_INDEX], returned, bindings,
@@ -639,7 +559,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     if (!(record.flags & FVM_AVM1_TRY_CATCH_REGISTER))
                     {
                         if (had_binding)
-                            (*bindings)[record.name] = saved[1];
+                            (*bindings)[record.name] = saved[FVM_AVM1_TRY_BINDING_ROOT];
                         else
                             bindings->erase(record.name);
                     }
@@ -652,8 +572,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     bool was_fault = c->fault_pending;
                     FVM_ExceptionInfo fault = c->fault;
                     if (returned)
-                        saved[1] = *returned;
-                    saved[2] = c->exception_value;
+                        saved[FVM_AVM1_TRY_RETURN_ROOT] = *returned;
+                    saved[FVM_AVM1_TRY_PENDING_ROOT] = c->exception_value;
                     execution.returned = false;
                     fvm_exception_clear(c);
                     size_t start = record.body + record.sizes[FVM_AVM1_TRY_BODY_INDEX] +
@@ -667,9 +587,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     {
                         execution.returned = was_return;
                         if (returned)
-                            *returned = saved[1];
+                            *returned = saved[FVM_AVM1_TRY_RETURN_ROOT];
                         c->exception_pending = was_exception;
-                        c->exception_value = saved[2];
+                        c->exception_value = saved[FVM_AVM1_TRY_PENDING_ROOT];
                         c->fault_pending = was_fault;
                         c->fault = fault;
                     }

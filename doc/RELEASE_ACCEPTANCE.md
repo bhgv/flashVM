@@ -146,3 +146,11 @@ SetVariable now uses explicit C inputs and getter-free binding presence, with
 qualified scoped writes and callback/allocator coverage. This extends the common
 execution layer while leaving historical this/case/removed-target behavior, full
 JIT equivalence and non-Linux runtime gates open. Все стадии ещё открыты.
+
+## v0.260 — plain lookup and With receiver retention
+
+Plain variable reads and callable receiver selection now use explicit C inputs.
+A getter's scope mutation/GC no longer loses its original With classification.
+Focused C/interpreter fixtures accompany the decomposition. Complete scope/case/
+this equivalence, actual JIT backends and non-Linux execution still gate release.
+Все стадии 1–9 открыты; общий C-слой не означает завершения JIT или выпуска.

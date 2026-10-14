@@ -2105,3 +2105,13 @@ qualified writes and rooted setter callbacks. Bare slash names remain literal;
 empty names are ignored. Version/path/With/setter/GC/OOM fixtures accompany it.
 Implicit-this mutation, full legacy casing/removed-target behavior and complete
 AVM1 conformance remain open. Присваивание вынесено из цикла; стадии 1–9 открыты.
+
+### v0.260 — plain variable lookup and captured With receiver
+
+[VARIABLE_LOOKUP.md](VARIABLE_LOOKUP.md) documents the C89 plain-name/read receiver
+service and compatible scope lookup facade. Capturing With class before getters
+fixes receiver selection after scope-chain detachment and GC; direct C and nested
+interpreter fixtures cover it. Versioned this spelling, undefined presence and
+error/OOM root restoration are exercised. Full this-cell/casing/qualified-call and
+removed-target equivalence remain open. Основной поиск вынесен из интерпретатора;
+все девять стадий остаются открытыми.

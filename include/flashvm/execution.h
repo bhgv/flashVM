@@ -122,6 +122,12 @@ extern "C"
     FVM_API FVM_Result fvm_exec_scope_lookup(FVM_Context *, FVM_Object *scope,
                                              const FVM_Value *name, FVM_Value *result,
                                              FVM_Object **owner, int *found);
+    /* Resolve a lexical binding and capture whether it came from With before
+     * its getter runs. Existing scope_lookup remains the compatible facade.
+     * [GC:] Retains scope/name through getters; errors preserve all outputs. */
+    FVM_API FVM_Result fvm_exec_scope_resolve(FVM_Context *, FVM_Object *scope,
+                                              const FVM_Value *name, FVM_Value *result,
+                                              FVM_Object **owner, int *found, int *with_scope);
     /* Delete a simple binding in activation/With scopes, then target and global.
      * Presence checks never invoke getters; an inherited With/target binding blocks
      * deletion of an outer binding. Qualified path syntax belongs to the caller.
@@ -172,6 +178,16 @@ extern "C"
     FVM_API FVM_Result fvm_exec_variable_set(FVM_Context *, FVM_Object *scope,
                                              FVM_Object *target, FVM_Object *receiver,
                                              const FVM_Value *name, const FVM_Value *value);
+    /* Read a plain binding and select its callable receiver. local_scope controls
+     * historical implicit-this casing; null default_receiver uses the global object.
+     * With bindings use their wrapped receiver, activation/global bindings keep the
+     * supplied default, and target bindings use target. Qualified paths are separate.
+     * [GC:] Retains explicit objects/name/result; errors preserve all outputs. */
+    FVM_API FVM_Result fvm_exec_variable_lookup(FVM_Context *, FVM_Object *scope,
+                                                FVM_Object *target, FVM_Object *receiver,
+                                                FVM_Object *default_receiver, int local_scope,
+                                                const FVM_Value *name, FVM_Value *result,
+                                                FVM_Object **call_receiver, int *found);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
