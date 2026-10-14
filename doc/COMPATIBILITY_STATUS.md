@@ -1978,3 +1978,11 @@ records callback order, result ownership, GC/exception checks and open lookup po
 
 Преобразование имени выполняется до счётчика, а полученная строка удерживается
 до дальнейших callbacks. Это частичная проверка стадии 2; JIT ещё отсутствует.
+
+## v0.246 — resolved named-call C dispatch
+
+CallFunction/NewObject share a C89 dispatcher taking resolved values and binding
+presence. [EXECUTION_RESOLVED_CALL.md](EXECUTION_RESOLVED_CALL.md) records roots,
+constructor bounds, fallback checks and unchanged compatibility limitations.
+
+Поиск области видимости отделён от общего вызова; стек/байткод не входят в ABI.

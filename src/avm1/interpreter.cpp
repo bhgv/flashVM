@@ -1288,26 +1288,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (unsigned int i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - 3 - i];
-                FVM_Object *object = 0;
+                FVM_Value value;
                 FVM_Value constructor;
                 bool defined = false;
                 FVM_Result result =
                     lookup_variable_value(c, locals, self, stack.back(), &constructor, &defined);
                 if (result == FVM_OK)
-                    result = defined ? constructor.type == FVM_VALUE_OBJECT
-                                           ? fvm_function_construct(c, constructor.object, argc,
-                                                                    args.begin(), &object)
-                                           : FVM_UNSUPPORTED
-                                     : fvm_construct_bytes(c, stack.back().string,
-                                                           fvm_string_size(stack.back()), argc,
-                                                           args.begin(), &object);
+                    result = fvm_exec_resolved_call(c, 1, &stack.back(), &constructor, defined,
+                                                    0, argc, argc ? args.begin() : 0, &value);
                 if (result != FVM_OK)
                     return result;
                 stack.resize(stack.size() - argc - 2);
-                FVM_Value value;
-                fvm_value_undefined(&value);
-                value.type = FVM_VALUE_OBJECT;
-                value.object = object;
                 stack.push_back(value);
             }
             else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)
@@ -1794,8 +1785,6 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     args[i] = stack[stack.size() - 3 - i];
                 FVM_Value result;
                 FVM_Result r;
-                fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator fn =
-                    c->script_functions.find(name);
                 FVM_Value callable;
                 fvm_value_undefined(&callable);
                 bool defined = false;
@@ -1803,16 +1792,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 r = lookup_variable(c, locals, self, name, &callable, &defined, &call_receiver);
                 if (r != FVM_OK)
                     return r;
-                if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
-                    r = fvm_function_invoke(c, callable.object, call_receiver, argc, args.begin(),
-                                            &result);
-                else if (defined)
-                    r = FVM_UNSUPPORTED;
-                else if (fn != c->script_functions.end())
-                    r = fvm_avm1_call_script(c, fn->first, fn->second, argc, args.begin(),
-                                             c->global, &result);
-                else
-                    r = fvm_call_bytes(c, name.data(), name.size(), argc, args.begin(), &result);
+                r = fvm_exec_resolved_call(c, 0, &stack.back(), &callable, defined,
+                                            call_receiver, argc, argc ? args.begin() : 0, &result);
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - argc - 2);

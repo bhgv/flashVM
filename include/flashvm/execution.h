@@ -7,6 +7,8 @@
 #define FVM_EXEC_GLOBAL_REGISTER_COUNT 4U
 /* Maximum argument count accepted by the bounded method execution service. */
 #define FVM_EXEC_MAX_METHOD_ARGUMENTS 65535U
+/* Preserve the unloaded named-constructor argument-vector bound. */
+#define FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS 65536U
 #ifdef __cplusplus
 extern "C"
 {
@@ -134,6 +136,14 @@ extern "C"
      * Actual counts above the method-service bound fail; errors preserve out. */
     FVM_API FVM_Result fvm_exec_argument_count(FVM_Context *, const FVM_Value *,
                                               size_t available, unsigned int *out);
+    /* Dispatch a resolved named binding, or the existing named fallback when absent.
+     * found distinguishes an undefined binding from a missing name. The caller supplies
+     * scope resolution and receiver; [GC:] values remain retained across calls/construction.
+     * Errors preserve out; no interpreter scope map or bytecode is accepted. */
+    FVM_API FVM_Result fvm_exec_resolved_call(FVM_Context *, int construct,
+                                              const FVM_Value *name, const FVM_Value *function,
+                                              int found, FVM_Object *receiver, unsigned int argc,
+                                              const FVM_Value *argv, FVM_Value *out);
     /* Invoke or construct a value member. Loaded SWFs coerce names to text;
      * undefined/empty names select an anonymous call. Unloaded host contexts
      * also treat null as anonymous and accept only string/null/undefined names.
