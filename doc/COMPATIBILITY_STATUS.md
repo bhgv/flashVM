@@ -1518,3 +1518,17 @@ overrides, pre-load host instances, property case and all stages remain open.
 Evidence for v0.188: AGG 349/Cairo 348 tests, seventeen focused checks each in Linux
 portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
 Three AGG launch failures passed after restoring execute bits.
+
+## v0.189 — String load allocation failures / отказы памяти при загрузке
+
+No VM implementation changes. The new allocation test sweeps C++ new/new[]
+failures through SWF decoding and String prototype activation, preserving old
+state on OOM, then retrying successfully. Identity/NUL marker, traced GC,
+validation/root/depth state and balanced C++ allocations pass in AGG, Cairo,
+Linux portable and restricted heap/global ASan+UBSan profiles. Last full VM
+validation remains v0.188: AGG 349/Cairo 348 and sixteen original SWFs. C malloc
+failure coverage and all roadmap stage completion states remain open.
+[RU/EN details](STRING_LEGACY_PROTOTYPE.md).
+
+Проверены границы C++ allocation, отсутствие частичной активации при OOM и
+успешный retry того же контекста. Код VM не изменялся; все стадии открыты.
