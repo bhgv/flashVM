@@ -1549,3 +1549,18 @@ function/clip versions and all roadmap stages remain open.
 Evidence for v0.190: AGG 351/Cairo 350 tests, six focused checks each in Linux
 portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
 Three AGG launch failures passed after restoring execute bits.
+
+## v0.191 — Number radix selection / выбор основания
+
+Loaded Number.toString uses AVM1 radix coercion, truncates valid bases and falls
+back to decimal for invalid values without wrapping. Unloaded guards remain.
+[RU/EN details](NUMBER_LEGACY_RADIX.md). Tests cover SWF4–8/host, invalid and
+fractional bases, octal strings, callback counts/errors and restored state.
+Nondecimal formatting limitations and all roadmap stages remain open.
+
+В загруженном SWF исправлены выбор десятичной системы при недопустимом radix
+и version-dependent преобразование аргумента; ошибки callback сохраняются.
+
+Evidence: AGG 352/Cairo 351 full tests; three focused checks each in Linux
+portable and restricted heap/global ASan+UBSan (no stack/leak coverage);
+sixteen byte-exact original SWFs. No launch failures in these runs.

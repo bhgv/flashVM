@@ -3,6 +3,7 @@
  */
 
 #include "number_state.hpp"
+#include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
 #include <cmath>
 #include <limits>
@@ -74,7 +75,7 @@ FVM_Result binary_radix(FVM_Context *c, double value, unsigned int radix, FVM_Va
     return result == FVM_OK ? fvm_value_to_string(c, &temporary, out) : result;
 }
 
-/* Compute and return number string. */
+/* Format stored Number data; loaded radix coercion defaults invalid values to decimal. */
 FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
                          const FVM_Value *args, FVM_Value *out, void *)
 {
@@ -90,13 +91,20 @@ FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
         return FVM_OK;
     }
     double radix = 10;
-    if (count && args[0].type != FVM_VALUE_UNDEFINED)
+    if (count && (c->swf_loaded || args[0].type != FVM_VALUE_UNDEFINED))
     {
-        result = fvm_value_to_number(c, &args[0], &radix);
+        result = c->swf_loaded ? fvm_avm1_number(c, &args[0], &radix)
+                               : fvm_value_to_number(c, &args[0], &radix);
         if (result != FVM_OK)
             return result;
         if (radix != radix || radix < 2 || radix >= 37)
-            return FVM_INVALID_ARGUMENT;
+        {
+            if (!c->swf_loaded)
+                return FVM_INVALID_ARGUMENT;
+            radix = 10;
+        }
+        /* Valid radices are positive: floor matches truncation without an unsafe cast.
+         * Out-of-range values fall back rather than wrapping through ToInt32. */
         radix = std::floor(radix);
     }
     if (radix == 10)
