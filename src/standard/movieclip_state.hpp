@@ -31,6 +31,8 @@ FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, FVM_Executio
                                      const FVM_Value *, int playing);
 /* Resolve display children and object properties along a counted AVM1 path. */
 FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **);
+/* Identify the retained builtin class prototype without reading script-visible properties. */
+bool fvm_movieclip_is_class_prototype(FVM_Object *);
 /* Build the current counted AVM1 dot path directly from display state. */
 FVM_Result fvm_movieclip_reference_string(FVM_Context *, FVM_Object *, FVM_Value *);
 /* Run only a selected local frame's actions without moving the playhead or applying scene controls.

@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
+#include "movieclip_constants.h"
 #include "../avm1/block.hpp"
 #include "movieclip_scene.hpp"
 #include "transform_scene.hpp"
@@ -529,7 +530,7 @@ FVM_Result target(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *
 FVM_Result clip_string(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
                        FVM_Value *out, void *)
 {
-    return display_path(c, o, out, false);
+    return fvm_movieclip_reference_string(c, o, out);
 }
 
 /* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
@@ -2675,7 +2676,7 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Val
     if (proto.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *o = 0;
-    r = make(c, "", 1, proto.object, &o);
+    r = make(c, "", FVM_MOVIECLIP_DEFAULT_FRAMES, proto.object, &o);
     if (r == FVM_OK)
         *out = object(o);
     return r;
@@ -3190,9 +3191,29 @@ FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, FVM_Exe
     }
 }
 
-/* Resolve the AVM1 MovieClip-reference string without invoking a replaceable script method. */
+/* Identify the retained builtin class prototype without allocation or script lookup. */
+bool fvm_movieclip_is_class_prototype(FVM_Object *clip)
+{
+    FVM_Object *data = 0;
+    if (state(clip, data) != FVM_OK)
+        return false;
+    /* Read private state without allocating a temporary key or invoking script. */
+    for (Properties::iterator entry = data->properties.begin(); entry != data->properties.end();
+         ++entry)
+        if (entry->first.size() == sizeof(FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY) - 1 &&
+            std::memcmp(entry->first.data(), FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY,
+                        sizeof(FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY) - 1) == 0)
+            return entry->second.type == FVM_VALUE_BOOLEAN && entry->second.boolean;
+    return false;
+}
+
+/* Project the builtin class prototype as Object while real clips retain display paths. */
 FVM_Result fvm_movieclip_reference_string(FVM_Context *c, FVM_Object *clip, FVM_Value *out)
 {
+    if (!c || !clip || clip->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (c->swf_loaded && fvm_movieclip_is_class_prototype(clip))
+        return fvm_value_string(out, "[object Object]");
     return display_path(c, clip, out, false);
 }
 
@@ -3673,12 +3694,16 @@ fvm_movieclip_stage(FVM_Context *c,
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    r = make(c, "", 1, 0, &proto);
+    r = make(c, "", FVM_MOVIECLIP_DEFAULT_FRAMES, 0, &proto);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    /* [GC:] The marker belongs to retained private state and survives graph transport. */
+    FVM_Value prototype_marker;
+    fvm_value_boolean(&prototype_marker, true);
+    proto->resource_result.object->properties[FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY] = prototype_marker;
     klass->resource_kind = CLIP_CLASS;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v = object(klass);
@@ -3723,7 +3748,7 @@ fvm_movieclip_stage(FVM_Context *c,
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->accessors[keys[i]] = a;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        proto->attributes[keys[i]] = 3;
+        proto->attributes[keys[i]] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 

@@ -2030,3 +2030,14 @@ The delete SWF7 uses its upstream num_frames=3 policy. The remaining
 prototype_delete SWF8 mismatch is MovieClip.prototype string projection and stays
 open; no file/header/oracle is changed to bypass it. Upstream delete2 SWF16 and
 global_proto_decls_delete SWF15 are preserved but outside the accepted version set.
+
+## v0.252 — MovieClip class-prototype string projection
+
+The retained builtin prototype follows Object text/custom toString policy while
+real clips remain display references. [MOVIECLIP_CLASS_PROTOTYPE_TEXT.md](MOVIECLIP_CLASS_PROTOTYPE_TEXT.md)
+records marker ownership, GC/channel checks and unchanged/open type/display policy.
+The earlier prototype_delete trace mismatch is addressed without modifying its oracle.
+
+Current expanded oracle checkpoint: 25/25 unchanged SWF<=8 probes match on both
+AGG and Cairo. The new delete probe uses three ticks as declared by its upstream
+configuration; prototype_delete now has exact text, zero exit and empty stderr.

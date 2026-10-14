@@ -253,9 +253,13 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
     if (value.type == FVM_VALUE_BOOLEAN && context->swf_loaded &&
         context->swf_info.version < FVM_SWF_VERSION_5)
         return fvm_value_string(out, value.boolean ? "1" : "0");
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded &&
+        value.object->resource_kind == FVM_RESOURCE_MOVIECLIP &&
+        !fvm_movieclip_is_class_prototype(value.object))
         return fvm_movieclip_reference_string(context, value.object, out);
-    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded && value.object->resource_kind != FVM_RESOURCE_MOVIECLIP)
+    if (value.type == FVM_VALUE_OBJECT && context->swf_loaded &&
+        (value.object->resource_kind != FVM_RESOURCE_MOVIECLIP ||
+         fvm_movieclip_is_class_prototype(value.object)))
     {
         if (value.object->resource_kind == FVM_RESOURCE_STRING && value.object->resource_result_valid &&
             value.object->resource_result.type == FVM_VALUE_STRING)
