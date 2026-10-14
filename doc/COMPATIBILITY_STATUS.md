@@ -1464,3 +1464,20 @@ launch failures passed after restoring execute bits.
 
 Функция, конструктор и concat используют единое AVM1 преобразование аргументов;
 проверены результаты, callback ошибки и сохранение строк с NUL после GC.
+
+## v0.186 — borrowed String value methods / valueOf и toString
+
+Loaded String value methods return undefined for non-String receivers without
+coercion. Boxed receivers return raw counted values regardless of instance method
+overrides. Invalid owners/corrupt String state and unloaded guards are preserved.
+[RU/EN details](STRING_LEGACY_VALUE.md). SWF4..8/host tests cover Object/Number/
+Boolean/Array/Function receivers, trap conversions, both methods, overridden NUL
+values, traced GC and restored state. Full boxed coercion/prototype/case rules
+and all roadmap stages remain open.
+
+Borrowed value methods для не-String больше не возвращают INVALID_ARGUMENT
+в загруженном режиме; проверены отсутствие преобразований и raw boxed value.
+
+Evidence for v0.186: AGG 347/Cairo 346 tests, twelve focused checks each in Linux
+portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
+Two AGG launch failures passed after restoring execute bits.

@@ -53,12 +53,18 @@ FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, 
     return fvm_value_to_string(c, &temporary, out);
 }
 
-/* Compute and return value. */
+/* Return a boxed String's stored value; loaded calls on other objects yield undefined. */
 FVM_Result value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *, FVM_Value *out,
                  void *)
 {
-    if (!self || self->owner != c || self->resource_kind != STRING_OBJECT ||
-        !self->resource_result_valid || self->resource_result.type != FVM_VALUE_STRING)
+    if (!self || self->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    if (self->resource_kind != STRING_OBJECT)
+    {
+        fvm_value_undefined(out);
+        return c->swf_loaded ? FVM_OK : FVM_INVALID_ARGUMENT;
+    }
+    if (!self->resource_result_valid || self->resource_result.type != FVM_VALUE_STRING)
         return FVM_INVALID_ARGUMENT;
     *out = self->resource_result;
     return FVM_OK;
