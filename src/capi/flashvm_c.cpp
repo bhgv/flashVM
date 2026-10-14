@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "../core/random_constants.h"
 #include "../core/capability_internal.hpp"
 #include "../swf/decode.hpp"
 #include "../standard/primitive_state.hpp"
@@ -128,7 +129,7 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->standard_text_library = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        context->random_state = 1;
+        context->random_state = FVM_RANDOM_INITIAL_STATE;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->runtime = runtime;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

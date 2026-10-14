@@ -61,6 +61,8 @@
 #define FVM_AVM1_ACTION_CAST 0x2bU
 /* Declare implemented interfaces. */
 #define FVM_AVM1_ACTION_IMPLEMENTS 0x2cU
+/* Draw an integer below a numerically coerced, nonnegative Int32 bound. */
+#define FVM_AVM1_ACTION_RANDOM_NUMBER 0x30U
 /* Multibyte length variant under the supported version policy. */
 #define FVM_AVM1_ACTION_MB_STRING_LENGTH 0x31U
 /* Convert a string unit to its numeric character code. */

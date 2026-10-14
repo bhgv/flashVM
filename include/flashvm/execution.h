@@ -95,6 +95,10 @@ extern "C"
     /* Execute numeric semantics and preserve the operation's historical coercion order. */
     FVM_API FVM_Result fvm_exec_numeric(FVM_Context *, FVM_ExecutionNumeric, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Return a bounded random integer after numeric conversion and saturating Int32 clamping.
+     * Nonpositive/NaN bounds return zero without drawing; shares Math.random context state.
+     * [GC:] Coercion roots input; failure preserves output, including aliases. */
+    FVM_API FVM_Result fvm_exec_random_number(FVM_Context *, const FVM_Value *, FVM_Value *);
     /* Increment/decrement after version-aware numeric coercion, without integer wrapping.
      * [GC:] Retains input through coercion; failure leaves output intact, including aliases. */
     FVM_API FVM_Result fvm_exec_step(FVM_Context *, int decrement, const FVM_Value *, FVM_Value *);

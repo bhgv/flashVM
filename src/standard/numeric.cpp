@@ -15,6 +15,7 @@
 #include "../avm1/coercion.hpp"
 #include "error_state.hpp"
 #include "../core/runtime.hpp"
+#include "../core/random.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/property.h"
 #include <cmath>
@@ -313,8 +314,7 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
     if (op == RANDOM)
     {
         /* Context-local 32-bit LCG; no shared libc rand state between workers. */
-        c->random_state = (c->random_state * 1664525UL + 1013904223UL) & 0xffffffffUL;
-        fvm_value_number(out, (double)c->random_state / 4294967296.0);
+        fvm_value_number(out, (double)fvm_random_next(c) / FVM_UINT32_MODULUS);
         return FVM_OK;
     }
     if (!c->swf_loaded)

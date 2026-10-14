@@ -1365,6 +1365,22 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = output;
             }
+            else if (a.op == FVM_AVM1_ACTION_RANDOM_NUMBER)
+            {
+                if (stack.empty())
+                {
+                    if (!c->swf_loaded)
+                        return FVM_ERROR;
+                    FVM_Value missing;
+                    fvm_value_undefined(&missing);
+                    stack.push_back(missing);
+                }
+                FVM_Value result;
+                FVM_Result status = fvm_exec_random_number(c, &stack.back(), &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = result;
+            }
             else if (a.op == FVM_AVM1_ACTION_INCREMENT || a.op == FVM_AVM1_ACTION_DECREMENT)
             {
                 if (stack.empty())

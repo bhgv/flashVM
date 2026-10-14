@@ -380,3 +380,14 @@ using undefined sentinels; name coercion, GC/exceptions, counted keys, allocatio
 failures and callback-free snapshot construction are covered. Native key order
 is unchanged and historical ordering remains open. Real machine-code JIT and
 Windows/macOS/Android runs remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.290 — bounded RandomNumber execution
+
+Both Linux profiles pass all 568 tests; AGG required executable-launch repairs
+and reruns for two failures. Three focused heap/global ASan+UBSan checks pass,
+without stack/leak coverage, and all 26 original SWFs match per profile. The new
+Action/C service covers saturating bounds, rooted coercion, exception/allocation
+atomicity and shared Math state including graph transport. Existing Math.random
+sequences are preserved; historical player/locale RNG equivalence remains open.
+Machine-code JIT and real Windows/macOS/Android runs remain absent.
+Все стадии 1–9 остаются открытыми.

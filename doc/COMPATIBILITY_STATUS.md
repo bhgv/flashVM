@@ -2378,3 +2378,12 @@ does not call boxing constructors. Direct C, Action/GC and allocation fixtures
 cover SWF4–8, counted names and failure atomicity. Existing native key ordering
 is preserved; historical ordering and removed clips remain open.
 Примитивы больше не приводят к ошибке перечисления в загруженном SWF.
+
+### v0.290 — RandomNumber Action and shared context RNG
+
+[RANDOM_NUMBER_SERVICE.md](RANDOM_NUMBER_SERVICE.md) records the newly supported
+Action, value-based C service, one-pass versioned bound conversion and saturating
+Int32 limit. Math.random retains its existing sequence and shares the same state.
+C89/Action/GC/exception/allocation fixtures cover SWF4–8; Math graph transport
+resumes bounded draws correctly. Historical player RNG sequences and locale
+behavior remain open. Добавлен отсутствовавший код Action, а не только адаптер.
