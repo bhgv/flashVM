@@ -1,5 +1,6 @@
 /* FlashVM: display property semantics for C callers and generated code. */
 #include "support.hpp"
+#include "display_property_constants.h"
 #include "../display_property_ids.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
@@ -13,32 +14,35 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 6);
-        roots.values[3] = *target_value;
-        roots.values[4] = *index_value;
+        FVM_ExecutionRoots roots(c, FVM_DISPLAY_PROPERTY_ROOT_COUNT);
+        roots.values[FVM_DISPLAY_PROPERTY_INPUT_TARGET_ROOT] = *target_value;
+        roots.values[FVM_DISPLAY_PROPERTY_INPUT_INDEX_ROOT] = *index_value;
         if (write)
-            roots.values[5] = *value;
+            roots.values[FVM_DISPLAY_PROPERTY_INPUT_VALUE_ROOT] = *value;
         fvm_detail::vector<FVM_Value> &converted = roots.values;
         /* [GC:] A resolved temporary clip survives later valueOf/toString collection. */
         double number = 0;
-        FVM_Result status = fvm_avm1_number(c, index_value, &number);
+        FVM_Result status =
+            fvm_avm1_number(c, &roots.values[FVM_DISPLAY_PROPERTY_INPUT_INDEX_ROOT], &number);
         if (status != FVM_OK)
             return status;
         FVM_Object *clip = 0;
-        const FVM_Value &target = roots.values[3];
+        const FVM_Value &target = roots.values[FVM_DISPLAY_PROPERTY_INPUT_TARGET_ROOT];
         if (target.type == FVM_VALUE_OBJECT &&
             target.object->resource_kind == FVM_RESOURCE_MOVIECLIP)
             clip = target.object;
         else
         {
-            status = fvm_avm1_string(c, target, &converted[0]);
+            status = fvm_avm1_string(c, target, &converted[FVM_DISPLAY_PROPERTY_TARGET_TEXT_ROOT]);
             if (status != FVM_OK)
                 return status;
             FVM_Object *start = c->avm1_target_clip ? c->avm1_target_clip : c->avm1_base_clip;
             if (!start)
                 return FVM_UNSUPPORTED;
-            if (c->avm1_target_clip || fvm_string_size(converted[0]))
-                status = fvm_movieclip_resolve_path(c, start, converted[0], &clip);
+            if (c->avm1_target_clip ||
+                fvm_string_size(converted[FVM_DISPLAY_PROPERTY_TARGET_TEXT_ROOT]))
+                status = fvm_movieclip_resolve_path(
+                    c, start, converted[FVM_DISPLAY_PROPERTY_TARGET_TEXT_ROOT], &clip);
             if (status != FVM_OK)
                 return status;
             if (clip && clip->resource_kind != FVM_RESOURCE_MOVIECLIP)
@@ -46,10 +50,11 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
         }
         if (clip)
         {
-            converted[2].type = FVM_VALUE_OBJECT;
-            converted[2].object = clip;
+            converted[FVM_DISPLAY_PROPERTY_CLIP_ROOT].type = FVM_VALUE_OBJECT;
+            converted[FVM_DISPLAY_PROPERTY_CLIP_ROOT].object = clip;
         }
-        bool valid = number == number && number > -1 && number < FVM_AVM1_PROPERTY_COUNT;
+        bool valid = number == number && number > FVM_DISPLAY_PROPERTY_INDEX_MIN_NUMBER &&
+                     number < FVM_AVM1_PROPERTY_COUNT;
         unsigned int index = valid ? (unsigned int)(number < 0 ? 0 : std::floor(number)) : 0;
         FVM_Value result;
         fvm_value_undefined(&result);
@@ -65,7 +70,7 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
                      index != FVM_AVM1_PROPERTY_TOTAL_FRAMES && index != FVM_AVM1_PROPERTY_TARGET &&
                      index != FVM_AVM1_PROPERTY_FRAMES_LOADED)
             {
-                const FVM_Value &input = roots.values[5];
+                const FVM_Value &input = roots.values[FVM_DISPLAY_PROPERTY_INPUT_VALUE_ROOT];
                 if (index == FVM_AVM1_PROPERTY_NAME)
                 {
                     if (input.type == FVM_VALUE_NUMBER && input.number != input.number &&
@@ -73,19 +78,23 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
                     {
                         FVM_Value zero;
                         fvm_value_number(&zero, 0);
-                        status = fvm_avm1_string(c, zero, &converted[1]);
+                        status =
+                            fvm_avm1_string(c, zero, &converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT]);
                     }
                     else
-                        status = fvm_avm1_string(c, input, &converted[1]);
+                        status =
+                            fvm_avm1_string(c, input, &converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT]);
                 }
                 else if (input.type != FVM_VALUE_NULL && input.type != FVM_VALUE_UNDEFINED)
                 {
                     double scalar = 0;
                     status = fvm_avm1_number(c, &input, &scalar);
-                    fvm_value_number(&converted[1], scalar);
+                    fvm_value_number(&converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT], scalar);
                 }
-                if (status == FVM_OK && converted[1].type != FVM_VALUE_UNDEFINED)
-                    status = fvm_movieclip_set_action_property(c, clip, index, converted[1]);
+                if (status == FVM_OK &&
+                    converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT].type != FVM_VALUE_UNDEFINED)
+                    status = fvm_movieclip_set_action_property(
+                        c, clip, index, converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT]);
             }
         }
         if (status != FVM_OK)

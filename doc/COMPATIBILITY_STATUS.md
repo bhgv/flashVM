@@ -2233,3 +2233,12 @@ host root/parent compatibility descriptors; custom accessors remain visible.
 C89/action, legacy assigned-name, modern root-shadow and four-path allocator
 fixtures cover the change. Other system fields, levels/casing, mutable this and
 all roadmap gates remain open. Уточнены версии и собственные привязки путей.
+
+### v0.273 — MovieClip limits, display indices and transport identities
+
+[MOVIECLIP_SEMANTIC_CONSTANTS.md](MOVIECLIP_SEMANTIC_CONSTANTS.md) records named
+frame/depth/action/tick/geometry bounds, units, property IDs, display roots and
+stable callback transport IDs. Equal values retain separate semantic namespaces;
+wire identities and existing bounds remain unchanged. Index coercion uses its
+retained input snapshot. This readability checkpoint does not complete remaining
+system/display fields, literal cleanup, compatibility or any roadmap stage.

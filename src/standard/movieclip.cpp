@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_constants.h"
+#include "../avm1/display_property_ids.h"
 #include "../avm1/block.hpp"
 #include "movieclip_scene.hpp"
 #include "transform_scene.hpp"
@@ -271,7 +272,7 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!frames || frames > 65535)
+    if (!frames || frames > FVM_MOVIECLIP_MAX_FRAMES)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
 
@@ -775,7 +776,7 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     if (shape_symbol(definition))
         return FVM_OK;
     unsigned long total = 0;
-    r = integer_field(definition, "total", 65535, total);
+    r = integer_field(definition, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r == FVM_OK)
         r = private_object(definition, "frames", frames);
     if (r != FVM_OK || !total)
@@ -961,7 +962,7 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
         return FVM_INVALID_ARGUMENT;
     unsigned long total = 0;
     FVM_Object *frames = 0;
-    r = integer_field(data, "total", 65535, total);
+    r = integer_field(data, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r == FVM_OK)
         r = private_object(data, "frames", frames);
     if (r != FVM_OK || !total)
@@ -1304,7 +1305,8 @@ FVM_Result local_matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
         if (r != FVM_OK)
             return r;
     }
-    double radians = std::fmod(rotation, 360.0) * std::acos(-1.0) / 180;
+    double radians = std::fmod(rotation, FVM_MOVIECLIP_DEGREES_PER_TURN) * std::acos(-1.0) /
+                     FVM_MOVIECLIP_DEGREES_PER_HALF_TURN;
     double cs = std::cos(radians), sn = std::sin(radians);
     out.xx = cs * sx / 100;
     out.yx = sn * sx / 100;
@@ -1360,7 +1362,8 @@ FVM_Result apply_matrix(FVM_Object *o, const FVM_Affine &matrix)
     properties["_y"] = number(matrix.y0);
     properties["_xscale"] = number(sx * 100);
     properties["_yscale"] = number(sy * 100);
-    properties["_rotation"] = number(radians * 180 / std::acos(-1.0));
+    properties["_rotation"] =
+        number(radians * FVM_MOVIECLIP_DEGREES_PER_HALF_TURN / std::acos(-1.0));
     private_state["basis_x"] = number(bx);
     private_state["basis_y"] = number(by);
     o->properties.swap(properties);
@@ -1497,7 +1500,7 @@ FVM_Result seek(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
     if (r != FVM_OK)
         return r;
     unsigned long total = 0;
-    r = integer_field(data, "total", 65535, total);
+    r = integer_field(data, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r != FVM_OK || !total)
         return FVM_INVALID_ARGUMENT;
     double desired = 0;
@@ -1571,7 +1574,7 @@ FVM_Result step(FVM_Context *c, FVM_Object *o, FVM_Value *out, int delta)
     if (r != FVM_OK)
         return r;
     unsigned long frame = 0;
-    r = integer_field(data, "frame", 65535, frame);
+    r = integer_field(data, "frame", FVM_MOVIECLIP_MAX_FRAMES, frame);
     if (r != FVM_OK)
         return r;
     FVM_Value a = number((double)frame + delta);
@@ -1696,7 +1699,7 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     for (unsigned int i = 0; i < count; ++i)
     {
         r = args(c, n, a, i, 0, values[i]);
-        if (r != FVM_OK || std::fabs(values[i]) > 1000000)
+        if (r != FVM_OK || std::fabs(values[i]) > FVM_MOVIECLIP_MAX_DRAW_COORDINATE)
             return FVM_INVALID_ARGUMENT;
     }
     FVM_Value active;
@@ -1750,7 +1753,8 @@ FVM_Result drawing(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         if (r != FVM_OK)
             return r;
     }
-    if (commands->indexed.size() >= 65536 || paths->indexed.size() >= 4096)
+    if (commands->indexed.size() >= FVM_MOVIECLIP_MAX_DRAW_COMMANDS ||
+        paths->indexed.size() >= FVM_MOVIECLIP_MAX_DRAW_PATHS)
         return FVM_OUT_OF_MEMORY;
 
     /* Initialization / Инициализация локального состояния. */
@@ -2187,7 +2191,8 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         yes = any && x >= b.x_min && x <= b.x_max && y >= b.y_min && y <= b.y_max;
         if (shape)
         {
-            if (!(x >= -2000000 && x <= 2000000 && y >= -2000000 && y <= 2000000))
+            if (!(x >= -FVM_MOVIECLIP_MAX_HIT_COORDINATE && x <= FVM_MOVIECLIP_MAX_HIT_COORDINATE &&
+                  y >= -FVM_MOVIECLIP_MAX_HIT_COORDINATE && y <= FVM_MOVIECLIP_MAX_HIT_COORDINATE))
             {
                 fvm_value_boolean(out, 0);
                 return FVM_OK;
@@ -2581,10 +2586,10 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     if (r != FVM_OK)
         return r;
     unsigned long current = 0, total = 0;
-    r = integer_field(data, "frame", 65535, current);
+    r = integer_field(data, "frame", FVM_MOVIECLIP_MAX_FRAMES, current);
     if (r != FVM_OK)
         return r;
-    r = integer_field(data, "total", 65535, total);
+    r = integer_field(data, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r != FVM_OK || !total || current < 1 || current > total)
         return FVM_INVALID_ARGUMENT;
     r = run_initializers(c, data);
@@ -2918,9 +2923,9 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     if (r != FVM_OK)
         return r;
     unsigned long total = 0, depth = 0, token = 0;
-    r = integer_field(symbol, "total", 65535, total);
+    r = integer_field(symbol, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r == FVM_OK)
-        r = integer_field(placement, "depth", 65535, depth);
+        r = integer_field(placement, "depth", FVM_MOVIECLIP_MAX_AUTHORED_DEPTH, depth);
     if (r == FVM_OK)
         r = integer_field(placement, "token", 0xffffffffUL, token);
     if (r != FVM_OK || !total || !depth || !token)
@@ -3057,14 +3062,17 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
     FVM_Result status = state(clip, data);
     if (status != FVM_OK)
         return status;
-    if (index == 8 || index == 9 || index > 13)
+    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
+        index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
-    if (index == 11)
+    if (index == FVM_AVM1_PROPERTY_TARGET)
         return display_path(c, clip, out, true);
-    if (index == 4 || index == 5 || index == 12)
+    if (index == FVM_AVM1_PROPERTY_CURRENT_FRAME || index == FVM_AVM1_PROPERTY_TOTAL_FRAMES ||
+        index == FVM_AVM1_PROPERTY_FRAMES_LOADED)
     {
         unsigned long value = 0;
-        status = integer_field(data, index == 4 ? "frame" : "total", 65535, value);
+        status = integer_field(data, index == FVM_AVM1_PROPERTY_CURRENT_FRAME ? "frame" : "total",
+                               FVM_MOVIECLIP_MAX_FRAMES, value);
         if (status != FVM_OK || !value)
             return FVM_INVALID_ARGUMENT;
         fvm_value_number(out, value);
@@ -3076,7 +3084,7 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
     status = field(clip, names[index], value);
     if (status != FVM_OK)
         return status;
-    if (index == 13)
+    if (index == FVM_AVM1_PROPERTY_NAME)
     {
         if (value.type != FVM_VALUE_STRING)
             return FVM_INVALID_ARGUMENT;
@@ -3084,9 +3092,10 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
     }
     else
     {
-        if (value.type != FVM_VALUE_NUMBER && !(index == 7 && value.type == FVM_VALUE_BOOLEAN))
+        if (value.type != FVM_VALUE_NUMBER &&
+            !(index == FVM_AVM1_PROPERTY_VISIBLE && value.type == FVM_VALUE_BOOLEAN))
             return FVM_INVALID_ARGUMENT;
-        if (index == 7)
+        if (index == FVM_AVM1_PROPERTY_VISIBLE)
             fvm_value_boolean(out, value.type == FVM_VALUE_BOOLEAN ? value.boolean : value.number != 0);
         else
             fvm_value_number(out, value.number);
@@ -3104,14 +3113,16 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
     FVM_Result status = state(clip, data);
     if (status != FVM_OK)
         return status;
-    if (index == 8 || index == 9 || index > 13)
+    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
+        index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
-    if (index == 4 || index == 5 || index == 11 || index == 12)
+    if (index == FVM_AVM1_PROPERTY_CURRENT_FRAME || index == FVM_AVM1_PROPERTY_TOTAL_FRAMES ||
+        index == FVM_AVM1_PROPERTY_TARGET || index == FVM_AVM1_PROPERTY_FRAMES_LOADED)
         return FVM_OK;
     const char *names[] = {"_x", "_y", "_xscale", "_yscale", "", "", "_alpha", "_visible",
                            "", "", "_rotation", "", "", "_name"};
     FVM_Value value = input;
-    if (index == 13)
+    if (index == FVM_AVM1_PROPERTY_NAME)
     {
         if (value.type != FVM_VALUE_STRING)
             return FVM_INVALID_ARGUMENT;
@@ -3123,32 +3134,32 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
         double number = value.number;
         if (number != number)
             return FVM_OK;
-        if (index <= 1)
+        if (index <= FVM_AVM1_PROPERTY_Y)
         {
-            double twips = number * 20;
+            double twips = number * FVM_MOVIECLIP_TWIPS_PER_PIXEL;
             if (number == std::numeric_limits<double>::infinity() ||
                 number == -std::numeric_limits<double>::infinity())
-                twips = -2147483648.0;
-            if (twips >= 2147483647.0)
-                twips = 2147483647.0;
-            else if (twips <= -2147483648.0)
-                twips = -2147483648.0;
+                twips = FVM_INT32_MIN_NUMBER;
+            if (twips >= FVM_INT32_MAX_NUMBER)
+                twips = FVM_INT32_MAX_NUMBER;
+            else if (twips <= FVM_INT32_MIN_NUMBER)
+                twips = FVM_INT32_MIN_NUMBER;
             else
                 twips = twips < 0 ? std::ceil(twips) : std::floor(twips);
-            number = twips / 20;
+            number = twips / FVM_MOVIECLIP_TWIPS_PER_PIXEL;
         }
         else if (number == std::numeric_limits<double>::infinity() ||
                  number == -std::numeric_limits<double>::infinity())
             return FVM_UNSUPPORTED;
-        if (index == 7)
+        if (index == FVM_AVM1_PROPERTY_VISIBLE)
             number = number != 0 ? 1 : 0;
-        else if (index == 10)
+        else if (index == FVM_AVM1_PROPERTY_ROTATION)
         {
-            number = std::fmod(number, 360.0);
-            if (number < -180)
-                number += 360;
-            else if (number > 180)
-                number -= 360;
+            number = std::fmod(number, FVM_MOVIECLIP_DEGREES_PER_TURN);
+            if (number < -FVM_MOVIECLIP_DEGREES_PER_HALF_TURN)
+                number += FVM_MOVIECLIP_DEGREES_PER_TURN;
+            else if (number > FVM_MOVIECLIP_DEGREES_PER_HALF_TURN)
+                number -= FVM_MOVIECLIP_DEGREES_PER_TURN;
         }
         fvm_value_number(&value, number);
     }
@@ -3282,7 +3293,7 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
             numeric = std::fmod(numeric, 4294967296.0);
             selected = (unsigned long)(numeric < 0 ? numeric + 4294967296.0 : numeric);
         }
-        if (!selected || selected > 65535)
+        if (!selected || selected > FVM_MOVIECLIP_MAX_FRAMES)
             return FVM_OK;
         Slots::iterator entry = frames->indexed.find(selected);
         if (entry == frames->indexed.end())
@@ -3519,7 +3530,8 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
                                                  const char *label, const void *actions,
                                                  size_t size)
 {
-    if (!c || !o || o->owner != c || (!actions && size) || size > 65536)
+    if (!c || !o || o->owner != c || (!actions && size) ||
+        size > FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES)
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -3528,7 +3540,7 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
         if (r != FVM_OK)
             return r;
         unsigned long total = 0;
-        r = integer_field(data, "total", 65535, total);
+        r = integer_field(data, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
         if (r != FVM_OK || frame < 1 || frame > total)
             return FVM_INVALID_ARGUMENT;
         unsigned char empty = 0;
@@ -3582,7 +3594,7 @@ extern "C" FVM_Result fvm_movieclip_advance(FVM_Context *c, FVM_Object *o, unsig
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!c || !o || o->owner != c || ticks > 65536)
+    if (!c || !o || o->owner != c || ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -3796,39 +3808,40 @@ FVM_Result fvm_movieclip_preload_display(FVM_Context *c, FVM_Object *clip, bool 
 unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
 {
     if (cb == constructor)
-        return 1000;
+        return FVM_MOVIECLIP_CALLBACK_CONSTRUCTOR;
     if (cb == parent_get)
-        return 1001;
+        return FVM_MOVIECLIP_CALLBACK_PARENT;
     if (cb == root_get)
-        return 1002;
+        return FVM_MOVIECLIP_CALLBACK_ROOT;
     if (cb == frame_get)
-        return 1003;
+        return FVM_MOVIECLIP_CALLBACK_CURRENT_FRAME;
     if (cb == total_get)
-        return 1004;
+        return FVM_MOVIECLIP_CALLBACK_TOTAL_FRAMES;
     if (cb == target)
-        return 1005;
+        return FVM_MOVIECLIP_CALLBACK_TARGET_PATH;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
-            return 1010 + (unsigned long)i;
+            return FVM_MOVIECLIP_CALLBACK_METHOD_BASE + (unsigned long)i;
     return 0;
 }
 
 /* Restore a native movieclip callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
 {
-    if (id == 1000)
+    if (id == FVM_MOVIECLIP_CALLBACK_CONSTRUCTOR)
         return constructor;
-    if (id == 1001)
+    if (id == FVM_MOVIECLIP_CALLBACK_PARENT)
         return parent_get;
-    if (id == 1002)
+    if (id == FVM_MOVIECLIP_CALLBACK_ROOT)
         return root_get;
-    if (id == 1003)
+    if (id == FVM_MOVIECLIP_CALLBACK_CURRENT_FRAME)
         return frame_get;
-    if (id == 1004)
+    if (id == FVM_MOVIECLIP_CALLBACK_TOTAL_FRAMES)
         return total_get;
-    if (id == 1005)
+    if (id == FVM_MOVIECLIP_CALLBACK_TARGET_PATH)
         return target;
-    return id >= 1010 && id < 1010 + sizeof(methods) / sizeof(methods[0])
-               ? methods[id - 1010].callback
+    return id >= FVM_MOVIECLIP_CALLBACK_METHOD_BASE &&
+                   id < FVM_MOVIECLIP_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
+               ? methods[id - FVM_MOVIECLIP_CALLBACK_METHOD_BASE].callback
                : 0;
 }

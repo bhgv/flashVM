@@ -243,3 +243,10 @@ and private preload provenance. SWF4 timeline this remains an ordinary binding;
 host compatibility descriptors remain separate. Full display/system fields,
 modern this cells, JIT and target-platform runs remain release gates.
 Все стадии 1–9 остаются открытыми.
+
+## v0.273 — documented MovieClip constants
+
+Display indices, root slots, resource bounds and serialized callback IDs have
+semantic header names. Their values/wire format remain unchanged. Existing build,
+transport and allocator checks accompany the refactor; all roadmap gates remain
+open. Все стадии 1–9 остаются открытыми.
