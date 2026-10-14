@@ -142,3 +142,5 @@ Object-valued inherited Function2 this: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHER
 Zero-frame sprite definitions: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) covers dictionary/export loading and GC/transfer. DoInitAction and zero-frame instantiation remain open.
 
 Root DoInitAction: [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md) records deferred source-root initialization, order/reentry/GC/transfer and explicit error policies. Full preload/import/class semantics remain open.
+
+Loaded script constructor prototypes: [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_FUNCTION_OBJECT_PROTOTYPE.md) records cached Object inheritance, flags, addProperty, GC and transfer; AS2 reference traces still differ.

@@ -711,11 +711,18 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    /* [GC:] Loaded constructor prototypes inherit the original builtin Object
+     * prototype even when script has replaced Object.prototype. Host layout stays unchanged. */
+    if (c->swf_loaded)
+        instance_proto->prototype = c->object_builtin_prototype;
     v.type = FVM_VALUE_OBJECT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = instance_proto;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fn->properties["prototype"] = v;
+    /* Loaded function prototype is writable, nonenumerable and nondeletable. */
+    if (c->swf_loaded)
+        fn->attributes["prototype"] = 3;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     v.object = fn;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

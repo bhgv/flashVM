@@ -235,6 +235,7 @@ struct FVM_Context
     void *transfer_resources; /* [GC:] Resource identity registry used by graph transfer. */
     FVM_Worker *worker;       /* [GC:] Worker executing this context, when present. */
     FVM_Object *array_builtin_prototype; /* [GC:] Original Array prototype retained for native result builders. */
+    FVM_Object *object_builtin_prototype; /* [GC:] Original Object prototype retained for script constructor prototypes. */
     bool standard_library;    /* [GC:] Whether core standard objects have been installed. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     unsigned int

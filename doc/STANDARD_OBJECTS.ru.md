@@ -134,3 +134,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Определения спрайтов без кадров: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) описывает загрузку словаря/export, GC и перенос. DoInitAction и создание экземпляров остаются открытыми.
 
 Корневой DoInitAction: [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md) описывает отложенный запуск в исходном корне, порядок, повторный вход, GC/перенос и политику ошибок. Полная семантика preload/import/классов остаётся открытой.
+
+Прототипы загруженных скриптовых конструкторов: [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_FUNCTION_OBJECT_PROTOTYPE.md) описывает исходный Object, flags, addProperty, GC/перенос; эталонные AS2-трассы ещё отличаются.

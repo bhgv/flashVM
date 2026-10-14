@@ -1146,6 +1146,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         c->functions.swap(functions);
         c->constructors.swap(constructors);
         c->array_builtin_prototype = array_builtin_prototype;
+        /* [GC:] Publish the staged original Object prototype with the constructor transaction. */
+        c->object_builtin_prototype = object_proto;
         c->standard_library = true;
         for (size_t i = 0; i < 2; ++i)
         {

@@ -62,3 +62,8 @@ A separate staged probe confirms original AS2 v8 load_memory, standard install
 and movieclip_load now succeed; advance still returns UNSUPPORTED before its
 expected trace. It remains a failing reference test, as do the other this/AS2
 probes; no full class compatibility or non-Linux runtime certification is claimed.
+
+Subsequent script-prototype inheritance permits original AS2 v6/v8 execution
+to finish; trace differences remain. See [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_FUNCTION_OBJECT_PROTOTYPE.md).
+Последующая правка наследования позволяет закончить исполнение AS2 v6/v8;
+отличия трасс от эталона ещё остаются.
