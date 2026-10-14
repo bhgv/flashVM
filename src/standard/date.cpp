@@ -261,6 +261,10 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
         FVM_Result r = number_arg(c, n ? n : 1, n ? a : &missing, i, 0, v);
         if (r != FVM_OK)
             return r;
+        /* Loaded setMonth treats a NaN month as January, including missing input.
+         * Other components and infinities retain the ordinary invalid-date rule. */
+        if (c->swf_loaded && field == 1 && !i && v != v)
+            v = 0;
         if (!finite(v))
         {
             o->resource_result.number = invalid();
