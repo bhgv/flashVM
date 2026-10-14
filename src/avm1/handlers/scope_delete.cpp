@@ -1,5 +1,6 @@
 /* FlashVM: getter-free deletion through managed lexical scopes and fallback objects. */
 #include "support.hpp"
+#include "../scope_keywords.hpp"
 #include "scope_delete_constants.h"
 #include "../../core/property_key.hpp"
 /* Find presence without reading the value; an inherited property blocks outer deletion. */
@@ -20,6 +21,11 @@ static FVM_Result delete_binding(FVM_Context *c, FVM_Object *object, const fvm_d
             present = true;
             if (cursor == object && object->resource_kind != FVM_RESOURCE_SUPER)
                 return fvm_object_delete_bytes(c, object, key.data(), key.size(), &deleted);
+            return FVM_OK;
+        }
+        if (fvm_avm1_movieclip_path_kind(c, cursor, key) != FVM_SCOPE_PATH_NONE)
+        {
+            present = true;
             return FVM_OK;
         }
     }

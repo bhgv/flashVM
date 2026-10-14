@@ -1,5 +1,6 @@
 /* FlashVM: getter-free binding selection and qualified variable writes for C execution clients. */
 #include "support.hpp"
+#include "../scope_keywords.hpp"
 #include "variable_set_constants.h"
 #include "reference_path_constants.h"
 #include "../../core/property_key.hpp"
@@ -82,7 +83,8 @@ extern "C" FVM_Result fvm_exec_variable_set(FVM_Context *c, FVM_Object *scope, F
                 status = fvm_object_has_own_bytes(c, cursor, key.data(), key.size(), &own);
                 if (status != FVM_OK)
                     return status;
-                if (own)
+                if (own ||
+                    (with && fvm_avm1_movieclip_path_kind(c, cursor, key) != FVM_SCOPE_PATH_NONE))
                     return fvm_object_set_bytes(c, object, key.data(), key.size(),
                                                 &roots.values[FVM_VARIABLE_SET_VALUE_ROOT]);
             }

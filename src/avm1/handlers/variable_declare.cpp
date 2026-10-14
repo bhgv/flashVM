@@ -1,13 +1,15 @@
 /* FlashVM: versioned initialized/uninitialized local declarations over managed scopes. */
 #include "support.hpp"
+#include "../scope_keywords.hpp"
 #include "flashvm/standard.h"
 #include "variable_declare_constants.h"
 #include "reference_path_constants.h"
 #include "../../core/property_key.hpp"
 #include "../../standard/base_state.hpp"
-/* Check own/prototype presence without invoking a getter or changing the selected receiver. */
+/* Check own/prototype membership; only DefineLocal2 checks intrinsic path presence as well. */
 static FVM_Result declaration_present(FVM_Context *c, FVM_Object *object,
-                                      const fvm_detail::string &name, bool prototypes, bool &found)
+                                      const fvm_detail::string &name, bool prototypes, bool &found,
+                                      bool intrinsics = false)
 {
     unsigned int depth = 0;
     for (FVM_Object *cursor = object; cursor; cursor = prototypes ? cursor->prototype : 0)
@@ -18,7 +20,8 @@ static FVM_Result declaration_present(FVM_Context *c, FVM_Object *object,
         FVM_Result status = fvm_object_has_own_bytes(c, cursor, name.data(), name.size(), &own);
         if (status != FVM_OK)
             return status;
-        if (own)
+        if (own ||
+            (intrinsics && fvm_avm1_movieclip_path_kind(c, cursor, name) != FVM_SCOPE_PATH_NONE))
         {
             found = true;
             return FVM_OK;
@@ -120,7 +123,7 @@ extern "C" FVM_Result fvm_exec_variable_declare(FVM_Context *c, FVM_Object *scop
                 prototypes = true;
             }
             bool found = false;
-            status = declaration_present(c, object, key, prototypes, found);
+            status = declaration_present(c, object, key, prototypes, found, true);
             if (status != FVM_OK || found)
                 return status;
         }

@@ -7,6 +7,8 @@
 bool fvm_avm1_keyword_name(const fvm_detail::string &, const char *, size_t, bool sensitive);
 /* Recognize the namespace fallback, retaining unloaded exact spelling and SWF6 availability. */
 bool fvm_avm1_global_keyword(FVM_Context *, const fvm_detail::string &);
+/* Classify virtual presence without allocation, getters or reading scene provenance. */
+unsigned int fvm_avm1_movieclip_path_kind(FVM_Context *, FVM_Object *, const fvm_detail::string &);
 /* Read loaded concrete MovieClip root/parent/global intrinsics after ordinary own slots.
  * Unmatched names preserve value; errors preserve both outputs. No callbacks or bytecode access. */
 FVM_Result fvm_avm1_movieclip_path_property(FVM_Context *, FVM_Object *, const fvm_detail::string &,

@@ -250,3 +250,13 @@ Display indices, root slots, resource bounds and serialized callback IDs have
 semantic header names. Their values/wire format remain unchanged. Existing build,
 transport and allocator checks accompany the refactor; all roadmap gates remain
 open. Все стадии 1–9 остаются открытыми.
+
+## v0.274 — virtual path scope operations
+
+Both Linux AGG and Cairo profiles pass all 526 tests after restoring executable
+permissions for 6 and 5 binaries respectively; initial failures were BAD_COMMAND.
+Nine affected heap/global ASan+UBSan checks pass; stack/leak coverage is excluded.
+The 26 unchanged original SWFs match in both profiles. Virtual paths now select
+With assignment owners and block outer deletion; initialized declarations remain
+own-only. Реальные JIT и Windows/macOS/Android проверки отсутствуют; все стадии
+1–9 остаются открытыми.

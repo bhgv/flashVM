@@ -2242,3 +2242,12 @@ stable callback transport IDs. Equal values retain separate semantic namespaces;
 wire identities and existing bounds remain unchanged. Index coercion uses its
 retained input snapshot. This readability checkpoint does not complete remaining
 system/display fields, literal cleanup, compatibility or any roadmap stage.
+
+### v0.274 — virtual path presence in With scopes
+
+[VIRTUAL_PATH_SCOPES.md](VIRTUAL_PATH_SCOPES.md) records assignment receiver
+selection, non-own deletion barriers and DefineLocal2 presence. Initialized
+declarations retain own-only placement. C89 SWF4–8, actual With actions and
+allocation failures cover the shared services. Removed clips, other system
+fields, mutable this and all roadmap gates remain open. Неявные свойства
+учитываются без вызова getter при выборе области видимости.

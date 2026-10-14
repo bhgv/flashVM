@@ -42,6 +42,26 @@ bool fvm_avm1_global_keyword(FVM_Context *c, const fvm_detail::string &name)
                                  !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7);
 }
 
+/* Recognize virtual path membership without obtaining a value or traversing parent edges. */
+unsigned int fvm_avm1_movieclip_path_kind(FVM_Context *c, FVM_Object *object,
+                                          const fvm_detail::string &name)
+{
+    if (!c || !c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 || !object ||
+        object->owner != c || object->resource_kind != FVM_RESOURCE_MOVIECLIP ||
+        fvm_movieclip_is_class_prototype(object))
+        return FVM_SCOPE_PATH_NONE;
+    if (fvm_avm1_global_keyword(c, name))
+        return FVM_SCOPE_PATH_GLOBAL;
+    bool sensitive = c->swf_info.version >= FVM_SWF_VERSION_7;
+    if (fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_ROOT_NAME, FVM_SCOPE_KEYWORD_ROOT_UNITS,
+                              sensitive))
+        return FVM_SCOPE_PATH_ROOT;
+    if (fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_PARENT_NAME, FVM_SCOPE_KEYWORD_PARENT_UNITS,
+                              sensitive))
+        return FVM_SCOPE_PATH_PARENT;
+    return FVM_SCOPE_PATH_NONE;
+}
+
 /* Resolve intrinsic display paths from private provenance, independently of replaceable fields. */
 FVM_Result fvm_avm1_movieclip_path_property(FVM_Context *c, FVM_Object *object,
                                             const fvm_detail::string &name, FVM_Value *out,
@@ -49,31 +69,22 @@ FVM_Result fvm_avm1_movieclip_path_property(FVM_Context *c, FVM_Object *object,
 {
     if (!c || !out || !present || (object && object->owner != c))
         return FVM_INVALID_ARGUMENT;
-    if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 || !object ||
-        object->resource_kind != FVM_RESOURCE_MOVIECLIP || fvm_movieclip_is_class_prototype(object))
+    unsigned int kind = fvm_avm1_movieclip_path_kind(c, object, name);
+    if (kind == FVM_SCOPE_PATH_NONE)
     {
         *present = 0;
         return FVM_OK;
     }
     FVM_Value value;
     fvm_value_undefined(&value);
-    if (fvm_avm1_global_keyword(c, name))
+    if (kind == FVM_SCOPE_PATH_GLOBAL)
     {
         value.type = FVM_VALUE_OBJECT;
         value.object = c->global;
     }
     else
     {
-        bool sensitive = c->swf_info.version >= FVM_SWF_VERSION_7;
-        bool root = fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_ROOT_NAME,
-                                          FVM_SCOPE_KEYWORD_ROOT_UNITS, sensitive);
-        bool parent = !root && fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_PARENT_NAME,
-                                                     FVM_SCOPE_KEYWORD_PARENT_UNITS, sensitive);
-        if (!root && !parent)
-        {
-            *present = 0;
-            return FVM_OK;
-        }
+        bool parent = kind == FVM_SCOPE_PATH_PARENT;
         FVM_Result status = fvm_movieclip_preload_display(c, object, parent, &value);
         if (status != FVM_OK)
             return status;
