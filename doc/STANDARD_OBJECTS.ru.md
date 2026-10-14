@@ -128,3 +128,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Регистр неявного this: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) описывает различия timeline/локальной области SWF5, правила SWF6–8 и открытые ограничения областей видимости.
 
 Приоритет неявного this: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) проверяет затенение параметром/локальной записью SWF5–8; наследуемые ячейки остаются открытыми.
+
+Объектное наследуемое this Function2: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) разделяет вызывающий объект и получателя preload, описывает корни GC и восстановление. Изменяемые ячейки остаются открытыми.

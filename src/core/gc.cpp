@@ -76,6 +76,8 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
     mark_object(c->global, pending);
     /* [GC:] Retain the active function while nested calls prepare their caller property. */
     mark_object(c->script_callee, pending);
+    /* [GC:] Retain the active implicit this independently of the method receiver. */
+    mark_object(c->script_this, pending);
     /* [GC:] Native Array results retain the original prototype after public prototype replacement. */
     mark_object(c->array_builtin_prototype, pending);
     /* [GC:] A registered trace sink keeps its capture alive between ActionTrace calls. */

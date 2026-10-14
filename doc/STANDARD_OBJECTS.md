@@ -136,3 +136,5 @@ References: [AS2 Array reference](https://open-flash.github.io/mirrors/as2-langu
 Implicit this name casing: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) records SWF5 timeline/local differences and SWF6–8 rules, with remaining scope limitations.
 
 Implicit this binding precedence: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) covers formal/local shadowing in SWF5–8; inherited this cells remain open.
+
+Object-valued inherited Function2 this: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) separates caller identity and actual preload receiver, with GC roots and restoration. Mutable cells remain open.

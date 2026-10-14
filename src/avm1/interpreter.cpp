@@ -333,7 +333,7 @@ static FVM_Result lookup_variable(FVM_Context *c,
     {
         fvm_value_undefined(out);
         out->type = FVM_VALUE_OBJECT;
-        out->object = self;
+        out->object = c->script_this ? c->script_this : self;
         return FVM_OK;
     }
     if (locals)
@@ -469,7 +469,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared = 0, size_t base = 0, unsigned int depth = 0,
-                          bool bounded = false);
+                          bool bounded = false, FVM_Object *implicit_this = 0);
 /* A call frame owns parameter bindings and its receiver; script depth is restored
  * even when the interpreter reports an error. */
 /* Call script. */
@@ -482,6 +482,11 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
 
     /* Initialization / Инициализация локального состояния. */
 
+    /* [GC:] A flagged loaded Function2 inherits the caller cell; its register
+     * preload still receives the actual receiver according to the flags. */
+    FVM_Object *local_this = receiver ? receiver : c->global;
+    if (c->swf_loaded && c->swf_info.version >= 5 && fn.function2 && (fn.flags & 3))
+        local_this = c->script_this ? c->script_this : c->global;
     Execution execution;
     try
     {
@@ -849,7 +854,7 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
             }
         } scope(c);
         status = execute(c, &snapshot.body[0], snapshot.body.size(), result, &frame, receiver,
-                         &snapshot.constants, &execution);
+                         &snapshot.constants, &execution, 0, 0, false, local_this);
     }
     catch (...)
     {
@@ -884,7 +889,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
-                          Execution *shared, size_t base, unsigned int depth, bool bounded)
+                          Execution *shared, size_t base, unsigned int depth, bool bounded,
+                          FVM_Object *implicit_this)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -924,15 +930,16 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         FVM_Context *context;
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         FVM_GCRootFrame frame, register_frame;
+        FVM_Object *previous_this; /* [GC:] Caller identity retained by its suspended frame. */
         /* Initialize Root Guard and its owned state. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         RootGuard(FVM_Context *c, fvm_detail::vector<FVM_Value> *s,
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   fvm_detail::map<fvm_detail::string, FVM_Value> *l, FVM_Object *r,
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                  fvm_detail::vector<FVM_Value> *reg)
+                  fvm_detail::vector<FVM_Value> *reg, FVM_Object *current_this = 0)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            : context(c)
+            : context(c), previous_this(c->script_this)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
 
@@ -952,7 +959,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             register_frame.locals = 0;
             /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
-            register_frame.receiver = 0;
+            /* [GC:] The register frame also retains the distinct implicit receiver. */
+            register_frame.receiver = current_this ? current_this : previous_this ? previous_this : r;
+            c->script_this = register_frame.receiver;
             /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             c->gc_frames = &register_frame;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -964,10 +973,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         {
             /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             context->gc_frames = frame.previous;
+            /* [GC:] Restore caller identity on normal, exception and OOM exits. */
+            context->script_this = previous_this;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    } roots(c, &stack, locals, self, &registers);
+    } roots(c, &stack, locals, self, &registers, implicit_this);
     size_t pos = 0, pc = 0, i;
     unsigned long &steps = execution.steps;
     if (!c || (!data && size) || depth > 64)
@@ -2796,7 +2807,7 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
                                  : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
-    return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0, 0, 0, 0, c->swf_loaded);
+    return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0, 0, 0, 0, c->swf_loaded, c->global);
 }
 /* [GC:] Replace a synchronous host trace sink after validating its retained capture. */
 extern "C" FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *c, FVM_NativeFunction callback,
@@ -2934,7 +2945,7 @@ extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data
                                  : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
-    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0, 0, c->swf_loaded);
+    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0, 0, c->swf_loaded, receiver);
 }
 
 /* Execute an exact stored frame block independently of the receiving context's load state. */
@@ -2947,5 +2958,5 @@ FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *c, const void *data, siz
     info.struct_size = sizeof(info);
     FVM_Result result = fvm_avm1_inspect_block(data, size, &info);
     return result == FVM_OK ? execute(c, (const unsigned char *)data, size, 0, 0,
-                                      receiver, 0, 0, 0, 0, true) : result;
+                                      receiver, 0, 0, 0, 0, true, receiver) : result;
 }

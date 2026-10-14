@@ -138,6 +138,7 @@ extern "C"
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */
         context->script_callee = 0;
+        context->script_this = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->string_depth = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

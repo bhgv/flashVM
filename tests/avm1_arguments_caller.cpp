@@ -43,7 +43,7 @@ int main()
         Bytes outer_body;call(outer_body,"inner");FVM_Object *outer=make(c,outer_body);
         assert(fvm_function_invoke(c,outer,0,0,0,&out)==FVM_OK && seen==inner);
         FVM_Object *arguments=out.object;assert(fvm_gc_pin(c,arguments)==FVM_OK);
-        assert(!c->script_depth && !c->script_callee && !c->gc_frames);
+        assert(!c->script_depth && !c->script_callee && !c->script_this && !c->gc_frames);
         assert(fvm_gc_collect(c,0)==FVM_OK);assert(fvm_object_get(c,arguments,"caller",&caller)==FVM_OK && caller.object==outer);
         FVM_Channel *channel=0;assert(fvm_channel_create(&channel)==FVM_OK);value=object(arguments);assert(fvm_channel_send_value(c,channel,&value,0)==FVM_OK);assert(fvm_channel_receive_value(other,channel,&out,0)==FVM_OK);
         assert(fvm_gc_pin(other,out.object)==FVM_OK);assert(fvm_gc_collect(other,0)==FVM_OK);
@@ -52,14 +52,14 @@ int main()
         bool completed=false;unsigned failures=0;
         for(long point=0;point<2048;++point) {
             allowance=point;FVM_Result result=fvm_function_invoke(c,outer,0,0,0,&out);allowance=-1;
-            assert(!c->script_depth && !c->script_callee && !c->gc_frames);
+            assert(!c->script_depth && !c->script_callee && !c->script_this && !c->gc_frames);
             assert(!c->gc_native_depth && c->lexical_scopes.empty());
             if(result==FVM_OK) { completed=true;break; }
             assert(result==FVM_OUT_OF_MEMORY);++failures;
         }
         assert(completed && failures);
         Bytes failure_body;text(failure_body,"failure");failure_body.push_back(0x2a);FVM_Object *failure=make(c,failure_body);value=object(failure);assert(fvm_set_global(c,"inner",&value)==FVM_OK);
-        assert(fvm_function_invoke(c,outer,0,0,0,&out)==FVM_EXCEPTION);assert(!c->script_depth && !c->script_callee && !c->gc_frames);
+        assert(fvm_function_invoke(c,outer,0,0,0,&out)==FVM_EXCEPTION);assert(!c->script_depth && !c->script_callee && !c->script_this && !c->gc_frames);
         assert(fvm_exception_clear(c)==FVM_OK);
         assert(fvm_function_invoke(c,inner,0,0,0,&out)==FVM_OK);assert(fvm_object_get(c,out.object,"caller",&caller)==FVM_OK && caller.type==FVM_VALUE_NULL);
         fvm_channel_destroy(channel);fvm_context_destroy(other);fvm_context_destroy(c);

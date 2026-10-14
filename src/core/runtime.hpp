@@ -299,6 +299,7 @@ struct FVM_Context
         script_functions;         /* [GC:] Named script function bytecode records. */
     unsigned int script_depth;    /* [GC:] Current nested script invocation depth. */
     FVM_Object *script_callee;    /* [GC:] Active script function identity for arguments.caller. */
+    FVM_Object *script_this;      /* [GC:] Current object-valued implicit this, separate from call receiver. */
     unsigned int string_depth;    /* [GC:] Recursion guard for string coercion. */
     unsigned int primitive_depth; /* [GC:] Recursion guard for primitive coercion. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

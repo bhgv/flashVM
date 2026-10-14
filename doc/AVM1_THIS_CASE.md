@@ -38,3 +38,8 @@ Nine selected AVM1 tests passed in NO_OS_PORTS and heap/global ASan + UBSan;
 stack/leak checks are disabled. All 17 unchanged selected original SWF<=8 probes
 retained byte-exact traces, zero exits and empty stderr. The separate failing
 this/AS2 probes remain explicitly excluded from that passing corpus.
+
+Subsequent object-valued inherited this handling is documented in
+[AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md); mutable cells remain open.
+Объектное наследуемое this уточнено в указанном документе; изменяемые ячейки
+остаются открытыми.

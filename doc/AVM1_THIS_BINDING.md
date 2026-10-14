@@ -35,3 +35,8 @@ Ten selected AVM1 tests passed in NO_OS_PORTS and heap/global ASan + UBSan
 (two sanitizer executable permission retries); stack/leak checks are disabled.
 All 17 unchanged selected original SWF<=8 probes retained byte-exact traces,
 zero exits and empty stderr. Non-Linux runtime verification remains open.
+
+Subsequent object-valued inherited this handling is documented in
+[AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md); mutable cells remain open.
+Объектное наследуемое this уточнено в указанном документе; изменяемые ячейки
+остаются открытыми.
