@@ -485,7 +485,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                  * сборщик. */
                 /* [GC:] Retain lookup/capture ownership even if script detaches the descriptor. */
                 FVM_SetterScope setter_scope(c, cursor, o, entry.root, name);
-                FVM_NativeCallGuard guard(c);
+                /* [GC:] The setter scope retains owner/receiver/descriptor; script invocation
+                 * roots its copied argument before any collection. Preserve outer C barriers. */
+                FVM_NativeCallGuard guard(c, !fvm_base_script_accessor(entry));
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_exception_complete(
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

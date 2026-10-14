@@ -2041,3 +2041,12 @@ The earlier prototype_delete trace mismatch is addressed without modifying its o
 Current expanded oracle checkpoint: 25/25 unchanged SWF<=8 probes match on both
 AGG and Cairo. The new delete probe uses three ticks as declared by its upstream
 configuration; prototype_delete now has exact text, zero exit and empty stderr.
+
+## v0.253 — trusted script setter collector entry
+
+Prepared native script setters may collect under the known rooted addProperty
+bridge. [SCRIPT_SETTER_COLLECTOR.md](SCRIPT_SETTER_COLLECTOR.md) records copied
+arguments, descriptor/owner retention, preserved C barriers and fault restoration.
+
+Проверена ещё одна часть корней GC и повторного использования нативных тел;
+это не завершение общей приёмки GC, JIT или платформ.
