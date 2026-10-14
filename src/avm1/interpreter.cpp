@@ -77,16 +77,14 @@ static unsigned long integer_bits(double value)
     value = std::fmod(value, FVM_UINT32_MODULUS);
     return (unsigned long)(value < 0 ? value + FVM_UINT32_MODULUS : value);
 }
-/* Represent a low 32-bit result as a signed ActionScript Number on both 32/64-bit hosts. */
-static double signed_bits(unsigned long value)
-{
-    value &= FVM_UINT32_MASK;
-    return value >= FVM_UINT32_SIGN_BIT ? (double)value - FVM_UINT32_MODULUS : (double)value;
-}
 /* Use numeric string truth in loaded SWFs below version 7, preserving conversion failures. */
 static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
 {
-    return fvm_avm1_boolean(context, value, &out);
+    FVM_Value converted;
+    FVM_Result status = fvm_exec_to_boolean(context, &value, &converted);
+    if (status == FVM_OK)
+        out = converted.boolean != 0;
+    return status;
 }
 
 /* Compute and return own string. */
@@ -1461,11 +1459,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             { /* ToInteger uses signed Int32 wrapping, not an unsafe floating cast. */
                 if (stack.empty())
                     return FVM_ERROR;
-                double number = 0;
-                FVM_Result status = fvm_avm1_number(c, &stack.back(), &number);
+                FVM_Value result;
+                FVM_Result status = fvm_exec_to_number(c, 1, &stack.back(), &result);
                 if (status != FVM_OK)
                     return status;
-                fvm_value_number(&stack.back(), signed_bits(integer_bits(number)));
+                stack.back() = result;
             }
             else if (a.op == FVM_AVM1_ACTION_TYPE_OF || a.op == FVM_AVM1_ACTION_TO_NUMBER ||
                      a.op == FVM_AVM1_ACTION_TO_STRING)
@@ -1475,25 +1473,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 FVM_Value input = stack.back(), output;
                 FVM_Result r = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_TYPE_OF)
-                {
-                    const char *types[] = {"undefined", "null",   "boolean",
-                                           "number",    "string", "object"};
-                    const char *name = types[input.type];
-                    if (input.type == FVM_VALUE_OBJECT)
-                        name = input.object->invocable.callback || input.object->callable.callback
-                                   ? "function"
-                               : input.object->resource_kind == FVM_RESOURCE_MOVIECLIP ? "movieclip"
-                                                                                       : "object";
-                    r = fvm_value_string(&output, name);
-                }
+                    r = fvm_exec_type_of(c, &input, &output);
                 else if (a.op == FVM_AVM1_ACTION_TO_STRING)
                     r = fvm_exec_to_string(c, &input, &output);
                 else
-                {
-                    double number = 0;
-                    r = fvm_avm1_number(c, &input, &number);
-                    fvm_value_number(&output, number);
-                }
+                    r = fvm_exec_to_number(c, 0, &input, &output);
                 if (r != FVM_OK)
                     return r;
                 stack.back() = output;

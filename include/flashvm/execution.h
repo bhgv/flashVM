@@ -140,6 +140,14 @@ extern "C"
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
                                                 unsigned int index, const FVM_Value *value,
                                                 FVM_Value *out);
+    /* Convert to Number, or legacy signed Int32 when integer is nonzero.
+     * [GC:] Retains input through valueOf callbacks; errors preserve out and aliasing is allowed. */
+    FVM_API FVM_Result fvm_exec_to_number(FVM_Context *, int integer,
+                                          const FVM_Value *, FVM_Value *out);
+    /* Project version-aware truth without user callbacks; output may alias input. */
+    FVM_API FVM_Result fvm_exec_to_boolean(FVM_Context *, const FVM_Value *, FVM_Value *out);
+    /* Return the existing AVM1 type label as immutable borrowed text, without callbacks. */
+    FVM_API FVM_Result fvm_exec_type_of(FVM_Context *, const FVM_Value *, FVM_Value *out);
     /* Convert with loaded SWF string policy; otherwise use ordinary host conversion.
      * [GC:] Retains input through callbacks; errors preserve out and aliasing is allowed.
      * An unchanged input string remains borrowed under the ordinary value ownership contract. */

@@ -99,3 +99,13 @@ profile, seven focused heap/global ASan+UBSan checks. v0.247/v0.249 add and veri
 reproducible committed-source/reachable-history export, including SHA-256 object
 format preservation. This is progress on release packaging only. Complete stages
 1–8, actual JIT equivalence and non-Linux execution still gate final stage 9.
+
+## v0.254 — current execution and reference work
+
+Scoped/qualified Delete2, rooted script getter/setter entry, retained MovieClip
+class-prototype string identity and common C primitive conversions extend the
+interpreter/generated-body interface. The expanded original SWF<=8 corpus is 25
+cases, including the correctly hosted three-frame delete probe. Feature reports
+record exact build/memory evidence and remaining display-path/type/GC gaps.
+All stages 1–9 remain open. Reproducible source/history packaging does not replace
+full JIT implementations/equivalence or real Windows/macOS/Android execution.

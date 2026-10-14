@@ -2050,3 +2050,12 @@ arguments, descriptor/owner retention, preserved C barriers and fault restoratio
 
 Проверена ещё одна часть корней GC и повторного использования нативных тел;
 это не завершение общей приёмки GC, JIT или платформ.
+
+## v0.254 — primitive conversion C services
+
+Number/Integer, Boolean and TypeOf handlers expose common C89 value interfaces.
+[EXECUTION_CONVERSIONS.md](EXECUTION_CONVERSIONS.md) records version policies,
+integer zero/wrapping, callback roots and retained type-classification limitations.
+
+Интерпретатор и будущий JIT используют одни преобразования; это часть
+декомпозиции, а не реализация генератора машинного кода.
