@@ -48,8 +48,9 @@ null/undefined and typeof results. Its complete oracle still differs on builtin
 own-slot membership, casing and deletion scenarios; it is not a passing corpus
 entry. SWF8 biturshift_swf8 remains byte-exact. Baseline v0.226 comparison keeps
 five other selected outputs/exits unchanged. Two selected probes are SWF15/17,
-outside the declared SWF<=8 scope; AS2 v8's unsupported input and preload-order
-trace mismatch already occur in the baseline and remain open. These observations
+outside the declared SWF<=8 scope; The actions-only AS2/preload
+comparison needed a different host policy; subsequent root-timeline/quit-ack
+validation passes both unchanged originals (see EXECUTION_CHECKPOINT.md). These observations
 supersede assuming the prior session's corpus was present or revalidated here.
 
 Исходный object_prototypes ещё не проходит целиком: raw-примитивы исправлены,

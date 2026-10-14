@@ -7,6 +7,16 @@
 extern "C"
 {
 #endif
+    /* Poll worker cancellation and scheduled GC after accounting work. */
+#define FVM_EXEC_POLL 1U
+    /* [GC:] Account semantic instruction units in an active interpreted/generated activation.
+     * location is a debugger mapping token; no instruction encoding is required. flags=0 only
+     * accounts work and updates location. FVM_EXEC_POLL also polls stop requests and GC.
+     * All live temporaries must be rooted before polling. Return failure immediately; generated
+     * code must not ignore exhausted budget/cancellation statuses. A zero cost can poll alone.
+     * Top-level entry resets the budget; nested interpreter/generated calls share it. */
+    FVM_API FVM_Result fvm_exec_checkpoint(FVM_Context *, unsigned long units,
+                                           unsigned long location, unsigned int flags);
     /* Numeric operations; values are ABI identifiers, not AVM1 instruction codes. */
     typedef enum FVM_ExecutionNumeric
     {

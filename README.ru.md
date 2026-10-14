@@ -1,4 +1,4 @@
-Версия разработки: **0.227** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.228** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -213,3 +213,5 @@ bodies for future JIT reuse; file map, GC contract, tests and limitations:
 [AVM1_DECOMPOSITION.md](doc/AVM1_DECOMPOSITION.md).
 
 Raw prototype primitive retention / Raw-значения прототипа: [RU/EN](doc/OBJECT_RAW_PROTOTYPE.md).
+
+Shared execution budget/GC/stop checkpoints / Общие контрольные точки: [RU/EN](doc/EXECUTION_CHECKPOINT.md).

@@ -492,36 +492,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         while (pc < actions.size())
         {
             const Action &a = actions[pc];
-            fvm_debug_update_location(c, (unsigned long)(base + a.offset));
             ++steps;
-            if (c->avm1_steps == std::numeric_limits<unsigned long>::max())
-                return FVM_ERROR;
-            ++c->avm1_steps;
-            if (c->runtime->config.instruction_limit &&
-                c->avm1_steps > c->runtime->config.instruction_limit)
-                return FVM_ERROR;
-            /* A bounded, deterministic safe point: all live AVM1 operands,
-               locals and receivers are registered by RootGuard. Never collect
-               in the middle of an opcode or while a native callback runs. */
-            if ((steps & 63UL) == 1UL)
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                int stopped = 0;
-                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (c->worker && fvm_worker_stop_requested(c->worker, &stopped) == FVM_OK &&
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    stopped)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return FVM_ERROR;
-                /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
-                FVM_Result gc_result = c->gc_collecting ? FVM_OK : fvm_gc_step(c, 0);
-                /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (gc_result != FVM_OK)
-                    /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return gc_result;
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-            }
+            /* [GC:] Poll at the established deterministic boundary with all operand roots live. */
+            FVM_Result checkpoint = fvm_exec_checkpoint(c, 1, (unsigned long)(base + a.offset),
+                                                        (steps & 63UL) == 1UL ? FVM_EXEC_POLL : 0);
+            if (checkpoint != FVM_OK)
+                return checkpoint;
             if (a.op == 0)
                 return FVM_OK;
             if (a.op == 0x3e)
