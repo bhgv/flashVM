@@ -145,6 +145,18 @@ extern "C"
                                              FVM_Object *target, FVM_Object *receiver,
                                              const FVM_Value *path,
                                              FVM_Value *out);
+    /* Read a counted member on paths retried across scopes/target/global. present
+     * distinguishes absence from a final undefined/null/primitive value.
+     * [GC:] Retains operands across getters; errors preserve out and present. */
+    FVM_API FVM_Result fvm_exec_scope_member(FVM_Context *, FVM_Object *scope,
+                                             FVM_Object *target, FVM_Object *receiver,
+                                             const FVM_Value *path, const FVM_Value *name,
+                                             FVM_Value *out, int *present);
+    /* Delete a scope binding or qualified reference under loaded-version path rules.
+     * [GC:] Coerces/root-retains the name and owner; no bytecode or stack is accepted. */
+    FVM_API FVM_Result fvm_exec_delete_reference(FVM_Context *, FVM_Object *scope,
+                                                 FVM_Object *target, FVM_Object *receiver,
+                                                 const FVM_Value *name, FVM_Value *out);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

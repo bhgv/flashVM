@@ -2076,3 +2076,13 @@ Explicit display root/this inputs preserve target/receiver independence and root
 This supersedes v0.255's slash-prefix rejection in Delete2. Non-slash Delete2 and
 general GetVariable/SetVariable retain documented limitations. Поиск внешних
 областей подключён для этого подмножества путей; полной совместимости ещё нет.
+
+### v0.257 — shared Delete2 and final-member presence
+
+[DELETE_REFERENCE.md](DELETE_REFERENCE.md) documents the single C89 Delete2
+handler and scoped-member read service. Presence is distinct from undefined/null/
+primitive values, preventing an incorrect outer deletion. Versioned two-step
+reference parsing supersedes v0.256's broader direct-path interpretation; SWF4
+literal dotted prefixes and SWF5+ slash cases have explicit fixtures. General
+variable lookup and historical casing/this-cell rules remain open. Обработчик
+вынесен из цикла; полная совместимость AVM1 и готовность JIT не заявляются.

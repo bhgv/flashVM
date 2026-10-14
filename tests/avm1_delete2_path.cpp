@@ -19,7 +19,8 @@ int main()
         FVM_Value value;fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=o;assert(fvm_set_global(c,"o",&value)==FVM_OK);
         value.object=child;assert(fvm_object_set(c,o,"child",&value)==FVM_OK);fvm_value_number(&value,17);
         const char *paths[]={"o.child.x","o:child:x","o.child:x"};
-        for(unsigned i=0;i<3;++i){assert(fvm_object_set(c,child,"x",&value)==FVM_OK);assert(remove(c,paths[i]).boolean);}
+        for(unsigned i=0;i<3;++i){assert(fvm_object_set(c,child,"x",&value)==FVM_OK);assert(!!remove(c,paths[i]).boolean==(version>=5 || i==1));}
+        if(version==4){value.type=FVM_VALUE_OBJECT;value.object=child;assert(fvm_set_global(c,"o.child",&value)==FVM_OK);fvm_value_number(&value,17);assert(fvm_object_set(c,child,"x",&value)==FVM_OK && remove(c,"o.child.x").boolean);}
         assert(!remove(c,"missing.x").boolean);
         fvm_value_string(&value,"primitive");assert(fvm_object_set(c,o,"child",&value)==FVM_OK && !remove(c,"o.child.x").boolean);
         fvm_context_destroy(c);

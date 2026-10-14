@@ -124,3 +124,11 @@ path retries, explicit display-root/this handling, collector roots and allocatio
 failure behavior are covered by focused fixtures. Full variable-path grammar,
 JIT backends/equivalence and real non-Linux execution still gate acceptance.
 Все стадии 1–9 остаются открытыми; число проверок не заменяет итоговую приёмку.
+
+## v0.257 — common Delete2 reference service
+
+Delete2 coercion, qualified reference parsing and scoped final-member presence
+now live in C89 services usable from native bodies. This corrects overly broad
+v0.256 parsing while reducing interpreter dispatch. GC/exception/allocation
+fixtures accompany the change; all roadmap stages and final release gates remain
+open. Обновление общего C-слоя не заменяет JIT и реальные проверки остальных ОС.
