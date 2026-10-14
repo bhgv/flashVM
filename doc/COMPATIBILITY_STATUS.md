@@ -1447,3 +1447,20 @@ AGG launch failures passed after restoring execute bits.
 
 Исправлены предел и исторические правила SWF5; преобразование delimiter не
 пропускается при limit 0, включая пользовательские ошибки.
+
+## v0.185 — String function/constructor/concat / преобразования String
+
+Loaded String calls, construction and concat arguments share AVM1 string coercion
+with SWF4 boolean and SWF4..6 undefined rules and Object type-label fallback.
+Missing constructor/function arguments remain empty; concat captures the receiver
+before converting arguments sequentially. Host behavior is preserved.
+[RU/EN details](STRING_LEGACY_CONVERSION.md). SWF4..8/host tests cover all three
+paths, undefined/boolean/Object, exactly-once callbacks, missing inputs, NUL results
+after traced GC, callback errors and restored state. Boxed overrides, separate
+function/clip versions and all roadmap stages remain open.
+Evidence: AGG 346/Cairo 345 tests, eleven focused checks each in Linux portable
+and restricted heap/global ASan+UBSan, sixteen byte-exact original SWFs. Two AGG
+launch failures passed after restoring execute bits.
+
+Функция, конструктор и concat используют единое AVM1 преобразование аргументов;
+проверены результаты, callback ошибки и сохранение строк с NUL после GC.

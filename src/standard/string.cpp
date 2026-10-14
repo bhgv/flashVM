@@ -364,7 +364,7 @@ FVM_Result last_index(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_V
     return search(c, s, n, a, o, true);
 }
 
-/* Concatenate Array arguments and append non-Array arguments as single values. */
+/* Capture the receiver, then append versioned string conversions of arguments in order. */
 FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_Value *args,
                   FVM_Value *out, void *)
 {
@@ -377,7 +377,8 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     for (unsigned int i = 0; i < count; ++i)
     {
         FVM_Value text;
-        result = fvm_value_to_string(c, args + i, &text);
+        result = c->swf_loaded ? fvm_avm1_string(c, args[i], &text)
+                                : fvm_value_to_string(c, args + i, &text);
         if (result != FVM_OK)
             return result;
         result = decode(text, joined);
@@ -688,14 +689,19 @@ void attach_length(FVM_Object *object)
     object->accessors["length"] = accessor;
 }
 
-/* Compute and return constructor. */
+/* Coerce the input before allocating a boxed String with the selected prototype. */
 FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                        FVM_Value *out, void *userdata)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value text, prototype;
-    FVM_Result result = count ? fvm_value_to_string(c, args, &text) : fvm_value_string(&text, "");
+    FVM_Result result = FVM_OK;
+    if (count)
+        result = c->swf_loaded ? fvm_avm1_string(c, args[0], &text)
+                                : fvm_value_to_string(c, args, &text);
+    else
+        result = fvm_value_string(&text, "");
     if (result != FVM_OK)
         return result;
     Units units;

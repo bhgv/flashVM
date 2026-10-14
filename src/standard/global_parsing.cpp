@@ -3,6 +3,7 @@
  */
 
 #include "global_parsing.hpp"
+#include "../avm1/coercion.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/utf8.h"
@@ -78,11 +79,14 @@ double integer_radix(double value)
     return wrapped >= 2147483648.0 ? wrapped - 4294967296.0 : wrapped;
 }
 } // namespace
-/* Compute and return builtin string. */
+/* Convert String(...) with loaded AVM1 rules or the unloaded host contract. */
 FVM_Result fvm_builtin_string(FVM_Context *c, FVM_Object *, unsigned int count,
                               const FVM_Value *args, FVM_Value *out, void *)
 {
-    return count ? fvm_value_to_string(c, args, out) : fvm_value_string(out, "");
+    if (!count)
+        return fvm_value_string(out, "");
+    return c->swf_loaded ? fvm_avm1_string(c, args[0], out)
+                         : fvm_value_to_string(c, args, out);
 }
 
 /* Parse builtin int. */
