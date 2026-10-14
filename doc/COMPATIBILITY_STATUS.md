@@ -2359,3 +2359,12 @@ step service, its versioned conversion, alias/error policy and documented unit.
 Direct C, actual Action, collecting/throwing valueOf and allocation fixtures
 exercise SWF4–8 behavior and root restoration. Existing numeric coercion policy
 is preserved. Машинный JIT и все стадии приёмки остаются открытыми.
+
+### v0.288 — documented coercion syntax constants
+
+AVM1 coercion_constants.h names decimal/octal/hex radices, the hexadecimal letter
+value and raw prefix width, the bounded exponent spelling buffer, counted method
+names and each currently accepted leading whitespace code point. SWF5/6/7 gates
+use existing version macros. The accepted set and conversion behavior are
+unchanged; full historical Unicode/coercion equivalence remains open.
+Числовые коды снабжены комментариями; разные назначения имеют отдельные имена.

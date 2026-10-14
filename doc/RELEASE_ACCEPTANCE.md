@@ -360,3 +360,12 @@ pass, without stack/leak coverage, and all 26 original SWFs match per profile.
 Increment/Decrement use the shared C89 service with rooted numeric coercion and
 aliased-output failure atomicity. Actual machine-code JIT and real runs on
 Windows/macOS/Android remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.288 — named coercion syntax and whitespace
+
+Both Linux profiles pass all 562 tests. AGG required reruns of 16 launch failures;
+original and retry logs are retained separately. Five focused heap/global
+ASan+UBSan checks pass (no stack/leak coverage), and all 26 original SWFs match
+per profile. Named numeric syntax and whitespace constants preserve the existing
+accepted set. Real JIT and Windows/macOS/Android verification remain absent.
+Все стадии 1–9 остаются открытыми.

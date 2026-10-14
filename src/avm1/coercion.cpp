@@ -1,5 +1,6 @@
 /* FlashVM: counted legacy numeric syntax and shared versioned primitive/string coercion. */
 #include "encoding_constants.h"
+#include "coercion_constants.h"
 #include "coercion.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/primitive_state.hpp"
@@ -17,23 +18,23 @@ int digit(unsigned char byte)
     if (byte >= '0' && byte <= '9')
         return byte - '0';
     if (byte >= 'a' && byte <= 'f')
-        return byte - 'a' + 10;
+        return byte - 'a' + FVM_COERCION_HEX_LETTER_FIRST;
     if (byte >= 'A' && byte <= 'F')
-        return byte - 'A' + 10;
-    return -1;
+        return byte - 'A' + FVM_COERCION_HEX_LETTER_FIRST;
+    return FVM_COERCION_INVALID_DIGIT;
 }
 /* Select Flash's raw-string radix before decimal leading-space removal. */
 unsigned int radix(const char *text, size_t size)
 {
     size_t at = size && (text[0] == '+' || text[0] == '-') ? 1 : 0;
     if (at == size || text[at] != '0')
-        return 10;
-    if (size - at >= 2 && (text[at + 1] == 'x' || text[at + 1] == 'X'))
-        return 16;
+        return FVM_COERCION_RADIX_DECIMAL;
+    if (size - at >= FVM_COERCION_HEX_PREFIX_BYTES && (text[at + 1] == 'x' || text[at + 1] == 'X'))
+        return FVM_COERCION_RADIX_HEX;
     for (size_t i = at + 1; i < size; ++i)
         if (text[i] < '0' || text[i] > '7')
-            return 10;
-    return 8;
+            return FVM_COERCION_RADIX_DECIMAL;
+    return FVM_COERCION_RADIX_OCTAL;
 }
 /* Read signed radix digits with explicit Uint32 wraparound on any host long width. */
 double integer(const char *text, size_t size, unsigned int base)
@@ -59,10 +60,15 @@ double integer(const char *text, size_t size, unsigned int base)
 /* Recognize the currently supported leading whitespace set in decimal action strings. */
 bool space(unsigned long value)
 {
-    return value == 9 || value == 10 || value == 11 || value == 12 || value == 13 ||
-           value == 32 || value == 0xa0 || value == 0x1680 ||
-           (value >= 0x2000 && value <= 0x200a) || value == 0x2028 || value == 0x2029 ||
-           value == 0x202f || value == 0x205f || value == 0x3000 || value == 0xfeff;
+    return value == FVM_COERCION_SPACE_TAB || value == FVM_COERCION_SPACE_LF ||
+           value == FVM_COERCION_SPACE_VT || value == FVM_COERCION_SPACE_FF ||
+           value == FVM_COERCION_SPACE_CR || value == FVM_COERCION_SPACE_ASCII ||
+           value == FVM_COERCION_SPACE_NBSP || value == FVM_COERCION_SPACE_OGHAM ||
+           (value >= FVM_COERCION_SPACE_RANGE_FIRST && value <= FVM_COERCION_SPACE_RANGE_LAST) ||
+           value == FVM_COERCION_SPACE_LINE_SEPARATOR ||
+           value == FVM_COERCION_SPACE_PARAGRAPH_SEPARATOR ||
+           value == FVM_COERCION_SPACE_NARROW_NBSP || value == FVM_COERCION_SPACE_MEDIUM_MATH ||
+           value == FVM_COERCION_SPACE_IDEOGRAPHIC || value == FVM_COERCION_SPACE_BOM;
 }
 /* Validate legacy decimal syntax, then reuse the locale-independent host mantissa conversion. */
 FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned int version,
@@ -110,13 +116,14 @@ FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned
         if (at < size && (text[at] == '+' || text[at] == '-'))
             ++at;
         while (at < size && text[at] >= '0' && text[at] <= '9')
-            exponent = (exponent * 10 + (unsigned int)(text[at++] - '0')) & FVM_UINT32_MASK;
+            exponent = (exponent * FVM_COERCION_RADIX_DECIMAL + (unsigned int)(text[at++] - '0')) &
+                       FVM_UINT32_MASK;
         if (minus)
             exponent = (0UL - exponent) & FVM_UINT32_MASK;
     }
-    if (!accepted || (version >= 5 && at != size))
+    if (!accepted || (version >= FVM_SWF_VERSION_5 && at != size))
     {
-        *out = version < 5 ? 0 : std::numeric_limits<double>::quiet_NaN();
+        *out = version < FVM_SWF_VERSION_5 ? 0 : std::numeric_limits<double>::quiet_NaN();
         return FVM_OK;
     }
     if (!digits)
@@ -129,7 +136,7 @@ FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned
     {
         double signed_exponent = exponent >= FVM_UINT32_SIGN_BIT
                                      ? (double)exponent - FVM_UINT32_MODULUS : (double)exponent;
-        char suffix[32];
+        char suffix[FVM_COERCION_EXPONENT_SUFFIX_BYTES];
         std::sprintf(suffix, "e%.0f", signed_exponent);
         size_t length = std::strlen(suffix);
         if (token.size() > (size_t)-1 - length)
@@ -183,9 +190,10 @@ FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
     fvm_value_undefined(&result);
     bool date_string = default_hint && original.object->resource_kind == FVM_RESOURCE_DATE &&
                        context->swf_info.version > FVM_SWF_VERSION_5;
-    FVM_Result status = fvm_object_get_bytes(context, original.object,
-                                             date_string ? "toString" : "valueOf",
-                                             date_string ? 8 : 7, &method);
+    FVM_Result status = fvm_object_get_bytes(
+        context, original.object,
+        date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME,
+        date_string ? FVM_COERCION_TO_STRING_BYTES : FVM_COERCION_VALUE_OF_BYTES, &method);
     if (status != FVM_OK)
         return status;
     if (method.type == FVM_VALUE_OBJECT &&
@@ -207,7 +215,7 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
     unsigned int version = context->swf_info.version;
     if (value->type == FVM_VALUE_UNDEFINED || value->type == FVM_VALUE_NULL)
     {
-        *out = version < 7 ? 0 : std::numeric_limits<double>::quiet_NaN();
+        *out = version < FVM_SWF_VERSION_7 ? 0 : std::numeric_limits<double>::quiet_NaN();
         return FVM_OK;
     }
     if (value->type == FVM_VALUE_OBJECT)
@@ -218,7 +226,7 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
             return status;
         if (primitive.type == FVM_VALUE_OBJECT)
         {
-            *out = version < 5 ? 0 : std::numeric_limits<double>::quiet_NaN();
+            *out = version < FVM_SWF_VERSION_5 ? 0 : std::numeric_limits<double>::quiet_NaN();
             return FVM_OK;
         }
         return fvm_avm1_number(context, &primitive, out);
@@ -228,11 +236,12 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
     try
     {
         size_t size = fvm_string_size(*value);
-        unsigned int base = version >= 6 ? radix(value->string, size) : 10;
-        if (base != 10)
+        unsigned int base =
+            version >= FVM_SWF_VERSION_6 ? radix(value->string, size) : FVM_COERCION_RADIX_DECIMAL;
+        if (base != FVM_COERCION_RADIX_DECIMAL)
         {
             /* The historical hexadecimal prefix removal uses raw offset two, even after a sign. */
-            size_t skip = base == 16 ? 2 : 0;
+            size_t skip = base == FVM_COERCION_RADIX_HEX ? FVM_COERCION_HEX_PREFIX_BYTES : 0;
             *out = integer(value->string + skip, size - skip, base);
             return FVM_OK;
         }
@@ -286,7 +295,8 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
         } coercion(context);
         FVM_Value method, result;
         fvm_value_undefined(&result);
-        FVM_Result status = fvm_object_get_bytes(context, value.object, "toString", 8, &method);
+        FVM_Result status = fvm_object_get_bytes(context, value.object, FVM_COERCION_TO_STRING_NAME,
+                                                 FVM_COERCION_TO_STRING_BYTES, &method);
         if (status != FVM_OK)
             return status;
         if (method.type == FVM_VALUE_OBJECT &&
