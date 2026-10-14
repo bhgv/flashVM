@@ -144,14 +144,14 @@ FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
     return fvm_value_to_string(c, &text, out);
 }
 
-/* Compute and return number constructor. */
+/* Construct boxed Number data with the loaded SWF numeric conversion rules. */
 FVM_Result number_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
                               const FVM_Value *args, FVM_Value *out, void *userdata)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double value = 0;
-    FVM_Result result = count ? fvm_value_to_number(c, &args[0], &value) : FVM_OK;
+    FVM_Result result = count ? fvm_avm1_number(c, &args[0], &value) : FVM_OK;
     if (result != FVM_OK)
         return result;
     FVM_Value prototype;

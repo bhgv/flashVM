@@ -426,14 +426,14 @@ const Method math_methods[] = {{"abs", math_abs},   {"acos", math_acos},     {"a
                                {"pow", math_pow},   {"random", math_random}, {"round", math_round},
                                {"sin", math_sin},   {"sqrt", math_sqrt},     {"tan", math_tan}};
 
-/* Implement the Number() global conversion call. */
+/* Convert Number() arguments with AVM1 rules, retaining unloaded host behavior. */
 FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                        FVM_Value *o, void *)
 {
 
     /* Initialization / Инициализация локального состояния. */
     double number = 0;
-    FVM_Result result = n ? fvm_value_to_number(c, &a[0], &number) : FVM_OK;
+    FVM_Result result = n ? fvm_avm1_number(c, &a[0], &number) : FVM_OK;
     if (result == FVM_OK)
         fvm_value_number(o, number);
     return result;

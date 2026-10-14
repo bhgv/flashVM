@@ -1580,3 +1580,20 @@ Prototype layouts, clip/function versions and all roadmap stages remain open.
 Evidence: AGG 353/Cairo 352 full tests, six focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Four AGG launch failures passed after restoring execute bits.
+
+## v0.193 — Number function/constructor / числовые преобразования
+
+Loaded Number() and new Number() use the shared AVM1 numeric conversion rather
+than host fallback. Missing/undefined arguments, octal strings and object-valued
+valueOf results follow loaded versions; callback errors propagate. Host behavior
+is preserved. [RU/EN details](NUMBER_LEGACY_CONVERSION.md). Tests cover both entry
+points, SWF4–8/host, callback counts/errors, traced GC and restored state.
+Prototype layouts, function/clip versions and all roadmap stages remain open.
+
+Исправлены Number function/constructor: общий AVM1 helper сохраняет различия
+SWF4–8 и не запускает лишний host toString после object-valued valueOf.
+
+Evidence: AGG 354/Cairo 353 full tests, five focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Four AGG and one Cairo launch failures passed after restoring
+execute bits.
