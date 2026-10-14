@@ -251,7 +251,7 @@ FVM_Result math_argument(FVM_Context *c, unsigned int count, const FVM_Value *ar
     return fvm_avm1_number(c, &args[index], out);
 }
 
-/* Read a host numeric argument for the separate global predicate functions. */
+/* Read a global predicate argument with AVM1 coercion; missing operands stay NaN. */
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double *out)
 {
@@ -260,7 +260,7 @@ FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, u
         *out = nan_value();
         return FVM_OK;
     }
-    return fvm_value_to_number(c, &args[index], out);
+    return fvm_avm1_number(c, &args[index], out);
 }
 
 /* Define Operation enum and its representation. */

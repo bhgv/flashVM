@@ -1615,3 +1615,19 @@ Evidence: AGG 355/Cairo 354 full tests, four focused checks each in Linux portab
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Three AGG and three Cairo launch failures passed after restoring
 execute bits. The final expanded Math fixture passed separately in all profiles.
+
+## v0.195 — numeric predicates / isNaN и isFinite
+
+Loaded isNaN/isFinite coerce supplied arguments with AVM1 rules, preserving
+versioned undefined/object-valued valueOf results without host string fallback.
+Missing-argument results and unloaded host behavior remain unchanged. Callback
+errors propagate. [RU/EN details](NUMERIC_LEGACY_PREDICATES.md). Tests cover both
+functions, SWF4–8/host, missing/undefined operands, callbacks/errors and restored
+state. Property metadata, function/clip versions and all stages remain open.
+
+Исправлены преобразования переданного аргумента isNaN/isFinite; отсутствие
+аргумента сохраняет отдельное поведение, callback errors не теряются.
+
+Evidence: AGG 356/Cairo 355 full tests, five focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Four AGG launch failures passed after restoring execute bits.
