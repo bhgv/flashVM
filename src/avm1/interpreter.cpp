@@ -9,6 +9,7 @@
 #include "operand_constants.h"
 #include "../swf/record_constants.h"
 #include "handlers/script_call.hpp"
+#include "handlers/delete_path_constants.h"
 #include "block.hpp"
 #include "coercion.hpp"
 #include "target_scope.hpp"
@@ -1586,16 +1587,36 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (status != FVM_OK)
                     return status;
                 stack.back() = name;
-                /* Qualified member paths are handled separately from plain scope names. */
-                for (size_t at = 0; at < fvm_string_size(name); ++at)
-                    if (name.string[at] == ':' || name.string[at] == '.')
-                        return FVM_UNSUPPORTED;
-                FVM_Object *target = 0;
-                status = variable_receiver(c, self, &target);
+                size_t separator = 0;
+                while (separator < fvm_string_size(name) &&
+                       name.string[separator] != FVM_DELETE_PATH_COLON &&
+                       name.string[separator] != FVM_DELETE_PATH_DOT)
+                    ++separator;
                 FVM_Value result;
-                if (status == FVM_OK)
-                    status = fvm_exec_scope_delete(c, c->lexical_scopes.empty()
-                        ? 0 : c->lexical_scopes.back(), target, &stack.back(), &result);
+                if (separator < fvm_string_size(name))
+                {
+                    /* Display slash paths require target resolution rather than literal lookup. */
+                    for (size_t at = 0; at < separator; ++at)
+                        if (name.string[at] == FVM_DELETE_PATH_SLASH)
+                            return FVM_UNSUPPORTED;
+                    FVM_Value root_name, base, remainder;
+                    fvm_value_string_bytes(&root_name, name.string, separator);
+                    status = lookup_variable_value(c, locals, self, root_name, &base);
+                    if (status == FVM_OK)
+                    {
+                        fvm_value_string_bytes(&remainder, name.string + separator + 1,
+                                               fvm_string_size(name) - separator - 1);
+                        status = fvm_exec_delete_path(c, &base, &remainder, &result);
+                    }
+                }
+                else
+                {
+                    FVM_Object *target = 0;
+                    status = variable_receiver(c, self, &target);
+                    if (status == FVM_OK)
+                        status = fvm_exec_scope_delete(c, c->lexical_scopes.empty()
+                            ? 0 : c->lexical_scopes.back(), target, &stack.back(), &result);
+                }
                 if (status != FVM_OK)
                     return status;
                 stack.back() = result;

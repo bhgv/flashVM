@@ -129,6 +129,12 @@ extern "C"
     FVM_API FVM_Result fvm_exec_scope_delete(FVM_Context *, FVM_Object *scope,
                                              FVM_Object *target, const FVM_Value *name,
                                              FVM_Value *out);
+    /* Delete a member through a counted dot/colon path rooted at base. Prefix getters
+     * may run; the final member is not read. Primitive/missing prefixes report false.
+     * Slash target syntax in prefixes is unsupported; a slash in the final key is literal.
+     * [GC:] Traversal values and text are retained; errors preserve out. */
+    FVM_API FVM_Result fvm_exec_delete_path(FVM_Context *, const FVM_Value *base,
+                                            const FVM_Value *path, FVM_Value *out);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

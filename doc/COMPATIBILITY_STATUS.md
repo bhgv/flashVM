@@ -2015,3 +2015,18 @@ results. [AVM1_DELETE2.md](AVM1_DELETE2.md) records getter-free shadowing,
 GC/allocation/exception checks and the still-unsupported qualified path cases.
 
 Добавлена проверенная часть удаления переменных; все стадии остаются открытыми.
+
+## v0.251 — qualified Delete2 and rooted script getters
+
+Delete2 handles dot/colon object-member chains through a C89 value service.
+[AVM1_DELETE2_PATH.md](AVM1_DELETE2_PATH.md) records traversal roots, trusted getter
+GC entry, preserved host barriers and still-open display-path/scope retry cases.
+
+Добавлены составные имена и корни GC при обходе; полная совместимость путей
+и все стадии роудмапа остаются открытыми.
+
+Expanded reference evidence at v0.251: 24/25 original SWF<=8 probes match.
+The delete SWF7 uses its upstream num_frames=3 policy. The remaining
+prototype_delete SWF8 mismatch is MovieClip.prototype string projection and stays
+open; no file/header/oracle is changed to bypass it. Upstream delete2 SWF16 and
+global_proto_decls_delete SWF15 are preserved but outside the accepted version set.

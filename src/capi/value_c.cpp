@@ -9,6 +9,7 @@
 #include "flashvm/table.h"
 #include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
+#include "../core/object_root_scope.hpp"
 #include "../core/runtime.hpp"
 #include "../core/prototype_data.hpp"
 #include "../core/exception_internal.hpp"
@@ -157,7 +158,12 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                      * сборщик. */
                     /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
                      * сборщик. */
-                    FVM_NativeCallGuard guard(c);
+                    /* [GC:] Script getters may detach their descriptor/prototype and collect.
+                     * Retain the exact entry snapshot and both lookup/receiver identities. */
+                    FVM_ObjectRootScope receiver_roots(c, receiver);
+                    FVM_ObjectRootScope owner_roots(c, o);
+                    FVM_ObjectRootScope capture_roots(c, entry.root);
+                    FVM_NativeCallGuard guard(c, !fvm_base_script_accessor(entry));
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     fvm_resource_fault_begin(c);
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
