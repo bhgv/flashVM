@@ -919,24 +919,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_IMPLEMENTS)
             {
-                /* ImplementsOp pops the class, count, then interface constructors. */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_OBJECT)
-                    return FVM_INVALID_ARGUMENT;
-                double count = 0;
-                FVM_Result r = fvm_avm1_number(c, &stack[stack.size() - 2], &count);
+                if (stack.size() < FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS)
+                    return FVM_ERROR;
+                unsigned int n = 0;
+                const FVM_Value &count = stack[stack.size() - FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS];
+                FVM_Result r = fvm_exec_interface_count(c, &count,
+                    stack.size() - FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS, &n);
                 if (r != FVM_OK)
                     return r;
-                if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
-                    count != std::floor(count) || count > stack.size() - 2)
-                    return FVM_INVALID_ARGUMENT;
-                unsigned int n = (unsigned int)count;
-                fvm_detail::vector<FVM_Value> interfaces;
+                fvm_detail::vector<FVM_Value> interfaces(n);
                 for (unsigned int i = 0; i < n; ++i)
-                    interfaces.push_back(stack[stack.size() - 3 - i]);
-                r = fvm_class_implements(c, stack.back().object, n, interfaces.begin());
+                    interfaces[i] = stack[stack.size() - FVM_AVM1_IMPLEMENTS_FIRST_INTERFACE - i];
+                r = fvm_exec_implements(c, &stack.back(), n, n ? interfaces.begin() : 0);
                 if (r != FVM_OK)
                     return r;
-                stack.resize(stack.size() - n - 2);
+                stack.resize(stack.size() - n - FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS);
             }
             else if (a.op == FVM_AVM1_ACTION_CAST)
             {

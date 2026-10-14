@@ -325,3 +325,12 @@ Both Linux profiles pass 550 tests, eight focused memory checks pass, and all
 coercion and own prototype data semantics. Interface metadata snapshots and
 other compatibility gates remain open. JIT and real Windows/macOS/Android runs
 remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.284 — frozen interface graphs
+
+Both final Linux profiles pass 555 tests, nine focused memory checks pass and all
+26 original SWFs match per profile. Snapshot edges and installed empty lists
+survive graph validation, GC, memory/file channels and localhost broker transfer.
+New snapshot graphs require a schema-9-capable reader; ordinary graphs remain
+schema 8. Real JIT and Windows/macOS/Android runs remain absent.
+Все стадии 1–9 остаются открытыми.

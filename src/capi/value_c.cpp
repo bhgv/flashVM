@@ -736,6 +736,7 @@ extern "C"
         o->owner = c;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->prototype = 0;
+        o->interfaces_are_prototypes = false; /* Fresh objects have no installed snapshot list. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         o->metatable = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

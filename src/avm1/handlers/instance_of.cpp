@@ -1,28 +1,8 @@
 /* FlashVM: value-based InstanceOf with raw class prototype reads and rooted coercions. */
 #include "support.hpp"
 #include "instance_of_constants.h"
-#include "../scope_keywords.hpp"
+#include "class_prototype.hpp"
 #include "flashvm/standard.h"
-/* Read only stored own prototype data; accessors and inherited fields do not participate. */
-static bool stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out)
-{
-    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator i =
-        object->properties.find(FVM_INSTANCE_OF_PROTOTYPE_NAME);
-    if (i != object->properties.end())
-    {
-        out = i->second;
-        return true;
-    }
-    if (c->swf_info.version < FVM_SWF_VERSION_7)
-        for (i = object->properties.begin(); i != object->properties.end(); ++i)
-            if (fvm_avm1_keyword_name(i->first, FVM_INSTANCE_OF_PROTOTYPE_NAME,
-                                      FVM_INSTANCE_OF_PROTOTYPE_UNITS, false))
-            {
-                out = i->second;
-                return true;
-            }
-    return false;
-}
 /* Test loaded prototype identity; host calls retain the existing strict class API policy. */
 extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *value,
                                            const FVM_Value *constructor, FVM_Value *out)
@@ -56,7 +36,8 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
         if (status != FVM_OK)
             return status;
         FVM_Value &prototype = roots.values[FVM_INSTANCE_OF_PROTOTYPE_ROOT];
-        if (klass.type != FVM_VALUE_OBJECT || !stored_prototype(c, klass.object, prototype))
+        if (klass.type != FVM_VALUE_OBJECT ||
+            !fvm_avm1_stored_prototype(c, klass.object, prototype))
         {
             fvm_value_boolean(out, 0);
             return FVM_OK;
@@ -101,15 +82,18 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
                     fvm_value_boolean(out, 1);
                     return FVM_OK;
                 }
-                /* Existing transport metadata stores interface constructors. Adapt their own
-                 * prototype fields without invoking accessors or walking interface prototypes. */
+                /* Snapshot edges point directly to prototypes; legacy host edges retain
+                 * constructors. Neither representation walks ordinary interface prototype ancestry.
+                 */
                 for (size_t i = 0; i < current->implemented_interfaces.size(); ++i)
                 {
                     FVM_Value interface_prototype;
                     fvm_value_undefined(&interface_prototype);
-                    if (stored_prototype(c, current->implemented_interfaces[i],
-                                         interface_prototype) &&
-                        interface_prototype.type == FVM_VALUE_OBJECT)
+                    if (current->interfaces_are_prototypes)
+                        pending.push_back(current->implemented_interfaces[i]);
+                    else if (fvm_avm1_stored_prototype(c, current->implemented_interfaces[i],
+                                                       interface_prototype) &&
+                             interface_prototype.type == FVM_VALUE_OBJECT)
                         pending.push_back(interface_prototype.object);
                 }
             }

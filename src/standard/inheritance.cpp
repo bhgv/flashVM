@@ -1,5 +1,6 @@
 /* FlashVM: AVM1 extends/implements operations with rooted class metadata. */
 #include "inheritance.hpp"
+#include "inheritance_constants.h"
 #include "flashvm/value.h"
 #include <new>
 
@@ -135,7 +136,7 @@ FVM_Result fvm_class_extend(FVM_Context *c, FVM_Object *subclass, FVM_Object *su
 FVM_Result fvm_class_implements(FVM_Context *c, FVM_Object *ctor, unsigned int count,
                                 const FVM_Value *interfaces)
 {
-    if (!c || !ctor || (count && !interfaces) || count > 65536)
+    if (!c || !ctor || (count && !interfaces) || count > FVM_EXEC_MAX_INTERFACE_ARGUMENTS)
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -163,6 +164,7 @@ FVM_Result fvm_class_implements(FVM_Context *c, FVM_Object *ctor, unsigned int c
             return result;
         /* [GC:] Publish all retained interface edges only after validation succeeds. */
         target->implemented_interfaces.swap(validated);
+        target->interfaces_are_prototypes = false; /* Host API retains replaceable constructor edges. */
         return FVM_OK;
     }
     catch (const std::bad_alloc &)
@@ -211,7 +213,7 @@ FVM_Result fvm_class_instance_of(FVM_Context *c, const FVM_Value *value, FVM_Obj
                 }
             if (seen)
                 continue;
-            if (visited.size() >= 4096)
+            if (visited.size() >= FVM_CLASS_MAX_GRAPH_NODES)
                 return FVM_UNSUPPORTED;
             visited.push_back(node);
             /* [GC:] Retain each visited prototype through any interface prototype callback. */
@@ -237,6 +239,11 @@ FVM_Result fvm_class_instance_of(FVM_Context *c, const FVM_Value *value, FVM_Obj
             }
             for (size_t i = 0; i < declared.size(); ++i)
             {
+                if (node->interfaces_are_prototypes)
+                {
+                    pending.push_back(declared[i]);
+                    continue;
+                }
                 if (declared[i] == constructor)
                 {
                     *out = 1;

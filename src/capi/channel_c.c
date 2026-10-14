@@ -2,6 +2,7 @@
  * File: src/capi/channel_c.c.
  */
 
+#include "graph_constants.h"
 #include "../../ports/channel_sync.h"
 #include "../../ports/file_port.h"
 #include "../core/channel_packet.h"
@@ -190,7 +191,7 @@ static FVM_Result file_record(FVM_Channel *c, unsigned char **data, size_t *size
         goto fail;
     if (!count)
         return blocking ? FVM_ERROR : FVM_NOT_FOUND;
-    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[7] < 1 || header[7] > 8))
+    if (count != sizeof(header) || memcmp(header, magic, 7) || (header[FVM_GRAPH_VERSION_OFFSET] < FVM_GRAPH_MIN_WIRE_VERSION || header[FVM_GRAPH_VERSION_OFFSET] > FVM_GRAPH_WIRE_VERSION))
     {
         result = FVM_INVALID_ARGUMENT;
         goto fail;

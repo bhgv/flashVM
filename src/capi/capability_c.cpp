@@ -2,6 +2,7 @@
  * File: src/capi/capability_c.cpp.
  */
 
+#include "graph_constants.h"
 #include "../core/exception_internal.hpp"
 #include "../core/capability_internal.hpp"
 #include "flashvm/capability.h"
@@ -576,7 +577,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
     {
         /* The VM graph decoder validates contents at receipt. Reject truncated
            records before enqueueing so a malformed peer cannot split framing. */
-        if (size < 16 || (std::memcmp(input, "FVMG\0\0\0", 7) || (input[7] < 1 || input[7] > 8)) ||
+        if (size < 16 || (std::memcmp(input, "FVMG\0\0\0", 7) || (input[FVM_GRAPH_VERSION_OFFSET] < FVM_GRAPH_MIN_WIRE_VERSION || input[FVM_GRAPH_VERSION_OFFSET] > FVM_GRAPH_WIRE_VERSION)) ||
             get(input + 8) != size - 16 ||
             get(input + 12) != (unsigned long)crc32(0, input + 16, (uInt)(size - 16)))
             return FVM_ERROR;

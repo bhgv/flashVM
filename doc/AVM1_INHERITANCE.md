@@ -75,3 +75,12 @@ complete any roadmap stage. Opcode order/layout is taken from Adobe's
 
 Операции подготавливают отношения классов для `super` и связывания с SWF.
 Сам `super`, полноценная сцена и этапы плана целиком ещё не завершены.
+
+## Loaded interface snapshots — v0.284 / Снимки интерфейсов
+
+Loaded SWF7–8 ImplementsOp now captures prototype identities once, including an
+installed empty list. Changes to constructor.prototype do not retarget those
+edges. Getter-free reads, primitive/object count rules, GC and graph transport
+are covered in [INTERFACE_SNAPSHOTS.md](INTERFACE_SNAPSHOTS.md). Host legacy
+constructor-edge behavior is retained. Новый формат графа v9 сохраняет снимки;
+обычные графы остаются в формате v8. Полная приёмка стадий ещё открыта.

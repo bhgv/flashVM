@@ -108,7 +108,8 @@ struct Object
     FVM_TextFieldState text;
     size_t prototype, metatable;
     fvm_detail::vector<size_t>
-        implemented_interfaces; /* [GC:] Captured interface constructor references. */
+        implemented_interfaces; /* [GC:] Captured class or prototype references, selected by mode. */
+    bool interfaces_are_prototypes; /* True preserves installed snapshot lists, including empty ones. */
     fvm_detail::map<fvm_detail::string, Value> properties;
     fvm_detail::map<unsigned long, Value> indexed;
     fvm_detail::map<fvm_detail::string, Callback> methods, metamethods;
@@ -117,7 +118,7 @@ struct Object
     fvm_detail::map<fvm_detail::string, Value> method_values, watchers;
     fvm_detail::map<fvm_detail::string, Accessor> accessors;
     /* Initialize Object and its owned state. */
-    Object() : kind(0), prototype(none), metatable(none)
+    Object() : kind(0), prototype(none), metatable(none), interfaces_are_prototypes(false)
     {
     }
 };
@@ -465,6 +466,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
             require(!src->resource_result_valid, FVM_UNSUPPORTED);
         dst.prototype = identify(c, src->prototype, seen);
         dst.metatable = identify(c, src->metatable, seen);
+        dst.interfaces_are_prototypes = src->interfaces_are_prototypes;
         /* [GC:] Capture interface edges with the same identity map as other object references. */
         for (size_t j = 0; j < src->implemented_interfaces.size(); ++j)
             dst.implemented_interfaces.push_back(identify(c, src->implemented_interfaces[j], seen));
@@ -707,8 +709,8 @@ struct Writer
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 };
-/* Write graph. */
-void write_graph(const Graph &g, Writer &w)
+/* Write schema 8 records or schema 9 records with explicit interface-edge modes. */
+void write_graph(const Graph &g, Writer &w, unsigned int version)
 {
 
     /* Computation / Вычисление и обновление состояния. */
@@ -723,6 +725,9 @@ void write_graph(const Graph &g, Writer &w)
             w.text_field(o.text);
         w.ref(o.prototype);
         w.ref(o.metatable);
+        if (version >= FVM_GRAPH_SNAPSHOT_INTERFACES_VERSION)
+            w.byte(o.interfaces_are_prototypes ? FVM_GRAPH_INTERFACES_PROTOTYPES
+                                               : FVM_GRAPH_INTERFACES_CONSTRUCTORS);
         w.u32((unsigned long)o.implemented_interfaces.size());
         for (size_t j = 0; j < o.implemented_interfaces.size(); ++j)
             w.ref(o.implemented_interfaces[j]);
@@ -1026,6 +1031,12 @@ Graph read_graph(Reader &r, unsigned int version)
             o.text = r.text_field();
         o.prototype = r.ref();
         o.metatable = r.ref();
+        if (version >= FVM_GRAPH_SNAPSHOT_INTERFACES_VERSION)
+        {
+            unsigned int mode = r.byte();
+            require(mode == FVM_GRAPH_INTERFACES_CONSTRUCTORS || mode == FVM_GRAPH_INTERFACES_PROTOTYPES);
+            o.interfaces_are_prototypes = mode == FVM_GRAPH_INTERFACES_PROTOTYPES;
+        }
         if (version >= 6)
         {
             size_t count = r.count();
@@ -1186,7 +1197,7 @@ Graph read_graph(Reader &r, unsigned int version)
         {
             validate_ref(o.implemented_interfaces[j], n);
             require(o.implemented_interfaces[j] != none);
-            require(fvm_class_kind(g.objects[o.implemented_interfaces[j]].kind));
+            require(o.interfaces_are_prototypes || fvm_class_kind(g.objects[o.implemented_interfaces[j]].kind));
         }
         validate_value(o.state, n);
         validate_callback(o.invocable, n);
@@ -1229,7 +1240,7 @@ Graph read_graph(Reader &r, unsigned int version)
                 data.properties.size() == (color.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER ? 20 : 8) && data.indexed.empty() &&
                 data.methods.empty() && data.metamethods.empty() && data.accessors.empty() &&
                 data.method_values.empty() && data.watchers.empty() && data.attributes.empty() &&
-                data.implemented_interfaces.empty() && !data.invocable.builtin &&
+                data.implemented_interfaces.empty() && !data.interfaces_are_prototypes && !data.invocable.builtin &&
                 data.invocable.name.empty() && !data.constructable.builtin &&
                 data.constructable.name.empty());
         const char *names[] = {"redMultiplier",   "greenMultiplier", "blueMultiplier",
@@ -1260,7 +1271,7 @@ Graph read_graph(Reader &r, unsigned int version)
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 3 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
-                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() && !data.interfaces_are_prototypes &&
                 !data.invocable.builtin && data.invocable.name.empty() &&
                 !data.constructable.builtin && data.constructable.name.empty());
         const char *names[] = {"blurX", "blurY", "quality"};
@@ -1287,7 +1298,7 @@ Graph read_graph(Reader &r, unsigned int version)
                 data.state.type == FVM_VALUE_UNDEFINED && data.indexed.empty() &&
                 data.methods.empty() && data.metamethods.empty() && data.accessors.empty() &&
                 data.method_values.empty() && data.watchers.empty() && data.attributes.empty() &&
-                data.implemented_interfaces.empty() && !data.invocable.builtin &&
+                data.implemented_interfaces.empty() && !data.interfaces_are_prototypes && !data.invocable.builtin &&
                 data.invocable.name.empty() && !data.constructable.builtin &&
                 data.constructable.name.empty());
         const char *names[] = {"matrixX", "matrixY", "divisor", "bias",  "preserveAlpha",
@@ -1341,7 +1352,7 @@ Graph read_graph(Reader &r, unsigned int version)
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 1 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
-                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() && !data.interfaces_are_prototypes &&
                 !data.invocable.builtin && data.invocable.name.empty() &&
                 !data.constructable.builtin && data.constructable.name.empty());
         fvm_detail::map<fvm_detail::string, Value>::const_iterator reference =
@@ -1365,7 +1376,7 @@ Graph read_graph(Reader &r, unsigned int version)
                 data.state.type == FVM_VALUE_UNDEFINED && data.properties.size() == 2 &&
                 data.indexed.empty() && data.methods.empty() && data.metamethods.empty() &&
                 data.accessors.empty() && data.method_values.empty() && data.watchers.empty() &&
-                data.attributes.empty() && data.implemented_interfaces.empty() &&
+                data.attributes.empty() && data.implemented_interfaces.empty() && !data.interfaces_are_prototypes &&
                 !data.invocable.builtin && data.invocable.name.empty() &&
                 !data.constructable.builtin && data.constructable.name.empty());
         fvm_detail::map<fvm_detail::string, Value>::iterator receiver =
@@ -1385,7 +1396,7 @@ Graph read_graph(Reader &r, unsigned int version)
              watcher != g.objects[i].watchers.end(); ++watcher)
         {
             const Object &descriptor = g.objects[watcher->second.object];
-            require(descriptor.kind == FVM_RESOURCE_PLAIN_OBJECT && descriptor.implemented_interfaces.empty() &&
+            require(descriptor.kind == FVM_RESOURCE_PLAIN_OBJECT && descriptor.implemented_interfaces.empty() && !descriptor.interfaces_are_prototypes &&
                     descriptor.prototype == none && descriptor.metatable == none);
             fvm_detail::map<fvm_detail::string, Value>::iterator handler =
                 descriptor.properties.find("handler");
@@ -1405,7 +1416,7 @@ Graph read_graph(Reader &r, unsigned int version)
     }
     return g;
 }
-const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, 8};
+const unsigned char magic[8] = {'F', 'V', 'M', 'G', 0, 0, 0, FVM_GRAPH_BASE_WIRE_VERSION};
 
 /* Decode the current value. */
 Graph decode(const void *data, size_t size)
@@ -1413,9 +1424,9 @@ Graph decode(const void *data, size_t size)
 
     /* Computation / Вычисление и обновление состояния. */
     require(data && size >= 16 && size <= max_bytes);
-    require(!std::memcmp(data, magic, 7));
-    unsigned int version = ((const unsigned char *)data)[7];
-    require(version >= 1 && version <= 8);
+    require(!std::memcmp(data, magic, FVM_GRAPH_MAGIC_PREFIX_BYTES));
+    unsigned int version = ((const unsigned char *)data)[FVM_GRAPH_VERSION_OFFSET];
+    require(version >= FVM_GRAPH_MIN_WIRE_VERSION && version <= FVM_GRAPH_WIRE_VERSION);
     Reader header(data, size);
     header.offset = 8;
 
@@ -1430,7 +1441,7 @@ Graph decode(const void *data, size_t size)
     return read_graph(reader, version);
 }
 
-/* Encode the current value. */
+/* Encode with the oldest compatible schema, retaining installed empty snapshot lists. */
 void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t *size)
 {
 
@@ -1439,11 +1450,18 @@ void encode(FVM_Context *c, const FVM_Value &value, unsigned char **data, size_t
     Writer body;
 
     /* Computation / Вычисление и обновление состояния. */
-    write_graph(graph, body);
+    unsigned int version = FVM_GRAPH_BASE_WIRE_VERSION;
+    for (size_t i = 0; i < graph.objects.size(); ++i)
+        if (graph.objects[i].interfaces_are_prototypes)
+        {
+            version = FVM_GRAPH_SNAPSHOT_INTERFACES_VERSION;
+            break;
+        }
+    write_graph(graph, body, version);
     require(body.bytes.size() <= max_bytes - 16, FVM_UNSUPPORTED);
     Writer header;
     for (size_t i = 0; i < 8; ++i)
-        header.byte(magic[i]);
+        header.byte(i == FVM_GRAPH_VERSION_OFFSET ? version : magic[i]);
 
     /* Computation / Вычисление и обновление состояния. */
     header.u32((unsigned long)body.bytes.size());
@@ -1708,6 +1726,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 dst->watchers[p->first] = restore_value(c, p->second, objects).object;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->attributes = src.attributes;
+            dst->interfaces_are_prototypes = src.interfaces_are_prototypes;
             /* [GC:] Restore private interface edges using destination graph identities. */
             for (size_t j = 0; j < src.implemented_interfaces.size(); ++j)
                 dst->implemented_interfaces.push_back(objects[src.implemented_interfaces[j]]);

@@ -13,8 +13,9 @@ Ordinary prototype links are walked separately from interface edges. Interface
 membership follows declared interface edges, not the ordinary prototype chains
 of interface nodes. Existing private transport metadata stores interface class
 objects; this service adapts their current own object-valued prototype fields.
-That representation is preserved, so replacing an interface prototype after
-ImplementsOp still differs from a frozen prototype-edge model and remains open.
+That was the v0.283 representation. Since v0.284, loaded declarations retain
+frozen prototype edges with an explicit mode; legacy graphs/host declarations
+keep constructor references. See [INTERFACE_SNAPSHOTS.md](INTERFACE_SNAPSHOTS.md).
 Cycles and excessive graphs retain bounded runtime error policies.
 
 [GC:] Original value/class, boxed class and prototype are fixed roots through

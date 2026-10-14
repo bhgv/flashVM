@@ -21,4 +21,6 @@
 #define FVM_AVM1_BRANCH_MODULUS 65536L    /* Subtract 2^16 to sign-extend a branch into long. */
 #define FVM_AVM1_CAST_OPERANDS 2U /* CastOp consumes class followed by the original value. */
 #define FVM_AVM1_INSTANCE_OF_OPERANDS 2U /* InstanceOf consumes value followed by class. */
+#define FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS 2U /* Interface count and class above interface values. */
+#define FVM_AVM1_IMPLEMENTS_FIRST_INTERFACE 3U /* Offset below class to the first interface value. */
 #endif

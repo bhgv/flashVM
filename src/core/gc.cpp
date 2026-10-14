@@ -241,6 +241,7 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->prototype, pending);
         /* [GC:] Interface inheritance adds constructor edges to the reachable graph. */
+        /* [GC:] Trace both legacy constructor references and frozen interface prototype edges. */
         for (size_t j = 0; j < o->implemented_interfaces.size(); ++j)
             /* [GC:] Retain each implemented interface and its transitive declarations. */
             mark_object(o->implemented_interfaces[j], pending);

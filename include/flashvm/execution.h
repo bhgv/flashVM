@@ -5,6 +5,8 @@
 #include "value.h"
 /* Context-local legacy register bank shared by generated and interpreted activations. */
 #define FVM_EXEC_GLOBAL_REGISTER_COUNT 4U
+/* Maximum explicit interface values accepted by the value-based declaration service. */
+#define FVM_EXEC_MAX_INTERFACE_ARGUMENTS 65536U
 /* Maximum argument count accepted by the bounded method execution service. */
 #define FVM_EXEC_MAX_METHOD_ARGUMENTS 65535U
 /* Preserve the unloaded named-constructor argument-vector bound. */
@@ -125,6 +127,13 @@ extern "C"
      * [GC:] Retains receiver, defining prototype, function and arguments through getters/body. */
     FVM_API FVM_Result fvm_exec_invoke_member(FVM_Context *, FVM_Object *, const FVM_Value *name,
                                                unsigned int argc, const FVM_Value *argv, FVM_Value *out);
+    /* Convert an ImplementsOp count; loaded objects yield zero without valueOf callbacks. */
+    FVM_API FVM_Result fvm_exec_interface_count(FVM_Context *, const FVM_Value *,
+                                                 size_t available, unsigned int *out);
+    /* Install the first loaded SWF7+ interface prototype list without invoking getters.
+     * Host calls retain legacy constructor-edge declarations; zero loaded entries are a noop. */
+    FVM_API FVM_Result fvm_exec_implements(FVM_Context *, const FVM_Value *constructor,
+                                            unsigned int count, const FVM_Value *interfaces);
     /* Test class/prototype identity; loaded operands use versioned boxing and own stored prototype.
      * [GC:] Retains original values through coercion; errors preserve output and aliasing is allowed. */
     FVM_API FVM_Result fvm_exec_instance_of(FVM_Context *, const FVM_Value *,

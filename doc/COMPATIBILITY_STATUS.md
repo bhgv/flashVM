@@ -2324,3 +2324,13 @@ raw own prototype lookup, versioned field spelling, both boxing phases and
 separate interface edges. C89, action, GC/exception, three-phase allocator and
 host-policy fixtures cover the change. Interface snapshots, full property folding,
 super and removed clips remain open. Проверка не вызывает getter prototype.
+
+### v0.284 — first-install interface snapshots and graph v9
+
+[INTERFACE_SNAPSHOTS.md](INTERFACE_SNAPSHOTS.md) records SWF7–8 prototype capture,
+first/empty-list retention, count conversion and version gating. Mode-aware GC
+and graph identity preserve snapshots through memory/file/localhost network
+channels. Graph v9 is emitted only for new snapshot state; ordinary graphs remain
+byte-compatible v8 and schemas 1–8 still decode. Allocation rollback and malformed
+flags are covered. Historical player/count differences and full roadmap gates
+remain open. Снимки интерфейсов сохраняются при смене поля конструктора и переносе.
