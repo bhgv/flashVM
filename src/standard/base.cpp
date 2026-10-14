@@ -1140,7 +1140,19 @@ FVM_Result loaded_sort(FVM_Context *c, fvm_detail::vector<SortItem> &items,
     return FVM_OK;
 }
 
-/* Sort impl. */
+/* Convert numeric sort options through wrapping Int32 and retain the five known bits. */
+unsigned int loaded_sort_options(double value)
+{
+    if (value != value || value == HUGE_VAL || value == -HUGE_VAL || value == 0)
+        return 0;
+    double integer = value < 0 ? std::ceil(value) : std::floor(value);
+    double wrapped = std::fmod(integer, 4294967296.0);
+    if (wrapped < 0)
+        wrapped += 4294967296.0;
+    return (unsigned int)((unsigned long)wrapped & 31UL);
+}
+
+/* Sort captured elements with loaded or host argument and comparison semantics. */
 FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, const SortSpec *spec)
 {
@@ -1153,6 +1165,12 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     /* Initialization / Инициализация локального состояния. */
     unsigned int flags = 0;
     FVM_Object *callback = 0;
+    if (c->swf_loaded && !spec && n && args[0].type != FVM_VALUE_OBJECT &&
+        args[0].type != FVM_VALUE_NUMBER)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     if (!spec && n && args[0].type == FVM_VALUE_OBJECT)
     {
         int callable = 0;
@@ -1165,13 +1183,24 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     }
     if (!spec && n && (args[0].type != FVM_VALUE_OBJECT || n > 1))
     {
-        double value = 0;
-        FVM_Result r = fvm_value_to_number(c, args + (callback ? 1 : 0), &value);
-        if (r != FVM_OK)
-            return r;
-        if (value != value || value < 0 || value > 31 || value != std::floor(value))
-            return FVM_INVALID_ARGUMENT;
-        flags = (unsigned int)value;
+        if (c->swf_loaded)
+        {
+            const FVM_Value *option = args;
+            if (callback || (n > 1 && args[1].type == FVM_VALUE_NUMBER))
+                option = args + 1;
+            if (option->type == FVM_VALUE_NUMBER)
+                flags = loaded_sort_options(option->number);
+        }
+        else
+        {
+            double value = 0;
+            FVM_Result r = fvm_value_to_number(c, args + (callback ? 1 : 0), &value);
+            if (r != FVM_OK)
+                return r;
+            if (value != value || value < 0 || value > 31 || value != std::floor(value))
+                return FVM_INVALID_ARGUMENT;
+            flags = (unsigned int)value;
+        }
     }
     if (spec && !spec->flags.empty())
         flags = c->swf_loaded ? spec->flags[0] : spec->flags[0] & 12;
@@ -1384,7 +1413,14 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         return fvm_array_generic(c, o, "sortOn", n, a, out, sort_on);
 
     if (!n)
+    {
+        if (c->swf_loaded)
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
         return FVM_INVALID_ARGUMENT;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     SortSpec spec;

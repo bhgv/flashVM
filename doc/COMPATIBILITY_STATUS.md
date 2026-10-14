@@ -1240,3 +1240,19 @@ remain open, as do all roadmap stages.
 
 Порядок удаления хвоста и записи readonly length исправлен. Защищённые
 свойства не удерживают длину; все стадии роудмапа остаются открытыми.
+
+## v0.173 — sort argument dispatch / аргументы sort
+
+Loaded sort wraps numeric options through Int32 and masks known bits; a second
+Number overrides the first Number. Nonnumeric comparator options are ignored.
+Other primitive first arguments return undefined without sorting; empty sortOn
+returns undefined. Unloaded validation is preserved.
+[RU/EN details](ARRAY_LEGACY_SORT_ARGUMENTS.md). SWF4..8 tests cover fractions,
+high/wrapping options, NaN/infinities, ignored primitives and numeric overloads.
+Full sortOn dispatch, noncallable Object behavior and all stages remain open.
+Evidence: AGG 334/Cairo 333 tests, nine focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, fifteen byte-exact original SWFs.
+Four AGG launch failures passed after restoring executable permissions.
+
+Исправлены числовые flags и часть перегрузок загруженной сортировки;
+полнота Array и завершение стадий не заявлены.

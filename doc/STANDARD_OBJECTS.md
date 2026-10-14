@@ -17,8 +17,10 @@ traced descriptor retains closures and the original receiver across channels.
 property.h exposes the AS flags DONT_ENUM=1, DONT_DELETE=2, READ_ONLY=4 and deletion.
 ASSetPropFlags changes comma-separated names or all existing own properties.
 Data writes and deletion respect flags; Array snapshot mutators retain protected
-indexed destinations. Length truncation stops at a nondeletable highest slot.
-Readonly length blocks extension through both named and indexed writes.
+indexed destinations. Loaded Array protected tails can remain outside length;
+readonly length prevents length storage while permitting prior tail deletion
+and indexed writes beyond length. Unloaded mode retains protected-tail clamping
+and readonly extension guards.
 
 Array stores sparse indices and a uint32 length. Canonical numeric property names
 alias indexed entries; leading zero names remain ordinary properties, as does
@@ -27,11 +29,14 @@ InitArray singleton is an element, including negative/fractional numbers.
 The methods are push, pop, shift, unshift, reverse, slice, splice, concat, join,
 toString, toLocaleString, sort and sortOn. Slice/join/concat use charged work instead of the former range caps and
 read inherited indices; join handles recursive arrays. See the detailed
-[limitations](ARRAY_CONCAT_SPARSE.md). Stable merge sorting supports numeric, descending, uniqueness,
+[limitations](ARRAY_CONCAT_SPARSE.md). Sorting supports numeric, descending, uniqueness,
 index-preview and ASCII-insensitive options. Numeric strings retain text ordering;
 text comparisons use UTF-16 units. sortOn accepts field/option arrays and ignores
 an option-array length mismatch. Imported methods can create usable arrays even
 without a destination global Array installation. String.split now returns Array.
+Loaded sorting follows reference quicksort ordering without equal-item stability;
+see [ordering](ARRAY_LEGACY_SORT_ORDER.md) and
+[arguments](ARRAY_LEGACY_SORT_ARGUMENTS.md).
 
 ## Date and Function
 
