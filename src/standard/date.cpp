@@ -435,7 +435,9 @@ FVM_Result components(FVM_Context *c, unsigned int n, const FVM_Value *args, boo
             return FVM_OK;
         }
     }
-    if (f.year >= 0 && f.year <= 99)
+    /* Loaded component construction also offsets negative years below 100.
+     * Host construction retains the ordinary 0..99 adjustment. */
+    if (c->swf_loaded ? f.year < 100 : f.year >= 0 && f.year <= 99)
         f.year += 1900;
     if (local)
         return normalized_utc(f, out);
