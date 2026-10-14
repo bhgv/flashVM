@@ -10,6 +10,7 @@
 #include "base_state.hpp"
 #include "flashvm/table.h"
 #include "flashvm/standard.h"
+#include "flashvm/property.h"
 #include "flashvm/utf8.h"
 #include <cmath>
 #include <cstring>
@@ -731,7 +732,16 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     object->resource_result_valid = true;
     object->resource_result = text;
     object->prototype = prototype.object;
-    attach_length(object);
+    if (c->swf_loaded)
+    {
+        /* Boxed String length is own data; changing it does not change stored text. */
+        FVM_Value count_value;
+        fvm_value_number(&count_value, (double)units.size());
+        object->properties["length"] = count_value;
+        object->attributes["length"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+    }
+    else
+        attach_length(object);
     fvm_value_undefined(out);
 
     /* Computation / Вычисление и обновление состояния. */

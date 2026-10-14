@@ -1481,3 +1481,21 @@ Borrowed value methods для не-String больше не возвращают
 Evidence for v0.186: AGG 347/Cairo 346 tests, twelve focused checks each in Linux
 portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
 Two AGG launch failures passed after restoring execute bits.
+
+## v0.187 — own boxed String length / собственное length
+
+Loaded String construction defines own writable UTF16-count length data with
+DONT_ENUM | DONT_DELETE instead of a computed getter. Public length does not
+alter stored text or methods; READ_ONLY protects the data. Unloaded construction
+and existing graph/ABI layouts are preserved. [RU/EN details](STRING_LEGACY_LENGTH.md).
+SWF4..8/host tests cover installation-before-load, flags, numeric/readonly/Object
+writes, text independence, cycles/NUL through traced GC/channel transfer, aliasing,
+nondelete protection and own deletion. Prototype length, host-before-load instances,
+boxed overrides and all roadmap stages remain open.
+
+Собственное length загруженного boxed String стало data property; проверены
+защита flags и независимые текст/данные после GC и передачи.
+
+Evidence for v0.187: AGG 348/Cairo 347 tests, fourteen focused checks each in Linux
+portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
+Four AGG launch failures passed after restoring execute bits.
