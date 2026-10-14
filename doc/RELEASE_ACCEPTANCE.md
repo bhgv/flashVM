@@ -185,3 +185,11 @@ service. A prototype-getter GC lifetime defect has a reproducing memory check an
 an allocation-free temporary root. Semantic root/count/depth constants are named.
 Complete construction/boxing semantics, six machine-code backends and all target
 platform executions remain release gates. Все стадии 1–9 остаются открытыми.
+
+## v0.265 — value-based string/character operations
+
+Three string/character operations now have separate implementation files and C89
+interfaces usable without interpreter stacks or instruction decoding. Root,
+operand and Unicode constants are documented macros. Legacy byte encodings,
+full standard-object/AVM1 semantics, machine-code JIT and all target-platform
+runs remain release gates. Все стадии 1–9 остаются открытыми.

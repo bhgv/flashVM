@@ -67,16 +67,6 @@ static unsigned long u32(const unsigned char *p)
     return (unsigned long)p[0] | ((unsigned long)p[1] << FVM_AVM1_BYTE_BITS) | ((unsigned long)p[2] << (2 * FVM_AVM1_BYTE_BITS)) |
            ((unsigned long)p[3] << (3 * FVM_AVM1_BYTE_BITS));
 }
-/* Convert a numeric operand to the low 32 unsigned bits without undefined float-to-int casts. */
-static unsigned long integer_bits(double value)
-{
-    if (value != value || value == std::numeric_limits<double>::infinity() ||
-        value == -std::numeric_limits<double>::infinity())
-        return 0;
-    value = value < 0 ? std::ceil(value) : std::floor(value);
-    value = std::fmod(value, FVM_UINT32_MODULUS);
-    return (unsigned long)(value < 0 ? value + FVM_UINT32_MODULUS : value);
-}
 /* Use numeric string truth in loaded SWFs below version 7, preserving conversion failures. */
 static FVM_Result action_truth(FVM_Context *context, const FVM_Value &value, bool &out)
 {
@@ -1296,74 +1286,48 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_STRING_LENGTH ||
                      a.op == FVM_AVM1_ACTION_MB_STRING_LENGTH)
-            { /* StringLength/MBStringLength count UTF-16 units in SWF 6+ and ASCII legacy input. */
+            { /* StringLength/MBStringLength share value-based length semantics. */
                 if (stack.empty())
                     return FVM_ERROR;
-                FVM_Value text;
-                FVM_Result status = fvm_avm1_string(c, stack.back(), &text);
+                FVM_Value output;
+                FVM_Result status = fvm_exec_string_length(c, &stack.back(), &output);
                 if (status != FVM_OK)
                     return status;
-                fvm_detail::vector<unsigned int> units;
-                status = fvm_string_units(text, units);
-                if (status != FVM_OK)
-                    return status;
-                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
-                    for (size_t unit = 0; unit < units.size(); ++unit)
-                        if (units[unit] > 127)
-                            return FVM_UNSUPPORTED;
-                fvm_value_number(&stack.back(), (double)units.size());
+                stack.back() = output;
             }
             else if (a.op == FVM_AVM1_ACTION_STRING_EXTRACT ||
                      a.op == FVM_AVM1_ACTION_MB_STRING_EXTRACT)
             { /* StringExtract/MBStringExtract convert length, one-based start, then input text. */
-                if (stack.size() < 3)
+                if (stack.size() < FVM_AVM1_STRING_EXTRACT_OPERANDS)
                     return FVM_ERROR;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_string_extract(
-                    c, &stack[stack.size() - 3], &stack[stack.size() - 2], &stack.back(), &output);
+                    c, &stack[stack.size() - FVM_AVM1_STRING_EXTRACT_OPERANDS],
+                    &stack[stack.size() - FVM_AVM1_STRING_EXTRACT_START_OFFSET], &stack.back(),
+                    &output);
                 if (status != FVM_OK)
                     return status;
-                stack.resize(stack.size() - 2);
+                stack.resize(stack.size() - (FVM_AVM1_STRING_EXTRACT_OPERANDS - 1));
                 stack.back() = output;
             }
             else if (a.op == FVM_AVM1_ACTION_CHAR_TO_ASCII ||
                      a.op == FVM_AVM1_ACTION_MB_CHAR_TO_ASCII)
-            { /* CharToAscii/MBCharToAscii return the first UTF-16 unit, replacing surrogates. */
+            { /* CharToAscii/MBCharToAscii share value-based character reads. */
                 if (stack.empty())
                     return FVM_ERROR;
-                FVM_Value text;
-                FVM_Result status = fvm_avm1_string(c, stack.back(), &text);
+                FVM_Value output;
+                FVM_Result status = fvm_exec_char_code(c, &stack.back(), &output);
                 if (status != FVM_OK)
                     return status;
-                fvm_detail::vector<unsigned int> units;
-                status = fvm_string_units(text, units);
-                if (status != FVM_OK)
-                    return status;
-                unsigned int code = units.empty() ? 0 : units[0];
-                /* Legacy byte/locale encodings remain unsupported for non-ASCII input. */
-                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6 && code > 127)
-                    return FVM_UNSUPPORTED;
-                if (code >= 0xd800 && code <= 0xdfff)
-                    code = 0xfffd;
-                fvm_value_number(&stack.back(), code);
+                stack.back() = output;
             }
             else if (a.op == FVM_AVM1_ACTION_ASCII_TO_CHAR ||
                      a.op == FVM_AVM1_ACTION_MB_ASCII_TO_CHAR)
-            { /* AsciiToChar/MBAsciiToChar wrap to Uint16; zero is empty and surrogates are
-                 replaced. */
+            { /* AsciiToChar/MBAsciiToChar share value-based character construction. */
                 if (stack.empty())
                     return FVM_ERROR;
-                double number = 0;
-                FVM_Result status = fvm_avm1_number(c, &stack.back(), &number);
-                if (status != FVM_OK)
-                    return status;
-                unsigned short code = (unsigned short)(integer_bits(number) & FVM_UTF16_UNIT_MASK);
-                if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6 && code > 127)
-                    return FVM_UNSUPPORTED;
-                if (code >= 0xd800 && code <= 0xdfff)
-                    code = 0xfffd;
                 FVM_Value output;
-                status = fvm_value_string_utf16(c, &code, code ? 1 : 0, &output);
+                FVM_Result status = fvm_exec_char_from_code(c, &stack.back(), &output);
                 if (status != FVM_OK)
                     return status;
                 stack.back() = output;

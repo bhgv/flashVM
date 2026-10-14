@@ -2155,3 +2155,13 @@ free during a script constructor's prototype getter is fixed by retaining the
 fresh instance until invocation. C89/interpreter, GC, thrown-body and allocator
 fixtures exercise the supported branches. Full boxing/scope/encoding and all
 roadmap gates remain open. Конструктор и промежуточный экземпляр защищены от GC.
+
+### v0.265 — common string length and character services
+
+[STRING_CHARACTER_SERVICES.md](STRING_CHARACTER_SERVICES.md) records three C89
+unary services and their ordinary/multibyte action adapters. NUL/surrogate/Uint16
+behavior, aliases, coercion-GC/exception and allocation restoration are exercised;
+root layouts, substring origin and Unicode bounds use documented macros. The
+loaded SWF4–5 ASCII-only restriction is preserved: historical byte/locale details
+remain open. Candidate string_ops_swf6 is actually SWF15 and is excluded without
+header/oracle edits. Все стадии 1–9 остаются открытыми.

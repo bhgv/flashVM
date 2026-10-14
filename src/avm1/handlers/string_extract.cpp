@@ -1,5 +1,7 @@
 /* FlashVM: StringExtract/MBStringExtract across the supported Flash versions. */
 #include "support.hpp"
+#include "string_operation_constants.h"
+#include "../../core/unicode_constants.h"
 /* Convert a numeric operand to the low 32 unsigned bits without undefined float-to-int casts. */
 static unsigned long integer_bits(double value)
 {
@@ -26,18 +28,20 @@ extern "C" FVM_Result fvm_exec_string_extract(FVM_Context *c, const FVM_Value *i
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 3);
-        roots.values[0] = *input;
-        roots.values[1] = *start;
-        roots.values[2] = *length;
+        FVM_ExecutionRoots roots(c, FVM_STRING_EXTRACT_ROOT_COUNT);
+        roots.values[FVM_STRING_EXTRACT_INPUT_ROOT] = *input;
+        roots.values[FVM_STRING_EXTRACT_START_ROOT] = *start;
+        roots.values[FVM_STRING_EXTRACT_LENGTH_ROOT] = *length;
         /* [GC:] Retain all three operands while conversion callbacks may invoke script. */
         double length_number = 0, start_number = 0;
-        FVM_Result status = fvm_avm1_number(c, &roots.values[2], &length_number);
+        FVM_Result status =
+            fvm_avm1_number(c, &roots.values[FVM_STRING_EXTRACT_LENGTH_ROOT], &length_number);
         if (status == FVM_OK)
-            status = fvm_avm1_number(c, &roots.values[1], &start_number);
+            status =
+                fvm_avm1_number(c, &roots.values[FVM_STRING_EXTRACT_START_ROOT], &start_number);
         FVM_Value text, output;
         if (status == FVM_OK)
-            status = fvm_avm1_string(c, roots.values[0], &text);
+            status = fvm_avm1_string(c, roots.values[FVM_STRING_EXTRACT_INPUT_ROOT], &text);
         if (status != FVM_OK)
             return status;
         fvm_detail::vector<unsigned int> units;
@@ -46,11 +50,13 @@ extern "C" FVM_Result fvm_exec_string_extract(FVM_Context *c, const FVM_Value *i
             return status;
         if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
             for (size_t unit = 0; unit < units.size(); ++unit)
-                if (units[unit] > 127)
+                if (units[unit] >= FVM_UTF8_ASCII_LIMIT)
                     return FVM_UNSUPPORTED;
         double signed_start = signed_bits(integer_bits(start_number));
         double signed_length = signed_bits(integer_bits(length_number));
-        size_t start = signed_start >= 1 ? (size_t)signed_start - 1 : 0;
+        size_t start = signed_start >= FVM_STRING_EXTRACT_FIRST_POSITION
+                           ? (size_t)signed_start - FVM_STRING_EXTRACT_FIRST_POSITION
+                           : 0;
         size_t end = units.size();
         if (signed_length >= 0 && start <= end && (size_t)signed_length <= end - start)
             end = start + (size_t)signed_length;

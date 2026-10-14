@@ -37,6 +37,8 @@
 #define FVM_UNICODE_SURROGATE_MIN 0xd800UL
 /* Last surrogate code unit; invalid in scalar UTF-8. */
 #define FVM_UNICODE_SURROGATE_MAX 0xdfffUL
+/* Replacement code unit used by legacy character operations for surrogate inputs. */
+#define FVM_UNICODE_REPLACEMENT_CHARACTER 0xfffdU
 /* Leading-bit marker identifying a continuation byte. */
 #define FVM_UTF8_CONTINUATION_MARKER 0x80U
 /* Smallest non-overlong two-byte scalar value. */

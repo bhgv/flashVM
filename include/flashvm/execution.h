@@ -96,6 +96,12 @@ extern "C"
     FVM_API FVM_Result fvm_exec_string_extract(FVM_Context *, const FVM_Value *input,
                                                const FVM_Value *start, const FVM_Value *length,
                                                FVM_Value *result);
+    /* Count UTF-16 units after string coercion. Loaded SWF<6 non-ASCII remains unsupported. */
+    FVM_API FVM_Result fvm_exec_string_length(FVM_Context *, const FVM_Value *, FVM_Value *);
+    /* Read the first UTF-16 unit, replacing surrogates; empty strings yield zero. */
+    FVM_API FVM_Result fvm_exec_char_code(FVM_Context *, const FVM_Value *, FVM_Value *);
+    /* Wrap a coerced number to Uint16; zero yields empty, surrogates become replacement chars. */
+    FVM_API FVM_Result fvm_exec_char_from_code(FVM_Context *, const FVM_Value *, FVM_Value *);
     /* Select a display target from a value; empty paths reset and undefined follows SWF policy. */
     FVM_API FVM_Result fvm_exec_select_target(FVM_Context *, const FVM_Value *);
     /* Coerce and send a URL request; flags follow the public FVM_AVM1_URL_* contract. */

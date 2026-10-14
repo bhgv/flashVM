@@ -4,6 +4,8 @@
 #define FVM_AVM1_BYTE_BITS 8U    /* Bits in each encoded byte, independent of host word width. */
 #define FVM_AVM1_WORD_BYTES 2U   /* UI16 operand byte length. */
 #define FVM_AVM1_DWORD_BYTES 4U  /* UI32 operand and each half of an encoded double. */
+#define FVM_AVM1_STRING_EXTRACT_OPERANDS 3U /* StringExtract consumes input, start and length. */
+#define FVM_AVM1_STRING_EXTRACT_START_OFFSET 2U /* Start lies below the top length operand. */
 #define FVM_AVM1_DOUBLE_BYTES 8U /* Two little-endian words, high word first. */
 /* Named construction has a separate layout identity from ordinary invocation. */
 #define FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS 2U /* NewObject has count and name above arguments. */
