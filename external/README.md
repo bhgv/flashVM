@@ -7,6 +7,7 @@ pkg-config, or search for a system Cairo, Pixman, SQLite, zlib or AGG installati
 | Directory | Pinned version | When compiled |
 | --- | --- | --- |
 | mini_regex | Existing project implementation | Always |
+| flash_case | Ruffle 2372a4e, Flash UCS2 mappings; MIT | Loaded AVM1 casing; header only |
 | zlib | 1.3.1 | Always, for bounded CWS loading |
 | agg | AGG 2.4 core at the recorded fork commit | `GRAPHICS_AGG` |
 | cairo | 1.16.0, image + optional PNG/SVG | `GRAPHICS_CAIRO` or `IMAGE_CODECS` |

@@ -5,6 +5,7 @@
 #include "string_state.hpp"
 #include "../core/string_internal.hpp"
 #include "../../external/unicode/case_table.hpp"
+#include "../../external/flash_case/case_table.hpp"
 #include "base_state.hpp"
 #include "flashvm/table.h"
 #include "flashvm/standard.h"
@@ -488,6 +489,28 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
     FVM_Result r = decode(text, units);
     if (r != FVM_OK)
         return r;
+    if (c->swf_loaded)
+    {
+        /* Flash maps UCS2 units independently, without expansions or scalar casing. */
+        const unsigned short (*table)[2] = upper ? fvm_flash_uppercase : fvm_flash_lowercase;
+        size_t count = upper ? sizeof(fvm_flash_uppercase) / sizeof(fvm_flash_uppercase[0])
+                             : sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
+        for (size_t i = 0; i < units.size(); ++i)
+        {
+            size_t first = 0, last = count;
+            while (first < last)
+            {
+                size_t middle = first + (last - first) / 2;
+                if (table[middle][0] < units[i])
+                    first = middle + 1;
+                else
+                    last = middle;
+            }
+            if (first < count && table[first][0] == units[i])
+                units[i] = table[first][1];
+        }
+        return encode(c, units, 0, units.size(), out);
+    }
     fvm_detail::vector<unsigned long> scalars;
     for (size_t i = 0; i < units.size(); ++i)
     {
