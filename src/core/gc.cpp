@@ -207,6 +207,8 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
         mark_object(o->callable.root, pending);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->invocable.root, pending);
+        /* [GC:] Retain the context-local generated body capture while its function is live. */
+        mark_object(o->script_body.capture, pending);
         /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
         mark_object(o->constructable.root, pending);
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */

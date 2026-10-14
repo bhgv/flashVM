@@ -6,6 +6,7 @@
 /* Define FLASHVM INTERNAL RUNTIME HPP constant or compilation switch. */
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
+#include "flashvm/function.h"
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
@@ -94,6 +95,18 @@ struct FVM_AccessorEntry
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 };
 
+/* [GC:] Context-local generated body attachment; never included in graph serialization. */
+struct FVM_ScriptBodyEntry
+{
+    FVM_ScriptBody callback; /* Host-owned code entry, null selects the interpreter. */
+    void *userdata;          /* Host-owned opaque state. */
+    FVM_Object *capture;     /* [GC:] Same-context object traced with the function. */
+    /* Initialize fresh/deserialized objects without process-local code attachments. */
+    FVM_ScriptBodyEntry() : callback(0), userdata(0), capture(0)
+    {
+    }
+};
+
 /* Define FVM_Object struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
 struct FVM_Object
@@ -123,6 +136,7 @@ struct FVM_Object
     bool gc_marked; /* Reachability mark for the current collection. */
     /* [GC:] Проверяем или инициализируем количество явных корней объекта. */
     unsigned long gc_pins;   /* Explicit host roots retaining this object. */
+    FVM_ScriptBodyEntry script_body; /* [GC:] Optional native body and retained capture. */
     FVM_StackEntry callable; /* [GC:] Stack API callable entry. */
     FVM_NativeEntry invocable /* [GC:] Native function invocation entry. */,
         constructable; /* [GC:] Native constructor invocation entry. */

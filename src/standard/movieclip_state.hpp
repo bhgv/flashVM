@@ -6,6 +6,7 @@
 /* Define FVM MOVIECLIP STATE HPP constant or compilation switch. */
 #define FVM_MOVIECLIP_STATE_HPP
 #include "../core/runtime.hpp"
+#include "flashvm/execution.h"
 /* Build constructor and prototype for movieclip. */
 FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
@@ -25,9 +26,9 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *, FVM_Object *, unsign
 /* Publish an already-coerced intrinsic scalar; unsupported dimensions/system fields stay gated. */
 FVM_Result fvm_movieclip_set_action_property(FVM_Context *, FVM_Object *, unsigned int,
                                             const FVM_Value &);
-/* Apply a timeline Action control directly, independently from replaceable script methods. */
-FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, unsigned int,
-                                     const FVM_Value *, bool playing);
+/* Apply a semantic timeline command directly, independently from replaceable script methods. */
+FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
+                                     const FVM_Value *, int playing);
 /* Resolve display children and object properties along a counted AVM1 path. */
 FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **);
 /* Build the current counted AVM1 dot path directly from display state. */

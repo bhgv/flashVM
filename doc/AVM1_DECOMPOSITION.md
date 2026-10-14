@@ -1,0 +1,133 @@
+# AVM1 execution services / Декомпозиция исполнения AVM1
+
+Development checkpoint v0.226. The large handlers below moved from
+`src/avm1/interpreter.cpp` into `src/avm1/handlers/`. Each implementation file
+owns one service and its supported Flash-version variants; private helpers stay
+with that service. The interpreter retains instruction framing, stack arity,
+operand order, branches, register access, function-definition parsing and
+exception-block orchestration. No roadmap stage is marked complete.
+
+Контрольная точка v0.226. Крупные обработчики вынесены во вложенную папку
+`src/avm1/handlers/`: один основной сервис на файл, рядом его приватные детали
+и варианты поведения для версий Flash. В интерпретаторе остаются декодирование,
+проверки/перекладка стека и управление потоком исполнения.
+
+| File in handlers/ | Service | Retained semantics / Сохранённое поведение |
+| --- | --- | --- |
+| numeric.cpp | fvm_exec_numeric | Numeric arithmetic, remainder, 32-bit operations; coercion order, pre-SWF5 division error, SWF8 logical-shift result. |
+| compare.cpp | fvm_exec_compare | Add2, loose/strict equality, Less2/Greater; primitive hints, coercion order, counted UTF-16 string ordering, NaN rules. |
+| string_extract.cpp | fvm_exec_string_extract | StringExtract and MBStringExtract; length/start/text conversion order, Int32 wrapping, UTF-16 ranges and legacy ASCII gate. |
+| member.cpp | fvm_exec_member | GetMember/SetMember, counted keys, raw native table index distinction. |
+| display_property.cpp | fvm_exec_display_property | GetProperty/SetProperty, numeric index before target resolution, read-only gates and SWF7+ NaN name policy. |
+| select_target.cpp | fvm_exec_select_target | Empty-path reset, undefined SWF6/7 boundary, invalid target state. |
+| url.cpp | fvm_exec_url | Counted URL/target, target-before-URL conversion, flag validation and synchronous host sink. |
+| trace.cpp | fvm_exec_trace | Conversion even without a sink; trace-specific undefined spelling and host barrier. |
+| frame_control.cpp | fvm_exec_frame_control | NEXT/PREVIOUS/PLAY/STOP/GOTO commands; intrinsic MovieClip dispatch. |
+| call_frame.cpp | fvm_exec_call_frame | Number/label/clip:frame resolution and nested actions without seeking. |
+| script_call.cpp | fvm_avm1_call_script | Shared version-aware activation preparation: formals, arguments aliases, super, Function2 preloads, scopes and caller restoration. Private interpreter fallback only. |
+| native_binding.cpp | fvm_function_set_body | Validate and attach/remove a context-local generated body and GC capture. |
+| native_body.cpp | fvm_exec_native_body | Prepared-frame body entry, target/this restoration, result validation and finalizer-entry marker. Private activation dispatch. |
+
+## Public C contract / Публичный C-контракт
+
+`include/flashvm/execution.h` declares C89-compatible operations on explicit
+`FVM_Value` operands and semantic command enums. They accept no Action opcode,
+bytecode pointer, instruction offset or interpreter operand stack. Outputs may
+alias inputs; failed value services leave the output intact. Runtime context
+`FVM_Context` remains necessary for object ownership, GC, SWF-version policy,
+display targets and host services. This is independence from the interpreter,
+not independence from the managed runtime. Private `Execution` state is isolated
+in `execution_state.hpp` and never appears in the public ABI.
+
+C89-функции принимают значения и смысловые команды. Коды Action, пи-код,
+счётчик команд и стек интерпретатора не входят в их интерфейсы. `FVM_Context`
+нужен как среда объектов, GC, версионных правил и служб; он не передаёт
+обработчику детали декодирования. Результат можно записать поверх операнда;
+ошибка не меняет выходное значение. Изменения объектов, сделанные пользовательским
+кодом до ошибки, не откатываются.
+
+[GC:] Services validate same-context operands, then register mutable operand
+and intermediate roots without changing implicit this. Host URL/trace callbacks
+retain the ordinary native collection barrier. A generated body is a script
+entry and may collect; its activation, arguments, receiver, preloads/registers,
+function and capture are rooted. Extra generated-code temporaries must use
+`gc_roots.h` or live register slots. There is no conservative machine-stack scan.
+
+[GC:] Нативное тело работает как скриптовый вызов и может запускать GC. Его
+активация, arguments, this, super, регистры, функция и capture удерживаются.
+Дополнительные временные значения JIT обязан явно регистрировать через
+`gc_roots.h` либо хранить в живых регистровых слотах. Стек процессора не сканируется.
+
+## Generated body attachment / Привязка нативного тела
+
+`function.h` introduces `FVM_ScriptFrame` ABI 1 and `FVM_ScriptBody`.
+`fvm_function_set_body` keeps the original AVM1 body and metadata. Both bodies
+share the activation builder, including Function2's separate receiver/implicit
+this and suppress/preload policies. The descriptor exposes the actual arguments
+object even when its named binding is suppressed, prepared register slots, and
+undefined super when suppressed. Native code gets the prepared activation rather
+than constructing another calling convention.
+
+`fvm_function_set_body` сохраняет исходное тело и метаданные. При снятии привязки
+исполняется исходный AVM1. Нативное тело получает готовую область видимости,
+массив arguments, настоящий receiver, версионный implicit_this, super и регистры.
+Объект arguments доступен в дескрипторе даже при подавленном именованном binding.
+Код и userdata принадлежат хосту и должны жить до возврата всех активных вызовов.
+
+[GC:] Each call snapshots its code/userdata/capture before activation setup;
+self-unbinding affects later calls and cannot drop the running call's capture.
+Capture is marked through the function and temporary snapshot roots. The body
+returns ordinary `FVM_Result` statuses and uses `fvm_exception_raise` for script
+throws; result strings are copied/validated before roots leave scope. Scope,
+this, target, recursion depth and execution nesting restore on error/OOM.
+An armed finalizer is consumed only after successful entry preparation.
+
+Generated-code addresses, userdata and capture attachments are deliberately
+absent from graph serialization. A transferred function keeps its script body
+and executes it until the destination independently attaches generated code.
+The wire schema is unchanged; the existing embedding ABI is unchanged apart
+from additive APIs and the separately versioned new frame descriptor.
+
+Перенос через канал сохраняет скриптовое тело, но не переносит адрес машинного
+кода, userdata или capture привязки. После переноса функция интерпретируется;
+при необходимости принимающий контекст компилирует её заново. Схема графа прежняя.
+
+## Evidence and limitations / Проверки и границы
+
+Linux GCC/G++ C90/C++98, default DEFS.txt (AGG, fonts, image codecs, SQLite,
+OS ports and render jobs): all 426 CTest tests/examples passed. This includes
+existing version/coercion/GC/target/frame/URL tests and the reference-runner's
+generated FWS/CWS fixtures. New tests:
+
+- execution_services.c: direct C calls without bytecode, SWF4–8 numeric policies,
+  counted URL strings, trace, members, aliases and invalid arguments.
+- script_native_body.c: prepared activation, capture collection, explicit script
+  throw/recovery, self-unbinding, direct helper calls and channel fallback.
+- script_native_function2.cpp: SWF5–8 preloads and paired suppression flags,
+  receiver/this metadata, mutable register roots, finalizer entry and restoration.
+- execution_services_allocation.cpp: injected allocation failures throughout
+  shared activation/native entry and dynamic string addition; root/state recovery.
+
+A NO_GRAPHICS/NO_FONTS/NO_IMAGE_CODECS/NO_SQLITE/NO_OS_PORTS profile passed ten
+selected tests with ASan heap/global checks and UBSan. The restricted execution
+environment cannot provide /proc access: stack instrumentation and LeakSanitizer
+were disabled; runtime defaults were supplied by a separate validation-only
+link object, not committed project source. No complete memory-safety claim.
+
+Все 426 проверок полного профиля прошли. Отдельно прошли 10 проверок ASan/UBSan
+минимального профиля. Проверки стека ASan и утечек отключены из-за ограничений
+окружения. Исходный внешний 18-SWF корпус предыдущего сеанса отсутствует в этом
+рабочем каталоге и не заявляется повторно проверенным. Сгенерированные FWS/CWS
+fixtures runner проверены; это не независимая сверка с Flash Player.
+
+A JIT backend is not implemented here. Generated instructions still need their
+own instruction-budget accounting, safe points and source mappings; nested
+interpreted calls preserve the shared budget and ordinary debugger/exception
+state. Remaining interpreter-specific handlers can be moved behind the same
+value contract as their scope semantics are stabilized. Existing legacy string,
+MovieClip, Function2 and full SWF compatibility limitations remain open.
+
+Этот шаг создаёт общий слой для будущего JIT, но не сам JIT. Учёт машинных
+инструкций, safe points и привязка к исходникам нужны в backend. Оставшиеся
+короткие обработчики и orchestration работают в интерпретаторе. Полная
+совместимость Flash и платформенные стадии остаются открытыми.

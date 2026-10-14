@@ -3164,8 +3164,8 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
 }
 
 /* Apply timeline controls through built-in operations rather than replaceable method properties. */
-FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, unsigned int opcode,
-                                      const FVM_Value *frame, bool enabled)
+FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, FVM_ExecutionFrame command,
+                                       const FVM_Value *frame, int enabled)
 {
     if (!c || !clip || clip->owner != c)
         return FVM_INVALID_ARGUMENT;
@@ -3174,15 +3174,15 @@ FVM_Result fvm_movieclip_frame_control(FVM_Context *c, FVM_Object *clip, unsigne
         /* [GC:] Native seek/state updates cannot collect through host conversion callbacks. */
         FVM_NativeCallGuard guard(c);
         FVM_Value ignored;
-        if (opcode == 0x04)
+        if (command == FVM_EXEC_NEXT_FRAME)
             return next(c, clip, 0, 0, &ignored, 0);
-        if (opcode == 0x05)
+        if (command == FVM_EXEC_PREVIOUS_FRAME)
             return previous(c, clip, 0, 0, &ignored, 0);
-        if (opcode == 0x06 || opcode == 0x07)
-            return playing(c, clip, &ignored, opcode == 0x06);
-        if ((opcode != 0x81 && opcode != 0x8c && opcode != 0x9f) || !frame)
+        if (command == FVM_EXEC_PLAY || command == FVM_EXEC_STOP)
+            return playing(c, clip, &ignored, command == FVM_EXEC_PLAY);
+        if (command != FVM_EXEC_GOTO_FRAME || !frame)
             return FVM_INVALID_ARGUMENT;
-        return seek(c, clip, 1, frame, &ignored, opcode == 0x9f && enabled);
+        return seek(c, clip, 1, frame, &ignored, enabled != 0);
     }
     catch (const std::bad_alloc &)
     {

@@ -1,4 +1,4 @@
-Версия разработки: **0.225** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.226** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -207,3 +207,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 Файловые каналы и метатаблицы значений: [по-русски](doc/FILE_CHANNELS.ru.md), [по-английски](doc/FILE_CHANNELS.md).
 Текущий ABI — 2: нативные клиенты необходимо пересобрать. [Отчёт и ограничения](doc/FILE_CHANNELS_CHECKPOINT.ru.md).
+
+AVM1 decomposition / Декомпозиция: value-based C services and prepared native script
+bodies for future JIT reuse; file map, GC contract, tests and limitations:
+[AVM1_DECOMPOSITION.md](doc/AVM1_DECOMPOSITION.md).
