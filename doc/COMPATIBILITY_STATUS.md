@@ -1871,3 +1871,18 @@ Evidence: AGG 368/Cairo 367 full tests, seven focused checks each in Linux porta
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Expanded custom-shape fixture passed separately in all profiles;
 no launch failures in the full runs.
+
+
+## v0.232 — blank class sprites and super text
+
+Class-only DefineSprite streams may declare blank frames while containing only
+End tags. Their declared duration is retained through GC and graph transfer;
+partially populated timelines still reject mismatched frame counts. Callable
+super facades use Object text instead of Function text when Object.toString
+formats them. The unchanged pinned function_suppress_and_preload SWF now passes
+with byte-exact output, zero exit and empty stderr: selected corpus 18/22.
+Remaining probes: object_prototypes, this_swf5/6/7 (ActionWith unsupported).
+Linux AGG and Cairo each pass 433 tests after retrying environment execute-bit
+launch failures; five focused heap/global ASan+UBSan checks pass. Stack and leak
+instrumentation remain unavailable in this environment. All roadmap stages
+remain open; JIT and non-Linux execution are not claimed.

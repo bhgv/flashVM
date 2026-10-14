@@ -21,6 +21,8 @@ int main()
         assert(fvm_object_call(c,instance,"readThird",0,0,&out)==FVM_OK && out.type==FVM_VALUE_OBJECT && out.object==(version<=8?prototype(c,base):prototype(c,third)));
         Bytes escape;variable(escape,"super");result(escape);method=define(c,"escape",0,0,escape);assert(fvm_object_set(c,prototype(c,third),"escape",&method)==FVM_OK && fvm_object_call(c,instance,"escape",0,0,&out)==FVM_OK);
         FVM_Object *facade=out.object;assert(fvm_gc_pin(c,facade)==FVM_OK && fvm_gc_collect(c,0)==FVM_OK);
+        FVM_Value rendered;assert(fvm_value_to_string(c,&out,&rendered)==FVM_OK);
+        assert(rendered.type==FVM_VALUE_STRING && !std::strcmp(rendered.string,"[object Object]"));
         FVM_Channel *channel=0;assert(fvm_channel_create(&channel)==FVM_OK);assert(fvm_channel_send_value(c,channel,&out,0)==FVM_OK && fvm_channel_receive_value(other,channel,&out,0)==FVM_OK);
         FVM_Object *copy=out.object;assert(fvm_gc_pin(other,copy)==FVM_OK && fvm_gc_collect(other,0)==FVM_OK);FVM_Object *copied_receiver=copy->resource_result.object->properties["receiver"].object;
         assert(fvm_object_get(other,copy,"__proto__",&out)==FVM_OK && out.type==FVM_VALUE_OBJECT && out.object==(version<=8?copied_receiver->prototype->prototype->prototype:copied_receiver->prototype));

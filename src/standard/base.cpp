@@ -246,7 +246,8 @@ FVM_Result object_string(FVM_Context *c, FVM_Object *self, unsigned int, const F
                          FVM_Value *out, void *)
 {
     return fvm_value_string(out, c->swf_loaded && self &&
-                                     (self->invocable.callback || self->callable.callback)
+                                     (self->invocable.callback || self->callable.callback) &&
+                                     self->resource_kind != FVM_RESOURCE_SUPER
                                  ? "[type Function]" : "[object Object]");
 }
 

@@ -180,7 +180,12 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         first_tag = false;
         if (tag == FVM_SWF_TAG_END)
         {
-            if (count || frame != timeline.frames + 1)
+            /* Class-only sprites may declare blank frames without ShowFrame tags.
+             * Preserve their duration; build_frames supplies empty records. Reject
+             * partially populated streams whose declared frame count disagrees. */
+            if (count || (frame != timeline.frames + 1 &&
+                          (!timeline.id || frame != 1 || !timeline.controls.empty() ||
+                           !timeline.actions.empty())))
                 return FVM_INVALID_ARGUMENT;
             /* Sprite generators may pad an End-terminated control stream with
              * zero bytes. Preserve the enclosing tag boundary and reject data
