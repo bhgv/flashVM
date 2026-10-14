@@ -57,3 +57,24 @@ focused headless sanitizer checks 4/4 and portable new test 1/1. Earlier v0.83
 figures remain historical evidence. Parameter aliases and remaining type/API
 conformance keep stage 1 open. The active user endpoint is stage 8; stage 9
 platform/release acceptance remains separate and is not being claimed complete.
+
+## Current endpoint and evidence — v0.243 / Текущая цель и проверки
+
+The user's active endpoint is all nine roadmap stages, including real platform
+acceptance. Earlier statements restricting the endpoint to stage 8 are historical
+and superseded. Stages 1–9 remain open. Shared value-based C execution services
+and prepared native bodies support future generated code; no machine-code JIT
+backend exists yet. Linux AGG/Cairo each pass 450 current tests; 23 unchanged
+SWF<=8 reference traces match per profile. Focused heap/global ASan+UBSan evidence
+and its stack/leak limits are recorded in the feature reports.
+
+This workspace provides Linux execution. No Windows compiler/runner, macOS SDK/
+runner, Android NDK/device/emulator or requested-ISA emulator was found. Actual
+cross-platform and JIT execution gates therefore have no new runtime evidence.
+Portable declarations or configuration checks do not close these gates.
+
+Текущая команда пользователя охватывает все девять стадий, а не только стадию 8.
+Проверенные C-службы и Linux-сборки не означают готовность JIT или финальный
+выпуск. Для приёмки Windows/macOS/Android нужны реальные среды сборки и запуска,
+которых в этой рабочей среде нет. Остальные пробелы реализации перечислены в
+реестре совместимости и остаются открытыми.

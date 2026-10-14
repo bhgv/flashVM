@@ -23,6 +23,7 @@ static void attach(FVM_Context *c,FVM_Object *o,const char *key,FVM_ScriptBody b
     fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=fn;
     assert(fvm_object_set(c,o,key,&value)==FVM_OK);
 }
+#ifndef FVM_VALUE_CALLBACKS_FIXTURE_ONLY
 int main()
 {
     FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;FVM_Object *a=0,*b=0;
@@ -45,3 +46,5 @@ int main()
     assert(fvm_object_get(c,a,"victim",&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
 }
+
+#endif

@@ -19,5 +19,11 @@ int main()
         }
         assert(success && failures>0);
     }
+    unsigned char swf[]={'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};
+    assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);
+    unsigned count=99;FVM_GCRootFrame *roots=c->gc_frames;allowance=0;
+    assert(fvm_exec_argument_count(c,&a,1,&count)==FVM_OUT_OF_MEMORY);
+    allowance=-1;assert(count==99 && c->gc_frames==roots);
+    assert(fvm_exec_argument_count(c,&a,1,&count)==FVM_OK && count==1);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);
 }

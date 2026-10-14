@@ -1717,14 +1717,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             { /* CallMethod: args, argc, receiver, method name */
                 if (stack.size() < 3 ||
                     (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING &&
-                     stack.back().type != FVM_VALUE_NULL && stack.back().type != FVM_VALUE_UNDEFINED) ||
-                    stack[stack.size() - 3].type != FVM_VALUE_NUMBER)
+                     stack.back().type != FVM_VALUE_NULL && stack.back().type != FVM_VALUE_UNDEFINED))
                     return FVM_ERROR;
-                double n = stack[stack.size() - 3].number;
-                if (!(n >= 0 && n <= FVM_AVM1_MAX_CALL_ARGUMENTS) || n != std::floor(n) ||
-                    stack.size() < (size_t)n + 3)
-                    return FVM_ERROR;
-                unsigned int argc = (unsigned int)n;
+                unsigned int argc = 0;
+                FVM_Result count_status = fvm_exec_argument_count(c, &stack[stack.size() - 3],
+                                                                  stack.size() - 3, &argc);
+                if (count_status != FVM_OK)
+                    return count_status;
                 const FVM_Value &owner = stack[stack.size() - 2];
                 if ((a.op == FVM_AVM1_ACTION_CALL_METHOD || c->swf_loaded) &&
                     (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED))

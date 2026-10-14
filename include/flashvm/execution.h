@@ -125,6 +125,11 @@ extern "C"
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
                                                 unsigned int index, const FVM_Value *value,
                                                 FVM_Value *out);
+    /* Convert a count and cap it to available values under loaded AVM1 policy.
+     * Unloaded hosts require a nonnegative integral number and sufficient values.
+     * Actual counts above the method-service bound fail; errors preserve out. */
+    FVM_API FVM_Result fvm_exec_argument_count(FVM_Context *, const FVM_Value *,
+                                              size_t available, unsigned int *out);
     /* Invoke or construct a value member. Loaded SWFs coerce names to text;
      * undefined/empty names select an anonymous call. Unloaded host contexts
      * also treat null as anonymous and accept only string/null/undefined names.

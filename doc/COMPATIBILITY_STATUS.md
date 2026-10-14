@@ -1951,3 +1951,12 @@ for conversion order, roots, C89 checks and remaining scope/casing limitations.
 
 Крупные ветви удалены из основного цикла; байткод и стек остаются в адаптере,
 а семантика доступна через общий C-интерфейс. Девять стадий остаются открытыми.
+
+## v0.243 — coercible method argument counts
+
+CallMethod/NewMethod use a rooted C89 count service, unsigned truncation/wrapping
+and available-value clipping. [AVM1_METHOD_ARGUMENT_COUNT.md](AVM1_METHOD_ARGUMENT_COUNT.md)
+records bounds, callback/failure checks and the still-open other call variants.
+
+Для SWF4–8 проверяется преобразование счётчика и нехватка значений без чрезмерного
+выделения памяти. Это уточнение вызовов методов, не завершение стадии AVM1.

@@ -34,9 +34,9 @@ int main()
         assert(nullish_call(c,value).type==FVM_VALUE_UNDEFINED);
         assert(fvm_set_global(c,"input",&value)==FVM_OK);b.clear();global(b,"input");b.push_back(0x4b);
         assert(!std::strcmp(run(c,b).string,"null"));
-        /* Nullish receivers still validate their argument count and available operands. */
+        /* Loaded calls consume available operands even when the requested count is larger. */
         b.clear();integer(b,1);global(b,"owner");text(b,"method");b.push_back(0x52);b.push_back(0);
-        assert(fvm_avm1_execute(c,b.begin(),b.size())==FVM_ERROR);
+        assert(fvm_avm1_execute(c,b.begin(),b.size())==FVM_OK);
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);return 0;
