@@ -75,6 +75,8 @@
 #define FVM_AVM1_ACTION_MB_ASCII_TO_CHAR 0x37U
 /* Delete an own member from an explicit object. */
 #define FVM_AVM1_ACTION_DELETE 0x3aU
+/* Delete a scoped binding by a coercible name and return whether it was removed. */
+#define FVM_AVM1_ACTION_DELETE2 0x3bU
 /* Create a named local binding with a value. */
 #define FVM_AVM1_ACTION_DEFINE_LOCAL 0x3cU
 /* Invoke a named function with supplied operands. */

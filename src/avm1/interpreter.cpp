@@ -1577,6 +1577,29 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = result;
             }
+            else if (a.op == FVM_AVM1_ACTION_DELETE2)
+            {
+                if (stack.empty())
+                    return FVM_ERROR;
+                FVM_Value name;
+                FVM_Result status = fvm_exec_to_string(c, &stack.back(), &name);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = name;
+                /* Qualified member paths are handled separately from plain scope names. */
+                for (size_t at = 0; at < fvm_string_size(name); ++at)
+                    if (name.string[at] == ':' || name.string[at] == '.')
+                        return FVM_UNSUPPORTED;
+                FVM_Object *target = 0;
+                status = variable_receiver(c, self, &target);
+                FVM_Value result;
+                if (status == FVM_OK)
+                    status = fvm_exec_scope_delete(c, c->lexical_scopes.empty()
+                        ? 0 : c->lexical_scopes.back(), target, &stack.back(), &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = result;
+            }
             else if (a.op == FVM_AVM1_ACTION_PUSH_DUPLICATE)
             { /* PushDuplicate */
                 if (stack.empty())

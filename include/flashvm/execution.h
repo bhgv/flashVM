@@ -122,6 +122,13 @@ extern "C"
     FVM_API FVM_Result fvm_exec_scope_lookup(FVM_Context *, FVM_Object *scope,
                                              const FVM_Value *name, FVM_Value *result,
                                              FVM_Object **owner, int *found);
+    /* Delete a simple binding in activation/With scopes, then target and global.
+     * Presence checks never invoke getters; an inherited With/target binding blocks
+     * deletion of an outer binding. Qualified path syntax belongs to the caller.
+     * [GC:] Inputs are retained through name coercion; errors preserve out. */
+    FVM_API FVM_Result fvm_exec_scope_delete(FVM_Context *, FVM_Object *scope,
+                                             FVM_Object *target, const FVM_Value *name,
+                                             FVM_Value *out);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

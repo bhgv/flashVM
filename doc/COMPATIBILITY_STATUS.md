@@ -2007,3 +2007,11 @@ identity, extracted HEAD/object format and fsck checks cover the SHA-256 correct
 project SHA-1 exports retain reproducibility. Runtime evidence remains v0.248:
 454 AGG/Cairo tests per profile, 23 original traces per profile, seven focused
 heap/global ASan+UBSan checks. No roadmap stage is closed by this packaging fix.
+
+## v0.250 — unqualified Delete2 and C scope deletion
+
+Previously unsupported Delete2 now handles simple scoped names and Boolean
+results. [AVM1_DELETE2.md](AVM1_DELETE2.md) records getter-free shadowing,
+GC/allocation/exception checks and the still-unsupported qualified path cases.
+
+Добавлена проверенная часть удаления переменных; все стадии остаются открытыми.
