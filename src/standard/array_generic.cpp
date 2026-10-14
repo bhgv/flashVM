@@ -470,10 +470,11 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
     return FVM_OK;
 }
 
-/* Run the current value. */
+/* Execute a borrowed method with captured splice bounds or caller-owned fast metadata.
+ * [GC:] Fast metadata must contain no unrooted managed edges and lives through this call. */
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
-               const FVM_ArraySpliceBounds *prepared)
+               const FVM_ArraySpliceBounds *prepared, void *fast_data)
 {
     FVM_ArraySpliceBounds local_bounds;
     if (!std::strcmp(method, "splice"))
@@ -998,7 +999,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     }
     if (r != FVM_OK)
         return r;
-    r = fast(c, snapshot, n, a, out, 0);
+    r = fast(c, snapshot, n, a, out, fast_data);
     if (r != FVM_OK)
         return r;
     bool sorting = !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn");
@@ -1113,16 +1114,16 @@ bool fvm_array_needs_generic(FVM_Object *o)
     return o != 0;
 }
 
-/* Compute and return array generic. */
+/* Guard borrowed method execution and forward synchronous caller-owned preparation. */
 FVM_Result fvm_array_generic(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
                              const FVM_Value *a, FVM_Value *out, FVM_NativeFunction fast,
-                             const FVM_ArraySpliceBounds *prepared)
+                             const FVM_ArraySpliceBounds *prepared, void *fast_data)
 {
     if (!c || !o || o->owner != c)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        return run(c, o, method, n, a, out, fast, prepared);
+        return run(c, o, method, n, a, out, fast, prepared, fast_data);
     }
     catch (const std::bad_alloc &)
     {

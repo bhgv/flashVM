@@ -1307,3 +1307,22 @@ Three AGG launch failures passed after restoring execute bits.
 
 Обычный Object больше не вызывает UNSUPPORTED в загруженном sort; его
 свойства call/valueOf не участвуют в сравнении.
+
+## v0.177 — borrowed sortOn capture / захват receiver после подготовки
+
+Loaded sortOn prepares fields/options once before native or borrowed receiver
+capture. Private synchronous metadata forwarding carries copied strings/flags
+into the snapshot sorter without managed edges or retained pointers. Callback
+changes to length/data are included. Non-Array Object field fallback now works
+on borrowed receivers. Public C APIs and unloaded semantics are preserved.
+[RU/EN details](ARRAY_LEGACY_SORT_ON_BORROWED_PREPARE.md). Tests cover SWF4..8,
+Object/Array growth, field/option mutations, exactly-once conversion, errors in
+both phases retaining effects without sorted copyback, post-call traced GC and
+restored state. Full Array/AVM1 semantics and all stages remain open.
+Evidence: AGG 339/Cairo 338 tests, sixteen focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, fifteen byte-exact original SWFs.
+The original object_prototypes SWF remains mismatched for primitive prototype
+data, prototype deletion and property-name case; it is not a passing oracle.
+
+Заимствованный sortOn захватывает длину и элементы после преобразования всех
+полей/flags; пользовательские изменения участвуют в текущей сортировке.

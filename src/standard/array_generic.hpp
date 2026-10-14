@@ -26,8 +26,8 @@ struct FVM_ArraySpliceBounds
 /* Convert start, capture length and convert deletion exactly once, in that order. */
 FVM_Result fvm_array_splice_prepare(FVM_Context *, FVM_Object *, unsigned int,
                                     const FVM_Value *, FVM_ArraySpliceBounds &);
-/* Run property-aware methods, optionally using an already captured splice preparation. */
+/* Run property-aware methods with optional splice bounds and caller-owned fast preparation. */
 FVM_Result fvm_array_generic(FVM_Context *, FVM_Object *, const char *, unsigned int,
                              const FVM_Value *, FVM_Value *, FVM_NativeFunction,
-                             const FVM_ArraySpliceBounds *prepared = 0);
+                             const FVM_ArraySpliceBounds *prepared = 0, void *fast_data = 0);
 #endif

@@ -1408,6 +1408,14 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     return object_value(c, o, 0, 0, out, 0);
 }
 
+/* Use caller-owned field preparation after a borrowed receiver snapshot is captured.
+ * [GC:] SortSpec contains copied strings/flags and no managed object edges. */
+FVM_Result sort_prepared(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
+                         FVM_Value *out, void *data)
+{
+    return sort_impl(c, o, 0, 0, out, (const SortSpec *)data);
+}
+
 /* Sort the current value. */
 FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
@@ -1440,7 +1448,7 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
             (!size(a[0].object) || size(a[0].object) >= 2147483648UL))
             return object_value(c, o, 0, 0, out, 0);
     }
-    if (fvm_array_needs_generic(o))
+    if (!c->swf_loaded && fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "sortOn", n, a, out, sort_on);
 
     if (!n)
@@ -1460,7 +1468,11 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         SortSpec loaded;
         bool fields_array = a[0].type == FVM_VALUE_OBJECT && array(a[0].object);
         if (a[0].type == FVM_VALUE_OBJECT && !fields_array)
+        {
+            if (fvm_array_needs_generic(o))
+                return fvm_array_generic(c, o, "sortOn", 0, 0, out, sort_prepared);
             return sort_impl(c, o, 0, 0, out, 0);
+        }
         unsigned long count = fields_array ? size(a[0].object) : 1;
         if (fields_array && (!count || count >= 2147483648UL))
             return object_value(c, o, 0, 0, out, 0);
@@ -1523,6 +1535,8 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
                     loaded.flags[i] = loaded_sort_options(flags);
             }
         }
+        if (fvm_array_needs_generic(o))
+            return fvm_array_generic(c, o, "sortOn", 0, 0, out, sort_prepared, 0, &loaded);
         return sort_impl(c, o, 0, 0, out, &loaded);
     }
     /* Initialization / Инициализация локального состояния. */
