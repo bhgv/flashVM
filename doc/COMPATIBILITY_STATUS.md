@@ -2291,3 +2291,11 @@ receivers and prototype setter calls. GC, exceptions, metadata priority,
 constructor ordering, action dispatch and allocation failures are covered.
 Native raw-table keys retain their extension policy. With/call boxing and scalar
 native-constructor results remain separate boundaries. Стадии 1–9 открыты.
+
+### v0.280 — common primitive boxing in With
+
+[PRIMITIVE_BOXING.md](PRIMITIVE_BOXING.md) records shared constructor selection
+and bare wrapped objects when a loaded class is unavailable. Actual With actions,
+outer-parent GC, constructor exceptions and allocation failures are covered.
+Nullish body skipping and host constructor policy remain unchanged. Call boxing
+and remaining scope/conformance gates remain open. Все стадии 1–9 открыты.

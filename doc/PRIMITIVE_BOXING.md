@@ -45,3 +45,21 @@ required execute-bit restoration (4 AGG binaries in the first run, 9 Cairo in
 the final run); subsequent checks pass. Six focused heap/global ASan+UBSan checks
 pass, plus the final constructor-order callback check; stack/leak coverage is
 excluded. All 26 unchanged original SWF traces match exactly in each profile.
+
+## v0.280 — With scope construction
+
+With now calls the same value-to-object service instead of a separate constructor
+path. Missing/nonconstructable loaded primitive classes produce a bare wrapped
+object and still execute the body. Direct null/undefined inputs keep the parent
+unchanged; interpreter dispatch continues skipping those bodies. Outer lexical
+parents remain rooted during script constructor GC. Failed construction preserves
+the caller's scope output. Host constructor policy remains unchanged.
+
+With использует общий C-сервис; отсутствие класса не прерывает выполнение тела.
+Отдельные тесты проверяют пустой объект, внешнюю область, исключения конструктора,
+GC и отказы памяти. Позиции корней перенесены в документированные макросы `.h`.
+
+Validation v0.280: both Linux profiles pass 539 tests after execute-bit repair
+and reruns for 5 BAD_COMMAND binaries per profile. Five focused heap/global
+ASan+UBSan checks pass (no stack/leak coverage), including existing host creation
+and closure/channel fixtures. All 26 unchanged original SWFs match per profile.

@@ -295,3 +295,10 @@ Both Linux profiles pass 536 tests; six focused memory checks and the final
 constructor-order callback check pass. All 26 original SWFs match per profile.
 Temporary member wrappers dispatch script setters and retain inputs through GC.
 Machine-code JIT and Windows/macOS/Android runs remain absent. Все стадии открыты.
+
+## v0.280 — shared With boxing
+
+Both Linux profiles pass 539 tests, five focused memory checks pass and all
+26 original SWFs match per profile. With uses value-based construction and
+retains its parent through GC. Machine-code JIT and real Windows/macOS/Android
+verification remain absent. Все стадии 1–9 остаются открытыми.
