@@ -1960,3 +1960,12 @@ records bounds, callback/failure checks and the still-open other call variants.
 
 Для SWF4–8 проверяется преобразование счётчика и нехватка значений без чрезмерного
 выделения памяти. Это уточнение вызовов методов, не завершение стадии AVM1.
+
+## v0.244 — named call/constructor counts
+
+CallFunction and loaded NewObject share the rooted C count-conversion service.
+[AVM1_NAMED_ARGUMENT_COUNT.md](AVM1_NAMED_ARGUMENT_COUNT.md) records checked
+SWF4–8 cases, retained unloaded-host bounds and open name/dispatch policies.
+
+Подключены оставшиеся именованные виды вызовов к преобразованию счётчика;
+это проверенная часть стадии 2, не закрытие общей приёмки.

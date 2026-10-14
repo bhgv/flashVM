@@ -1258,14 +1258,25 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_NEW_OBJECT)
             { /* NewObject: separate named native constructor registry. */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
+                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                double count = stack[stack.size() - 2].number;
-                if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
-                    count != std::floor(count) || count > stack.size() - 2)
-                    return FVM_ERROR;
-                unsigned int argc = (unsigned int)count;
+                unsigned int argc = 0;
+                if (c->swf_loaded)
+                {
+                    FVM_Result count_status = fvm_exec_argument_count(c, &stack[stack.size() - 2],
+                                                                      stack.size() - 2, &argc);
+                    if (count_status != FVM_OK)
+                        return count_status;
+                }
+                else
+                {
+                    const FVM_Value &count = stack[stack.size() - 2];
+                    if (count.type != FVM_VALUE_NUMBER ||
+                        !(count.number >= 0 && count.number <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
+                        count.number != std::floor(count.number) || count.number > stack.size() - 2)
+                        return FVM_ERROR;
+                    argc = (unsigned int)count.number;
+                }
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (unsigned int i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - 3 - i];
@@ -1750,19 +1761,18 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL_FUNCTION)
             { /* CallFunction: args, argc, name (top) */
-                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING ||
-                    stack[stack.size() - 2].type != FVM_VALUE_NUMBER)
+                if (stack.size() < 2 || stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
                 fvm_detail::string name;
                 FVM_Result normalized =
                     fvm_property_key(stack.back().string, fvm_string_size(stack.back()), name);
                 if (normalized != FVM_OK)
                     return normalized;
-                double n = stack[stack.size() - 2].number;
-                if (!(n >= 0 && n <= FVM_AVM1_MAX_CALL_ARGUMENTS) || n != std::floor(n) ||
-                    stack.size() < (size_t)n + 2)
-                    return FVM_ERROR;
-                unsigned int argc = (unsigned int)n;
+                unsigned int argc = 0;
+                FVM_Result count_status = fvm_exec_argument_count(c, &stack[stack.size() - 2],
+                                                                  stack.size() - 2, &argc);
+                if (count_status != FVM_OK)
+                    return count_status;
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - 3 - i];
