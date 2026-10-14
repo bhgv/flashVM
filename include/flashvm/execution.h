@@ -5,6 +5,8 @@
 #include "value.h"
 /* Context-local legacy register bank shared by generated and interpreted activations. */
 #define FVM_EXEC_GLOBAL_REGISTER_COUNT 4U
+/* Maximum argument count accepted by the bounded method execution service. */
+#define FVM_EXEC_MAX_METHOD_ARGUMENTS 65535U
 #ifdef __cplusplus
 extern "C"
 {
@@ -101,6 +103,13 @@ extern "C"
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,
                                                 unsigned int index, const FVM_Value *value,
                                                 FVM_Value *out);
+    /* Invoke or construct a value member. Null/undefined/empty names select an
+     * anonymous call; anonymous_this supplies its explicit receiver. Inputs are
+     * rooted through coercion, lookup and calls; failures leave out unchanged. */
+    FVM_API FVM_Result fvm_exec_call_method(FVM_Context *, int construct,
+                                            const FVM_Value *owner, const FVM_Value *name,
+                                            FVM_Object *anonymous_this, unsigned int argc,
+                                            const FVM_Value *argv, FVM_Value *out);
 #ifdef __cplusplus
 }
 #endif

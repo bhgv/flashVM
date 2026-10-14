@@ -1923,3 +1923,12 @@ open private-count contract are superseded for these checked loaded cases.
 
 Границы частного набора проверяются на числе ячеек 0, 1, 2 и 255. Это уточнение
 проверенных регистровых правил, а не завершение стадии AVM1.
+
+## v0.240 — shared method invocation service
+
+CallMethod/NewMethod now share a value-based C89 service with future generated
+bodies. See [EXECUTION_CALL_METHOD.md](EXECUTION_CALL_METHOD.md) for dispatch,
+GC, allocation checks and retained compatibility limitations.
+
+Вызов метода и создание через метод вынесены в общий C-слой. Все девять
+стадий роудмапа остаются открытыми.

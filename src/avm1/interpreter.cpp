@@ -1792,86 +1792,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (!(n >= 0 && n <= FVM_AVM1_MAX_CALL_ARGUMENTS) || n != std::floor(n) ||
                     stack.size() < (size_t)n + 3)
                     return FVM_ERROR;
-                FVM_Value owner = stack[stack.size() - 2];
+                unsigned int argc = (unsigned int)n;
+                const FVM_Value &owner = stack[stack.size() - 2];
                 if (a.op == FVM_AVM1_ACTION_CALL_METHOD &&
                     (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED))
                 {
-                    /* A nullish receiver consumes valid arguments without invoking a method. */
-                    stack.resize(stack.size() - (size_t)n - 3);
+                    /* Preserve the allocation-free discard of a nullish call's operands. */
+                    stack.resize(stack.size() - argc - 3);
                     FVM_Value missing;
                     fvm_value_undefined(&missing);
                     stack.push_back(missing);
                     ++pc;
                     continue;
                 }
-                fvm_detail::string name;
-                if (stack.back().type == FVM_VALUE_STRING)
-                {
-                    FVM_Result normalized =
-                        fvm_property_key(stack.back().string, fvm_string_size(stack.back()), name);
-                    if (normalized != FVM_OK)
-                        return normalized;
-                }
-
-                FVM_Object *receiver = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
-                if (!receiver)
-                {
-                    if (owner.type == FVM_VALUE_NULL || owner.type == FVM_VALUE_UNDEFINED)
-                        return FVM_INVALID_ARGUMENT;
-                    const char *type = owner.type == FVM_VALUE_STRING    ? "String"
-                                       : owner.type == FVM_VALUE_BOOLEAN ? "Boolean"
-                                                                         : "Number";
-                    FVM_Result boxed = fvm_construct(c, type, 1, &owner, &receiver);
-                    if (boxed != FVM_OK)
-                        return boxed;
-                }
-
-                unsigned int argc = (unsigned int)n;
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - 4 - i];
                 FVM_Value result;
-                fvm_value_undefined(&result);
-                FVM_Result r;
-                fvm_detail::map<fvm_detail::string, FVM_ScriptFunction>::const_iterator script =
-                    c->script_functions.find(name);
-                FVM_NativeEntry native_method;
-                FVM_Result lookup = fvm_lookup_native_method(receiver, name, &native_method);
-                if (lookup != FVM_OK && lookup != FVM_NOT_FOUND && lookup != FVM_UNSUPPORTED)
-                    return lookup;
-                if (a.op == FVM_AVM1_ACTION_NEW_METHOD)
-                {
-                    FVM_Value function;
-                    r = name.empty() ? FVM_OK
-                                     : fvm_object_get_bytes(c, receiver, name.data(), name.size(),
-                                                            &function);
-                    if (name.empty())
-                    {
-                        fvm_value_undefined(&function);
-                        function.type = FVM_VALUE_OBJECT;
-                        function.object = receiver;
-                    }
-                    if (r != FVM_OK)
-                        return r;
-                    if (function.type != FVM_VALUE_OBJECT)
-                        return FVM_INVALID_ARGUMENT;
-                    FVM_Object *instance = 0;
-                    r = fvm_function_construct(c, function.object, argc, args.begin(), &instance);
-                    if (r == FVM_OK)
-                    {
-                        result.type = FVM_VALUE_OBJECT;
-                        result.object = instance;
-                    }
-                }
-                else if (name.empty())
-                    r = fvm_function_invoke(c, receiver, self, argc, args.begin(), &result);
-                else if (receiver->resource_kind != FVM_RESOURCE_SUPER && lookup == FVM_NOT_FOUND &&
-                         script != c->script_functions.end())
-                    r = fvm_avm1_call_script(c, script->first, script->second, argc,
-                                             argc ? &args[0] : 0, receiver, &result);
-                else
-                    r = fvm_object_call_bytes(c, receiver, name.data(), name.size(), argc,
-                                              argc ? &args[0] : 0, &result);
+                FVM_Result r = fvm_exec_call_method(c, a.op == FVM_AVM1_ACTION_NEW_METHOD,
+                    &stack[stack.size() - 2], &stack.back(), self, argc,
+                    argc ? args.begin() : 0, &result);
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - argc - 3);
