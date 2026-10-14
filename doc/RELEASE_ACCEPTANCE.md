@@ -288,3 +288,10 @@ Both Linux profiles pass 532 tests, six focused memory checks pass and 26 origin
 SWFs match per profile. Qualified undefined reads now perform assignment while
 non-undefined reads preserve the property. Machine-code JIT and real runs on
 Windows/macOS/Android remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.279 — shared primitive boxing and member setters
+
+Both Linux profiles pass 536 tests; six focused memory checks and the final
+constructor-order callback check pass. All 26 original SWFs match per profile.
+Temporary member wrappers dispatch script setters and retain inputs through GC.
+Machine-code JIT and Windows/macOS/Android runs remain absent. Все стадии открыты.

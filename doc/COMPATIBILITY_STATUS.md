@@ -2282,3 +2282,12 @@ initialization checks, getter/setter dispatch, exceptions and SWF4 display-value
 filtering. C89/action/allocator fixtures cover the change. The old generated
 undefined-getter assertion is corrected against the pinned primary implementation.
 Simple declarations remain presence-based. Все стадии роудмапа остаются открытыми.
+
+### v0.279 — primitive receiver boxing for member access
+
+[PRIMITIVE_BOXING.md](PRIMITIVE_BOXING.md) records C89 value-based object
+conversion, loaded global constructors, temporary primitive/nullish member
+receivers and prototype setter calls. GC, exceptions, metadata priority,
+constructor ordering, action dispatch and allocation failures are covered.
+Native raw-table keys retain their extension policy. With/call boxing and scalar
+native-constructor results remain separate boundaries. Стадии 1–9 открыты.

@@ -116,7 +116,8 @@ extern "C"
                                     unsigned int flags);
     /* Coerce and deliver trace, including when its host sink is disabled. */
     FVM_API FVM_Result fvm_exec_trace(FVM_Context *, const FVM_Value *);
-    /* Read or write a value member; native raw tables retain their indexed-slot policy. */
+    /* Read or write a value member; loaded primitives use temporary wrappers after metadata hooks.
+     * Native raw tables retain their indexed-slot policy. */
     FVM_API FVM_Result fvm_exec_member(FVM_Context *, int write, const FVM_Value *owner,
                                        const FVM_Value *member, const FVM_Value *value,
                                        FVM_Value *result);
@@ -254,6 +255,9 @@ extern "C"
     FVM_API FVM_Result fvm_exec_to_boolean(FVM_Context *, const FVM_Value *, FVM_Value *out);
     /* Return the existing AVM1 type label as immutable borrowed text, without callbacks. */
     FVM_API FVM_Result fvm_exec_type_of(FVM_Context *, const FVM_Value *, FVM_Value *out);
+    /* Box primitives through the global class; null/undefined yield undefined.
+     * Loaded missing/nonconstructable classes yield undefined. Output may alias input. */
+    FVM_API FVM_Result fvm_exec_to_object(FVM_Context *, const FVM_Value *, FVM_Value *out);
     /* Convert with loaded SWF string policy; otherwise use ordinary host conversion.
      * [GC:] Retains input through callbacks; errors preserve out and aliasing is allowed.
      * An unchanged input string remains borrowed under the ordinary value ownership contract. */
