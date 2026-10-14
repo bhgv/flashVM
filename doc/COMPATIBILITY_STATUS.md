@@ -1999,3 +1999,11 @@ compatibility and all nine roadmap stages remain at their open v0.246 status.
 [ENCODED_OPERAND_CONSTANTS.md](ENCODED_OPERAND_CONSTANTS.md) records documented
 uppercase widths/sign encodings/SWF framing constants replacing numeric literals.
 Runtime compatibility and all roadmap-stage acceptance states remain unchanged.
+
+## v0.249 — archive Git object-format configuration
+
+The source exporter preserves SHA-1/SHA-256 repository configuration. Two-export
+identity, extracted HEAD/object format and fsck checks cover the SHA-256 correction;
+project SHA-1 exports retain reproducibility. Runtime evidence remains v0.248:
+454 AGG/Cairo tests per profile, 23 original traces per profile, seven focused
+heap/global ASan+UBSan checks. No roadmap stage is closed by this packaging fix.

@@ -37,3 +37,19 @@ ZIP и порядок файлов фиксированы, индекс стро
 перезаписывается. Два экспорта в текущей Linux-среде совпали побайтно, распакованная
 копия прошла fsck и проверку чистого состояния. Совпадение между разными версиями
 инструментов и приёмка Windows/macOS/Android пока не подтверждены.
+
+## v0.249 — Git object-format preservation
+
+Independent export repositories retain the selected commit's object format.
+SHA-1 uses repository format 0; SHA-256 requires format 1 and an explicit
+extensions.objectformat entry. The exporter now writes the matching configuration
+instead of replacing a SHA-256 initialization with SHA-1 defaults. A synthetic
+SHA-256 repository exported twice produces identical archives; its extracted
+copy reports SHA-256, matches HEAD and passes full strict fsck. Full project SHA-1
+exports also remain byte-identical in two runs. This does not change runtime code.
+
+При экспорте сохраняется формат объектов Git: для SHA-256 записывается версия
+репозитория 1 и extensions.objectformat. Проверены два одинаковых экспорта,
+распаковка, HEAD и fsck тестового SHA-256 репозитория; SHA-1 экспорт проекта
+также остаётся воспроизводимым. Проверка относится к упаковке, не к готовности
+JIT или выполнению на других ОС.

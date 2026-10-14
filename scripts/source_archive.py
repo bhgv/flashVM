@@ -57,11 +57,14 @@ def create(repo, revision, output):
         object_format = git(repo, "rev-parse", "--show-object-format").decode().strip()
         git(stage, "init", "--quiet", "--template=", "--object-format=" + object_format)
         metadata = stage / ".git"
+        repository_format = "0" if object_format == "sha1" else "1"
+        format_extension = "" if object_format == "sha1" else (
+            '[extensions]\n\tobjectformat = ' + object_format + '\n')
         (metadata / "config").write_text(
-            '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = false\n'
+            '[core]\n\trepositoryformatversion = ' + repository_format + '\n\tfilemode = true\n\tbare = false\n'
             '\tlogallrefupdates = false\n[remote "origin"]\n'
             '\turl = https://bhgv.pythonanywhere.com/git/FlashVM/\n'
-            '\tfetch = +refs/heads/*:refs/remotes/origin/*\n', encoding="utf-8")
+            '\tfetch = +refs/heads/*:refs/remotes/origin/*\n' + format_extension, encoding="utf-8")
         # Retain every ancestor of this commit, without copying unrelated local refs.
         pack = Path(temporary) / "history.pack"
         with pack.open("wb") as stream:

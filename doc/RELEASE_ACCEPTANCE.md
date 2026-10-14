@@ -90,3 +90,12 @@ not change runtime behavior or close any platform/JIT/compatibility stage.
 
 Добавлен воспроизводимый экспорт истории Git; это проверенная часть выпуска,
 а не завершение стадии 9. Реальные проверки остальных ОС ещё необходимы.
+
+## v0.249 — current checkpoint
+
+The runtime C-service/decomposition checkpoint is v0.246 with v0.248 named field
+constants: 454 tests per AGG/Cairo profile, 23 unchanged reference traces per
+profile, seven focused heap/global ASan+UBSan checks. v0.247/v0.249 add and verify
+reproducible committed-source/reachable-history export, including SHA-256 object
+format preservation. This is progress on release packaging only. Complete stages
+1–8, actual JIT equivalence and non-Linux execution still gate final stage 9.
