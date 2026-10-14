@@ -130,3 +130,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Приоритет неявного this: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) проверяет затенение параметром/локальной записью SWF5–8; наследуемые ячейки остаются открытыми.
 
 Объектное наследуемое this Function2: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) разделяет вызывающий объект и получателя preload, описывает корни GC и восстановление. Изменяемые ячейки остаются открытыми.
+
+Определения спрайтов без кадров: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) описывает загрузку словаря/export, GC и перенос. DoInitAction и создание экземпляров остаются открытыми.

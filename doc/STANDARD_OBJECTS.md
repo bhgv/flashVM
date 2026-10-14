@@ -138,3 +138,5 @@ Implicit this name casing: [AVM1_THIS_CASE.md](AVM1_THIS_CASE.md) records SWF5 t
 Implicit this binding precedence: [AVM1_THIS_BINDING.md](AVM1_THIS_BINDING.md) covers formal/local shadowing in SWF5–8; inherited this cells remain open.
 
 Object-valued inherited Function2 this: [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md) separates caller identity and actual preload receiver, with GC roots and restoration. Mutable cells remain open.
+
+Zero-frame sprite definitions: [SWF_EMPTY_SPRITE.md](SWF_EMPTY_SPRITE.md) covers dictionary/export loading and GC/transfer. DoInitAction and zero-frame instantiation remain open.

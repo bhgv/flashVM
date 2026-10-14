@@ -145,7 +145,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                             fvm_detail::vector<FVM_SWFBitmap> *bitmaps, size_t bitmap_limit,
                             fvm_detail::map<unsigned long, bool> &known)
 {
-    if (!timeline.frames)
+    /* Empty DefineSprite class symbols have zero frames and an End-only stream.
+     * Root playback still requires a frame; do not synthesize one in the dictionary. */
+    if (!timeline.frames && !timeline.id)
         return FVM_INVALID_ARGUMENT;
     timeline.labels.resize(timeline.frames);
     fvm_detail::vector<unsigned char> labelled(timeline.frames);
@@ -176,8 +178,19 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         first_tag = false;
         if (tag == 0)
         {
-            if (count || at != end || frame != timeline.frames + 1)
+            if (count || frame != timeline.frames + 1)
                 return FVM_INVALID_ARGUMENT;
+            /* Sprite generators may pad an End-terminated control stream with
+             * zero bytes. Preserve the enclosing tag boundary and reject data
+             * after End; root trailing-byte policy is unchanged. */
+            if (at != end)
+            {
+                if (!timeline.id)
+                    return FVM_INVALID_ARGUMENT;
+                for (size_t padding = at; padding < end; ++padding)
+                    if (p[padding])
+                        return FVM_INVALID_ARGUMENT;
+            }
             return fvm_swf_document_finish(timeline.document);
         }
         if (!sprites && (tag == 39 || tag == 56 || tag == 2 || tag == 22 || tag == 32 ||
