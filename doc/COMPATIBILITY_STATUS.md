@@ -1431,3 +1431,19 @@ and restricted heap/global ASan+UBSan, sixteen byte-exact original SWFs.
 
 Исправлены преобразования и границы поиска; проверен вызов receiver даже при
 отсутствии needle, включая ошибку пользовательской функции.
+
+## v0.184 — loaded String.split / разделитель и limit
+
+Loaded split uses signed AVM1 limits clamped at zero and versioned delimiter
+coercion. SWF5 defaults missing delimiters to comma and treats empty delimiters
+as whole-string requests. Absent-effective-delimiter output ignores limit.
+Host rules remain unchanged. [RU/EN details](STRING_LEGACY_SPLIT.md).
+SWF4..8/host tests cover default/empty/undefined delimiters, signed/wrapping limits,
+boolean/Object coercions, limit-before-delimiter ordering/errors and restored
+state. The 65536-part cap, boxed overrides and all roadmap stages remain open.
+Evidence: AGG 345/Cairo 344 tests, eight focused checks each in Linux portable
+and restricted heap/global ASan+UBSan, sixteen byte-exact original SWFs. Three
+AGG launch failures passed after restoring execute bits.
+
+Исправлены предел и исторические правила SWF5; преобразование delimiter не
+пропускается при limit 0, включая пользовательские ошибки.

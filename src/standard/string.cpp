@@ -422,27 +422,48 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
     if (n > 1 && a[1].type != FVM_VALUE_UNDEFINED)
     {
         double value = 0;
-        r = fvm_value_to_number(c, a + 1, &value);
+        r = c->swf_loaded ? fvm_avm1_number(c, a + 1, &value)
+                          : fvm_value_to_number(c, a + 1, &value);
         if (r != FVM_OK)
             return r;
-        if (!(value == value) || value == std::numeric_limits<double>::infinity() ||
-            value == -std::numeric_limits<double>::infinity())
-            value = 0;
-        value = std::fmod(value < 0 ? -std::floor(-value) : std::floor(value), 4294967296.0);
-        if (value < 0)
-            value += 4294967296.0;
-        limit = (unsigned long)value;
+        if (c->swf_loaded)
+        {
+            value = loaded_index(value);
+            limit = value > 0 ? (unsigned long)value : 0;
+        }
+        else
+        {
+            if (!(value == value) || value == std::numeric_limits<double>::infinity() ||
+                value == -std::numeric_limits<double>::infinity())
+                value = 0;
+            value = std::fmod(value < 0 ? -std::floor(-value) : std::floor(value), 4294967296.0);
+            if (value < 0)
+                value += 4294967296.0;
+            limit = (unsigned long)value;
+        }
     }
     bool absent = !n || a[0].type == FVM_VALUE_UNDEFINED;
-    if (!absent)
+    if (absent && c->swf_loaded && c->swf_info.version == 5)
+    {
+        /* SWF5 defaults to comma, while its empty explicit delimiter returns the whole string. */
+        separator.push_back(',');
+        absent = false;
+    }
+    else if (!absent)
     {
         FVM_Value text;
-        r = fvm_value_to_string(c, a, &text);
+        r = c->swf_loaded ? fvm_avm1_string(c, a[0], &text)
+                          : fvm_value_to_string(c, a, &text);
         if (r == FVM_OK)
             r = decode(text, separator);
         if (r != FVM_OK)
             return r;
+        if (c->swf_loaded && c->swf_info.version == 5 && separator.empty())
+            absent = true;
     }
+    /* A missing effective delimiter returns one whole value even when limit is zero. */
+    if (c->swf_loaded && absent)
+        limit = 0xffffffffUL;
     FVM_Object *result = 0;
     r = fvm_array_create_like(c, 0, 0, &result, true);
     if (r != FVM_OK)
