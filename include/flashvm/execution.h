@@ -188,6 +188,8 @@ extern "C"
      * qualified owners retry scoped paths, and empty names are ignored. Bare slash
      * names are literal bindings. Null target selects global fallback.
      * [GC:] Retains name/value, scope, destination and this through getter/setter callbacks. */
+    /* Loaded SWFs coerce names once before lookup; host-only calls require a String.
+     * Inputs and selected scope objects remain GC roots through conversion/setters. */
     FVM_API FVM_Result fvm_exec_variable_set(FVM_Context *, FVM_Object *scope,
                                              FVM_Object *target, FVM_Object *receiver,
                                              const FVM_Value *name, const FVM_Value *value);

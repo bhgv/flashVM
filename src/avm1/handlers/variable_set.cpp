@@ -12,22 +12,13 @@ extern "C" FVM_Result fvm_exec_variable_set(FVM_Context *c, FVM_Object *scope, F
 {
     if (!c || (scope && scope->owner != c) || (target && target->owner != c) ||
         (receiver && receiver->owner != c) || fvm_validate_value(c, name) != FVM_OK ||
-        name->type != FVM_VALUE_STRING || fvm_validate_value(c, value) != FVM_OK)
+        (!c->swf_loaded && name->type != FVM_VALUE_STRING) ||
+        fvm_validate_value(c, value) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        size_t size = fvm_string_size(*name), separator = size;
-        if (!size)
+        if (name->type == FVM_VALUE_STRING && !fvm_string_size(*name))
             return FVM_OK;
-        unsigned int segments = 1;
-        for (size_t at = 0; at < size; ++at)
-            if (name->string[at] == FVM_REFERENCE_PATH_DOT ||
-                name->string[at] == FVM_REFERENCE_PATH_COLON)
-            {
-                if (++segments > FVM_REFERENCE_PATH_MAX_SEGMENTS)
-                    return FVM_ERROR;
-                separator = at;
-            }
         FVM_ExecutionRoots roots(c, FVM_VARIABLE_SET_ROOT_COUNT);
         FVM_Object *objects[] = {scope, target, receiver};
         const unsigned int slots[] = {FVM_VARIABLE_SET_SCOPE_ROOT, FVM_VARIABLE_SET_TARGET_ROOT,
@@ -40,7 +31,28 @@ extern "C" FVM_Result fvm_exec_variable_set(FVM_Context *c, FVM_Object *scope, F
             }
         roots.values[FVM_VARIABLE_SET_NAME_ROOT] = *name;
         roots.values[FVM_VARIABLE_SET_VALUE_ROOT] = *value;
-        const FVM_Value &text = roots.values[FVM_VARIABLE_SET_NAME_ROOT];
+        FVM_Value &text = roots.values[FVM_VARIABLE_SET_TEXT_ROOT];
+        if (name->type == FVM_VALUE_STRING)
+            text = roots.values[FVM_VARIABLE_SET_NAME_ROOT];
+        else
+        {
+            FVM_Result conversion =
+                fvm_avm1_string(c, roots.values[FVM_VARIABLE_SET_NAME_ROOT], &text);
+            if (conversion != FVM_OK)
+                return conversion;
+        }
+        size_t size = fvm_string_size(text), separator = size;
+        if (!size)
+            return FVM_OK;
+        unsigned int segments = 1;
+        for (size_t at = 0; at < size; ++at)
+            if (text.string[at] == FVM_REFERENCE_PATH_DOT ||
+                text.string[at] == FVM_REFERENCE_PATH_COLON)
+            {
+                if (++segments > FVM_REFERENCE_PATH_MAX_SEGMENTS)
+                    return FVM_ERROR;
+                separator = at;
+            }
         if (separator != size)
         {
             FVM_Value &prefix = roots.values[FVM_VARIABLE_SET_PREFIX_ROOT];

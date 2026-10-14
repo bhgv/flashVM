@@ -274,3 +274,10 @@ Both Linux profiles pass 526 tests; six affected memory checks and 26 unchanged
 original SWFs in each profile pass. Callback transport IDs and existing limits
 are preserved. JIT machine-code generation and real Windows/macOS/Android runs
 remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.277 — value-based SetVariable names
+
+Both Linux profiles pass 529 tests, seven affected memory checks pass, and all
+26 original SWFs match per profile. The shared C handler owns conversion and
+roots; the interpreter only adapts operands. Machine-code JIT and actual
+Windows/macOS/Android runs remain absent. Все стадии 1–9 остаются открытыми.

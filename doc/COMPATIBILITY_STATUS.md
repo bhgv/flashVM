@@ -2265,3 +2265,12 @@ conformance and all roadmap gates remain open. Макросы заменяют �
 wrap/encoding/casing bounds, split allocation limit and stable callback IDs.
 Existing wire values and version rules remain unchanged. Full string/standard
 object compatibility and all nine roadmap stages remain open.
+
+### v0.277 — loaded SetVariable name conversion
+
+[SET_VARIABLE_NAMES.md](SET_VARIABLE_NAMES.md) records version-aware name
+conversion in the common C service, retained inputs through GC, counted NUL,
+conversion exceptions and allocation failures. Real SWF4–8 action dispatch
+accepts numeric names; unloaded host calls retain their String requirement.
+Mutable this, removed clips and target mutation remain open. Преобразование
+выполняется до записи; все стадии роудмапа остаются открытыми.

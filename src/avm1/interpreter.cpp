@@ -1526,8 +1526,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_SET_VARIABLE)
             {
                 if (stack.size() < FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT ||
-                    stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type !=
-                        FVM_VALUE_STRING)
+                    (!c->swf_loaded &&
+                     stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type !=
+                         FVM_VALUE_STRING))
                     return FVM_ERROR;
                 FVM_Object *target = 0;
                 FVM_Result status = variable_receiver(c, self, &target);
