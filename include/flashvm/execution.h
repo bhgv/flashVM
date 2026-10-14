@@ -165,6 +165,13 @@ extern "C"
                                               FVM_Object *target, FVM_Object *receiver,
                                               const FVM_Value *name, FVM_Value *out,
                                               int *handled, int *present);
+    /* Assign a counted reference; simple bindings use getter-free presence checks,
+     * qualified owners retry scoped paths, and empty names are ignored. Bare slash
+     * names are literal bindings. Null target selects global fallback.
+     * [GC:] Retains name/value, scope, destination and this through getter/setter callbacks. */
+    FVM_API FVM_Result fvm_exec_variable_set(FVM_Context *, FVM_Object *scope,
+                                             FVM_Object *target, FVM_Object *receiver,
+                                             const FVM_Value *name, const FVM_Value *value);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

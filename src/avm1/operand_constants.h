@@ -5,6 +5,7 @@
 #define FVM_AVM1_WORD_BYTES 2U   /* UI16 operand byte length. */
 #define FVM_AVM1_DWORD_BYTES 4U  /* UI32 operand and each half of an encoded double. */
 #define FVM_AVM1_DOUBLE_BYTES 8U /* Two little-endian words, high word first. */
+#define FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT 2U /* SetVariable consumes name followed by value. */
 #define FVM_AVM1_BRANCH_BYTES 2U /* Signed UI16 relative jump payload length. */
 #define FVM_AVM1_BRANCH_SIGN_BIT 0x8000L /* Upper half of the signed branch encoding. */
 #define FVM_AVM1_BRANCH_MODULUS 65536L    /* Subtract 2^16 to sign-extend a branch into long. */

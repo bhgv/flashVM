@@ -139,3 +139,10 @@ Counted GetVariable and Delete2 owner lookup now share the versioned C path phas
 Fallback/undefined-presence and rooted callback behavior have focused fixtures;
 this does not close general assignment/call semantics, JIT or platform gates.
 Все стадии роудмапа остаются открытыми; итоговая приёмка не подменяется фикстурами.
+
+## v0.259 — shared variable assignment
+
+SetVariable now uses explicit C inputs and getter-free binding presence, with
+qualified scoped writes and callback/allocator coverage. This extends the common
+execution layer while leaving historical this/case/removed-target behavior, full
+JIT equivalence and non-Linux runtime gates open. Все стадии ещё открыты.

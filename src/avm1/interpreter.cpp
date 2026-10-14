@@ -1686,36 +1686,19 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.back() = value;
             }
             else if (a.op == FVM_AVM1_ACTION_SET_VARIABLE)
-            { /* SetVariable: name, value */
-                if (stack.size() < 2 || stack[stack.size() - 2].type != FVM_VALUE_STRING)
+            {
+                if (stack.size() < FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT || stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type != FVM_VALUE_STRING)
                     return FVM_ERROR;
-                const FVM_Value &name_value = stack[stack.size() - 2];
-                fvm_detail::string name;
-                FVM_Result normalized =
-                    fvm_property_key(name_value.string, fvm_string_size(name_value), name);
-                if (normalized != FVM_OK)
-                    return normalized;
-                FVM_Result r = FVM_OK;
-                FVM_Object *scope = c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back();
-                FVM_Object *owner = 0;
-                int found = 0;
-                FVM_Value existing;
-                r = fvm_exec_scope_lookup(c, scope, &name_value, &existing, &owner, &found);
-                if (r == FVM_OK && found)
-                    r = fvm_object_set_bytes(c, owner, name.data(), name.size(), &stack.back());
-                else if (r == FVM_OK && locals && locals->find(name) != locals->end())
-                    (*locals)[name] = stack.back();
-                else if (r == FVM_OK)
-                {
-                    FVM_Object *scope_receiver = 0;
-                    r = variable_receiver(c, self, &scope_receiver);
-                    if (r == FVM_OK)
-                        r = scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
-                                ? fvm_object_set_bytes(c, scope_receiver, name.data(), name.size(), &stack.back())
-                                : fvm_set_global_bytes(c, name.data(), name.size(), &stack.back());
-                }
-                if (r != FVM_OK)
-                    return r;
+                FVM_Object *target = 0;
+                FVM_Result status = variable_receiver(c, self, &target);
+                if (status == FVM_OK)
+                    status = fvm_exec_variable_set(c, c->lexical_scopes.empty()
+                        ? 0 : c->lexical_scopes.back(),
+                        target && target->resource_kind == FVM_RESOURCE_MOVIECLIP ? target : c->global,
+                        c->script_this ? c->script_this : self,
+                        &stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT], &stack.back());
+                if (status != FVM_OK)
+                    return status;
                 stack.pop_back();
                 stack.pop_back();
             }

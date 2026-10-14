@@ -2096,3 +2096,12 @@ versioned separators, GC and allocation behavior have focused fixtures. Common
 syntax/bounds use FVM_REFERENCE_PATH_* macros. SetVariable/named CallFunction and
 full legacy case semantics remain open. Общий разбор подключён к чтению, но вся
 семантика областей/переменных и стадии 1–9 ещё не завершены.
+
+### v0.259 — getter-free shared variable assignment
+
+[VARIABLE_ASSIGNMENT.md](VARIABLE_ASSIGNMENT.md) documents C89 SetVariable
+assignment, managed lexical binding selection without old-value getters, scoped
+qualified writes and rooted setter callbacks. Bare slash names remain literal;
+empty names are ignored. Version/path/With/setter/GC/OOM fixtures accompany it.
+Implicit-this mutation, full legacy casing/removed-target behavior and complete
+AVM1 conformance remain open. Присваивание вынесено из цикла; стадии 1–9 открыты.
