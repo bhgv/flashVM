@@ -6,6 +6,7 @@
 #include "function_state.hpp"
 #include "../core/property_key.hpp"
 #include "../avm1/function_record.hpp"
+#include "../avm1/block.hpp"
 #include "../avm1/encoding_constants.h"
 #include "../core/call_scope.hpp"
 #include "super.hpp"
@@ -261,10 +262,10 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
         constants.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
     size_t bytes = fvm_string_size(code);
-    if (bytes % 2 || bytes > 131072)
+    if (bytes % FVM_AVM1_HEX_DIGITS_PER_BYTE || bytes > FVM_AVM1_MAX_HEX_BODY_BYTES)
         return FVM_INVALID_ARGUMENT;
     FVM_ScriptFunction body;
-    for (size_t i = 0; i < bytes; i += 2)
+    for (size_t i = 0; i < bytes; i += FVM_AVM1_HEX_DIGITS_PER_BYTE)
     {
         int high = hex((unsigned char)code.string[i]), low = hex((unsigned char)code.string[i + 1]);
         if (high < 0 || low < 0)
@@ -339,10 +340,10 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
         body.flags = (unsigned int)flags.number;
         unsigned int preload = 0;
         const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS, FVM_AVM1_F2_PRELOAD_ARGUMENTS, FVM_AVM1_F2_PRELOAD_SUPER, FVM_AVM1_F2_PRELOAD_ROOT, FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
-        for (unsigned int i = 0; i < 6; ++i)
+        for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
             if (body.flags & bits[i])
                 ++preload;
-        if (!fvm_function2_flags_valid(body.flags) || preload > body.register_count)
+        if (!fvm_function2_flags_valid(body.flags) || (!c->swf_loaded && preload > body.register_count))
             return FVM_INVALID_ARGUMENT;
         for (size_t i = 0; i < body.parameters.size(); ++i)
         {
@@ -351,7 +352,7 @@ FVM_Result script(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FV
             if (r != FVM_OK)
                 return r;
             if (reg.type != FVM_VALUE_NUMBER || reg.number < 0 ||
-                reg.number > body.register_count || reg.number != std::floor(reg.number))
+                reg.number > (c->swf_loaded ? FVM_AVM1_MAX_REGISTER_INDEX : body.register_count) || reg.number != std::floor(reg.number))
                 return FVM_INVALID_ARGUMENT;
             body.parameter_registers.push_back((unsigned int)reg.number);
         }
@@ -837,7 +838,7 @@ extern "C" FVM_Result fvm_function_create_avm1_bytes(FVM_Context *c, const void 
         return FVM_INVALID_ARGUMENT;
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
-    FVM_Result result = fvm_avm1_inspect(actions, size, &info);
+    FVM_Result result = (c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(actions, size, &info);
     if (result != FVM_OK)
         return result;
     try

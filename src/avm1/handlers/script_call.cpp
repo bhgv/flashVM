@@ -240,7 +240,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
 
             if (fn.function2 && fn.parameter_registers[i])
             {
-                execution.registers[fn.parameter_registers[i]] = value;
+                if (fn.parameter_registers[i] < execution.registers.size())
+                    execution.registers[fn.parameter_registers[i]] = value;
                 continue;
             }
             FVM_Result stored = fvm_object_set_bytes(c, activation, fn.parameters[i].data(),
@@ -250,19 +251,19 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         }
         if (fn.function2)
         {
-            FVM_Value common[6];
-            for (unsigned int i = 0; i < 6; ++i)
+            FVM_Value common[FVM_AVM1_PRELOAD_COUNT];
+            for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
                 fvm_value_undefined(common + i);
-            common[0].type = FVM_VALUE_OBJECT;
-            common[0].object = receiver ? receiver : c->global;
-            common[1] = implicit_arguments;
-            common[2] = implicit_super;
+            common[FVM_AVM1_PRELOAD_THIS_INDEX].type = FVM_VALUE_OBJECT;
+            common[FVM_AVM1_PRELOAD_THIS_INDEX].object = receiver ? receiver : c->global;
+            common[FVM_AVM1_PRELOAD_ARGUMENTS_INDEX] = implicit_arguments;
+            common[FVM_AVM1_PRELOAD_SUPER_INDEX] = implicit_super;
             /* Paired flags suppress preloaded this/super, but arguments still
              * preloads its object even when its named binding is suppressed. */
             if (fn.flags & FVM_AVM1_F2_SUPPRESS_THIS)
                 fvm_value_undefined(common);
             if (fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER)
-                fvm_value_undefined(common + 2);
+                fvm_value_undefined(common + FVM_AVM1_PRELOAD_SUPER_INDEX);
             /* Match the activation's base-clip selection before its bytecode starts.
              * Display preloads bypass mutable _root/_parent script properties. */
             FVM_Object *preload_clip = base_clip ? base_clip
@@ -280,41 +281,43 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             if ((preload_clip || receiver) && (fn.flags & FVM_AVM1_F2_PRELOAD_ROOT))
             {
                 stored = preload_clip
-                             ? fvm_movieclip_preload_display(c, preload_clip, false, common + 3)
-                             : fvm_object_get(c, receiver, "_root", common + 3);
+                             ? fvm_movieclip_preload_display(c, preload_clip, false, common + FVM_AVM1_PRELOAD_ROOT_INDEX)
+                             : fvm_object_get(c, receiver, "_root", common + FVM_AVM1_PRELOAD_ROOT_INDEX);
                 if (stored != FVM_OK)
                     return stored;
                 /* [GC:] Retain this value while subsequent call setup may execute script code. */
-                constructing.push_back(common[3]);
+                constructing.push_back(common[FVM_AVM1_PRELOAD_ROOT_INDEX]);
             }
-            if ((fn.flags & FVM_AVM1_F2_PRELOAD_ROOT) && common[3].type == FVM_VALUE_UNDEFINED)
+            if ((fn.flags & FVM_AVM1_F2_PRELOAD_ROOT) && common[FVM_AVM1_PRELOAD_ROOT_INDEX].type == FVM_VALUE_UNDEFINED)
             {
-                stored = fvm_get_global(c, "_root", common + 3);
+                stored = fvm_get_global(c, "_root", common + FVM_AVM1_PRELOAD_ROOT_INDEX);
                 if (stored != FVM_OK)
                     return stored;
             }
             if ((preload_clip || receiver) && (fn.flags & FVM_AVM1_F2_PRELOAD_PARENT))
             {
                 stored = preload_clip
-                             ? fvm_movieclip_preload_display(c, preload_clip, true, common + 4)
-                             : fvm_object_get(c, receiver, "_parent", common + 4);
+                             ? fvm_movieclip_preload_display(c, preload_clip, true, common + FVM_AVM1_PRELOAD_PARENT_INDEX)
+                             : fvm_object_get(c, receiver, "_parent", common + FVM_AVM1_PRELOAD_PARENT_INDEX);
                 if (stored != FVM_OK)
                     return stored;
             }
-            common[5].type = FVM_VALUE_OBJECT;
-            common[5].object = c->global;
+            common[FVM_AVM1_PRELOAD_GLOBAL_INDEX].type = FVM_VALUE_OBJECT;
+            common[FVM_AVM1_PRELOAD_GLOBAL_INDEX].object = c->global;
             const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS,   FVM_AVM1_F2_PRELOAD_ARGUMENTS,
                                          FVM_AVM1_F2_PRELOAD_SUPER,  FVM_AVM1_F2_PRELOAD_ROOT,
                                          FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
             unsigned int slot = 1;
-            for (unsigned int i = 0; i < 6; ++i)
+            for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
                 if (fn.flags & bits[i])
                 {
                     /* A parentless timeline leaves this preload slot available to _global. */
-                    if (i == 4 &&
+                    if (i == FVM_AVM1_PRELOAD_PARENT_INDEX &&
                         (common[i].type == FVM_VALUE_UNDEFINED || common[i].type == FVM_VALUE_NULL))
                         continue;
-                    execution.registers[slot++] = common[i];
+                    if (slot < execution.registers.size())
+                        execution.registers[slot] = common[i];
+                    ++slot;
                 }
         }
         fvm_detail::map<fvm_detail::string, bool> seen;

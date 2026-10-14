@@ -6,4 +6,6 @@
 FVM_Result fvm_avm1_inspect_block(const void *, size_t, FVM_AVM1Info *);
 /* Execute a stored frame block, including empty/implicit-end blocks, with its retained receiver. */
 FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *, const void *, size_t, FVM_Object *);
+/* Validate terminated loaded actions with runtime register semantics. */
+FVM_Result fvm_avm1_inspect_loaded(const void *, size_t, FVM_AVM1Info *);
 #endif

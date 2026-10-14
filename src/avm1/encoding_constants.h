@@ -97,4 +97,22 @@
 #define FVM_AVM1_MAX_BODY_BYTES 65536UL
 /* ActionWith carries a UI16 body size before its nested bytecode. */
 #define FVM_AVM1_WITH_HEADER_BYTES 2U
+/* Number of implicit Function2 preload values, in their fixed assignment order. */
+#define FVM_AVM1_PRELOAD_COUNT 6U
+/* Index of the receiver among implicit preload values. */
+#define FVM_AVM1_PRELOAD_THIS_INDEX 0U
+/* Index of the arguments object among implicit preload values. */
+#define FVM_AVM1_PRELOAD_ARGUMENTS_INDEX 1U
+/* Index of the superclass facade among implicit preload values. */
+#define FVM_AVM1_PRELOAD_SUPER_INDEX 2U
+/* Index of the display root among implicit preload values. */
+#define FVM_AVM1_PRELOAD_ROOT_INDEX 3U
+/* Index of the display parent among implicit preload values. */
+#define FVM_AVM1_PRELOAD_PARENT_INDEX 4U
+/* Index of the global object among implicit preload values. */
+#define FVM_AVM1_PRELOAD_GLOBAL_INDEX 5U
+/* Private function graphs encode each byte as two ASCII hex digits. */
+#define FVM_AVM1_HEX_DIGITS_PER_BYTE 2UL
+/* Maximum byte length of that ASCII body representation. */
+#define FVM_AVM1_MAX_HEX_BODY_BYTES (FVM_AVM1_MAX_BODY_BYTES * FVM_AVM1_HEX_DIGITS_PER_BYTE)
 #endif

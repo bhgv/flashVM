@@ -1886,3 +1886,17 @@ Linux AGG and Cairo each pass 433 tests after retrying environment execute-bit
 launch failures; five focused heap/global ASan+UBSan checks pass. Stack and leak
 instrumentation remain unavailable in this environment. All roadmap stages
 remain open; JIT and non-Linux execution are not claimed.
+
+
+## v0.237 — current AVM1 checkpoints
+
+| Part | Status | Evidence and limits |
+| --- | --- | --- |
+| Loaded named-call this and intrinsic prototype edges | Tested | AVM1_THIS_BINDING.md, OBJECT_RAW_PROTOTYPE.md; general property casing remains open. |
+| Retained With scopes and definition clips | Tested | AVM1_WITH_SCOPE.md, AVM1_FUNCTION_BASE_CLIP.md; removed/readded clip references remain open. |
+| Missing register destinations | Tested in focused fixtures | AVM1_REGISTER_MISSES.md; global-register persistence/private count contract remain open. |
+| Original SWF corpus | Tested for 23 cases through v0.236 | Unmodified SWF<=8 files and byte-exact trace comparison; not complete AVM1 coverage. |
+| JIT and cross-platform acceptance | Open | Common C execution services/native-body ABI exist; all requested backends and non-Linux runtime acceptance remain open. |
+
+Все девять стадий остаются открытыми. Эти контрольные точки уточняют проверенные
+части, но не заменяют полную приёмку роудмапа.

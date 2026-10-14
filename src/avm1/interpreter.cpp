@@ -487,7 +487,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 {
                     FVM_FunctionRecord record;
                     if (!fvm_function_record(data, size, a.payload, a.length, record,
-                                             a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2))
+                                             a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2, c->swf_loaded))
                         return FVM_INVALID_ARGUMENT;
                     pos = record.next;
                 }
@@ -617,9 +617,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     bool had_binding = false;
                     if (record.flags & FVM_AVM1_TRY_CATCH_REGISTER)
                     {
-                        if (record.reg >= registers.size())
+                        if (record.reg < registers.size())
+                            registers[record.reg] = saved[0];
+                        else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;
-                        registers[record.reg] = saved[0];
                     }
                     else
                     {
@@ -707,16 +708,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (stack.empty())
                     return FVM_ERROR;
                 unsigned int reg = data[a.payload];
-                if (reg >= registers.size())
+                if (reg < registers.size())
+                    registers[reg] = stack.back();
+                else if (!c->swf_loaded)
                     return FVM_INVALID_ARGUMENT;
-                registers[reg] = stack.back();
             }
             else if (a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION ||
                      a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
             {
                 FVM_FunctionRecord record;
                 if (!fvm_function_record(data, size, a.payload, a.length, record,
-                                         a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2))
+                                         a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2, c->swf_loaded))
                     return FVM_INVALID_ARGUMENT;
                 FVM_ScriptFunction fn;
                 fn.function2 = record.function2;
@@ -746,12 +748,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 fn.body.assign(data + record.body, data + record.body + record.size);
                 FVM_AVM1Info body_info;
                 body_info.struct_size = sizeof(body_info);
-                if (fvm_avm1_inspect(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
+                if ((c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
 
                 {
                     fn.body.push_back(0);
 
-                    if (fvm_avm1_inspect(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
+                    if ((c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
                         return FVM_INVALID_ARGUMENT;
                 }
                 FVM_Object *object = 0;
@@ -825,9 +827,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         if (end - p < 1)
                             return FVM_INVALID_ARGUMENT;
                         unsigned int reg = data[p++];
-                        if (reg >= registers.size())
+                        if (reg < registers.size())
+                            v = registers[reg];
+                        else if (!c->swf_loaded)
                             return FVM_INVALID_ARGUMENT;
-                        v = registers[reg];
                     }
                     else if (type == FVM_AVM1_PUSH_DOUBLE)
                     {

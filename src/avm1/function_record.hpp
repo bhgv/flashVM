@@ -31,7 +31,8 @@ inline bool fvm_function2_flags_valid(unsigned int flags)
  * historical inline encoding as a compatibility input, but bound both forms. */
 /* Compute and return function record. */
 inline bool fvm_function_record(const unsigned char *data, size_t size, size_t start, size_t length,
-                                FVM_FunctionRecord &r, bool function2 = false)
+                                FVM_FunctionRecord &r, bool function2 = false,
+                                bool loaded_semantics = false)
 {
     if (start > size || length > size - start)
         return false;
@@ -67,10 +68,10 @@ inline bool fvm_function_record(const unsigned char *data, size_t size, size_t s
         const unsigned int bits[] = {FVM_AVM1_F2_PRELOAD_THIS,   FVM_AVM1_F2_PRELOAD_ARGUMENTS,
                                      FVM_AVM1_F2_PRELOAD_SUPER,  FVM_AVM1_F2_PRELOAD_ROOT,
                                      FVM_AVM1_F2_PRELOAD_PARENT, FVM_AVM1_F2_PRELOAD_GLOBAL};
-        for (unsigned int i = 0; i < 6; ++i)
+        for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
             if (r.flags & bits[i])
                 ++preload;
-        if (preload > r.register_count)
+        if (!loaded_semantics && preload > r.register_count)
             return false;
     }
     r.parameters = p;
@@ -79,7 +80,7 @@ inline bool fvm_function_record(const unsigned char *data, size_t size, size_t s
 
         if (function2)
         {
-            if (p == end || data[p] > r.register_count)
+            if (p == end || (!loaded_semantics && data[p] > r.register_count))
                 return false;
             ++p;
         }
