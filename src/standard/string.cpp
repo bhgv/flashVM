@@ -6,6 +6,7 @@
 #include "../core/string_internal.hpp"
 #include "../../external/unicode/case_table.hpp"
 #include "../../external/flash_case/case_table.hpp"
+#include "../avm1/coercion.hpp"
 #include "base_state.hpp"
 #include "flashvm/table.h"
 #include "flashvm/standard.h"
@@ -23,7 +24,7 @@ enum
 };
 typedef fvm_detail::vector<unsigned int> Units;
 
-/* Decode the current value. */
+/* Decode a counted string into UTF16 units, including lone surrogates. */
 FVM_Result decode(const FVM_Value &text, Units &units)
 {
     return fvm_string_units(text, units);
@@ -63,7 +64,7 @@ FVM_Result value(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value
     return FVM_OK;
 }
 
-/* Compute and return receiver. */
+/* Decode a borrowed receiver after the current version's string coercion. */
 FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
 {
 
@@ -78,7 +79,8 @@ FVM_Result receiver(FVM_Context *c, FVM_Object *self, Units &units)
         fvm_value_undefined(&object);
         object.type = FVM_VALUE_OBJECT;
         object.object = self;
-        result = fvm_value_to_string(c, &object, &text);
+        result = c->swf_loaded ? fvm_avm1_string(c, object, &text)
+                               : fvm_value_to_string(c, &object, &text);
     }
     return result == FVM_OK ? decode(text, units) : result;
 }

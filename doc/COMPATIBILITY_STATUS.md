@@ -1380,3 +1380,21 @@ Five AGG launch failures passed after restoring execute bits.
 Загруженные строки и сортировка используют Flash UCS2 mappings; выполнена
 полная сверка диапазона 16-bit units с таблицей pinned Ruffle, без заявления
 полной совместимости всех API или завершения стадии.
+
+## v0.181 — borrowed String receiver / преобразование receiver String
+
+Loaded String methods use AVM1 string coercion for non-boxed receivers instead
+of host primitive/result conversion. Nonstring toString results use type labels
+without valueOf fallback. Typed String and unloaded paths remain unchanged.
+[RU/EN details](STRING_LEGACY_RECEIVER.md). SWF4..8 tests cover numeric/undefined/
+Object/counted-NUL results, callback errors, exactly-once conversion, character
+access/search/concat/split, post-GC casing, Function fallback and restored state.
+Full method argument coercions, boxed overrides, separate function/clip versions
+and all roadmap stages remain open.
+
+Заимствованные строковые методы используют AVM1 string coercion без host
+valueOf fallback; проверены пользовательские результаты и восстановление состояния.
+
+Evidence for v0.181: AGG 342/Cairo 341 tests, five focused checks each in Linux
+portable/restricted heap-global ASan+UBSan, sixteen byte-exact original SWFs.
+Four AGG launch failures passed after restoring execute bits.
