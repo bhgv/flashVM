@@ -31,3 +31,20 @@ its 4049-byte output exactly without changing the SWF or expected output. Other
 global availability/case rules, attribute masks, separate function/clip versions
 and all roadmap stages remain open. Reference: pinned globals.rs get_nan and
 get_infinity.
+
+## v0.179 — attributes / атрибуты
+
+NaN/Infinity устанавливаются с DONT_ENUM, без DONT_DELETE. Attributes map
+подготавливается вместе с properties/accessors и публикуется после всех
+выделений памяти. Это правило распространяется также на незагруженный host
+режим. Тест проверяет own membership без перечисления, перенос flags через
+канал, явный DONT_DELETE, снятие flags с включением в enumeration, удаление
+дескриптора и создание обычного свойства после удаления, включая post-GC.
+Прочие attribute/version masks остаются открытыми.
+
+NaN/Infinity are installed with DONT_ENUM and without DONT_DELETE, including
+unloaded host mode. The attribute map is staged with properties/accessors and
+published after all allocations. Tests cover own membership without enumeration,
+channel-preserved flags, explicit nondelete protection, clearing flags to expose
+the name in enumeration, descriptor deletion and ordinary data recreation after
+deletion/post-GC. Other attribute/version masks remain open.

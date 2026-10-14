@@ -1345,3 +1345,18 @@ restoring execute bits.
 
 Исправлены NaN/Infinity для SWF4; исходный equals_swf4 добавлен к побайтным
 эталонным проверкам. Незагруженные host значения сохраняются после GC/передачи.
+
+## v0.179 — numeric global attributes / атрибуты NaN и Infinity
+
+NaN/Infinity carry DONT_ENUM without DONT_DELETE, including unloaded host mode.
+The attribute map is staged/published with descriptors and globals. Extended
+global_numeric_version checks own/nonenumerable membership, transported flags,
+explicit nondelete protection, clearing flags, enumeration, deletion and ordinary
+data recreation after deletion/post-GC. [RU/EN details](GLOBAL_NUMERIC_VERSION.md).
+Other global/version attribute masks and all roadmap stages remain open.
+Evidence: AGG 340/Cairo 339 tests, seven focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, sixteen byte-exact original SWFs.
+Four AGG/two Cairo launch failures passed after restoring execute bits.
+
+NaN/Infinity скрыты из перечисления, допускают удаление без DONT_DELETE;
+проверены изменение flags, передача и обычное свойство после удаления.

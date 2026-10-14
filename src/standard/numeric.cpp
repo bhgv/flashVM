@@ -15,6 +15,7 @@
 #include "error_state.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/property.h"
 #include <cmath>
 #include <limits>
 #include <cstring>
@@ -807,11 +808,13 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 c->stack_functions.find(names[i]) != c->stack_functions.end() ||
                 c->script_functions.find(names[i]) != c->script_functions.end())
                 return FVM_INVALID_ARGUMENT;
-        /* Build both maps before publishing, so allocation errors cannot leave
+        /* Build staged maps before publishing, so allocation errors cannot leave
          * partially installed globals and function registrations. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
         /* [GC:] Stage constant descriptors and captures before publishing either map. */
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry> accessors = c->global->accessors;
+        /* Keep constant attributes atomic with their descriptors and initial values. */
+        fvm_detail::map<fvm_detail::string, unsigned int> attributes = c->global->attributes;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry> functions = c->functions;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry> constructors = c->constructors;
         FVM_Object *math = 0;
@@ -856,6 +859,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             entry.userdata = state;
             entry.root = state;
             accessors[constant_names[i]] = entry;
+            attributes[constant_names[i]] = FVM_PROPERTY_DONT_ENUM;
         }
         for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
         {
@@ -997,6 +1001,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             constructors.find("Array")->second.root->properties.find("prototype")->second.object;
         c->global->properties.swap(globals);
         c->global->accessors.swap(accessors);
+        c->global->attributes.swap(attributes);
         c->functions.swap(functions);
         c->constructors.swap(constructors);
         c->array_builtin_prototype = array_builtin_prototype;
