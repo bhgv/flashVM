@@ -11,8 +11,20 @@ FVM_Result fvm_date_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
 
-/* [GC:] Prepare the rooted invalid host prototype for atomic loaded activation; may throw. */
-FVM_Object *fvm_date_prepare_loaded(FVM_Context *);
+/* [GC:] Staged Date layout and attributes remain retained by the constructor capture. */
+struct FVM_DatePrototypeActivation
+{
+    FVM_Object *prototype; /* Unchanged invalid native prototype selected for activation. */
+    FVM_Object *klass; /* Captured Date class receiving default UTC attributes. */
+    fvm_detail::map<fvm_detail::string, unsigned int> prototype_attributes; /* Prepared method flags. */
+    fvm_detail::map<fvm_detail::string, unsigned int> class_attributes; /* Prepared static flags. */
+    /* Start without a candidate; temporary maps own only names and numeric flags. */
+    FVM_DatePrototypeActivation() : prototype(0), klass(0) {}
+};
+/* Prepare the invalid host layout and default attributes without mutation; may throw. */
+void fvm_date_prepare_loaded(FVM_Context *, FVM_DatePrototypeActivation &);
+/* Commit prepared native state and attributes without allocating or invoking callbacks. */
+void fvm_date_commit_loaded(FVM_DatePrototypeActivation &);
 
 /* Validate date. */
 FVM_Result fvm_date_validate(FVM_Context *);

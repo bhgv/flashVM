@@ -2345,12 +2345,15 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
         for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
                  klass->methods.begin();
              i != klass->methods.end(); ++i)
-            klass->attributes[i->first] = 1;
+            /* Preserve attributes explicitly staged by the builtin module. */
+            if (klass->attributes.find(i->first) == klass->attributes.end())
+                klass->attributes[i->first] = 1;
         if (proto)
             for (fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator i =
                      proto->methods.begin();
                  i != proto->methods.end(); ++i)
-                proto->attributes[i->first] = 1;
+                if (proto->attributes.find(i->first) == proto->attributes.end())
+                    proto->attributes[i->first] = 1;
     }
     return FVM_OK;
 }

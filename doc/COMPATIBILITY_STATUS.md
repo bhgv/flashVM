@@ -1763,3 +1763,21 @@ calendar setters/version arithmetic, timezone fidelity and all stages stay open.
 Evidence: AGG 363/Cairo 362 full tests, eight focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. No launch failures in the full runs.
+
+## v0.203 — Date property attributes / атрибуты Date
+
+Loaded Date prototype methods use flags 3; UTC uses readonly/nondelete flags 7.
+Shared installation supplies only missing method flags, preserving module-staged
+metadata. Loading after installation prepares Date attribute snapshots before
+any primitive mutation; nondefault custom flags/descriptors/replaced values
+remain. Commit swaps maps without allocation. [RU/EN details](DATE_LEGACY_ATTRIBUTES.md).
+Tests cover installation order, host defaults, custom flags, writable prototype
+methods/delete guards, UTC writes/deletes/calls, GC/channel and OOM preserving
+old flags before retry. Other builtin metadata and all stages remain open.
+
+Исправлены Date flags и общий этап, перезаписывавший staged metadata. Уточнён
+host default UTC: 1. Проверены snapshot commit и сохранение пользовательских flags.
+
+Evidence: AGG 364/Cairo 363 full tests, nine focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Three AGG launch failures passed after restoring execute bits.

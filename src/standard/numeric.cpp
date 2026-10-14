@@ -625,7 +625,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_ArrayPrototypeActivation array;
         fvm_array_prepare_loaded(c, array);
         FVM_Object *number = fvm_number_prepare_loaded(c), *boolean = 0;
-        FVM_Object *date = fvm_date_prepare_loaded(c);
+        FVM_DatePrototypeActivation date;
+        fvm_date_prepare_loaded(c, date);
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Boolean");
         if (ctor != c->constructors.end() && ctor->second.callback == boolean_constructor && ctor->second.root)
         {
@@ -649,8 +650,9 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         if (result != FVM_OK)
             return result;
         fvm_array_commit_loaded(array);
-        FVM_Object *prototypes[] = {number, boolean, date};
-        for (unsigned int i = 0; i < 3; ++i)
+        fvm_date_commit_loaded(date);
+        FVM_Object *prototypes[] = {number, boolean};
+        for (unsigned int i = 0; i < 2; ++i)
             if (prototypes[i])
             {
                 prototypes[i]->resource_kind = GENERIC_PRIMITIVE_PROTOTYPE;

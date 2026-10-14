@@ -739,6 +739,7 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
         e.callback = methods[i].callback;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         proto->methods[methods[i].name] = e;
+        proto->attributes[methods[i].name] = c->swf_loaded ? 3 : 1;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 
@@ -747,6 +748,8 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
     e.callback = loaded_utc;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["UTC"] = e;
+    if (c->swf_loaded)
+        klass->attributes["UTC"] = 7;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = loaded_constructor;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
@@ -773,22 +776,56 @@ FVM_Result fvm_date_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
-/* [GC:] Prepare the unchanged invalid host Date prototype without mutation;
- * its constructor capture retains it and allocating lookups may throw bad_alloc. */
-FVM_Object *fvm_date_prepare_loaded(FVM_Context *c)
+/* [GC:] Prepare the unchanged invalid host prototype and attribute copies before
+ * any primitive commits. Individual user descriptors/flags retain their shapes. */
+void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Date");
     if (ctor == c->constructors.end() || ctor->second.callback != loaded_constructor || !ctor->second.root)
-        return 0;
+        return;
     FVM_Object *klass = ctor->second.root;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
-        return 0;
+        return;
     FVM_Object *proto = stored->second.object;
     if (!date(proto) || proto->resource_result.number == proto->resource_result.number)
-        return 0;
+        return;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("getTime");
-    return method != proto->methods.end() && method->second.callback == loaded_value ? proto : 0;
+    if (method == proto->methods.end() || method->second.callback != loaded_value)
+        return;
+    out.prototype_attributes = proto->attributes;
+    out.class_attributes = klass->attributes;
+    for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+    {
+        method = proto->methods.find(methods[i].name);
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(methods[i].name);
+        if (method != proto->methods.end() && method->second.callback == methods[i].callback &&
+            flags != out.prototype_attributes.end() && flags->second == 1 &&
+            proto->properties.find(methods[i].name) == proto->properties.end() &&
+            proto->accessors.find(methods[i].name) == proto->accessors.end())
+            flags->second = 3;
+    }
+    method = klass->methods.find("UTC");
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator utc_flags = klass->attributes.find("UTC");
+    if (method != klass->methods.end() && method->second.callback == loaded_utc &&
+        utc_flags != klass->attributes.end() && utc_flags->second == 1 &&
+        klass->properties.find("UTC") == klass->properties.end() &&
+        klass->accessors.find("UTC") == klass->accessors.end())
+        out.class_attributes["UTC"] = 7;
+    out.prototype = proto;
+    out.klass = klass;
+}
+
+/* Publish the prepared Date layout and flag tables without a failing operation. */
+void fvm_date_commit_loaded(FVM_DatePrototypeActivation &prepared)
+{
+    if (!prepared.prototype)
+        return;
+    prepared.prototype->resource_kind = DATE_GENERIC_PROTOTYPE;
+    prepared.prototype->resource_result_valid = false;
+    fvm_value_undefined(&prepared.prototype->resource_result);
+    prepared.prototype->attributes.swap(prepared.prototype_attributes);
+    prepared.klass->attributes.swap(prepared.class_attributes);
 }
 
 /* Map a native date callback to its stable serialization identifier. */

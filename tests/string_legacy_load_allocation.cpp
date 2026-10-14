@@ -71,7 +71,7 @@ int main()
     FVM_Config cfg; FVM_Runtime *rt = 0; assert(fvm_config_init(&cfg) == FVM_OK); assert(fvm_runtime_create(&cfg, &rt) == FVM_OK);
     long runtime_allocations = active_allocations; bool succeeded = false;
     unsigned char swf[] = {'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};
-    for (long failpoint = 0; failpoint < 512 && !succeeded; ++failpoint) {
+    for (long failpoint = 0; failpoint < 4096 && !succeeded; ++failpoint) {
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK); assert(fvm_standard_install(c) == FVM_OK);
         FVM_Value klass, value; assert(fvm_get_global(c, "String", &klass) == FVM_OK); assert(fvm_object_get(c, klass.object, "prototype", &value) == FVM_OK); FVM_Object *proto = value.object;
         fvm_value_string_bytes(&value, "a\0b", 3); assert(fvm_object_set(c, proto, "marker", &value) == FVM_OK);
@@ -82,11 +82,13 @@ int main()
         if (result == FVM_OUT_OF_MEMORY) {
             assert(!c->swf_loaded && c->swf_bytes.empty() && proto->resource_kind == 26 && proto->resource_result_valid);
             for (unsigned i = 0; i < 4; ++i) { assert(numeric[i]->resource_kind == (i == 3 ? 34 : i == 2 ? 28 : i ? 20 : 24) && numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == (i == 2 ? FVM_VALUE_OBJECT : i == 1 ? FVM_VALUE_BOOLEAN : FVM_VALUE_NUMBER)); }
+            unsigned int date_flags = 99; assert(fvm_object_property_flags(c, numeric[3], "getTime", &date_flags) == FVM_OK && date_flags == 1);
             assert(proto->accessors.find("length") != proto->accessors.end());
             assert(fvm_object_call(c, proto, "valueOf", 0, 0, &value) == FVM_OK && value.type == FVM_VALUE_STRING && !fvm_value_string_size(&value));
             assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK);
         } else succeeded = true;
         for (unsigned i = 0; i < 4; ++i) { assert(numeric[i]->resource_kind == 30 && !numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == (i == 2 ? FVM_VALUE_OBJECT : FVM_VALUE_UNDEFINED)); }
+        unsigned int date_flags = 99; assert(fvm_object_property_flags(c, numeric[3], "getTime", &date_flags) == FVM_OK && date_flags == 3);
         assert(c->swf_loaded && c->swf_info.version == 8 && proto->resource_kind == 30 && !proto->resource_result_valid);
         assert(fvm_object_get(c, klass.object, "prototype", &value) == FVM_OK && value.object == proto);
         assert(fvm_object_call(c, proto, "valueOf", 0, 0, &value) == FVM_OK && value.type == FVM_VALUE_UNDEFINED);
