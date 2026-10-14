@@ -34,6 +34,9 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &, FVM_Value &);
 /* Recognize the script-property bridge whose function setter can run on a readonly property. */
 bool fvm_base_script_accessor(const FVM_AccessorEntry &);
 
+/* Recognize the native Array length bridge whose loaded truncation precedes readonly data checks. */
+bool fvm_base_array_length_accessor(const FVM_AccessorEntry &);
+
 /* Store own data without setters; note_length optionally suppresses implicit native Array growth. */
 FVM_Result fvm_base_store_data(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value &,
                                bool note_length = true);

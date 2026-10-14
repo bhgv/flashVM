@@ -154,6 +154,7 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     if (!array(o) || n != 1)
         return FVM_INVALID_ARGUMENT;
 
+    FVM_ArrayWorkScope work(c, c->swf_loaded);
     /* Initialization / Инициализация локального состояния. */
     double length = 0;
     FVM_Result r = fvm_value_to_number(c, a, &length);
@@ -161,6 +162,35 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
         return r;
     if (length < 0 || length > 4294967295.0 || length != std::floor(length))
         return FVM_INVALID_ARGUMENT;
+    if (c->swf_loaded)
+    {
+        /* Deletion bounds use signed AVM1 indices; high unsigned lengths wrap
+         * negative and do not turn sparse arrays into billions of deletions. */
+        unsigned long old_length = size(o);
+        if (old_length >= 2147483648UL)
+            old_length = 0;
+        unsigned long first = length >= 2147483648.0 ? 0 : (unsigned long)length;
+        for (unsigned long index = first; index < old_length; ++index)
+        {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
+            char name[32];
+            std::sprintf(name, "%lu", index);
+            int removed = 0;
+            r = fvm_object_delete(c, o, name, &removed);
+            if (r != FVM_OK)
+                return r;
+        }
+        unsigned int flags = 0;
+        r = fvm_object_property_flags(c, o, "length", &flags);
+        if (r != FVM_OK)
+            return r;
+        if (!(flags & FVM_PROPERTY_READ_ONLY))
+            o->resource_result.number = length;
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     /* A nondeletable highest slot stops a descending length truncation. */
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         if (i->first >= length)
@@ -1808,6 +1838,12 @@ bool fvm_as_index(const char *name, unsigned long *out)
 bool fvm_base_script_accessor(const FVM_AccessorEntry &entry)
 {
     return entry.getter == script_property_get && entry.setter == script_property_set && entry.root;
+}
+
+/* Identify the builtin length accessor without executing its getter or setter. */
+bool fvm_base_array_length_accessor(const FVM_AccessorEntry &entry)
+{
+    return entry.getter == array_length && entry.setter == array_resize;
 }
 
 /* Read script descriptor data directly; older descriptors without data retain undefined. */

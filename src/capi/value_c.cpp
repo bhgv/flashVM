@@ -401,7 +401,10 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             if (c->swf_loaded && flag_cursor != o)
                 continue;
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-            if (!c->swf_loaded || script == o->accessors.end() || !fvm_base_script_accessor(script->second))
+            bool native_length = c->swf_loaded && o->resource_kind == 28 && name == "length" &&
+                script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
+            if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
+                                   !fvm_base_script_accessor(script->second)))
                 return FVM_OK;
         }
     }
@@ -418,7 +421,10 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         if (own_flags & 4)
         {
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
-            if (!c->swf_loaded || script == o->accessors.end() || !fvm_base_script_accessor(script->second))
+            bool native_length = c->swf_loaded && o->resource_kind == 28 && name == "length" &&
+                script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
+            if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
+                                   !fvm_base_script_accessor(script->second)))
                 return FVM_OK;
         }
     }

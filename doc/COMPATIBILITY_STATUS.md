@@ -1223,3 +1223,20 @@ completion states remain unchanged.
 
 Пустой watcher сохраняется после передачи и удаляется корректно. Исходное
 правило игнорирования assignment пустого имени сохранено; все стадии открыты.
+
+## v0.172 — length truncation / сокращение Array.length
+
+Loaded native Array deletes the signed bounded tail before readonly length
+storage. Nondelete slots remain outside length; slots beyond the old signed
+length are untouched. Work-budget failure retains prior deletions. Unloaded
+behavior is preserved. [RU/EN details](ARRAY_LEGACY_LENGTH_TRUNCATE.md).
+Tests cover SWF4..8, readonly/nondelete flags, the 2^31 boundary, partial budget
+failure, root restoration and NUL tails through traced GC/channel transfer.
+Evidence: AGG 333/Cairo 332, 23 focused checks each on Linux portable and
+restricted heap/global ASan+UBSan profiles, and fifteen byte-exact original SWFs.
+Three AGG launch failures passed after restoring executable permissions.
+Full ToInt32 input conversion, negative stored length and virtual native length
+remain open, as do all roadmap stages.
+
+Порядок удаления хвоста и записи readonly length исправлен. Защищённые
+свойства не удерживают длину; все стадии роудмапа остаются открытыми.
