@@ -2059,3 +2059,11 @@ integer zero/wrapping, callback roots and retained type-classification limitatio
 
 Интерпретатор и будущий JIT используют одни преобразования; это часть
 декомпозиции, а не реализация генератора машинного кода.
+
+### v0.255 — explicit-base display deletion
+
+`fvm_exec_delete_path` resolves slash-containing prefixes through the shared
+MovieClip resolver and deletes a counted final member without reading it.
+[DELETE_DISPLAY_PATH.md](DELETE_DISPLAY_PATH.md) records tests and the remaining
+interpreter lexical-scope/path-selection boundary. Display resolver constants are
+named/documented. Общая служба расширена; полная семантика Delete2 ещё открыта.

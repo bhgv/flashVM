@@ -131,7 +131,8 @@ extern "C"
                                              FVM_Value *out);
     /* Delete a member through a counted dot/colon path rooted at base. Prefix getters
      * may run; the final member is not read. Primitive/missing prefixes report false.
-     * Slash target syntax in prefixes is unsupported; a slash in the final key is literal.
+     * Slash prefixes use display-path resolution relative to base; a slash in the final key
+     * is literal. This service does not search outer lexical scopes.
      * [GC:] Traversal values and text are retained; errors preserve out. */
     FVM_API FVM_Result fvm_exec_delete_path(FVM_Context *, const FVM_Value *base,
                                             const FVM_Value *path, FVM_Value *out);

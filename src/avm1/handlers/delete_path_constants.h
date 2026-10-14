@@ -3,7 +3,7 @@
 #define FVM_DELETE_PATH_CONSTANTS_H /* Private path-layout guard. */
 #define FVM_DELETE_PATH_DOT '.'     /* Member-path separator accepted by Delete2. */
 #define FVM_DELETE_PATH_COLON ':'   /* Legacy member-path separator accepted by Delete2. */
-#define FVM_DELETE_PATH_SLASH '/'   /* Display-target slash syntax requires a separate resolver. */
+#define FVM_DELETE_PATH_SLASH '/'   /* Display-target slash syntax selects the rooted display-path resolver. */
 #define FVM_DELETE_PATH_CURRENT_ROOT 0U /* Current object retained during a getter call. */
 #define FVM_DELETE_PATH_TEXT_ROOT 1U    /* Complete counted path, including any embedded NUL. */
 #define FVM_DELETE_PATH_NEXT_ROOT 2U    /* Getter result retained before the next traversal step. */

@@ -1,5 +1,6 @@
 /* FlashVM: counted AVM1 display paths with child priority, prototype fallback and scoped GC roots. */
 #include "movieclip_state.hpp"
+#include "movieclip_path_constants.h"
 #include "string_order.hpp"
 #include "../core/property_key.hpp"
 #include "flashvm/property.h"
@@ -84,7 +85,7 @@ FVM_Result property(FVM_Context *c, FVM_Object *receiver, const fvm_detail::stri
     unsigned int visited = 0;
     while (cursor)
     {
-        if (++visited > 1024)
+        if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
             return FVM_ERROR;
         if (key(cursor->properties, name, sensitive, spelling) ||
             key(cursor->methods, name, sensitive, spelling) ||
@@ -145,7 +146,7 @@ FVM_Result child(FVM_Object *receiver, const fvm_detail::string &name, bool sens
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator art =
                 child_data->properties.find("static_art");
             out = art != child_data->properties.end() && art->second.type == FVM_VALUE_NUMBER &&
-                          art->second.number == 1 ? receiver : candidate;
+                          art->second.number == FVM_MOVIECLIP_PATH_STATIC_ART ? receiver : candidate;
             return FVM_OK;
         }
     }
@@ -158,11 +159,12 @@ struct PathScope
     FVM_GCRootFrame frame; /* [GC:] Root frame linked only for the resolver lifetime. */
     fvm_detail::vector<FVM_Value> values; /* [GC:] Start, root, path and current object snapshots. */
     /* [GC:] Initialize and link complete root slots before any script property lookup. */
-    PathScope(FVM_Context *c, FVM_Object *start, const FVM_Value &path) : context(c), values(4)
+    PathScope(FVM_Context *c, FVM_Object *start, const FVM_Value &path)
+        : context(c), values(FVM_MOVIECLIP_PATH_ROOT_COUNT)
     {
-        values[0].type = FVM_VALUE_OBJECT;
-        values[0].object = start;
-        values[2] = path;
+        values[FVM_MOVIECLIP_PATH_START_ROOT].type = FVM_VALUE_OBJECT;
+        values[FVM_MOVIECLIP_PATH_START_ROOT].object = start;
+        values[FVM_MOVIECLIP_PATH_TEXT_ROOT] = path;
         frame.previous = c->gc_frames;
         frame.stack = &values;
         frame.locals = 0;
@@ -197,7 +199,7 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         unsigned int visited = 0;
         for (;;)
         {
-            if (++visited > 1024)
+            if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
             FVM_Result status = parent(root, next);
             if (status != FVM_OK)
@@ -206,15 +208,15 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                 break;
             root = next;
         }
-        scope.values[1].type = FVM_VALUE_OBJECT;
-        scope.values[1].object = root;
+        scope.values[FVM_MOVIECLIP_PATH_DISPLAY_ROOT].type = FVM_VALUE_OBJECT;
+        scope.values[FVM_MOVIECLIP_PATH_DISPLAY_ROOT].object = root;
         fvm_detail::string text(path.string, fvm_string_size(path));
         bool modern = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5;
         bool sensitive = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7;
         /* Historical non-ASCII case tables are a separate unresolved compatibility boundary. */
         if (!sensitive)
             for (size_t i = 0; i < text.size(); ++i)
-                if ((unsigned char)text[i] > 127)
+                if ((unsigned char)text[i] > FVM_MOVIECLIP_PATH_ASCII_MAX)
                     return FVM_UNSUPPORTED;
         size_t at = 0;
         bool first = true, slash = false;
@@ -229,10 +231,10 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         visited = 0;
         while (at < text.size())
         {
-            if (++visited > 1024)
+            if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
-            scope.values[3].type = FVM_VALUE_OBJECT;
-            scope.values[3].object = cursor;
+            scope.values[FVM_MOVIECLIP_PATH_CURRENT_ROOT].type = FVM_VALUE_OBJECT;
+            scope.values[FVM_MOVIECLIP_PATH_CURRENT_ROOT].object = cursor;
             if (modern)
                 while (at < text.size() && text[at] == ':')
                     ++at;

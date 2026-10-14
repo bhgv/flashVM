@@ -38,7 +38,9 @@ int main(void)
     assert(fvm_exec_delete_path(c,&base,&path,&out)==FVM_EXCEPTION && out.number==99 && fvm_exception_clear(c)==FVM_OK);
     assert(fvm_object_get(c,leaf,"victim",&out)==FVM_OK && out.number==17);failure=0;
     fvm_value_string(&path,"child/leaf.victim");fvm_value_number(&out,99);
-    assert(fvm_exec_delete_path(c,&base,&path,&out)==FVM_UNSUPPORTED && out.number==99);
+    failure=1;assert(fvm_exec_delete_path(c,&base,&path,&out)==FVM_EXCEPTION && out.number==99 && fvm_exception_clear(c)==FVM_OK);failure=0;
+    assert(fvm_exec_delete_path(c,&base,&path,&out)==FVM_OK && out.boolean);
+    assert(fvm_object_set(c,leaf,"victim",&value)==FVM_OK);
     {
         char long_path[1025];unsigned i;
         for(i=0;i<1024;++i)long_path[i]='.';

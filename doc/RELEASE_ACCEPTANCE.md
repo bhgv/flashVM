@@ -109,3 +109,10 @@ cases, including the correctly hosted three-frame delete probe. Feature reports
 record exact build/memory evidence and remaining display-path/type/GC gaps.
 All stages 1–9 remain open. Reproducible source/history packaging does not replace
 full JIT implementations/equivalence or real Windows/macOS/Android execution.
+
+## v0.255 — explicit-base display-path service
+
+The common deletion interface now reuses MovieClip path resolution for slash
+prefixes. This extends the C/generated-body foundation; it does not implement JIT
+code generation, full interpreter scope retries or non-Linux release acceptance.
+Все девять стадий остаются открытыми; проверка путей не закрывает эти требования.

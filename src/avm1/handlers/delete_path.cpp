@@ -1,4 +1,4 @@
-/* FlashVM: deletion through a counted dot/colon member path rooted at a value. */
+/* FlashVM: deletion through counted object or display paths rooted at an explicit value. */
 #include "support.hpp"
 #include "delete_path_constants.h"
 /* Traverse object-valued prefixes; only the final property is deleted, without reading it. */
@@ -29,7 +29,32 @@ extern "C" FVM_Result fvm_exec_delete_path(FVM_Context *c, const FVM_Value *base
         if (qualified)
             for (size_t at = 0; at < last; ++at)
                 if (text.string[at] == FVM_DELETE_PATH_SLASH)
-                    return FVM_UNSUPPORTED;
+                {
+                    FVM_Value &current = roots.values[FVM_DELETE_PATH_CURRENT_ROOT];
+                    if (current.type != FVM_VALUE_OBJECT)
+                    {
+                        fvm_value_boolean(out, 0);
+                        return FVM_OK;
+                    }
+                    FVM_Value &prefix = roots.values[FVM_DELETE_PATH_MEMBER_ROOT];
+                    FVM_Result status = fvm_value_string_bytes(&prefix, text.string, last);
+                    if (status != FVM_OK)
+                        return status;
+                    FVM_Object *resolved = 0;
+                    status = fvm_movieclip_resolve_path(c, current.object, prefix, &resolved);
+                    if (status != FVM_OK)
+                        return status;
+                    if (!resolved)
+                    {
+                        fvm_value_boolean(out, 0);
+                        return FVM_OK;
+                    }
+                    current.object = resolved;
+                    status =
+                        fvm_value_string_bytes(&prefix, text.string + last + 1, size - last - 1);
+                    return status == FVM_OK ? fvm_exec_delete_member(c, &current, &prefix, out)
+                                            : status;
+                }
         size_t first = 0;
         for (;;)
         {
