@@ -99,7 +99,7 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
                         found = 1;
                         break;
                     }
-                    if (cursor == target && fvm_avm1_movieclip_global(c, target, key))
+                    if (fvm_avm1_movieclip_global(c, cursor, key))
                     {
                         result.type = FVM_VALUE_OBJECT;
                         result.object = c->global;

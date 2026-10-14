@@ -57,7 +57,7 @@ extern "C" FVM_Result fvm_exec_scope_resolve(FVM_Context *c, FVM_Object *scope,
                     *with_scope = with ? 1 : 0;
                     return FVM_OK;
                 }
-                if (cursor == object && fvm_avm1_movieclip_global(c, object, key))
+                if (fvm_avm1_movieclip_global(c, cursor, key))
                 {
                     fvm_value_undefined(out);
                     out->type = FVM_VALUE_OBJECT;

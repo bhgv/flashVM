@@ -1,5 +1,6 @@
 /* FlashVM: complete Delete2 operand handling over explicit managed scopes and values. */
 #include "support.hpp"
+#include "../scope_keywords.hpp"
 #include "delete_reference_constants.h"
 #include "reference_path_constants.h"
 #include <cstring>
@@ -68,8 +69,9 @@ extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scop
                 fvm_value_string(&path, "");
                 status = fvm_exec_scope_member(c, scope, target, receiver, &path, &prefix, &base,
                                                &present);
-                if (status == FVM_OK && !present && last == sizeof("_global") - 1 &&
-                    !std::memcmp(prefix.string, "_global", sizeof("_global") - 1))
+                if (status == FVM_OK && !present &&
+                    fvm_avm1_global_keyword(
+                        c, fvm_detail::string(prefix.string, fvm_string_size(prefix))))
                 {
                     base.type = FVM_VALUE_OBJECT;
                     base.object = c->global;

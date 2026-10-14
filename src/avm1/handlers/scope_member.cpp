@@ -1,6 +1,7 @@
 /* FlashVM: scoped path reads distinguish missing final members from undefined values. */
 #include "support.hpp"
 #include "scope_member.hpp"
+#include "../scope_keywords.hpp"
 #include "scope_member_constants.h"
 #include "../../core/object_root_scope.hpp"
 #include "../../core/property_key.hpp"
@@ -37,6 +38,15 @@ static FVM_Result visit_member(FVM_Context *c, FVM_Object *start, FVM_Object *di
                 source_owner = cursor;
             }
             return status;
+        }
+        if (fvm_avm1_movieclip_global(c, cursor, name))
+        {
+            result.type = FVM_VALUE_OBJECT;
+            result.object = c->global;
+            found = true;
+            owner = object;
+            source_owner = cursor;
+            return FVM_OK;
         }
     }
     return FVM_OK;

@@ -228,3 +228,10 @@ Target and With resolution account for concrete MovieClip namespace properties,
 sharing version/case helpers and documented keyword constants. Direct member and
 qualified namespace operations remain follow-up work, alongside full standard
 objects, JIT and platform acceptance. Все стадии 1–9 остаются открытыми.
+
+## v0.271 — namespace member/path consistency
+
+Member, qualified path and Delete2 services share concrete MovieClip namespace
+recognition while preserving has-own distinction and host aliases. Other virtual
+display fields, full path/property semantics, machine-code JIT and requested
+platform executions remain release gates. Все стадии 1–9 остаются открытыми.

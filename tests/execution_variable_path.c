@@ -22,7 +22,7 @@ int main(void)
  fvm_value_string(&name,"o/child");fvm_value_number(&out,99);assert(fvm_exec_variable_path(c,0,0,0,&name,&out,&handled,&present)==FVM_OK);assert(version>=5?(handled && present && out.object==child):(!handled && out.number==99));
  fvm_value_string(&name,"o/missing");fvm_value_number(&out,99);assert(fvm_exec_variable_path(c,0,0,0,&name,&out,&handled,&present)==FVM_OK && !handled && !present && out.number==99);
  fvm_value_string(&name,"plain");assert(fvm_exec_variable_path(c,0,0,0,&name,&name,&handled,&present)==FVM_OK && !handled && name.type==FVM_VALUE_STRING && !strcmp(name.string,"plain"));
- if(version>=5){fvm_value_string(&name,"_global.o");assert(fvm_exec_variable_path(c,0,0,0,&name,&out,&handled,&present)==FVM_OK && handled && present && out.object==o);fvm_value_string(&name,"this.member");assert(fvm_exec_variable_path(c,0,0,o,&name,&out,&handled,&present)==FVM_OK && handled && present && out.number==17);}
+ if(version>=5){fvm_value_string(&name,"_global.o");assert(fvm_exec_variable_path(c,0,0,0,&name,&out,&handled,&present)==FVM_OK && handled && (version>=6?(present && out.object==o):(!present && out.type==FVM_VALUE_UNDEFINED)));fvm_value_string(&name,"this.member");assert(fvm_exec_variable_path(c,0,0,o,&name,&out,&handled,&present)==FVM_OK && handled && present && out.number==17);}
  fvm_value_number(&name,1);fvm_value_number(&out,99);handled=21;present=22;assert(fvm_exec_variable_path(c,0,0,0,&name,&out,&handled,&present)==FVM_INVALID_ARGUMENT && out.number==99 && handled==21 && present==22);
  fvm_context_destroy(c);}
  fvm_runtime_destroy(rt);return 0;

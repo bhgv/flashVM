@@ -2212,3 +2212,14 @@ v0.269 generated concrete-clip global-shadow assertion is corrected against the
 primary display-object search order. C89, own/undefined/inherited, class/case and
 allocator metadata fixtures cover the implemented scope paths. Direct GetMember,
 qualified paths, Delete2 and all full roadmap gates remain open.
+
+### v0.271 — shared member/path/Delete2 namespace policy
+
+[GLOBAL_MEMBER_PATHS.md](GLOBAL_MEMBER_PATHS.md) records intrinsic MovieClip
+namespace reads before prototypes, virtual-presence versus own-descriptor
+separation, versioned qualified paths and Delete2 fallback. Explicit global starts
+honor normal bindings; native MovieClip prototypes also participate. C89/action,
+own/undefined/inherited, namespace-start and allocation fixtures accompany it.
+Generated SWF5 namespace expectations are corrected; independent oracle data is
+untouched. Ordinary property case folding, other display fields and all roadmap
+gates remain open. Общие правила `_global` применены к членам и путям.

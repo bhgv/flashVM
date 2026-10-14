@@ -21,6 +21,7 @@
 #include "../core/call_scope.hpp"
 #include "../core/setter_scope.hpp"
 #include "../standard/super.hpp"
+#include "../avm1/scope_keywords.hpp"
 /* Validate value. */
 FVM_Result fvm_validate_value(FVM_Context *context, const FVM_Value *value)
 {
@@ -209,6 +210,13 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return fvm_function_wrap_entry(c, o, name, method->second, out);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            /* Intrinsic display namespaces follow ordinary own members, before prototypes. */
+            if (fvm_avm1_movieclip_global(c, o, name))
+            {
+                out->type = FVM_VALUE_OBJECT;
+                out->object = c->global;
+                return FVM_OK;
+            }
             o = o->prototype;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }

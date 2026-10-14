@@ -17,7 +17,7 @@ int main()
  fvm_value_number(&value,31);assert(fvm_set_global(c,"o/missing",&value)==FVM_OK && read_name(c,"o/missing").number==31);
  fvm_value_number(&value,99);assert(fvm_set_global(c,"o/child",&value)==FVM_OK);FVM_Value out=read_name(c,"o/child");assert(version>=5?(out.type==FVM_VALUE_OBJECT && out.object==child):(out.type==FVM_VALUE_NUMBER && out.number==99));
  assert(fvm_set_global(c,":member",&value)==FVM_OK && read_name(c,":member").type==FVM_VALUE_UNDEFINED);
- if(version>=5)assert(read_name(c,"_global.o").object==o);
+ if(version>=5){out=read_name(c,"_global.o");assert(version>=6?(out.type==FVM_VALUE_OBJECT && out.object==o):out.type==FVM_VALUE_UNDEFINED);}
  fvm_context_destroy(c);}
  fvm_runtime_destroy(rt);return 0;
 }

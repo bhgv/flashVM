@@ -3,6 +3,7 @@
 #include "movieclip_path_constants.h"
 #include "string_order.hpp"
 #include "../core/property_key.hpp"
+#include "../avm1/scope_keywords.hpp"
 #include "flashvm/property.h"
 #include <new>
 namespace
@@ -78,8 +79,10 @@ bool key(fvm_detail::map<fvm_detail::string, T> &entries, const fvm_detail::stri
 }
 /* Read a fallback property through its actual receiver, including inherited accessors. */
 FVM_Result property(FVM_Context *c, FVM_Object *receiver, const fvm_detail::string &name,
-                    bool sensitive, FVM_Value &out)
+                    bool sensitive, FVM_Value &out, bool *present = 0)
 {
+    if (present)
+        *present = false;
     FVM_Object *cursor = receiver;
     fvm_detail::string spelling;
     unsigned int visited = 0;
@@ -90,11 +93,26 @@ FVM_Result property(FVM_Context *c, FVM_Object *receiver, const fvm_detail::stri
         if (key(cursor->properties, name, sensitive, spelling) ||
             key(cursor->methods, name, sensitive, spelling) ||
             key(cursor->accessors, name, sensitive, spelling))
+        {
+            if (present)
+                *present = true;
             return fvm_object_get_bytes(c, receiver, spelling.data(), spelling.size(), &out);
+        }
+        if (fvm_avm1_movieclip_global(c, cursor, name))
+        {
+            if (present)
+                *present = true;
+            out.type = FVM_VALUE_OBJECT;
+            out.object = c->global;
+            return FVM_OK;
+        }
         cursor = cursor->prototype;
     }
     /* Preserve indexed/virtual standard-object behavior even without a stored named entry. */
-    return fvm_object_get_bytes(c, receiver, name.data(), name.size(), &out);
+    FVM_Result status = fvm_object_get_bytes(c, receiver, name.data(), name.size(), &out);
+    if (status == FVM_OK && present && out.type != FVM_VALUE_UNDEFINED)
+        *present = true;
+    return status;
 }
 /* Resolve named display children before dynamic properties with the same name. */
 FVM_Result child(FVM_Object *receiver, const fvm_detail::string &name, bool sensitive,
@@ -287,14 +305,20 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                     value.type = FVM_VALUE_OBJECT;
                     value.object = path_this;
                 }
-                else if (first && modern && cursor == c->global &&
-                         name == fvm_detail::string("_global"))
+                else if (first && modern && cursor == c->global && fvm_avm1_global_keyword(c, name))
                 {
-                    value.type = FVM_VALUE_OBJECT;
-                    value.object = c->global;
+                    bool present = false;
+                    if (c->swf_loaded)
+                        status = property(c, cursor, name, sensitive, value, &present);
+                    if (status == FVM_OK && !present)
+                    {
+                        value.type = FVM_VALUE_OBJECT;
+                        value.object = c->global;
+                    }
                 }
-                else if (first && modern && (sensitive ? name == fvm_detail::string("_root")
-                                                 : ascii_equal(name, "_root")))
+                else if (first && modern &&
+                         (sensitive ? name == fvm_detail::string("_root")
+                                    : ascii_equal(name, "_root")))
                 {
                     value.type = FVM_VALUE_OBJECT;
                     value.object = root;
