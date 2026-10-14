@@ -1912,3 +1912,14 @@ and broader historical register semantics remain open.
 Общие регистры сохраняются между активациями и доступны через C-слой. Данные
 принадлежат контексту; GC и отказы памяти проверяются вместе с новой службой.
 Полная семантика частных наборов и общая приёмка роудмапа остаются открытыми.
+
+
+## v0.239 — loaded private register span
+
+Loaded Function2 now allocates its declared count exactly, including slot zero.
+AVM1_PRIVATE_REGISTER_COUNT.md records boundary fixtures and the distinction
+between private misses and zero-bank global fallback. Older statements about an
+open private-count contract are superseded for these checked loaded cases.
+
+Границы частного набора проверяются на числе ячеек 0, 1, 2 и 255. Это уточнение
+проверенных регистровых правил, а не завершение стадии AVM1.

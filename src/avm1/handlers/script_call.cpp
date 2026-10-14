@@ -47,8 +47,11 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     try
     {
         execution.constants = fn.constants;
-        execution.registers.resize(fn.function2 ? fn.register_count + 1
-                                                : FVM_AVM1_LEGACY_REGISTER_COUNT);
+        /* Allocate the declared loaded span and preserve the unloaded compatibility span. */
+        size_t register_slots = fn.function2 ? fn.register_count : FVM_AVM1_LEGACY_REGISTER_COUNT;
+        if (fn.function2 && !c->swf_loaded)
+            register_slots += FVM_AVM1_HOST_REGISTER_EXTRA_SLOT;
+        execution.registers.resize(register_slots);
         for (size_t i = 0; i < execution.registers.size(); ++i)
             fvm_value_undefined(&execution.registers[i]);
     }

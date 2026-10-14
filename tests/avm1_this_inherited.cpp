@@ -20,7 +20,7 @@ static FVM_Object *inner(FVM_Context *c,unsigned flags,bool reg,bool throwing)
     if(reg) { body.push_back(0x96);u16(body,2);body.push_back(4);body.push_back(1); }
     else variable(body,"this");
     body.push_back(throwing?0x2a:0x3e);body.push_back(0);
-    Bytes header;name(header,"");u16(header,0);header.push_back(flags&1?1:0);u16(header,flags);u16(header,(unsigned)body.size());
+    Bytes header;name(header,"");u16(header,0);header.push_back(flags&1?(c->swf_loaded?2:1):0);u16(header,flags);u16(header,(unsigned)body.size());
     Bytes outer;outer.push_back(0x8e);u16(outer,(unsigned)header.size());
     for(size_t i=0;i<header.size();++i)outer.push_back(header[i]);
     for(size_t i=0;i<body.size();++i)outer.push_back(body[i]);

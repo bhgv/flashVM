@@ -115,4 +115,6 @@
 #define FVM_AVM1_HEX_DIGITS_PER_BYTE 2UL
 /* Maximum byte length of that ASCII body representation. */
 #define FVM_AVM1_MAX_HEX_BODY_BYTES (FVM_AVM1_MAX_BODY_BYTES * FVM_AVM1_HEX_DIGITS_PER_BYTE)
+/* Unloaded compatibility frames include slot zero in addition to the highest declared index. */
+#define FVM_AVM1_HOST_REGISTER_EXTRA_SLOT 1U
 #endif

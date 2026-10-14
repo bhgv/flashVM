@@ -32,7 +32,7 @@ int main()
         FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);
         unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};swf[3]=(unsigned char)version;
         assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK && fvm_standard_install(c)==FVM_OK);
-        FVM_ScriptFunction body;body.body.push_back(0);body.function2=true;body.register_count=7;
+        FVM_ScriptFunction body;body.body.push_back(0);body.function2=true;body.register_count=8;
         body.flags=469|paired[i];body.parameters.push_back(fvm_detail::string("x"));body.parameter_registers.push_back(7);
         FVM_Object *fn=0,*receiver=0;assert(fvm_function_make_script(c,body,0,&fn)==FVM_OK);
         assert(fvm_object_create(c,&receiver)==FVM_OK);Probe probe={body.flags,0,receiver};

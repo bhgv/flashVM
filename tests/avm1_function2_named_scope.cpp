@@ -19,7 +19,7 @@ static FVM_Object *nested(FVM_Context *c,FVM_Object *self,unsigned flags,bool pr
     if(preloaded) { body.push_back(0x96);u16(body,2);body.push_back(4);body.push_back(1); }
     else variable(body,key);
     body.push_back(0x3e);body.push_back(0);
-    Bytes header;name(header,"");u16(header,parameter?1:0);header.push_back((flags&(4|16))?1:0);u16(header,flags);
+    Bytes header;name(header,"");u16(header,parameter?1:0);header.push_back((flags&(4|16))?(c->swf_loaded?2:1):0);u16(header,flags);
     if(parameter) { header.push_back(0);name(header,key); }
     u16(header,(unsigned)body.size());
     Bytes outer;text(outer,"super");text(outer,"outer-super");outer.push_back(0x1d);
