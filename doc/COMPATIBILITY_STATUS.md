@@ -2067,3 +2067,12 @@ MovieClip resolver and deletes a counted final member without reading it.
 [DELETE_DISPLAY_PATH.md](DELETE_DISPLAY_PATH.md) records tests and the remaining
 interpreter lexical-scope/path-selection boundary. Display resolver constants are
 named/documented. Общая служба расширена; полная семантика Delete2 ещё открыта.
+
+### v0.256 — scoped Delete2 display paths
+
+[SCOPED_TARGET_PATHS.md](SCOPED_TARGET_PATHS.md) records a common C89 complete-path
+retry service and interpreter integration for slash-containing Delete2 prefixes.
+Explicit display root/this inputs preserve target/receiver independence and roots.
+This supersedes v0.255's slash-prefix rejection in Delete2. Non-slash Delete2 and
+general GetVariable/SetVariable retain documented limitations. Поиск внешних
+областей подключён для этого подмножества путей; полной совместимости ещё нет.

@@ -157,14 +157,19 @@ struct PathScope
 {
     FVM_Context *context; /* Context owning the temporary root chain. */
     FVM_GCRootFrame frame; /* [GC:] Root frame linked only for the resolver lifetime. */
-    fvm_detail::vector<FVM_Value> values; /* [GC:] Start, root, path and current object snapshots. */
+    fvm_detail::vector<FVM_Value> values; /* [GC:] Start, root, path, current and explicit this snapshots. */
     /* [GC:] Initialize and link complete root slots before any script property lookup. */
-    PathScope(FVM_Context *c, FVM_Object *start, const FVM_Value &path)
+    PathScope(FVM_Context *c, FVM_Object *start, const FVM_Value &path, FVM_Object *path_this)
         : context(c), values(FVM_MOVIECLIP_PATH_ROOT_COUNT)
     {
         values[FVM_MOVIECLIP_PATH_START_ROOT].type = FVM_VALUE_OBJECT;
         values[FVM_MOVIECLIP_PATH_START_ROOT].object = start;
         values[FVM_MOVIECLIP_PATH_TEXT_ROOT] = path;
+        if (path_this)
+        {
+            values[FVM_MOVIECLIP_PATH_THIS_ROOT].type = FVM_VALUE_OBJECT;
+            values[FVM_MOVIECLIP_PATH_THIS_ROOT].object = path_this;
+        }
         frame.previous = c->gc_frames;
         frame.stack = &values;
         frame.locals = 0;
@@ -185,19 +190,21 @@ struct PathScope
 }
 /* Resolve a counted display path; absent/nonobject components return OK with a null result. */
 FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const FVM_Value &path,
-                                    FVM_Object **out)
+                                    FVM_Object **out, FVM_Object *display_root, FVM_Object *path_this)
 {
     if (out)
         *out = 0;
     if (!c || !start || start->owner != c || !out || path.type != FVM_VALUE_STRING ||
-        !path.string || c->destroying || c->gc_collecting)
+        !path.string || (display_root && display_root->owner != c) ||
+        (path_this && path_this->owner != c) || c->destroying ||
+        c->gc_collecting)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        PathScope scope(c, start, path);
-        FVM_Object *root = start, *next = 0;
+        PathScope scope(c, start, path, path_this);
+        FVM_Object *root = display_root ? display_root : start, *next = 0;
         unsigned int visited = 0;
-        for (;;)
+        while (!display_root)
         {
             if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
@@ -275,7 +282,12 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                     ++at;
                 FVM_Value value;
                 fvm_value_undefined(&value);
-                if (first && modern && (sensitive ? name == fvm_detail::string("_root")
+                if (modern && path_this && name == fvm_detail::string("this"))
+                {
+                    value.type = FVM_VALUE_OBJECT;
+                    value.object = path_this;
+                }
+                else if (first && modern && (sensitive ? name == fvm_detail::string("_root")
                                                  : ascii_equal(name, "_root")))
                 {
                     value.type = FVM_VALUE_OBJECT;

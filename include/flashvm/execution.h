@@ -136,6 +136,15 @@ extern "C"
      * [GC:] Traversal values and text are retained; errors preserve out. */
     FVM_API FVM_Result fvm_exec_delete_path(FVM_Context *, const FVM_Value *base,
                                             const FVM_Value *path, FVM_Value *out);
+    /* Resolve an object path by retrying each lexical scope, selected target and global.
+     * Absolute/_root paths use the target's display root. Missing paths return undefined.
+     * receiver supplies SWF5+ this independently of target; null keeps ordinary lookup.
+     * This service resolves objects, not a final variable.
+     * [GC:] Retains scopes, target and counted path; errors preserve out. */
+    FVM_API FVM_Result fvm_exec_scope_target(FVM_Context *, FVM_Object *scope,
+                                             FVM_Object *target, FVM_Object *receiver,
+                                             const FVM_Value *path,
+                                             FVM_Value *out);
     /* Read/write a context-global value slot. Missing slots read undefined and
      * discard valid writes. Stored strings are owned; out may alias value. */
     FVM_API FVM_Result fvm_exec_global_register(FVM_Context *, int write,

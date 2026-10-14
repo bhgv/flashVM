@@ -1576,13 +1576,35 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                        name.string[separator] != FVM_DELETE_PATH_COLON &&
                        name.string[separator] != FVM_DELETE_PATH_DOT)
                     ++separator;
+                size_t last_separator = separator;
+                for (size_t at = separator; at < fvm_string_size(name); ++at)
+                    if (name.string[at] == FVM_DELETE_PATH_COLON ||
+                        name.string[at] == FVM_DELETE_PATH_DOT)
+                        last_separator = at;
+                bool display_path = false;
+                for (size_t at = 0; at < last_separator; ++at)
+                    if (name.string[at] == FVM_DELETE_PATH_SLASH)
+                        display_path = true;
                 FVM_Value result;
-                if (separator < fvm_string_size(name))
+                if (display_path && last_separator < fvm_string_size(name))
                 {
-                    /* Display slash paths require target resolution rather than literal lookup. */
-                    for (size_t at = 0; at < separator; ++at)
-                        if (name.string[at] == FVM_DELETE_PATH_SLASH)
-                            return FVM_UNSUPPORTED;
+                    FVM_Object *target = 0;
+                    status = variable_receiver(c, self, &target);
+                    FVM_Value prefix, base, member;
+                    if (status == FVM_OK)
+                        status = fvm_value_string_bytes(&prefix, name.string, last_separator);
+                    if (status == FVM_OK)
+                        status = fvm_exec_scope_target(c, c->lexical_scopes.empty()
+                            ? 0 : c->lexical_scopes.back(), target,
+                            c->script_this ? c->script_this : self, &prefix, &base);
+                    if (status == FVM_OK)
+                        status = fvm_value_string_bytes(&member, name.string + last_separator + 1,
+                                                       fvm_string_size(name) - last_separator - 1);
+                    if (status == FVM_OK)
+                        status = fvm_exec_delete_member(c, &base, &member, &result);
+                }
+                else if (separator < fvm_string_size(name))
+                {
                     FVM_Value root_name, base, remainder;
                     fvm_value_string_bytes(&root_name, name.string, separator);
                     status = lookup_variable_value(c, locals, self, root_name, &base);

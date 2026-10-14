@@ -29,8 +29,10 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *, FVM_Object *, unsign
 /* Apply a semantic timeline command directly, independently from replaceable script methods. */
 FVM_Result fvm_movieclip_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
                                      const FVM_Value *, int playing);
-/* Resolve display children and object properties along a counted AVM1 path. */
-FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **);
+/* Resolve counted display/object paths; an explicit root supports lexical-scope starts.
+ * [GC:] Both start and explicit root are retained through property callbacks. */
+FVM_Result fvm_movieclip_resolve_path(FVM_Context *, FVM_Object *, const FVM_Value &, FVM_Object **,
+                                    FVM_Object *display_root = 0, FVM_Object *path_this = 0);
 /* Identify the retained builtin class prototype without reading script-visible properties. */
 bool fvm_movieclip_is_class_prototype(FVM_Object *);
 /* Build the current counted AVM1 dot path directly from display state. */

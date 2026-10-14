@@ -116,3 +116,11 @@ The common deletion interface now reuses MovieClip path resolution for slash
 prefixes. This extends the C/generated-body foundation; it does not implement JIT
 code generation, full interpreter scope retries or non-Linux release acceptance.
 Все девять стадий остаются открытыми; проверка путей не закрывает эти требования.
+
+## v0.256 — scoped display-path lookup
+
+Delete2 now calls a shared scoped-target resolver for slash prefixes. Complete
+path retries, explicit display-root/this handling, collector roots and allocation
+failure behavior are covered by focused fixtures. Full variable-path grammar,
+JIT backends/equivalence and real non-Linux execution still gate acceptance.
+Все стадии 1–9 остаются открытыми; число проверок не заменяет итоговую приёмку.
