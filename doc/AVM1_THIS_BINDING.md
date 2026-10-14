@@ -40,3 +40,12 @@ Subsequent object-valued inherited this handling is documented in
 [AVM1_THIS_INHERITED.md](AVM1_THIS_INHERITED.md); mutable cells remain open.
 Объектное наследуемое this уточнено в указанном документе; изменяемые ячейки
 остаются открытыми.
+
+
+v0.231: loaded CallFunction defaults to the selected timeline (or its root
+fallback), while host calls retain the global receiver. A nested function's
+display target starts at the caller's base timeline independently of this.
+The unchanged original this_swf5/6/7 probes now match their function-call
+sections, but still stop at unsupported ActionWith. No roadmap stage is closed.
+The regression avm1_call_function_receiver covers SWF5–8; the full Linux AGG
+suite passes 433 tests, including the existing target restoration fixture.

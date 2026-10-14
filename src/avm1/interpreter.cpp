@@ -192,7 +192,17 @@ static FVM_Result lookup_variable(FVM_Context *c,
     if (defined)
         *defined = true;
     if (call_receiver)
+    {
+        /* Loaded CallFunction defaults to the selected timeline, including root
+         * fallback after an invalid SetTarget; host calls keep their global receiver. */
         *call_receiver = c->global;
+        if (c->swf_loaded && c->avm1_base_clip)
+        {
+            FVM_Result selected = variable_receiver(c, c->avm1_base_clip, call_receiver);
+            if (selected != FVM_OK)
+                return selected;
+        }
+    }
     /* Loaded SWF5+ resolves implicit this before ordinary local bindings.
      * This changes lookup precedence, not the unresolved inherited this-cell model. */
     if (self && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 &&

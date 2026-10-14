@@ -1,6 +1,7 @@
 /* FlashVM: version-aware script activation preparation for interpreted and generated bodies. */
 #include "../encoding_constants.h"
 #include "script_call.hpp"
+#include "../target_scope.hpp"
 #include "support.hpp"
 #include "flashvm/standard.h"
 #include "native_body.hpp"
@@ -416,6 +417,10 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 c->lexical_scopes.pop_back();
             }
         } scope(c);
+        /* The function receiver supplies this; its display operations start at the
+         * caller's base timeline, rather than a caller-selected target. */
+        FVM_AVM1TargetScope targets(c, c->avm1_target_active ? 0 : receiver, false);
+        execution.target_initialized = true;
         if (native_entry.callback)
         {
             FVM_ScriptFrame prepared;
