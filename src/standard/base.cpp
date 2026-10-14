@@ -2178,7 +2178,8 @@ FVM_Result fvm_array_create_like(
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_NativeEntry entry;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                entry.callback = array_methods[i].callback;
+                entry.callback = c->swf_loaded && !std::strcmp(array_methods[i].name, "toLocaleString")
+                                     ? object_locale : array_methods[i].callback;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 (*out)->methods[array_methods[i].name] = entry;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -2237,6 +2238,19 @@ void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
     out.array_attributes = proto->attributes;
     for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
         fvm_stage_default_method_flags(proto, array_methods[i].name, array_methods[i].callback, 3, out.array_attributes);
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator locale = proto->methods.find("toLocaleString");
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator locale_flags = proto->attributes.find("toLocaleString");
+    fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator locale_cache = proto->method_values.find("toLocaleString");
+    if (locale != proto->methods.end() && locale->second.callback == join &&
+        locale_flags != proto->attributes.end() && locale_flags->second == 1 &&
+        proto->properties.find("toLocaleString") == proto->properties.end() &&
+        proto->accessors.find("toLocaleString") == proto->accessors.end())
+    {
+        out.array_attributes.erase(locale_flags->first);
+        out.locale_key = &locale->first;
+        if (locale_cache != proto->method_values.end())
+            out.locale_cache_key = &locale_cache->first;
+    }
     out.array_attributes.erase(flags->first);
     out.prototype = proto;
     out.length_key = &accessor->first;
@@ -2254,6 +2268,10 @@ void fvm_base_commit_loaded(FVM_BasePrototypeActivation &prepared)
     FVM_Object *proto = prepared.prototype;
     if (!proto)
         return;
+    if (prepared.locale_key)
+        proto->methods.erase(*prepared.locale_key);
+    if (prepared.locale_cache_key)
+        proto->method_values.erase(*prepared.locale_cache_key);
     proto->accessors.erase(*prepared.length_key);
     proto->attributes.erase(*prepared.flags_key);
     proto->attributes.swap(prepared.array_attributes);
@@ -2336,6 +2354,9 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     }
     for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
     {
+        /* Loaded Arrays inherit locale conversion from Object, rather than aliasing join. */
+        if (c->swf_loaded && !std::strcmp(array_methods[i].name, "toLocaleString"))
+            continue;
         entry.callback = array_methods[i].callback;
         array_proto->methods[array_methods[i].name] = entry;
         if (c->swf_loaded)

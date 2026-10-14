@@ -84,6 +84,7 @@ int main()
             assert(!c->swf_loaded && c->swf_bytes.empty() && proto->resource_kind == 26 && proto->resource_result_valid);
             for (unsigned i = 0; i < 4; ++i) { assert(numeric[i]->resource_kind == (i == 3 ? 34 : i == 2 ? 28 : i ? 20 : 24) && numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == (i == 2 ? FVM_VALUE_OBJECT : i == 1 ? FVM_VALUE_BOOLEAN : FVM_VALUE_NUMBER)); }
             for (unsigned i = 0; i < 2; ++i) { unsigned int numeric_flags = 99; assert(fvm_object_property_flags(c, numeric[i], "valueOf", &numeric_flags) == FVM_OK && numeric_flags == 1); }
+            assert(numeric[2]->methods.find("toLocaleString") != numeric[2]->methods.end());
             unsigned int method_flags = 99; assert(fvm_object_property_flags(c, numeric[2], "push", &method_flags) == FVM_OK && method_flags == 1); assert(fvm_object_property_flags(c, proto, "charAt", &method_flags) == FVM_OK && method_flags == 1); assert(fvm_object_property_flags(c, object_proto, "valueOf", &method_flags) == FVM_OK && method_flags == 1); assert(fvm_object_property_flags(c, object_class.object, "registerClass", &method_flags) == FVM_OK && method_flags == 1);
             unsigned int date_flags = 99; assert(fvm_object_property_flags(c, numeric[3], "getTime", &date_flags) == FVM_OK && date_flags == 1);
             assert(proto->accessors.find("length") != proto->accessors.end());
@@ -92,6 +93,7 @@ int main()
         } else succeeded = true;
         for (unsigned i = 0; i < 4; ++i) { assert(numeric[i]->resource_kind == 30 && !numeric[i]->resource_result_valid); assert(fvm_object_call(c, numeric[i], "valueOf", 0, 0, &value) == FVM_OK && value.type == (i == 2 ? FVM_VALUE_OBJECT : FVM_VALUE_UNDEFINED)); }
         for (unsigned i = 0; i < 2; ++i) { unsigned int numeric_flags = 99; assert(fvm_object_property_flags(c, numeric[i], "valueOf", &numeric_flags) == FVM_OK && numeric_flags == 3); }
+        assert(numeric[2]->methods.find("toLocaleString") == numeric[2]->methods.end());
         unsigned int method_flags = 99; assert(fvm_object_property_flags(c, numeric[2], "push", &method_flags) == FVM_OK && method_flags == 3); assert(fvm_object_property_flags(c, proto, "charAt", &method_flags) == FVM_OK && method_flags == 3); assert(fvm_object_property_flags(c, object_proto, "valueOf", &method_flags) == FVM_OK && method_flags == 3); assert(fvm_object_property_flags(c, object_class.object, "registerClass", &method_flags) == FVM_OK && method_flags == 7);
         unsigned int date_flags = 99; assert(fvm_object_property_flags(c, numeric[3], "getTime", &date_flags) == FVM_OK && date_flags == 3);
         assert(c->swf_loaded && c->swf_info.version == 8 && proto->resource_kind == 30 && !proto->resource_result_valid);

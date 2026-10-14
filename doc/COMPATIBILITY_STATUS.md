@@ -1836,3 +1836,23 @@ Evidence: AGG 367/Cairo 366 full tests, six focused checks each in Linux portabl
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Five AGG and seven Cairo launch/permission failures (including
 two dependent process checks) passed after restoring execute bits.
+
+## v0.207 — Array locale inheritance / locale method Array
+
+Loaded Array prototype inherits Object locale projection rather than an own join
+alias; call operands are ignored and current toString handles receiver conversion.
+Canonical host alias/cache removal is staged before mutation; retained join
+Function references stay callable and custom shapes remain. Prototype-free
+results use locale projection directly. [RU/EN details](ARRAY_LEGACY_LOCALE.md).
+Tests cover own shape, cache removal, old references, ignored separators, NUL/
+nonstring/error callbacks, GC/channel, bare results, custom flags/data and joint
+OOM alias preservation/retry. Raw __proto__, case/version visibility and all
+roadmap stages remain open.
+
+Исправлено наследование Array.toLocaleString; сохранены host alias и явные
+пользовательские изменения, а кеш штатного alias удаляется без allocation.
+
+Evidence: AGG 368/Cairo 367 full tests, seven focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Expanded custom-shape fixture passed separately in all profiles;
+no launch failures in the full runs.
