@@ -434,6 +434,54 @@ struct Method
     const char *name;
     FVM_NativeFunction callback;
 };
+/* Convert the shared Date operand prefix once, stopping at undefined or seven values. */
+FVM_Result project_arguments(FVM_Context *c, unsigned int count, const FVM_Value *args,
+                             FVM_Value *numbers, unsigned int &used)
+{
+    used = 0;
+    while (used < count && used < 7 && args[used].type != FVM_VALUE_UNDEFINED)
+    {
+        double number = 0;
+        FVM_Result result = fvm_avm1_number(c, args + used, &number);
+        if (result != FVM_OK)
+            return result;
+        fvm_value_number(numbers + used, number);
+        ++used;
+    }
+    return FVM_OK;
+}
+
+/* Project loaded constructor operands; unloaded construction keeps the host contract. */
+FVM_Result loaded_constructor(FVM_Context *c, FVM_Object *self, unsigned int count,
+                              const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return constructor(c, self, count, args, out, userdata);
+    FVM_Value numbers[7];
+    unsigned int used = 0;
+    FVM_Result result = project_arguments(c, count, args, numbers, used);
+    return result == FVM_OK ? constructor(c, self, used, numbers, out, userdata) : result;
+}
+
+/* Date.UTC uses the same operand prefix; fewer than two projected values return undefined. */
+FVM_Result loaded_utc(FVM_Context *c, FVM_Object *self, unsigned int count,
+                      const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return utc(c, self, count, args, out, userdata);
+    FVM_Value numbers[7];
+    unsigned int used = 0;
+    FVM_Result result = project_arguments(c, count, args, numbers, used);
+    if (result != FVM_OK)
+        return result;
+    if (used < 2)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    return utc(c, self, used, numbers, out, userdata);
+}
+
 /* [GC:] Numeric argument projections contain no object/string edges. The native
  * invocation retains the original operands while conversions run in source order. */
 FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
@@ -446,15 +494,9 @@ FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
         return FVM_INVALID_ARGUMENT;
     FVM_Value numbers[7];
     unsigned int used = 0;
-    while (used < count && used < 7 && args[used].type != FVM_VALUE_UNDEFINED)
-    {
-        double number = 0;
-        FVM_Result result = fvm_avm1_number(c, args + used, &number);
-        if (result != FVM_OK)
-            return result;
-        fvm_value_number(numbers + used, number);
-        ++used;
-    }
+    FVM_Result result = project_arguments(c, count, args, numbers, used);
+    if (result != FVM_OK)
+        return result;
     if (self->resource_kind != DATE_OBJECT)
     {
         fvm_value_undefined(out);
@@ -655,11 +697,11 @@ fvm_date_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &g
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    e.callback = utc;
+    e.callback = loaded_utc;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["UTC"] = e;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    e.callback = constructor;
+    e.callback = loaded_constructor;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
     e.root = klass;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -686,7 +728,7 @@ FVM_Result fvm_date_validate(FVM_Context *c)
 FVM_Object *fvm_date_prepare_loaded(FVM_Context *c)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Date");
-    if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+    if (ctor == c->constructors.end() || ctor->second.callback != loaded_constructor || !ctor->second.root)
         return 0;
     FVM_Object *klass = ctor->second.root;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
@@ -702,9 +744,9 @@ FVM_Object *fvm_date_prepare_loaded(FVM_Context *c)
 /* Map a native date callback to its stable serialization identifier. */
 unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 {
-    if (callback == constructor)
+    if (callback == loaded_constructor)
         return 751;
-    if (callback == utc)
+    if (callback == loaded_utc)
         return 750;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (callback == methods[i].callback)
@@ -716,9 +758,9 @@ unsigned long fvm_date_callback_id(FVM_NativeFunction callback)
 FVM_NativeFunction fvm_date_callback_from_id(unsigned long id)
 {
     if (id == 751)
-        return constructor;
+        return loaded_constructor;
     if (id == 750)
-        return utc;
+        return loaded_utc;
     return id >= 700 && id < 700 + sizeof(methods) / sizeof(methods[0]) ? methods[id - 700].callback
                                                                         : 0;
 }

@@ -1689,3 +1689,21 @@ layouts and all roadmap stages remain open.
 Evidence: AGG 359/Cairo 358 full tests, five focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Two Cairo launch failures passed after restoring execute bits.
+
+## v0.199 — Date constructor/UTC operands / конструктор и UTC
+
+Loaded Date construction/UTC share the seven-value AVM1 operand prefix, stopping
+at undefined and avoiding repeat callbacks. UTC with fewer than two projected
+operands returns undefined; empty construction selects current time. Callback
+errors propagate. Host behavior and callback/wire IDs remain unchanged.
+[RU/EN details](DATE_LEGACY_CONVERSION.md). Tests cover both paths, cutoff/counts,
+numeric references, missing/undefined/ignored errors, octal timestamps, current
+time selection, errors and GC/channel restored class calls/construction.
+Date() global semantics, precise time/calendar behavior and all stages remain open.
+
+Конструктор Date и UTC приведены к общей обработке аргументов; восстановленный
+класс сохраняет distinct вызов UTC и создание native экземпляра.
+
+Evidence: AGG 360/Cairo 359 full tests, five focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Three AGG launch failures passed after restoring execute bits.
