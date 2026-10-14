@@ -1160,8 +1160,7 @@ Graph read_graph(Reader &r, unsigned int version)
         }
         if (o.kind == 34)
             require(o.state.number != o.state.number ||
-                    (std::fabs(o.state.number) <= 8640000000000000.0 &&
-                     o.state.number == std::floor(o.state.number)));
+                    std::fabs(o.state.number) <= 8640000000000000.0);
         if (o.kind == 28)
         {
             require(o.state.number >= 0 && o.state.number <= 4294967295.0 &&

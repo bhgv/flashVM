@@ -1725,3 +1725,23 @@ clock fidelity, remaining Date semantics and all stages remain open.
 Evidence: AGG 361/Cairo 360 full tests, six focused checks each in Linux portable
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. One AGG launch failure passed after restoring execute bits.
+
+## v0.201 — fractional Date state and text / дробные Date
+
+Loaded single-timestamp construction retains finite bounded fractions; setTime
+floors negative/positive fractions after its range guard. Loaded text uses an
+unpadded day. Host truncation/spelling remain. Graph decoder accepts bounded
+fractional Date states while retaining NaN/type/range validation and wire layout.
+[RU/EN details](DATE_LEGACY_FRACTIONAL.md). Tests cover constructor/setter differences,
+GC/channel preservation, local day spelling, nonfinite/range setters, CRC-valid
+invalid Date records with rollback and wrong-state encoder rejection. Constructor
+unbounded state, calendar/version fields, exact Player comparison and all stages
+remain open.
+
+Исправлены дробный bounded timestamp, отрицательное округление setTime и день
+в строке Date; перенос не отклоняет допустимое дробное native состояние.
+
+Evidence: AGG 362/Cairo 361 full tests, ten focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Two AGG and two Cairo launch failures passed after restoring
+execute bits. Expanded invalid-Date fixture passed separately in all profiles.

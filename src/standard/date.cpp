@@ -301,7 +301,11 @@ SET(set_utc_hours, 3, true) SET(set_utc_minutes, 4, true) SET(set_utc_seconds, 5
     FVM_Result r = n ? fvm_value_to_number(c, a, &t) : FVM_OK;
     if (r == FVM_OK)
     {
-        o->resource_result.number = clip(t);
+        double projected = clip(t);
+        /* Loaded TimeClip floors negative fractions; host callers retain truncation. */
+        if (c->swf_loaded && finite(projected))
+            projected = std::floor(t);
+        o->resource_result.number = projected;
         *out = o->resource_result;
     }
     return r;
@@ -323,7 +327,10 @@ FVM_Result format_time(FVM_Context *c, double t, FVM_Value *out)
                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     int offset = (int)std::fabs(east);
     char buffer[128];
-    std::sprintf(buffer, "%s %s %02d %02d:%02d:%02d GMT%c%02d%02d %ld",
+    /* Loaded Date text leaves the day unpadded, unlike the retained host spelling. */
+    const char *format = c->swf_loaded ? "%s %s %d %02d:%02d:%02d GMT%c%02d%02d %ld"
+                                     : "%s %s %02d %02d:%02d:%02d GMT%c%02d%02d %ld";
+    std::sprintf(buffer, format,
                  week[(unsigned int)f.weekday], months[(unsigned int)f.month], (int)f.day,
                  (int)f.hour, (int)f.minute, (int)f.second, east < 0 ? '-' : '+', offset / 60,
                  offset % 60, (long)f.year);
@@ -399,7 +406,10 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
     else if (n == 1)
     {
         r = fvm_value_to_number(c, a, &t);
-        t = clip(t);
+        /* Loaded single-timestamp construction retains bounded fractional data.
+         * Keep the existing range/nonfinite guard until the calendar engine is audited. */
+        if (!c->swf_loaded || !finite(t) || std::fabs(t) > 8640000000000000.0)
+            t = clip(t);
     }
     else
         r = components(c, n, a, true, t);
