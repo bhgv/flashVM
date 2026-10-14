@@ -47,6 +47,10 @@
 #define FVM_UTF16_SUPPLEMENTARY_OFFSET 0x10000UL
 /* Leading UTF-16 surrogate base; add the high supplementary payload bits. */
 #define FVM_UTF16_HIGH_SURROGATE_BASE 0xd800U
+/* Last leading UTF-16 surrogate code unit, for pair recognition. */
+#define FVM_UTF16_HIGH_SURROGATE_MAX 0xdbffU
+/* Last trailing UTF-16 surrogate code unit, for pair recognition. */
+#define FVM_UTF16_LOW_SURROGATE_MAX 0xdfffU
 /* Trailing UTF-16 surrogate base; add the low supplementary payload bits. */
 #define FVM_UTF16_LOW_SURROGATE_BASE 0xdc00U
 /* Number of supplementary payload bits carried by either surrogate unit. */

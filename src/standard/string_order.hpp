@@ -6,6 +6,7 @@
 /* Define FVM STANDARD STRING ORDER HPP constant or compilation switch. */
 #define FVM_STANDARD_STRING_ORDER_HPP
 #include "../core/string_internal.hpp"
+#include "../core/unicode_constants.h"
 #include "flashvm/flashvm.h"
 #include <cstring>
 /* Compare UTF-8/WTF-8 storage by AVM1 UTF-16 code-unit order, without allocating
@@ -37,11 +38,13 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
             {
                 if (fvm_string_read(text[i], length[i], offset[i], unit[i]) != FVM_OK)
                     return FVM_INVALID_ARGUMENT;
-                if (unit[i] >= 0x10000)
+                if (unit[i] >= FVM_UTF16_SUPPLEMENTARY_OFFSET)
                 {
-                    unit[i] -= 0x10000;
-                    pending[i] = 0xdc00 + (unit[i] & 1023);
-                    unit[i] = 0xd800 + (unit[i] >> 10);
+                    unit[i] -= FVM_UTF16_SUPPLEMENTARY_OFFSET;
+                    pending[i] =
+                        FVM_UTF16_LOW_SURROGATE_BASE + (unit[i] & FVM_UTF16_PAIR_PAYLOAD_MASK);
+                    unit[i] =
+                        FVM_UTF16_HIGH_SURROGATE_BASE + (unit[i] >> FVM_UTF16_PAIR_PAYLOAD_BITS);
                 }
             }
         }
@@ -53,7 +56,7 @@ inline FVM_Result fvm_string_order(const FVM_Value &left, const FVM_Value &right
     }
 }
 
-/* Compute and return string order. */
+/* Compare counted byte spans after validating both string representations. */
 inline FVM_Result fvm_string_order(const char *left, size_t left_size, const char *right,
                                    size_t right_size, int &order)
 {
@@ -66,7 +69,7 @@ inline FVM_Result fvm_string_order(const char *left, size_t left_size, const cha
     return r == FVM_OK ? fvm_string_order(a, b, order) : r;
 }
 
-/* Compute and return string order. */
+/* Compare borrowed NUL-terminated names through the counted representation. */
 inline FVM_Result fvm_string_order(const char *left, const char *right, int &order)
 {
     return fvm_string_order(left, std::strlen(left), right, std::strlen(right), order);

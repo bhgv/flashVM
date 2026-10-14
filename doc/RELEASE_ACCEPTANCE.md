@@ -260,3 +260,10 @@ The 26 unchanged original SWFs match in both profiles. Virtual paths now select
 With assignment owners and block outer deletion; initialized declarations remain
 own-only. Реальные JIT и Windows/macOS/Android проверки отсутствуют; все стадии
 1–9 остаются открытыми.
+
+## v0.275 — shared UTF-16 representation constants
+
+Canonical property names and string ordering share documented bounds and masks.
+Both Linux profiles pass 526 tests; four targeted memory checks and 26 original
+SWFs per profile pass. Stack/leak checks, JIT and other target platforms remain
+open. Все стадии 1–9 остаются открытыми.

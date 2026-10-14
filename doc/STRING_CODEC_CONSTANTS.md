@@ -22,3 +22,17 @@ Validation: GCC13.3 Linux AGG/Cairo each pass 508 tests; six AGG executables
 required execute-bit restoration and a successful rerun. All 26 external SWF<=8
 traces match exactly in both profiles. The 29 selected UTF-16/string/counted-name
 ASan/UBSan fixtures pass with heap/global coverage, without stack/leak checks.
+
+## v0.275 — canonical names and UTF-16 ordering
+
+Property-name canonicalization and allocation-free string ordering now share
+the documented surrogate bounds, supplementary offset and payload width/mask.
+Equal numeric values retain encoding-specific names. Lone surrogates, embedded
+NUL and supplementary pair equivalence retain their previous representation.
+Нормализация имён и сравнение строк используют общие Unicode-макросы; алгоритмы
+и форматы не изменены.
+
+Linux AGG/Cairo each pass 526 tests. Four AGG binaries needed execute-bit repair
+and rerun. An incomplete Cairo log was rejected and a fresh full run passed.
+Four selected heap/global ASan+UBSan checks pass (no stack/leak coverage); all
+26 original SWFs match in each profile. No roadmap stage is completed.

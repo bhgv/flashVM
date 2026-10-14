@@ -2251,3 +2251,10 @@ declarations retain own-only placement. C89 SWF4–8, actual With actions and
 allocation failures cover the shared services. Removed clips, other system
 fields, mutable this and all roadmap gates remain open. Неявные свойства
 учитываются без вызова getter при выборе области видимости.
+
+### v0.275 — canonical-name and ordering constants
+
+[STRING_CODEC_CONSTANTS.md](STRING_CODEC_CONSTANTS.md) records shared semantic
+UTF-16 constants for canonical property names and allocation-free comparison.
+Existing representation and order remain unchanged; broad legacy string
+conformance and all roadmap gates remain open. Макросы заменяют границы и маски.

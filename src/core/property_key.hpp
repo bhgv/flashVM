@@ -5,6 +5,7 @@
 /* Guard the canonical property-name helpers against repeated inclusion. */
 #define FVM_PROPERTY_KEY_HPP
 #include "string_internal.hpp"
+#include "unicode_constants.h"
 #include "../details/string.hpp"
 
 /* Validate counted bytes and fold adjacent UTF-16 surrogate pairs into scalars.
@@ -23,7 +24,8 @@ inline FVM_Result fvm_property_key(const char *bytes, size_t size, fvm_detail::s
         FVM_Result result = fvm_string_read(bytes, size, at, cp);
         if (result != FVM_OK)
             return result;
-        if (previous >= 0xd800 && previous <= 0xdbff && cp >= 0xdc00 && cp <= 0xdfff)
+        if (previous >= FVM_UTF16_HIGH_SURROGATE_BASE && previous <= FVM_UTF16_HIGH_SURROGATE_MAX &&
+            cp >= FVM_UTF16_LOW_SURROGATE_BASE && cp <= FVM_UTF16_LOW_SURROGATE_MAX)
             paired = true;
         previous = cp;
     }
@@ -41,16 +43,18 @@ inline FVM_Result fvm_property_key(const char *bytes, size_t size, fvm_detail::s
         FVM_Result result = fvm_string_read(bytes, size, at, cp);
         if (result != FVM_OK)
             return result;
-        if (cp >= 0xd800 && cp <= 0xdbff && at < size)
+        if (cp >= FVM_UTF16_HIGH_SURROGATE_BASE && cp <= FVM_UTF16_HIGH_SURROGATE_MAX && at < size)
         {
             size_t next = at;
             unsigned long low = 0;
             result = fvm_string_read(bytes, size, next, low);
             if (result != FVM_OK)
                 return result;
-            if (low >= 0xdc00 && low <= 0xdfff)
+            if (low >= FVM_UTF16_LOW_SURROGATE_BASE && low <= FVM_UTF16_LOW_SURROGATE_MAX)
             {
-                cp = 0x10000 + ((cp - 0xd800) << 10) + low - 0xdc00;
+                cp = FVM_UTF16_SUPPLEMENTARY_OFFSET +
+                     ((cp - FVM_UTF16_HIGH_SURROGATE_BASE) << FVM_UTF16_PAIR_PAYLOAD_BITS) + low -
+                     FVM_UTF16_LOW_SURROGATE_BASE;
                 at = next;
             }
         }
