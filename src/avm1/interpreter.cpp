@@ -1356,12 +1356,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             {
                 if (stack.empty())
                     return FVM_ERROR;
-                double value = 0;
-                FVM_Result r = fvm_avm1_number(c, &stack.back(), &value);
-                if (r != FVM_OK)
-                    return r;
-                fvm_value_number(&stack.back(),
-                                 value + (a.op == FVM_AVM1_ACTION_INCREMENT ? 1 : -1));
+                FVM_Value result;
+                FVM_Result status = fvm_exec_step(c, a.op == FVM_AVM1_ACTION_DECREMENT,
+                                                  &stack.back(), &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.back() = result;
             }
             else if (a.op == FVM_AVM1_ACTION_MODULO ||
                      (a.op >= FVM_AVM1_ACTION_BIT_AND && a.op <= FVM_AVM1_ACTION_BIT_URSHIFT))

@@ -351,3 +351,12 @@ for six AGG and two Cairo launch failures. Original and retry logs remain separa
 Six focused heap/global ASan+UBSan checks pass, without stack/leak coverage;
 all 26 original SWFs still match per profile. This constants-only checkpoint
 adds no compatibility or platform claim. Все стадии 1–9 остаются открытыми.
+
+## v0.287 — shared numeric stepping
+
+Both final Linux profiles pass all 562 tests; Cairo required permission repair
+and reruns for two launch failures. Three focused heap/global ASan+UBSan checks
+pass, without stack/leak coverage, and all 26 original SWFs match per profile.
+Increment/Decrement use the shared C89 service with rooted numeric coercion and
+aliased-output failure atomicity. Actual machine-code JIT and real runs on
+Windows/macOS/Android remain absent. Все стадии 1–9 остаются открытыми.

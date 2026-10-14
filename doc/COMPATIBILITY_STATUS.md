@@ -2351,3 +2351,11 @@ swap, URL operands, method calls and Array/Object literal roots. The signed
 literal count limit now uses the existing shared Int32 bound. Values, action
 semantics and independent raw fixtures are unchanged. Смысловые макросы разделяют
 назначение одинаковых чисел; это улучшение читаемости, не закрытие стадии.
+
+### v0.287 — shared Increment/Decrement
+
+[NUMERIC_STEP_SERVICE.md](NUMERIC_STEP_SERVICE.md) records the common C89 numeric
+step service, its versioned conversion, alias/error policy and documented unit.
+Direct C, actual Action, collecting/throwing valueOf and allocation fixtures
+exercise SWF4–8 behavior and root restoration. Existing numeric coercion policy
+is preserved. Машинный JIT и все стадии приёмки остаются открытыми.

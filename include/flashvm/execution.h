@@ -90,6 +90,9 @@ extern "C"
     /* Execute numeric semantics and preserve the operation's historical coercion order. */
     FVM_API FVM_Result fvm_exec_numeric(FVM_Context *, FVM_ExecutionNumeric, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Increment/decrement after version-aware numeric coercion, without integer wrapping.
+     * [GC:] Retains input through coercion; failure leaves output intact, including aliases. */
+    FVM_API FVM_Result fvm_exec_step(FVM_Context *, int decrement, const FVM_Value *, FVM_Value *);
     /* Read/write indexed display properties; write selects SetProperty and ignores output value. */
     FVM_API FVM_Result fvm_exec_display_property(FVM_Context *, int write, const FVM_Value *target,
                                                  const FVM_Value *index, const FVM_Value *value,
