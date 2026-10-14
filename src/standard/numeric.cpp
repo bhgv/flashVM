@@ -40,6 +40,53 @@ double infinity()
     return std::numeric_limits<double>::infinity();
 }
 
+/* Stable graph callback identifiers following the existing numeric function range. */
+enum
+{
+    GLOBAL_NAN_GET = 158, /* Versioned NaN getter. */
+    GLOBAL_INFINITY_GET = 159, /* Versioned Infinity getter. */
+    GLOBAL_CONSTANT_SET = 160 /* Mutable host state before a SWF is loaded. */
+};
+
+/* [GC:] Read the captured host value or the constant selected by the current SWF version. */
+FVM_Result global_constant_get(FVM_Context *c, bool is_nan, FVM_Value *out, void *data)
+{
+    FVM_Object *state = (FVM_Object *)data;
+    if (!state || state->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    if (!c->swf_loaded)
+        return fvm_object_get(c, state, "value", out);
+    fvm_value_undefined(out);
+    if (c->swf_info.version > 4)
+        fvm_value_number(out, is_nan ? nan_value() : infinity());
+    return FVM_OK;
+}
+
+/* Read NaN through the current loaded version, without evaluating the receiver. */
+FVM_Result global_nan_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
+                          FVM_Value *out, void *data)
+{
+    return global_constant_get(c, true, out, data);
+}
+
+/* Read Infinity through the current loaded version, without evaluating the receiver. */
+FVM_Result global_infinity_get(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
+                               FVM_Value *out, void *data)
+{
+    return global_constant_get(c, false, out, data);
+}
+
+/* [GC:] Preserve mutable unloaded host values in captured state; loaded constants ignore writes. */
+FVM_Result global_constant_set(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
+                               FVM_Value *out, void *data)
+{
+    FVM_Object *state = (FVM_Object *)data;
+    if (n != 1 || !state || state->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_undefined(out);
+    return c->swf_loaded ? FVM_OK : fvm_object_set(c, state, "value", a);
+}
+
 /* Recognize the whitespace accepted by numeric string conversion. */
 bool whitespace(unsigned char c)
 {
@@ -504,6 +551,12 @@ const Method global_functions[] = {{"Number", number_call},
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == global_nan_get)
+        return GLOBAL_NAN_GET;
+    if (callback == global_infinity_get)
+        return GLOBAL_INFINITY_GET;
+    if (callback == global_constant_set)
+        return GLOBAL_CONSTANT_SET;
     if (callback == boolean_value)
         return 1;
     if (callback == boolean_string)
@@ -522,6 +575,12 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == GLOBAL_NAN_GET)
+        return global_nan_get;
+    if (id == GLOBAL_INFINITY_GET)
+        return global_infinity_get;
+    if (id == GLOBAL_CONSTANT_SET)
+        return global_constant_set;
     if (id == 3)
         return boolean_constructor;
     if (id >= 150 && id < 150 + sizeof(global_functions) / sizeof(global_functions[0]))
@@ -751,6 +810,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         /* Build both maps before publishing, so allocation errors cannot leave
          * partially installed globals and function registrations. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = c->global->properties;
+        /* [GC:] Stage constant descriptors and captures before publishing either map. */
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry> accessors = c->global->accessors;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry> functions = c->functions;
         fvm_detail::map<fvm_detail::string, FVM_NativeEntry> constructors = c->constructors;
         FVM_Object *math = 0;
@@ -779,10 +840,23 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         value.type = FVM_VALUE_OBJECT;
         value.object = math;
         globals["Math"] = value;
-        fvm_value_number(&value, nan_value());
-        globals["NaN"] = value;
-        fvm_value_number(&value, infinity());
-        globals["Infinity"] = value;
+        const char *constant_names[] = {"NaN", "Infinity"};
+        for (size_t i = 0; i < 2; ++i)
+        {
+            FVM_Object *state = 0;
+            result = fvm_object_create(c, &state);
+            if (result != FVM_OK)
+                return result;
+            fvm_value_number(&value, i ? infinity() : nan_value());
+            state->properties["value"] = value;
+            FVM_AccessorEntry entry;
+            entry.getter = i ? global_infinity_get : global_nan_get;
+            entry.setter = global_constant_set;
+            /* [GC:] Captured state retains host-assigned values across collection/transport. */
+            entry.userdata = state;
+            entry.root = state;
+            accessors[constant_names[i]] = entry;
+        }
         for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
         {
             FVM_NativeEntry entry;
@@ -922,6 +996,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         FVM_Object *array_builtin_prototype =
             constructors.find("Array")->second.root->properties.find("prototype")->second.object;
         c->global->properties.swap(globals);
+        c->global->accessors.swap(accessors);
         c->functions.swap(functions);
         c->constructors.swap(constructors);
         c->array_builtin_prototype = array_builtin_prototype;

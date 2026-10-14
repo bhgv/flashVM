@@ -1326,3 +1326,22 @@ data, prototype deletion and property-name case; it is not a passing oracle.
 
 Заимствованный sortOn захватывает длину и элементы после преобразования всех
 полей/flags; пользовательские изменения участвуют в текущей сортировке.
+
+## v0.178 — numeric globals by version / версия числовых globals
+
+Native NaN/Infinity getters use the current loaded version: SWF4 undefined,
+SWF5..8 IEEE values. Loaded writes are ignored; unloaded host values remain
+mutable, traced and transportable. Staged accessor/property maps publish together;
+new numeric callback IDs 158..160 preserve existing IDs.
+[RU/EN details](GLOBAL_NUMERIC_VERSION.md). Tests cover install-before/after-load,
+SWF4..8, mutable Object/NUL values, loaded writes, traced GC/channel transfer and
+destination version changes. Original equals_swf4 now matches all 4049 output
+bytes; the original SWF/expected output were not modified. Other globals/case,
+attribute masks, separate function/clip versions and all stages remain open.
+Evidence: AGG 340/Cairo 339 tests, four focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles including allocation failure,
+and sixteen byte-exact original SWFs. Two AGG launch failures passed after
+restoring execute bits.
+
+Исправлены NaN/Infinity для SWF4; исходный equals_swf4 добавлен к побайтным
+эталонным проверкам. Незагруженные host значения сохраняются после GC/передачи.
