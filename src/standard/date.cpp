@@ -306,7 +306,23 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     /* Initialization / Инициализация локального состояния. */
     double result = 0;
     FVM_Result r = FVM_OK;
-    if (utc)
+    if (c->swf_loaded && valid && (field <= 2 || field == 8))
+    {
+        /* Calendar setters retain signed time-within-day through SWF7;
+         * SWF8 normalizes that remainder into the nonnegative day range. */
+        double remainder = std::fmod(t + east * 60000.0, 86400000.0);
+        if (c->swf_info.version > 7 && remainder < 0)
+            remainder += 86400000.0;
+        double projected = days(f.year, f.month, f.day) * 86400000.0 + remainder;
+        result = clip(projected);
+        if (finite(result))
+        {
+            result = std::floor(projected);
+            if (!utc)
+                r = normalized_utc(split(result), result);
+        }
+    }
+    else if (utc)
         result = clip(make(f));
     else
         r = normalized_utc(f, result);
