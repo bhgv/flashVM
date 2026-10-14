@@ -10,12 +10,16 @@
 extern "C"
 {
 #endif
-/* Define FVM PROPERTY DONT ENUM constant or compilation switch. */
+/* Hide the property from enumerable-key snapshots. */
 #define FVM_PROPERTY_DONT_ENUM 1
-/* Define FVM PROPERTY DONT DELETE constant or compilation switch. */
+/* Prevent deletion until this flag is cleared. */
 #define FVM_PROPERTY_DONT_DELETE 2
-/* Define FVM PROPERTY READ ONLY constant or compilation switch. */
+/* Ignore writes through the ordinary property interface. */
 #define FVM_PROPERTY_READ_ONLY 4
+/* All supported attribute bits; reject flags outside this mask. */
+#define FVM_PROPERTY_VALID_FLAGS (FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE | FVM_PROPERTY_READ_ONLY)
+/* Default attributes for built-in raw prototype slots. */
+#define FVM_PROPERTY_BUILTIN_FLAGS (FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE)
     /* Implement object property flags for this subsystem. */
     FVM_API FVM_Result fvm_object_property_flags(FVM_Context *, FVM_Object *, const char *,
                                                  unsigned int *);

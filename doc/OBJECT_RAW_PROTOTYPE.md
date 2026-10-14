@@ -57,3 +57,20 @@ supersede assuming the prior session's corpus was present or revalidated here.
 но собственность встроенного слота, регистр имён и некоторые удаления расходятся
 с эталоном. Повторно проверенная biturshift_swf8 совпадает полностью. Остальные
 наблюдаемые отказы/расхождения уже есть в v0.226. Все стадии роудмапа открыты.
+
+
+v0.234: the default host accessor is projected as an intrinsic edge in loaded
+SWFs. Object.prototype has no own intrinsic edge, ordinary constructed objects
+do, and deletion of an unprotected intrinsic slot clears inheritance even when
+no explicit raw property was stored. Loaded SWF<=6 recognizes ASCII case variants
+of this intrinsic name; exact user properties/accessors take precedence. Host
+accessor membership/deletion remains unchanged. General property casing and raw
+slot aliases are not declared complete. Property attribute masks/defaults now
+use documented FVM_PROPERTY_* macros.
+
+All 22 previously selected unchanged original SWF<=8 probes now match byte for
+byte, with zero exit and empty stderr, in Linux AGG and Cairo. Each profile passes
+436 tests; six focused heap/global ASan+UBSan checks pass with stack/leak checks
+disabled. A newly retrieved unchanged closure_scope SWF7 remains unsupported
+before script entry due to authoring/debug tags; it is not counted among those
+22 passing cases. Roadmap stages, JIT and non-Linux verification remain open.

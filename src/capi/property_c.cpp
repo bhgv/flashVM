@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "../core/prototype_data.hpp"
 #include "../standard/base_state.hpp"
 #include "flashvm/property.h"
 #include <new>
@@ -47,7 +48,7 @@ extern "C" FVM_Result fvm_object_set_property_flags(FVM_Context *c, FVM_Object *
 extern "C" FVM_Result fvm_object_set_property_flags_bytes(FVM_Context *c, FVM_Object *o, const char *name, size_t size,
                                                     unsigned int set, unsigned int clear)
 {
-    if (!c || !o || o->owner != c || !name || (set | clear) > 7)
+    if (!c || !o || o->owner != c || !name || ((set | clear) & ~FVM_PROPERTY_VALID_FLAGS))
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -95,7 +96,7 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
         FVM_Result r = fvm_object_property_flags_bytes(c, o, key.data(), key.size(), &flags);
         if (r != FVM_OK)
             return r;
-        if (flags & 2)
+        if (flags & FVM_PROPERTY_DONT_DELETE)
             return FVM_OK;
         unsigned long index;
         if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
@@ -103,8 +104,9 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
             o->indexed.erase(index);
         /* Canonical numeric accessors/methods are own properties too. */
         /* [GC:] Deleting a writable/deletable raw prototype slot removes its inheritance edge. */
-        if (c->swf_loaded && key == fvm_detail::string("__proto__") &&
-            o->properties.find(key) != o->properties.end())
+        if (c->swf_loaded && fvm_object_prototype_name(c, key) &&
+            (o->properties.find(key) != o->properties.end() ||
+             fvm_object_intrinsic_prototype(c, o, &key)))
             o->prototype = 0;
         o->properties.erase(key);
         o->methods.erase(key);

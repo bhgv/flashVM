@@ -397,7 +397,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         FVM_Result flag_result = fvm_object_property_flags_bytes(c, flag_cursor, name.data(), name.size(), &flags);
         if (flag_result != FVM_OK)
             return flag_result;
-        if (flags & 4)
+        if (flags & FVM_PROPERTY_READ_ONLY)
         {
             if (c->swf_loaded && flag_cursor != o)
                 continue;
@@ -419,7 +419,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         FVM_Result flag_result = fvm_object_property_flags_bytes(c, o, name.data(), name.size(), &own_flags);
         if (flag_result != FVM_OK)
             return flag_result;
-        if (own_flags & 4)
+        if (own_flags & FVM_PROPERTY_READ_ONLY)
         {
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
             bool native_length = c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" &&
@@ -841,6 +841,14 @@ extern "C"
                 }
             }
 
+            /* The host accessor implements an intrinsic edge, not an own slot on
+             * Object.prototype. Raw user data and custom accessors remain own. */
+            if (fvm_object_prototype_name(c, key) &&
+                fvm_object_intrinsic_prototype(c, o, &key))
+            {
+                *out = o->prototype != 0;
+                return FVM_OK;
+            }
             *out = o->properties.find(key) != o->properties.end() ||
                    o->accessors.find(key) != o->accessors.end() ||
                    o->methods.find(key) != o->methods.end();
@@ -878,6 +886,10 @@ extern "C"
             if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_get_index(c, o, index, out);
+            if (key != fvm_detail::string("__proto__") &&
+                fvm_object_prototype_name(c, key) &&
+                fvm_object_intrinsic_prototype(c, o, &key))
+                key = "__proto__";
             return fvm_object_get_no_index(c, o, key, out);
         }
         catch (const std::bad_alloc &)
