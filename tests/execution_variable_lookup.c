@@ -17,7 +17,7 @@ int main(void)
  fvm_value_undefined(&value);assert(fvm_object_set(c,scope,"u",&value)==FVM_OK);fvm_value_string(&name,"u");assert(fvm_exec_variable_lookup(c,scope,target,receiver,fallback,1,&name,&out,&owner,&found)==FVM_OK && found && out.type==FVM_VALUE_UNDEFINED);
  fvm_value_string(&name,"THIS");assert(fvm_exec_variable_lookup(c,scope,target,receiver,fallback,1,&name,&out,&owner,&found)==FVM_OK && found && owner==fallback);assert(version==6?(out.type==FVM_VALUE_OBJECT && out.object==receiver):(out.type==FVM_VALUE_NUMBER && out.number==31));
  if(version==5){assert(fvm_exec_variable_lookup(c,scope,target,receiver,fallback,0,&name,&out,&owner,&found)==FVM_OK && found && out.object==receiver);}
- fvm_value_string(&name,"_global");assert(fvm_exec_variable_lookup(c,scope,target,receiver,0,1,&name,&out,&owner,&found)==FVM_OK && found && out.type==FVM_VALUE_OBJECT && owner==out.object);global=out.object;
+ fvm_value_string(&name,"_global");assert(fvm_exec_variable_lookup(c,scope,target,receiver,0,1,&name,&out,&owner,&found)==FVM_OK && (version>=6?(found && out.type==FVM_VALUE_OBJECT && owner==out.object):(!found && out.type==FVM_VALUE_UNDEFINED)));global=owner;
  fvm_value_string(&name,"missing");assert(fvm_exec_variable_lookup(c,scope,target,receiver,0,1,&name,&out,&owner,&found)==FVM_OK && !found && out.type==FVM_VALUE_UNDEFINED && owner==global);
  fvm_value_number(&name,1);fvm_value_number(&out,99);owner=scope;found=99;assert(fvm_exec_variable_lookup(c,scope,target,receiver,fallback,1,&name,&out,&owner,&found)==FVM_INVALID_ARGUMENT && out.number==99 && owner==scope && found==99);
  fvm_context_destroy(c);}

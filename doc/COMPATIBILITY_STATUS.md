@@ -2193,3 +2193,12 @@ exceptions and allocation restoration are covered. The generated SWF4 target-sco
 fixture now uses explicit clip paths; modern this assertions and independent SWF
 oracles remain intact. Other display kinds, Enumerate, full this/encoding semantics
 and all roadmap stages remain open. GetVariable вынесен в отдельный C-обработчик.
+
+### v0.269 — plain `_global` version and binding precedence
+
+[GLOBAL_BINDING_LOOKUP.md](GLOBAL_BINDING_LOOKUP.md) records loaded SWF6+ namespace
+fallback after ordinary bindings, undefined-presence shadowing, and versioned
+case spelling. Host reserved-name priority remains compatible. C89/interpreter
+fixtures cover namespace availability and target/global/lexical shadows. Qualified
+path and Delete2 alias rules, the failing original swf4_vars probe, historical
+system properties and all roadmap gates remain open. Уточнён простой поиск `_global`.

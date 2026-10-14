@@ -4,18 +4,14 @@
 #include "../../core/property_key.hpp"
 #include "../../standard/string_order.hpp"
 #include "../../../external/flash_case/case_table.hpp"
-/* Match the implicit this keyword using the SWF scope/version case rules.
- * Counted WTF-8 decoding and Flash UCS2 lowercase mappings preserve NULs and
- * reject supplementary characters instead of treating them as ASCII letters. */
-static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
+/* Match counted UCS2 keyword units using the pinned Flash lowercase map when needed. */
+static bool keyword_name(const fvm_detail::string &name, const char *expected, size_t units,
+                         bool sensitive)
 {
-    if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 ||
-        c->swf_info.version >= FVM_SWF_VERSION_7 ||
-        (c->swf_info.version <= FVM_SWF_VERSION_5 && local_scope))
-        return name == fvm_detail::string(FVM_VARIABLE_THIS_NAME);
+    if (sensitive)
+        return name == fvm_detail::string(expected);
     size_t offset = 0;
-    const char expected[] = FVM_VARIABLE_THIS_NAME;
-    for (unsigned int i = 0; i < FVM_VARIABLE_THIS_UNITS; ++i)
+    for (size_t i = 0; i < units; ++i)
     {
         unsigned long unit = 0;
         if (fvm_string_read(name.data(), name.size(), offset, unit) != FVM_OK)
@@ -36,6 +32,22 @@ static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::str
             return false;
     }
     return offset == name.size();
+}
+/* Preserve local/global this spelling rules across SWF5, SWF6 and case-sensitive SWF7+. */
+static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
+{
+    bool sensitive = !c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 ||
+                     c->swf_info.version >= FVM_SWF_VERSION_7 ||
+                     (c->swf_info.version <= FVM_SWF_VERSION_5 && local_scope);
+    return keyword_name(name, FVM_VARIABLE_THIS_NAME, FVM_VARIABLE_THIS_UNITS, sensitive);
+}
+/* Global namespace fallback starts in SWF6; unloaded host names retain exact spelling. */
+static bool global_keyword(FVM_Context *c, const fvm_detail::string &name)
+{
+    if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
+        return false;
+    return keyword_name(name, FVM_VARIABLE_GLOBAL_NAME, FVM_VARIABLE_GLOBAL_UNITS,
+                        !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7);
 }
 
 /* Resolve a plain binding with explicit this/target/default-call receivers and no local-map API. */
@@ -92,7 +104,8 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
                 return status;
             if (found && with_scope)
                 selected_receiver = owner;
-            if (!found && key == fvm_detail::string("_global"))
+            /* Preserve the unloaded host namespace's historical reserved-name priority. */
+            if (!found && !c->swf_loaded && global_keyword(c, key))
             {
                 result.type = FVM_VALUE_OBJECT;
                 result.object = c->global;
@@ -136,6 +149,13 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
                 if (status != FVM_OK)
                     return status;
             }
+        }
+        /* Ordinary scope/target/global bindings, including undefined, precede path fallback. */
+        if (!found && global_keyword(c, key))
+        {
+            result.type = FVM_VALUE_OBJECT;
+            result.object = c->global;
+            found = 1;
         }
         *out = result;
         *call_receiver = selected_receiver;

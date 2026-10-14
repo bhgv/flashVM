@@ -214,3 +214,10 @@ The complete action uses an explicit C89 environment/value interface, with roote
 coercion and lookup. Generated fixtures distinguish raw reads from action result
 filtering. Other display objects, legacy Enumerate/encoding, all JIT backends and
 all requested platform runs remain release gates. Все стадии 1–9 открыты.
+
+## v0.269 — plain global namespace lookup
+
+Loaded `_global` fallback now follows ordinary binding resolution and starts in
+SWF6, with versioned case spelling. Host behavior remains separate. Qualified
+aliases, full system/display properties, JIT equivalence and target-platform
+execution still need acceptance evidence. Все стадии 1–9 остаются открытыми.
