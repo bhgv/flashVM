@@ -2165,3 +2165,11 @@ root layouts, substring origin and Unicode bounds use documented macros. The
 loaded SWF4–5 ASCII-only restriction is preserved: historical byte/locale details
 remain open. Candidate string_ops_swf6 is actually SWF15 and is excluded without
 header/oracle edits. Все стадии 1–9 остаются открытыми.
+
+### v0.266 — named WTF-8/UTF-16 representation constants
+
+[STRING_CODEC_CONSTANTS.md](STRING_CODEC_CONSTANTS.md) records documented sequence,
+surrogate, continuation and payload macros in the shared codec, plus the borrowed
+terminated-size marker. Representation/decoding/transport behavior is unchanged;
+this is a readability checkpoint, not new compatibility coverage. Historical
+encodings and all nine roadmap gates remain open. Константы вынесены в `.h`.

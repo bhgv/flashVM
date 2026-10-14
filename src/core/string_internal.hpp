@@ -8,29 +8,37 @@
 #include "flashvm/value.h"
 #include "flashvm/utf8.h"
 #include "../details/vector.hpp"
+#include "unicode_constants.h"
+#include "string_constants.h"
 #include <cstring>
-/* Compute and return string size. */
+/* Return the explicit byte count, or measure the borrowed terminated representation. */
 inline size_t fvm_string_size(const FVM_Value &v)
 {
-    return v.string_size == (size_t)-1 ? std::strlen(v.string) : v.string_size;
+    return v.string_size == FVM_STRING_TERMINATED_SIZE ? std::strlen(v.string) : v.string_size;
 }
 /* WTF-8 preserves lone UTF-16 surrogates. The public UTF-8 scalar codec remains
  * strict; only the VM string representation accepts these three-byte units. */
-/* Read string. */
+/* Decode a scalar or a preserved lone surrogate and advance the input byte position. */
 inline FVM_Result fvm_string_read(const char *s, size_t n, size_t &at, unsigned long &cp)
 {
-    if (at < n && n - at >= 3 && (unsigned char)s[at] == 0xed && (unsigned char)s[at + 1] >= 0xa0 &&
-        (unsigned char)s[at + 1] <= 0xbf && (unsigned char)s[at + 2] >= 0x80 &&
-        (unsigned char)s[at + 2] <= 0xbf)
+    if (at < n && n - at >= FVM_WTF8_SURROGATE_SEQUENCE_BYTES &&
+        (unsigned char)s[at] == FVM_WTF8_SURROGATE_LEAD &&
+        (unsigned char)s[at + 1] >= FVM_WTF8_SURROGATE_SECOND_MIN &&
+        (unsigned char)s[at + 1] <= FVM_UTF8_CONTINUATION_BYTE_MAX &&
+        (unsigned char)s[at + 2] >= FVM_UTF8_CONTINUATION_MARKER &&
+        (unsigned char)s[at + 2] <= FVM_UTF8_CONTINUATION_BYTE_MAX)
     {
-        cp = 0xd000 + (((unsigned char)s[at + 1] & 63) << 6) + ((unsigned char)s[at + 2] & 63);
-        at += 3;
+        cp = FVM_WTF8_SURROGATE_DECODE_BASE +
+             (((unsigned char)s[at + 1] & FVM_UTF8_CONTINUATION_PAYLOAD_MASK)
+              << FVM_UTF8_CONTINUATION_PAYLOAD_BITS) +
+             ((unsigned char)s[at + 2] & FVM_UTF8_CONTINUATION_PAYLOAD_MASK);
+        at += FVM_WTF8_SURROGATE_SEQUENCE_BYTES;
         return FVM_OK;
     }
     return fvm_utf8_read(s, n, &at, &cp) == FVM_UTF8_OK ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
 
-/* Compute and return string units. */
+/* Append UTF-16 units, splitting supplementary scalars and retaining lone surrogates/NUL. */
 inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<unsigned int> &units)
 {
     if (value.type != FVM_VALUE_STRING || !value.string)
@@ -42,11 +50,13 @@ inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<un
         FVM_Result r = fvm_string_read(value.string, n, at, cp);
         if (r != FVM_OK)
             return r;
-        if (cp >= 0x10000)
+        if (cp >= FVM_UTF16_SUPPLEMENTARY_OFFSET)
         {
-            cp -= 0x10000;
-            units.push_back(0xd800 + (unsigned int)(cp >> 10));
-            units.push_back(0xdc00 + (unsigned int)(cp & 1023));
+            cp -= FVM_UTF16_SUPPLEMENTARY_OFFSET;
+            units.push_back(FVM_UTF16_HIGH_SURROGATE_BASE +
+                            (unsigned int)(cp >> FVM_UTF16_PAIR_PAYLOAD_BITS));
+            units.push_back(FVM_UTF16_LOW_SURROGATE_BASE +
+                            (unsigned int)(cp & FVM_UTF16_PAIR_PAYLOAD_MASK));
         }
         else
             units.push_back((unsigned int)cp);
@@ -54,19 +64,20 @@ inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<un
     return FVM_OK;
 }
 
-/* Append string. */
+/* Append one scalar or lone surrogate as counted WTF-8 bytes. */
 inline FVM_Result fvm_string_append(unsigned long cp, fvm_detail::vector<char> &bytes)
 {
 
     /* Initialization / Инициализация локального состояния. */
-    char raw[4];
+    char raw[FVM_UTF8_MAX_SEQUENCE_BYTES];
     size_t n = 0;
-    if (cp >= 0xd800 && cp <= 0xdfff)
+    if (cp >= FVM_UNICODE_SURROGATE_MIN && cp <= FVM_UNICODE_SURROGATE_MAX)
     {
-        raw[0] = (char)0xed;
-        raw[1] = (char)(0x80 | ((cp >> 6) & 63));
-        raw[2] = (char)(0x80 | (cp & 63));
-        n = 3;
+        raw[0] = (char)FVM_WTF8_SURROGATE_LEAD;
+        raw[1] = (char)(FVM_UTF8_CONTINUATION_MARKER | ((cp >> FVM_UTF8_CONTINUATION_PAYLOAD_BITS) &
+                                                        FVM_UTF8_CONTINUATION_PAYLOAD_MASK));
+        raw[2] = (char)(FVM_UTF8_CONTINUATION_MARKER | (cp & FVM_UTF8_CONTINUATION_PAYLOAD_MASK));
+        n = FVM_WTF8_SURROGATE_SEQUENCE_BYTES;
     }
     else if (fvm_utf8_write(cp, raw, sizeof(raw), &n) != FVM_UTF8_OK)
         return FVM_INVALID_ARGUMENT;

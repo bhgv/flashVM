@@ -193,3 +193,9 @@ interfaces usable without interpreter stacks or instruction decoding. Root,
 operand and Unicode constants are documented macros. Legacy byte encodings,
 full standard-object/AVM1 semantics, machine-code JIT and all target-platform
 runs remain release gates. Все стадии 1–9 остаются открытыми.
+
+## v0.266 — shared string-codec constants
+
+Internal string representation literals have named documented macros without
+changing the runtime or transport format. This readability change does not close
+compatibility, JIT or target-platform acceptance gates. Все стадии 1–9 открыты.

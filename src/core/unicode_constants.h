@@ -39,6 +39,28 @@
 #define FVM_UNICODE_SURROGATE_MAX 0xdfffUL
 /* Replacement code unit used by legacy character operations for surrogate inputs. */
 #define FVM_UNICODE_REPLACEMENT_CHARACTER 0xfffdU
+/* Largest byte belonging to a UTF-8 continuation field. */
+#define FVM_UTF8_CONTINUATION_BYTE_MAX 0xbfU
+/* Maximum storage required for one scalar UTF-8 sequence. */
+#define FVM_UTF8_MAX_SEQUENCE_BYTES 4U
+/* Scalar offset subtracted before splitting a supplementary value into UTF-16 units. */
+#define FVM_UTF16_SUPPLEMENTARY_OFFSET 0x10000UL
+/* Leading UTF-16 surrogate base; add the high supplementary payload bits. */
+#define FVM_UTF16_HIGH_SURROGATE_BASE 0xd800U
+/* Trailing UTF-16 surrogate base; add the low supplementary payload bits. */
+#define FVM_UTF16_LOW_SURROGATE_BASE 0xdc00U
+/* Number of supplementary payload bits carried by either surrogate unit. */
+#define FVM_UTF16_PAIR_PAYLOAD_BITS 10U
+/* Mask selecting the low payload for a trailing surrogate. */
+#define FVM_UTF16_PAIR_PAYLOAD_MASK 0x3ffUL
+/* WTF-8 accepts this otherwise scalar-invalid lead when encoding lone surrogates. */
+#define FVM_WTF8_SURROGATE_LEAD 0xedU
+/* First second-byte value selecting the surrogate range under the ED lead. */
+#define FVM_WTF8_SURROGATE_SECOND_MIN 0xa0U
+/* A lone surrogate is represented by a complete three-byte WTF-8 sequence. */
+#define FVM_WTF8_SURROGATE_SEQUENCE_BYTES 3U
+/* Decoded contribution of the ED lead before adding the two continuation payloads. */
+#define FVM_WTF8_SURROGATE_DECODE_BASE 0xd000UL
 /* Leading-bit marker identifying a continuation byte. */
 #define FVM_UTF8_CONTINUATION_MARKER 0x80U
 /* Smallest non-overlong two-byte scalar value. */
