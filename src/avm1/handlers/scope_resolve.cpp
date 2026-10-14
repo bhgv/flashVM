@@ -1,5 +1,6 @@
 /* FlashVM: lexical resolution retains binding class before getter callbacks run. */
 #include "support.hpp"
+#include "../scope_keywords.hpp"
 #include "scope_lookup_constants.h"
 #include "../../core/property_key.hpp"
 /* Resolve scopes from inner to outer, preserving the object which supplied a binding. */
@@ -51,6 +52,16 @@ extern "C" FVM_Result fvm_exec_scope_resolve(FVM_Context *c, FVM_Object *scope,
                     if (status != FVM_OK)
                         return status;
                     *out = result;
+                    *owner = object;
+                    *found = 1;
+                    *with_scope = with ? 1 : 0;
+                    return FVM_OK;
+                }
+                if (cursor == object && fvm_avm1_movieclip_global(c, object, key))
+                {
+                    fvm_value_undefined(out);
+                    out->type = FVM_VALUE_OBJECT;
+                    out->object = c->global;
                     *owner = object;
                     *found = 1;
                     *with_scope = with ? 1 : 0;

@@ -2202,3 +2202,13 @@ case spelling. Host reserved-name priority remains compatible. C89/interpreter
 fixtures cover namespace availability and target/global/lexical shadows. Qualified
 path and Delete2 alias rules, the failing original swf4_vars probe, historical
 system properties and all roadmap gates remain open. Уточнён простой поиск `_global`.
+
+### v0.270 — concrete MovieClip namespace in target/With scopes
+
+[MOVIECLIP_GLOBAL_SCOPE.md](MOVIECLIP_GLOBAL_SCOPE.md) refines namespace lookup:
+loaded SWF6–8 concrete clips supply _global after own slots and before prototypes
+or global scope. With scopes share the rule; class prototypes are excluded. The
+v0.269 generated concrete-clip global-shadow assertion is corrected against the
+primary display-object search order. C89, own/undefined/inherited, class/case and
+allocator metadata fixtures cover the implemented scope paths. Direct GetMember,
+qualified paths, Delete2 and all full roadmap gates remain open.

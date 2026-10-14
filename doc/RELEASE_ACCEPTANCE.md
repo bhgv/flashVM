@@ -221,3 +221,10 @@ Loaded `_global` fallback now follows ordinary binding resolution and starts in
 SWF6, with versioned case spelling. Host behavior remains separate. Qualified
 aliases, full system/display properties, JIT equivalence and target-platform
 execution still need acceptance evidence. Все стадии 1–9 остаются открытыми.
+
+## v0.270 — MovieClip namespace scope precedence
+
+Target and With resolution account for concrete MovieClip namespace properties,
+sharing version/case helpers and documented keyword constants. Direct member and
+qualified namespace operations remain follow-up work, alongside full standard
+objects, JIT and platform acceptance. Все стадии 1–9 остаются открытыми.
