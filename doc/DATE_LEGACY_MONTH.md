@@ -27,3 +27,9 @@ Validation / Проверка: GCC/G++ 13.3, C90/C++98, Linux AGG: 369 tests pas
 (including 15 launch-permission retries). Linux NO_OS_PORTS: month, conversion
 and fractional Date tests passed. This is not a non-Linux platform run or a
 new sanitizer certification; roadmap stages remain open.
+
+Additional validation / Дополнительная проверка: Linux Cairo Release, assertions
+retained: all 369 tests passed (eight execution-permission retries). Both new
+tests and Date conversion/fractional regressions passed in the heap/global
+ASan + UBSan profile. Stack ASan and LeakSanitizer were disabled explicitly;
+no full stack/leak or non-Linux runtime certification is claimed.

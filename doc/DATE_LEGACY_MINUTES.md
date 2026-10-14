@@ -31,3 +31,9 @@ full Flash Player/calendar/platform equivalence remains open.
 Validation / Проверка: GCC/G++ 13.3 Linux AGG: 370 tests passed, with 14
 launch-permission failures repaired and rerun. Linux NO_OS_PORTS: four Date
 regressions passed. No new sanitizer or non-Linux runtime claim is made.
+
+Additional validation / Дополнительная проверка: Linux Cairo Release, assertions
+retained: all 369 tests passed (eight execution-permission retries). Both new
+tests and Date conversion/fractional regressions passed in the heap/global
+ASan + UBSan profile. Stack ASan and LeakSanitizer were disabled explicitly;
+no full stack/leak or non-Linux runtime certification is claimed.

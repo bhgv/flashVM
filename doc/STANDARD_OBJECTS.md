@@ -40,7 +40,11 @@ see [ordering](ARRAY_LEGACY_SORT_ORDER.md) and
 
 ## Date and Function
 
-Date stores clipped integral UTC milliseconds, including invalid NaN dates.
+Unloaded host Date stores clipped integral UTC milliseconds or invalid NaN.
+Loaded single-timestamp construction retains bounded fractional milliseconds;
+setTime floors its timestamp. See [fractional values](DATE_LEGACY_FRACTIONAL.md),
+[month setters](DATE_LEGACY_MONTH.md) and [minute setters](DATE_LEGACY_MINUTES.md)
+for versioned behavior and the limits of the reference evidence.
 UTC conversion uses Gregorian arithmetic across the TimeClip range, without
 narrow time_t conversion. Local getters, constructor and setters use serialized
 libc calendar adapters in ports/calendar_port.c; clock adapters live separately

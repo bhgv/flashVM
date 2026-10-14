@@ -39,7 +39,11 @@ reverse/slice/splice/concat/join/toString/toLocaleString/sort/sortOn. Slice/join
 
 ## Date и Function
 
-Date хранит целые UTC-миллисекунды после TimeClip или NaN для неверной даты.
+В незагруженном host-контексте Date хранит целые UTC-миллисекунды после TimeClip
+или NaN. В загруженном SWF конструктор одного timestamp сохраняет ограниченную
+дробную часть; setTime округляет вниз. Версионные правила и ограничения сверки:
+[дробные значения](DATE_LEGACY_FRACTIONAL.md), [месяц](DATE_LEGACY_MONTH.md),
+[минуты](DATE_LEGACY_MINUTES.md).
 Григорианская арифметика UTC работает во всём диапазоне TimeClip без сужения
 к time_t. Локальное время обслуживают ports/calendar_port.c и отдельные адаптеры
 часов в ports/linux, mac, windows, android. Правила DST и локальный диапазон
