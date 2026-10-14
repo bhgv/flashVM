@@ -78,3 +78,15 @@ Portable declarations or configuration checks do not close these gates.
 выпуск. Для приёмки Windows/macOS/Android нужны реальные среды сборки и запуска,
 которых в этой рабочей среде нет. Остальные пробелы реализации перечислены в
 реестре совместимости и остаются открытыми.
+
+## v0.247 — reproducible source/history packaging
+
+[SOURCE_ARCHIVE.md](SOURCE_ARCHIVE.md) documents a reusable exporter for committed
+sources and complete reachable Git history, with fixed metadata, isolated staging,
+strict fsck/count/CRC checks and two byte-identical Linux exports. Runtime evidence
+remains v0.246: 454 tests per AGG/Cairo profile, 23 original traces per profile,
+seven focused heap/global ASan+UBSan checks. This packaging-only checkpoint does
+not change runtime behavior or close any platform/JIT/compatibility stage.
+
+Добавлен воспроизводимый экспорт истории Git; это проверенная часть выпуска,
+а не завершение стадии 9. Реальные проверки остальных ОС ещё необходимы.

@@ -1986,3 +1986,10 @@ presence. [EXECUTION_RESOLVED_CALL.md](EXECUTION_RESOLVED_CALL.md) records roots
 constructor bounds, fallback checks and unchanged compatibility limitations.
 
 Поиск области видимости отделён от общего вызова; стек/байткод не входят в ABI.
+
+## v0.247 — source archive reproducibility
+
+A reusable source/history export script replaces host-state-dependent ad hoc ZIP
+packing. See [SOURCE_ARCHIVE.md](SOURCE_ARCHIVE.md) for reproducibility evidence,
+reachable-history scope and remaining cross-toolchain/platform limits. Runtime
+compatibility and all nine roadmap stages remain at their open v0.246 status.
