@@ -15,8 +15,9 @@ registers are rejected. v0.214 accepts simultaneous preload/suppress flags; see
 [paired flags](AVM1_FUNCTION2_FLAGS.md). Super dispatch/preloads were added in
 v0.23; see [super checkpoint](AVM1_SUPER.md).
 
-Named formal parameters and their corresponding `arguments` indices share an
-activation binding through native accessors. Duplicate names alias only the last
+In unloaded host contexts, named formal parameters and their `arguments` indices
+share an activation binding through native accessors. In loaded SWF contexts,
+v0.217 uses independent Array element copies: [arguments Array](AVM1_ARGUMENTS_ARRAY.md). Duplicate names alias only the last
 named occurrence. Unpassed arguments do not acquire aliases. `arguments.caller` is added in v0.215; see [caller identity](AVM1_ARGUMENTS_CALLER.md).
 Register-assigned parameters have no named activation binding and are currently not aliased through
 `arguments`. Deleting an indexed accessor breaks its binding through the existing
@@ -69,8 +70,9 @@ The flag and preload layout follows Adobe's SWF file-format specification
 [правила парных флагов](AVM1_FUNCTION2_FLAGS.md). Super/preloads добавлены в
 v0.23: [контрольная точка super](AVM1_SUPER.md).
 
-Именованные параметры связаны с индексами `arguments` через аксессоры и общий
-объект активации. Для повторяющихся имён связан только последний именованный
+В незагруженном host-контексте именованные параметры связаны с индексами
+arguments через аксессоры и общий объект активации. В загруженном SWF с v0.217
+используются независимые элементы Array: [arguments Array](AVM1_ARGUMENTS_ARRAY.md). Для повторяющихся имён связан только последний именованный
 параметр. Отсутствующие аргументы не получают связей. `arguments.caller` добавлен в v0.215:
 [идентичность вызывающей функции](AVM1_ARGUMENTS_CALLER.md). Регистровые параметры
 пока не связаны с индексами `arguments`. Удаление индексного аксессора разрывает связь.

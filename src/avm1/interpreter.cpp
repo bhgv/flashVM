@@ -525,24 +525,46 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
             constructing.push_back(implicit_super);
         }
         FVM_Object *arguments = 0;
-        FVM_Result stored = fvm_object_create(c, &arguments);
+        FVM_Result stored = c->swf_loaded ? fvm_array_create_like(c, 0, argc, &arguments, true)
+                                          : fvm_object_create(c, &arguments);
         if (stored != FVM_OK)
             return stored;
-        arguments->resource_kind = 30;
+        if (!c->swf_loaded)
+            arguments->resource_kind = 30;
         capture.object = arguments;
         /* [GC:] Retain this value while subsequent call setup may execute script code. */
         constructing.push_back(capture);
         FVM_Value value;
-        fvm_value_number(&value, argc);
-        stored = fvm_object_set(c, arguments, "length", &value);
-        if (stored != FVM_OK)
-            return stored;
-        arguments->attributes["length"] = 1;
-        for (unsigned int i = 0; i < argc; ++i)
+        if (!c->swf_loaded)
         {
-            stored = fvm_table_set_index(c, arguments, i, args + i);
+            fvm_value_number(&value, argc);
+            stored = fvm_object_set(c, arguments, "length", &value);
             if (stored != FVM_OK)
                 return stored;
+            arguments->attributes["length"] = 1;
+        }
+        for (unsigned int i = 0; i < argc; ++i)
+        {
+            if (c->swf_loaded)
+            {
+                /* Initial elements are raw own copies; inherited setters must not run. */
+                /* [GC:] Own string bytes before publishing the retained element. */
+                FVM_Value element = args[i];
+                if (element.type == FVM_VALUE_STRING)
+                {
+                    stored = fvm_value_to_string(c, args + i, &element);
+                    if (stored != FVM_OK)
+                        return stored;
+                    element.metatable = args[i].metatable;
+                }
+                arguments->indexed[i] = element;
+            }
+            else
+            {
+                stored = fvm_table_set_index(c, arguments, i, args + i);
+                if (stored != FVM_OK)
+                    return stored;
+            }
         }
         if (callee)
         {
@@ -673,7 +695,8 @@ static FVM_Result call_script(FVM_Context *c, const fvm_detail::string &name, co
                 }
         }
         fvm_detail::map<fvm_detail::string, bool> seen;
-        for (size_t i = fn.parameters.size(); i; --i)
+        /* Loaded Flash arguments are value copies; host calls keep their mapped bindings. */
+        for (size_t i = fn.parameters.size(); !c->swf_loaded && i; --i)
         {
             size_t index = i - 1;
             if (fn.function2 && fn.parameter_registers[index])
