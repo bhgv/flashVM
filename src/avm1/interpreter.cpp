@@ -6,6 +6,8 @@
 #include "with_record.hpp"
 #include "action_codes.h"
 #include "encoding_constants.h"
+#include "operand_constants.h"
+#include "../swf/record_constants.h"
 #include "handlers/script_call.hpp"
 #include "block.hpp"
 #include "coercion.hpp"
@@ -55,14 +57,14 @@ struct Action
 /* Compute and return u16. */
 static unsigned int u16(const unsigned char *p)
 {
-    return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
+    return (unsigned int)p[0] | ((unsigned int)p[1] << FVM_AVM1_BYTE_BITS);
 }
 
 /* Compute and return u32. */
 static unsigned long u32(const unsigned char *p)
 {
-    return (unsigned long)p[0] | ((unsigned long)p[1] << 8) | ((unsigned long)p[2] << 16) |
-           ((unsigned long)p[3] << 24);
+    return (unsigned long)p[0] | ((unsigned long)p[1] << FVM_AVM1_BYTE_BITS) | ((unsigned long)p[2] << (2 * FVM_AVM1_BYTE_BITS)) |
+           ((unsigned long)p[3] << (3 * FVM_AVM1_BYTE_BITS));
 }
 /* Convert a numeric operand to the low 32 unsigned bits without undefined float-to-int casts. */
 static unsigned long integer_bits(double value)
@@ -832,11 +834,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                     else if (type == FVM_AVM1_PUSH_DOUBLE)
                     {
-                        if (end - p < 8)
+                        if (end - p < FVM_AVM1_DOUBLE_BYTES)
                             return FVM_INVALID_ARGUMENT;
                         /* AVM1 stores the high 32-bit word first, each word LE.
                          * Decode arithmetically to avoid alignment/endian casts. */
-                        unsigned long high = u32(data + p), low = u32(data + p + 4);
+                        unsigned long high = u32(data + p), low = u32(data + p + FVM_AVM1_DWORD_BYTES);
                         unsigned int exponent =
                             (unsigned int)((high >> FVM_DOUBLE_HIGH_FRACTION_BITS) &
                                            FVM_DOUBLE_EXPONENT_MASK);
@@ -853,7 +855,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                            exponent ? (int)exponent - FVM_DOUBLE_NORMAL_SCALE_BIAS
                                                     : -FVM_DOUBLE_SUBNORMAL_SCALE_BIAS);
                         fvm_value_number(&v, (high & FVM_UINT32_SIGN_BIT) ? -number : number);
-                        p += 8;
+                        p += FVM_AVM1_DOUBLE_BYTES;
                     }
                     else if (type == FVM_AVM1_PUSH_CONSTANT8 || type == FVM_AVM1_PUSH_CONSTANT16)
                     {
@@ -1801,7 +1803,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_JUMP || a.op == FVM_AVM1_ACTION_IF)
             { /* Jump / If */
-                if (a.length != 2)
+                if (a.length != FVM_AVM1_BRANCH_BYTES)
                     return FVM_INVALID_ARGUMENT;
                 int take = 1;
                 if (a.op == FVM_AVM1_ACTION_IF)
@@ -1818,8 +1820,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (take)
                 {
                     long delta = (long)u16(data + a.payload);
-                    if (delta >= 32768)
-                        delta -= 65536;
+                    if (delta >= FVM_AVM1_BRANCH_SIGN_BIT)
+                        delta -= FVM_AVM1_BRANCH_MODULUS;
                     if (delta < 0 && (size_t)(-delta) > a.next)
                         return FVM_INVALID_ARGUMENT;
                     size_t target = delta < 0 ? a.next - (size_t)(-delta) : a.next + (size_t)delta;
@@ -1903,27 +1905,29 @@ extern "C" FVM_Result fvm_swf_execute_actions(FVM_Context *c)
     /* Initialization / Инициализация локального состояния. */
     const unsigned char *p = &c->swf_bytes[0];
     size_t size = c->swf_bytes.size();
-    size_t rect = (5 + 4 * (p[8] >> 3) + 7) / 8;
-    size_t pos = 8 + rect + 4;
+    size_t rect = (FVM_SWF_RECT_WIDTH_BITS + FVM_SWF_RECT_COORDINATES *
+                   (p[FVM_SWF_PREFIX_BYTES] >> FVM_SWF_RECT_WIDTH_SHIFT) +
+                   FVM_SWF_BYTE_BITS - 1) / FVM_SWF_BYTE_BITS;
+    size_t pos = FVM_SWF_PREFIX_BYTES + rect + FVM_SWF_FRAME_FIELDS_BYTES;
     while (pos < size)
     {
         unsigned int header = u16(p + pos);
-        pos += 2;
-        unsigned int code = header >> 6;
-        size_t len = header & 63;
-        if (len == 63)
+        pos += FVM_SWF_TAG_HEADER_BYTES;
+        unsigned int code = header >> FVM_SWF_TAG_CODE_SHIFT;
+        size_t len = header & FVM_SWF_TAG_LENGTH_MASK;
+        if (len == FVM_SWF_LONG_LENGTH_SENTINEL)
         {
             len = (size_t)u32(p + pos);
-            pos += 4;
+            pos += FVM_SWF_LONG_LENGTH_BYTES;
         }
-        if (code == 12)
+        if (code == FVM_SWF_TAG_DO_ACTION)
         {
             FVM_Result r = fvm_avm1_execute(c, p + pos, len);
             if (r != FVM_OK)
                 return r;
         }
         pos += len;
-        if (!code)
+        if (code == FVM_SWF_TAG_END)
             break;
     }
     return FVM_OK;

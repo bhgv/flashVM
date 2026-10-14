@@ -1993,3 +1993,9 @@ A reusable source/history export script replaces host-state-dependent ad hoc ZIP
 packing. See [SOURCE_ARCHIVE.md](SOURCE_ARCHIVE.md) for reproducibility evidence,
 reachable-history scope and remaining cross-toolchain/platform limits. Runtime
 compatibility and all nine roadmap stages remain at their open v0.246 status.
+
+## v0.248 — encoded operand/framing macro names
+
+[ENCODED_OPERAND_CONSTANTS.md](ENCODED_OPERAND_CONSTANTS.md) records documented
+uppercase widths/sign encodings/SWF framing constants replacing numeric literals.
+Runtime compatibility and all roadmap-stage acceptance states remain unchanged.
