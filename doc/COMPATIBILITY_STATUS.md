@@ -1597,3 +1597,21 @@ Evidence: AGG 354/Cairo 353 full tests, five focused checks each in Linux portab
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Four AGG and one Cairo launch failures passed after restoring
 execute bits.
+
+## v0.194 — Math operands and arity / аргументы Math
+
+Loaded Math methods coerce the first two arguments in order even for unary
+operations/random, ignore later arguments and apply SWF4–6 arity checks.
+min/max use two operands; numeric coercion is versioned. Host Math and separate
+global predicates retain their previous behavior. [RU/EN details](MATH_LEGACY_ARGUMENTS.md).
+Tests cover callback order/counts/errors, unchanged random state after failure,
+ignored third operands, min/max, missing/undefined operands and octal strings.
+Random distribution, exact numeric rounding, metadata and all stages remain open.
+
+Исправлены первые два аргумента, отсутствие лишних callbacks, min/max и arity
+старых SWF. Ошибка random сохраняет предыдущее состояние генератора.
+
+Evidence: AGG 355/Cairo 354 full tests, four focused checks each in Linux portable
+and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
+original SWFs. Three AGG and three Cairo launch failures passed after restoring
+execute bits. The final expanded Math fixture passed separately in all profiles.

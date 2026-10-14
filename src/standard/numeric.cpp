@@ -233,7 +233,25 @@ bool negative_zero(double value)
     return value == 0 && 1.0 / value < 0;
 }
 
-/* Compute and return argument. */
+/* Read a Math numeric argument; missing loaded arguments use versioned undefined. */
+FVM_Result math_argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
+                    double *out)
+{
+    if (index >= count)
+    {
+        if (c->swf_loaded)
+        {
+            FVM_Value missing;
+            fvm_value_undefined(&missing);
+            return fvm_avm1_number(c, &missing, out);
+        }
+        *out = nan_value();
+        return FVM_OK;
+    }
+    return fvm_avm1_number(c, &args[index], out);
+}
+
+/* Read a host numeric argument for the separate global predicate functions. */
 FVM_Result argument(FVM_Context *c, unsigned int count, const FVM_Value *args, unsigned int index,
                     double *out)
 {
@@ -273,6 +291,24 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
                           Operation op)
 {
     double x = 0, y = 0, result = 0;
+    FVM_Result status = FVM_OK;
+    if (c->swf_loaded)
+    {
+        /* Flash evaluates the first two operands even for unary/random methods. */
+        status = math_argument(c, count, args, 0, &x);
+        if (status == FVM_OK)
+            status = math_argument(c, count, args, 1, &y);
+        if (status != FVM_OK)
+            return status;
+        if (c->swf_info.version <= 6 && op != RANDOM &&
+            !((op == MIN || op == MAX) && !count) &&
+            !(op == POW && count == 1 && x == 1) &&
+            (!count || ((op == MIN || op == MAX || op == POW || op == ATAN2) && count < 2)))
+        {
+            fvm_value_number(out, nan_value());
+            return FVM_OK;
+        }
+    }
     if (op == RANDOM)
     {
         /* Context-local 32-bit LCG; no shared libc rand state between workers. */
@@ -280,15 +316,27 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
         fvm_value_number(out, (double)c->random_state / 4294967296.0);
         return FVM_OK;
     }
-    FVM_Result status = argument(c, count, args, 0, &x);
+    if (!c->swf_loaded)
+        status = math_argument(c, count, args, 0, &x);
     if (status != FVM_OK)
         return status;
-    if (op == MAX || op == MIN)
+    if ((op == MAX || op == MIN) && c->swf_loaded)
+    {
+        if (!count)
+            result = op == MAX ? -infinity() : infinity();
+        else if (x != x || y != y)
+            result = nan_value();
+        else if (op == MAX)
+            result = x > y || (x == 0 && y == 0 && !negative_zero(x)) ? x : y;
+        else
+            result = x < y || (x == 0 && y == 0 && negative_zero(x)) ? x : y;
+    }
+    else if (op == MAX || op == MIN)
     {
         result = op == MAX ? -infinity() : infinity();
         for (unsigned int i = 0; i < count; ++i)
         {
-            status = argument(c, count, args, i, &x);
+            status = math_argument(c, count, args, i, &x);
             if (status != FVM_OK)
                 return status;
             if (x != x)
@@ -303,7 +351,8 @@ FVM_Result math_operation(FVM_Context *c, unsigned int count, const FVM_Value *a
     }
     else if (op == POW || op == ATAN2)
     {
-        status = argument(c, count, args, 1, &y);
+        if (!c->swf_loaded)
+            status = math_argument(c, count, args, 1, &y);
         if (status != FVM_OK)
             return status;
         if (op == ATAN2)
