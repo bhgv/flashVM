@@ -7,6 +7,7 @@
 #include "array_work.hpp"
 #include "../avm1/coercion.hpp"
 #include "base_state.hpp"
+#include "attribute_stage.hpp"
 #include "function_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/object_root_scope.hpp"
@@ -2178,8 +2179,26 @@ FVM_Result fvm_array_create_like(
 
 /* [GC:] Prepare only the unchanged empty native Array prototype captured by its
  * constructor; retain descriptor keys so no lookup is needed after other commits. */
-void fvm_array_prepare_loaded(FVM_Context *c, FVM_ArrayPrototypeActivation &out)
+void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
 {
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator object_ctor = c->constructors.find("Object");
+    if (object_ctor != c->constructors.end() && object_ctor->second.callback == object_constructor && object_ctor->second.root)
+    {
+        FVM_Object *klass = object_ctor->second.root;
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+        if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_OBJECT && stored->second.object &&
+            stored->second.object->resource_kind == OBJECT_OBJECT)
+        {
+            FVM_Object *proto = stored->second.object;
+            out.object_attributes = proto->attributes;
+            out.class_attributes = klass->attributes;
+            for (size_t i = 0; i < sizeof(object_methods) / sizeof(object_methods[0]); ++i)
+                fvm_stage_default_method_flags(proto, object_methods[i].name, object_methods[i].callback, 3, out.object_attributes);
+            fvm_stage_default_method_flags(klass, "registerClass", register_class, 7, out.class_attributes);
+            out.object_prototype = proto;
+            out.object_class = klass;
+        }
+    }
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Array");
     if (ctor == c->constructors.end() || ctor->second.callback != array_constructor || !ctor->second.root)
         return;
@@ -2198,19 +2217,29 @@ void fvm_array_prepare_loaded(FVM_Context *c, FVM_ArrayPrototypeActivation &out)
         accessor->second.setter != array_resize || flags == proto->attributes.end() ||
         flags->second != 3 || proto->properties.find("length") != proto->properties.end())
         return;
+    out.array_attributes = proto->attributes;
+    for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
+        fvm_stage_default_method_flags(proto, array_methods[i].name, array_methods[i].callback, 3, out.array_attributes);
+    out.array_attributes.erase(flags->first);
     out.prototype = proto;
     out.length_key = &accessor->first;
     out.flags_key = &flags->first;
 }
 
 /* Publish an already prepared Array prototype as an ordinary object. */
-void fvm_array_commit_loaded(const FVM_ArrayPrototypeActivation &prepared)
+void fvm_base_commit_loaded(FVM_BasePrototypeActivation &prepared)
 {
+    if (prepared.object_prototype)
+    {
+        prepared.object_prototype->attributes.swap(prepared.object_attributes);
+        prepared.object_class->attributes.swap(prepared.class_attributes);
+    }
     FVM_Object *proto = prepared.prototype;
     if (!proto)
         return;
     proto->accessors.erase(*prepared.length_key);
     proto->attributes.erase(*prepared.flags_key);
+    proto->attributes.swap(prepared.array_attributes);
     proto->resource_kind = OBJECT_OBJECT;
     proto->resource_result_valid = false;
     fvm_value_undefined(&proto->resource_result);
@@ -2253,6 +2282,8 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     registry_entry.root = registry;
     registry_entry.userdata = registry;
     object_class->methods["registerClass"] = registry_entry;
+    if (c->swf_loaded)
+        object_class->attributes["registerClass"] = 7;
     object_class->resource_kind = OBJECT_CLASS;
     object_proto->resource_kind = OBJECT_OBJECT;
     array_class->resource_kind = ARRAY_CLASS;
@@ -2283,11 +2314,15 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     {
         entry.callback = object_methods[i].callback;
         object_proto->methods[object_methods[i].name] = entry;
+        if (c->swf_loaded)
+            object_proto->attributes[object_methods[i].name] = 3;
     }
     for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
     {
         entry.callback = array_methods[i].callback;
         array_proto->methods[array_methods[i].name] = entry;
+        if (c->swf_loaded)
+            array_proto->attributes[array_methods[i].name] = 3;
     }
     const char *flags[] = {"CASEINSENSITIVE", "DESCENDING", "UNIQUESORT", "RETURNINDEXEDARRAY",
                            "NUMERIC"};

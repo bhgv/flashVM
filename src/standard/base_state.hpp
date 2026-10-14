@@ -13,18 +13,23 @@ FVM_Result fvm_base_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM
 
 /* [GC:] Prepared Array prototype references remain owned by its constructor root.
  * Stored key addresses let the commit erase descriptors without allocating strings. */
-struct FVM_ArrayPrototypeActivation
+struct FVM_BasePrototypeActivation
 {
     FVM_Object *prototype; /* Candidate native empty prototype, or null to skip activation. */
     const fvm_detail::string *length_key; /* Native length accessor key retained until commit. */
     const fvm_detail::string *flags_key; /* Matching default length attributes key. */
+    fvm_detail::map<fvm_detail::string, unsigned int> array_attributes; /* Prepared Array method flags without length. */
+    FVM_Object *object_prototype; /* [GC:] Rooted Object prototype selected for default method flags. */
+    FVM_Object *object_class; /* [GC:] Rooted class selected for registerClass flags. */
+    fvm_detail::map<fvm_detail::string, unsigned int> object_attributes; /* Prepared Object method flags. */
+    fvm_detail::map<fvm_detail::string, unsigned int> class_attributes; /* Prepared static Object flags. */
     /* Start with no candidate or retained descriptor keys. */
-    FVM_ArrayPrototypeActivation() : prototype(0), length_key(0), flags_key(0) {}
+    FVM_BasePrototypeActivation() : prototype(0), length_key(0), flags_key(0), object_prototype(0), object_class(0) {}
 };
-/* Prepare an unchanged host Array prototype without mutation; allocating lookups may throw. */
-void fvm_array_prepare_loaded(FVM_Context *, FVM_ArrayPrototypeActivation &);
+/* Prepare canonical host Object/Array flags and Array layout; lookups may throw. */
+void fvm_base_prepare_loaded(FVM_Context *, FVM_BasePrototypeActivation &);
 /* Apply the prepared ordinary-object layout without allocation or callbacks. */
-void fvm_array_commit_loaded(const FVM_ArrayPrototypeActivation &);
+void fvm_base_commit_loaded(FVM_BasePrototypeActivation &);
 
 /* Return the registry backing Object.registerClass in this context. */
 FVM_Result fvm_base_class_registry(FVM_Context *, FVM_Object **);

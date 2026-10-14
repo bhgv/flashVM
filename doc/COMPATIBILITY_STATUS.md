@@ -1799,3 +1799,21 @@ Evidence: AGG 365/Cairo 364 full tests, ten focused checks each in Linux portabl
 and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen byte-exact
 original SWFs. Two AGG and two Cairo launch failures passed after restoring
 execute bits.
+
+## v0.205 — base/String native method flags / Object, Array, String
+
+Loaded Object/Array/String methods use flags 3; registerClass uses 7 and writable
+fromCharCode uses 3. Both installation orders prepare defaults atomically,
+preserving changed flags/descriptors/data; Object commit swaps attributes and
+Array/String retain ordinary-layout activation. [RU/EN details](BASE_LEGACY_ATTRIBUTES.md).
+Tests cover writes/delete guards/static protection, installation order/custom
+flags, GC/channel and joint OOM preserving old base/String flags before retry.
+Version availability, raw __proto__, other metadata and all stages remain open.
+
+Исправлены attributes уже установленных methods и static entries без изменения
+availability по версии; shared helper меняет только canonical default slots.
+
+Evidence: AGG 366/Cairo 365 full tests, thirty-seven focused checks each in Linux
+portable and restricted heap/global ASan+UBSan (no stack/leak coverage), sixteen
+byte-exact original SWFs. Two Cairo focused and one Cairo full launch failures
+passed after restoring execute bits.

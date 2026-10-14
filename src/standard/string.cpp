@@ -3,6 +3,7 @@
  */
 
 #include "string_state.hpp"
+#include "attribute_stage.hpp"
 #include "../core/string_internal.hpp"
 #include "../../external/unicode/case_table.hpp"
 #include "../../external/flash_case/case_table.hpp"
@@ -832,6 +833,8 @@ fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
         entry.callback = methods[i].callback;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         prototype->methods[methods[i].name] = entry;
+        if (c->swf_loaded)
+            prototype->attributes[methods[i].name] = 3;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
 
@@ -840,6 +843,8 @@ fvm_string_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> 
     entry.callback = from_char_code;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     klass->methods["fromCharCode"] = entry;
+    if (c->swf_loaded)
+        klass->attributes["fromCharCode"] = 3;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     entry.callback = constructor;
     /* [GC:] Сохраняем захваченный объект как трассируемый корень нативного обработчика. */
@@ -947,10 +952,19 @@ FVM_Result fvm_string_activate_loaded(FVM_Context *c)
             proto->properties.find("length") != proto->properties.end() ||
             (flags != proto->attributes.end() && flags->second))
             return FVM_OK;
+        fvm_detail::map<fvm_detail::string, unsigned int> prototype_attributes = proto->attributes;
+        fvm_detail::map<fvm_detail::string, unsigned int> class_attributes = klass->attributes;
+        for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+            fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback, 3, prototype_attributes);
+        fvm_stage_default_method_flags(klass, "fromCharCode", from_char_code, 3, class_attributes);
+        if (flags != proto->attributes.end())
+            prototype_attributes.erase(flags->first);
         /* Commit without further allocation; callers publish decoded SWF state immediately afterwards. */
         proto->accessors.erase(accessor->first);
         if (flags != proto->attributes.end())
             proto->attributes.erase(flags->first);
+        proto->attributes.swap(prototype_attributes);
+        klass->attributes.swap(class_attributes);
         proto->resource_kind = STRING_GENERIC_PROTOTYPE;
         proto->resource_result_valid = false;
         fvm_value_undefined(&proto->resource_result);

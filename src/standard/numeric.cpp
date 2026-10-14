@@ -622,8 +622,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         return FVM_OK;
     try
     {
-        FVM_ArrayPrototypeActivation array;
-        fvm_array_prepare_loaded(c, array);
+        FVM_BasePrototypeActivation base;
+        fvm_base_prepare_loaded(c, base);
         FVM_NumberPrototypeActivation number;
         fvm_number_prepare_loaded(c, number);
         FVM_Object *boolean = 0;
@@ -665,7 +665,7 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
-        fvm_array_commit_loaded(array);
+        fvm_base_commit_loaded(base);
         fvm_date_commit_loaded(date);
         fvm_number_commit_loaded(number);
         if (boolean)
