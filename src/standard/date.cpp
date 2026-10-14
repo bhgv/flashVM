@@ -252,6 +252,13 @@ FVM_Result set(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
 
     /* Initialization / Инициализация локального состояния. */
     Fields f = split(t + east * 60000);
+    /* Loaded time setters retain the same hour/millisecond projections as getters.
+     * Calendar setters preserve the original time-within-day path instead. */
+    if (c->swf_loaded && field >= 3 && field <= 6)
+    {
+        f.hour = loaded_hours(t + east * 60000);
+        f.ms = loaded_milliseconds(t + east * 60000);
+    }
     double *slots[] = {&f.year, &f.month, &f.day, &f.hour, &f.minute, &f.second, &f.ms};
     unsigned int start = field == 8 ? 0 : (unsigned int)field;
     unsigned int count = field == 0                               ? 3
