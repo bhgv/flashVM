@@ -271,26 +271,43 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
     FVM_Result result = receiver(c, self, haystack);
     if (result != FVM_OK)
         return result;
+    /* Unlike portions, missing search arguments are checked after receiver coercion. */
+    if (c->swf_loaded && !count)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value absent, text;
     fvm_value_undefined(&absent);
-    result = fvm_value_to_string(c, count ? args : &absent, &text);
+    result = c->swf_loaded ? fvm_avm1_string(c, args[0], &text)
+                            : fvm_value_to_string(c, count ? args : &absent, &text);
     if (result != FVM_OK)
         return result;
     result = decode(text, needle);
     if (result != FVM_OK)
         return result;
     double position = backwards ? (double)haystack.size() : 0;
-    if (count > 1)
+    if (count > 1 && (!c->swf_loaded || args[1].type != FVM_VALUE_UNDEFINED))
     {
-        result = fvm_value_to_number(c, args + 1, &position);
+        result = c->swf_loaded ? fvm_avm1_number(c, args + 1, &position)
+                                : fvm_value_to_number(c, args + 1, &position);
         if (result != FVM_OK)
             return result;
-        if (position != position)
+        if (c->swf_loaded)
+            position = loaded_index(position);
+        else if (position != position)
             position = backwards ? (double)haystack.size() : 0;
         else
             position = position < 0 ? -std::floor(-position) : std::floor(position);
+    }
+    /* Preserve the reference's rejected ranges rather than clamping them to an endpoint. */
+    if (c->swf_loaded && ((backwards && position < 0) ||
+                         (!backwards && position > (double)haystack.size())))
+    {
+        fvm_value_number(out, -1);
+        return FVM_OK;
     }
     size_t start = clamp(position, haystack.size(), false);
     if (needle.empty())

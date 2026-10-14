@@ -1416,3 +1416,18 @@ expectation was corrected to SWF6+; final fixtures pass in all four profiles.
 
 Исправлены AVM1 ToInt32, исторический substr и charCodeAt SWF5; незагруженный
 контракт сохранён, полнота String и завершение стадий не заявлены.
+
+## v0.183 — String searches / поиск в строках
+
+Loaded needle coercion and signed positions follow AVM1; missing needles return
+undefined after receiver coercion. Undefined positions retain defaults, negative
+reverse and too-large forward positions return -1, including empty needles.
+NaN/infinities use zero rather than a reverse-end fallback. Host rules remain.
+[RU/EN details](STRING_LEGACY_SEARCH.md). SWF4..8/host tests cover missing/undefined/
+Object needles, receiver ordering/errors, exceptional/wrapping positions and
+restored state. Split limits, boxed overrides and all roadmap stages remain open.
+Evidence: AGG 344/Cairo 343 tests, seven focused checks each in Linux portable
+and restricted heap/global ASan+UBSan, sixteen byte-exact original SWFs.
+
+Исправлены преобразования и границы поиска; проверен вызов receiver даже при
+отсутствии needle, включая ошибку пользовательской функции.
