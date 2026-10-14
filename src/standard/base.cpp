@@ -1399,6 +1399,12 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
 FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *)
 {
+    /* Reject unsuitable loaded primitives before borrowed length reads or snapshots. */
+    if (c->swf_loaded && n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_NUMBER)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
     if (fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "sort", n, a, out, sort);
 
@@ -1409,6 +1415,18 @@ FVM_Result sort(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *
 FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                    FVM_Value *out, void *)
 {
+    /* No-op overloads must not inspect or rewrite borrowed receiver properties. */
+    if (c->swf_loaded)
+    {
+        if (!n)
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
+        if (a[0].type == FVM_VALUE_OBJECT && array(a[0].object) &&
+            (!size(a[0].object) || size(a[0].object) >= 2147483648UL))
+            return object_value(c, o, 0, 0, out, 0);
+    }
     if (fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "sortOn", n, a, out, sort_on);
 

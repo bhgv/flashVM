@@ -1274,3 +1274,20 @@ Three AGG launch failures passed after restoring executable permissions.
 
 Исправлены перегрузки и порядок подготовки полей/flags загруженного sortOn;
 проверены сохранённые данные виртуальных индексов без вызова getter.
+
+## v0.175 — no-op sort dispatch / ранний выход сортировки
+
+Loaded unsuitable primitive sort arguments, argument-free sortOn and empty
+field Arrays return before borrowed length reads/snapshots/copyback. This
+preserves receiver data and avoids budget/cap failures on no-op overloads.
+[RU/EN details](ARRAY_LEGACY_SORT_NOOP.md). SWF4..8 tests cover native length
+100000, borrowed length getters, budget 1, missing indices and original data.
+Additional coercion tests pin all field conversions before options, mutation
+of the later option, errors without sorted copyback, retained callback effects
+and restored root/depth/setter state. All roadmap stages remain open.
+Evidence: AGG 337/Cairo 336 tests, twelve focused checks each in Linux portable
+and restricted heap/global ASan+UBSan profiles, fifteen byte-exact original SWFs.
+Four AGG and two Cairo launch failures passed after restoring execute bits.
+
+Ранний выход выполняется без чтения и перезаписи receiver; проверены порядок
+пользовательских преобразований и их побочные эффекты при ошибках.
