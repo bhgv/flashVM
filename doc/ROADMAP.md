@@ -201,3 +201,11 @@ SetTarget/SetTarget2 use shared versioned selection and scene validation.
 JIT_TARGETS.md records host/SWF4–8 comparisons, literal/dynamic/missing/removed
 paths, collecting path coercion, exceptions, compile/invoke allocation failures
 and suspended-target restoration. Все стадии и приёмка других CPU/ОС открыты.
+
+## v0.357: native string Actions
+
+Twelve string Actions now share counted/versioned interpreter services, preserving
+conversion order, rooted operands and existing SWF4–5 ASCII/character limits.
+JIT_STRINGS.md records exact UTF-16, missing-input, manual/automatic, collecting/
+throwing coercion, allocation and returned-text lifetime checks. Полная строковая
+совместимость Flash, другие инструкции и все стадии приёмки ещё открыты.

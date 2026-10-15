@@ -47,6 +47,8 @@ The compiler currently accepts:
   (v0.355; [contracts and checks](JIT_NAMED_CALLS.md)).
 - SetTarget/SetTarget2 with versioned target scope and activation restoration
   (v0.356; [contracts and checks](JIT_TARGETS.md)).
+- StringLength/Extract, CharToAscii/AsciiToChar and their MB variants; StringAdd,
+  StringEquals/Less/Greater (v0.357; [contracts and limits](JIT_STRINGS.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).

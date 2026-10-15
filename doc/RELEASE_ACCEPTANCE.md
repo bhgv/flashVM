@@ -1,7 +1,14 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.356
+# Условия окончательной приёмки / Final acceptance gates — v0.357
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.357 adds twelve native string Actions using shared counted/versioned services.
+All 723 AGG, 723 Cairo and 704 minimal Linux Release checks have passing evidence
+after restoring generated ELF execute permissions. Three string checks and the
+updated fallback fixture pass restricted heap/global ASan+UBSan (stack ASan/LSan
+disabled). JIT_STRINGS.md records preserved SWF4–5/character limits. All stages
+and foreign-platform runtime acceptance remain open.
 
 v0.356 adds native SetTarget/SetTarget2 using shared timeline selection. All 720
 AGG, 720 Cairo and 701 minimal Linux Release checks have passing evidence after

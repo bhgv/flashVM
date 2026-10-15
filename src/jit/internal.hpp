@@ -108,6 +108,16 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Execute versioned string length while retaining its input. */
+FVM_Result fvm_jit_string_length(FVM_JitInvocation *, unsigned int);
+/* Read the first character code through shared conversion. */
+FVM_Result fvm_jit_char_code(FVM_JitInvocation *, unsigned int);
+/* Build an adopted character string from a numeric input. */
+FVM_Result fvm_jit_char_from_code(FVM_JitInvocation *, unsigned int);
+/* Concatenate or compare two rooted string operands. */
+FVM_Result fvm_jit_string_binary(FVM_JitInvocation *, unsigned int);
+/* Extract using the interpreter's one-based start/count conversion order. */
+FVM_Result fvm_jit_string_extract(FVM_JitInvocation *, unsigned int);
 /* Select a timeline target from a rooted stack value. */
 FVM_Result fvm_jit_target_value(FVM_JitInvocation *, unsigned int);
 /* Select a timeline target from an immutable code-owned path literal. */

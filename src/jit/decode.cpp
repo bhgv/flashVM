@@ -257,6 +257,22 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                 return FVM_INVALID_ARGUMENT;
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_store_register>, data[payload]));
         }
+        else if (op == FVM_AVM1_ACTION_STRING_LENGTH || op == FVM_AVM1_ACTION_MB_STRING_LENGTH)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_string_length>, 0));
+        else if (op == FVM_AVM1_ACTION_CHAR_TO_ASCII || op == FVM_AVM1_ACTION_MB_CHAR_TO_ASCII)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_char_code>, 0));
+        else if (op == FVM_AVM1_ACTION_ASCII_TO_CHAR || op == FVM_AVM1_ACTION_MB_ASCII_TO_CHAR)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_char_from_code>, 0));
+        else if (op == FVM_AVM1_ACTION_STRING_EXTRACT || op == FVM_AVM1_ACTION_MB_STRING_EXTRACT)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_string_extract>, 0));
+        else if (op == FVM_AVM1_ACTION_STRING_ADD || op == FVM_AVM1_ACTION_STRING_EQUALS ||
+                 op == FVM_AVM1_ACTION_STRING_LESS || op == FVM_AVM1_ACTION_STRING_GREATER)
+        {
+            unsigned int operation = op == FVM_AVM1_ACTION_STRING_ADD ? FVM_EXEC_ADD_DYNAMIC
+                : op == FVM_AVM1_ACTION_STRING_EQUALS ? FVM_EXEC_EQUAL
+                : op == FVM_AVM1_ACTION_STRING_LESS ? FVM_EXEC_LESS : FVM_EXEC_GREATER;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_string_binary>, operation));
+        }
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
         else if (op == FVM_AVM1_ACTION_SET_VARIABLE)
