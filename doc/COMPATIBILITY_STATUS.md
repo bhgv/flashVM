@@ -7,7 +7,8 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
-| 2/3/7: RemoveSprite native dispatch | Проверено для сценариев v0.314 | Shared explicit C89 target removal; host/SWF4–8, GC/throws/OOM, activation target fallback. AVM1_REMOVE_SPRITE.md. Unload, retained original root and complete display lifetime open. |
+| 3/6/7: removed native AVM1 ancestry | Проверено для сценариев v0.315 | Retained parent/root, absolute paths, target fallback, GC, channel remapping and atomic OOM; MOVIECLIP_REMOVED_ANCESTRY.md. Unload/lockroot/full lifetime open. |
+| 2/3/7: RemoveSprite native dispatch | Проверено для сценариев v0.314 | Shared explicit C89 target removal; host/SWF4–8, GC/throws/OOM, activation target fallback. AVM1_REMOVE_SPRITE.md. Retained native ancestry added v0.315; unload and complete display lifetime open. |
 | 3/7: dynamic native removal policy | Проверено для сценариев v0.313 | C89 explicit-object service, intrinsic depth/ancestry, host/SWF4–8 and OOM. DYNAMIC_CLIP_REMOVAL_SERVICE.md. RemoveSprite dispatch/path/unload policy remains open. |
 | 3/7: native clip detach identity | Проверено для сценариев v0.312 | C89 query; fresh roots vs removed/replaced wrappers, legacy/malformed state, GC and atomic OOM. CLIP_DETACH_IDENTITY.md. Descendants/unload/RemoveSprite remain open. |
 | 2: missing constant-pool entries | Проверено для сценариев v0.311 | Push Constant8/16: host/SWF4–8, absent/one-entry pool, boundaries, truncation and OOM. AVM1_CONSTANT_MISSING.md. Полная строковая семантика открыта. |

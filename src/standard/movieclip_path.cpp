@@ -32,14 +32,12 @@ FVM_Result edge(FVM_Object *object, const char *key, FVM_Object *&out)
     return FVM_OK;
 }
 /* Read the display parent, requiring consistent native state. */
-FVM_Result parent(FVM_Object *clip, FVM_Object *&out)
+FVM_Result parent(FVM_Context *c, FVM_Object *clip, FVM_Object *&out)
 {
     out = 0;
     if (clip && clip->resource_kind != FVM_RESOURCE_MOVIECLIP)
         return FVM_OK;
-    FVM_Object *data = 0;
-    FVM_Result status = state(clip, data);
-    return status == FVM_OK ? edge(data, "parent", out) : status;
+    return fvm_movieclip_avm1_parent(c, clip, &out);
 }
 /* Fold only ASCII for the verified SWF 4–6 path-name subset. */
 unsigned char lower(unsigned char value)
@@ -228,7 +226,7 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         {
             if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
-            FVM_Result status = parent(root, next);
+            FVM_Result status = parent(c, root, next);
             if (status != FVM_OK)
                 return status;
             if (!next)
@@ -272,7 +270,7 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                 if (text.size() - at > 2 && text[at + 2] == '/')
                     slash = true;
                 at += text.size() - at > 2 ? 3 : 2;
-                FVM_Result status = parent(cursor, next);
+                FVM_Result status = parent(c, cursor, next);
                 if (status != FVM_OK)
                     return status;
                 if (!next)

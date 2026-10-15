@@ -297,30 +297,33 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
 }
 
 /* Read parent. */
-FVM_Result parent_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
-                      void *)
+FVM_Result parent_get(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *,
+                      FVM_Value *out, void *)
 {
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *data = 0;
-    FVM_Result r = state(o, data);
-    if (r == FVM_OK)
-        *out = object(parent(o));
-    return r;
+    FVM_Object *p = 0;
+    FVM_Result status = fvm_movieclip_avm1_parent(c, o, &p);
+    if (status == FVM_OK)
+        *out = object(p);
+    return status;
 }
 
-/* [GC:] Read root. */
-FVM_Result root_get(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+/* [GC:] Resolve the versioned native root, retaining loaded removed-instance ancestry. */
+FVM_Result root_get(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                     void *)
 {
-    FVM_Object *data = 0;
-    if (state(o, data) != FVM_OK)
-        return FVM_INVALID_ARGUMENT;
     unsigned int depth = 0;
-    while (parent(o) && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
-        o = parent(o);
-    if (depth >= FVM_PROTOTYPE_MAX_DEPTH)
-        return FVM_INVALID_ARGUMENT;
+    for (;;)
+    {
+        if (++depth > FVM_MOVIECLIP_ROOT_MAX_ANCESTORS)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Object *p = 0;
+        FVM_Result status = fvm_movieclip_avm1_parent(c, o, &p);
+        if (status != FVM_OK)
+            return status;
+        if (!p)
+            break;
+        o = p;
+    }
     *out = object(o);
     return FVM_OK;
 }
@@ -427,7 +430,8 @@ FVM_Result clip_string(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Va
 }
 
 /* [GC:] Publish a prepared child atomically, detaching any old instance at the depth. */
-FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, long depth)
+FVM_Result publish_child(FVM_Context *c, FVM_Object *o, FVM_Object *child, const char *name,
+                         long depth)
 {
     FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
@@ -483,7 +487,10 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
     {
         /* [GC:] Copy the previous node's retained links before dropping its parent edge. */
         detached = old_data->properties;
-        /* [GC:] The detached node no longer owns its former parent through this edge. */
+        /* [GC:] Preserve the loaded old instance's ancestry in the same atomic replacement. */
+        if (c->swf_loaded && parent(replaced))
+            detached["avm1_parent"] = object(parent(replaced));
+        /* [GC:] Physical detachment is independent of retained AVM1 provenance. */
         detached["parent"] = object(0);
         detached["detached"] = number(FVM_MOVIECLIP_DETACHED_STATE);
         detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
@@ -545,7 +552,7 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     /* [GC:] Empty descendants retain the library so attachMovie can resolve linkage names. */
     if (imported)
         child->resource_result.object->properties["library"] = library;
-    r = publish_child(o, child, name.string, (long)depth);
+    r = publish_child(c, o, child, name.string, (long)depth);
     if (r == FVM_OK)
         *out = object(child);
     return r;
@@ -702,7 +709,7 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = fvm_object_set(c, child->resource_result.object, "linkage", &linkage);
     if (r != FVM_OK)
         return r;
-    r = publish_child(o, child, name.string, (long)depth);
+    r = publish_child(c, o, child, name.string, (long)depth);
     if (r != FVM_OK)
         return r;
     return finish_instance(c, child, constructor, n > 3 ? a + 3 : 0, out);
@@ -926,7 +933,7 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     r = copy_drawing(c, data, child->resource_result.object);
     if (r != FVM_OK)
         return r;
-    r = publish_child(p, child, name.string, (long)depth);
+    r = publish_child(c, p, child, name.string, (long)depth);
     if (r != FVM_OK)
         return r;
     return finish_instance(c, child, constructor, n > 2 ? a + 2 : 0, out);
@@ -2626,7 +2633,7 @@ FVM_Result attach_bitmap(FVM_Context *c, FVM_Object *parent_clip, unsigned n,
     if (r != FVM_OK)
         return r;
     /* [GC:] Publish only the fully constructed hidden node, replacing the old depth atomically. */
-    return publish_child(parent_clip, node, "", (long)depth);
+    return publish_child(c, parent_clip, node, "", (long)depth);
 }
 
 /* Define Method struct and its representation. */
@@ -2869,7 +2876,7 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     }
     r = fvm_movieclip_scene_update(c, child, placement);
     if (r == FVM_OK)
-        r = publish_child(p, child, name.string, (long)depth - FVM_MOVIECLIP_SWF_DEPTH_OFFSET);
+        r = publish_child(c, p, child, name.string, (long)depth - FVM_MOVIECLIP_SWF_DEPTH_OFFSET);
     if (r != FVM_OK)
         return r;
     FVM_Value value;

@@ -584,3 +584,10 @@ intrinsic dynamic removal. The interpreter handles missing values and target
 fallback; a shared ancestor helper supplies effective detachment. Raw/C/GC/throw
 and allocation fixtures are documented in AVM1_REMOVE_SPRITE.md. Dispatch audit
 is now 95/100; lifecycle gaps and every roadmap stage remain open.
+
+### v0.315 — retained AVM1 ancestry / Родство удалённого клипа
+
+Loaded removal/replacement commits a historical parent edge alongside physical
+detachment. Intrinsic parent/root/path reads share a versioned helper. Host behavior
+stays parentless. GC, channel remapping and allocation checks are documented in
+MOVIECLIP_REMOVED_ANCESTRY.md. All stages and full unload/lifetime policy stay open.

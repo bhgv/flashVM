@@ -53,4 +53,6 @@
 #define FVM_MOVIECLIP_MIN_DYNAMIC_DEPTH 0L
 /* Guard against cyclic/corrupt native parent chains during removal eligibility checks. */
 #define FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS 256U
+/* Bound native AVM1 root ancestry independently from object prototype lookup. */
+#define FVM_MOVIECLIP_ROOT_MAX_ANCESTORS 1024U
 #endif

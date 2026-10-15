@@ -79,3 +79,7 @@ affected heap/global ASan+UBSan fixtures passed (no stack/leak coverage). All 26
 accepted original SWFs matched the oracle in both profiles. Native graph transfer,
 legacy depth migration, named bindings and injected allocation failures are
 included in regression coverage; full removal/event semantics remain open.
+
+Follow-up v0.315: physical detachment remains unchanged, while loaded AVM1 reads
+retain a separate original parent edge for _parent/_root/path provenance. Unloaded
+host reads stay parentless. See MOVIECLIP_REMOVED_ANCESTRY.md.

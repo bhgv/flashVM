@@ -34,7 +34,7 @@ int main()
             if(r==FVM_OK)
             {
                 assert(children->indexed.empty() && root->properties.find("child")==root->properties.end());
-                assert(data->properties["parent"].type==FVM_VALUE_NULL && data->properties["playing"].number==0 && data->properties["detached"].number==1);success=true;
+                assert(data->properties["parent"].type==FVM_VALUE_NULL && data->properties["playing"].number==0 && data->properties["detached"].number==1 && data->properties["avm1_parent"].object==root);success=true;
             }
             else
             {

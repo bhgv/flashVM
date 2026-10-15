@@ -34,6 +34,9 @@ FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
         }
         /* [GC:] Source maps keep managed edges alive until all replacement maps are prepared. */
         Properties detached = data->properties;
+        /* [GC:] Loaded AVM1 retains its former display ancestry after physical removal. */
+        if (c->swf_loaded && p)
+            detached["avm1_parent"] = object(p);
         detached["parent"] = object(0);
         detached["detached"] = number(FVM_MOVIECLIP_DETACHED_STATE);
         detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);

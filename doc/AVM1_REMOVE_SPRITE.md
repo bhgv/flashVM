@@ -62,3 +62,7 @@ launch failure passed after restoring permissions; Cairo completed directly.
 Five targeted heap/global ASan+UBSan fixtures passed (no stack/leak coverage).
 All 26 accepted original SWFs matched the pinned oracle in each profile.
 The factual Action-reference audit reports 95/100; --require-all still fails.
+
+Follow-up v0.315: native detached instances now retain AVM1 parent/root provenance
+for loaded execution, including descendant absolute paths and channel transport.
+See MOVIECLIP_REMOVED_ANCESTRY.md; unload, lockroot and full lifetime remain open.
