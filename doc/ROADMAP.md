@@ -265,3 +265,12 @@ JIT_ENUMERATE.md records host/SWF4–8 equivalence, counted/hidden/inherited key
 MovieClip lookup, collecting/throwing conversions/getters, allocation failures and
 exact stack bounds. Полная совместимость Flash и реальные запуски других ОС/CPU
 остаются открытыми; ни одна стадия не закрыта.
+
+## v0.365: native timeline Actions
+
+NextFrame/PreviousFrame/Play/Stop/GotoFrame/GotoLabel/GotoFrame2 share intrinsic
+timeline services, rooted request conversion and versioned target selection.
+JIT_TIMELINE.md records isolated host/SWF4–8 equivalence, bounds/labels/bias,
+collecting/throwing coercion, changed targets, malformed records and compile/invoke
+allocation failures. Полная сцена SWF, совместимость Flash и реальные запуски
+других ОС/CPU остаются открытыми; ни одна стадия не закрыта.

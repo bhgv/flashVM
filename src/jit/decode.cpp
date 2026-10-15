@@ -1,5 +1,6 @@
 /* FlashVM: bounded AVM1 subset lowering into semantic calls and native control-flow labels. */
 #include "internal.hpp"
+#include "timeline_constants.h"
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
@@ -204,6 +205,47 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             FVM_Result status = push(data, payload, position, code, action);
             if (status != FVM_OK)
                 return status;
+        }
+        else if (op == FVM_AVM1_ACTION_NEXT_FRAME || op == FVM_AVM1_ACTION_PREVIOUS_FRAME ||
+                 op == FVM_AVM1_ACTION_PLAY || op == FVM_AVM1_ACTION_STOP)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_frame_control>,
+                op == FVM_AVM1_ACTION_NEXT_FRAME ? FVM_EXEC_NEXT_FRAME :
+                op == FVM_AVM1_ACTION_PREVIOUS_FRAME ? FVM_EXEC_PREVIOUS_FRAME :
+                op == FVM_AVM1_ACTION_PLAY ? FVM_EXEC_PLAY : FVM_EXEC_STOP));
+        else if (op == FVM_AVM1_ACTION_GOTO_FRAME || op == FVM_AVM1_ACTION_GOTO_LABEL)
+        {
+            FVM_JitConstant frame;
+            if (op == FVM_AVM1_ACTION_GOTO_FRAME)
+            {
+                if (length != FVM_AVM1_DIRECT_FRAME_BYTES)
+                    return FVM_INVALID_ARGUMENT;
+                fvm_value_number(&frame.value, word(data + payload) + FVM_AVM1_DIRECT_FRAME_BASE);
+            }
+            else
+            {
+                if (!length || data[position - 1] || std::memchr(data + payload, 0, length - 1))
+                    return FVM_INVALID_ARGUMENT;
+                frame.value.type = FVM_VALUE_STRING;
+                frame.text = fvm_detail::string((const char *)data + payload, length - 1);
+            }
+            if (code.constants.size() >= FVM_JIT_MAX_CONSTANTS)
+                return FVM_UNSUPPORTED;
+            unsigned int index = (unsigned int)code.constants.size();
+            code.constants.push_back(frame);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_frame_literal>, index));
+        }
+        else if (op == FVM_AVM1_ACTION_GOTO_FRAME2)
+        {
+            if ((length != FVM_AVM1_GOTO_FLAGS_BYTES && length != FVM_AVM1_GOTO_SCENE_BYTES) ||
+                (data[payload] & ~FVM_AVM1_GOTO_VALID_FLAGS) ||
+                length != ((data[payload] & FVM_AVM1_GOTO_SCENE_BIAS)
+                    ? FVM_AVM1_GOTO_SCENE_BYTES : FVM_AVM1_GOTO_FLAGS_BYTES))
+                return FVM_INVALID_ARGUMENT;
+            unsigned int policy = (data[payload] & FVM_AVM1_GOTO_PLAY) ? FVM_JIT_FRAME_PLAY : 0;
+            if (data[payload] & FVM_AVM1_GOTO_SCENE_BIAS)
+                policy |= FVM_JIT_FRAME_WITH_BIAS |
+                    (word(data + payload + FVM_AVM1_GOTO_SCENE_OFFSET) << FVM_JIT_FRAME_BIAS_SHIFT);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_frame_value>, policy));
         }
         else if (op == FVM_AVM1_ACTION_SET_TARGET2)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_value>, 0));

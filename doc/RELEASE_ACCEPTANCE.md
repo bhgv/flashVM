@@ -1,7 +1,17 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.364
+# Условия окончательной приёмки / Final acceptance gates — v0.365
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.365 adds seven native timeline Actions through shared intrinsic frame services.
+All 744 AGG, 744 Cairo and 725 minimal Linux Release checks pass after generated
+ELF execute-permission repairs before the graphical-profile runs. Four timeline/
+allocation/callback/invalid checks pass restricted heap/global ASan+UBSan (stack
+ASan/LeakSanitizer disabled). JIT_TIMELINE.md records selected-target behavior,
+frame/label/bias policy, collecting/throwing conversion, post-conversion target
+changes, malformed records, and compile/invoke allocation failure containment.
+No adb/xcrun/Wine, checked cross-compilers or QEMU user runners were found in the
+current PATH; no foreign OS/VM run is claimed. Functional gaps and all stages remain open.
 
 v0.364 adds native Enumerate/Enumerate2 with shared scope/path lookup, rooted
 name snapshots and bounded operand publication. All 741 AGG, 741 Cairo and 722

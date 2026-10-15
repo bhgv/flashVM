@@ -35,3 +35,6 @@ LeakSanitizer are disabled.
 The end-to-end platform validator with --profile all --jit-emulator also passes
 all three profiles and 26 Unicorn 2.1.4 synthetic ISA/ABI cases per profile after
 repairing an initial Cairo ELF permission failure. This is not foreign-VM evidence.
+
+As of v0.365 the compiler rejection fixture uses unsupported ToggleQuality, since
+Play is now native. See JIT_TIMELINE.md.

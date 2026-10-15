@@ -122,6 +122,12 @@ FVM_Result fvm_jit_get_time(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_random_number(FVM_JitInvocation *, unsigned int);
 /* Resolve or accept an object and publish a bounded property-name snapshot. */
 FVM_Result fvm_jit_enumerate(FVM_JitInvocation *, unsigned int);
+/* Apply a fixed semantic timeline command to the active display target. */
+FVM_Result fvm_jit_frame_control(FVM_JitInvocation *, unsigned int);
+/* Seek a code-owned direct frame or label without consuming script operands. */
+FVM_Result fvm_jit_frame_literal(FVM_JitInvocation *, unsigned int);
+/* Prepare a dynamic frame request before resolving its selected timeline. */
+FVM_Result fvm_jit_frame_value(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

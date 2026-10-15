@@ -1,4 +1,4 @@
-Версия разработки: **0.364** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.365** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -37,6 +37,7 @@ GetProperty/SetProperty/TargetPath используют общие нативн�
 [контракты и проверки](doc/JIT_DISPLAY.ru.md).
 Нативные Trace/Throw/GetTime/RandomNumber: [контракты и проверки](doc/JIT_EFFECTS.ru.md).
 Enumerate/Enumerate2: [контракты и проверки](doc/JIT_ENUMERATE.ru.md).
+Нативные команды таймлайна: [контракты и проверки](doc/JIT_TIMELINE.ru.md).
 
 Контрольный коммит зависимостей: `extern/` объединена с `external/`.
 Включены исходники и настройки Cairo 1.16.0, Pixman 0.38.4 и SQLite 3.50.4.

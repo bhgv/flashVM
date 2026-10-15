@@ -3,7 +3,7 @@
 #include <assert.h>
 int main(void)
 {
- const unsigned char good[]={0};const unsigned char unsupported[]={0x06,0};
+ const unsigned char good[]={0};const unsigned char unsupported[]={0x08,0};
  const unsigned char short_record[]={0x96,5,0,7};const unsigned char bad_string[]={0x96,2,0,0,'x'};
  const unsigned char bad_target[]={0x99,2,0,1,0,0x96,5,0,7,1,0,0,0,0};
  const unsigned char bad_branch[]={0x99,1,0,0,0};FVM_JitCode *code=0,*keep;
@@ -11,6 +11,10 @@ int main(void)
  const unsigned char short_double[]={0x96,8,0,6,0,0,0,0,0,0,0};
  const unsigned char short_register[]={0x96,1,0,4};
  const unsigned char long_store[]={0x87,2,0,0,0};
+ const unsigned char bad_frames[][8]={{0x81,1,0,0,0},{0x81,3,0,0,0,0,0},
+ {0x8c,0,0,0},{0x8c,1,0,'x',0},{0x8c,3,0,'x',0,0,0},
+ {0x9f,0,0,0},{0x9f,1,0,4,0},{0x9f,1,0,2,0},{0x9f,3,0,0,0,0,0}};
+ const unsigned int bad_sizes[]={5,7,4,5,7,4,5,5,7};unsigned int i;
  assert(fvm_jit_compile(0,1,&code)==FVM_INVALID_ARGUMENT && !code && fvm_jit_compile(good,0,&code)==FVM_INVALID_ARGUMENT && !code && fvm_jit_compile(good,1,0)==FVM_INVALID_ARGUMENT);
  if(!fvm_jit_available())return 0;
  assert(fvm_jit_compile(good,sizeof(good),&code)==FVM_OK);keep=code;
@@ -23,5 +27,6 @@ int main(void)
  assert(fvm_jit_compile(short_double,sizeof(short_double),&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_compile(short_register,sizeof(short_register),&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_compile(long_store,sizeof(long_store),&code)==FVM_INVALID_ARGUMENT && code==keep);
+ for(i=0;i<sizeof(bad_sizes)/sizeof(bad_sizes[0]);++i)assert(fvm_jit_compile(bad_frames[i],bad_sizes[i],&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_destroy(code)==FVM_OK);return 0;
 }

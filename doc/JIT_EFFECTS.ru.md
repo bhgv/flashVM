@@ -36,3 +36,6 @@ ASan+UBSan; stack ASan и LeakSanitizer отключены.
 Общий validate_platform.py --profile all --jit-emulator также прошёл все три
 профиля и по 26 синтетических проверок ISA/ABI в Unicorn 2.1.4 после исправления
 начального отказа прав ELF в Cairo. Это не запуск полной VM на другой ОС.
+
+С v0.365 проверка отказа компиляции использует неподдерживаемый ToggleQuality:
+Play теперь нативный. См. JIT_TIMELINE.ru.md.
