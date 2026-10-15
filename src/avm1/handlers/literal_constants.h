@@ -7,4 +7,6 @@
 #define FVM_LITERAL_OBJECT_ENTRY_BASE 2U   /* [GC:] Copied name/value pairs follow fixed roots. */
 #define FVM_LITERAL_OBJECT_ENTRY_WIDTH 2U  /* [GC:] Each retained pair contains two values. */
 #define FVM_LITERAL_OBJECT_VALUE_OFFSET 1U /* [GC:] Value follows the name in a copied pair. */
+#define FVM_LITERAL_COUNT_INPUT_ROOT 0U    /* [GC:] Original value through count coercion. */
+#define FVM_LITERAL_COUNT_ROOT_COUNT 1U    /* [GC:] Complete count-conversion temporary layout. */
 #endif

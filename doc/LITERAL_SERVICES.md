@@ -43,3 +43,33 @@ state. `execution_literals_allocation.cpp` walks allocation failures through bot
 services with aliased outputs. Existing initializer underflow/empty-name and
 Array inherited-property suites remain regression coverage. These are local
 regressions, not a new Flash Player oracle comparison or JIT backend validation.
+
+## v0.344: literal count conversion / Преобразование счётчика
+
+`fvm_exec_literal_count` now owns count coercion as a separate value-only C
+operation. It returns a normalized integer Number, or undefined when loaded
+AVM1 rejects a negative/out-of-signed32 count. This sentinel tells the adapter
+to consume only the count, leaving entry operands untouched. Loaded NaN becomes
+zero; nonnegative fractions are floored. Counts above 65536 but within the
+signed range return `FVM_UNSUPPORTED`. Unloaded hosts retain their previous
+strict policy: non-Number input is `FVM_ERROR`, invalid numeric input is
+`FVM_INVALID_ARGUMENT`. Neither mode constructs an object or consumes operands.
+Errors preserve output; aliases are allowed. Coercible inputs are retained
+through script and GC. No interpreter activation is required.
+
+В v0.344 преобразование счётчика также вынесено из цикла интерпретатора.
+C-сервис возвращает целое число либо undefined для отклонённого счётчика
+загруженного SWF. В последнем случае адаптер сохраняет операнды элементов.
+NaN становится нулём, неотрицательная дробь округляется вниз, превышение
+предела материализации даёт UNSUPPORTED. Строгие host-проверки и их коды
+ошибок сохранены. Результат при ошибке не меняется, вход удерживается корнем
+через callbacks и GC. Лимиты и расположение корней именованы в .h.
+
+Evidence: `execution_literal_count.c` covers host/SWF4–8, aliases, fractional,
+NaN, infinite and signed/resource-bound cases plus invalid inputs.
+`execution_literal_count_callbacks.cpp` collects from a script `valueOf`,
+checking live receiver, exceptions and root/depth restoration.
+`execution_literal_count_allocation.cpp` walks count-conversion allocation
+failures with an aliased input. Existing raw Action count/underflow tests
+verify that rejected counts leave entry operands untouched. This is regression
+coverage of existing behavior; roadmap stages and JIT backend validation remain open.

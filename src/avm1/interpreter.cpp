@@ -823,33 +823,19 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     fvm_value_undefined(&missing);
                     stack.push_back(missing);
                 }
-                double count = 0;
-                if (c->swf_loaded)
+                FVM_Value normalized_count;
+                FVM_Result count_status =
+                    fvm_exec_literal_count(c, &stack.back(), &normalized_count);
+                if (count_status != FVM_OK)
+                    return count_status;
+                if (normalized_count.type == FVM_VALUE_UNDEFINED)
                 {
-                    FVM_Result status = fvm_avm1_number(c, &stack.back(), &count);
-                    if (status != FVM_OK)
-                        return status;
-                    /* Invalid signed counts consume only the count and leave operand values
-                     * untouched. */
-                    if (count < 0 || count > FVM_INT32_MAX_NUMBER)
-                    {
-                        fvm_value_undefined(&stack.back());
-                        ++pc;
-                        continue;
-                    }
-                    count = count == count ? std::floor(count) : 0;
-                    if (count > FVM_AVM1_MAX_LITERAL_ENTRIES)
-                        return FVM_UNSUPPORTED;
+                    /* A rejected signed count consumes no entry operands. */
+                    stack.back() = normalized_count;
+                    ++pc;
+                    continue;
                 }
-                else
-                {
-                    if (stack.back().type != FVM_VALUE_NUMBER)
-                        return FVM_ERROR;
-                    count = stack.back().number;
-                    if (!(count >= 0 && count <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
-                        count != std::floor(count))
-                        return FVM_INVALID_ARGUMENT;
-                }
+                double count = normalized_count.number;
                 unsigned int width = a.op == FVM_AVM1_ACTION_INIT_ARRAY
                                          ? FVM_AVM1_ARRAY_LITERAL_ENTRY_WIDTH
                                          : FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH;

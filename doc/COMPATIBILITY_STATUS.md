@@ -2684,3 +2684,11 @@ callers. Host/SWF4–8, own slots, counted keys, duplicate/empty keys, collectin
 name callbacks, input-buffer mutation, exceptions and allocation failures have
 regression cases in LITERAL_SERVICES.md. Семантика счётчика/стека остаётся
 в адаптере; полной совместимости Flash и закрытия этапов это не означает.
+
+## v0.344: literal count service
+
+Versioned literal-count coercion is shared with C/generated callers, including
+signed rejection, NaN/fractions and the materialization bound. C89 cases plus
+collecting valueOf, exceptions, aliases and allocation-failure coverage are
+recorded in LITERAL_SERVICES.md. Чтение операндов и изменение стека остаются
+в интерпретаторе; этапы roadmap не закрыты.

@@ -263,3 +263,8 @@ services; only count/operand decoding and stack publication remain in the
 interpreter. Full input snapshots and partial results are GC-rooted across
 callbacks. See LITERAL_SERVICES.md. Построение литералов вынесено из основного
 цикла; C-интерфейс не принимает стек или пи-код.
+
+In v0.344, `fvm_exec_literal_count` extracts versioned count conversion as well.
+The adapter handles undefined rejection without consuming entry operands; it
+still owns encoded layout and stack publication. Преобразование счётчика,
+построение Array и построение Object теперь доступны через отдельные C-функции.

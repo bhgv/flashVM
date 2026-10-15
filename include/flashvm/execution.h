@@ -28,6 +28,12 @@ extern "C"
         FVM_Value name;  /* Property name, converted before its corresponding assignment. */
         FVM_Value value; /* Property value, retained through constructor/name/setter callbacks. */
     } FVM_ExecutionLiteralEntry;
+    /* Normalize a literal count as an integer Number, or undefined for loaded signed-range
+     * rejection. Loaded coercion maps NaN to zero and truncates nonnegative fractions;
+     * a materialization bound excess is UNSUPPORTED. Hosts require an integral Number.
+     * Errors preserve out; out may alias input. [GC:] Retains input through coercion callbacks.
+     * No bytecode, operand stack, entry consumption or object construction is performed. */
+    FVM_API FVM_Result fvm_exec_literal_count(FVM_Context *, const FVM_Value *, FVM_Value *out);
     /* Build an Array with count own elements in supplied order, without numeric length overload.
      * Count is bounded by MAX_LITERAL_ENTRIES; values may be null only for zero count.
      * Errors preserve out; out may alias an input. No bytecode or operand stack is accepted.
