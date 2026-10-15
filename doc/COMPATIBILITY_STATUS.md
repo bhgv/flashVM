@@ -2669,3 +2669,10 @@ service; see AFFINE_PROJECTION.md for contracts and numerical limits. Direct
 C89, alias/error and allocation-disabled cases supplement existing adapter
 coverage. Перетаскивание сохраняет прежнюю double-семантику; точная совместимость
 Flash и завершение этапов roadmap этим изменением не подтверждаются.
+
+## v0.342: host point algebra extraction
+
+Host point conversion now calls common C affine inversion/application while
+retaining inverse-then-apply rounding and overflow propagation. Standalone
+C89 and direct/native host regression cases are in AFFINE_PROJECTION.md.
+Семантика загруженного SWF не меняется; этапы roadmap остаются открытыми.

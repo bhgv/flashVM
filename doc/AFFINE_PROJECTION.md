@@ -34,3 +34,27 @@ matrices, NaN, ignored vector translation and arithmetic overflow.
 `fixed_matrix_no_alloc` calls both modes with global allocation disabled.
 The existing drag and pointer suites cover adapter behavior, callback errors,
 GC roots, cancellation/replacement, constraints and allocation failures.
+
+## v0.342: raw affine operations / Базовые affine-операции
+
+`fvm_affine_invert` and `fvm_affine_transform_point` now supply the unloaded-host
+`localToGlobal`/`globalToLocal` adapter. They preserve its existing evaluation
+order: inverse coefficients, inverse translation, then point application.
+Unlike strict inverse-point projection, raw algebra propagates IEEE nonfinite
+results; inversion only rejects a zero/NaN determinant. Invalid pointer arguments
+preserve outputs; both services support output aliasing and allocate nothing.
+
+This distinction is observable: for x scale 3, translation 1e16 and global x
+1e16+2, inverse-then-apply produces 1 on the tested binary64 platform, while
+subtract-then-divide produces 2/3. The adapter retains the former behavior.
+This is regression evidence for the host policy, not a Flash compatibility claim.
+Loaded SWFs continue through the binary32/twip path. Ordered field setters and
+GC/root handling remain in the adapter.
+
+В v0.342 преобразование точки и построение обратной double-матрицы вынесены
+в отдельные C-функции без VM и выделения памяти. Сохранены порядок вычислений,
+распространение Infinity/NaN и последовательность setter в host-контексте.
+Для загруженного SWF по-прежнему используется binary32/twip. Тесты
+`affine_operations` и `execution_clip_point_host_numeric` проверяют алиасы,
+ошибки, переполнение и потерю точности при больших переносах; общий тест без
+выделения памяти вызывает обе новые функции.

@@ -252,3 +252,8 @@ context-free C89 `fvm_affine_inverse_point` service (AFFINE_PROJECTION.md).
 The execution adapters retain state, callbacks, GC barriers and publication.
 В v0.341 числовая double-проекция мыши/drag вынесена в общий C-интерфейс;
 состояние и корни остаются в адаптерах. Это не завершает этапы roadmap.
+
+In v0.342, host point conversion delegates inverse construction and point
+application to context-free C services, preserving its distinct evaluation
+order and IEEE propagation; see AFFINE_PROJECTION.md. В адаптере остаются
+чтение/запись свойств, версия SWF и GC; числовые операции доступны JIT.

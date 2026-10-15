@@ -18,6 +18,17 @@ extern "C"
      * This host policy does not implement loaded SWF binary32/twip rounding. */
     FVM_API FVM_Result fvm_affine_inverse_point(const FVM_Affine *matrix, int mode, double x,
                                                 double y, double *out_x, double *out_y);
+    /* Apply the double affine expression without finite-result validation or twip rounding.
+     * NaN/Infinity propagate according to ordinary floating-point arithmetic. Outputs must
+     * be non-null/distinct and may alias matrix fields. Invalid pointers preserve outputs.
+     * No context, allocation, callbacks or GC. */
+    FVM_API FVM_Result fvm_affine_transform_point(const FVM_Affine *matrix, double x, double y,
+                                                  double *out_x, double *out_y);
+    /* Construct the inverse double matrix, then its inverse translation. Zero/NaN
+     * determinants are invalid and preserve output; other IEEE results propagate.
+     * This deliberately differs from strict inverse_point, including operation order.
+     * Output may alias input. No context, allocation, callbacks or GC. */
+    FVM_API FVM_Result fvm_affine_invert(const FVM_Affine *matrix, FVM_Affine *out);
 #ifdef __cplusplus
 }
 #endif

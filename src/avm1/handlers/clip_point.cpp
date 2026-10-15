@@ -2,6 +2,7 @@
 #include "support.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/matrix.h"
+#include "flashvm/affine.h"
 #include "clip_point_constants.h"
 #include "../scope_keywords.hpp"
 #include "../../core/scene_numeric.hpp"
@@ -87,16 +88,9 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
             return status;
         if (reverse && !loaded)
         {
-            double determinant = matrix.xx * matrix.yy - matrix.xy * matrix.yx;
-            if (!determinant || determinant != determinant)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Affine old = matrix;
-            matrix.xx = old.yy / determinant;
-            matrix.xy = -old.xy / determinant;
-            matrix.yx = -old.yx / determinant;
-            matrix.yy = old.xx / determinant;
-            matrix.x0 = -(matrix.xx * old.x0 + matrix.xy * old.y0);
-            matrix.y0 = -(matrix.yx * old.x0 + matrix.yy * old.y0);
+            status = fvm_affine_invert(&matrix, &matrix);
+            if (status != FVM_OK)
+                return status;
         }
         double result_x = 0, result_y = 0;
         if (loaded)
@@ -122,8 +116,9 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         }
         else
         {
-            result_x = matrix.xx * x + matrix.xy * y + matrix.x0;
-            result_y = matrix.yx * x + matrix.yy * y + matrix.y0;
+            status = fvm_affine_transform_point(&matrix, x, y, &result_x, &result_y);
+            if (status != FVM_OK)
+                return status;
         }
         FVM_Value value;
         fvm_value_number(&value, result_x);
