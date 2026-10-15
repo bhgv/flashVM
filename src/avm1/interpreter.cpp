@@ -1178,8 +1178,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_NEW_OBJECT)
             { /* NewObject: literal loaded name lookup and shared rooted construction. */
-                if (stack.size() < FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS ||
-                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
+                FVM_Result prepared = fvm_avm1_require_operands(c->swf_loaded, stack,
+                                                                FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
+                if ((!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
                 if (c->swf_loaded)
                 {
@@ -1710,8 +1713,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL_METHOD || a.op == FVM_AVM1_ACTION_NEW_METHOD)
             { /* CallMethod: args, argc, receiver, method name */
-                if (stack.size() < FVM_AVM1_METHOD_FIXED_OPERANDS ||
-                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING &&
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_METHOD_FIXED_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
+                if ((!c->swf_loaded && stack.back().type != FVM_VALUE_STRING &&
                      stack.back().type != FVM_VALUE_NULL &&
                      stack.back().type != FVM_VALUE_UNDEFINED))
                     return FVM_ERROR;
@@ -1748,8 +1754,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL_FUNCTION)
             { /* CallFunction: args, argc, name (top) */
-                if (stack.size() < FVM_AVM1_NAMED_CALL_FIXED_OPERANDS ||
-                    (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
+                FVM_Result prepared = fvm_avm1_require_operands(c->swf_loaded, stack,
+                                                                FVM_AVM1_NAMED_CALL_FIXED_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
+                if ((!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
                     return FVM_ERROR;
                 if (c->swf_loaded)
                 {

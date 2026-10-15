@@ -539,3 +539,11 @@ Loaded missing count/constructor values become undefined; zero count preserves
 prototype snapshots and does not box primitive constructors. Raw host/SWF4–8 and
 allocation-failure fixtures verify continuation, root restoration and no Number
 callback. See AVM1_IMPLEMENTS_MISSING.md. Historical policy gaps/all stages stay open.
+
+### v0.309 — missing call operands / Недостающие операнды вызова
+
+Four loaded call actions prepare undefined fixed operands with preserved operand
+roles, name/count coercion order and nullish receiver policy. Raw host/SWF4–8
+fixtures cover zero arguments, collecting/throwing bodies and allocation failures.
+Shared C services and ABI remain unchanged. See AVM1_CALL_MISSING.md.
+All roadmap stages remain open.
