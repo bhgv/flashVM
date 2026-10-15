@@ -154,6 +154,19 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         }
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
+        else if (op == FVM_AVM1_ACTION_SET_VARIABLE)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_set_variable>, 0));
+        else if (op == FVM_AVM1_ACTION_DEFINE_LOCAL || op == FVM_AVM1_ACTION_DEFINE_LOCAL2)
+            action.calls.push_back(FVM_JitCall(
+                fvm_jit_safe<fvm_jit_declare_variable>, op == FVM_AVM1_ACTION_DEFINE_LOCAL
+                    ? FVM_EXEC_DECLARE_INITIALIZED : FVM_EXEC_DECLARE_UNINITIALIZED));
+        else if (op == FVM_AVM1_ACTION_GET_MEMBER || op == FVM_AVM1_ACTION_SET_MEMBER)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_member>,
+                op == FVM_AVM1_ACTION_SET_MEMBER ? FVM_JIT_MEMBER_WRITE : FVM_JIT_MEMBER_READ));
+        else if (op == FVM_AVM1_ACTION_DELETE)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_delete_member>, 0));
+        else if (op == FVM_AVM1_ACTION_DELETE2)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_delete_reference>, 0));
         else if (op == FVM_AVM1_ACTION_ADD2 || op == FVM_AVM1_ACTION_LESS2 ||
                  op == FVM_AVM1_ACTION_EQUALS2 || op == FVM_AVM1_ACTION_STRICT_EQUALS ||
                  op == FVM_AVM1_ACTION_GREATER)

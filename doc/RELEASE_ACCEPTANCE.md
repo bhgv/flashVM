@@ -1,7 +1,12 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.349
+# Условия окончательной приёмки / Final acceptance gates — v0.350
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.350 extends the native reference subset. Linux Release has passing evidence
+for all 704 AGG, 704 Cairo and 685 minimal checks, with documented ELF permission
+repairs, plus six restricted ASan/UBSan checks. See JIT_REFERENCES.md. This does not
+close stages 8/9 or the other compatibility gates.
 
 Текущая инфраструктура проверки платформ описана в
 [PLATFORM_VALIDATION.ru.md](PLATFORM_VALIDATION.ru.md). Исторические контрольные

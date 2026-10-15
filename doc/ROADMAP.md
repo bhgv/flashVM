@@ -158,3 +158,8 @@ v0.349 adds native release-profile validation and an explicit-device Android
 CTest adapter. Cross-builds omit host-only process harnesses instead of launching
 foreign binaries locally. See PLATFORM_VALIDATION.md. This is stage 9 validation
 infrastructure; it does not close any stage or supply missing target-OS evidence.
+
+v0.350 extends the native subset with SetVariable, DefineLocal/DefineLocal2,
+GetMember/SetMember and Delete/Delete2 using the shared interpreter C services.
+JIT_REFERENCES.md records host/SWF4–8, GC/setter/exception and allocation checks.
+Это расширение стадии 8; полнота AVM1 и итоговая приёмка всех стадий ещё открыты.

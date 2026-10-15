@@ -2743,3 +2743,12 @@ See PLATFORM_VALIDATION.md for use and exact runtime evidence.
 Добавлены повторяемые прогоны и адаптер Android; проверены ошибки транспорта
 на хосте и регистрация кросс-тестов. Реальный запуск Android этим не подтверждён,
 полнота Flash и стадии 1–9 не объявлены завершёнными.
+
+## v0.350: native references
+
+Implemented and verified on native Linux x64: SetVariable, DefineLocal/DefineLocal2,
+GetMember/SetMember, Delete/Delete2. Shared C services preserve interpreter target,
+activation, versioned coercion and operand policy. Differential host/SWF4–8,
+setter GC/exception and allocation-boundary tests are in JIT_REFERENCES.md.
+Six restricted heap/global ASan+UBSan checks pass; full Action coverage and real
+foreign-target/platform acceptance remain open. Все стадии roadmap ещё открыты.

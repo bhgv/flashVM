@@ -80,6 +80,16 @@ FVM_Result fvm_jit_push(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_numeric(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_compare(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_get_variable(FVM_JitInvocation *, unsigned int);
+/* Assign a scoped variable using the interpreter's target and script-this rules. */
+FVM_Result fvm_jit_set_variable(FVM_JitInvocation *, unsigned int);
+/* Declare an initialized/uninitialized binding in the prepared activation. */
+FVM_Result fvm_jit_declare_variable(FVM_JitInvocation *, unsigned int);
+/* Resolve or assign an owner/key pair through shared member semantics. */
+FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
+/* Delete an explicit owner/key pair and replace operands with its Boolean. */
+FVM_Result fvm_jit_delete_member(FVM_JitInvocation *, unsigned int);
+/* Delete a scoped or qualified variable reference. */
+FVM_Result fvm_jit_delete_reference(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_return(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_condition(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_truth(FVM_JitInvocation *, unsigned int);

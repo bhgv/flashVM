@@ -38,6 +38,8 @@ The compiler currently accepts:
 
 - Push: signed integer, terminated string, Boolean, null and undefined.
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
+- SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
+  (v0.350; [contracts and checks](JIT_REFERENCES.md)).
 - Add/Subtract/Multiply/Divide, Modulo, bitwise AND/OR/XOR and the three shifts.
 - Add2, Less2, Equals2, StrictEquals and Greater.
 - Jump and If, with target validation and native forward/backward relocation.
