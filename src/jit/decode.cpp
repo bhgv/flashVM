@@ -4,6 +4,7 @@
 #include "url_constants.h"
 #include "../avm1/function_definition.hpp"
 #include "../avm1/with_record.hpp"
+#include "../avm1/try_record.hpp"
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
@@ -219,6 +220,43 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             FVM_Result status = push(data, payload, position, code, action);
             if (status != FVM_OK)
                 return status;
+        }
+        else if (op == FVM_AVM1_ACTION_TRY)
+        {
+            FVM_TryRecord record;
+            if (!fvm_try_record(data, size, payload, length, record))
+                return FVM_INVALID_ARGUMENT;
+            if (code.constants.size() >= FVM_JIT_MAX_CONSTANTS)
+                return FVM_UNSUPPORTED;
+            FVM_JitConstant descriptor;
+            fvm_value_number(&descriptor.value, (double)code.blocks.size());
+            position = record.body;
+            for (unsigned int i = 0; i < FVM_AVM1_TRY_BLOCK_COUNT; ++i)
+            {
+                FVM_JitCode *child = 0;
+                FVM_Result status = fvm_jit_compile_block(data + position, record.sizes[i],
+                                                          &child, depth + 1, true);
+                if (status != FVM_OK)
+                    return status;
+                try
+                {
+                    code.blocks.push_back(FVM_JitBlock(child, position));
+                }
+                catch (...)
+                {
+                    delete child;
+                    throw;
+                }
+                position += record.sizes[i];
+            }
+            descriptor.text = fvm_detail::string((const char *)data + action.offset,
+                                                  position - action.offset);
+            unsigned int index = (unsigned int)code.constants.size();
+            code.constants.push_back(descriptor);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_try>, index));
+            action.branch = FVM_JIT_CONDITIONAL;
+            action.target = FVM_JIT_EXIT_LABEL;
+            returns.push_back(code.actions.size());
         }
         else if (op == FVM_AVM1_ACTION_WITH)
         {

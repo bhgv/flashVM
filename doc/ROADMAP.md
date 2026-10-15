@@ -324,3 +324,11 @@ lexical scopes and code activity unwind on errors/GC/OOM. Aggregate native bytes
 include children; 64-level nesting and breakpoint/cache behavior are tested.
 JIT_WITH.md / .ru.md record evidence and limits. Try/remaining Actions, full
 conformance and real foreign-platform acceptance remain open; все стадии открыты.
+
+
+v0.372: native Try/Catch/Finally shares compiled block state with With, roots
+suspended baselines/returns/exceptions/host bindings, restores rich faults and
+preserves versioned catch-name/register rules. Root JIT selection now contains
+allocation failure before breakpoint lookup. JIT_TRY.md / .ru.md document tests,
+non-script error behavior and remaining conformance/platform gaps. Ни одна стадия
+не закрыта; полная совместимость и реальные запуски других ОС остаются открытыми.

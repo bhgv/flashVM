@@ -47,7 +47,7 @@ struct FVM_JitPool
 {
     fvm_detail::vector<fvm_detail::string> entries; /* Source-owned terminated byte strings. */
 };
-/* One native nested With body, owned by its defining code handle. */
+/* One native nested structured body, owned by its defining code handle. */
 struct FVM_JitBlock
 {
     FVM_JitCode *code; /* Owned child mapping and recursively compiled nested bodies. */
@@ -92,11 +92,17 @@ struct FVM_JitInvocation
     FVM_Value result;    /* Returned value copied before stack roots leave scope. */
     unsigned long steps; /* Invocation-local checkpoint polling cadence. */
     bool condition;      /* Latest popped branch truth value. */
-    bool returned;       /* Return exits all containing With blocks in this function. */
+    bool returned;       /* Return exits all containing structured blocks in this function. */
     unsigned long source_base; /* Enclosing structured-body byte offset for debugger checkpoints. */
 };
 /* Run a compiled With block over the suspended operand/register/pool state. */
 FVM_Result fvm_jit_with(FVM_JitInvocation *, unsigned int);
+/* Execute an owned structured block with an optional temporary catch activation. */
+FVM_Result fvm_jit_run_block(FVM_JitInvocation *, unsigned int, const FVM_ScriptFrame * = 0);
+/* Execute Try/Catch/Finally while retaining suspended values and shared body state. */
+FVM_Result fvm_jit_try(FVM_JitInvocation *, unsigned int);
+/* Bind a loaded catch name using ordinary selected-target/lexical assignment rules. */
+FVM_Result fvm_jit_bind_catch(FVM_JitInvocation *, const char *, const FVM_Value *);
 /* Count emitted bytes in a code handle and all of its owned structured bodies. */
 size_t fvm_jit_retained_bytes(const FVM_JitCode *);
 /* Compile with bounded nesting; nested blocks permit empty/implicit uncharged endings. */

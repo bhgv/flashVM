@@ -1,7 +1,20 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.371
+# Условия окончательной приёмки / Final acceptance gates — v0.372
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.372 adds native Try/Catch/Finally using owned child mappings and the shared
+With block runner. Suspended baselines, host bindings, returns and exceptions are
+rooted; rich resource faults and host/loaded name/register catch rules are retained.
+All 767 AGG, 767 Cairo and 748 minimal Linux Release checks have passing evidence
+after generated ELF permission repairs and reruns. Eight Try/With/replay checks
+pass restricted heap/global ASan+UBSan (stack ASan and LeakSanitizer disabled).
+Cold/warm automatic OOM sweeps additionally pass all three profiles and sanitizer.
+Fresh fixtures pass all 26 synthetic Unicorn ISA/ABI cases, not a foreign-OS VM
+run. The root allocation sweep reproduced and fixed a pre-guard breakpoint-key
+allocation escaping the C API. JIT_TRY.md / .ru.md record nested control flow,
+64/65-level bounds, source/budget/breakpoint behavior, GC-only saved graphs,
+catch-setter failures and remaining conformance/platform gaps. No stage is closed.
 
 v0.371 adds native With with owned compiled child mappings, shared operands/
 registers/pools, function-wide Return propagation and scoped lexical cleanup.

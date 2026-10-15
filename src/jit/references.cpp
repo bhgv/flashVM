@@ -193,3 +193,17 @@ FVM_Result fvm_jit_define_function(FVM_JitInvocation *s, unsigned int index)
                                            FVM_EXEC_DECLARE_INITIALIZED, &name, &value);
     return status;
 }
+
+/* [GC:] The caller roots the caught value while shared assignment can invoke setters. */
+FVM_Result fvm_jit_bind_catch(FVM_JitInvocation *s, const char *name, const FVM_Value *value)
+{
+    FVM_Value binding;
+    FVM_Result status = fvm_value_string(&binding, name);
+    FVM_Object *selected = 0;
+    if (status == FVM_OK)
+        status = target(s, &selected);
+    if (status == FVM_OK)
+        status = fvm_exec_variable_set(s->context, scope(s->context),
+                                       destination(s->context, selected), receiver(s), &binding, value);
+    return status;
+}

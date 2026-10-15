@@ -1,5 +1,5 @@
-Development version: **0.371** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.371 ` and an English description. Increase the subversion before each
+Development version: **0.372** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.372 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.371** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.371 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.372** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.372 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -502,3 +502,6 @@ Native DefineFunction/DefineFunction2: [English](doc/JIT_DEFINITIONS.md) /
 
 Native With: shared operands/registers/pool, nested Return and scoped cleanup;
 [English](doc/JIT_WITH.md) / [Русский](doc/JIT_WITH.ru.md).
+
+Native Try/Catch/Finally: retained exceptions/returns, register/name catches and
+root OOM containment; [English](doc/JIT_TRY.md) / [Русский](doc/JIT_TRY.ru.md).

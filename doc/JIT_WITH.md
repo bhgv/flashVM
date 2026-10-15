@@ -48,3 +48,6 @@ after ELF permission repairs/reruns, including the minimal reference-runner chil
 Six targeted checks pass restricted heap/global ASan+UBSan; stack ASan and
 LeakSanitizer remain disabled. All dependent test objects were rebuilt for the
 private JIT layout changes. Fresh fixtures pass 26 synthetic Unicorn ISA/ABI cases.
+
+Update v0.372: [native Try/Catch/Finally](JIT_TRY.md) closes the earlier Try
+compiler gap; full conformance and all roadmap stages remain open.

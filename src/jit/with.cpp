@@ -1,4 +1,4 @@
-/* FlashVM: compiled lexical With blocks over shared rooted execution state. */
+/* FlashVM: native structured-block execution and lexical With publication. */
 #include "internal.hpp"
 #include "../avm1/operand_stack.hpp"
 #include "../avm1/lexical_scope.hpp"
@@ -26,9 +26,19 @@ FVM_Result fvm_jit_with(FVM_JitInvocation *s, unsigned int index)
     FVM_AVM1LexicalScope lexical(c);
     lexical.publish(scope);
     s->stack->pop_back();
+    return fvm_jit_run_block(s, index);
+}
+/* Execute an owned block without creating a new activation or operand/root vector. */
+FVM_Result fvm_jit_run_block(FVM_JitInvocation *s, unsigned int index,
+                             const FVM_ScriptFrame *frame)
+{
+    if (index >= s->code->blocks.size())
+        return FVM_INVALID_ARGUMENT;
     FVM_JitBlock &block = s->code->blocks[index];
     FVM_JitInvocation child = *s;
     child.code = block.code;
+    if (frame)
+        child.frame = frame;
     child.source_base += (unsigned long)block.offset;
     child.returned = false;
     fvm_value_undefined(&child.result);
@@ -44,14 +54,14 @@ FVM_Result fvm_jit_with(FVM_JitInvocation *s, unsigned int index)
     typedef FVM_Result (*Entry)(FVM_JitInvocation *);
     Entry entry;
     std::memcpy(&entry, &block.code->memory, sizeof(entry));
-    status = entry(&child);
+    FVM_Result status = entry(&child);
     /* Match the interpreter's shared Execution, including failed/returning blocks. */
     s->pool = child.pool;
     s->steps = child.steps;
     s->condition = child.returned;
+    s->returned = child.returned;
     if (child.returned)
     {
-        s->returned = true;
         s->result = child.result;
     }
     return status;

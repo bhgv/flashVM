@@ -48,3 +48,6 @@ pass 26 synthetic Unicorn cases; these do not execute the complete foreign VM.
 
 Update v0.371: [native With](JIT_WITH.md) closes the earlier With compiler gap;
 Try and complete conformance remain open.
+
+Update v0.372: [native Try/Catch/Finally](JIT_TRY.md) closes the earlier Try
+compiler gap; full conformance and all roadmap stages remain open.
