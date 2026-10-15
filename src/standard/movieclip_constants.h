@@ -58,4 +58,13 @@
 #define FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS 256U
 /* Bound native AVM1 root ancestry independently from object prototype lookup. */
 #define FVM_MOVIECLIP_ROOT_MAX_ANCESTORS 1024U
+/* Native hitTest argument layouts; object and point forms retain distinct meanings. */
+#define FVM_MOVIECLIP_HIT_OBJECT_ARGUMENTS 1U
+#define FVM_MOVIECLIP_HIT_OBJECT_INDEX 0U /* Explicit display-object operand. */
+#define FVM_MOVIECLIP_HIT_POINT_ARGUMENTS 2U
+#define FVM_MOVIECLIP_HIT_X_INDEX 0U
+#define FVM_MOVIECLIP_HIT_Y_INDEX 1U
+#define FVM_MOVIECLIP_HIT_SHAPE_INDEX 2U
+/* Bound unlocked root ancestry when mapping loaded hitTest points to world space. */
+#define FVM_MOVIECLIP_HIT_ROOT_MAX_ANCESTORS 1024U
 #endif

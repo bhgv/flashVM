@@ -65,3 +65,7 @@ were recovered unchanged and matched exact output with empty stderr in each
 profile using --acknowledge-quit --timeline 1. The earlier 26-asset workspace was
 pruned; its complete historical corpus was not rerun in this checkpoint.
 The bounded Action-reference audit remains 95/100.
+
+Follow-up v0.318: the loaded numeric hitTest point path now explicitly uses
+unlocked root coordinates, independently of _lockroot. See
+MOVIECLIP_HIT_ROOT_COORDINATES.md for bounded geometric evidence and remaining gaps.

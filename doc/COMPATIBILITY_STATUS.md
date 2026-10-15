@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/7: root-relative numeric hitTest | Проверено для сценариев v0.318 | host/SWF4–8, unlocked root affine mapping, shape truth, moving/throwing coercion and OOM; MOVIECLIP_HIT_ROOT_COORDINATES.md. Full overload/detached/stroke/filter semantics open. |
 | 3/6/7: native _lockroot | Проверено для сценариев v0.317 | C89 service, host/SWF4–8 truth, root/path bounds, removed ancestry, stable native callback transport and OOM; MOVIECLIP_LOCKROOT.md. Load/unload inheritance and hitTest lock coordinates open. |
 | 2/3/7: removed target selection | Проверено для сценариев v0.316 | SetTarget/2 filter detached bases/descendants; live sibling paths, host/SWF4–8 and unchanged selection on OOM. AVM1_REMOVED_TARGET_SELECTION.md. Full unload/scope policy open. |
 | 3/6/7: removed native AVM1 ancestry | Проверено для сценариев v0.315 | Retained parent/root, absolute paths, target fallback, GC, channel remapping and atomic OOM; MOVIECLIP_REMOVED_ANCESTRY.md. Unload/lockroot/full lifetime open. |

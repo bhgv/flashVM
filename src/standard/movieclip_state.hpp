@@ -15,6 +15,8 @@ FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string
 FVM_Result fvm_movieclip_validate(FVM_Context *);
 /* Read physical parent or the retained loaded-AVM1 parent after native detachment. */
 FVM_Result fvm_movieclip_avm1_parent(FVM_Context *, FVM_Object *, FVM_Object **out);
+/* Convert root-relative native hit-test coordinates to world space, ignoring _lockroot. */
+FVM_Result fvm_movieclip_hit_world_point(FVM_Context *, FVM_Object *, double &x, double &y);
 /* Read intrinsic parent/root for AVM1 preloads, bypassing replaceable script properties. */
 FVM_Result fvm_movieclip_preload_display(FVM_Context *, FVM_Object *, bool parent, FVM_Value *);
 

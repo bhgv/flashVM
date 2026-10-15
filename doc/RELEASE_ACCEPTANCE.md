@@ -607,3 +607,10 @@ remain unchanged. Stable accessor IDs support graph transport. Fresh recovered
 AGG/Cairo builds passed 616 tests each; three limited sanitizer fixtures and four
 recovered original SWFs passed in both profiles. See MOVIECLIP_LOCKROOT.md for
 exact coverage and the pruned historical corpus limitation. All stages stay open.
+
+### v0.318 — root-relative hit points / Координаты hitTest
+
+Loaded point tests transform from unlocked root coordinates after argument
+coercion and use versioned shape-flag truth. Host world-coordinate policy and
+object overlap remain unchanged. C89, moving/throwing coercion and allocation
+fixtures are recorded in MOVIECLIP_HIT_ROOT_COORDINATES.md. All stages stay open.

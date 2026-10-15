@@ -2031,7 +2031,7 @@ bool shape_flag(const FVM_Value &value)
     return value.type == FVM_VALUE_OBJECT;
 }
 
-/* Compute and return hit. */
+/* Test native geometry; loaded point coordinates belong to the unlocked root space. */
 FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
                void *)
 {
@@ -2040,16 +2040,26 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
 
     /* Initialization / Инициализация локального состояния. */
     bool any = false;
-    FVM_Result r = bounds(c, o, identity(), true, b, any, 0);
+    bool object_form = n == FVM_MOVIECLIP_HIT_OBJECT_ARGUMENTS &&
+                       a[FVM_MOVIECLIP_HIT_OBJECT_INDEX].type == FVM_VALUE_OBJECT;
+    FVM_Result r = FVM_OK;
+    if (!c->swf_loaded || object_form)
+        r = bounds(c, o, identity(), true, b, any, 0);
+    else
+    {
+        /* Reject a borrowed nonclip receiver before any argument can run script. */
+        FVM_Object *data = 0;
+        r = state(o, data);
+    }
     if (r != FVM_OK)
         return r;
     bool yes = false;
-    if (n == 1 && a[0].type == FVM_VALUE_OBJECT)
+    if (object_form)
     {
         FVM_PathBounds other;
         std::memset(&other, 0, sizeof(other));
         bool has = false;
-        r = bounds(c, a[0].object, identity(), true, other, has, 0);
+        r = bounds(c, a[FVM_MOVIECLIP_HIT_OBJECT_INDEX].object, identity(), true, other, has, 0);
         if (r != FVM_OK)
             return r;
         yes = any && has && b.x_min <= other.x_max && other.x_min <= b.x_max &&
@@ -2057,16 +2067,39 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     }
     else
     {
-        if (n < 2)
+        if (n < FVM_MOVIECLIP_HIT_POINT_ARGUMENTS)
             return FVM_INVALID_ARGUMENT;
-        bool shape = n > 2 && shape_flag(a[2]);
+        bool shape =
+            n > FVM_MOVIECLIP_HIT_SHAPE_INDEX && shape_flag(a[FVM_MOVIECLIP_HIT_SHAPE_INDEX]);
         double x = 0, y = 0;
-        r = args(c, n, a, 0, 0, x);
+        r = args(c, n, a, FVM_MOVIECLIP_HIT_X_INDEX, 0, x);
         if (r != FVM_OK)
             return r;
-        r = args(c, n, a, 1, 0, y);
+        r = args(c, n, a, FVM_MOVIECLIP_HIT_Y_INDEX, 0, y);
         if (r != FVM_OK)
             return r;
+        if (c->swf_loaded)
+        {
+            if (n > FVM_MOVIECLIP_HIT_SHAPE_INDEX)
+            {
+                FVM_Value flag;
+                r = fvm_exec_to_boolean(c, a + FVM_MOVIECLIP_HIT_SHAPE_INDEX, &flag);
+                if (r != FVM_OK)
+                    return r;
+                shape = flag.boolean != 0;
+            }
+            const double finite = std::numeric_limits<double>::max();
+            if (!(x >= -finite && x <= finite && y >= -finite && y <= finite))
+            {
+                fvm_value_boolean(out, 0);
+                return FVM_OK;
+            }
+            r = fvm_movieclip_hit_world_point(c, o, x, y);
+            if (r == FVM_OK)
+                r = bounds(c, o, identity(), true, b, any, 0);
+            if (r != FVM_OK)
+                return r;
+        }
         yes = any && x >= b.x_min && x <= b.x_max && y >= b.y_min && y <= b.y_max;
         if (shape)
         {
