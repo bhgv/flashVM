@@ -24,18 +24,10 @@ extern "C" FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *c, FVM_Object *c
             return status;
         if (depth < FVM_MOVIECLIP_MIN_DYNAMIC_DEPTH || !fvm_movieclip_storage::parent(clip))
             return FVM_OK;
-        unsigned int ancestors = 0;
-        for (FVM_Object *node = clip; node; node = fvm_movieclip_storage::parent(node))
-        {
-            if (++ancestors > FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS)
-                return FVM_ERROR;
-            FVM_Value detached;
-            status = fvm_exec_clip_detached(c, node, &detached);
-            if (status != FVM_OK)
-                return status;
-            if (detached.boolean)
-                return FVM_OK;
-        }
+        bool removed = false;
+        status = fvm_movieclip_scene_removed(c, clip, &removed);
+        if (status != FVM_OK || removed)
+            return status;
         return fvm_movieclip_scene_remove(c, clip);
     }
     catch (const std::bad_alloc &)

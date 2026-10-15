@@ -190,6 +190,12 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Resolve a native clip value or versioned target path from an explicit start, then apply
+     * dynamic removal policy. Does not change activation targets or deliver unload events.
+     * [GC:] Retains start/input/conversion through path callbacks and removal preparation. */
+    FVM_API FVM_Result fvm_exec_remove_target(FVM_Context *, FVM_Object *start,
+                                               const FVM_Value *target);
+
 
     /* Prepare a frame/label without seeking: nonnumbers stringify once; complete decimal digits
      * become numbers. with_bias adds scene_bias to numbers only, including zero bias when enabled.

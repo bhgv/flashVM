@@ -22,6 +22,7 @@
 #include "../standard/base_state.hpp"
 #include "../standard/primitive_state.hpp"
 #include "../standard/movieclip_state.hpp"
+#include "../standard/movieclip_scene.hpp"
 #include "flashvm/function.h"
 #include "flashvm/execution.h"
 #include "flashvm/property.h"
@@ -1091,6 +1092,33 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.resize(first);
                 if (a.op == FVM_AVM1_ACTION_GET_PROPERTY)
                     stack.push_back(result);
+            }
+            else if (a.op == FVM_AVM1_ACTION_REMOVE_SPRITE)
+            { /* Value resolution/removal is shared; activation target changes stay in the adapter. */
+                FVM_Result status = fvm_avm1_require_value(c->swf_loaded, stack);
+                FVM_Object *start = 0;
+                if (status == FVM_OK)
+                    status = variable_receiver(c, self, &start);
+                if (status == FVM_OK)
+                    status = fvm_exec_remove_target(c, start, &stack.back());
+                if (status != FVM_OK)
+                    return status;
+                stack.pop_back();
+                if (c->avm1_target_clip)
+                {
+                    bool removed = false;
+                    status = fvm_movieclip_scene_removed(c, c->avm1_target_clip, &removed);
+                    if (status == FVM_OK && removed)
+                    {
+                        bool base_removed = true;
+                        if (c->avm1_base_clip)
+                            status = fvm_movieclip_scene_removed(c, c->avm1_base_clip, &base_removed);
+                        if (status == FVM_OK)
+                            c->avm1_target_clip = base_removed ? 0 : c->avm1_base_clip;
+                    }
+                    if (status != FVM_OK)
+                        return status;
+                }
             }
             else if (a.op == FVM_AVM1_ACTION_SET_TARGET || a.op == FVM_AVM1_ACTION_SET_TARGET2)
             { /* SetTarget/SetTarget2 replace the display scope without changing the this receiver.

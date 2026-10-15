@@ -576,3 +576,11 @@ A shared C89 service filters intrinsic depth, parent and detached ancestry befor
 atomic native removal. Script overrides cannot replace the policy. Raw C and
 allocation fixtures cover supported depth boundaries, roots and detached subtrees.
 See DYNAMIC_CLIP_REMOVAL_SERVICE.md. Action/lifecycle gaps and all stages stay open.
+
+### v0.314 — RemoveSprite native dispatch / Удаление клипа инструкцией
+
+A common explicit-value C89 service resolves native/path targets and applies
+intrinsic dynamic removal. The interpreter handles missing values and target
+fallback; a shared ancestor helper supplies effective detachment. Raw/C/GC/throw
+and allocation fixtures are documented in AVM1_REMOVE_SPRITE.md. Dispatch audit
+is now 95/100; lifecycle gaps and every roadmap stage remain open.
