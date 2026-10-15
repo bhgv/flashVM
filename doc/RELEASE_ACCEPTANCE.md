@@ -517,3 +517,11 @@ validation order and host strictness. Raw SWF4–8 tests distinguish target path
 URL sink arguments and skipped With bodies. Display/URL layout constants are
 named; an unused URL root is removed. See AVM1_DISPLAY_URL_WITH_MISSING.md.
 Полные семантики и все стадии роудмапа остаются открытыми.
+
+### v0.306 — shared frame-request preparation / Общая подготовка кадра
+
+GotoFrame2 conversion now uses the C89 fvm_exec_frame_request service with rooted
+coercion, alias/error preservation and separate scene-bias policy. Timeline wire
+widths/root layouts use named macros. Raw Call/GotoFrame2 underflow fixtures cover
+SWF4–8 alongside direct C, collecting/throwing callbacks and allocation injection.
+See FRAME_REQUEST_SERVICE.md. Complete frame semantics and all stages remain open.

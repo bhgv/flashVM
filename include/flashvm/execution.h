@@ -9,6 +9,8 @@
 #define FVM_EXEC_MAX_INTERFACE_ARGUMENTS 65536U
 /* Maximum argument count accepted by the bounded method execution service. */
 #define FVM_EXEC_MAX_METHOD_ARGUMENTS 65535U
+/* Maximum scene-frame offset accepted by semantic timeline-request preparation. */
+#define FVM_EXEC_MAX_SCENE_FRAME_BIAS 65535UL
 /* Preserve the unloaded named-constructor argument-vector bound. */
 #define FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS 65536U
 #ifdef __cplusplus
@@ -180,6 +182,12 @@ extern "C"
      * not resolve targets, dispatch unload events or alter the activation's selected target.
      * [GC:] Retains the operand; allocation errors preserve parent/slot/binding/playback links. */
     FVM_API FVM_Result fvm_exec_detach_clip(FVM_Context *, FVM_Object *);
+    /* Prepare a frame/label without seeking: nonnumbers stringify once; complete decimal digits
+     * become numbers. with_bias adds scene_bias to numbers only, including zero bias when enabled.
+     * Context supplies versioned coercion; no Action flags or bytecode are accepted.
+     * [GC:] Retains input/conversion; aliases are allowed and failure leaves output intact. */
+    FVM_API FVM_Result fvm_exec_frame_request(FVM_Context *, const FVM_Value *, int with_bias,
+                                               unsigned long scene_bias, FVM_Value *);
     /* Execute a built-in frame command on an explicit clip. */
     FVM_API FVM_Result fvm_exec_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
                                               const FVM_Value *frame, int playing);

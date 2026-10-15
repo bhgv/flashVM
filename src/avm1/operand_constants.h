@@ -43,6 +43,9 @@
 #define FVM_AVM1_DELETE_MEMBER_OPERANDS 2U /* Delete consumes owner and property name. */
 #define FVM_AVM1_SWAP_OPERANDS 2U          /* StackSwap needs the top two values. */
 #define FVM_AVM1_LEGACY_BINARY_OPERANDS 2U /* Legacy comparison and logical binary operands. */
+/* [GC:] Prepared frame or label retained while resolving the selected timeline. */
+#define FVM_AVM1_TIMELINE_REQUEST_ROOT 0U
+#define FVM_AVM1_TIMELINE_REQUEST_ROOT_COUNT 1U /* [GC:] Single prepared frame/label value. */
 /* Indexed display access consumes a target/index pair, plus a value for writes. */
 #define FVM_AVM1_DISPLAY_READ_OPERANDS 2U  /* Target and indexed property selector. */
 #define FVM_AVM1_DISPLAY_WRITE_OPERANDS 3U /* Target, selector and assigned value. */

@@ -27,6 +27,12 @@
 #define FVM_AVM1_F2_SUPER_FLAGS (FVM_AVM1_F2_PRELOAD_SUPER | FVM_AVM1_F2_SUPPRESS_SUPER)
 /* Either display-root or parent preload request. */
 #define FVM_AVM1_F2_DISPLAY_FLAGS (FVM_AVM1_F2_PRELOAD_ROOT | FVM_AVM1_F2_PRELOAD_PARENT)
+/* Timeline Action payload widths and the optional scene-offset position. */
+#define FVM_AVM1_DIRECT_FRAME_BYTES 2U /* GotoFrame stores a zero-based UI16 frame index. */
+#define FVM_AVM1_DIRECT_FRAME_BASE 1U /* Native timeline commands use one-based frame numbers. */
+#define FVM_AVM1_GOTO_FLAGS_BYTES 1U /* GotoFrame2 without scene offset. */
+#define FVM_AVM1_GOTO_SCENE_BYTES 3U /* GotoFrame2 policy byte followed by UI16 offset. */
+#define FVM_AVM1_GOTO_SCENE_OFFSET 1U /* Scene offset begins after the policy byte. */
 /* All nine Function2 preload/suppression bits; other bits are reserved. */
 #define FVM_AVM1_F2_VALID_FLAGS 0x1ffU
 /* Try record contains a catch block. */

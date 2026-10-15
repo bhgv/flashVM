@@ -983,56 +983,45 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                  methods. */
                 FVM_Object *target = c->avm1_target_clip;
                 bool playing = false;
-                fvm_detail::vector<FVM_Value> frame(1);
+                fvm_detail::vector<FVM_Value> frame(FVM_AVM1_TIMELINE_REQUEST_ROOT_COUNT);
                 /* [GC:] Keep a coerced frame label live while resolving the target root. */
                 RootGuard frame_roots(c, &frame, 0, 0, &registers);
                 FVM_Result status = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_GOTO_FRAME)
                 {
-                    if (a.length != 2)
+                    if (a.length != FVM_AVM1_DIRECT_FRAME_BYTES)
                         return FVM_INVALID_ARGUMENT;
-                    fvm_value_number(&frame[0], u16(data + a.payload) + 1);
+                    fvm_value_number(&frame[FVM_AVM1_TIMELINE_REQUEST_ROOT],
+                                     u16(data + a.payload) + FVM_AVM1_DIRECT_FRAME_BASE);
                 }
                 else if (a.op == FVM_AVM1_ACTION_GOTO_LABEL)
                 {
                     if (!a.length || data[a.payload + a.length - 1] ||
                         std::memchr(data + a.payload, 0, a.length - 1))
                         return FVM_INVALID_ARGUMENT;
-                    status = own_string(c, (const char *)data + a.payload, &frame[0], a.length - 1);
+                    status = own_string(c, (const char *)data + a.payload,
+                                        &frame[FVM_AVM1_TIMELINE_REQUEST_ROOT], a.length - 1);
                 }
                 else if (a.op == FVM_AVM1_ACTION_GOTO_FRAME2)
                 {
-                    if ((a.length != 1 && a.length != 3) ||
+                    if ((a.length != FVM_AVM1_GOTO_FLAGS_BYTES &&
+                         a.length != FVM_AVM1_GOTO_SCENE_BYTES) ||
                         (data[a.payload] & ~FVM_AVM1_GOTO_VALID_FLAGS) ||
-                        a.length != ((data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS) ? 3U : 1U))
+                        a.length != ((data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS)
+                                         ? FVM_AVM1_GOTO_SCENE_BYTES
+                                         : FVM_AVM1_GOTO_FLAGS_BYTES))
                         return FVM_INVALID_ARGUMENT;
-                    if (stack.empty())
-                        return FVM_ERROR;
+                    FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                    if (prepared != FVM_OK)
+                        return prepared;
                     playing = (data[a.payload] & FVM_AVM1_GOTO_PLAY) != 0;
-                    if (stack.back().type == FVM_VALUE_NUMBER)
-                        fvm_value_number(&frame[0], stack.back().number);
-                    else
-                        status = fvm_avm1_string(c, stack.back(), &frame[0]);
+                    bool with_bias = (data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS) != 0;
+                    unsigned long bias =
+                        with_bias ? u16(data + a.payload + FVM_AVM1_GOTO_SCENE_OFFSET) : 0;
+                    status = fvm_exec_frame_request(c, &stack.back(), with_bias, bias,
+                                                    &frame[FVM_AVM1_TIMELINE_REQUEST_ROOT]);
                     if (status != FVM_OK)
                         return status;
-                    if (frame[0].type == FVM_VALUE_STRING)
-                    {
-                        bool decimal = fvm_string_size(frame[0]) != 0;
-                        for (size_t digit = 0; digit < fvm_string_size(frame[0]); ++digit)
-                            if (frame[0].string[digit] < '0' || frame[0].string[digit] > '9')
-                                decimal = false;
-                        if (decimal)
-                        {
-                            double number = 0;
-                            status = fvm_value_to_number(c, &frame[0], &number);
-                            if (status != FVM_OK)
-                                return status;
-                            fvm_value_number(&frame[0], number);
-                        }
-                    }
-                    if ((data[a.payload] & FVM_AVM1_GOTO_SCENE_BIAS) &&
-                        frame[0].type == FVM_VALUE_NUMBER)
-                        frame[0].number += u16(data + a.payload + 1);
                     status = variable_receiver(c, self, &target);
                     stack.pop_back();
                 }
@@ -1053,9 +1042,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         : a.op == FVM_AVM1_ACTION_PLAY           ? FVM_EXEC_PLAY
                         : a.op == FVM_AVM1_ACTION_STOP           ? FVM_EXEC_STOP
                                                                  : FVM_EXEC_GOTO_FRAME;
-                    status = fvm_exec_frame_control(
-                        c, target, command, a.op >= FVM_AVM1_LONG_ACTION_BASE ? &frame[0] : 0,
-                        playing);
+                    status = fvm_exec_frame_control(c, target, command,
+                                                    a.op >= FVM_AVM1_LONG_ACTION_BASE
+                                                        ? &frame[FVM_AVM1_TIMELINE_REQUEST_ROOT]
+                                                        : 0,
+                                                    playing);
                     if (status != FVM_OK && status != FVM_NOT_FOUND)
                         return status;
                 }
@@ -1164,8 +1155,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CALL)
             { /* Call executes frame actions without seeking or placing frame controls. */
-                if (a.length || stack.empty())
-                    return a.length ? FVM_INVALID_ARGUMENT : FVM_ERROR;
+                if (a.length)
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Object *scope_receiver = 0;
                 FVM_Result status = variable_receiver(c, self, &scope_receiver);
                 if (status == FVM_OK)
