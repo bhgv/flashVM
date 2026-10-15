@@ -5,6 +5,16 @@
 #define FVM_MOVIECLIP_DEFAULT_FRAMES 1U /* Empty native MovieClips expose one initial frame. */
 /* UI16 timeline frame count accepted by native construction and frame metadata. */
 #define FVM_MOVIECLIP_MAX_FRAMES 65535UL
+/* Signed public depth range currently accepted by the native MovieClip model.
+ * These are implementation bounds, not complete historical Flash depth semantics. */
+#define FVM_MOVIECLIP_MIN_PUBLIC_DEPTH (-16384L)
+#define FVM_MOVIECLIP_MAX_PUBLIC_DEPTH 1048575L
+/* Bias encoding signed public depths as nonnegative child-table indices.
+ * Legacy snapshots omit the bias and contain only nonnegative public depths. */
+#define FVM_MOVIECLIP_CHILD_SLOT_BIAS 16384UL
+/* SWF placement depths are offset before entering the public native depth model.
+ * Kept separate from child-slot encoding even though the current values match. */
+#define FVM_MOVIECLIP_SWF_DEPTH_OFFSET 16384L
 /* UI16 authored placement depth, distinct from runtime/dynamic depth ranges. */
 #define FVM_MOVIECLIP_MAX_AUTHORED_DEPTH 65535UL
 /* Native frame-definition action-buffer limit; not a drawing or tick limit. */

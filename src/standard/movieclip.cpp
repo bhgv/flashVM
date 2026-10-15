@@ -213,7 +213,8 @@ FVM_Result depth_field(FVM_Object *data, long &out)
     FVM_Value value;
     FVM_Result r = field(data, "depth", value);
     if (r != FVM_OK || value.type != FVM_VALUE_NUMBER ||
-        !(value.number >= -16384 && value.number <= 1048575) ||
+        !(value.number >= FVM_MOVIECLIP_MIN_PUBLIC_DEPTH &&
+          value.number <= FVM_MOVIECLIP_MAX_PUBLIC_DEPTH) ||
         value.number != std::floor(value.number))
         return FVM_INVALID_ARGUMENT;
     out = (long)value.number;
@@ -226,8 +227,10 @@ FVM_Result slot_bias(FVM_Object *data, unsigned long &bias)
     bias = 0;
     if (data->properties.find("slot_bias") == data->properties.end())
         return FVM_OK;
-    FVM_Result r = integer_field(data, "slot_bias", 16384, bias);
-    return r == FVM_OK && (bias == 0 || bias == 16384) ? FVM_OK : FVM_INVALID_ARGUMENT;
+    FVM_Result r = integer_field(data, "slot_bias", FVM_MOVIECLIP_CHILD_SLOT_BIAS, bias);
+    return r == FVM_OK && (bias == 0 || bias == FVM_MOVIECLIP_CHILD_SLOT_BIAS)
+               ? FVM_OK
+               : FVM_INVALID_ARGUMENT;
 }
 
 /* [GC:] Upgrade a legacy child table atomically, preserving all existing object edges. */
@@ -240,12 +243,12 @@ FVM_Result ensure_slot_bias(FVM_Object *data, FVM_Object *children)
     Slots next;
     for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
     {
-        if (i->first > 1048575)
+        if (i->first > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH)
             return FVM_INVALID_ARGUMENT;
         /* [GC:] Copy the same children; migration must not clone or detach live instances. */
-        next[i->first + 16384] = i->second;
+        next[i->first + FVM_MOVIECLIP_CHILD_SLOT_BIAS] = i->second;
     }
-    data->properties["slot_bias"] = number(16384);
+    data->properties["slot_bias"] = number(FVM_MOVIECLIP_CHILD_SLOT_BIAS);
     children->indexed.swap(next);
     return FVM_OK;
 }
@@ -257,7 +260,7 @@ FVM_Result slot_key(FVM_Object *data, long depth, unsigned long &key)
     FVM_Result r = slot_bias(data, bias);
     if (r != FVM_OK)
         return r;
-    if (depth < -16384 || depth > 1048575)
+    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH)
         return FVM_INVALID_ARGUMENT;
     if (depth < 0 && !bias)
         return FVM_NOT_FOUND;
@@ -342,7 +345,7 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["depth"] = number(0);
     /* Biased slots place authored SWF depths below dynamic ActionScript depths. */
-    data->properties["slot_bias"] = number(16384);
+    data->properties["slot_bias"] = number(FVM_MOVIECLIP_CHILD_SLOT_BIAS);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["cx"] = number(0);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -632,7 +635,8 @@ FVM_Result create_child(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = args(c, n, a, 1, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH ||
+        depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     FVM_Object *child = 0, *proto = o->prototype;
     FVM_Value library;
@@ -788,7 +792,8 @@ FVM_Result attach_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = args(c, n, a, 2, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH ||
+        depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
 
     FVM_Object *proto = 0, *constructor = 0;
@@ -961,7 +966,8 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     r = args(c, n, a, 1, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH ||
+        depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     unsigned long total = 0;
     FVM_Object *frames = 0;
@@ -1138,7 +1144,7 @@ FVM_Result next_depth(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Valu
         return r;
     for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
     {
-        if (i->first > 1048575 + bias)
+        if (i->first > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH + bias)
             return FVM_INVALID_ARGUMENT;
         if (i->first >= bias && i->first - bias >= next)
             next = i->first - bias + 1;
@@ -1162,7 +1168,9 @@ FVM_Result at_depth(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Val
         return r;
     double depth = 0;
     r = args(c, n, a, 0, 0, depth);
-    if (r != FVM_OK || depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+    if (r != FVM_OK || depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH ||
+        depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH ||
+        depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     unsigned long key = 0;
     r = slot_key(data, (long)depth, key);
@@ -1224,7 +1232,8 @@ FVM_Result swap_depths(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
     else
     {
         r = args(c, n, a, 0, 0, desired);
-        if (r != FVM_OK || desired < -16384 || desired > 1048575 || desired != std::floor(desired))
+        if (r != FVM_OK || desired < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH ||
+            desired > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH || desired != std::floor(desired))
             return FVM_INVALID_ARGUMENT;
     }
     r = ensure_slot_bias(pd, children);
@@ -2728,7 +2737,8 @@ FVM_Result attach_bitmap(FVM_Context *c, FVM_Object *parent_clip, unsigned n,
     FVM_Result r = args(c, n, args_in, 1, 0, depth);
     if (r != FVM_OK)
         return r;
-    if (depth < -16384 || depth > 1048575 || depth != std::floor(depth))
+    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH ||
+        depth != std::floor(depth))
         return FVM_INVALID_ARGUMENT;
     unsigned snapping = 0;
     if (n > 2 && args_in[2].type != FVM_VALUE_UNDEFINED)
@@ -3029,7 +3039,7 @@ FVM_Result fvm_movieclip_scene_insert(FVM_Context *c, FVM_Object *p, FVM_Object 
     }
     r = fvm_movieclip_scene_update(c, child, placement);
     if (r == FVM_OK)
-        r = publish_child(p, child, name.string, (long)depth - 16384);
+        r = publish_child(p, child, name.string, (long)depth - FVM_MOVIECLIP_SWF_DEPTH_OFFSET);
     if (r != FVM_OK)
         return r;
     FVM_Value value;

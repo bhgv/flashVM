@@ -60,3 +60,23 @@ execution-permission launch failures (six AGG, four Cairo; no assertion failures
 The two affected sanitizer fixtures passed. All 26 accepted original SWFs matched
 the pinned oracle in both renderer profiles. This does not certify full SWF or
 cross-platform compatibility.
+
+## Named depth encodings — v0.296
+
+movieclip_constants.h now documents the native public depth bounds, child-slot
+bias and SWF placement offset with separate uppercase macros. Creation, attach,
+duplicate, lookup, swapping, legacy-slot migration, next-depth scanning and scene
+placement use the same declared bounds without changing their accepted range.
+The SWF offset and child-slot bias retain separate names because they represent
+different encodings. Existing raw boundary and legacy snapshot fixtures remain
+independent of the implementation macros. This is a readability change, not an
+expansion of historical Flash depth support or a RemoveSprite implementation.
+
+Границы нативных глубин, смещение внутренних слотов и преобразование глубины SWF
+вынесены в подписанные макросы. Разные роли имеют разные имена даже при равных
+значениях. Диапазон и формат сохранённых графов не изменены; граничные тесты
+сохраняют исходные числовые значения как независимые проверки.
+
+Validation for v0.296: Linux AGG and Cairo each passed 580 tests after repairing
+launch permissions for four and ten executables respectively. All 26 original
+SWFs matched the oracle in each profile. No semantic assertion failures occurred.
