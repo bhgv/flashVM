@@ -7,6 +7,7 @@
 #include "action_codes.h"
 #include "encoding_constants.h"
 #include "operand_constants.h"
+#include "operand_stack.hpp"
 #include "literal_constants.h"
 #include "../core/numeric_constants.h"
 #include "../swf/record_constants.h"
@@ -1208,14 +1209,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_TARGET_PATH)
             {
-                if (stack.empty())
-                {
-                    if (!c->swf_loaded)
-                        return FVM_ERROR;
-                    FVM_Value missing;
-                    fvm_value_undefined(&missing);
-                    stack.push_back(missing);
-                }
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_target_path(c, &stack.back(), &result);
                 if (status != FVM_OK)
@@ -1224,14 +1220,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_ENUMERATE || a.op == FVM_AVM1_ACTION_ENUMERATE2)
             {
-                if (stack.empty())
-                {
-                    if (!c->swf_loaded)
-                        return FVM_ERROR;
-                    FVM_Value missing;
-                    fvm_value_undefined(&missing);
-                    stack.push_back(missing);
-                }
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value target = stack.back();
                 FVM_Result status = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_ENUMERATE)
@@ -1288,8 +1279,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_STRING_LENGTH ||
                      a.op == FVM_AVM1_ACTION_MB_STRING_LENGTH)
             { /* StringLength/MBStringLength share value-based length semantics. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_string_length(c, &stack.back(), &output);
                 if (status != FVM_OK)
@@ -1314,8 +1306,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_CHAR_TO_ASCII ||
                      a.op == FVM_AVM1_ACTION_MB_CHAR_TO_ASCII)
             { /* CharToAscii/MBCharToAscii share value-based character reads. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_char_code(c, &stack.back(), &output);
                 if (status != FVM_OK)
@@ -1325,8 +1318,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_ASCII_TO_CHAR ||
                      a.op == FVM_AVM1_ACTION_MB_ASCII_TO_CHAR)
             { /* AsciiToChar/MBAsciiToChar share value-based character construction. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_char_from_code(c, &stack.back(), &output);
                 if (status != FVM_OK)
@@ -1335,8 +1329,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_TO_INTEGER)
             { /* ToInteger uses signed Int32 wrapping, not an unsafe floating cast. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_to_number(c, 1, &stack.back(), &result);
                 if (status != FVM_OK)
@@ -1346,8 +1341,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_TYPE_OF || a.op == FVM_AVM1_ACTION_TO_NUMBER ||
                      a.op == FVM_AVM1_ACTION_TO_STRING)
             {
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value input = stack.back(), output;
                 FVM_Result r = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_TYPE_OF)
@@ -1426,14 +1422,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_RANDOM_NUMBER)
             {
-                if (stack.empty())
-                {
-                    if (!c->swf_loaded)
-                        return FVM_ERROR;
-                    FVM_Value missing;
-                    fvm_value_undefined(&missing);
-                    stack.push_back(missing);
-                }
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_random_number(c, &stack.back(), &result);
                 if (status != FVM_OK)
@@ -1442,8 +1433,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_INCREMENT || a.op == FVM_AVM1_ACTION_DECREMENT)
             {
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_step(c, a.op == FVM_AVM1_ACTION_DECREMENT,
                                                   &stack.back(), &result);
@@ -1538,8 +1530,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_NOT)
             { /* Not */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_logical(c, FVM_EXEC_LOGICAL_NOT, &stack.back(), 0, &result);
                 if (status != FVM_OK)

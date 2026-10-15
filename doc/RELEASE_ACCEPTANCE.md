@@ -472,3 +472,11 @@ its own root layout and named recursion bound. Call-frame's unused third root is
 removed. Callback arities remain separate from GC sizes; C ABI and action coverage
 are unchanged. See EXECUTION_ROOT_LAYOUTS.md for roles and validation boundaries.
 Оставшиеся числовые индексы корней заменены смысловыми именами; все стадии открыты.
+
+### v0.300 — missing unary AVM1 operands / Унарные операции на пустом стеке
+
+Audited loaded unary operations now convert undefined instead of failing before
+the shared C service. Raw-byte fixtures cover SWF4–8 and strict host execution;
+allocation injection verifies root/execution restoration. See AVM1_UNARY_MISSING.md.
+Загруженный SWF получает исторические преобразования undefined; другие случаи
+недостатка операндов, полная семантика AVM1 и все стадии остаются открытыми.
