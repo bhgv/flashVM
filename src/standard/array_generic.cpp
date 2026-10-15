@@ -902,9 +902,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             *out = value;
         return r;
     }
-    /* Loaded mutations use charged loops; host mutations and sorting retain their bounds. */
+    /* Loaded traversals use charged loops; host mutation and sorting retain their bounds. */
     bool bounded_sort = !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn");
-    if ((bounded_sort && count > FVM_ARRAY_GENERIC_SORT_MAX_LENGTH) ||
+    if ((!c->swf_loaded && bounded_sort && count > FVM_ARRAY_HOST_GENERIC_SORT_MAX_LENGTH) ||
         (!c->swf_loaded && !bounded_sort && count > FVM_ARRAY_HOST_MUTATION_MAX_LENGTH &&
          (!std::strcmp(method, "shift") || !std::strcmp(method, "unshift") || !std::strcmp(method, "reverse"))))
         return FVM_UNSUPPORTED;

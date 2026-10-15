@@ -1,7 +1,23 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.376
+# Условия окончательной приёмки / Final acceptance gates — v0.377
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.377 removes the loaded positive-length 65,536 rejection from native/borrowed
+sort/sortOn. Input capture now links roots before incremental charged appends;
+descending reversal and rooted returned-index output also charge work. The
+historical comparison order remains, including quadratic worst cases. Large
+permutation/index sorting, budget failure before full capture, native negative
+storage rejection, host limits and allocation/GC/retry are covered.
+Validation v0.377: all 777 AGG / 777 Cairo / 758 minimal Linux Release checks
+have passing evidence after five ELF permission repairs (2/2/1) and six failed-test
+reruns, including the dependent timezone profile runner. Six restricted heap/
+global ASan+UBSan checks pass: both new large-sort checks, legacy allocation,
+comparator, snapshot and no-op checks. Stack ASan and LeakSanitizer remain
+disabled. The revised scoped constant header passes strict C89 syntax checking.
+Original external SWF traces were not rerun; no new external oracle pass is claimed.
+ARRAY_LOADED_LARGE_SORT.md / .ru.md describe increased work costs and remaining
+bounds. No roadmap stage or foreign platform acceptance is closed.
 
 v0.376 removes the arbitrary 65,536 source-length rejection from loaded generic
 shift/unshift/reverse/splice. Existing charged loops retain shared instruction

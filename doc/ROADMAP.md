@@ -380,3 +380,18 @@ have passing evidence after nine ELF permission repairs and failed-test reruns
 including both new large-mutation checks, legacy unshift/splice flags and negative
 end operations. Stack ASan and LeakSanitizer remain disabled. The new scoped
 constant header also passes a strict C89 syntax probe.
+
+
+v0.377: loaded native/borrowed sort and sortOn drop the positive 65536 bound.
+Partial rooted input capture, descending reversal and index output are charged;
+large permutation/index sorting and budget/OOM/GC/retry are covered. Host bounds
+remain. [EN](ARRAY_LOADED_LARGE_SORT.md) / [RU](ARRAY_LOADED_LARGE_SORT.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.377: all 777 AGG / 777 Cairo / 758 minimal Linux Release checks
+have passing evidence after five ELF permission repairs (2/2/1) and six failed-test
+reruns, including the dependent timezone profile runner. Six restricted heap/
+global ASan+UBSan checks pass: both new large-sort checks, legacy allocation,
+comparator, snapshot and no-op checks. Stack ASan and LeakSanitizer remain
+disabled. The revised scoped constant header passes strict C89 syntax checking.
+Original external SWF traces were not rerun; no new external oracle pass is claimed.

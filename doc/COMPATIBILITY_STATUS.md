@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/7: large loaded sorting | Проверено для сценариев v0.377 | Native/borrowed sort/sortOn above 65536, charged partial captures/reversal/index output, permutations/indices, budget and OOM/GC/retry; ARRAY_LOADED_LARGE_SORT.md / .ru.md. Host limits and full Flash semantics remain open. |
 | 1/7: large loaded generic mutations | Проверено для сценариев v0.376 | shift/unshift/reverse/splice above 65536 use shared budgets, with native/borrowed success, prototype accessor bypass and OOM/GC/retry; ARRAY_LOADED_LARGE_MUTATION.md / .ru.md. Host/sort bounds and full conformance remain open. |
 | 1/7: negative loaded slice | Проверено для сценариев v0.375 | SWF4–8 native/borrowed signed ranges, dense raw own copy, coercion mutations, source retention, budgets and allocation/GC/retry; ARRAY_NEGATIVE_SLICE.md / .ru.md. Signed overflow and result length above Int32 maximum remain open. |
 | 1/7: borrowed negative end operations | Проверено для сценариев v0.374 | SWF4–8 push/pop/shift/unshift signed own data, zero crossing, flags, raw accessors, budgets and OOM/GC/retry; ARRAY_NEGATIVE_ENDS.md / .ru.md. Native negative storage and signed overflow remain open. |
@@ -2966,3 +2967,11 @@ have passing evidence after nine ELF permission repairs and failed-test reruns
 including both new large-mutation checks, legacy unshift/splice flags and negative
 end operations. Stack ASan and LeakSanitizer remain disabled. The new scoped
 constant header also passes a strict C89 syntax probe.
+
+Validation v0.377: all 777 AGG / 777 Cairo / 758 minimal Linux Release checks
+have passing evidence after five ELF permission repairs (2/2/1) and six failed-test
+reruns, including the dependent timezone profile runner. Six restricted heap/
+global ASan+UBSan checks pass: both new large-sort checks, legacy allocation,
+comparator, snapshot and no-op checks. Stack ASan and LeakSanitizer remain
+disabled. The revised scoped constant header passes strict C89 syntax checking.
+Original external SWF traces were not rerun; no new external oracle pass is claimed.

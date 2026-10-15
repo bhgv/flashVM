@@ -27,3 +27,6 @@ have passing evidence after nine ELF permission repairs and failed-test reruns
 including both new large-mutation checks, legacy unshift/splice flags and negative
 end operations. Stack ASan and LeakSanitizer remain disabled. The new scoped
 constant header also passes a strict C89 syntax probe.
+
+As of v0.377 loaded sorting also uses charged captures instead of the 65536
+restriction; host sorting limits remain. See [large sort](ARRAY_LOADED_LARGE_SORT.md).

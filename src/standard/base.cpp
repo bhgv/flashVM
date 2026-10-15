@@ -5,6 +5,8 @@
 #include "string_state.hpp"
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "array_traversal_constants.h"
+#include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "base_state.hpp"
 #include "../core/prototype_data.hpp"
@@ -871,24 +873,33 @@ class SortInputRoots
     SortInputRoots &operator=(const SortInputRoots &);
   public:
     fvm_detail::vector<FVM_Value> values; /* [GC:] Original own values, including undefined holes. */
-    /* [GC:] Capture without callbacks and publish only completely initialized values. */
-    SortInputRoots(FVM_Context *c, FVM_Object *o, unsigned long length) : context_(c)
+    /* [GC:] Link an empty capture before allocation so partial snapshots unwind safely. */
+    SortInputRoots(FVM_Context *c, FVM_Object *o) : context_(c)
     {
-        if (c->swf_loaded)
-            for (unsigned long i = 0; i < length; ++i)
-            {
-                FVM_Value value;
-                fvm_value_undefined(&value);
-                Slots::iterator slot = o->indexed.find(i);
-                if (slot != o->indexed.end())
-                    value = slot->second;
-                values.push_back(value);
-            }
         frame_.previous = c->gc_frames;
         frame_.stack = &values;
         frame_.locals = 0;
         frame_.receiver = o;
         c->gc_frames = &frame_;
+    }
+    /* [GC:] Charge each raw capture before appending its initialized managed value. */
+    FVM_Result capture(FVM_Object *o, unsigned long length, FVM_ArrayWorkScope &work)
+    {
+        if (!context_->swf_loaded)
+            return FVM_OK;
+        for (unsigned long i = 0; i < length; ++i)
+        {
+            FVM_Result status = work.step();
+            if (status != FVM_OK)
+                return status;
+            FVM_Value value;
+            fvm_value_undefined(&value);
+            Slots::iterator slot = o->indexed.find(i);
+            if (slot != o->indexed.end())
+                value = slot->second;
+            values.push_back(value);
+        }
+        return FVM_OK;
     }
     /* [GC:] Restore caller roots on success, callback failure and allocation exceptions. */
     ~SortInputRoots() { context_->gc_frames = frame_.previous; }
@@ -1198,8 +1209,11 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
     unsigned long length = size(o);
-    if (length > 65536)
+    if (!c->swf_loaded && length > FVM_ARRAY_HOST_NATIVE_SORT_MAX_LENGTH)
         return FVM_OUT_OF_MEMORY;
+    /* Signed-negative native storage still needs a separate representation contract. */
+    if (c->swf_loaded && (double)length > FVM_INT32_MAX_NUMBER)
+        return FVM_UNSUPPORTED;
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flags = 0;
@@ -1244,7 +1258,10 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     if (spec && !spec->flags.empty())
         flags = c->swf_loaded ? spec->flags[0] : spec->flags[0] & 12;
     FVM_ArrayWorkScope work(c, c->swf_loaded);
-    SortInputRoots input(c, o, length);
+    SortInputRoots input(c, o);
+    FVM_Result captured = input.capture(o, length, work);
+    if (captured != FVM_OK)
+        return captured;
     fvm_detail::vector<SortItem> items;
     /* Build a snapshot before comparisons: neither allocation nor callback
      * failure commits a partially reordered array. */
@@ -1362,6 +1379,9 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     if (c->swf_loaded && !spec && (flags & 2))
         for (size_t i = 0; i < items.size() / 2; ++i)
         {
+            FVM_Result result = work.step();
+            if (result != FVM_OK)
+                return result;
             swap_sort_items(items[i], items[items.size() - 1 - i]);
         }
     if (flags & 4)
@@ -1387,9 +1407,14 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
         if (r != FVM_OK)
             return r;
     }
+    /* [GC:] Keep an unfinished index result alive until all charged stores complete. */
+    FVM_ObjectRootScope index_roots(c, indices);
     Slots reordered;
-    for (size_t i = 0; i < items.size(); ++i)
+    for (size_t i = 0; (indices || !c->swf_loaded) && i < items.size(); ++i)
     {
+        FVM_Result result = work.step();
+        if (result != FVM_OK)
+            return result;
         if (indices)
         {
             FVM_Value v;
