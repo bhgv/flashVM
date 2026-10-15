@@ -1,4 +1,4 @@
-Версия разработки: **0.345** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.346** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -17,7 +17,8 @@ AGG + SQLite + HEADLESS. См. [ключи сборки](doc/BUILD_DEFINITIONS.r
 
 Этап разработки SWF 8: загрузка FWS/CWS с лимитами, все типы AVM1 Push,
 пулы/4 регистра, C callbacks по образцу Lua, исходники zlib/AGG.
-VM пока частичная; JIT и полный проигрыватель отсутствуют. См.
+VM пока частичная. Доступен явный экспериментальный JIT для подмножества AVM1
+на Linux x86-64; полного проигрывателя пока нет. См. [JIT](doc/JIT.md),
 [план совместимости](doc/SWF8_ROADMAP.ru.md), [загрузку](doc/SWF_LOADING.ru.md),
 [API расширений](doc/LUA_STYLE_API.ru.md), [сборку](doc/BUILD_PLATFORMS.ru.md).
 
@@ -219,3 +220,6 @@ Shared execution budget/GC/stop checkpoints / Общие контрольные 
 Loaded numeric text and strict NaN / Числовой текст и строгий NaN: [RU/EN](doc/AVM1_NUMBER_TEXT.md).
 
 Named uppercase constants / Смысловые макросы: [header map and evidence](doc/SEMANTIC_CONSTANTS.md).
+
+В v0.346 добавлен явный экспериментальный JIT Linux x86-64.
+[Сборка и запуск примера интерпретатор/JIT](doc/JIT.md); полный JIT остаётся открытым.

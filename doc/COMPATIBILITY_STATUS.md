@@ -2699,3 +2699,13 @@ C89 count preparation is shared with NewObject: host bound 65536, loaded UInt32
 conversion/capping and bound 65535. Boundary construction, callbacks/GC, errors
 and allocation failures are covered in NEW_OBJECT_NAMES.md. Сохранён порядок
 преобразования имени и счётчика; этапы roadmap остаются открытыми.
+
+## v0.346: experimental native compiler
+
+First implemented/locally verified Linux x86-64 System V call-based JIT subset:
+explicit C89 compilation/binding, native branches/loops, shared numeric/variable
+services, rooted transient stack, checkpoints and W^X memory port. JIT.md lists
+accepted operations, executable regressions and limitations. This supersedes
+older historical statements that no native backend exists; full JIT coverage,
+automatic selection, other CPU/OS backends and roadmap stages remain open.
+Первый backend исполняет машинный код, но готовность полного JIT не заявляется.

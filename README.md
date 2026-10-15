@@ -1,5 +1,5 @@
-Development version: **0.345** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.345 ` and an English description. Increase the subversion before each
+Development version: **0.346** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.346 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -10,8 +10,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.345** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.345 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.346** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.346 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -70,7 +70,8 @@ and examples passed; mirror updates remain manual.
 
 SWF 8 development checkpoint: bounded FWS/CWS loading, all AVM1 Push encodings,
 constant pools/four registers, Lua-inspired C callbacks and bundled zlib/AGG.
-This is still a partial VM, with no JIT or complete player. See
+This is still a partial VM. An explicit experimental Linux x86-64 JIT subset is
+available; there is no complete player. See [native compiler](doc/JIT.md) and
 [compatibility roadmap](doc/SWF8_ROADMAP.md), [loading](doc/SWF_LOADING.md),
 [extension API](doc/LUA_STYLE_API.md), [builds](doc/BUILD_PLATFORMS.md).
 
@@ -96,11 +97,12 @@ For older CMake versions without `-S` / `-B`, use `mkdir build && cd build && cm
 
 ## Current status
 
-Only runtime/context creation and ABI/configuration smoke tests are implemented.
-SWF parsing, AVM1, JIT, rendering, media, extensions and player are planned.
-Unimplemented entry points return `FVM_UNSUPPORTED`.
+FlashVM provides a partial AVM1 interpreter and an explicit experimental Linux
+x86-64 native compiler subset. Build/run the interpreter/native example using
+[these instructions](doc/JIT.md). Full player compatibility, other JIT backends
+and roadmap acceptance remain open. Unsupported operations return errors.
 
-## Current implementation status
+## Historical initial prototype status
 
 The portable C89-facing API supports runtime/context lifecycle, basic tagged
 values, context-owned objects, object properties, globals and registered native
@@ -129,7 +131,7 @@ Build and test:
 The examples are compiled and run by CTest. They demonstrate the **current**
 object/value/native callback API, not ActionScript execution or dynamic plugins.
 
-## Experimental AVM1 execution (stage 5)
+## Historical AVM1 execution checkpoint (stage 5)
 
 The public C89 header `flashvm/avm1.h` exposes `fvm_avm1_execute()`
 for an AVM1 action stream and `fvm_swf_execute_actions()` for top-level
@@ -447,3 +449,6 @@ Shared execution budget/GC/stop checkpoints / Общие контрольные 
 Loaded numeric text and strict NaN / Числовой текст и строгий NaN: [RU/EN](doc/AVM1_NUMBER_TEXT.md).
 
 Named uppercase constants / Смысловые макросы: [header map and evidence](doc/SEMANTIC_CONSTANTS.md).
+
+Experimental explicit native compilation is now available in v0.346; see
+[JIT and interpreter usage](doc/JIT.md). Earlier checkpoint sections are historical.

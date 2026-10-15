@@ -114,3 +114,16 @@ in the existing checkout and update the verified mirror only. Do not create or
 export source/local-Git archives unless explicitly requested again. This replaces
 the earlier archive-delivery requirement, while build reproducibility and full
 history preservation in the mirror remain acceptance requirements.
+
+## Контрольная точка v0.346 / Native checkpoint
+
+По указанию пользователя 15 октября приоритет текущей работы перенесён на
+работающий JIT и возможность запускать интерпретатор. Добавлен явный Linux
+x86-64 backend для ограниченного подмножества AVM1 с примером запуска; см. JIT.md.
+Это начало реализации стадии 8, не её закрытие. Предыдущая семантика VM,
+полнота инструкций, остальные backend и платформенная приёмка остаются открытыми.
+
+The user reprioritized working JIT/interpreter use on 15 October. v0.346 adds an
+explicit Linux x86-64 native subset and runnable C89 example (JIT.md). Stage 8
+remains open: this is not full AVM1 coverage, automatic compilation, other-CPU
+code generation or cross-platform acceptance.
