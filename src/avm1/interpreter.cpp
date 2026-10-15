@@ -1381,6 +1381,41 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 stack.pop_back();
                 stack.back() = output;
             }
+            else if (a.op == FVM_AVM1_ACTION_WAIT_FOR_FRAME ||
+                     a.op == FVM_AVM1_ACTION_WAIT_FOR_FRAME2)
+            {
+                bool direct = a.op == FVM_AVM1_ACTION_WAIT_FOR_FRAME;
+                if (a.length != (direct ? FVM_AVM1_WAIT_DIRECT_BYTES : FVM_AVM1_WAIT_VALUE_BYTES))
+                    return FVM_INVALID_ARGUMENT;
+                FVM_Value frame, available;
+                if (direct)
+                    fvm_value_number(&frame, u16(data + a.payload));
+                else
+                {
+                    if (stack.empty())
+                    {
+                        if (!c->swf_loaded)
+                            return FVM_ERROR;
+                        fvm_value_undefined(&frame);
+                    }
+                    else
+                        frame = stack.back();
+                }
+                FVM_Result status = fvm_exec_frame_loaded(c,
+                    direct ? FVM_EXEC_FRAME_CHECK_DIRECT : FVM_EXEC_FRAME_CHECK_VALUE, &frame, &available);
+                if (status != FVM_OK)
+                    return status;
+                if (!direct && !stack.empty())
+                    stack.pop_back();
+                if (!available.boolean)
+                {
+                    size_t skip = data[a.payload + (direct ? FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET : 0)];
+                    size_t remaining = actions.size() - pc - 1;
+                    if (skip >= remaining)
+                        return FVM_OK;
+                    pc += skip;
+                }
+            }
             else if (a.op == FVM_AVM1_ACTION_GET_TIME)
             {
                 FVM_Value result;

@@ -65,6 +65,11 @@ v<версия>, провести необходимые проверки. Вн�
 - Документация и примеры RU/EN; исходники с полной историей Git в архиве с версией.
   Технические результаты выдаются отдельным архивом и не коммитятся.
 
+Уточнение выдачи от пользователя 15 октября 2026 года: продолжать в существующей
+рабочей копии и обновлять только зеркало. Не создавать и не выдавать архивы
+исходников/локального Git до новой явной просьбы. Это заменяет прежнюю выдачу
+архивов; проверки воспроизводимости и сохранение истории в зеркале остаются.
+
 Количество прошедших тестов само по себе не доказывает полноту совместимости.
 Особенно велики оставшиеся объёмы MovieClip/SWF, мультимедиа и JIT.
 
@@ -103,3 +108,9 @@ for each commit and use an English v<version> subject. The current standing user
 instruction authorizes a verified mirror update after every commit until revoked.
 Ship versioned source archives with full Git history and separate validation
 archives. Never commit generated validation logs.
+
+Delivery update, 15 October 2026: the user's current instruction is to continue
+in the existing checkout and update the verified mirror only. Do not create or
+export source/local-Git archives unless explicitly requested again. This replaces
+the earlier archive-delivery requirement, while build reproducibility and full
+history preservation in the mirror remain acceptance requirements.

@@ -414,3 +414,16 @@ The new source audit finds 92 dispatch references in a pinned 100-action catalog
 its require-all gate correctly fails for eight missing actions. Source presence
 is not behavioral certification. Real JIT and actual Windows/macOS/Android runs
 remain absent. Все стадии 1–9 остаются открытыми.
+
+## v0.293 — value-based frame availability
+
+Both Linux profiles pass all 578 tests; AGG required executable permission
+repairs and reruns for 14 launch failures. Original and retry logs remain separate.
+Four focused heap/global ASan+UBSan checks pass (no stack/leak coverage), and all
+26 original SWFs match per profile. Both wait Actions cover strict value parsing,
+versioned coercion, alias/allocation errors, callback scope/GC, whole-record skips,
+nested bodies and terminal overshoot. The pinned catalog has 94 present source
+references and six absent entries; current timelines are fully loaded and partial
+streaming remains absent. Real JIT and actual Windows/macOS/Android runs remain
+absent. All nine acceptance stages remain open. По новой команде пользователя
+архивы исходников/локального Git больше не создаются; выдача идёт через зеркало.

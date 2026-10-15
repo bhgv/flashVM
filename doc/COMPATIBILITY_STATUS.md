@@ -2405,3 +2405,14 @@ Action/GC/exception and allocation fixtures cover SWF4–8. The separate
 [dispatch inventory](AVM1_DISPATCH_INVENTORY.md) audits 100 pinned catalog entries:
 92 source references and eight absent actions. Source presence is not semantic
 certification. Другие display-типы, удалённые клипы и все стадии остаются открытыми.
+
+### v0.293 — WaitForFrame and WaitForFrame2
+
+[FRAME_AVAILABILITY_SERVICE.md](FRAME_AVAILABILITY_SERVICE.md) records the common
+C89 availability service, distinct direct/value bounds, strict frame strings and
+Int32 compatibility arithmetic. Actual Action tests cover whole-record skips,
+variable payloads, nested bodies, terminal overshoot and invalid lengths. GC,
+exception, alias/allocation and intrinsic-getter fixtures accompany SWF4–8.
+The pinned dispatch catalog has 94 source references and six missing entries.
+Current native timelines are fully loaded; partial streaming remains absent.
+Проверка наличия ветки не закрывает семантическую приёмку или стадии роудмапа.

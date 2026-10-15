@@ -161,10 +161,14 @@
 #define FVM_AVM1_ACTION_STORE_REGISTER 0x87U
 /* Replace the active constant-string pool. */
 #define FVM_AVM1_ACTION_CONSTANT_POOL 0x88U
+/* Skip a count of Action records if a direct frame is unavailable. */
+#define FVM_AVM1_ACTION_WAIT_FOR_FRAME 0x8aU
 /* Select a display target from an encoded literal path. */
 #define FVM_AVM1_ACTION_SET_TARGET 0x8bU
 /* Seek the encoded frame label. */
 #define FVM_AVM1_ACTION_GOTO_LABEL 0x8cU
+/* Skip a count of Action records if a value-selected frame is unavailable. */
+#define FVM_AVM1_ACTION_WAIT_FOR_FRAME2 0x8dU
 /* Define a function with registers and preload flags. */
 #define FVM_AVM1_ACTION_DEFINE_FUNCTION2 0x8eU
 /* Execute length-delimited try/catch/finally blocks. */

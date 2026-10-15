@@ -26,6 +26,9 @@
   Standing user authorization on 2026-10-12: update the mirror after every new
   commit until the user gives another instruction. This supersedes the earlier
   per-update restriction while active; the internal repository stays primary.
+- Standing user instruction on 2026-10-15: continue in the existing checkout,
+  update only the remote mirror, and do not create/export source or local-Git
+  archives unless the user explicitly asks again. This supersedes routine archive delivery.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

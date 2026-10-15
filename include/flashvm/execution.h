@@ -95,6 +95,16 @@ extern "C"
     /* Execute numeric semantics and preserve the operation's historical coercion order. */
     FVM_API FVM_Result fvm_exec_numeric(FVM_Context *, FVM_ExecutionNumeric, const FVM_Value *,
                                         const FVM_Value *, FVM_Value *);
+    /* Frame-check policies are ABI commands, independent of wire Action identifiers. */
+    typedef enum FVM_ExecutionFrameCheck
+    {
+        FVM_EXEC_FRAME_CHECK_DIRECT = 1, /* Exact unsigned direct frame request, no coercion. */
+        FVM_EXEC_FRAME_CHECK_VALUE       /* String/integer request with legacy wrapping and slop. */
+    } FVM_ExecutionFrameCheck;
+    /* Test the currently selected native timeline after request conversion; absent targets are ready.
+     * [GC:] Coercion is rooted; output may alias input and failures leave output intact. */
+    FVM_API FVM_Result fvm_exec_frame_loaded(FVM_Context *, FVM_ExecutionFrameCheck,
+                                              const FVM_Value *, FVM_Value *);
     /* Return a native display dot path after boxing; nonclips and the class prototype yield undefined.
      * [GC:] Retains the supplied value and boxed object; failures preserve aliased output. */
     FVM_API FVM_Result fvm_exec_target_path(FVM_Context *, const FVM_Value *, FVM_Value *);

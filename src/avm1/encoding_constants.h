@@ -117,4 +117,10 @@
 #define FVM_AVM1_MAX_HEX_BODY_BYTES (FVM_AVM1_MAX_BODY_BYTES * FVM_AVM1_HEX_DIGITS_PER_BYTE)
 /* Unloaded compatibility frames include slot zero in addition to the highest declared index. */
 #define FVM_AVM1_HOST_REGISTER_EXTRA_SLOT 1U
+/* Direct frame check stores a UI16 frame followed by a UI8 record-skip count. */
+#define FVM_AVM1_WAIT_DIRECT_BYTES 3U
+/* Value frame check stores only a UI8 record-skip count; frame comes from a value. */
+#define FVM_AVM1_WAIT_VALUE_BYTES 1U
+/* Skip byte follows the direct frame's UI16 bytes. */
+#define FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET 2U
 #endif
