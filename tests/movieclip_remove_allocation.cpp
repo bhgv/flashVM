@@ -60,5 +60,21 @@ int main()
         assert(replacement->resource_result.object->properties["parent"].object==root);
         fvm_context_destroy(c);
     }
+    {
+        FVM_Context *c=0;FVM_Object *root=0,*placement=0;
+        assert(fvm_context_create(rt,&c)==FVM_OK && fvm_standard_install(c)==FVM_OK);
+        assert(fvm_movieclip_create(c,"root",3,&root)==FVM_OK && fvm_gc_pin(c,root)==FVM_OK);
+        FVM_Object *clip=child(c,root,"original",2);FVM_Value value= obj(clip),out;int own;
+        assert(fvm_object_set(c,root,"prefix",&value)==FVM_OK);
+        assert(fvm_object_set_bytes(c,root,"prefix\0tail",11,&value)==FVM_OK);
+        assert(fvm_value_string_bytes(&value,"prefix\0tail",11)==FVM_OK && fvm_object_set(c,clip,"_name",&value)==FVM_OK);
+        assert(fvm_object_create(c,&placement)==FVM_OK);
+        assert(fvm_value_string(&value,"renamed")==FVM_OK && fvm_object_set(c,placement,"name",&value)==FVM_OK);
+        assert(fvm_movieclip_scene_update(c,clip,placement)==FVM_OK);
+        assert(fvm_object_has_own_bytes(c,root,"prefix\0tail",11,&own)==FVM_OK && !own);
+        assert(fvm_object_get(c,root,"prefix",&out)==FVM_OK && out.object==clip);
+        assert(fvm_object_get(c,root,"renamed",&out)==FVM_OK && out.object==clip);
+        fvm_context_destroy(c);
+    }
     fvm_runtime_destroy(rt);return 0;
 }

@@ -2424,3 +2424,12 @@ publication, counted current-name cleanup, missing-name safety and slot identity
 checks. C89 host/SWF4–8 fixtures and allocation/GC tests cover the change while
 preserving existing authored-depth native policy. Action RemoveSprite and full
 rename/unload/removed-target semantics remain open. Схема переноса не меняется.
+
+### v0.295 — counted clip replacement / Полные имена при замене клипа
+
+Depth replacement and scene rename preserve embedded-NUL binding lengths and
+unrelated prefix aliases; replacement tolerates a missing _name. Covered by
+movieclip_remove_names and movieclip_remove_allocation, including host/SWF4–8
+replacement and direct scene rename. See MOVIECLIP_REMOVAL_ATOMICITY.md.
+Поиск связи при замене и переименовании больше не усекает имя по NUL.
+Full rename semantics, RemoveSprite and all roadmap stages remain open.

@@ -35,3 +35,28 @@ behavior remain separate scene/interpreter work. No roadmap stage is closed.
 заменивший старый объект в слоте, не удаляется через устаревшую ссылку. Проверены
 отрицательные глубины и GC между отказами. Это усиление нативной операции, а не
 завершение семантики RemoveSprite, переименования или событий выгрузки.
+
+## Counted replacement and scene rename — v0.295
+
+Depth replacement and scene-driven rename now also locate the previous binding
+using its complete counted name. A prefix alias is retained even when the old
+name contains NUL. Replacement initializes the old-name value and checks the
+lookup result, so a deleted _name cannot cause an uninitialized read. Cleanup
+requires an object-valued binding to the replaced clip. Prepared ownership-map
+publication and the existing API remain unchanged; no Action is added.
+
+Regression fixtures exercise replacement in host and SWF4–8 modes, absent _name,
+and a direct scene rename with both prefix and counted bindings. Heap/global
+ASan and UBSan cover the two affected fixtures; stack/leak coverage is excluded.
+
+Замена клипа на глубине и переименование из сцены теперь ищут прежнюю связь по
+полному имени, включая NUL. Отдельная связь по префиксу сохраняется. Удалённое
+_name больше не приводит к чтению неинициализированного значения при замене.
+Это исправление существующей модели; полная семантика переименования остаётся
+открытой, интерфейсы C и схема графа не меняются.
+
+Validation: Linux AGG and Cairo each passed all 580 tests, including repaired
+execution-permission launch failures (six AGG, four Cairo; no assertion failures).
+The two affected sanitizer fixtures passed. All 26 accepted original SWFs matched
+the pinned oracle in both renderer profiles. This does not certify full SWF or
+cross-platform compatibility.

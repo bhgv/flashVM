@@ -438,3 +438,12 @@ C89 host/SWF4–8 fixtures cover counted names, aliases, repeated removal and mi
 names. Stale slot identity protection is exercised separately. RemoveSprite,
 full rename/unload/removed-target semantics, real JIT and target-platform runs
 remain open. Все стадии 1–9 остаются открытыми; зеркало — текущий способ выдачи.
+
+### v0.295 — counted clip replacement / Полные имена при замене клипа
+
+Depth replacement and scene rename preserve embedded-NUL binding lengths and
+unrelated prefix aliases; replacement tolerates a missing _name. Covered by
+movieclip_remove_names and movieclip_remove_allocation, including host/SWF4–8
+replacement and direct scene rename. See MOVIECLIP_REMOVAL_ATOMICITY.md.
+Поиск связи при замене и переименовании больше не усекает имя по NUL.
+Full rename semantics, RemoveSprite and all roadmap stages remain open.

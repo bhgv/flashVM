@@ -571,13 +571,15 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
     if (replaced)
     {
         FVM_Value old_name;
-        field(replaced, "_name", old_name);
-        if (old_name.type == FVM_VALUE_STRING)
+        fvm_value_undefined(&old_name);
+        if (field(replaced, "_name", old_name) == FVM_OK && old_name.type == FVM_VALUE_STRING)
         {
-            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p =
-                props.find(old_name.string);
-            if (p != props.end() && p->second.object == replaced)
-                props.erase(old_name.string);
+            /* Preserve embedded NUL bytes when removing the replaced child's binding. */
+            fvm_detail::string binding(old_name.string, fvm_string_size(old_name));
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator p = props.find(binding);
+            if (p != props.end() && p->second.type == FVM_VALUE_OBJECT &&
+                p->second.object == replaced)
+                props.erase(binding);
         }
     }
     next[key] = object(child);
@@ -592,7 +594,7 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
         detached = old_data->properties;
         /* [GC:] The detached node no longer owns its former parent through this edge. */
         detached["parent"] = object(0);
-        detached["playing"] = number(0);
+        detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
     }
 
     /* [GC:] All following swaps publish prepared ownership maps without allocating. */
@@ -2913,11 +2915,13 @@ FVM_Result fvm_movieclip_scene_update(FVM_Context *c, FVM_Object *o, FVM_Object 
             fvm_detail::map<fvm_detail::string, FVM_Value> bindings = p->properties;
             if (old_name.type == FVM_VALUE_STRING)
             {
+                /* Match the entire previous name, including embedded NUL bytes. */
+                fvm_detail::string binding(old_name.string, fvm_string_size(old_name));
                 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator old =
-                    bindings.find(old_name.string);
+                    bindings.find(binding);
                 if (old != bindings.end() && old->second.type == FVM_VALUE_OBJECT &&
                     old->second.object == o)
-                    bindings.erase(old_name.string);
+                    bindings.erase(binding);
             }
             bindings[name.string] = object(o);
             p->properties.swap(bindings);

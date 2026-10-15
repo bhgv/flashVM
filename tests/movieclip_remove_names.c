@@ -35,6 +35,17 @@ int main(void)
         assert(fvm_object_delete(c,clip,"_name",&deleted)==FVM_OK && deleted);
         assert(fvm_object_call(c,clip,"removeMovieClip",0,0,&out)==FVM_OK);
         fvm_value_number(&arg,3);assert(fvm_object_call(c,root,"getInstanceAtDepth",1,&arg,&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);
+        clip=child(c,root,"replaced",4);
+        fvm_value_undefined(&value);value.type=FVM_VALUE_OBJECT;value.object=clip;
+        assert(fvm_object_set(c,root,"prefix",&value)==FVM_OK);
+        assert(fvm_object_set_bytes(c,root,"prefix\0tail",11,&value)==FVM_OK);
+        assert(fvm_value_string_bytes(&value,"prefix\0tail",11)==FVM_OK && fvm_object_set(c,clip,"_name",&value)==FVM_OK);
+        child(c,root,"replacement",4);
+        assert(fvm_object_has_own_bytes(c,root,"prefix\0tail",11,&own)==FVM_OK && !own);
+        assert(fvm_object_get(c,root,"prefix",&out)==FVM_OK && out.type==FVM_VALUE_OBJECT && out.object==clip);
+        clip=child(c,root,"nameless",5);
+        assert(fvm_object_delete(c,clip,"_name",&deleted)==FVM_OK && deleted);
+        child(c,root,"replacement2",5);
         assert(fvm_gc_collect(c,0)==FVM_OK);fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);return 0;
