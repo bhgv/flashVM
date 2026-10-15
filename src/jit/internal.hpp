@@ -42,19 +42,26 @@ struct FVM_JitConstant
         fvm_value_undefined(&value);
     }
 };
+/* One immutable encoded ConstantPool replacement, independent of managed string ownership. */
+struct FVM_JitPool
+{
+    fvm_detail::vector<fvm_detail::string> entries; /* Source-owned terminated byte strings. */
+};
 /* Host-owned program and executable mapping, intentionally outside graph transport. */
 struct FVM_JitCode
 {
     fvm_detail::vector<unsigned char>
         source; /* Owned source snapshot for root diagnostic replay. */
     fvm_detail::vector<FVM_JitConstant> constants; /* No managed references. */
+    fvm_detail::vector<FVM_JitPool> pools;         /* Immutable complete pool replacements. */
+    size_t pool_entries; /* Bounded aggregate pool entry count, independent of literal records. */
     fvm_detail::vector<FVM_JitAction> actions;     /* Source map and compile-time call plan. */
     void *memory;                                  /* RX-only native instruction mapping. */
     size_t mapped;                                 /* Complete OS mapping length. */
     size_t bytes;                                  /* Actual emitted instruction byte count. */
     unsigned int active; /* Reentrant same-thread invocation count; prevents active release. */
     /* No executable mapping is owned until the compiler publishes one. */
-    FVM_JitCode() : memory(0), mapped(0), bytes(0), active(0)
+    FVM_JitCode() : pool_entries(0), memory(0), mapped(0), bytes(0), active(0)
     {
     }
     /* Release an inactive mapping and then the immutable compile-time data. */
@@ -70,6 +77,7 @@ struct FVM_JitInvocation
     const FVM_ScriptFrame *frame;         /* Borrowed prepared activation ABI. */
     FVM_JitCode *code;                    /* Immutable native program, protected by active count. */
     fvm_detail::vector<FVM_Value> *stack; /* [GC:] Rooted dynamic operands. */
+    const fvm_detail::vector<fvm_detail::string> *pool; /* Activation snapshot or selected code pool. */
     FVM_Value result;    /* Returned value copied before stack roots leave scope. */
     unsigned long steps; /* Invocation-local checkpoint polling cadence. */
     bool condition;      /* Latest popped branch truth value. */
@@ -77,6 +85,10 @@ struct FVM_JitInvocation
 /* Runtime helper families; all exceptions are contained before returning to machine code. */
 FVM_Result fvm_jit_checkpoint(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_push(FVM_JitInvocation *, unsigned int);
+/* Select an immutable pool only when the encoded ConstantPool action actually executes. */
+FVM_Result fvm_jit_set_pool(FVM_JitInvocation *, unsigned int);
+/* Adopt a selected/captured pool entry before pushing it into managed state. */
+FVM_Result fvm_jit_push_pool(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_numeric(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_compare(FVM_JitInvocation *, unsigned int);
 /* Convert or transform a rooted top operand through the shared unary C services. */

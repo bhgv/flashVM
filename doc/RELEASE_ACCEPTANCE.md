@@ -1,7 +1,14 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.352
+# Условия окончательной приёмки / Final acceptance gates — v0.353
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.353 adds native ConstantPool and indexed Push with captured activation pools.
+Linux Release has passing evidence for all 713 AGG, 713 Cairo and 694 minimal
+checks. AGG/Cairo test objects were rebuilt after the private context layout
+changed; AGG and minimal required restoring generated ELF execute permissions.
+Ten focused restricted ASan+UBSan checks pass. See JIT_POOLS.md; all roadmap
+stages and foreign-platform runtime acceptance remain open.
 
 v0.352 adds native register reads/stores and matching prepared/root bank lifetimes.
 Linux Release has passing evidence for 709 AGG, 709 Cairo and 690 minimal tests,

@@ -24,11 +24,13 @@ struct FVM_ExecutionModeState
     fvm_detail::map<fvm_detail::string, FVM_JitCode *>
         cache;          /* Owned source keys and code/null negatives. */
     size_t cache_bytes; /* Total emitted bytes owned by the automatic cache. */
+    const fvm_detail::vector<fvm_detail::string> *native_pool;
+        /* Borrowed prepared constant-pool snapshot during a native body; no GC edges. */
     /* Preserve the previous manual native-body ABI unless options are explicitly selected. */
     FVM_ExecutionModeState()
         : breakpoint_handler(0), breakpoint_data(0), breakpoint_busy(false),
           mode(FVM_EXECUTION_MANUAL), flags(0), replay_depth(0), logger(0), logger_data(0),
-          cache_bytes(0)
+          cache_bytes(0), native_pool(0)
     {
         std::memset(&stats, 0, sizeof(stats));
         stats.struct_size = sizeof(stats);

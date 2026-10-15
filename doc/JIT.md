@@ -39,6 +39,8 @@ The compiler currently accepts:
 - Push: signed integer, float/double, register, terminated string, Boolean, null and undefined.
 - StoreRegister and prepared Function2/global/root banks
   (v0.352; [contracts and checks](JIT_REGISTERS.md)).
+- ConstantPool and Push-constant8/constant16, with captured/runtime pool selection
+  (v0.353; [contracts and checks](JIT_POOLS.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).
@@ -48,8 +50,8 @@ The compiler currently accepts:
   (v0.351; [contracts and checks](JIT_NUMBERS.md)).
 - Jump and If, with target validation and native forward/backward relocation.
 
-All other operations, including constant-pool Push,
-Function definitions, calls, object/array construction and exception blocks, return
+All other operations, including function definitions, calls, object/array
+construction and exception blocks, return
 `FVM_UNSUPPORTED` at compile time. Support in the interpreter does not imply
 support in this compiler. Invalid supported record layouts/branch targets return
 `FVM_INVALID_ARGUMENT`. Some unreachable unsupported operations can conservatively

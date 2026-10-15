@@ -472,7 +472,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             prepared.registers =
                 execution.global_registers ? c->avm1_global_registers : execution.registers.begin();
             prepared.capture = native_entry.capture;
-            status = fvm_exec_native_body(c, native_entry, prepared, result);
+            status = fvm_exec_native_body(c, native_entry, prepared, result, &execution.constants);
             native_fault_offset = c->debug_offset;
         }
         else

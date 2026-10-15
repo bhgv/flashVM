@@ -78,6 +78,7 @@ extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame,
         state.frame = frame;
         state.code = code;
         state.stack = &roots.values;
+        state.pool = c->execution_mode.native_pool;
         state.steps = 0;
         state.condition = false;
         fvm_value_undefined(&state.result);

@@ -2771,3 +2771,12 @@ Host/SWF4–8, manual/automatic, boundary/missing-value, GC-only-register retent
 and counted-string allocation tests are in JIT_REGISTERS.md. Constant pools,
 function definitions/calls, complete Action coverage and foreign runtime/platform
 acceptance remain open. Все девять стадий не объявляются завершёнными.
+
+## v0.353: native constant pools
+
+Implemented/tested: ConstantPool and constant8/constant16 Push, captured activation
+pools, invocation-local runtime selection and nested native/root scope restoration.
+Host/SWF4–8 differential, branch/cache isolation, returned-string lifetime,
+allocation and malformed/bounded-input fixtures are in JIT_POOLS.md. Ten restricted
+ASan+UBSan checks pass. Other Actions, full Flash/reference equivalence and real
+foreign-target/platform acceptance remain open. Все стадии остаются открытыми.

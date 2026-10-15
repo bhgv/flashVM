@@ -34,6 +34,17 @@ FVM_Result push(const unsigned char *data, size_t begin, size_t end, FVM_JitCode
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_load_register>, data[begin++]));
             continue;
         }
+        if (type == FVM_AVM1_PUSH_CONSTANT8 || type == FVM_AVM1_PUSH_CONSTANT16)
+        {
+            size_t width = type == FVM_AVM1_PUSH_CONSTANT8 ? FVM_AVM1_CONSTANT8_INDEX_BYTES
+                                                          : FVM_AVM1_CONSTANT16_INDEX_BYTES;
+            if (end - begin < width)
+                return FVM_INVALID_ARGUMENT;
+            unsigned int index = type == FVM_AVM1_PUSH_CONSTANT8 ? data[begin] : word(data + begin);
+            begin += width;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_push_pool>, index));
+            continue;
+        }
         FVM_JitConstant constant;
         if (type == FVM_AVM1_PUSH_INTEGER)
         {
@@ -87,6 +98,35 @@ FVM_Result push(const unsigned char *data, size_t begin, size_t end, FVM_JitCode
         code.constants.push_back(constant);
         action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_push>, index));
     }
+    return FVM_OK;
+}
+/* Snapshot each complete replacement; choosing which pool is active belongs to native execution. */
+FVM_Result pool(const unsigned char *data, size_t begin, size_t end, FVM_JitCode &code,
+                FVM_JitAction &action)
+{
+    if (end - begin < FVM_AVM1_POOL_COUNT_BYTES)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int count = word(data + begin);
+    begin += FVM_AVM1_POOL_COUNT_BYTES;
+    if (count > FVM_JIT_MAX_POOL_ENTRIES - code.pool_entries)
+        return FVM_UNSUPPORTED;
+    FVM_JitPool replacement;
+    for (unsigned int i = 0; i < count; ++i)
+    {
+        size_t first = begin;
+        while (begin < end && data[begin])
+            ++begin;
+        if (begin == end)
+            return FVM_INVALID_ARGUMENT;
+        replacement.entries.push_back(fvm_detail::string((const char *)data + first, begin - first));
+        ++begin;
+    }
+    if (begin != end)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int index = (unsigned int)code.pools.size();
+    code.pools.push_back(replacement);
+    code.pool_entries += count;
+    action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_set_pool>, index));
     return FVM_OK;
 }
 } // namespace
@@ -162,6 +202,12 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         else if (op == FVM_AVM1_ACTION_PUSH)
         {
             FVM_Result status = push(data, payload, position, code, action);
+            if (status != FVM_OK)
+                return status;
+        }
+        else if (op == FVM_AVM1_ACTION_CONSTANT_POOL)
+        {
+            FVM_Result status = pool(data, payload, position, code, action);
             if (status != FVM_OK)
                 return status;
         }

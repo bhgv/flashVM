@@ -137,4 +137,6 @@
 #define FVM_AVM1_CONSTANT8_INDEX_BYTES 1U
 /* Constant16 selects a pool entry using a little-endian unsigned short. */
 #define FVM_AVM1_CONSTANT16_INDEX_BYTES 2U
+/* ConstantPool begins with a little-endian UI16 number of terminated strings. */
+#define FVM_AVM1_POOL_COUNT_BYTES 2U
 #endif

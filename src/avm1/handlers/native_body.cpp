@@ -7,8 +7,27 @@
 #include "../../core/finalizer_entry.hpp"
 /* [GC:] Preserve script identity and a snapshotted capture across GC and self-unbinding. */
 FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry,
-                                const FVM_ScriptFrame &frame, FVM_Value *out)
+                                const FVM_ScriptFrame &frame, FVM_Value *out,
+                                const fvm_detail::vector<fvm_detail::string> *pool)
 {
+    /* Raw pool bytes belong to the activation snapshot, not the managed graph.
+     * Nested native functions/root entries must restore the caller's borrowed view. */
+    struct PoolScope
+    {
+        FVM_Context *context; /* Owning thread's transient native execution environment. */
+        const fvm_detail::vector<fvm_detail::string> *previous; /* Suspended caller snapshot. */
+        /* Publish the current snapshot, including null for a fresh root entry. */
+        PoolScope(FVM_Context *c, const fvm_detail::vector<fvm_detail::string> *value)
+            : context(c), previous(c->execution_mode.native_pool)
+        {
+            context->execution_mode.native_pool = value;
+        }
+        /* Restore the caller view through success, exception and allocation failure. */
+        ~PoolScope()
+        {
+            context->execution_mode.native_pool = previous;
+        }
+    } pool_scope(c, pool);
     FVM_ExecutionRoots roots(c, FVM_NATIVE_BODY_ROOT_COUNT);
     FVM_Object *objects[FVM_NATIVE_BODY_ROOT_COUNT];
     objects[FVM_NATIVE_BODY_CAPTURE_ROOT] = entry.capture;

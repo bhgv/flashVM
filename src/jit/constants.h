@@ -4,6 +4,7 @@
 #define FVM_JIT_MAX_SOURCE_BYTES 1048576U /* Maximum copied/decoded action body. */
 #define FVM_JIT_MAX_ACTIONS 65536U        /* Maximum emitted action/checkpoint blocks. */
 #define FVM_JIT_MAX_CONSTANTS 65536U      /* Maximum immutable constant records. */
+#define FVM_JIT_MAX_POOL_ENTRIES 65536U   /* Total retained entries across encoded pool sets. */
 #define FVM_JIT_MAX_STACK 65536U          /* Maximum live rooted runtime operand values. */
 #define FVM_JIT_MAX_CODE_BYTES 16777216U  /* Bound also keeps relative jumps in signed32 range. */
 #define FVM_JIT_ADDRESS_BYTES 8U          /* Native System V AMD64 address representation. */
