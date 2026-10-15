@@ -598,3 +598,12 @@ The shared loaded selection service filters detached native bases/descendants
 before publishing a target. Host behavior and initial activation construction
 remain unchanged. Raw activation probes and allocation checks are recorded in
 AVM1_REMOVED_TARGET_SELECTION.md. Full lifetime policy and all stages stay open.
+
+### v0.317 — native root locks / Блокировка корня
+
+A common C89 service atomically controls native _lockroot with versioned Boolean
+conversion. Root/preload/absolute-path traversal honors the flag; parent edges
+remain unchanged. Stable accessor IDs support graph transport. Fresh recovered
+AGG/Cairo builds passed 616 tests each; three limited sanitizer fixtures and four
+recovered original SWFs passed in both profiles. See MOVIECLIP_LOCKROOT.md for
+exact coverage and the pruned historical corpus limitation. All stages stay open.

@@ -131,3 +131,11 @@ MovieClip, Function2 and full SWF compatibility limitations remain open.
 инструкций, safe points и привязка к исходникам нужны в backend. Оставшиеся
 короткие обработчики и orchestration работают в интерпретаторе. Полная
 совместимость Flash и платформенные стадии остаются открытыми.
+
+### v0.317: intrinsic root-lock C service
+
+clip_lock_root.cpp adds fvm_exec_clip_lock_root for explicit native instance/value
+query and atomic assignment. It shares versioned Boolean conversion and roots
+without accepting instruction bytes or an operand stack. Native getter/setter
+bridges each occupy a separate standard file; root/path lookup reads raw native
+state through movieclip_root_locked.cpp. See MOVIECLIP_LOCKROOT.md.

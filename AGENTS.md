@@ -29,6 +29,9 @@
 - Standing user instruction on 2026-10-15: continue in the existing checkout,
   update only the remote mirror, and do not create/export source or local-Git
   archives unless the user explicitly asks again. This supersedes routine archive delivery.
+- Recovery authorization on 2026-10-15: the user permits cloning Git again after
+  workspace maintenance removed the checkout. Mirror updates remain authorized;
+  source/local-Git archive delivery remains disabled unless explicitly requested.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

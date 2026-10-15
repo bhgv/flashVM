@@ -186,6 +186,12 @@ extern "C"
      * A new parentless root is false; descendants are not implicitly marked by this query.
      * Legacy state without a marker reads false. Errors preserve the caller output. */
     FVM_API FVM_Result fvm_exec_clip_detached(FVM_Context *, FVM_Object *, FVM_Value *out);
+    /* Read intrinsic _lockroot, or write the versioned Boolean conversion of input.
+     * Root locks affect root/path lookup without changing parent edges. Errors preserve output
+     * and stored state; output may alias input. No interpreter activation or bytecode is used. */
+    FVM_API FVM_Result fvm_exec_clip_lock_root(FVM_Context *, int write, FVM_Object *,
+                                                const FVM_Value *input, FVM_Value *out);
+
     /* Remove an attached native instance at nonnegative public depth; otherwise succeed unchanged.
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */

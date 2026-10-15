@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
+#include "movieclip_lockroot.hpp"
 #include "movieclip_constants.h"
 #include "movieclip_storage.hpp"
 #include "movieclip_path_constants.h"
@@ -316,8 +317,14 @@ FVM_Result root_get(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value
     {
         if (++depth > FVM_MOVIECLIP_ROOT_MAX_ANCESTORS)
             return FVM_INVALID_ARGUMENT;
+        bool locked = false;
+        FVM_Result status = fvm_movieclip_root_locked(c, o, &locked);
+        if (status != FVM_OK)
+            return status;
+        if (locked)
+            break;
         FVM_Object *p = 0;
-        FVM_Result status = fvm_movieclip_avm1_parent(c, o, &p);
+        status = fvm_movieclip_avm1_parent(c, o, &p);
         if (status != FVM_OK)
             return status;
         if (!p)
@@ -3589,6 +3596,13 @@ fvm_movieclip_stage(FVM_Context *c,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v = object(klass);
 
+    /* _lockroot is a nonenumerable, nondeletable instance property, independent of _parent. */
+    FVM_AccessorEntry lockroot;
+    lockroot.getter = fvm_movieclip_lockroot_get;
+    lockroot.setter = fvm_movieclip_lockroot_set;
+    proto->accessors["_lockroot"] = lockroot;
+    proto->attributes["_lockroot"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     globals["MovieClip"] = v;
@@ -3688,6 +3702,10 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return FVM_MOVIECLIP_CALLBACK_TOTAL_FRAMES;
     if (cb == target)
         return FVM_MOVIECLIP_CALLBACK_TARGET_PATH;
+    if (cb == fvm_movieclip_lockroot_get)
+        return FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET;
+    if (cb == fvm_movieclip_lockroot_set)
+        return FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
             return FVM_MOVIECLIP_CALLBACK_METHOD_BASE + (unsigned long)i;
@@ -3709,6 +3727,10 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return total_get;
     if (id == FVM_MOVIECLIP_CALLBACK_TARGET_PATH)
         return target;
+    if (id == FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET)
+        return fvm_movieclip_lockroot_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET)
+        return fvm_movieclip_lockroot_set;
     return id >= FVM_MOVIECLIP_CALLBACK_METHOD_BASE &&
                    id < FVM_MOVIECLIP_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
                ? methods[id - FVM_MOVIECLIP_CALLBACK_METHOD_BASE].callback

@@ -40,6 +40,9 @@
 #define FVM_MOVIECLIP_CALLBACK_CURRENT_FRAME 1003UL
 #define FVM_MOVIECLIP_CALLBACK_TOTAL_FRAMES 1004UL
 #define FVM_MOVIECLIP_CALLBACK_TARGET_PATH 1005UL
+/* Stable native _lockroot getter and setter IDs; existing callbacks are never renumbered. */
+#define FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET 1006UL
+#define FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET 1007UL
 /* Ordered method callbacks occupy consecutive IDs beginning here. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \

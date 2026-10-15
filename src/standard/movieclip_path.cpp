@@ -1,5 +1,6 @@
 /* FlashVM: counted AVM1 display paths with child priority, prototype fallback and scoped GC roots. */
 #include "movieclip_state.hpp"
+#include "movieclip_lockroot.hpp"
 #include "movieclip_path_constants.h"
 #include "string_order.hpp"
 #include "../core/property_key.hpp"
@@ -226,7 +227,15 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         {
             if (++visited > FVM_MOVIECLIP_PATH_MAX_VISITS)
                 return FVM_ERROR;
-            FVM_Result status = parent(c, root, next);
+            bool locked = false;
+            FVM_Result status = FVM_OK;
+            if (root->resource_kind == FVM_RESOURCE_MOVIECLIP)
+                status = fvm_movieclip_root_locked(c, root, &locked);
+            if (status != FVM_OK)
+                return status;
+            if (locked)
+                break;
+            status = parent(c, root, next);
             if (status != FVM_OK)
                 return status;
             if (!next)
