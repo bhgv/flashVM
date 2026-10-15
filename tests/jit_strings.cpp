@@ -29,6 +29,7 @@ static void string_check(FVM_Context *c,const Program &p,unsigned argc,const FVM
         assert(fvm_execution_set_mode(c,mode==2?FVM_EXECUTION_JIT:FVM_EXECUTION_MANUAL,0)==FVM_OK);
         assert(fvm_function_set_body(c,fn,mode==1?fvm_jit_body:0,mode==1?code:0,0)==FVM_OK);
         unsigned long before=c->execution_mode.stats.native_entries;
+        fvm_value_undefined(&out);
         FVM_Result status=fvm_function_invoke(c,fn,0,argc,args,&out);
         assert(c->execution_mode.stats.native_entries==before+(mode!=0));
         if(!mode){first=status;baseline=out;if(status==FVM_OK && out.type==FVM_VALUE_STRING)units(out,saved);}

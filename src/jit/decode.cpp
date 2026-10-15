@@ -276,6 +276,12 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         else if (op == FVM_AVM1_ACTION_INIT_ARRAY || op == FVM_AVM1_ACTION_INIT_OBJECT)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_literal>,
                                                op == FVM_AVM1_ACTION_INIT_OBJECT));
+        else if (op == FVM_AVM1_ACTION_EQUALS || op == FVM_AVM1_ACTION_LESS)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_legacy_compare>,
+                op == FVM_AVM1_ACTION_EQUALS ? FVM_EXEC_LEGACY_EQUAL : FVM_EXEC_LEGACY_LESS));
+        else if (op == FVM_AVM1_ACTION_AND || op == FVM_AVM1_ACTION_OR)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_logical>,
+                op == FVM_AVM1_ACTION_AND ? FVM_EXEC_LOGICAL_AND : FVM_EXEC_LOGICAL_OR));
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
         else if (op == FVM_AVM1_ACTION_SET_VARIABLE)

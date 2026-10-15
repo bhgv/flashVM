@@ -108,6 +108,10 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Compare rooted values with legacy numeric/metamethod semantics. */
+FVM_Result fvm_jit_legacy_compare(FVM_JitInvocation *, unsigned int);
+/* Apply versioned AND/OR truth conversion to both operands. */
+FVM_Result fvm_jit_logical(FVM_JitInvocation *, unsigned int);
 /* Materialize an Array/Object literal through shared count and constructor services. */
 FVM_Result fvm_jit_literal(FVM_JitInvocation *, unsigned int);
 /* Execute versioned string length while retaining its input. */

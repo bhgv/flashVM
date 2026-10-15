@@ -51,6 +51,8 @@ The compiler currently accepts:
   StringEquals/Less/Greater (v0.357; [contracts and limits](JIT_STRINGS.md)).
 - InitArray/InitObject with shared count normalization and own-entry semantics
   (v0.358; [contracts and checks](JIT_LITERALS.md)).
+- Legacy Equals/Less and And/Or with shared versioned coercion/metamethods
+  (v0.359; [contracts and checks](JIT_LEGACY.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).

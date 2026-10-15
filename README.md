@@ -1,5 +1,5 @@
-Development version: **0.358** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.358 ` and an English description. Increase the subversion before each
+Development version: **0.359** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.359 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -26,6 +26,8 @@ Twelve string Actions now use shared counted/versioned native services;
 see [string contracts and checks](doc/JIT_STRINGS.md).
 InitArray/InitObject now preserve versioned literal count and entry semantics;
 see [initializer contracts and checks](doc/JIT_LITERALS.md).
+Legacy Equals/Less and And/Or now share native versioned coercion and hooks;
+see [legacy contracts and checks](doc/JIT_LEGACY.md).
 
 The current standing user instruction authorizes mirror updates after every commit
 until revoked. Use `origin` pointing to
@@ -33,8 +35,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.358** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.358 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.359** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.359 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

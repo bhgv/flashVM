@@ -2819,3 +2819,11 @@ entry order, independent missing pair members, own Array slots and counted keys.
 JIT_LITERALS.md records versioned native/interpreted, collecting/throwing callback,
 allocation and result-lifetime checks. Определения функций, остальные инструкции
 и полная совместимость и приёмка всех стадий ещё открыты.
+
+## v0.359: native legacy comparisons and logic
+
+Equals/Less and And/Or use shared versioned coercion and metamethod services.
+JIT_LEGACY.md records 1944 primitive combinations in three execution modes,
+missing inputs, numeric conversion order, collecting/throwing left/right hooks
+and allocation failures. Остальные инструкции, полная совместимость и все стадии
+приёмки, включая реальные запуски других CPU/ОС, остаются открытыми.

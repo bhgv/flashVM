@@ -1,7 +1,16 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.358
+# Условия окончательной приёмки / Final acceptance gates — v0.359
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.359 adds native legacy Equals/Less and logical And/Or. All 729 AGG, 729 Cairo
+and 710 minimal Linux Release checks have passing evidence after generated ELF
+execute-permission repairs. Expanded hook cases were rebuilt and pass in all
+profiles and restricted heap/global ASan+UBSan; six focused sanitizer checks pass
+(stack ASan/LSan disabled). Unicorn 2.1.4 also passes all 26 current foreign-ISA
+synthetic ABI/control-flow cases. These are encoder/stub-helper executions, not
+full foreign-platform VM acceptance. See JIT_LEGACY.md and JIT_ARCHITECTURES.md;
+all nine stages remain open.
 
 v0.358 adds native InitArray/InitObject using shared count/construction services.
 All 726 AGG, 726 Cairo and 707 minimal Linux Release checks have passing evidence

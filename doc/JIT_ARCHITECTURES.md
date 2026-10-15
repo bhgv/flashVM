@@ -194,3 +194,12 @@ disables OS workers; actual concurrent worker execution passed in Release.
 26 Unicorn cases passed: five targets with normal/far control flow and error
 exits, plus ARM Thumb interworking and ARM64/RV64 full-width high addresses.
 No benchmark speedup or full foreign-OS execution is inferred from these checks.
+
+## v0.359 repeated encoder execution
+
+Unicorn 2.1.4 reran all 26 current synthetic-address ABI/control-flow cases: x86,
+ARM, ARM64, RV32 and RV64; ordinary/far branches, ARM Thumb helper interworking,
+64-bit high helper addresses, and successful/error exits. Fixtures were emitted
+by the current minimal Release executable, then checked by
+`scripts/check_jit_backends.py`. This executes generated instructions with stub
+helpers; it remains distinct from running full FlashVM on a foreign CPU/OS.
