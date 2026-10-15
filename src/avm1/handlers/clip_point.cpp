@@ -1,6 +1,7 @@
 /* FlashVM: existing native point conversion shared by C/generated callers and MovieClip methods. */
 #include "support.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/matrix.h"
 #include "clip_point_constants.h"
 #include "../scope_keywords.hpp"
 namespace
@@ -20,16 +21,16 @@ PointProperties::iterator stored_coordinate(FVM_Context *c, FVM_Object *point, c
     return point->properties.end();
 }
 /* Reproduce loaded point input conversion: NaN to zero, saturation, then truncation to twips.
- * Keep the bounded twip integer in double so C++98 needs no wider-than-long integer type. */
-double loaded_coordinate(double pixels)
+ * Check the signed-32 bounds before the final safe conversion to a native long. */
+long loaded_twips(double pixels)
 {
     if (pixels != pixels)
         return 0;
     /* Clamp pixels first so even DBL_MAX and infinities never overflow the product. */
     if (pixels >= FVM_CLIP_POINT_MAX_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL)
-        return FVM_CLIP_POINT_MAX_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+        return FVM_FIXED32_MAX;
     if (pixels <= FVM_CLIP_POINT_MIN_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL)
-        return FVM_CLIP_POINT_MIN_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+        return FVM_FIXED32_MIN;
     double twips = pixels * FVM_CLIP_POINT_TWIPS_PER_PIXEL;
     if (twips >= FVM_CLIP_POINT_MAX_TWIPS)
         twips = FVM_CLIP_POINT_MAX_TWIPS;
@@ -37,7 +38,19 @@ double loaded_coordinate(double pixels)
         twips = FVM_CLIP_POINT_MIN_TWIPS;
     else
         twips = twips < 0 ? std::ceil(twips) : std::floor(twips);
-    return twips / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+    return (long)twips;
+}
+/* Convert a native double coefficient to binary32 without out-of-range float conversions. */
+float scene_coefficient(double value)
+{
+    if (value != value)
+        return std::numeric_limits<float>::quiet_NaN();
+    double limit = std::numeric_limits<float>::max();
+    if (value > limit)
+        return std::numeric_limits<float>::infinity();
+    if (value < -limit)
+        return -std::numeric_limits<float>::infinity();
+    return (float)value;
 }
 /* Preserve the strict host point-field lookup/coercion and finite-number validation. */
 FVM_Result coordinate(FVM_Context *c, FVM_Object *point, const char *name, double &out)
@@ -71,6 +84,7 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         FVM_NativeCallGuard guard(c);
         FVM_Object *target = roots.values[FVM_CLIP_POINT_VALUE_ROOT].object;
         double x = 0, y = 0;
+        long input_x = 0, input_y = 0;
         /* Copy field spelling before geometry callbacks can mutate the point's property map. */
         fvm_detail::string x_name(FVM_CLIP_POINT_X_NAME), y_name(FVM_CLIP_POINT_Y_NAME);
         FVM_Result status = FVM_OK;
@@ -84,8 +98,8 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
                 return FVM_OK;
             x_name = own_x->first;
             y_name = own_y->first;
-            x = loaded_coordinate(own_x->second.number);
-            y = loaded_coordinate(own_y->second.number);
+            input_x = loaded_twips(own_x->second.number);
+            input_y = loaded_twips(own_y->second.number);
         }
         else
         {
@@ -98,34 +112,59 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
             status = fvm_movieclip_world_matrix(c, clip, matrix);
         if (status != FVM_OK)
             return status;
-        if (reverse)
+        if (reverse && !c->swf_loaded)
         {
             double determinant = matrix.xx * matrix.yy - matrix.xy * matrix.yx;
             if (!determinant || determinant != determinant)
+                return FVM_INVALID_ARGUMENT;
+            FVM_Affine old = matrix;
+            matrix.xx = old.yy / determinant;
+            matrix.xy = -old.xy / determinant;
+            matrix.yx = -old.yx / determinant;
+            matrix.yy = old.xx / determinant;
+            matrix.x0 = -(matrix.xx * old.x0 + matrix.xy * old.y0);
+            matrix.y0 = -(matrix.yx * old.x0 + matrix.yy * old.y0);
+        }
+        double result_x = 0, result_y = 0;
+        if (c->swf_loaded)
+        {
+            /* Apply binary32 linear terms in integer twips, then modular translation. */
+            FVM_TwipMatrix scene;
+            scene.a = scene_coefficient(matrix.xx);
+            scene.b = scene_coefficient(matrix.yx);
+            scene.c = scene_coefficient(matrix.xy);
+            scene.d = scene_coefficient(matrix.yy);
+            scene.tx = loaded_twips(matrix.x0);
+            scene.ty = loaded_twips(matrix.y0);
+            long output_x = 0, output_y = 0;
+            if (reverse)
+                status = fvm_matrix_inverse_twips(&scene, &scene);
+            if (reverse && status == FVM_INVALID_ARGUMENT)
             {
-                if (!c->swf_loaded)
-                    return FVM_INVALID_ARGUMENT;
-                /* Loaded globalToLocal falls back to the unchanged world point. */
-                matrix.xx = matrix.yy = 1;
-                matrix.xy = matrix.yx = matrix.x0 = matrix.y0 = 0;
+                /* A failed loaded inverse preserves the original integer point, without
+                 * passing it through binary32 conversion a second time. */
+                output_x = input_x;
+                output_y = input_y;
+                status = FVM_OK;
             }
-            else
-            {
-                FVM_Affine old = matrix;
-                matrix.xx = old.yy / determinant;
-                matrix.xy = -old.xy / determinant;
-                matrix.yx = -old.yx / determinant;
-                matrix.yy = old.xx / determinant;
-                matrix.x0 = -(matrix.xx * old.x0 + matrix.xy * old.y0);
-                matrix.y0 = -(matrix.yx * old.x0 + matrix.yy * old.y0);
-            }
+            else if (status == FVM_OK)
+                status = fvm_matrix_point_twips(&scene, input_x, input_y, &output_x, &output_y);
+            if (status != FVM_OK)
+                return status;
+            result_x = (double)output_x / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+            result_y = (double)output_y / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+        }
+        else
+        {
+            result_x = matrix.xx * x + matrix.xy * y + matrix.x0;
+            result_y = matrix.yx * x + matrix.yy * y + matrix.y0;
         }
         FVM_Value value;
-        fvm_value_number(&value, matrix.xx * x + matrix.xy * y + matrix.x0);
+        fvm_value_number(&value, result_x);
         status = fvm_object_set(c, target, x_name.c_str(), &value);
         if (status != FVM_OK)
             return status;
-        fvm_value_number(&value, matrix.yx * x + matrix.yy * y + matrix.y0);
+        fvm_value_number(&value, result_y);
         return fvm_object_set(c, target, y_name.c_str(), &value);
     }
     catch (const std::bad_alloc &)

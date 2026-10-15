@@ -24,7 +24,9 @@ extern "C"
      * only own numeric x/y fields, ignore invalid/missing fields and use an unchanged
      * point for singular inverse. Host mode retains field coercion and strict errors.
      * Loaded inputs truncate/saturate to signed 32-bit twips (NaN becomes zero).
-     * Matrix application still uses native double arithmetic, not full fixed-point parity. */
+     * Loaded final application uses binary32 terms and nearest/even output twips.
+     * Loaded inverse uses binary32 epsilon and rounded translation; ancestor composition
+     * and raw geometry snapshots still use the native double scene model. */
     FVM_API FVM_Result fvm_exec_clip_point(FVM_Context *, FVM_Object *clip, int reverse,
                                            const FVM_Value *point);
     /* Copy a native source clip's local matrix and color into destination atomically.

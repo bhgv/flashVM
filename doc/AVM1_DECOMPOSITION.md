@@ -222,3 +222,15 @@ yet replace the native double matrix path. See FIXED_MATRIX.md.
 Добавлены независимые числовые C-функции для будущего JIT и сцены. В каждой
 единице реализации одна экспортируемая операция; текущая double-сцена пока
 не изменена, стадии роудмапа остаются открытыми.
+
+### v0.338: binary32 scene services
+
+matrix_point_twips.cpp and matrix_inverse_twips.cpp each own a context-free C89
+operation in src/capi. clip_point.cpp uses them for loaded final application and
+inverse; host point conversion remains double. Separate binary32 rounding helpers
+and scoped macros retain no execution state. See SCENE_MATRIX.md for representation
+clarification, fallback rules and remaining double ancestry/snapshot limitations.
+
+Добавлены независимые C89 application/inverse матрицы сцены binary32; общий
+обработчик загруженной точки делегирует им числовую работу. Контекст, байткод,
+стек и GC числовым сервисам не нужны. Остальные стадии не закрываются.

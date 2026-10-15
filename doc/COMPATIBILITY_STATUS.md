@@ -2634,3 +2634,17 @@ full fixed-point scene integration and all roadmap stages remain open.
 Реализован независимый C89-слой exact fixed-point произведений для матриц и
 точек, без VM-контекста и аллокаций. Сцена и интерпретатор пока его не вызывают;
 совместимость Flash и завершение стадий этим шагом не объявляются.
+
+### v0.338 Binary32 scene point application and inverse
+
+Implemented: context-free C89 binary32 point/inverse services, nearest/even
+linear/translation twips, modular translation and checked singular epsilon.
+Loaded point conversion uses them after input twip normalization; failed inverse
+preserves the original normalized integer point. Host double semantics stay.
+This corrects the representation distinction: raw SWF 16.16 and runtime scene
+binary32 are separate models, not interchangeable helpers. Native ancestry/source
+snapshots still use the old double model. See SCENE_MATRIX.md; no stage is closed.
+
+Реализованы отдельные C89-сервисы binary32 application/inverse, подключённые к
+загруженным точкам. Уточнено различие сырых SWF 16.16 и матриц сцены binary32.
+Композиция предков, raw snapshots, другие подсистемы и стадии ещё открыты.

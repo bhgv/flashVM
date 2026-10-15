@@ -43,3 +43,14 @@ LeakSanitizer. No Flash Player, other platform or Cairo run is claimed here.
 ASan heap/global + UBSan. Десятичные значения, знаки, NaN/Infinity, DBL_MAX,
 границы signed 32-bit и сохранение хостового режима проверены независимо.
 Матрицы fixed-point, Flash Player, другие платформы и утечки не заявляются.
+
+## v0.338 final application follow-up
+
+SCENE_MATRIX.md records binary32 final application/inverse after input twip
+normalization. Identity application of signed MAX input now produces signed MIN
+because binary32 first rounds the input to 2^31; the old double-path output
+expectations above are historical. Ancestor/source scene preparation remains open.
+
+В v0.338 финальные application/inverse используют binary32 и чётные twips;
+старые выходные ожидания double-пути выше исторические. Представления сырых
+SWF-матриц и матриц сцены различаются. См. SCENE_MATRIX.md.

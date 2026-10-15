@@ -84,3 +84,15 @@ heap/global + UBSan. C89-тест проверяет 297 скалярных ве
 Оба файла также компилируются с -m32 в ELF32 i386, но запуск freestanding
 32-битного probe отклонён средой (Exec format error). Это не подтверждение
 32-битного исполнения. Стек ASan, утечки и остальные платформы не проверены.
+
+## v0.338 scene representation clarification
+
+SCENE_MATRIX.md distinguishes serialized SWF fixed coefficients from the binary32
+matrix actually exported by Ruffle core/prelude.rs for display objects. The
+v0.337 functions implement their declared raw fixed arithmetic; they are not
+wired into the scene point path. v0.338 adds separate binary32 C services for
+that purpose. Future scene work should preserve this representation distinction.
+
+В v0.338 уточнено различие сырых SWF 16.16 и binary32 матрицы сцены.
+Для точек сцены добавлены отдельные C-функции; механическая подмена их
+16.16-функциями v0.337 не выполняется. См. SCENE_MATRIX.md.
