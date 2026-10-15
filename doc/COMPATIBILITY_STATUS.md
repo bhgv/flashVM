@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes/named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
 | 1/2/3/7/8: Unicode legacy display paths | Проверено для сценариев v0.378 | SWF4–6 Flash unit folding for child/property paths; counted NUL/surrogates, collecting own/inherited getters, OOM and interpreter/native targets; MOVIECLIP_UNICODE_PATHS.md / .ru.md. Duplicate-name/full player semantics remain open. |
 | 1/7: large loaded sorting | Проверено для сценариев v0.377 | Native/borrowed sort/sortOn above 65536, charged partial captures/reversal/index output, permutations/indices, budget and OOM/GC/retry; ARRAY_LOADED_LARGE_SORT.md / .ru.md. Host limits and full Flash semantics remain open. |
 | 1/7: large loaded generic mutations | Проверено для сценариев v0.376 | shift/unshift/reverse/splice above 65536 use shared budgets, with native/borrowed success, prototype accessor bypass and OOM/GC/retry; ARRAY_LOADED_LARGE_MUTATION.md / .ru.md. Host/sort bounds and full conformance remain open. |
@@ -2984,3 +2985,11 @@ four new Unicode path/target checks plus existing resolver, JIT target and point
 case checks. Stack ASan and LeakSanitizer remain disabled. Both revised scoped
 constant headers pass strict C89 syntax checking. No new external SWF oracle
 or foreign-OS runtime acceptance is claimed.
+
+Validation v0.379: all 785 AGG / 785 Cairo / 766 minimal Linux Release checks
+have passing evidence after nine executable-permission repairs on eight ELF
+files and targeted reruns (four repair operations AGG, three Cairo, two minimal).
+Eight restricted heap/global ASan+UBSan checks pass: the four new dimension
+checks plus standard MovieClip, AVM1/JIT display properties and geometry
+allocation. Stack ASan and LeakSanitizer remain disabled. No new external SWF
+oracle or foreign-OS runtime acceptance is claimed. All nine stages remain open.

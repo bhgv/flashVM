@@ -1610,14 +1610,15 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
     return r;
 }
 
-/* Compute and return bounds. */
+/* Collect stable geometry snapshots in world space or an accumulated parent-space transform. */
 FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool stroke,
-                  FVM_PathBounds &out, bool &any, unsigned int depth)
+                  FVM_PathBounds &out, bool &any, unsigned int depth, bool parent_space = false)
 {
     if (depth > FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
 
-    /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Matrix/style callbacks cannot collect detached nodes retained by native snapshots. */
+    FVM_NativeCallGuard native(c);
     FVM_Object *data = 0, *paths = 0, *children = 0;
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
@@ -1628,12 +1629,15 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
     r = private_object(data, "children", children);
     if (r != FVM_OK)
         return r;
+    /* Capture traversal order before replaceable transform getters can mutate the display list. */
+    Slots path_snapshot = paths->indexed;
+    Slots child_snapshot = children->indexed;
     FVM_Affine world;
-    r = matrix(c, o, world);
+    r = parent_space ? local_matrix(c, o, world) : matrix(c, o, world);
     if (r != FVM_OK)
         return r;
     world = multiply(target, world);
-    for (Slots::iterator i = paths->indexed.begin(); i != paths->indexed.end(); ++i)
+    for (Slots::iterator i = path_snapshot.begin(); i != path_snapshot.end(); ++i)
     {
         if (i->second.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
@@ -1683,11 +1687,11 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
                 out.y_max = b.y_max;
         }
     }
-    for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+    for (Slots::iterator i = child_snapshot.begin(); i != child_snapshot.end(); ++i)
     {
         if (i->second.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
-        r = bounds(c, i->second.object, target, stroke, out, any, depth + 1);
+        r = bounds(c, i->second.object, parent_space ? world : target, stroke, out, any, depth + 1, parent_space);
         if (r != FVM_OK)
             return r;
     }
@@ -2842,8 +2846,19 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
             *out = index == FVM_AVM1_PROPERTY_XMOUSE ? x : y;
         return status;
     }
-    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
-        index > FVM_AVM1_PROPERTY_NAME)
+    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT)
+    {
+        FVM_PathBounds extent;
+        std::memset(&extent, 0, sizeof(extent));
+        bool any = false;
+        status = bounds(c, clip, identity(), true, extent, any, 0, true);
+        if (status != FVM_OK)
+            return status;
+        fvm_value_number(out, index == FVM_AVM1_PROPERTY_WIDTH ? extent.x_max - extent.x_min
+                                                              : extent.y_max - extent.y_min);
+        return FVM_OK;
+    }
+    if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_TARGET)
         return display_path(c, clip, out, true);

@@ -1,7 +1,22 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.378
+# Условия окончательной приёмки / Final acceptance gates — v0.379
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.379: indexed MovieClip width/height reads use parent-space vector bounds,
+including descendant transforms and singular ancestors. Traversal snapshots and
+native barriers protect reentrant removal; coercion GC, errors/OOM, aliasing and
+interpreter/explicit/automatic JIT are covered. Writes and full resource/stroke/
+named dimension semantics remain open. [EN](MOVIECLIP_INDEXED_SIZE.md) /
+[RU](MOVIECLIP_INDEXED_SIZE.ru.md). Все стадии остаются открытыми.
+
+Validation v0.379: all 785 AGG / 785 Cairo / 766 minimal Linux Release checks
+have passing evidence after nine executable-permission repairs on eight ELF
+files and targeted reruns (four repair operations AGG, three Cairo, two minimal).
+Eight restricted heap/global ASan+UBSan checks pass: the four new dimension
+checks plus standard MovieClip, AVM1/JIT display properties and geometry
+allocation. Stack ASan and LeakSanitizer remain disabled. No new external SWF
+oracle or foreign-OS runtime acceptance is claimed. All nine stages remain open.
 
 v0.378 replaces the SWF4–6 display-path non-ASCII rejection with shared pinned
 Flash UTF-16-unit name folding. Children and fallback properties/accessors retain
