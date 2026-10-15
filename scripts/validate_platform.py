@@ -14,6 +14,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 
 
 def cache_values(path):
@@ -36,6 +37,46 @@ def tool_version(executable):
     return first
 
 
+def encoder_command(document):
+    """Resolve the configured backend fixture test from authoritative CTest JSON."""
+    if not isinstance(document, dict) or not isinstance(document.get('version'), dict):
+        raise ValueError('invalid CTest JSON document')
+    if document['version'].get('major') != 1 or not isinstance(document.get('tests'), list):
+        raise ValueError('unsupported CTest JSON schema')
+    tests = document['tests']
+    if any(not isinstance(test, dict) for test in tests):
+        raise ValueError('invalid CTest test entry')
+    selected = [test for test in tests if test.get('name') == 'flashvm_tests_jit_backends']
+    if len(selected) != 1:
+        raise ValueError('exactly one backend fixture test is required')
+    command = selected[0].get('command')
+    if not isinstance(command, list) or not command or any(
+            not isinstance(part, str) or not part for part in command):
+        raise ValueError('backend fixture command is unavailable or malformed')
+    return command[:]
+
+
+def validate_encoder(root, build, ctest, execute, record):
+    """Fail closed on emulator/discovery/generation errors; never reuse stale fixtures."""
+    evidence = {'status': 'failed', 'scope': 'synthetic ISA/ABI with stub helpers; not a foreign VM'}
+    record['jit_encoder'] = evidence
+    execute('jit-discover', [ctest, '--test-dir', str(build), '-C', 'Release',
+                             '--show-only=json-v1'])
+    command = encoder_command(json.loads((build / 'jit-discover.log').read_text(encoding='utf-8')))
+    execute('jit-emulator-version', [sys.executable, '-c',
+                                     'import unicorn; print(unicorn.__version__)'])
+    version = (build / 'jit-emulator-version.log').read_text(encoding='utf-8').strip()
+    if not version:
+        raise ValueError('emulator version was not reported')
+    evidence['unicorn_version'] = version
+    fixtures = Path(tempfile.mkdtemp(prefix='jit-encoder-', dir=str(build)))
+    evidence['fixtures'] = str(fixtures)
+    execute('jit-fixtures', command + [str(fixtures)])
+    execute('jit-emulation', [sys.executable, str(root / 'scripts/check_jit_backends.py'),
+                               str(fixtures)])
+    evidence['status'] = 'passed'
+
+
 def main():
     """Run selected profiles and always leave a pass/fail record, even on interruption."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -45,6 +86,8 @@ def main():
     parser.add_argument('--ctest', default='ctest')
     parser.add_argument('--generator')
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--jit-emulator', action='store_true',
+                        help='require optional Unicorn backend instruction/ABI execution')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
@@ -110,10 +153,12 @@ def main():
                 raise RuntimeError('clear inherited CTest selection/load variables')
             execute('test', [args.ctest, '--test-dir', str(build), '-C', 'Release',
                              '--output-on-failure', '--no-tests=error', '--parallel', str(args.jobs)])
+            if args.jit_emulator:
+                validate_encoder(root, build, args.ctest, execute, record)
             record['status'] = 'passed'
         report['status'] = 'passed'
         return 0
-    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:
         report['status'] = 'failed'
         report['error'] = str(error)
         print(str(error), file=sys.stderr)

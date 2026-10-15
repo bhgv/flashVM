@@ -1,7 +1,16 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.360
+# Условия окончательной приёмки / Final acceptance gates — v0.361
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.361 adds an optional fail-closed platform encoder-emulation gate. The actual
+validate_platform.py --profile all --jit-emulator run passes 733 AGG, 733 Cairo
+and 714 minimal CTest checks, plus 26 Unicorn 2.1.4 cases per profile. An initial
+minimal run correctly failed for two non-executable generated ELF files; their
+permissions were restored before the successful run. Five orchestration tests
+and explicit optimized-checker rejection pass. No C/C++ runtime code changed;
+v0.360 class sanitizer evidence remains applicable. This is native Linux and
+synthetic foreign-ISA evidence, not foreign-OS VM acceptance. All stages remain open.
 
 v0.360 adds native Extends/Implements/InstanceOf/Cast through shared class services.
 All 732 AGG, 732 Cairo and 713 minimal Linux Release checks have passing evidence

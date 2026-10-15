@@ -1,4 +1,4 @@
-# Platform validation runner — v0.349
+# Platform validation runner — v0.361
 
 [Русское руководство](PLATFORM_VALIDATION.ru.md)
 
@@ -35,6 +35,35 @@ Output defaults to ignored `build-platform/`: per-phase logs and
 compiler paths, CMake/CTest versions, commands, exit statuses and overall result. A failed or interrupted
 run cannot produce an overall passing record. This is development evidence rather
 than a release certificate; generated reports/logs must not be committed.
+
+## Optional generated-instruction execution
+
+With Unicorn installed in the selected Python environment, add:
+
+```sh
+python scripts/validate_platform.py --profile all --jit-emulator --jobs 4
+```
+
+This is an explicit additional gate. CTest's Release JSON supplies the configured
+`flashvm_tests_jit_backends` command, including launch arguments; the runner does
+not guess executable locations. It records Unicorn's reported version, generates
+fixtures in a fresh directory per profile/run, then executes
+`check_jit_backends.py`. Missing/duplicate/unavailable fixture tests, a missing
+emulator, failed generation or failed emulation keep the profile/report failed.
+No old fixture directory is reused. An optimized Python checker (`-O` or inherited
+`PYTHONOPTIMIZE`) fails explicitly because its assertions are required evidence.
+
+Per-profile `jit_encoder` evidence records scope, status, version and fixture path;
+commands and complete phase logs remain in the ignored build directory. The
+optional dependency is a validation tool, not a FlashVM runtime dependency or a
+bundled library. Normal native validation does not require Unicorn. The new
+`flashvm_platform_encoder_host` CTest runs five pure-Python orchestration tests
+without importing Unicorn and is omitted from cross-build execution.
+
+The current cases exercise synthetic helper addresses and generated instructions
+for x86, ARM, ARM64, RV32 and RV64: ordinary/far branches, Thumb helper calls,
+high 64-bit helper addresses and success/error exits. They do not run full FlashVM
+or its GC on a foreign CPU, and cannot replace Windows/macOS/Android acceptance.
 
 ## Android device/emulator
 
@@ -100,3 +129,11 @@ pass inside the host adapter test. Cross-config inspection checked 675 target
 commands and fixture ordering; the native driver rejected that cross target.
 Missing-tool and old-tool rejection were checked separately. These are Linux and
 host/configuration checks only, not Android or other-OS execution.
+
+### v0.361 execution evidence
+
+The actual all-profile command with --jit-emulator passes 733 AGG, 733 Cairo and
+714 minimal CTest checks and 26 Unicorn 2.1.4 cases in each profile. An initial
+minimal run failed correctly on two ELF launch permissions; restoring generated
+execute bits allowed the rerun to pass. Five orchestration tests and an explicit
+optimized-checker rejection also pass. No foreign OS/runtime gate is closed.

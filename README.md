@@ -1,8 +1,11 @@
-Development version: **0.360** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.360 ` and an English description. Increase the subversion before each
+Development version: **0.361** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.361 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
+Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
+see [validation gates](doc/PLATFORM_VALIDATION.md).
+
 
 Platform validation: reusable native AGG/Cairo/minimal runs and Android CTest/ADB
 execution are described in [English](doc/PLATFORM_VALIDATION.md) /
@@ -37,8 +40,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.360** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.360 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.361** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.361 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

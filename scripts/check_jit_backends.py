@@ -96,6 +96,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('directory', type=Path)
     args = parser.parse_args()
+    if not __debug__:
+        parser.error("Python assertions must be enabled; unset PYTHONOPTIMIZE and do not use -O")
     for index, spec in enumerate(TARGETS, 1):
         variants = ["", "far"]
         if spec[0] in ("arm64", "riscv64"):

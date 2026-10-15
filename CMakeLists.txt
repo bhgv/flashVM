@@ -202,6 +202,8 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_platform_encoder_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_platform_encoder.py)
   add_test(NAME flashvm_android_adapter_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_android_adapter.py)
   add_test(NAME flashvm_error_independent_processes

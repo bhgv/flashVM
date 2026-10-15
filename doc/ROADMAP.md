@@ -232,3 +232,12 @@ Extends/Implements/InstanceOf/Cast share rooted class/interface services.
 JIT_CLASSES.md records isolated versioned execution, interface snapshots,
 collecting/throwing accessors and primitive boxing, missing operands and allocation
 failures. Полная семантика Flash, остальные инструкции и все стадии открыты.
+
+## v0.361: repeatable encoder validation gate
+
+validate_platform.py --jit-emulator resolves the configured Release generator
+from CTest, records Unicorn version and runs freshly generated ISA/ABI fixtures.
+Failures and optimized Python cannot produce passing emulation evidence; five
+host-only orchestration tests cover failure states and stale-fixture isolation.
+PLATFORM_VALIDATION.md records usage and scope. Это инфраструктура стадий 8/9,
+а не реальный запуск полной VM на других CPU/ОС или завершение стадий.
