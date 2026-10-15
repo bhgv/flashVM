@@ -120,6 +120,8 @@ FVM_Result fvm_jit_throw(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_get_time(FVM_JitInvocation *, unsigned int);
 /* Replace a bound with a random integer using shared context state. */
 FVM_Result fvm_jit_random_number(FVM_JitInvocation *, unsigned int);
+/* Resolve or accept an object and publish a bounded property-name snapshot. */
+FVM_Result fvm_jit_enumerate(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

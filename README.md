@@ -1,5 +1,5 @@
-Development version: **0.363** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.363 ` and an English description. Increase the subversion before each
+Development version: **0.364** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.364 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -36,6 +36,7 @@ see [class contracts and checks](doc/JIT_CLASSES.md).
 GetProperty/SetProperty/TargetPath now use shared rooted native scene services;
 see [display contracts and checks](doc/JIT_DISPLAY.md).
 Native Trace/Throw/GetTime/RandomNumber: [contracts and checks](doc/JIT_EFFECTS.md).
+Enumerate/Enumerate2: [contracts and checks](doc/JIT_ENUMERATE.md).
 
 The current standing user instruction authorizes mirror updates after every commit
 until revoked. Use `origin` pointing to
@@ -43,8 +44,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.363** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.363 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.364** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.364 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

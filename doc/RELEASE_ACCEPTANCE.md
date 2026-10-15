@@ -1,7 +1,16 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.363
+# Условия окончательной приёмки / Final acceptance gates — v0.364
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.364 adds native Enumerate/Enumerate2 with shared scope/path lookup, rooted
+name snapshots and bounded operand publication. All 741 AGG, 741 Cairo and 722
+minimal Linux Release checks have passing evidence after generated ELF permission
+repairs and reruns. Three enumeration checks pass restricted heap/global ASan+UBSan
+(stack ASan/LeakSanitizer disabled), including the strengthened nonempty SWF4 clip
+case. JIT_ENUMERATE.md records key order/hiding, counted names, collecting/throwing
+lookup, allocation failure, retained results and exact stack bounds. Full reference
+Flash ordering, remaining Actions and real foreign-platform acceptance remain open.
 
 v0.363 adds native Trace/Throw/GetTime/RandomNumber through shared execution
 and exception services. All 738 AGG, 738 Cairo and 719 minimal Linux Release

@@ -2859,3 +2859,11 @@ JIT_EFFECTS.md records host/SWF4–8 equivalence, collecting/throwing conversion
 trace sink failures, exact random state, clock samples and allocation failures.
 Полная совместимость Flash, остальные инструкции и реальные запуски на других
 ОС остаются открытыми; ни одна стадия не закрыта.
+
+## v0.364: native enumeration Actions
+
+Enumerate/Enumerate2 share rooted qualified/plain lookup and property-name snapshots.
+JIT_ENUMERATE.md records host/SWF4–8 equivalence, counted/hidden/inherited keys,
+MovieClip lookup, collecting/throwing conversions/getters, allocation failures and
+exact stack bounds. Полная совместимость Flash и реальные запуски других ОС/CPU
+остаются открытыми; ни одна стадия не закрыта.
