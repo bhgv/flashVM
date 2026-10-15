@@ -2518,3 +2518,10 @@ Loaded Extends/CastOp/InstanceOf supply missing undefined values with preserved
 operand roles. Raw host/SWF4–8 fixtures verify primitive boxing, superclass getter
 GC/throws and root/execution restoration. C services, interface counts and ABI
 remain unchanged. See AVM1_CLASS_MISSING.md. All stages remain open.
+
+### v0.308 — missing ImplementsOp operands / ImplementsOp без фиксированных значений
+
+Loaded missing count/constructor values become undefined; zero count preserves
+prototype snapshots and does not box primitive constructors. Raw host/SWF4–8 and
+allocation-failure fixtures verify continuation, root restoration and no Number
+callback. See AVM1_IMPLEMENTS_MISSING.md. Historical policy gaps/all stages stay open.

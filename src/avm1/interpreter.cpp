@@ -937,8 +937,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_IMPLEMENTS)
             {
-                if (stack.size() < FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_operands(
+                    c->swf_loaded, stack, FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 unsigned int n = 0;
                 const FVM_Value &count = stack[stack.size() - FVM_AVM1_IMPLEMENTS_FIXED_OPERANDS];
                 FVM_Result r = fvm_exec_interface_count(c, &count,
