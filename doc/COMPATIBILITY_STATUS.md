@@ -2585,3 +2585,15 @@ Flash's own-stored numeric field, twip or singular-fallback policies. See
 Реализована декомпозиция преобразования точки и общий интерфейс для C/JIT.
 Прежняя семантика сохранена; точное поведение Flash для полей точки и twips
 по-прежнему требует реализации и эталонных проверок.
+
+### v0.334 Loaded point-field policy
+
+Implemented: own stored numeric x/y without getter/inherited/coercion lookup,
+invalid/missing-argument no-op and singular inverse identity fallback in loaded
+SWF4–8. Shared direct C/native entry; host-only strict behavior retained.
+Exact twips, nonfinite conversion, old case-folded spelling and raw geometry
+snapshot parity remain open. See AVM1_POINT_FIELDS.md; no stage is closed.
+
+Загруженные SWF используют собственные числовые поля точки, без getters и
+преобразования типов; неподходящие аргументы игнорируются. Хостовый режим
+сохранён. Точные twips, NaN/Infinity и старые правила регистра ещё открыты.

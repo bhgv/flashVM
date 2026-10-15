@@ -4,7 +4,9 @@
 #include "clip_point_constants.h"
 namespace
 {
-/* Preserve native point-field lookup/coercion and finite-number validation. */
+/* Stored own property map; raw lookup never evaluates accessors or prototypes. */
+typedef fvm_detail::map<fvm_detail::string, FVM_Value> PointProperties;
+/* Preserve the strict host point-field lookup/coercion and finite-number validation. */
 FVM_Result coordinate(FVM_Context *c, FVM_Object *point, const char *name, double &out)
 {
     FVM_Value value;
@@ -22,9 +24,10 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
                                           const FVM_Value *point)
 {
     if (!c || c->destroying || c->gc_releasing || !clip || clip->owner != c ||
-        clip->resource_kind != FVM_RESOURCE_MOVIECLIP || fvm_validate_value(c, point) != FVM_OK ||
-        point->type != FVM_VALUE_OBJECT)
+        clip->resource_kind != FVM_RESOURCE_MOVIECLIP || fvm_validate_value(c, point) != FVM_OK)
         return FVM_INVALID_ARGUMENT;
+    if (point->type != FVM_VALUE_OBJECT)
+        return c->swf_loaded ? FVM_OK : FVM_INVALID_ARGUMENT;
     try
     {
         /* [GC:] Keep both explicit operands reachable through field and geometry callbacks. */
@@ -35,9 +38,27 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         FVM_NativeCallGuard guard(c);
         FVM_Object *target = roots.values[FVM_CLIP_POINT_VALUE_ROOT].object;
         double x = 0, y = 0;
-        FVM_Result status = coordinate(c, target, "x", x);
-        if (status == FVM_OK)
-            status = coordinate(c, target, "y", y);
+        FVM_Result status = FVM_OK;
+        if (c->swf_loaded)
+        {
+            /* Loaded AVM1 reads only stored own numeric fields; no getters or coercion. */
+            PointProperties::iterator own_x = target->properties.find("x");
+            PointProperties::iterator own_y = target->properties.find("y");
+            if (own_x == target->properties.end() || own_y == target->properties.end() ||
+                own_x->second.type != FVM_VALUE_NUMBER || own_y->second.type != FVM_VALUE_NUMBER)
+                return FVM_OK;
+            x = own_x->second.number;
+            y = own_y->second.number;
+            double limit = std::numeric_limits<double>::max();
+            if (!(x >= -limit && x <= limit && y >= -limit && y <= limit))
+                return FVM_INVALID_ARGUMENT;
+        }
+        else
+        {
+            status = coordinate(c, target, "x", x);
+            if (status == FVM_OK)
+                status = coordinate(c, target, "y", y);
+        }
         FVM_Affine matrix;
         if (status == FVM_OK)
             status = fvm_movieclip_world_matrix(c, clip, matrix);
@@ -47,14 +68,23 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         {
             double determinant = matrix.xx * matrix.yy - matrix.xy * matrix.yx;
             if (!determinant || determinant != determinant)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Affine old = matrix;
-            matrix.xx = old.yy / determinant;
-            matrix.xy = -old.xy / determinant;
-            matrix.yx = -old.yx / determinant;
-            matrix.yy = old.xx / determinant;
-            matrix.x0 = -(matrix.xx * old.x0 + matrix.xy * old.y0);
-            matrix.y0 = -(matrix.yx * old.x0 + matrix.yy * old.y0);
+            {
+                if (!c->swf_loaded)
+                    return FVM_INVALID_ARGUMENT;
+                /* Loaded globalToLocal falls back to the unchanged world point. */
+                matrix.xx = matrix.yy = 1;
+                matrix.xy = matrix.yx = matrix.x0 = matrix.y0 = 0;
+            }
+            else
+            {
+                FVM_Affine old = matrix;
+                matrix.xx = old.yy / determinant;
+                matrix.xy = -old.xy / determinant;
+                matrix.yx = -old.yx / determinant;
+                matrix.yy = old.xx / determinant;
+                matrix.x0 = -(matrix.xx * old.x0 + matrix.xy * old.y0);
+                matrix.y0 = -(matrix.yx * old.x0 + matrix.yy * old.y0);
+            }
         }
         FVM_Value value;
         fvm_value_number(&value, matrix.xx * x + matrix.xy * y + matrix.x0);

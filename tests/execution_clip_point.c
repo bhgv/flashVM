@@ -18,7 +18,7 @@ int main(void)
   assert(fvm_context_create(rt,&c)==FVM_OK);if(profile){swf[3]=(unsigned char)(profile+3);assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);}
   assert(fvm_standard_install(c)==FVM_OK && fvm_movieclip_create(c,"root",1,&root)==FVM_OK && fvm_gc_pin(c,root)==FVM_OK && fvm_movieclip_set_matrix(c,root,&parent)==FVM_OK);fvm_value_string(args,"child");fvm_value_number(args+1,1);assert(fvm_object_call(c,root,"createEmptyMovieClip",2,args,&out)==FVM_OK);child=out.object;assert(fvm_movieclip_set_matrix(c,child,&local)==FVM_OK && fvm_object_create(c,&point)==FVM_OK && fvm_gc_pin(c,point)==FVM_OK);fvm_value_undefined(&v);v.type=FVM_VALUE_OBJECT;v.object=point;
   number(c,point,"x",4);number(c,point,"y",6);assert((method?fvm_object_call(c,child,"localToGlobal",1,&v,&out):fvm_exec_clip_point(c,child,0,&v))==FVM_OK);check(c,point,"x",18);check(c,point,"y",63);assert((method?fvm_object_call(c,child,"globalToLocal",1,&v,&out):fvm_exec_clip_point(c,child,1,&v))==FVM_OK);check(c,point,"x",4);check(c,point,"y",6);
-  assert(fvm_movieclip_set_matrix(c,child,&singular)==FVM_OK && fvm_exec_clip_point(c,child,1,&v)==FVM_INVALID_ARGUMENT);check(c,point,"x",4);check(c,point,"y",6);assert(fvm_exec_clip_point(c,child,0,0)==FVM_INVALID_ARGUMENT && fvm_exec_clip_point(c,point,0,&v)==FVM_INVALID_ARGUMENT && fvm_gc_collect(c,0)==FVM_OK);fvm_context_destroy(c);
+  assert(fvm_movieclip_set_matrix(c,child,&singular)==FVM_OK && fvm_exec_clip_point(c,child,1,&v)==(profile?FVM_OK:FVM_INVALID_ARGUMENT));check(c,point,"x",4);check(c,point,"y",6);assert(fvm_exec_clip_point(c,child,0,0)==FVM_INVALID_ARGUMENT && fvm_exec_clip_point(c,point,0,&v)==FVM_INVALID_ARGUMENT && fvm_gc_collect(c,0)==FVM_OK);fvm_context_destroy(c);
  }
  fvm_runtime_destroy(rt);return 0;
 }

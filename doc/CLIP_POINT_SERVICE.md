@@ -49,3 +49,15 @@ independent exception probe. No other-platform/Flash Player run is claimed.
 ASan heap/global + UBSan. Проверены C89, host/SWF4–8, матрицы, ошибки,
 порядок callbacks, GC-барьер и отказы памяти. Проверки стека ASan, утечек,
 других платформ и Flash Player в этом прогоне не заявляются.
+
+## v0.334 follow-up
+
+Loaded point fields, invalid/missing no-ops and singular fallback now follow the
+bounded policy in AVM1_POINT_FIELDS.md. The original v0.333 extraction behavior
+above remains historical; host-only behavior is retained. Exact twips/nonfinite
+conversion and old case-folded property spelling are still open.
+
+В v0.334 политика загруженных SWF уточнена: собственные числовые поля,
+no-op для отсутствующих/неподходящих аргументов и fallback вырожденной матрицы.
+Описание v0.333 выше историческое; точность twips и другие перечисленные
+границы не объявляются завершёнными.

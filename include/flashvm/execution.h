@@ -20,9 +20,10 @@ extern "C"
 {
 #endif
     /* Convert an object-valued point in place: reverse=0 local to world, nonzero world
-     * to local. Reads/coerces x then y before geometry, then writes x followed by y.
-     * Setter failures may leave x changed; singular inverse leaves the point unchanged.
-     * Retains existing native conversion policy, including inherited/getter fields. */
+     * to local. Writes x then y; setter errors may leave x changed. Loaded SWFs read
+     * only own numeric x/y fields, ignore invalid/missing fields and use an unchanged
+     * point for singular inverse. Host mode retains field coercion and strict errors.
+     * Nonfinite coordinates remain rejected; exact twip conversion is not provided. */
     FVM_API FVM_Result fvm_exec_clip_point(FVM_Context *, FVM_Object *clip, int reverse,
                                            const FVM_Value *point);
     /* Copy a native source clip's local matrix and color into destination atomically.
