@@ -1,7 +1,18 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.362
+# Условия окончательной приёмки / Final acceptance gates — v0.363
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.363 adds native Trace/Throw/GetTime/RandomNumber through shared execution
+and exception services. All 738 AGG, 738 Cairo and 719 minimal Linux Release
+checks have passing evidence, including reruns after generated ELF permission
+repairs. Four effects/allocation/mode/invalid checks pass restricted heap/global
+ASan+UBSan (stack ASan and LeakSanitizer disabled). JIT_EFFECTS.md records rooted
+collecting/throwing conversion, trace sink failures, exact random state, elapsed
+samples, retained exceptions and allocation failure unwinding. The actual
+validate_platform.py --profile all --jit-emulator run passes all three profiles
+and 26 Unicorn 2.1.4 synthetic ISA/ABI cases per profile after an initial Cairo
+permission failure and repair. This does not certify a foreign VM/OS. All stages remain open.
 
 v0.362 adds native GetProperty/SetProperty/TargetPath through shared scene services.
 All 736 AGG, 736 Cairo and 717 minimal Linux Release checks have passing evidence

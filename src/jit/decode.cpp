@@ -294,6 +294,14 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                                                op == FVM_AVM1_ACTION_SET_PROPERTY));
         else if (op == FVM_AVM1_ACTION_TARGET_PATH)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_path>, 0));
+        else if (op == FVM_AVM1_ACTION_TRACE)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_trace>, 0));
+        else if (op == FVM_AVM1_ACTION_THROW)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_throw>, 0));
+        else if (op == FVM_AVM1_ACTION_GET_TIME)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_time>, 0));
+        else if (op == FVM_AVM1_ACTION_RANDOM_NUMBER)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_random_number>, 0));
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
         else if (op == FVM_AVM1_ACTION_SET_VARIABLE)

@@ -3,7 +3,7 @@
 #include <assert.h>
 int main(void)
 {
- const unsigned char good[]={0};const unsigned char unsupported[]={0x26,0};
+ const unsigned char good[]={0};const unsigned char unsupported[]={0x06,0};
  const unsigned char short_record[]={0x96,5,0,7};const unsigned char bad_string[]={0x96,2,0,0,'x'};
  const unsigned char bad_target[]={0x99,2,0,1,0,0x96,5,0,7,1,0,0,0,0};
  const unsigned char bad_branch[]={0x99,1,0,0,0};FVM_JitCode *code=0,*keep;

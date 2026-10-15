@@ -2851,3 +2851,11 @@ JIT_DISPLAY.md records isolated host/SWF4–8 execution, target selection, order
 collecting/throwing coercion, skipped readonly/invalid writes, counted native paths
 and allocation failures. Остальные поля, полная семантика Flash и все стадии
 приёмки, включая реальные запуски других CPU/ОС, остаются открытыми.
+
+## v0.363: native effect Actions
+
+Trace/Throw/GetTime/RandomNumber share rooted execution and exception services.
+JIT_EFFECTS.md records host/SWF4–8 equivalence, collecting/throwing conversions,
+trace sink failures, exact random state, clock samples and allocation failures.
+Полная совместимость Flash, остальные инструкции и реальные запуски на других
+ОС остаются открытыми; ни одна стадия не закрыта.

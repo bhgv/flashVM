@@ -112,6 +112,14 @@ FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_display_property(FVM_JitInvocation *, unsigned int);
 /* Box an input and return its native counted timeline path when applicable. */
 FVM_Result fvm_jit_target_path(FVM_JitInvocation *, unsigned int);
+/* Deliver converted trace values through the shared host sink. */
+FVM_Result fvm_jit_trace(FVM_JitInvocation *, unsigned int);
+/* Publish an exception value and terminate native execution. */
+FVM_Result fvm_jit_throw(FVM_JitInvocation *, unsigned int);
+/* Push a bounded context-relative elapsed time sample. */
+FVM_Result fvm_jit_get_time(FVM_JitInvocation *, unsigned int);
+/* Replace a bound with a random integer using shared context state. */
+FVM_Result fvm_jit_random_number(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */
