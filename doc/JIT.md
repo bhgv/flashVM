@@ -37,6 +37,8 @@ original function interpreted. Compile the same bytes used to create the functio
 The compiler currently accepts:
 
 - Push: signed integer, float/double, register, terminated string, Boolean, null and undefined.
+- DefineFunction/DefineFunction2 with captured lexical scope, pool and shared record decoding
+  (v0.370; [contracts and checks](JIT_DEFINITIONS.md)).
 - StoreRegister and prepared Function2/global/root banks
   (v0.352; [contracts and checks](JIT_REGISTERS.md)).
 - ConstantPool and Push-constant8/constant16, with captured/runtime pool selection

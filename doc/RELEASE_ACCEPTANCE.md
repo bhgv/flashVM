@@ -1,7 +1,19 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.369
+# Условия окончательной приёмки / Final acceptance gates — v0.370
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.370 adds native DefineFunction/DefineFunction2 through shared interpreter/native
+record materialization, runtime pool snapshots and rooted closure publication.
+All 759 AGG, 759 Cairo and 740 minimal Linux Release checks have passing evidence
+after generated ELF permission repairs and reruns. Five definition/allocation/
+callback/validation/mode checks pass restricted heap/global ASan+UBSan (stack ASan
+and LeakSanitizer disabled). Fresh fixtures pass all 26 synthetic Unicorn ISA/ABI
+cases; this is not a foreign-OS VM run. JIT_DEFINITIONS.md / .ru.md record both
+record forms, retained lexical/pool captures after parent-code release and GC,
+Function2 preload/register bounds, throwing setters, malformed source and atomic
+compile failures. With/Try, full Flash conformance and actual non-Linux runtime
+acceptance remain open; no roadmap stage is closed.
 
 v0.369 retains bounded stored-frame framing during opt-in interpreter replay.
 The regression first failed on v0.368 for an unloaded implicit-End frame. It now

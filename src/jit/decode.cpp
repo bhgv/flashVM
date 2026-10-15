@@ -2,6 +2,7 @@
 #include "internal.hpp"
 #include "timeline_constants.h"
 #include "url_constants.h"
+#include "../avm1/function_definition.hpp"
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
@@ -215,6 +216,28 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             FVM_Result status = push(data, payload, position, code, action);
             if (status != FVM_OK)
                 return status;
+        }
+        else if (op == FVM_AVM1_ACTION_DEFINE_FUNCTION || op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
+        {
+            FVM_FunctionRecord record;
+            if (!fvm_function_record(data, size, payload, length, record,
+                                      op == FVM_AVM1_ACTION_DEFINE_FUNCTION2, true))
+                return FVM_INVALID_ARGUMENT;
+            /* Context-free compilation accepts loaded register rules; execution also checks
+             * strict host bounds before creating a managed function. */
+            FVM_ScriptFunction checked;
+            FVM_Result status = fvm_avm1_prepare_function(data, record, true, 0, checked);
+            if (status != FVM_OK)
+                return status;
+            position = record.next;
+            if (code.constants.size() >= FVM_JIT_MAX_CONSTANTS)
+                return FVM_UNSUPPORTED;
+            FVM_JitConstant encoded;
+            encoded.text = fvm_detail::string((const char *)data + action.offset,
+                                               position - action.offset);
+            unsigned int index = (unsigned int)code.constants.size();
+            code.constants.push_back(encoded);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_define_function>, index));
         }
         else if (op == FVM_AVM1_ACTION_NEXT_FRAME || op == FVM_AVM1_ACTION_PREVIOUS_FRAME ||
                  op == FVM_AVM1_ACTION_PLAY || op == FVM_AVM1_ACTION_STOP)

@@ -1,4 +1,4 @@
-Версия разработки: **0.369** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.370** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -268,3 +268,6 @@ Named uppercase constants / Смысловые макросы: [header map and e
 Multi-architecture JIT, breakpoints, threads and multiple VM examples / JIT для разных CPU, отладка, потоки и несколько VM: [JIT_ARCHITECTURES.md](doc/JIT_ARCHITECTURES.md).
 
 Подробное руководство: [JIT, отладка, потоки и несколько VM](doc/JIT_ARCHITECTURES.ru.md).
+
+Нативные DefineFunction/DefineFunction2: [English](doc/JIT_DEFINITIONS.md) /
+[Русский](doc/JIT_DEFINITIONS.ru.md); захват области/пула, callbacks и отказы памяти.

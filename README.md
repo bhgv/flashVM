@@ -1,5 +1,5 @@
-Development version: **0.369** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.369 ` and an English description. Increase the subversion before each
+Development version: **0.370** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.370 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.369** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.369 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.370** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.370 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -496,3 +496,6 @@ interpreter replay are available in v0.348. See [execution modes](doc/EXECUTION_
 and run `flashvm_examples_embedding_execution_modes_main` after building it.
 
 Multi-architecture JIT, breakpoints, threads and multiple VM examples / JIT для разных CPU, отладка, потоки и несколько VM: [JIT_ARCHITECTURES.md](doc/JIT_ARCHITECTURES.md).
+
+Native DefineFunction/DefineFunction2: [English](doc/JIT_DEFINITIONS.md) /
+[Русский](doc/JIT_DEFINITIONS.ru.md); captured scope/pool, callbacks and allocation failures.

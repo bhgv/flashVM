@@ -104,6 +104,8 @@ FVM_Result fvm_jit_get_variable(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_set_variable(FVM_JitInvocation *, unsigned int);
 /* Declare an initialized/uninitialized binding in the prepared activation. */
 FVM_Result fvm_jit_declare_variable(FVM_JitInvocation *, unsigned int);
+/* Materialize a source-owned function record with the executing lexical scope and pool. */
+FVM_Result fvm_jit_define_function(FVM_JitInvocation *, unsigned int);
 /* Resolve or assign an owner/key pair through shared member semantics. */
 FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 /* Invoke or construct a method through the rooted shared AVM1 service. */

@@ -1,5 +1,9 @@
 /* FlashVM: native reference bridges preserve interpreter scope selection and rooted operands. */
 #include "internal.hpp"
+#include "function_constants.h"
+#include "../avm1/function_definition.hpp"
+#include "../avm1/action_codes.h"
+#include "../standard/function_state.hpp"
 #include "../avm1/operand_stack.hpp"
 #include "../avm1/operand_constants.h"
 #include "flashvm/movieclip.h"
@@ -139,5 +143,53 @@ FVM_Result fvm_jit_delete_reference(FVM_JitInvocation *s, unsigned int)
                                            &result);
     if (status == FVM_OK)
         s->stack->back() = result;
+    return status;
+}
+
+/* [GC:] Publish a new closure while retaining it through target resolution and setters. */
+FVM_Result fvm_jit_define_function(FVM_JitInvocation *s, unsigned int index)
+{
+    if (index >= s->code->constants.size())
+        return FVM_INVALID_ARGUMENT;
+    const fvm_detail::string &encoded = s->code->constants[index].text;
+    if (encoded.size() < FVM_JIT_FUNCTION_PAYLOAD_OFFSET)
+        return FVM_INVALID_ARGUMENT;
+    const unsigned char *data = (const unsigned char *)encoded.data();
+    size_t length = data[FVM_JIT_FUNCTION_LENGTH_OFFSET] |
+        ((size_t)data[FVM_JIT_FUNCTION_LENGTH_OFFSET + 1] << FVM_JIT_BYTE_BITS);
+    FVM_Context *c = s->context;
+    FVM_FunctionRecord record;
+    if (!fvm_function_record(data, encoded.size(), FVM_JIT_FUNCTION_PAYLOAD_OFFSET, length,
+                              record, data[0] == FVM_AVM1_ACTION_DEFINE_FUNCTION2, c->swf_loaded))
+        return FVM_INVALID_ARGUMENT;
+    if (!record.name_size && s->stack->size() >= FVM_JIT_MAX_STACK)
+        return FVM_UNSUPPORTED;
+    FVM_ScriptFunction fn;
+    FVM_Result status = fvm_avm1_prepare_function(data, record, c->swf_loaded, s->pool, fn);
+    if (status != FVM_OK)
+        return status;
+    FVM_ExecutionRoots roots(c, FVM_JIT_FUNCTION_ROOT_COUNT);
+    FVM_Object *object = 0;
+    status = fvm_function_make_script(c, fn, scope(c), &object);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value &value = roots.values[FVM_JIT_FUNCTION_VALUE_ROOT];
+    value.type = FVM_VALUE_OBJECT;
+    value.object = object;
+    if (!record.name_size)
+    {
+        s->stack->push_back(value);
+        return FVM_OK;
+    }
+    c->script_functions[fn.name] = fn;
+    FVM_Object *selected = 0;
+    status = target(s, &selected);
+    FVM_Value &name = roots.values[FVM_JIT_FUNCTION_NAME_ROOT];
+    if (status == FVM_OK)
+        status = fvm_value_string_bytes(&name, fn.name.data(), fn.name.size());
+    if (status == FVM_OK)
+        status = fvm_exec_variable_declare(c, scope(c), s->frame->activation,
+                                           destination(c, selected), receiver(s),
+                                           FVM_EXEC_DECLARE_INITIALIZED, &name, &value);
     return status;
 }

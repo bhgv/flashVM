@@ -3,6 +3,7 @@
  */
 
 #include "function_record.hpp"
+#include "function_definition.hpp"
 #include "with_record.hpp"
 #include "action_codes.h"
 #include "encoding_constants.h"
@@ -620,41 +621,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                                          a.op == FVM_AVM1_ACTION_DEFINE_FUNCTION2, c->swf_loaded))
                     return FVM_INVALID_ARGUMENT;
                 FVM_ScriptFunction fn;
-                fn.function2 = record.function2;
-                fn.register_count = record.register_count;
-                fn.flags = record.flags;
-                fn.constants = constants;
-                FVM_Result named =
-                    fvm_property_key((const char *)data + record.name, record.name_size, fn.name);
-                if (named != FVM_OK)
-                    return named;
-                size_t p = record.parameters;
-                for (unsigned int parameter = 0; parameter < record.count; ++parameter)
-                {
-
-                    if (record.function2)
-                        fn.parameter_registers.push_back(data[p++]);
-                    size_t begin = p;
-                    while (data[p])
-                        ++p;
-                    fvm_detail::string parameter_name;
-                    named = fvm_property_key((const char *)data + begin, p - begin, parameter_name);
-                    if (named != FVM_OK)
-                        return named;
-                    fn.parameters.push_back(parameter_name);
-                    ++p;
-                }
-                fn.body.assign(data + record.body, data + record.body + record.size);
-                FVM_AVM1Info body_info;
-                body_info.struct_size = sizeof(body_info);
-                if ((c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
-
-                {
-                    fn.body.push_back(0);
-
-                    if ((c->swf_loaded ? fvm_avm1_inspect_loaded : fvm_avm1_inspect)(fn.body.begin(), fn.body.size(), &body_info) != FVM_OK)
-                        return FVM_INVALID_ARGUMENT;
-                }
+                FVM_Result prepared = fvm_avm1_prepare_function(data, record, c->swf_loaded,
+                                                                 &constants, fn);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Object *object = 0;
                 FVM_Result r = fvm_function_make_script(
                     c, fn, c->lexical_scopes.empty() ? 0 : c->lexical_scopes.back(), &object);

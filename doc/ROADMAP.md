@@ -307,3 +307,12 @@ v0.369: bounded stored-frame diagnostic replay preserves implicit End framing;
 `execution_mode_frame_replay` checks host/SWF4–8 and success/throw retries.
 Диагностический повтор сохраняет границы кадра с неявным End, исходное исключение,
 бюджет и корни. This correction does not close any roadmap stage; все стадии открыты.
+
+
+v0.370: DefineFunction/DefineFunction2 compile to rooted native creation/publication.
+Shared interpreter/native materialization retains executed constant pools, lexical
+closures, parameter registers and preload metadata; nested unsupported bodies fall
+back independently. JIT_DEFINITIONS.md / .ru.md record tests and remaining gaps.
+Нативные определения функций проверяются с GC/setter-исключениями, повреждёнными
+записями и отказами памяти. With/Try и полная совместимость остаются открытыми;
+ни одна стадия не закрыта.
