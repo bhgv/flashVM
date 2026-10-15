@@ -16,10 +16,32 @@
 #define FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS 65536U
 /* Maximum positional parent-space limit values accepted by drag value preparation. */
 #define FVM_EXEC_DRAG_BOUND_LIMIT 4U
+/* Maximum explicit entries in an Array/Object literal, independent of bytecode layout. */
+#define FVM_EXEC_MAX_LITERAL_ENTRIES 65536U
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+    /* One object-literal entry in source assignment order; both fields are borrowed inputs. */
+    typedef struct FVM_ExecutionLiteralEntry
+    {
+        FVM_Value name;  /* Property name, converted before its corresponding assignment. */
+        FVM_Value value; /* Property value, retained through constructor/name/setter callbacks. */
+    } FVM_ExecutionLiteralEntry;
+    /* Build an Array with count own elements in supplied order, without numeric length overload.
+     * Count is bounded by MAX_LITERAL_ENTRIES; values may be null only for zero count.
+     * Errors preserve out; out may alias an input. No bytecode or operand stack is accepted.
+     * [GC:] Copies and roots all inputs and the result through construction/publication. */
+    FVM_API FVM_Result fvm_exec_literal_array(FVM_Context *, unsigned int count,
+                                               const FVM_Value *values, FVM_Value *out);
+    /* Construct Object, then coerce names and assign entries in supplied order.
+     * Loaded SWFs use AVM1 text conversion and ignore converted empty names; hosts retain them.
+     * Count has the same bound as Array literals. Null entries require zero count.
+     * Errors preserve out, but callback effects and earlier property writes are not rolled back.
+     * Out may alias an entry field. [GC:] All input values/names and temporary results are rooted. */
+    FVM_API FVM_Result fvm_exec_literal_object(FVM_Context *, unsigned int count,
+                                                const FVM_ExecutionLiteralEntry *entries,
+                                                FVM_Value *out);
     /* Query a native clip's physical world matrix using per-ancestor binary32 composition.
      * Local geometry follows existing native getter semantics; root locks do not change it.
      * Clip must be an owned native instance. Errors preserve output; temporary roots and a

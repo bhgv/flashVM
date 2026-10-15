@@ -2676,3 +2676,11 @@ Host point conversion now calls common C affine inversion/application while
 retaining inverse-then-apply rounding and overflow propagation. Standalone
 C89 and direct/native host regression cases are in AFFINE_PROJECTION.md.
 Семантика загруженного SWF не меняется; этапы roadmap остаются открытыми.
+
+## v0.343: literal execution services
+
+Array/Object literal construction is shared by the interpreter and direct C
+callers. Host/SWF4–8, own slots, counted keys, duplicate/empty keys, collecting
+name callbacks, input-buffer mutation, exceptions and allocation failures have
+regression cases in LITERAL_SERVICES.md. Семантика счётчика/стека остаётся
+в адаптере; полной совместимости Flash и закрытия этапов это не означает.

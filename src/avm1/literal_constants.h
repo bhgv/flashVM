@@ -1,4 +1,4 @@
-/* FlashVM: AVM1 literal entry layouts and temporary coercion roots. */
+/* FlashVM: AVM1 literal entry layouts used only by the bytecode adapter. */
 #ifndef FVM_AVM1_LITERAL_CONSTANTS_H
 #define FVM_AVM1_LITERAL_CONSTANTS_H           /* Literal-layout header guard. */
 #define FVM_AVM1_LITERAL_COUNT_OPERANDS 1U     /* Count above the Array elements or Object pairs. */
@@ -8,9 +8,4 @@
 #define FVM_AVM1_OBJECT_LITERAL_FIRST_VALUE 2U /* First pair value lies below count. */
 #define FVM_AVM1_OBJECT_LITERAL_FIRST_NAME 3U  /* First pair name lies below its value. */
 #define FVM_AVM1_OBJECT_LITERAL_NAME_IN_PAIR 1U /* Name follows value when popping a pair. */
-#define FVM_AVM1_OBJECT_LITERAL_VALUE_ROOT 0U   /* [GC:] Pair value during property-name coercion. \
-                                                 */
-#define FVM_AVM1_OBJECT_LITERAL_NAME_ROOT 1U    /* [GC:] Original coercible pair name. */
-#define FVM_AVM1_OBJECT_LITERAL_KEY_ROOT 2U     /* [GC:] Converted counted property name. */
-#define FVM_AVM1_OBJECT_LITERAL_ROOT_COUNT 3U   /* [GC:] Pair operands and converted key. */
 #endif

@@ -859,7 +859,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 size_t consumed = (size_t)count * width;
                 if (consumed > available)
                     consumed = available;
-                FVM_Object *object = 0;
+                FVM_Value value;
                 FVM_Result r = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_INIT_ARRAY)
                 {
@@ -872,66 +872,36 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         else
                             fvm_value_undefined(&values[j]);
                     }
-                    /* Array literals never interpret a numeric element as a length. */
-                    r = fvm_array_create_like(c, 0, (unsigned long)count, &object, true);
-                    /* [GC:] Retain the literal result and copied elements until its own slots are
-                     * published. */
-                    RootGuard literal_roots(c, &values, 0, object, &registers);
-                    for (size_t j = 0; r == FVM_OK && j < values.size(); ++j)
-                        r = fvm_array_store_own(c, object, (unsigned long)j, values[j]);
+                    r = fvm_exec_literal_array(c, (unsigned int)count,
+                                               values.empty() ? 0 : values.begin(), &value);
                 }
                 else
                 {
-                    r = fvm_construct(c, "Object", 0, 0, &object);
-                    /* [GC:] Retain the partially built Object and coerced names through script and
-                     * setters. */
-                    fvm_detail::vector<FVM_Value> temporary(FVM_AVM1_OBJECT_LITERAL_ROOT_COUNT);
-                    for (size_t i = 0; i < temporary.size(); ++i)
-                        fvm_value_undefined(&temporary[i]);
-                    RootGuard literal_roots(c, &temporary, 0, object, &registers);
-                    FVM_Value &literal_value = temporary[FVM_AVM1_OBJECT_LITERAL_VALUE_ROOT];
-                    FVM_Value &literal_name = temporary[FVM_AVM1_OBJECT_LITERAL_NAME_ROOT];
-                    FVM_Value &literal_key = temporary[FVM_AVM1_OBJECT_LITERAL_KEY_ROOT];
-                    if (r == FVM_OK)
-                        for (unsigned int j = 0; j < (unsigned int)count; ++j)
-                        {
-                            /* Missing pair members independently pop undefined, without index
-                             * underflow. */
-                            if ((size_t)j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH < available)
-                                literal_value =
-                                    stack[stack.size() - FVM_AVM1_OBJECT_LITERAL_FIRST_VALUE -
-                                          j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH];
-                            else
-                                fvm_value_undefined(&literal_value);
-                            if ((size_t)j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH +
-                                    FVM_AVM1_OBJECT_LITERAL_NAME_IN_PAIR <
-                                available)
-                                literal_name =
-                                    stack[stack.size() - FVM_AVM1_OBJECT_LITERAL_FIRST_NAME -
-                                          j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH];
-                            else
-                                fvm_value_undefined(&literal_name);
-                            fvm_value_undefined(&literal_key);
-                            r = c->swf_loaded ? fvm_avm1_string(c, literal_name, &literal_key)
-                                              : fvm_value_to_string(c, &literal_name, &literal_key);
-                            if (r != FVM_OK)
-                                break;
-                            /* AVM1 Object.set ignores an empty property name after its coercion. */
-                            if (c->swf_loaded && !fvm_string_size(literal_key))
-                                continue;
-                            r = fvm_object_set_bytes(c, object, literal_key.string,
-                                                     fvm_string_size(literal_key), &literal_value);
-                            if (r != FVM_OK)
-                                break;
-                        }
+                    fvm_detail::vector<FVM_ExecutionLiteralEntry> entries((size_t)count);
+                    for (size_t j = 0; j < entries.size(); ++j)
+                    {
+                        /* Missing pair members independently pop undefined. */
+                        if (j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH < available)
+                            entries[j].value =
+                                stack[stack.size() - FVM_AVM1_OBJECT_LITERAL_FIRST_VALUE -
+                                      j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH];
+                        else
+                            fvm_value_undefined(&entries[j].value);
+                        if (j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH +
+                                FVM_AVM1_OBJECT_LITERAL_NAME_IN_PAIR <
+                            available)
+                            entries[j].name =
+                                stack[stack.size() - FVM_AVM1_OBJECT_LITERAL_FIRST_NAME -
+                                      j * FVM_AVM1_OBJECT_LITERAL_ENTRY_WIDTH];
+                        else
+                            fvm_value_undefined(&entries[j].name);
+                    }
+                    r = fvm_exec_literal_object(c, (unsigned int)count,
+                                                entries.empty() ? 0 : entries.begin(), &value);
                 }
                 if (r != FVM_OK)
                     return r;
                 stack.resize(stack.size() - FVM_AVM1_LITERAL_COUNT_OPERANDS - consumed);
-                FVM_Value value;
-                fvm_value_undefined(&value);
-                value.type = FVM_VALUE_OBJECT;
-                value.object = object;
                 stack.push_back(value);
             }
             else if (a.op == FVM_AVM1_ACTION_EXTENDS)

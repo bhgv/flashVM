@@ -257,3 +257,9 @@ In v0.342, host point conversion delegates inverse construction and point
 application to context-free C services, preserving its distinct evaluation
 order and IEEE propagation; see AFFINE_PROJECTION.md. В адаптере остаются
 чтение/запись свойств, версия SWF и GC; числовые операции доступны JIT.
+
+In v0.343, Array/Object literal construction moves to separate value-based C
+services; only count/operand decoding and stack publication remain in the
+interpreter. Full input snapshots and partial results are GC-rooted across
+callbacks. See LITERAL_SERVICES.md. Построение литералов вынесено из основного
+цикла; C-интерфейс не принимает стек или пи-код.
