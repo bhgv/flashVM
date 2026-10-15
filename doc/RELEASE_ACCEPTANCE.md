@@ -644,3 +644,15 @@ Linux: по 625/625 тестов AGG/Cairo, пять целевых провер
 и по четыре исходных SWF. Проверены прямые C-вызовы, подмена скриптовых методов,
 геттеры с исключениями, запрет вложенного GC и сохранение выхода при отказах.
 Полная геометрическая совместимость, JIT и приёмка других ОС остаются открытыми.
+
+## v0.321 intrinsic sibling construction / Общее дублирование
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 628/628 CTest checks.
+Three direct duplication checks pass in the restricted heap/global ASan+UBSan
+profile; stack ASan and LeakSanitizer remain disabled. Four recovered pinned
+unmodified SWFs again match stdout exactly with exit zero and empty stderr in
+both Release builds. See DUPLICATE_CLIP_SERVICE.md for the interface, unchanged
+native limitations and the absence of a scene-rollback promise.
+
+Linux: по 628/628 AGG/Cairo, три теста ограниченных ASan/UBSan и по четыре
+исходных SWF. Все стадии роудмапа остаются открытыми.

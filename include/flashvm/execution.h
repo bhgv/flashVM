@@ -196,6 +196,15 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Duplicate a native sibling with explicit name/depth and optional initialization value.
+     * Uses the native public-depth range and existing instance construction policy, without
+     * looking up replaceable script methods. A root has no sibling and returns undefined.
+     * Errors preserve out; constructor errors can follow scene publication. Aliases are allowed.
+     * [GC:] Retains all explicit operands; native construction blocks collector reentry. */
+    FVM_API FVM_Result fvm_exec_duplicate_clip(FVM_Context *, FVM_Object *clip,
+                                                const FVM_Value *name, const FVM_Value *depth,
+                                                const FVM_Value *initial, FVM_Value *out);
+
     /* Intrinsic world-space native geometry, independent of replaceable script methods.
      * Object form compares stroked world bounds; point form selects bounds or painted shape.
      * Empty geometry/nonfinite points yield false. Errors preserve the Boolean output.

@@ -68,4 +68,10 @@
 /* Bound unlocked root ancestry when mapping loaded hitTest points to world space. */
 #define FVM_MOVIECLIP_HIT_ROOT_MAX_ANCESTORS 1024U
 #define FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH 64U /* Maximum recursive native bounds/paint descent. */
+/* Native sibling construction uses separate roles from hit-test operands. */
+#define FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS 2U /* Name and public depth are required. */
+#define FVM_MOVIECLIP_DUPLICATE_NAME_INDEX 0U /* Coercible instance name. */
+#define FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX 1U /* Coercible native public depth. */
+#define FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX 2U /* Optional initialization value. */
+#define FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY 3U /* Complete native adapter operand array. */
 #endif
