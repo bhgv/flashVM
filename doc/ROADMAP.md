@@ -283,3 +283,12 @@ selected-target repair, ordered collecting/throwing coercion, detached drag root
 EndDrag exception/retry and allocation failures. Полная совместимость сцены Flash,
 оставшиеся инструкции и реальные запуски других ОС/CPU остаются открытыми.
 Ни одна стадия не закрыта.
+
+## v0.367: native frame waits and counted skips
+
+WaitForFrame/WaitForFrame2 share rooted availability queries and native conditional
+branches over complete source records. JIT_WAIT_FRAMES.md records host/SWF4–8
+equivalence, strict text/missing inputs, collecting/throwing conversion, compile/
+invoke allocation failures, invalid targets and exact early/implicit-End budgets.
+Неподдерживаемые блоки, полная совместимость Flash и реальные запуски других
+ОС/CPU остаются открытыми; ни одна стадия не закрыта.

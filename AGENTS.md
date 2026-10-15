@@ -32,6 +32,10 @@
 - Recovery authorization on 2026-10-15: the user permits cloning Git again after
   workspace maintenance removed the checkout. Mirror updates remain authorized;
   source/local-Git archive delivery remains disabled unless explicitly requested.
+- User reconfirmed sending to the mirror on 2026-10-15 with "отправь на зеркало"
+  after automatic review blocked the v0.366 upload. The destination remains
+  https://bhgv.pythonanywhere.com/git/FlashVM/; the standing non-force mirror-only
+  instructions above remain active.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

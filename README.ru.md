@@ -1,4 +1,4 @@
-Версия разработки: **0.366** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.367** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -39,6 +39,7 @@ GetProperty/SetProperty/TargetPath используют общие нативн�
 Enumerate/Enumerate2: [контракты и проверки](doc/JIT_ENUMERATE.ru.md).
 Нативные команды таймлайна: [контракты и проверки](doc/JIT_TIMELINE.ru.md).
 CloneSprite/RemoveSprite/StartDrag/EndDrag: [контракты и проверки](doc/JIT_SCENE.ru.md).
+WaitForFrame/WaitForFrame2: [контракты и проверки](doc/JIT_WAIT_FRAMES.ru.md).
 
 Контрольный коммит зависимостей: `extern/` объединена с `external/`.
 Включены исходники и настройки Cairo 1.16.0, Pixman 0.38.4 и SQLite 3.50.4.

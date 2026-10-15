@@ -1,7 +1,18 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.366
+# Условия окончательной приёмки / Final acceptance gates — v0.367
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.367 adds native WaitForFrame/WaitForFrame2 with counted-record conditional
+branches, shared availability conversion and uncharged successful early exits.
+All 750 AGG, 750 Cairo and 731 minimal Linux Release checks pass after generated
+ELF permission repairs before execution. Five wait/callback/allocation/invalid/
+mode checks pass restricted heap/global ASan+UBSan (stack ASan/LeakSanitizer
+disabled). Fresh fixtures pass all 26 Unicorn synthetic ISA/ABI regression cases;
+this is not execution of the complete VM on foreign CPUs/OSes. JIT_WAIT_FRAMES.md
+records exact explicit/implicit-End budgets, malformed source targets, missing
+inputs, collecting/throwing conversion and compile/invoke allocation failures.
+All roadmap stages remain open.
 
 v0.366 adds native CloneSprite/RemoveSprite/StartDrag/EndDrag through shared scene
 services. All 747 AGG, 747 Cairo and 728 minimal Linux Release checks have passing

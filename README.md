@@ -1,5 +1,5 @@
-Development version: **0.366** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.366 ` and an English description. Increase the subversion before each
+Development version: **0.367** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.367 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -39,6 +39,7 @@ Native Trace/Throw/GetTime/RandomNumber: [contracts and checks](doc/JIT_EFFECTS.
 Enumerate/Enumerate2: [contracts and checks](doc/JIT_ENUMERATE.md).
 Native timeline commands: [contracts and checks](doc/JIT_TIMELINE.md).
 CloneSprite/RemoveSprite/StartDrag/EndDrag: [contracts and checks](doc/JIT_SCENE.md).
+WaitForFrame/WaitForFrame2: [contracts and checks](doc/JIT_WAIT_FRAMES.md).
 
 The current standing user instruction authorizes mirror updates after every commit
 until revoked. Use `origin` pointing to
@@ -46,8 +47,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.366** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.366 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.367** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.367 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

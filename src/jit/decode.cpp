@@ -8,6 +8,14 @@
 #include "../core/numeric_constants.h"
 namespace
 {
+/* A frame wait branches by encoded Action count rather than source-byte displacement. */
+struct FrameSkip
+{
+    size_t action; /* Native source-action index containing the wait. */
+    size_t count; /* Complete following source records to skip when unavailable. */
+    /* Record a source-relative skip before branch targets are resolved. */
+    FrameSkip(size_t a = 0, size_t c = 0) : action(a), count(c) {}
+};
 /* Read the bounded little-endian branch/record width. */
 unsigned int word(const unsigned char *p)
 {
@@ -137,6 +145,7 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
 {
     size_t position = 0;
     bool ended = false;
+    fvm_detail::vector<FrameSkip> skips;
     while (position < size)
     {
         if (code.actions.size() >= FVM_JIT_MAX_ACTIONS)
@@ -246,6 +255,18 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                 policy |= FVM_JIT_FRAME_WITH_BIAS |
                     (word(data + payload + FVM_AVM1_GOTO_SCENE_OFFSET) << FVM_JIT_FRAME_BIAS_SHIFT);
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_frame_value>, policy));
+        }
+        else if (op == FVM_AVM1_ACTION_WAIT_FOR_FRAME || op == FVM_AVM1_ACTION_WAIT_FOR_FRAME2)
+        {
+            bool direct = op == FVM_AVM1_ACTION_WAIT_FOR_FRAME;
+            if (length != (direct ? FVM_AVM1_WAIT_DIRECT_BYTES : FVM_AVM1_WAIT_VALUE_BYTES))
+                return FVM_INVALID_ARGUMENT;
+            action.calls.push_back(FVM_JitCall(
+                direct ? fvm_jit_safe<fvm_jit_wait_direct> : fvm_jit_safe<fvm_jit_wait_value>,
+                direct ? word(data + payload) : 0));
+            action.branch = FVM_JIT_CONDITIONAL;
+            skips.push_back(FrameSkip(code.actions.size(),
+                data[payload + (direct ? FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET : 0)]));
         }
         else if (op == FVM_AVM1_ACTION_SET_TARGET2)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_value>, 0));
@@ -425,7 +446,15 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         terminal.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_checkpoint>, (unsigned int)size));
         code.actions.push_back(terminal);
     }
+    size_t counted_actions = code.actions.size();
+    size_t skip_at = 0;
     for (size_t i = 0; i < code.actions.size(); ++i)
+    {
+        if (skip_at < skips.size() && skips[skip_at].action == i)
+        {
+            ++skip_at;
+            continue;
+        }
         if (code.actions[i].branch == FVM_JIT_JUMP || code.actions[i].branch == FVM_JIT_CONDITIONAL)
         {
             size_t low = 0, high = code.actions.size();
@@ -441,5 +470,32 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                 return FVM_INVALID_ARGUMENT;
             code.actions[i].target = low;
         }
+    }
+    /* Early exits skip even ActionEnd; synthetic epilogues must not charge source checkpoints. */
+    size_t early_exit = code.actions.size();
+    bool have_early_exit = false;
+    for (size_t i = 0; i < skips.size(); ++i)
+    {
+        size_t at = skips[i].action;
+        size_t target = 0;
+        if (skips[i].count >= counted_actions - at - 1)
+        {
+            if (!have_early_exit)
+            {
+                if (code.actions.size() >= FVM_JIT_MAX_ACTIONS)
+                    return FVM_UNSUPPORTED;
+                FVM_JitAction terminal;
+                terminal.offset = size;
+                terminal.branch = FVM_JIT_EXIT;
+                terminal.calls.push_back(FVM_JitCall(fvm_jit_finish, 0));
+                code.actions.push_back(terminal);
+                have_early_exit = true;
+            }
+            target = early_exit;
+        }
+        else
+            target = at + 1 + skips[i].count;
+        code.actions[at].target = target;
+    }
     return FVM_OK;
 }

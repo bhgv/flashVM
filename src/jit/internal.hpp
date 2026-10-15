@@ -84,6 +84,8 @@ struct FVM_JitInvocation
 };
 /* Runtime helper families; all exceptions are contained before returning to machine code. */
 FVM_Result fvm_jit_checkpoint(FVM_JitInvocation *, unsigned int);
+/* Return success from an uncharged compiler-generated exit after a true branch predicate. */
+FVM_Result fvm_jit_finish(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_push(FVM_JitInvocation *, unsigned int);
 /* Select an immutable pool only when the encoded ConstantPool action actually executes. */
 FVM_Result fvm_jit_set_pool(FVM_JitInvocation *, unsigned int);
@@ -136,6 +138,10 @@ FVM_Result fvm_jit_remove_sprite(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_start_drag(FVM_JitInvocation *, unsigned int);
 /* Flush pending drag motion and release the active drag target. */
 FVM_Result fvm_jit_end_drag(FVM_JitInvocation *, unsigned int);
+/* Set the native skip predicate from a direct unsigned frame request. */
+FVM_Result fvm_jit_wait_direct(FVM_JitInvocation *, unsigned int);
+/* Convert and consume a dynamic frame request before setting the skip predicate. */
+FVM_Result fvm_jit_wait_value(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

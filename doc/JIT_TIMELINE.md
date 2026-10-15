@@ -37,3 +37,6 @@ Linux Release: all 744 AGG, 744 Cairo and 725 minimal checks pass after restorin
 generated ELF execute permissions before graphical-profile runs. Four timeline/
 allocation/callback/invalid checks pass restricted heap/global ASan+UBSan; stack
 ASan and LeakSanitizer are disabled. No foreign OS/VM execution is claimed.
+
+As of v0.367 WaitForFrame is native; automatic fallback uses an unused anonymous
+DefineFunction. See JIT_WAIT_FRAMES.md.

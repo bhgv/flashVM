@@ -37,3 +37,6 @@ Linux Release: все 744 проверки AGG, 744 Cairo и 725 minimal про�
 восстановления прав сгенерированных ELF перед графическими прогонами. Четыре
 проверки timeline/allocation/callback/invalid проходят ограниченный heap/global
 ASan+UBSan; stack ASan и LeakSanitizer отключены. Запуск других ОС/VM не заявлен.
+
+С v0.367 WaitForFrame нативный; автоматический fallback использует невызываемый
+анонимный DefineFunction. См. JIT_WAIT_FRAMES.ru.md.

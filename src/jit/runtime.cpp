@@ -155,3 +155,9 @@ FVM_Result fvm_jit_stack(FVM_JitInvocation *s, unsigned int operation)
     }
     return FVM_OK;
 }
+
+/* Synthetic exits clear the helper status register without charging a nonexistent source Action. */
+FVM_Result fvm_jit_finish(FVM_JitInvocation *, unsigned int)
+{
+    return FVM_OK;
+}
