@@ -488,3 +488,10 @@ top operands, preserving right/left position and shared C coercion semantics.
 Raw-byte fixtures cover zero/one values, SWF4–8, strict host mode, collecting
 valueOf and allocation failures. See AVM1_BINARY_MISSING.md. Other stack policies
 and all roadmap stages remain open. Порядок аргументов проверен отдельно.
+
+### v0.302 — missing stack/control operands / Стек и управление без значения
+
+Loaded Pop/Duplicate/Swap/Return/Throw/If/Trace now follow audited undefined
+missing-pop behavior. Raw bytes cover host strictness and SWF4–8, pending thrown
+undefined, function return, trace text and malformed If records.
+See AVM1_CONTROL_MISSING.md. Остальные политики стека и все стадии открыты.

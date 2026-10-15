@@ -394,8 +394,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 return FVM_OK;
             if (a.op == FVM_AVM1_ACTION_RETURN)
             { /* Return */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 if (returned)
                     *returned = stack.back();
                 execution.returned = true;
@@ -403,8 +404,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             if (a.op == FVM_AVM1_ACTION_THROW)
             { /* Throw: preserve the value while unwinding. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value value = stack.back();
                 FVM_Result result = fvm_exception_raise(c, &value);
                 stack.pop_back();
@@ -1522,14 +1524,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_PUSH_DUPLICATE)
             { /* PushDuplicate */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 stack.push_back(stack.back());
             }
             else if (a.op == FVM_AVM1_ACTION_STACK_SWAP)
             { /* StackSwap */
-                if (stack.size() < FVM_AVM1_SWAP_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_SWAP_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value tmp = stack.back();
                 stack.back() = stack[stack.size() - FVM_AVM1_SWAP_OPERANDS];
                 stack[stack.size() - FVM_AVM1_SWAP_OPERANDS] = tmp;
@@ -1574,8 +1579,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_TRACE)
             { /* Trace always coerces its operand, even when host delivery is disabled. */
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Result status = fvm_exec_trace(c, &stack.back());
                 if (status != FVM_OK)
                     return status;
@@ -1584,8 +1590,12 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_POP)
             { /* Pop */
                 if (stack.empty())
-                    return FVM_ERROR;
-                stack.pop_back();
+                {
+                    if (!c->swf_loaded)
+                        return FVM_ERROR;
+                }
+                else
+                    stack.pop_back();
             }
             else if (a.op == FVM_AVM1_ACTION_DEFINE_LOCAL || a.op == FVM_AVM1_ACTION_DEFINE_LOCAL2)
             {
@@ -1752,8 +1762,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 int take = 1;
                 if (a.op == FVM_AVM1_ACTION_IF)
                 {
-                    if (stack.empty())
-                        return FVM_ERROR;
+                    FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                    if (prepared != FVM_OK)
+                        return prepared;
                     bool converted = false;
                     FVM_Result status = action_truth(c, stack.back(), converted);
                     if (status != FVM_OK)
