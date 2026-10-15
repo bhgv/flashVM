@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.357
+# Условия окончательной приёмки / Final acceptance gates — v0.358
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.358 adds native InitArray/InitObject using shared count/construction services.
+All 726 AGG, 726 Cairo and 707 minimal Linux Release checks have passing evidence
+after restoring generated ELF execute permissions. Three literal checks pass
+restricted heap/global ASan+UBSan (stack ASan/LSan disabled). JIT_LITERALS.md
+records versioned count/entry/GC/allocation behavior. All stages remain open.
 
 v0.357 adds twelve native string Actions using shared counted/versioned services.
 All 723 AGG, 723 Cairo and 704 minimal Linux Release checks have passing evidence

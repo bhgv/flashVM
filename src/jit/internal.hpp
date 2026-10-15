@@ -108,6 +108,8 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Materialize an Array/Object literal through shared count and constructor services. */
+FVM_Result fvm_jit_literal(FVM_JitInvocation *, unsigned int);
 /* Execute versioned string length while retaining its input. */
 FVM_Result fvm_jit_string_length(FVM_JitInvocation *, unsigned int);
 /* Read the first character code through shared conversion. */

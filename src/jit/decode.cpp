@@ -273,6 +273,9 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                 : op == FVM_AVM1_ACTION_STRING_LESS ? FVM_EXEC_LESS : FVM_EXEC_GREATER;
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_string_binary>, operation));
         }
+        else if (op == FVM_AVM1_ACTION_INIT_ARRAY || op == FVM_AVM1_ACTION_INIT_OBJECT)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_literal>,
+                                               op == FVM_AVM1_ACTION_INIT_OBJECT));
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
         else if (op == FVM_AVM1_ACTION_SET_VARIABLE)

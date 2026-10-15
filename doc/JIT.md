@@ -49,6 +49,8 @@ The compiler currently accepts:
   (v0.356; [contracts and checks](JIT_TARGETS.md)).
 - StringLength/Extract, CharToAscii/AsciiToChar and their MB variants; StringAdd,
   StringEquals/Less/Greater (v0.357; [contracts and limits](JIT_STRINGS.md)).
+- InitArray/InitObject with shared count normalization and own-entry semantics
+  (v0.358; [contracts and checks](JIT_LITERALS.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).
@@ -58,8 +60,7 @@ The compiler currently accepts:
   (v0.351; [contracts and checks](JIT_NUMBERS.md)).
 - Jump and If, with target validation and native forward/backward relocation.
 
-All other operations, including function definitions, object/array
-initialization and exception blocks, return
+All other operations, including function definitions and exception blocks, return
 `FVM_UNSUPPORTED` at compile time. Support in the interpreter does not imply
 support in this compiler. Invalid supported record layouts/branch targets return
 `FVM_INVALID_ARGUMENT`. Some unreachable unsupported operations can conservatively

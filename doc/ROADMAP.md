@@ -209,3 +209,11 @@ conversion order, rooted operands and existing SWF4–5 ASCII/character limits.
 JIT_STRINGS.md records exact UTF-16, missing-input, manual/automatic, collecting/
 throwing coercion, allocation and returned-text lifetime checks. Полная строковая
 совместимость Flash, другие инструкции и все стадии приёмки ещё открыты.
+
+## v0.358: native Array/Object initializers
+
+InitArray/InitObject use shared count normalization and construction, preserving
+entry order, independent missing pair members, own Array slots and counted keys.
+JIT_LITERALS.md records versioned native/interpreted, collecting/throwing callback,
+allocation and result-lifetime checks. Определения функций, остальные инструкции
+и полная совместимость и приёмка всех стадий ещё открыты.
