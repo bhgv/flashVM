@@ -198,3 +198,15 @@ keeps matrix and color publication atomic on failures. See CLIP_COPY_TRANSFORM.m
 Общий C-сервис копирования локальной матрицы и цвета доступен будущему JIT и
 setter MovieClip.transform. Исходные getter-побочные эффекты не откатываются;
 публикация у получателя атомарна. Все стадии остаются открытыми.
+
+### v0.333: explicit point conversion
+
+clip_point.cpp exports fvm_exec_clip_point, used by separate local/global native
+adapter files. It preserves existing point-field conversion, physical matrices,
+ordered setter errors and callback transport IDs. See CLIP_POINT_SERVICE.md for
+remaining loaded-Flash policy differences. The large MovieClip file no longer
+owns the point operation; no instruction or operand-stack dependency was added.
+
+Преобразование точки вынесено из MovieClip в общий C-сервис с двумя адаптерами.
+Порядок преобразований, setter-ошибок и прежние ID сохранены; известные отличия
+от Flash перечислены отдельно и не объявляются исправленными.

@@ -19,6 +19,12 @@
 extern "C"
 {
 #endif
+    /* Convert an object-valued point in place: reverse=0 local to world, nonzero world
+     * to local. Reads/coerces x then y before geometry, then writes x followed by y.
+     * Setter failures may leave x changed; singular inverse leaves the point unchanged.
+     * Retains existing native conversion policy, including inherited/getter fields. */
+    FVM_API FVM_Result fvm_exec_clip_point(FVM_Context *, FVM_Object *clip, int reverse,
+                                           const FVM_Value *point);
     /* Copy a native source clip's local matrix and color into destination atomically.
      * Both clips must belong to context and be native instances. Source geometry
      * getters follow existing native snapshot rules; their side effects are retained.

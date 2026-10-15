@@ -2572,3 +2572,16 @@ See [CLIP_COPY_TRANSFORM.md](CLIP_COPY_TRANSFORM.md).
 Реализовано присваивание типизированного Transform через общий C89-сервис;
 матрица и цвет публикуются вместе, источник не удерживается. Точное совпадение
 с сырыми снимками Flash, версиями доступности и всеми атрибутами ещё открыто.
+
+### v0.333 Native point execution service
+
+Implemented extraction: localToGlobal/globalToLocal share the C89
+fvm_exec_clip_point service with generated callers. Separate native adapters keep
+the same callback-table slots; field/getter coercion, physical ancestry and ordered
+setter failures retain previous behavior. This is not a compatibility upgrade to
+Flash's own-stored numeric field, twip or singular-fallback policies. See
+[CLIP_POINT_SERVICE.md](CLIP_POINT_SERVICE.md); all roadmap stages remain open.
+
+Реализована декомпозиция преобразования точки и общий интерфейс для C/JIT.
+Прежняя семантика сохранена; точное поведение Flash для полей точки и twips
+по-прежнему требует реализации и эталонных проверок.

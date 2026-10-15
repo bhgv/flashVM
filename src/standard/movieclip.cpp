@@ -7,6 +7,7 @@
 #include "movieclip_construction.hpp"
 #include "movieclip_lockroot.hpp"
 #include "movieclip_pointer.hpp"
+#include "movieclip_point.hpp"
 #include "movieclip_drag.hpp"
 #include "movieclip_constants.h"
 #include "movieclip_storage.hpp"
@@ -1139,56 +1140,6 @@ bool invert(FVM_Affine &m)
     m.x0 = -(m.xx * old.x0 + m.xy * old.y0);
     m.y0 = -(m.yx * old.x0 + m.yy * old.y0);
     return true;
-}
-
-/* Compute and return point. */
-FVM_Result point(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a, FVM_Value *out,
-                 bool reverse)
-{
-    if (!n || a[0].type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-    FVM_Object *data = 0;
-    if (state(o, data) != FVM_OK)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    double x = 0, y = 0;
-    FVM_Result r = numeric(c, a[0].object, "x", x);
-    if (r != FVM_OK)
-        return r;
-    r = numeric(c, a[0].object, "y", y);
-    if (r != FVM_OK)
-        return r;
-    FVM_Affine m;
-    r = matrix(c, o, m);
-    if (r != FVM_OK)
-        return r;
-    if (reverse && !invert(m))
-        return FVM_INVALID_ARGUMENT;
-    FVM_Value v = number(m.xx * x + m.xy * y + m.x0);
-    r = fvm_object_set(c, a[0].object, "x", &v);
-    if (r != FVM_OK)
-        return r;
-
-    /* Computation / Вычисление и обновление состояния. */
-    v = number(m.yx * x + m.yy * y + m.y0);
-    r = fvm_object_set(c, a[0].object, "y", &v);
-    fvm_value_undefined(out);
-    return r;
-}
-
-/* Compute and return local global. */
-FVM_Result local_global(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
-                        FVM_Value *v, void *)
-{
-    return point(c, o, n, a, v, false);
-}
-
-/* Compute and return global local. */
-FVM_Result global_local(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
-                        FVM_Value *v, void *)
-{
-    return point(c, o, n, a, v, true);
 }
 
 /* Compute and return playing. */
@@ -2563,8 +2514,8 @@ const Method methods[] = {{"toString", clip_string},
                           {"createEmptyMovieClip", create_child},
                           {"removeMovieClip", remove},
                           {"swapDepths", swap_depths},
-                          {"localToGlobal", local_global},
-                          {"globalToLocal", global_local},
+                          {"localToGlobal", fvm_movieclip_local_global},
+                          {"globalToLocal", fvm_movieclip_global_local},
                           {"play", play},
                           {"stop", stop},
                           {"gotoAndPlay", goto_play},
