@@ -2621,3 +2621,16 @@ and output twips remain open. See AVM1_POINT_CASE.md; all stages stay open.
 Исправлен регистр полей точки SWF4–6 и сохранение написания при записи через
 общий C-сервис. Точные матрицы/выходные twips и перечисленные сложные случаи
 по-прежнему открыты; завершение стадий не заявляется.
+
+### v0.337 Context-free fixed matrix services
+
+Implemented native C89 arithmetic: signed 16.16 matrix composition and signed
+twip point application, with explicit modular sums, floor-shifted products,
+range/alias validation and no context/allocation/GC. Independent integer-oracle
+fixtures and 32-bit/wide-word checks accompany the services. See FIXED_MATRIX.md.
+These primitives do not yet change scene storage or loaded point behavior;
+full fixed-point scene integration and all roadmap stages remain open.
+
+Реализован независимый C89-слой exact fixed-point произведений для матриц и
+точек, без VM-контекста и аллокаций. Сцена и интерпретатор пока его не вызывают;
+совместимость Flash и завершение стадий этим шагом не объявляются.

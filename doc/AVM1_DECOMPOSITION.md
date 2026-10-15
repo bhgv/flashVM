@@ -210,3 +210,15 @@ owns the point operation; no instruction or operand-stack dependency was added.
 Преобразование точки вынесено из MovieClip в общий C-сервис с двумя адаптерами.
 Порядок преобразований, setter-ошибок и прежние ID сохранены; известные отличия
 от Flash перечислены отдельно и не объявляются исправленными.
+
+### v0.337: context-free arithmetic foundation
+
+fixed_matrix_point.cpp and fixed_matrix_multiply.cpp in src/capi each own one
+exported C89 operation, with shared unsigned limb helpers in core/fixed32.hpp.
+Unlike value execution services these numeric primitives need no VM context,
+roots or bytecode. They are available to future generated/scene code but do not
+yet replace the native double matrix path. See FIXED_MATRIX.md.
+
+Добавлены независимые числовые C-функции для будущего JIT и сцены. В каждой
+единице реализации одна экспортируемая операция; текущая double-сцена пока
+не изменена, стадии роудмапа остаются открытыми.
