@@ -17,7 +17,7 @@ extern "C"
      * UNSUPPORTED; malformed supported records return INVALID_ARGUMENT. Errors preserve out.
      * On success the host owns code and must keep it alive while attached to any function.
      * Attach fvm_jit_body with code as userdata through fvm_function_set_body. Compile the
-     * same body used to create the function; captured constant pools are not accepted yet. */
+     * same body used to create the function; constant pools follow the prepared activation. */
     FVM_API FVM_Result fvm_jit_compile(const void *actions, size_t size, FVM_JitCode **out);
     /* Prepared-function body ABI. Calls native code with rooted temporaries and shared budgets.
      * Use through ordinary function invocation, not as an alternative activation builder. */
@@ -26,7 +26,7 @@ extern "C"
     /* Release code after unbinding all functions. Active invocation prevents destruction.
      * The host must not reuse a released handle or leave it attached to an inactive function. */
     FVM_API FVM_Result fvm_jit_destroy(FVM_JitCode *);
-    /* Return native code size in bytes; zero for null. Does not expose writable code memory. */
+    /* Return emitted bytes including owned nested blocks; zero for null. No writable memory. */
     FVM_API size_t fvm_jit_code_size(const FVM_JitCode *);
 #ifdef __cplusplus
 }

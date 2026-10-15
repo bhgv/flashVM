@@ -45,3 +45,6 @@ Linux Release: all 759 AGG, 759 Cairo and 740 minimal checks have passing eviden
 after generated ELF permission repairs/reruns. Five targeted checks pass restricted
 heap/global ASan+UBSan with stack ASan/LeakSanitizer disabled. Fresh backend fixtures
 pass 26 synthetic Unicorn cases; these do not execute the complete foreign VM.
+
+Update v0.371: [native With](JIT_WITH.md) closes the earlier With compiler gap;
+Try and complete conformance remain open.

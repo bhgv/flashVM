@@ -1,4 +1,4 @@
-Версия разработки: **0.370** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.371** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -271,3 +271,6 @@ Multi-architecture JIT, breakpoints, threads and multiple VM examples / JIT дл
 
 Нативные DefineFunction/DefineFunction2: [English](doc/JIT_DEFINITIONS.md) /
 [Русский](doc/JIT_DEFINITIONS.ru.md); захват области/пула, callbacks и отказы памяти.
+
+Нативный With: общий стек/регистры/пул, вложенный Return и восстановление области;
+[English](doc/JIT_WITH.md) / [Русский](doc/JIT_WITH.ru.md).

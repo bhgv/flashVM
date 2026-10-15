@@ -2918,3 +2918,11 @@ back independently. JIT_DEFINITIONS.md / .ru.md record tests and remaining gaps.
 Нативные определения функций проверяются с GC/setter-исключениями, повреждёнными
 записями и отказами памяти. With/Try и полная совместимость остаются открытыми;
 ни одна стадия не закрыта.
+
+
+v0.371: native With owns compiled child bodies and shares rooted operands,
+registers, executed pools and instruction accounting. Nested Return propagates;
+lexical scopes and code activity unwind on errors/GC/OOM. Aggregate native bytes
+include children; 64-level nesting and breakpoint/cache behavior are tested.
+JIT_WITH.md / .ru.md record evidence and limits. Try/remaining Actions, full
+conformance and real foreign-platform acceptance remain open; все стадии открыты.

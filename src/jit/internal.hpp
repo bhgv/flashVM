@@ -47,6 +47,14 @@ struct FVM_JitPool
 {
     fvm_detail::vector<fvm_detail::string> entries; /* Source-owned terminated byte strings. */
 };
+/* One native nested With body, owned by its defining code handle. */
+struct FVM_JitBlock
+{
+    FVM_JitCode *code; /* Owned child mapping and recursively compiled nested bodies. */
+    size_t offset;    /* Body byte offset relative to this parent's source. */
+    /* Initialize a child descriptor or an unused vector capacity slot. */
+    FVM_JitBlock(FVM_JitCode *c = 0, size_t at = 0) : code(c), offset(at) {}
+};
 /* Host-owned program and executable mapping, intentionally outside graph transport. */
 struct FVM_JitCode
 {
@@ -54,6 +62,7 @@ struct FVM_JitCode
         source; /* Owned source snapshot for root diagnostic replay. */
     fvm_detail::vector<FVM_JitConstant> constants; /* No managed references. */
     fvm_detail::vector<FVM_JitPool> pools;         /* Immutable complete pool replacements. */
+    fvm_detail::vector<FVM_JitBlock> blocks; /* Owned native structured bodies; no managed edges. */
     size_t pool_entries; /* Bounded aggregate pool entry count, independent of literal records. */
     fvm_detail::vector<FVM_JitAction> actions;     /* Source map and compile-time call plan. */
     void *memory;                                  /* RX-only native instruction mapping. */
@@ -68,6 +77,8 @@ struct FVM_JitCode
     ~FVM_JitCode()
     {
         fvm_port_code_release(memory, mapped);
+        for (size_t i = 0; i < blocks.size(); ++i)
+            delete blocks[i].code;
     }
 };
 /* Stack lives in an execution root frame throughout native calls and polling. */
@@ -81,7 +92,15 @@ struct FVM_JitInvocation
     FVM_Value result;    /* Returned value copied before stack roots leave scope. */
     unsigned long steps; /* Invocation-local checkpoint polling cadence. */
     bool condition;      /* Latest popped branch truth value. */
+    bool returned;       /* Return exits all containing With blocks in this function. */
+    unsigned long source_base; /* Enclosing structured-body byte offset for debugger checkpoints. */
 };
+/* Run a compiled With block over the suspended operand/register/pool state. */
+FVM_Result fvm_jit_with(FVM_JitInvocation *, unsigned int);
+/* Count emitted bytes in a code handle and all of its owned structured bodies. */
+size_t fvm_jit_retained_bytes(const FVM_JitCode *);
+/* Compile with bounded nesting; nested blocks permit empty/implicit uncharged endings. */
+FVM_Result fvm_jit_compile_block(const void *, size_t, FVM_JitCode **, unsigned int, bool);
 /* Runtime helper families; all exceptions are contained before returning to machine code. */
 FVM_Result fvm_jit_checkpoint(FVM_JitInvocation *, unsigned int);
 /* Return success from an uncharged compiler-generated exit after a true branch predicate. */
@@ -201,7 +220,8 @@ template <FVM_JitStep Step> FVM_Result fvm_jit_safe(FVM_JitInvocation *state, un
     }
 }
 /* Validate/decode before any executable mapping is allocated. */
-FVM_Result fvm_jit_decode(const unsigned char *, size_t, FVM_JitCode &);
+FVM_Result fvm_jit_decode(const unsigned char *, size_t, FVM_JitCode &, unsigned int = 0,
+                           bool nested = false);
 /* Emit relocatable System V AMD64 blocks and seal their mapping. */
 FVM_Result fvm_jit_emit(FVM_JitCode &);
 #endif

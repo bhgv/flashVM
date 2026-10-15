@@ -244,7 +244,8 @@ FVM_Result fvm_execution_select_code(FVM_Context *c, const void *source, size_t 
             return status;
         if (status != FVM_OK)
             code = 0;
-        if (code && code->bytes > FVM_JIT_CACHE_BYTES - c->execution_mode.cache_bytes)
+        size_t retained = fvm_jit_retained_bytes(code);
+        if (code && retained > FVM_JIT_CACHE_BYTES - c->execution_mode.cache_bytes)
         {
             fvm_jit_destroy(code);
             ++c->execution_mode.stats.fallbacks;
@@ -262,7 +263,7 @@ FVM_Result fvm_execution_select_code(FVM_Context *c, const void *source, size_t 
         }
         if (code)
         {
-            c->execution_mode.cache_bytes += code->bytes;
+            c->execution_mode.cache_bytes += retained;
             ++c->execution_mode.stats.compiled_bodies;
         }
         else

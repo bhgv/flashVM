@@ -7,7 +7,7 @@
 FVM_Result fvm_jit_checkpoint(FVM_JitInvocation *s, unsigned int offset)
 {
     ++s->steps;
-    return fvm_exec_checkpoint(s->context, 1, offset,
+    return fvm_exec_checkpoint(s->context, 1, s->source_base + offset,
                                (s->steps & FVM_JIT_POLL_MASK) == 1UL ? FVM_EXEC_POLL : 0);
 }
 /* Adopt immutable literal text before publishing it into managed state. */
@@ -101,7 +101,10 @@ FVM_Result fvm_jit_return(FVM_JitInvocation *s, unsigned int)
 {
     FVM_Result status = fvm_avm1_require_value(s->context->swf_loaded, *s->stack);
     if (status == FVM_OK)
+    {
         s->result = s->stack->back();
+        s->returned = true;
+    }
     return status;
 }
 /* Project and pop branch truth using the versioned C operation. */

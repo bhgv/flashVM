@@ -1,6 +1,7 @@
 /* FlashVM: explicit native program ownership and prepared-activation entry. */
 #include "internal.hpp"
 #include <cstring>
+#include "../avm1/encoding_constants.h"
 /* Availability is limited to the implemented ABI, not merely the processor family. */
 extern "C" int fvm_jit_available(void)
 {
@@ -8,23 +9,27 @@ extern "C" int fvm_jit_available(void)
            fvm_jit_target_width(fvm_jit_host_target()) == sizeof(void *);
 }
 /* Publish a handle only after complete decoding, relocation and W^X sealing. */
-extern "C" FVM_Result fvm_jit_compile(const void *bytes, size_t size, FVM_JitCode **out)
+FVM_Result fvm_jit_compile_block(const void *bytes, size_t size, FVM_JitCode **out,
+                                 unsigned int depth, bool nested)
 {
-    if (!bytes || !size || !out)
+    if ((!bytes && size) || (!nested && !size) || !out)
         return FVM_INVALID_ARGUMENT;
     if (!fvm_jit_available())
         return FVM_UNSUPPORTED;
-    if (size > FVM_JIT_MAX_SOURCE_BYTES)
+    if (size > FVM_JIT_MAX_SOURCE_BYTES || depth > FVM_AVM1_MAX_BLOCK_DEPTH)
         return FVM_UNSUPPORTED;
     FVM_JitCode *code = 0;
     try
     {
         code = new FVM_JitCode;
         code->source.resize(size);
-        std::memcpy(code->source.begin(), bytes, size);
-        FVM_Result status = fvm_jit_decode(code->source.begin(), size, *code);
+        if (size)
+            std::memcpy(code->source.begin(), bytes, size);
+        FVM_Result status = fvm_jit_decode(code->source.begin(), size, *code, depth, nested);
         if (status == FVM_OK)
             status = fvm_jit_emit(*code);
+        if (status == FVM_OK && fvm_jit_retained_bytes(code) > FVM_JIT_MAX_CODE_BYTES)
+            status = FVM_UNSUPPORTED;
         if (status != FVM_OK)
         {
             delete code;
@@ -43,6 +48,28 @@ extern "C" FVM_Result fvm_jit_compile(const void *bytes, size_t size, FVM_JitCod
         delete code;
         return FVM_ERROR;
     }
+}
+/* Ordinary public compilation retains nonempty source validation and root End accounting. */
+extern "C" FVM_Result fvm_jit_compile(const void *bytes, size_t size, FVM_JitCode **out)
+{
+    return fvm_jit_compile_block(bytes, size, out, 0, false);
+}
+/* All owned block mappings participate in compilation/cache byte limits. */
+size_t fvm_jit_retained_bytes(const FVM_JitCode *code)
+{
+    if (!code)
+        return 0;
+    size_t total = code->bytes;
+    if (total > FVM_JIT_MAX_CODE_BYTES)
+        return FVM_JIT_MAX_CODE_BYTES + 1;
+    for (size_t i = 0; i < code->blocks.size(); ++i)
+    {
+        size_t child = fvm_jit_retained_bytes(code->blocks[i].code);
+        if (child > FVM_JIT_MAX_CODE_BYTES - total)
+            return FVM_JIT_MAX_CODE_BYTES + 1;
+        total += child;
+    }
+    return total;
 }
 /* Enter a real native block only after every transient operand root has been installed. */
 extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out,
@@ -81,6 +108,8 @@ extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame,
         state.pool = c->execution_mode.native_pool;
         state.steps = 0;
         state.condition = false;
+        state.returned = false;
+        state.source_base = 0;
         fvm_value_undefined(&state.result);
         typedef FVM_Result (*Entry)(FVM_JitInvocation *);
         Entry entry;
@@ -108,8 +137,8 @@ extern "C" FVM_Result fvm_jit_destroy(FVM_JitCode *code)
     delete code;
     return FVM_OK;
 }
-/* Report actual emitted bytes rather than page-rounded allocation size. */
+/* Report all owned emitted bytes rather than page-rounded mapping sizes. */
 extern "C" size_t fvm_jit_code_size(const FVM_JitCode *code)
 {
-    return code ? code->bytes : 0;
+    return fvm_jit_retained_bytes(code);
 }

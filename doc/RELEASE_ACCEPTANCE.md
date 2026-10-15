@@ -1,7 +1,21 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.370
+# Условия окончательной приёмки / Final acceptance gates — v0.371
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.371 adds native With with owned compiled child mappings, shared operands/
+registers/pools, function-wide Return propagation and scoped lexical cleanup.
+All 763 AGG, 763 Cairo and 744 minimal Linux Release checks have passing evidence
+after generated ELF permission repairs and reruns, including the minimal reference
+runner's child executable. Six With/allocation/callback/validation/definition/
+frame-replay checks pass restricted heap/global ASan+UBSan (stack ASan and
+LeakSanitizer disabled). Fresh fixtures pass 26 synthetic Unicorn ISA/ABI cases;
+these do not execute the complete VM on another OS. Dependent test objects were
+explicitly rebuilt for changed private JIT layouts. JIT_WITH.md / .ru.md record
+64-level nesting, source/budget boundaries, collecting/throwing callbacks, retained
+closures, active child mappings, aggregate cache bytes and breakpoint fallback.
+Try, other remaining Actions, reference conformance and real non-Linux runtime
+acceptance remain open; no roadmap stage is closed.
 
 v0.370 adds native DefineFunction/DefineFunction2 through shared interpreter/native
 record materialization, runtime pool snapshots and rooted closure publication.

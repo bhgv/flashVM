@@ -42,3 +42,6 @@ Linux Release: успешные результаты всех 759 AGG, 759 Cairo
 heap/global ASan+UBSan при отключённых stack ASan/LeakSanitizer. Свежие backend
 fixtures прошли 26 синтетических сценариев Unicorn; это не запуск полной VM
 на другой ОС/CPU.
+
+Обновление v0.371: [нативный With](JIT_WITH.ru.md) закрывает прежний пробел
+компилятора With; Try и полная совместимость остаются открытыми.

@@ -3,6 +3,7 @@
 #include "timeline_constants.h"
 #include "url_constants.h"
 #include "../avm1/function_definition.hpp"
+#include "../avm1/with_record.hpp"
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
@@ -143,11 +144,13 @@ FVM_Result pool(const unsigned char *data, size_t begin, size_t end, FVM_JitCode
 } // namespace
 /* Reject unsupported bodies atomically; retain byte offsets only as debugger/relocation metadata.
  */
-FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &code)
+FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &code,
+                           unsigned int depth, bool nested)
 {
     size_t position = 0;
     bool ended = false;
     fvm_detail::vector<FrameSkip> skips;
+    fvm_detail::vector<size_t> returns;
     while (position < size)
     {
         if (code.actions.size() >= FVM_JIT_MAX_ACTIONS)
@@ -216,6 +219,31 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             FVM_Result status = push(data, payload, position, code, action);
             if (status != FVM_OK)
                 return status;
+        }
+        else if (op == FVM_AVM1_ACTION_WITH)
+        {
+            size_t body = 0, count = 0, next = 0;
+            if (!fvm_with_record(data, size, payload, length, body, count, next))
+                return FVM_INVALID_ARGUMENT;
+            FVM_JitCode *child = 0;
+            FVM_Result status = fvm_jit_compile_block(data + body, count, &child, depth + 1, true);
+            if (status != FVM_OK)
+                return status;
+            unsigned int index = (unsigned int)code.blocks.size();
+            try
+            {
+                code.blocks.push_back(FVM_JitBlock(child, body));
+            }
+            catch (...)
+            {
+                delete child;
+                throw;
+            }
+            position = next;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_with>, index));
+            action.branch = FVM_JIT_CONDITIONAL;
+            action.target = FVM_JIT_EXIT_LABEL;
+            returns.push_back(code.actions.size());
         }
         else if (op == FVM_AVM1_ACTION_DEFINE_FUNCTION || op == FVM_AVM1_ACTION_DEFINE_FUNCTION2)
         {
@@ -493,6 +521,8 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         if (ended)
             break;
     }
+    if (ended && position != size)
+        return FVM_INVALID_ARGUMENT;
     if (!ended)
     {
         if (code.actions.size() >= FVM_JIT_MAX_ACTIONS)
@@ -500,7 +530,8 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         FVM_JitAction terminal;
         terminal.offset = size;
         terminal.branch = FVM_JIT_EXIT;
-        terminal.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_checkpoint>, (unsigned int)size));
+        terminal.calls.push_back(nested ? FVM_JitCall(fvm_jit_finish, 0) :
+            FVM_JitCall(fvm_jit_safe<fvm_jit_checkpoint>, (unsigned int)size));
         code.actions.push_back(terminal);
     }
     size_t counted_actions = code.actions.size();
@@ -512,8 +543,12 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             ++skip_at;
             continue;
         }
+        if (code.actions[i].target == FVM_JIT_EXIT_LABEL)
+            continue;
         if (code.actions[i].branch == FVM_JIT_JUMP || code.actions[i].branch == FVM_JIT_CONDITIONAL)
         {
+            if (nested && !ended && code.actions[i].target == size)
+                return FVM_INVALID_ARGUMENT;
             size_t low = 0, high = code.actions.size();
             while (low < high)
             {
@@ -553,6 +588,21 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         else
             target = at + 1 + skips[i].count;
         code.actions[at].target = target;
+    }
+    if (!returns.empty())
+    {
+        if (!have_early_exit)
+        {
+            if (code.actions.size() >= FVM_JIT_MAX_ACTIONS)
+                return FVM_UNSUPPORTED;
+            FVM_JitAction terminal;
+            terminal.offset = size;
+            terminal.branch = FVM_JIT_EXIT;
+            terminal.calls.push_back(FVM_JitCall(fvm_jit_finish, 0));
+            code.actions.push_back(terminal);
+        }
+        for (size_t i = 0; i < returns.size(); ++i)
+            code.actions[returns[i]].target = early_exit;
     }
     return FVM_OK;
 }
