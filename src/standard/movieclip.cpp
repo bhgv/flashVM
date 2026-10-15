@@ -2041,9 +2041,10 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     /* Initialization / Инициализация локального состояния. */
     bool any = false;
     bool object_form = n == FVM_MOVIECLIP_HIT_OBJECT_ARGUMENTS &&
-                       a[FVM_MOVIECLIP_HIT_OBJECT_INDEX].type == FVM_VALUE_OBJECT;
+                       (c->swf_loaded ||
+                        a[FVM_MOVIECLIP_HIT_OBJECT_INDEX].type == FVM_VALUE_OBJECT);
     FVM_Result r = FVM_OK;
-    if (!c->swf_loaded || object_form)
+    if (!c->swf_loaded)
         r = bounds(c, o, identity(), true, b, any, 0);
     else
     {
@@ -2056,10 +2057,25 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     bool yes = false;
     if (object_form)
     {
+        FVM_Value target = a[FVM_MOVIECLIP_HIT_OBJECT_INDEX];
+        if (c->swf_loaded)
+        {
+            r = fvm_exec_resolve_clip(c, o, &target, 0, &target);
+            if (r != FVM_OK)
+                return r;
+            if (target.type != FVM_VALUE_OBJECT)
+            {
+                fvm_value_boolean(out, false);
+                return FVM_OK;
+            }
+            r = bounds(c, o, identity(), true, b, any, 0);
+            if (r != FVM_OK)
+                return r;
+        }
         FVM_PathBounds other;
         std::memset(&other, 0, sizeof(other));
         bool has = false;
-        r = bounds(c, a[FVM_MOVIECLIP_HIT_OBJECT_INDEX].object, identity(), true, other, has, 0);
+        r = bounds(c, target.object, identity(), true, other, has, 0);
         if (r != FVM_OK)
             return r;
         yes = any && has && b.x_min <= other.x_max && other.x_min <= b.x_max &&
@@ -2068,7 +2084,12 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
     else
     {
         if (n < FVM_MOVIECLIP_HIT_POINT_ARGUMENTS)
-            return FVM_INVALID_ARGUMENT;
+        {
+            if (!c->swf_loaded)
+                return FVM_INVALID_ARGUMENT;
+            fvm_value_boolean(out, false);
+            return FVM_OK;
+        }
         bool shape =
             n > FVM_MOVIECLIP_HIT_SHAPE_INDEX && shape_flag(a[FVM_MOVIECLIP_HIT_SHAPE_INDEX]);
         double x = 0, y = 0;

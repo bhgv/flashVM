@@ -196,6 +196,14 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Resolve an explicit native clip or versioned path, without changing activation targets.
+     * Empty paths resolve to start only when allow_empty is nonzero. Missing/nonclip targets
+     * produce undefined. Output may alias input; errors preserve output.
+     * [GC:] Retains start/input/path through script conversion and path callbacks. */
+    FVM_API FVM_Result fvm_exec_resolve_clip(FVM_Context *, FVM_Object *start,
+                                            const FVM_Value *input, int allow_empty,
+                                            FVM_Value *out);
+
     /* Resolve a native clip value or versioned target path from an explicit start, then apply
      * dynamic removal policy. Does not change activation targets or deliver unload events.
      * [GC:] Retains start/input/conversion through path callbacks and removal preparation. */

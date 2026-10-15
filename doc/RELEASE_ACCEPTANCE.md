@@ -614,3 +614,16 @@ Loaded point tests transform from unlocked root coordinates after argument
 coercion and use versioned shape-flag truth. Host world-coordinate policy and
 object overlap remain unchanged. C89, moving/throwing coercion and allocation
 fixtures are recorded in MOVIECLIP_HIT_ROOT_COORDINATES.md. All stages stay open.
+
+## v0.319 explicit clip resolution / Явное разрешение клипа
+
+Linux GCC/G++ 13.3 Release: AGG 622/622 and Cairo 622/622 CTest checks pass.
+The three new hit-target tests pass in the restricted headless heap/global
+ASan+UBSan profile (stack instrumentation and LeakSanitizer disabled).
+Four unmodified pinned Ruffle originals match stdout exactly, exit zero and
+produce no stderr in both Release profiles. This reruns four recovered fixtures,
+not the former 26-fixture corpus. Target-removal regression checks also pass.
+See MOVIECLIP_HIT_TARGET.md for behavior and limitations; all stages remain open.
+
+Linux: AGG и Cairo — по 622/622; три новых теста под ограниченными ASan/UBSan;
+по четыре исходных SWF с точным выводом. Полная совместимость не заявляется.

@@ -3,7 +3,6 @@
 #define FVM_REMOVE_TARGET_CONSTANTS_H /* Target-removal service layout guard. */
 #define FVM_REMOVE_TARGET_START_ROOT 0U /* [GC:] Original path-start clip. */
 #define FVM_REMOVE_TARGET_INPUT_ROOT 1U /* [GC:] Original target value. */
-#define FVM_REMOVE_TARGET_PATH_ROOT 2U /* [GC:] Converted counted target path. */
-#define FVM_REMOVE_TARGET_CLIP_ROOT 3U /* [GC:] Resolved native instance. */
-#define FVM_REMOVE_TARGET_ROOT_COUNT 4U /* [GC:] Complete target-removal temporary layout. */
+#define FVM_REMOVE_TARGET_CLIP_ROOT 2U /* [GC:] Resolved native instance. */
+#define FVM_REMOVE_TARGET_ROOT_COUNT 3U /* [GC:] Complete target-removal temporary layout. */
 #endif
