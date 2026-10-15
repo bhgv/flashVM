@@ -1035,52 +1035,75 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     return finish_instance(c, child, constructor, n > 2 ? a + 2 : 0, out);
 }
 
-/* Remove the current value. */
-FVM_Result remove(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
+/* Prepare every ownership-map change before detaching a clip from its parent. */
+FVM_Result remove(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *data = 0;
-    FVM_Result r = state(o, data);
-    if (r != FVM_OK)
-        return r;
-    FVM_Object *p = parent(o);
-    if (p)
+    if (!c || !o || o->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    try
     {
-        FVM_Object *pd = 0, *children = 0;
-        long depth = 0;
+        FVM_Object *data = 0;
+        FVM_Result status = state(o, data);
+        if (status != FVM_OK)
+            return status;
+        FVM_Object *p = parent(o), *children = 0;
         unsigned long key = 0;
-        r = state(p, pd);
-        if (r != FVM_OK)
-            return r;
-        r = private_object(pd, "children", children);
-        if (r != FVM_OK)
-            return r;
-        r = depth_field(data, depth);
-        if (r != FVM_OK)
-            return r;
-        r = slot_key(pd, depth, key);
-        if (r != FVM_OK)
-            return r;
-        children->indexed.erase(key);
-        FVM_Value name;
-        field(o, "_name", name);
-        if (name.type == FVM_VALUE_STRING)
+        if (p)
         {
-            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-                p->properties.find(name.string);
-            if (entry != p->properties.end() && entry->second.type == FVM_VALUE_OBJECT &&
-                entry->second.object == o)
-                p->properties.erase(name.string);
+            if (p->owner != c)
+                return FVM_INVALID_ARGUMENT;
+            FVM_Object *parent_data = 0;
+            long depth = 0;
+            status = state(p, parent_data);
+            if (status == FVM_OK)
+                status = private_object(parent_data, "children", children);
+            if (status == FVM_OK)
+                status = depth_field(data, depth);
+            if (status == FVM_OK)
+                status = slot_key(parent_data, depth, key);
+            if (status != FVM_OK)
+                return status;
         }
+        /* [GC:] Source maps keep managed edges alive until all replacement maps are prepared. */
+        Properties detached = data->properties;
+        detached["parent"] = object(0);
+        detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
+        Slots next_children;
+        Properties next_bindings;
+        if (p)
+        {
+            next_children = children->indexed;
+            next_bindings = p->properties;
+            Slots::iterator slot = next_children.find(key);
+            if (slot != next_children.end() && slot->second.type == FVM_VALUE_OBJECT &&
+                slot->second.object == o)
+                next_children.erase(key);
+            FVM_Value name;
+            fvm_value_undefined(&name);
+            if (field(o, "_name", name) == FVM_OK && name.type == FVM_VALUE_STRING)
+            {
+                fvm_detail::string binding(name.string, fvm_string_size(name));
+                Properties::iterator entry = next_bindings.find(binding);
+                if (entry != next_bindings.end() && entry->second.type == FVM_VALUE_OBJECT &&
+                    entry->second.object == o)
+                    next_bindings.erase(binding);
+            }
+        }
+        /* [GC:] Publish only prepared maps; no allocation or script occurs after the first swap. */
+        if (p)
+        {
+            children->indexed.swap(next_children);
+            p->properties.swap(next_bindings);
+        }
+        data->properties.swap(detached);
+        fvm_value_undefined(out);
+        return FVM_OK;
     }
-
-    /* Computation / Вычисление и обновление состояния. */
-    data->properties["parent"] = object(0);
-    data->properties["playing"] = number(0);
-    fvm_value_undefined(out);
-    return FVM_OK;
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }
 
 /* Read depth. */

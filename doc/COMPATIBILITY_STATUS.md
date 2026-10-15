@@ -2416,3 +2416,11 @@ exception, alias/allocation and intrinsic-getter fixtures accompany SWF4–8.
 The pinned dispatch catalog has 94 source references and six missing entries.
 Current native timelines are fully loaded; partial streaming remains absent.
 Проверка наличия ветки не закрывает семантическую приёмку или стадии роудмапа.
+
+### v0.294 — atomic native MovieClip detachment
+
+[MOVIECLIP_REMOVAL_ATOMICITY.md](MOVIECLIP_REMOVAL_ATOMICITY.md) records prepared-map
+publication, counted current-name cleanup, missing-name safety and slot identity
+checks. C89 host/SWF4–8 fixtures and allocation/GC tests cover the change while
+preserving existing authored-depth native policy. Action RemoveSprite and full
+rename/unload/removed-target semantics remain open. Схема переноса не меняется.

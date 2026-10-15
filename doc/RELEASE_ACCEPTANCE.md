@@ -427,3 +427,14 @@ references and six absent entries; current timelines are fully loaded and partia
 streaming remains absent. Real JIT and actual Windows/macOS/Android runs remain
 absent. All nine acceptance stages remain open. По новой команде пользователя
 архивы исходников/локального Git больше не создаются; выдача идёт через зеркало.
+
+## v0.294 — atomic native MovieClip detachment
+
+Both Linux profiles pass all 580 tests without launch failures in these full
+runs. Three focused heap/global ASan+UBSan checks pass (no stack/leak coverage),
+and all 26 original SWFs match per profile. Prepared ownership-map publication
+preserves graph state on allocation failure at positive and negative depths;
+C89 host/SWF4–8 fixtures cover counted names, aliases, repeated removal and missing
+names. Stale slot identity protection is exercised separately. RemoveSprite,
+full rename/unload/removed-target semantics, real JIT and target-platform runs
+remain open. Все стадии 1–9 остаются открытыми; зеркало — текущий способ выдачи.
