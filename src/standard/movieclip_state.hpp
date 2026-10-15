@@ -7,6 +7,7 @@
 #define FVM_MOVIECLIP_STATE_HPP
 #include "../core/runtime.hpp"
 #include "flashvm/execution.h"
+#include "flashvm/path.h"
 /* Build constructor and prototype for movieclip. */
 FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &);
@@ -15,6 +16,10 @@ FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string
 FVM_Result fvm_movieclip_validate(FVM_Context *);
 /* Read physical parent or the retained loaded-AVM1 parent after native detachment. */
 FVM_Result fvm_movieclip_avm1_parent(FVM_Context *, FVM_Object *, FVM_Object **out);
+/* Read native stroked world bounds under the caller's collector barrier. */
+FVM_Result fvm_movieclip_world_bounds(FVM_Context *, FVM_Object *, FVM_PathBounds &, bool &);
+/* Test native world paint under the caller's collector barrier. */
+FVM_Result fvm_movieclip_world_shape_hit(FVM_Context *, FVM_Object *, double, double, bool &);
 /* Convert root-relative native hit-test coordinates to world space, ignoring _lockroot. */
 FVM_Result fvm_movieclip_hit_world_point(FVM_Context *, FVM_Object *, double &x, double &y);
 /* Read intrinsic parent/root for AVM1 preloads, bypassing replaceable script properties. */

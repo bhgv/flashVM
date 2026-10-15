@@ -1807,7 +1807,7 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
 FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool stroke,
                   FVM_PathBounds &out, bool &any, unsigned int depth)
 {
-    if (depth > 64)
+    if (depth > FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -1950,7 +1950,7 @@ FVM_Result rect_method(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_
 /* [GC:] Test copied paint/child edges against a world-space point under the native call barrier. */
 FVM_Result shape_hit(FVM_Context *c, FVM_Object *o, double x, double y, bool &yes, unsigned depth)
 {
-    if (depth > 64)
+    if (depth > FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *data = 0, *paths = 0, *children = 0;
     FVM_Result r = state(o, data);
@@ -2068,9 +2068,7 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
                 fvm_value_boolean(out, false);
                 return FVM_OK;
             }
-            r = bounds(c, o, identity(), true, b, any, 0);
-            if (r != FVM_OK)
-                return r;
+            return fvm_exec_clip_hit_object(c, o, target.object, out);
         }
         FVM_PathBounds other;
         std::memset(&other, 0, sizeof(other));
@@ -2116,10 +2114,9 @@ FVM_Result hit(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a
                 return FVM_OK;
             }
             r = fvm_movieclip_hit_world_point(c, o, x, y);
-            if (r == FVM_OK)
-                r = bounds(c, o, identity(), true, b, any, 0);
             if (r != FVM_OK)
                 return r;
+            return fvm_exec_clip_hit_point(c, o, x, y, shape, out);
         }
         yes = any && x >= b.x_min && x <= b.x_max && y >= b.y_min && y <= b.y_max;
         if (shape)
@@ -2734,6 +2731,20 @@ const Method methods[] = {{"toString", clip_string},
                           {"beginBitmapFill", fvm_movieclip_bitmap_begin},
                           {"attachBitmap", attach_bitmap}};
 } // namespace
+
+/* Read world-space geometry; callers retain the instance and block collection. */
+FVM_Result fvm_movieclip_world_bounds(FVM_Context *c, FVM_Object *clip, FVM_PathBounds &out,
+                                     bool &any)
+{
+    return bounds(c, clip, identity(), true, out, any, 0);
+}
+
+/* Read painted world-space geometry under the caller's collector barrier. */
+FVM_Result fvm_movieclip_world_shape_hit(FVM_Context *c, FVM_Object *clip, double x, double y,
+                                        bool &yes)
+{
+    return shape_hit(c, clip, x, y, yes, 0);
+}
 
 /* [GC:] Expose the validated managed state without publishing a new host ownership claim. */
 FVM_Result fvm_movieclip_scene_state(FVM_Object *o, FVM_Object **out)

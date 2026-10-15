@@ -627,3 +627,20 @@ See MOVIECLIP_HIT_TARGET.md for behavior and limitations; all stages remain open
 
 Linux: AGG и Cairo — по 622/622; три новых теста под ограниченными ASan/UBSan;
 по четыре исходных SWF с точным выводом. Полная совместимость не заявляется.
+
+## v0.320 shared native hit geometry / Общая геометрия hitTest
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 625/625 CTest checks.
+Five focused checks pass in the restricted headless heap/global ASan+UBSan
+profile: C hit geometry, allocation failures, geometry callbacks, loaded root
+callbacks and loaded target callbacks. Stack ASan and LeakSanitizer remain
+disabled because of the previously probed runtime limitation.
+Four recovered unmodified pinned Ruffle originals again match exact stdout,
+exit zero and have empty stderr in both Release builds. This is a four-fixture
+rerun, not a rerun of the former 26-fixture corpus. All stages remain open.
+See CLIP_HIT_GEOMETRY_SERVICE.md for the C interface and geometry limitations.
+
+Linux: по 625/625 тестов AGG/Cairo, пять целевых проверок ограниченных ASan/UBSan
+и по четыре исходных SWF. Проверены прямые C-вызовы, подмена скриптовых методов,
+геттеры с исключениями, запрет вложенного GC и сохранение выхода при отказах.
+Полная геометрическая совместимость, JIT и приёмка других ОС остаются открытыми.

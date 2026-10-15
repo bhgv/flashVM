@@ -196,6 +196,16 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Intrinsic world-space native geometry, independent of replaceable script methods.
+     * Object form compares stroked world bounds; point form selects bounds or painted shape.
+     * Empty geometry/nonfinite points yield false. Errors preserve the Boolean output.
+     * [GC:] Retains clips and blocks collector reentry during native geometry callbacks. */
+    FVM_API FVM_Result fvm_exec_clip_hit_object(FVM_Context *, FVM_Object *clip,
+                                                FVM_Object *target, FVM_Value *out);
+    FVM_API FVM_Result fvm_exec_clip_hit_point(FVM_Context *, FVM_Object *clip,
+                                               double world_x, double world_y, int shape,
+                                               FVM_Value *out);
+
     /* Resolve an explicit native clip or versioned path, without changing activation targets.
      * Empty paths resolve to start only when allow_empty is nonzero. Missing/nonclip targets
      * produce undefined. Output may alias input; errors preserve output.

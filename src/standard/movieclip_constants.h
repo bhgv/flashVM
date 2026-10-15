@@ -67,4 +67,5 @@
 #define FVM_MOVIECLIP_HIT_SHAPE_INDEX 2U
 /* Bound unlocked root ancestry when mapping loaded hitTest points to world space. */
 #define FVM_MOVIECLIP_HIT_ROOT_MAX_ANCESTORS 1024U
+#define FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH 64U /* Maximum recursive native bounds/paint descent. */
 #endif
