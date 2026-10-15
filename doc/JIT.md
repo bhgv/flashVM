@@ -43,6 +43,8 @@ The compiler currently accepts:
   (v0.353; [contracts and checks](JIT_POOLS.md)).
 - CallMethod/NewMethod via shared rooted dispatch
   (v0.354; [contracts and checks](JIT_METHODS.md)).
+- CallFunction/NewObject with captured lexical and versioned named lookup
+  (v0.355; [contracts and checks](JIT_NAMED_CALLS.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).
@@ -52,8 +54,8 @@ The compiler currently accepts:
   (v0.351; [contracts and checks](JIT_NUMBERS.md)).
 - Jump and If, with target validation and native forward/backward relocation.
 
-All other operations, including function definitions, named calls, object/array
-construction and exception blocks, return
+All other operations, including function definitions, object/array
+initialization and exception blocks, return
 `FVM_UNSUPPORTED` at compile time. Support in the interpreter does not imply
 support in this compiler. Invalid supported record layouts/branch targets return
 `FVM_INVALID_ARGUMENT`. Some unreachable unsupported operations can conservatively

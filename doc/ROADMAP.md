@@ -186,3 +186,11 @@ validation, ordered arguments, nullish-owner behavior and constructor semantics.
 JIT_METHODS.md records host/SWF4–8, explicit/automatic, GC, exception and
 allocation checks. Именованные вызовы, остальные инструкции и все стадии
 роудмапа, включая реальные запуски других платформ, остаются открытыми.
+
+## v0.355: native named calls
+
+CallFunction/NewObject use shared rooted lexical/target lookup and invocation.
+JIT_NAMED_CALLS.md records versioned host/SWF4–8 comparisons, local/qualified
+function names, literal loaded constructor names, collecting name/count coercion,
+exceptions and allocation failures. Автоматический JIT проверен для обоих тел
+вложенного вызова. Все стадии и реальные запуски других платформ ещё открыты.

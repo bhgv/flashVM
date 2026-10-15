@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.354
+# Условия окончательной приёмки / Final acceptance gates — v0.355
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.355 adds native CallFunction/NewObject and versioned lexical/target lookup.
+All 718 AGG, 718 Cairo and 699 minimal Linux Release checks have passing evidence;
+failed launches required restoring generated ELF execute permissions. Three new
+checks pass restricted heap/global ASan+UBSan, with stack ASan and LSan disabled.
+See JIT_NAMED_CALLS.md. Other platforms, complete AVM1 and all stages remain open.
 
 v0.354 adds native CallMethod/NewMethod via shared AVM1 dispatch. All 715 AGG,
 715 Cairo and 696 minimal Release checks have passing evidence after restoring
