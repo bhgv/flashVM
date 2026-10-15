@@ -495,3 +495,10 @@ Loaded Pop/Duplicate/Swap/Return/Throw/If/Trace now follow audited undefined
 missing-pop behavior. Raw bytes cover host strictness and SWF4–8, pending thrown
 undefined, function return, trace text and malformed If records.
 See AVM1_CONTROL_MISSING.md. Остальные политики стека и все стадии открыты.
+
+### v0.303 — missing member/string operands / Члены и строки без значений
+
+Loaded StringExtract/MBStringExtract, GetMember/SetMember and Delete now prepare
+undefined below existing operands. Fixtures cover all missing counts, host/SWF4–8,
+collecting name coercion after dropping globals, and three-operand allocation
+failures. See AVM1_MEMBER_STRING_MISSING.md. Full semantics and all stages stay open.

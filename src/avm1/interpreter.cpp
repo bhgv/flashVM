@@ -1295,8 +1295,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_STRING_EXTRACT ||
                      a.op == FVM_AVM1_ACTION_MB_STRING_EXTRACT)
             { /* StringExtract/MBStringExtract convert length, one-based start, then input text. */
-                if (stack.size() < FVM_AVM1_STRING_EXTRACT_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_STRING_EXTRACT_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value output;
                 FVM_Result status = fvm_exec_string_extract(
                     c, &stack[stack.size() - FVM_AVM1_STRING_EXTRACT_OPERANDS],
@@ -1477,8 +1479,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             {
                 size_t count = a.op == FVM_AVM1_ACTION_GET_MEMBER ? FVM_AVM1_GET_MEMBER_OPERANDS
                                                                   : FVM_AVM1_SET_MEMBER_OPERANDS;
-                if (stack.size() < count)
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_operands(c->swf_loaded, stack, count);
+                if (prepared != FVM_OK)
+                    return prepared;
                 size_t first = stack.size() - count;
                 FVM_Value result;
                 FVM_Result status =
@@ -1496,8 +1499,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_DELETE)
             { /* Delete: owner and property name; absent/inherited members report false. */
-                if (stack.size() < FVM_AVM1_DELETE_MEMBER_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_DELETE_MEMBER_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_delete_member(
                     c, &stack[stack.size() - FVM_AVM1_DELETE_MEMBER_OPERANDS], &stack.back(),
