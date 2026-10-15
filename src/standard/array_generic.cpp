@@ -5,6 +5,7 @@
 #include "array_generic.hpp"
 #include "array_work.hpp"
 #include "array_splice_constants.h"
+#include "array_signed_constants.h"
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
@@ -488,7 +489,7 @@ FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
         status = work.step();
         if (status != FVM_OK)
             return status;
-        char key[FVM_ARRAY_SPLICE_SIGNED_KEY_CAPACITY];
+        char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
         std::sprintf(key, "%ld", (long)((double)bounds.negative_length + i));
         status = fvm_base_store_data(c, o, key, a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], false);
         if (status != FVM_OK)
@@ -499,6 +500,77 @@ FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
     status = fvm_base_store_data(c, o, "length", value, false);
     if (status == FVM_OK)
         object(out, result);
+    return status;
+}
+
+/* Run signed borrowed end operations without widening native Array storage. */
+FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
+                         long length, unsigned int n, const FVM_Value *a,
+                         FVM_Value *out, FVM_ArrayWorkScope &work)
+{
+    if (o->resource_kind == FVM_RESOURCE_ARRAY)
+        return FVM_UNSUPPORTED;
+    bool pushing = !std::strcmp(method, "push");
+    bool unshifting = !std::strcmp(method, "unshift");
+    if (pushing || unshifting)
+    {
+        double total = (double)length + n;
+        /* Reject signed overflow before publishing any own element. */
+        if (total > FVM_INT32_MAX_NUMBER || (double)n > FVM_INT32_MAX_NUMBER)
+            return FVM_UNSUPPORTED;
+        for (unsigned int i = 0; i < n; ++i)
+        {
+            FVM_Result status = work.step();
+            if (status != FVM_OK)
+                return status;
+            char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
+            std::sprintf(key, "%ld", (long)(pushing ? (double)length + i : i));
+            if (unshifting)
+            {
+                int removed = 0;
+                status = fvm_object_delete(c, o, key, &removed);
+            }
+            if (status == FVM_OK)
+                status = fvm_base_store_data(c, o, key, a[i], false);
+            if (status != FVM_OK)
+                return status;
+        }
+        if (pushing)
+        {
+            FVM_Value value;
+            fvm_value_number(&value, total);
+            FVM_Result status = fvm_base_store_data(c, o, "length", value, false);
+            if (status != FVM_OK)
+                return status;
+        }
+        fvm_value_number(out, total);
+        return FVM_OK;
+    }
+    if (!std::strcmp(method, "shift"))
+    {
+        legacy_data_element(o, 0, *out);
+        return FVM_OK;
+    }
+    if ((double)length == FVM_INT32_MIN_NUMBER)
+        return FVM_UNSUPPORTED;
+    char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
+    std::sprintf(key, "%ld", length - 1);
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(key);
+    if (property != o->properties.end())
+        value = property->second;
+    else
+    {
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(key);
+        if (accessor != o->accessors.end())
+            fvm_base_accessor_data(accessor->second, value);
+    }
+    /* [GC:] Native invocation defers collection while the deleted raw value is unpublished. */
+    int removed = 0;
+    FVM_Result status = fvm_object_delete(c, o, key, &removed);
+    if (status == FVM_OK)
+        *out = value;
     return status;
 }
 
@@ -598,7 +670,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
             return status;
-        if (signed_length < 0 || (!std::strcmp(method, "shift") && count > 65536))
+        if (signed_length < 0)
+            return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        if (!std::strcmp(method, "shift") && count > 65536)
             return FVM_UNSUPPORTED;
         fvm_value_undefined(out);
         if (!count)
@@ -651,7 +725,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
             return status;
-        if (signed_length < 0 || (double)count + n > 2147483647.0)
+        if (signed_length < 0)
+            return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        if ((double)count + n > FVM_INT32_MAX_NUMBER)
             return FVM_UNSUPPORTED;
         for (unsigned int i = 0; i < n; ++i)
         {
@@ -684,7 +760,9 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         FVM_Result status = legacy_data_length(c, o, count, &signed_length);
         if (status != FVM_OK)
             return status;
-        if (signed_length < 0 || count > 65536 || (double)count + n > 2147483647.0)
+        if (signed_length < 0)
+            return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
+        if (count > 65536 || (double)count + n > FVM_INT32_MAX_NUMBER)
             return FVM_UNSUPPORTED;
         for (unsigned long i = count; i; --i)
         {

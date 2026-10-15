@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/7: borrowed negative end operations | Проверено для сценариев v0.374 | SWF4–8 push/pop/shift/unshift signed own data, zero crossing, flags, raw accessors, budgets and OOM/GC/retry; ARRAY_NEGATIVE_ENDS.md / .ru.md. Native negative storage and signed overflow remain open. |
 | 1/7: borrowed negative splice | Проверено для сценариев v0.373 | SWF4–8 signed own keys, captured conversions, zero crossing, readonly flags, budget failure, allocation sweep and cleanup; ARRAY_NEGATIVE_SPLICE.md / .ru.md. Native Array negative storage and signed overflow remain open. |
 | 3/6/7: MovieClip drag methods | Проверено для сценариев v0.330 | startDrag/stopDrag share C value preparation, versioned truth, partial/forward bounds, stable appended IDs/transport, collecting direct calls/native barriers and OOM; MOVIECLIP_DRAG.md. Full input/drop/twip semantics open. |
 | 2/3/7: StartDrag/EndDrag | Проверено для сценариев v0.329 | Raw Actions use shared C services; exact flag-one policy, seven-step coercion order, detached-target GC, missing operands and OOM; AVM1_DRAG.md. Script adapters/full mouse behavior remain open. |
@@ -2945,3 +2946,8 @@ See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).
 Validation v0.373: 769 AGG / 769 Cairo / 750 minimal Release checks pass after
 private-header rebuild and ELF permission repairs/reruns; five restricted
 heap/global ASan+UBSan splice checks pass (stack ASan/LSan disabled).
+
+Validation v0.374: all 771 AGG / 771 Cairo / 752 minimal Linux Release checks
+have passing evidence after ELF execution-permission repairs and failed-test
+reruns. Five restricted heap/global ASan+UBSan checks pass (stack ASan and LSan
+disabled): both new end-operation tests, legacy push/unshift and negative splice.

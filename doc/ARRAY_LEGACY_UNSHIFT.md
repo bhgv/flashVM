@@ -1,5 +1,9 @@
 # Loaded unshift / Unshift в SWF — v0.152
 
+Historical checkpoint; negative borrowed lengths added in v0.374.
+Историческая запись; отрицательная заимствованная длина добавлена в v0.374.
+
+
 Загруженный unshift захватывает own signed length, переносит raw данные назад,
 удаляет каждую позицию назначения перед записью и не вызывает getter/setter/
 watcher. Holes превращаются в собственные undefined даже при нуле аргументов.
@@ -35,3 +39,6 @@ Negative signed lengths, old length above 65536 and new signed length above
 INT32_MAX remain UNSUPPORTED. Native C accessor data, case/version and every
 stage stay open. Failed mutation may leave prior changes; no rollback is
 promised. Public ABI and wire format remain unchanged.
+
+Current negative borrowed behavior: [EN](ARRAY_NEGATIVE_ENDS.md) /
+[RU](ARRAY_NEGATIVE_ENDS.ru.md). Native negative storage remains unsupported.

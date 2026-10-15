@@ -342,3 +342,14 @@ See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).
 Validation v0.373: 769 AGG / 769 Cairo / 750 minimal Release checks pass after
 private-header rebuild and ELF permission repairs/reruns; five restricted
 heap/global ASan+UBSan splice checks pass (stack ASan/LSan disabled).
+
+
+v0.374: loaded borrowed push/pop/shift/unshift accept negative own lengths;
+signed keys, distinct length/deletion rules, flags, budgets and allocation
+cleanup are covered. See [EN](ARRAY_NEGATIVE_ENDS.md) / [RU](ARRAY_NEGATIVE_ENDS.ru.md).
+Все стадии остаются открытыми; native negative storage/overflow remain open.
+
+Validation v0.374: all 771 AGG / 771 Cairo / 752 minimal Linux Release checks
+have passing evidence after ELF execution-permission repairs and failed-test
+reruns. Five restricted heap/global ASan+UBSan checks pass (stack ASan and LSan
+disabled): both new end-operation tests, legacy push/unshift and negative splice.

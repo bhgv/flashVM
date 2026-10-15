@@ -1,5 +1,9 @@
 # Loaded push / Push в SWF — v0.153
 
+Historical checkpoint; negative borrowed lengths added in v0.374.
+Историческая запись; отрицательная заимствованная длина добавлена в v0.374.
+
+
 Загруженный push читает own signed length, записывает элементы через raw data
 без удаления существующего descriptor и без getter/setter/watcher. Retained data
 и длина обычного Object меняются напрямую с учётом собственных readonly flags.
@@ -26,3 +30,6 @@ length/index, counted NUL after GC and native readonly length with an outside
 own slot. Shared budget includes length coercion and writes. Negative signed
 lengths/new length above INT32_MAX remain UNSUPPORTED; native C accessor data,
 case/version and all stages stay open. Failed mutations are not rolled back.
+
+Current negative borrowed behavior: [EN](ARRAY_NEGATIVE_ENDS.md) /
+[RU](ARRAY_NEGATIVE_ENDS.ru.md). Native negative storage remains unsupported.

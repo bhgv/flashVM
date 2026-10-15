@@ -1,7 +1,19 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.373
+# Условия окончательной приёмки / Final acceptance gates — v0.374
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.374 adds negative-length borrowed push/pop/shift/unshift with signed own
+keys and method-specific deletion/length rules. Readonly/nondeletable flags,
+raw accessors, Int32 minimum boundaries, insertion budgets, allocation failures,
+GC-after-failure and retry behavior are covered in SWF4–8 scenarios. A shared
+host-long-sized key buffer removes formatting range-inference warnings.
+Validation v0.374: all 771 AGG / 771 Cairo / 752 minimal Linux Release checks
+have passing evidence after ELF execution-permission repairs and failed-test
+reruns. Five restricted heap/global ASan+UBSan checks pass (stack ASan and LSan
+disabled): both new end-operation tests, legacy push/unshift and negative splice.
+Native Array negative storage and signed overflow remain unsupported;
+ARRAY_NEGATIVE_ENDS.md / .ru.md describe the contract. No stage is closed.
 
 v0.373 adds signed own-key insertion for loaded borrowed splice with negative
 captured length. All 769 AGG, 769 Cairo and 750 minimal Linux Release checks have
