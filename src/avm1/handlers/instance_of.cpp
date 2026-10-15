@@ -1,6 +1,8 @@
 /* FlashVM: value-based InstanceOf with raw class prototype reads and rooted coercions. */
 #include "support.hpp"
 #include "instance_of_constants.h"
+#include "instance_of_visit.hpp"
+#include "../../core/execution_work_scope.hpp"
 #include "class_prototype.hpp"
 #include "flashvm/standard.h"
 /* Test loaded prototype identity; host calls retain the existing strict class API policy. */
@@ -15,6 +17,7 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
         FVM_ExecutionRoots roots(c, FVM_INSTANCE_OF_ROOT_COUNT);
         roots.values[FVM_INSTANCE_OF_VALUE_ROOT] = *value;
         roots.values[FVM_INSTANCE_OF_CLASS_ROOT] = *constructor;
+        FVM_ExecutionWorkScope work(c, c->swf_loaded);
         if (!c->swf_loaded)
         {
             int match = 0;
@@ -53,30 +56,29 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
         /* [GC:] Coercions are complete. Raw graph reads below invoke no getters or callbacks;
          * the original object/class/prototype roots retain their reachable interface graphs. */
         FVM_Object *target = prototype.object;
-        fvm_detail::vector<FVM_Object *> pending, visited;
+        fvm_detail::vector<FVM_Object *> pending;
+        fvm_detail::map<fvm_instance_of_detail::ObjectKey, bool> visited;
         unsigned int depth = 0;
         for (FVM_Object *node = roots.values[FVM_INSTANCE_OF_VALUE_ROOT].object->prototype; node;
              node = node->prototype)
         {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             if (++depth > FVM_PROTOTYPE_MAX_DEPTH)
                 return FVM_ERROR;
             pending.push_back(node);
             while (!pending.empty())
             {
+                status = work.step();
+                if (status != FVM_OK)
+                    return status;
                 FVM_Object *current = pending.back();
                 pending.pop_back();
-                bool seen = false;
-                for (size_t i = 0; i < visited.size(); ++i)
-                    if (visited[i] == current)
-                    {
-                        seen = true;
-                        break;
-                    }
-                if (seen)
+                fvm_instance_of_detail::ObjectKey key(current);
+                if (visited.find(key) != visited.end())
                     continue;
-                if (visited.size() >= FVM_INSTANCE_OF_MAX_INTERFACE_NODES)
-                    return FVM_UNSUPPORTED;
-                visited.push_back(current);
+                visited[key] = true;
                 if (current == target)
                 {
                     fvm_value_boolean(out, 1);
@@ -87,6 +89,9 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
                  */
                 for (size_t i = 0; i < current->implemented_interfaces.size(); ++i)
                 {
+                    status = work.step();
+                    if (status != FVM_OK)
+                        return status;
                     FVM_Value interface_prototype;
                     fvm_value_undefined(&interface_prototype);
                     if (current->interfaces_are_prototypes)

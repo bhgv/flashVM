@@ -1,7 +1,24 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.380
+# Условия окончательной приёмки / Final acceptance gates — v0.381
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.381: loaded InstanceOf replaces the 4096-node rejection/linear visited
+scan with an identity hash set and shared native execution accounting. Cyclic
+8192-node true/false graphs, nested/unlimited/saturated budgets, OOM/GC/retry
+and large interpreter/explicit/automatic native membership are covered. Array
+retains its accounting through the shared scope alias. Ordinary prototype bounds
+and host policy remain. [EN](INSTANCE_OF_GRAPH_WORK.md) /
+[RU](INSTANCE_OF_GRAPH_WORK.ru.md). Все стадии остаются открытыми.
+
+Validation v0.381: all 792 AGG / 792 Cairo / 773 minimal Linux Release checks
+have passing evidence; AGG/Cairo passed initially, minimal required one ELF
+execution-permission repair and targeted rerun. Eight restricted heap/global
+ASan+UBSan checks pass: three new graph/native checks, existing membership
+callbacks/allocation/data and large-sort/negative-end Array regressions.
+Stack ASan and LeakSanitizer remain disabled. The new native polling and revised
+membership constants headers pass a strict C89 syntax probe. No new original
+external SWF oracle or foreign-OS acceptance is claimed. All nine stages remain open.
 
 v0.380: SWF4–6 registerClass linkage names use shared Flash unit folding for
 registration, C lookup/removal and native attach/duplicate/fallback selection.

@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: budgeted interface membership | Проверено для сценариев v0.381 | Loaded InstanceOf removes 4096 visited-node rejection; identity hash set, shared charged traversal, saturation/OOM/GC/retry and large interpreter/native graphs. Host/prototype bounds retained. INSTANCE_OF_GRAPH_WORK.md / .ru.md. |
 | 1/3/6/7/8: registerClass legacy casing | Проверено для сценариев v0.380 | SWF4–6 UTF-16-unit folded registration/query/removal; stored spelling replacement, atomic OOM, GC/transfer, attach/duplicate/fallback and interpreter/native CallMethod. Separate global environments/mixed provenance remain open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes/named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
 | 1/2/3/7/8: Unicode legacy display paths | Проверено для сценариев v0.378 | SWF4–6 Flash unit folding for child/property paths; counted NUL/surrogates, collecting own/inherited getters, OOM and interpreter/native targets; MOVIECLIP_UNICODE_PATHS.md / .ru.md. Duplicate-name/full player semantics remain open. |
@@ -3002,3 +3003,12 @@ global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
 C89 registry, name/transfer, sprite resources and duplicate-version checks.
 Stack ASan and LeakSanitizer remain disabled. No new original external SWF
 oracle or foreign-OS run is claimed. All nine roadmap stages remain open.
+
+Validation v0.381: all 792 AGG / 792 Cairo / 773 minimal Linux Release checks
+have passing evidence; AGG/Cairo passed initially, minimal required one ELF
+execution-permission repair and targeted rerun. Eight restricted heap/global
+ASan+UBSan checks pass: three new graph/native checks, existing membership
+callbacks/allocation/data and large-sort/negative-end Array regressions.
+Stack ASan and LeakSanitizer remain disabled. The new native polling and revised
+membership constants headers pass a strict C89 syntax probe. No new original
+external SWF oracle or foreign-OS acceptance is claimed. All nine stages remain open.

@@ -16,7 +16,9 @@ objects; this service adapts their current own object-valued prototype fields.
 That was the v0.283 representation. Since v0.284, loaded declarations retain
 frozen prototype edges with an explicit mode; legacy graphs/host declarations
 keep constructor references. See [INTERFACE_SNAPSHOTS.md](INTERFACE_SNAPSHOTS.md).
-Cycles and excessive graphs retain bounded runtime error policies.
+Ordinary prototype depth/cycle bounds remain. Since v0.381, interface traversal
+uses the shared instruction budget and an identity hash set instead of the
+4096-node rejection; see [INSTANCE_OF_GRAPH_WORK.md](INSTANCE_OF_GRAPH_WORK.md).
 
 [GC:] Original value/class, boxed class and prototype are fixed roots through
 constructor callbacks. Coercions finish before the raw graph walk, which invokes
