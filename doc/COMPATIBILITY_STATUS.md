@@ -2609,3 +2609,15 @@ macros. See AVM1_POINT_TWIPS.md; no roadmap stage is closed.
 Числовой вход точки теперь нормализуется в signed 32-bit twips, включая
 NaN/Infinity. Матрица и результат ещё не имеют полной fixed-point семантики;
 эталонные проверки Flash и остальные стадии остаются открытыми.
+
+### v0.336 Loaded point coordinate spelling
+
+Implemented: pinned pre-SWF7 case folding of stored own coordinate names and
+preserving their spelling on ordered writes; no inherited/getter lookup, no
+prefix/NUL matching. SWF7–8 and host exact spelling remain. Case-equivalent host
+slot ambiguity, geometry-driven name replacement, fixed-point world matrices
+and output twips remain open. See AVM1_POINT_CASE.md; all stages stay open.
+
+Исправлен регистр полей точки SWF4–6 и сохранение написания при записи через
+общий C-сервис. Точные матрицы/выходные twips и перечисленные сложные случаи
+по-прежнему открыты; завершение стадий не заявляется.

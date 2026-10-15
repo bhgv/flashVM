@@ -2,10 +2,23 @@
 #include "support.hpp"
 #include "flashvm/standard.h"
 #include "clip_point_constants.h"
+#include "../scope_keywords.hpp"
 namespace
 {
 /* Stored own property map; raw lookup never evaluates accessors or prototypes. */
 typedef fvm_detail::map<fvm_detail::string, FVM_Value> PointProperties;
+/* Match stored own coordinate data without invoking getters or traversing prototypes.
+ * Keep exact spelling first, as in the existing stored class-prototype lookup policy. */
+PointProperties::iterator stored_coordinate(FVM_Context *c, FVM_Object *point, const char *name)
+{
+    PointProperties::iterator found = point->properties.find(name);
+    if (found != point->properties.end() || c->swf_info.version >= FVM_SWF_VERSION_7)
+        return found;
+    for (found = point->properties.begin(); found != point->properties.end(); ++found)
+        if (fvm_avm1_keyword_name(found->first, name, FVM_CLIP_POINT_FIELD_UNITS, false))
+            return found;
+    return point->properties.end();
+}
 /* Reproduce loaded point input conversion: NaN to zero, saturation, then truncation to twips.
  * Keep the bounded twip integer in double so C++98 needs no wider-than-long integer type. */
 double loaded_coordinate(double pixels)
@@ -58,23 +71,27 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         FVM_NativeCallGuard guard(c);
         FVM_Object *target = roots.values[FVM_CLIP_POINT_VALUE_ROOT].object;
         double x = 0, y = 0;
+        /* Copy field spelling before geometry callbacks can mutate the point's property map. */
+        fvm_detail::string x_name(FVM_CLIP_POINT_X_NAME), y_name(FVM_CLIP_POINT_Y_NAME);
         FVM_Result status = FVM_OK;
         if (c->swf_loaded)
         {
             /* Loaded AVM1 reads only stored own numeric fields; no getters or coercion. */
-            PointProperties::iterator own_x = target->properties.find("x");
-            PointProperties::iterator own_y = target->properties.find("y");
+            PointProperties::iterator own_x = stored_coordinate(c, target, FVM_CLIP_POINT_X_NAME);
+            PointProperties::iterator own_y = stored_coordinate(c, target, FVM_CLIP_POINT_Y_NAME);
             if (own_x == target->properties.end() || own_y == target->properties.end() ||
                 own_x->second.type != FVM_VALUE_NUMBER || own_y->second.type != FVM_VALUE_NUMBER)
                 return FVM_OK;
+            x_name = own_x->first;
+            y_name = own_y->first;
             x = loaded_coordinate(own_x->second.number);
             y = loaded_coordinate(own_y->second.number);
         }
         else
         {
-            status = coordinate(c, target, "x", x);
+            status = coordinate(c, target, FVM_CLIP_POINT_X_NAME, x);
             if (status == FVM_OK)
-                status = coordinate(c, target, "y", y);
+                status = coordinate(c, target, FVM_CLIP_POINT_Y_NAME, y);
         }
         FVM_Affine matrix;
         if (status == FVM_OK)
@@ -105,11 +122,11 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
         }
         FVM_Value value;
         fvm_value_number(&value, matrix.xx * x + matrix.xy * y + matrix.x0);
-        status = fvm_object_set(c, target, "x", &value);
+        status = fvm_object_set(c, target, x_name.c_str(), &value);
         if (status != FVM_OK)
             return status;
         fvm_value_number(&value, matrix.yx * x + matrix.yy * y + matrix.y0);
-        return fvm_object_set(c, target, "y", &value);
+        return fvm_object_set(c, target, y_name.c_str(), &value);
     }
     catch (const std::bad_alloc &)
     {

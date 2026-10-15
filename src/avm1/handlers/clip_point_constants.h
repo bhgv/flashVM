@@ -6,6 +6,10 @@
     1U                               /* [GC:] Point retained through coordinate/geometry getters.  \
                                       */
 #define FVM_CLIP_POINT_ROOT_COUNT 2U /* [GC:] Complete point-conversion root layout. */
+/* Canonical field names and their counted UCS2 lengths for pre-SWF7 Flash case folding. */
+#define FVM_CLIP_POINT_X_NAME "x"
+#define FVM_CLIP_POINT_Y_NAME "y"
+#define FVM_CLIP_POINT_FIELD_UNITS 1U
 /* Loaded point coordinates first enter the SWF signed 32-bit twip representation.
  * Floating bounds avoid implementation-defined integer casts and overflow on 32-bit hosts. */
 #define FVM_CLIP_POINT_TWIPS_PER_PIXEL 20.0

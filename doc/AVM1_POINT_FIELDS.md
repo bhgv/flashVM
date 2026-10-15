@@ -55,3 +55,13 @@ remain native-double operations, not full Flash fixed-point equivalence.
 В v0.335 NaN/Infinity входных числовых координат нормализуются, вход переводится
 в signed 32-bit twips. Ограничение v0.334 выше историческое; точная матричная
 арифметика и преобразование результата ещё открыты.
+
+## v0.336 field spelling follow-up
+
+Stored own coordinate names now use pinned Flash case folding in SWF4–6 and
+exact spelling in SWF7–8; writes preserve the selected own spelling. See
+AVM1_POINT_CASE.md for evidence and remaining duplicate/callback-name limits.
+
+В v0.336 исправлен регистр собственных координат SWF4–6 с сохранением написания
+при записи. SWF7–8 остаются чувствительными к регистру. Остальные ограничения
+и границы неоднозначных дубликатов перечислены в AVM1_POINT_CASE.md.
