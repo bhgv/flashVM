@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2: empty StoreRegister | Проверено для сценариев v0.310 | host/SWF4–8, global/private Function2, ignored slots, malformed payload and OOM; AVM1_STORE_MISSING.md. Полная семантика функций открыта. |
 | 2: missing call operands | Проверено для сценариев v0.309 | CallFunction/NewObject/CallMethod/NewMethod: host/SWF4–8, fixed layout, zero arguments, GC/throws/OOM. См. AVM1_CALL_MISSING.md. Полная семантика вызовов открыта. |
 | 1: значения String с NUL и суррогатами | Проверено для базовых сценариев v0.16 | standard_utf16.c, standard_string.c, string_wire.c; ABI 3, граф 4. См. UTF16_STRINGS.md. |
 | 1: upper/lower и CASEINSENSITIVE | Проверено по таблице эталона v0.180 | Loaded Flash UCS2 mappings; все 65536 units обоих направлений сверены с pinned Ruffle в SWF8, отдельные SWF4..8/GC/UNIQUESORT тесты. Host Unicode 3.2 сохранён. Property-name case и независимый Flash Player остаются открытыми. См. STRING_LEGACY_CASE.md. |

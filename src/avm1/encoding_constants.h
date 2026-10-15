@@ -133,4 +133,6 @@
 #define FVM_AVM1_WAIT_VALUE_BYTES 1U
 /* Skip byte follows the direct frame's UI16 bytes. */
 #define FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET 2U
+/* StoreRegister carries one unsigned byte selecting a register bank slot. */
+#define FVM_AVM1_STORE_REGISTER_BYTES 1U
 #endif

@@ -547,3 +547,11 @@ roles, name/count coercion order and nullish receiver policy. Raw host/SWF4–8
 fixtures cover zero arguments, collecting/throwing bodies and allocation failures.
 Shared C services and ABI remain unchanged. See AVM1_CALL_MISSING.md.
 All roadmap stages remain open.
+
+### v0.310 — empty StoreRegister / StoreRegister с пустым стеком
+
+Loaded missing values initialize undefined before existing bank selection;
+host strictness and malformed-payload ordering remain intact. The register
+selector width has a documented semantic macro. Raw global/private Function2
+and allocation-failure coverage is recorded in AVM1_STORE_MISSING.md.
+All roadmap stages remain open.

@@ -588,10 +588,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_STORE_REGISTER)
             { /* StoreRegister leaves the operand on stack. */
-                if (a.length != 1)
+                if (a.length != FVM_AVM1_STORE_REGISTER_BYTES)
                     return FVM_INVALID_ARGUMENT;
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 unsigned int reg = data[a.payload];
                 if (execution.global_registers)
                 {
