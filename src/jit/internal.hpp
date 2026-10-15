@@ -108,6 +108,10 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Select a timeline target from a rooted stack value. */
+FVM_Result fvm_jit_target_value(FVM_JitInvocation *, unsigned int);
+/* Select a timeline target from an immutable code-owned path literal. */
+FVM_Result fvm_jit_target_literal(FVM_JitInvocation *, unsigned int);
 /* Delete an explicit owner/key pair and replace operands with its Boolean. */
 FVM_Result fvm_jit_delete_member(FVM_JitInvocation *, unsigned int);
 /* Delete a scoped or qualified variable reference. */

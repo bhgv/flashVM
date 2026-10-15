@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.355
+# Условия окончательной приёмки / Final acceptance gates — v0.356
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.356 adds native SetTarget/SetTarget2 using shared timeline selection. All 720
+AGG, 720 Cairo and 701 minimal Linux Release checks have passing evidence after
+restoring generated ELF execute permissions. The latest target fixtures were
+explicitly rebuilt and pass in all profiles and restricted heap/global ASan+UBSan
+(stack ASan/LSan disabled). See JIT_TARGETS.md. All nine stages remain open.
 
 v0.355 adds native CallFunction/NewObject and versioned lexical/target lookup.
 All 718 AGG, 718 Cairo and 699 minimal Linux Release checks have passing evidence;

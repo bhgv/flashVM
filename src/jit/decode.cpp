@@ -205,6 +205,22 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             if (status != FVM_OK)
                 return status;
         }
+        else if (op == FVM_AVM1_ACTION_SET_TARGET2)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_value>, 0));
+        else if (op == FVM_AVM1_ACTION_SET_TARGET)
+        {
+            size_t length = position - payload;
+            if (!length || data[position - 1] || std::memchr(data + payload, 0, length - 1))
+                return FVM_INVALID_ARGUMENT;
+            if (code.constants.size() >= FVM_JIT_MAX_CONSTANTS)
+                return FVM_UNSUPPORTED;
+            FVM_JitConstant path;
+            path.value.type = FVM_VALUE_STRING;
+            path.text = fvm_detail::string((const char *)data + payload, length - 1);
+            unsigned int index = (unsigned int)code.constants.size();
+            code.constants.push_back(path);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_literal>, index));
+        }
         else if (op == FVM_AVM1_ACTION_CONSTANT_POOL)
         {
             FVM_Result status = pool(data, payload, position, code, action);

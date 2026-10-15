@@ -2796,3 +2796,10 @@ JIT_NAMED_CALLS.md records versioned host/SWF4–8 comparisons, local/qualified
 function names, literal loaded constructor names, collecting name/count coercion,
 exceptions and allocation failures. Автоматический JIT проверен для обоих тел
 вложенного вызова. Все стадии и реальные запуски других платформ ещё открыты.
+
+## v0.356: native target selection
+
+SetTarget/SetTarget2 use shared versioned selection and scene validation.
+JIT_TARGETS.md records host/SWF4–8 comparisons, literal/dynamic/missing/removed
+paths, collecting path coercion, exceptions, compile/invoke allocation failures
+and suspended-target restoration. Все стадии и приёмка других CPU/ОС открыты.
