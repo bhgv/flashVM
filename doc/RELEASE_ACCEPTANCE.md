@@ -730,3 +730,16 @@ match exact stdout, exit zero and empty stderr in each profile. See INPUT_POINTE
 Linux: все 635 проверок каждой сборки прошли; AGG потребовал восстановления
 права исполнения одного существующего ELF и его повторного запуска. Шесть
 проверок ограниченных ASan/UBSan и по четыре исходных SWF. Все стадии открыты.
+
+## v0.327 local pointer coordinates / Локальные координаты указателя
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 639/639 CTest checks directly.
+Four new pointer-query/raw-AVM1 tests pass under restricted heap/global ASan+UBSan
+(stack ASan and LeakSanitizer disabled). Four recovered unmodified pinned SWFs
+match exact stdout, exit zero and empty stderr in both profiles. Tests cover
+transformed ancestors, destination-context pointer access after transport, getter
+mutation/errors, legacy readonly policy and every query allocation boundary.
+See CLIP_POINTER.md; no full input/player-version equivalence or JIT is claimed.
+
+Linux: по 639/639 AGG/Cairo, четыре проверки ограниченных ASan/UBSan и по четыре
+исходных SWF. Все стадии открыты; полный drag и приёмка других ОС ещё не выполнены.

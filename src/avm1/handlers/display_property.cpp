@@ -63,6 +63,8 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
         {
             if (!write)
                 status = fvm_movieclip_get_action_property(c, clip, index, &result);
+            else if (index == FVM_AVM1_PROPERTY_XMOUSE || index == FVM_AVM1_PROPERTY_YMOUSE)
+                status = FVM_OK; /* Read-only fields follow the existing legacy no-coercion policy. */
             else if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
                      index > FVM_AVM1_PROPERTY_NAME)
                 status = FVM_UNSUPPORTED;

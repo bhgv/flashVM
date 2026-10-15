@@ -43,6 +43,8 @@
 /* Stable native _lockroot getter and setter IDs; existing callbacks are never renumbered. */
 #define FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET 1006UL
 #define FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET 1007UL
+#define FVM_MOVIECLIP_CALLBACK_XMOUSE_GET 1008UL /* Context-local pointer X getter; stable graph ID. */
+#define FVM_MOVIECLIP_CALLBACK_YMOUSE_GET 1009UL /* Context-local pointer Y getter; stable graph ID. */
 /* Ordered method callbacks occupy consecutive IDs beginning here. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \
@@ -78,4 +80,6 @@
 #define FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS 16384L
 /* Historical clone upper bound: 2^31 minus 16777220, matching AVM_MAX_DEPTH. */
 #define FVM_MOVIECLIP_DUPLICATE_MAX_ABSOLUTE_DEPTH 2130706428L
+/* Maximum physical ancestor transforms composed by world geometry queries. */
+#define FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS 1024U
 #endif

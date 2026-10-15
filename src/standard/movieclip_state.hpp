@@ -19,6 +19,8 @@ FVM_Result fvm_movieclip_avm1_parent(FVM_Context *, FVM_Object *, FVM_Object **o
 /* Invoke intrinsic sibling construction with already-rooted values and a native barrier. */
 FVM_Result fvm_movieclip_duplicate_instance(FVM_Context *, FVM_Object *, const FVM_Value *,
                                             const FVM_Value *, const FVM_Value *, FVM_Value *);
+/* Compose the physical native ancestry under the caller's collector barrier. */
+FVM_Result fvm_movieclip_world_matrix(FVM_Context *, FVM_Object *, FVM_Affine &);
 /* Read native stroked world bounds under the caller's collector barrier. */
 FVM_Result fvm_movieclip_world_bounds(FVM_Context *, FVM_Object *, FVM_PathBounds &, bool &);
 /* Test native world paint under the caller's collector barrier. */

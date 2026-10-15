@@ -196,6 +196,13 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Snapshot the context pointer in a native clip's local coordinates using its world matrix.
+     * Outputs must be non-NULL and distinct. Invalid/singular/nonfinite transforms and other
+     * errors preserve both outputs. No activation, bytecode or replaceable mouse property is used.
+     * [GC:] Retains the clip and blocks collection while transform getters can execute script. */
+    FVM_API FVM_Result fvm_exec_clip_pointer(FVM_Context *, FVM_Object *clip,
+                                              FVM_Value *local_x, FVM_Value *local_y);
+
     /* Coerce absolute display depth, then name, then resolve source from an explicit start.
      * Duplicate natively without script method lookup. Absolute depth differs from public
      * depth by the native display bias. Missing sources/invalid Flash depths yield undefined;

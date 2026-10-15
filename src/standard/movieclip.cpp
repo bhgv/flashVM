@@ -6,6 +6,7 @@
 #include "movieclip_state.hpp"
 #include "movieclip_construction.hpp"
 #include "movieclip_lockroot.hpp"
+#include "movieclip_pointer.hpp"
 #include "movieclip_constants.h"
 #include "movieclip_storage.hpp"
 #include "movieclip_path_constants.h"
@@ -1109,7 +1110,7 @@ FVM_Result matrix(FVM_Context *c, FVM_Object *o, FVM_Affine &out)
 {
     out = identity();
     unsigned int levels = 0;
-    while (o && levels++ < 1024)
+    while (o && levels++ < FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS)
     {
         FVM_Affine local;
         FVM_Result r = local_matrix(c, o, local);
@@ -2586,6 +2587,12 @@ const Method methods[] = {{"toString", clip_string},
                           {"attachBitmap", attach_bitmap}};
 } // namespace
 
+/* Compose intrinsic world geometry under the caller's root/native-barrier scope. */
+FVM_Result fvm_movieclip_world_matrix(FVM_Context *c, FVM_Object *clip, FVM_Affine &out)
+{
+    return matrix(c, clip, out);
+}
+
 /* Bridge explicit rooted operands to the intrinsic construction routine, without method lookup. */
 FVM_Result fvm_movieclip_duplicate_instance(FVM_Context *c, FVM_Object *clip,
                                             const FVM_Value *name, const FVM_Value *depth,
@@ -2873,6 +2880,14 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
     FVM_Result status = state(clip, data);
     if (status != FVM_OK)
         return status;
+    if (index == FVM_AVM1_PROPERTY_XMOUSE || index == FVM_AVM1_PROPERTY_YMOUSE)
+    {
+        FVM_Value x, y;
+        status = fvm_exec_clip_pointer(c, clip, &x, &y);
+        if (status == FVM_OK)
+            *out = index == FVM_AVM1_PROPERTY_XMOUSE ? x : y;
+        return status;
+    }
     if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
         index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
@@ -3537,6 +3552,13 @@ fvm_movieclip_stage(FVM_Context *c,
     lockroot.setter = fvm_movieclip_lockroot_set;
     proto->accessors["_lockroot"] = lockroot;
     proto->attributes["_lockroot"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+    FVM_AccessorEntry mouse_x, mouse_y;
+    mouse_x.getter = fvm_movieclip_xmouse_get;
+    mouse_y.getter = fvm_movieclip_ymouse_get;
+    proto->accessors["_xmouse"] = mouse_x;
+    proto->accessors["_ymouse"] = mouse_y;
+    proto->attributes["_xmouse"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+    proto->attributes["_ymouse"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
 
     /* Computation / Вычисление и обновление состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -3641,6 +3663,10 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return FVM_MOVIECLIP_CALLBACK_LOCKROOT_GET;
     if (cb == fvm_movieclip_lockroot_set)
         return FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET;
+    if (cb == fvm_movieclip_xmouse_get)
+        return FVM_MOVIECLIP_CALLBACK_XMOUSE_GET;
+    if (cb == fvm_movieclip_ymouse_get)
+        return FVM_MOVIECLIP_CALLBACK_YMOUSE_GET;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
             return FVM_MOVIECLIP_CALLBACK_METHOD_BASE + (unsigned long)i;
@@ -3666,6 +3692,10 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return fvm_movieclip_lockroot_get;
     if (id == FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET)
         return fvm_movieclip_lockroot_set;
+    if (id == FVM_MOVIECLIP_CALLBACK_XMOUSE_GET)
+        return fvm_movieclip_xmouse_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_YMOUSE_GET)
+        return fvm_movieclip_ymouse_get;
     return id >= FVM_MOVIECLIP_CALLBACK_METHOD_BASE &&
                    id < FVM_MOVIECLIP_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
                ? methods[id - FVM_MOVIECLIP_CALLBACK_METHOD_BASE].callback
