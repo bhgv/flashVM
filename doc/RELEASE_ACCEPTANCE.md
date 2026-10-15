@@ -1,7 +1,24 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.382
+# Условия окончательной приёмки / Final acceptance gates — v0.383
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.383: SWF7–8 interface snapshot capture/inspection shares native AVM1 work;
+budget/OOM failure preserves edges and first-installation state. Validated
+loaded zero-count/primitive/SWF4–6 noops avoid direct-service root allocation.
+The full 65536-reference bound, GC, saturation, allocation sweeps and interpreted/
+explicit/automatic native failure/retry are covered. Host/count policies remain.
+[EN](IMPLEMENTS_WORK.md) / [RU](IMPLEMENTS_WORK.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.383: all 799 AGG / 799 Cairo / 780 minimal Linux Release checks
+have passing evidence after five ELF execution-permission repairs and targeted
+reruns (two AGG, three Cairo; minimal passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: three new declaration/work cases, existing
+snapshot allocation/transport, membership data/large-graph and collecting
+membership-callback regressions. Stack ASan and LeakSanitizer remain disabled.
+No new original external SWF oracle or foreign-OS run is claimed.
+All nine roadmap stages remain open.
 
 v0.382: loaded String.split removes its 65536-field runtime rejection;
 loaded split/indexOf/lastIndexOf share nested execution work for scan positions,

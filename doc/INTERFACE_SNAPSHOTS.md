@@ -55,3 +55,5 @@ for 6/5 binaries respectively. Nine affected heap/global ASan+UBSan checks pass
 (stack/leak coverage excluded). The file/localhost broker paths pass in both full
 OS_PORTS profiles; the limited sanitizer profile checks memory/file transport.
 All 26 unchanged original SWFs match exactly in each profile.
+
+Since v0.383 capture/inspection shares native execution work and validated loaded noops avoid root allocation: [EN](IMPLEMENTS_WORK.md) / [RU](IMPLEMENTS_WORK.ru.md).

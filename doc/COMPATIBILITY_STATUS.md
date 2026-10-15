@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: budgeted interface declarations | Проверено для сценариев v0.383 | Loaded snapshot capture/inspection shares AVM1 work; atomic OOM/budget failure, validated allocation-free direct noops, full 65536 count and interpreter/native retry. Public count bound/host policy retained. IMPLEMENTS_WORK.md / .ru.md. |
 | 1/2/7/8: loaded String traversal work | Проверено для сценариев v0.382 | Loaded split passes 65537 fields; split/search scans and split UTF-16 copies share nested AVM1 work, with OOM/GC/retry, conversion exceptions and interpreter/native equivalence. Host cap retained; decoding/full conformance open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7/8: budgeted interface membership | Проверено для сценариев v0.381 | Loaded InstanceOf removes 4096 visited-node rejection; identity hash set, shared charged traversal, saturation/OOM/GC/retry and large interpreter/native graphs. Host/prototype bounds retained. INSTANCE_OF_GRAPH_WORK.md / .ru.md. |
 | 1/3/6/7/8: registerClass legacy casing | Проверено для сценариев v0.380 | SWF4–6 UTF-16-unit folded registration/query/removal; stored spelling replacement, atomic OOM, GC/transfer, attach/duplicate/fallback and interpreter/native CallMethod. Separate global environments/mixed provenance remain open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
@@ -3022,3 +3023,12 @@ plus legacy split/search/receiver and character-allocation checks. Stack ASan
 and LeakSanitizer remain disabled. The revised String constants header passes
 a strict C89 syntax probe. No new original external SWF oracle or foreign-OS
 run is claimed. All nine roadmap stages remain open.
+
+Validation v0.383: all 799 AGG / 799 Cairo / 780 minimal Linux Release checks
+have passing evidence after five ELF execution-permission repairs and targeted
+reruns (two AGG, three Cairo; minimal passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: three new declaration/work cases, existing
+snapshot allocation/transport, membership data/large-graph and collecting
+membership-callback regressions. Stack ASan and LeakSanitizer remain disabled.
+No new original external SWF oracle or foreign-OS run is claimed.
+All nine roadmap stages remain open.
