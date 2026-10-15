@@ -3,18 +3,16 @@
  */
 
 #include "../core/runtime.hpp"
-#include <climits>
+#include "../core/input_validation.hpp"
 extern "C"
 {
     /* Compute and return input enqueue. */
     FVM_Result fvm_input_enqueue(FVM_Context *c, const FVM_InputEvent *e, FVM_InputPhase phase)
     {
         FVM_QueuedInput item;
-        if (!c || !e || e->fingers == 0 || e->fingers > 16 || e->gesture < FVM_GESTURE_TAP ||
-            e->gesture > FVM_GESTURE_WHEEL ||
-            (phase != FVM_INPUT_BEGIN && phase != FVM_INPUT_UPDATE && phase != FVM_INPUT_END))
+        if (!c || !fvm_input_event_valid(e) || !fvm_input_phase_valid(phase))
             return FVM_INVALID_ARGUMENT;
-        if (c->queued_input.size() >= 1024)
+        if (c->queued_input.size() >= FVM_INPUT_MAX_PENDING_EVENTS)
             return FVM_ERROR;
 
         /* Computation / Вычисление и обновление состояния. */

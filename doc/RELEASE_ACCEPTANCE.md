@@ -671,3 +671,18 @@ as SWF≤8 acceptance. Source references now cover 96/100 catalogued Action code
 Linux: по 632/632 AGG/Cairo, четыре целевых теста ограниченных ASan/UBSan и по
 четыре исходных SWF. Реестр диспетчеризации — 96/100 ссылок на ветки, без заявления
 полной семантики. Все стадии открыты; JIT и остальные ОС не объявлены готовыми.
+
+## v0.323 input validation / Единая проверка ввода
+
+Linux GCC/G++ 13.3 Release AGG passes 633/633 CTest checks. Cairo has 632 passes
+and one BAD_COMMAND launch failure: the existing avm1_target_api executable lost
+its execute bit. After restoring that exact ELF's mode, its focused rerun passes,
+so all 633 checks have passing evidence. No behavior failure was hidden by retry.
+Four input/queue/gesture checks pass in the restricted heap/global ASan+UBSan
+profile (stack ASan and LeakSanitizer disabled). Four recovered original SWFs
+match exact stdout, exit zero and empty stderr in each Release profile.
+
+Linux: 633/633 AGG; все 633 Cairo прошли с повторным запуском одного существующего
+теста после восстановления права исполнения ELF. Четыре целевых теста
+ограниченных ASan/UBSan и по четыре исходных SWF. См. INPUT_VALIDATION.md.
+Все стадии остаются открытыми.

@@ -15,7 +15,8 @@ extern "C"
      * the owning thread. Platform threads must marshal through their host loop.
      * Each queued item stores an event copy, not a borrowed pointer.
      */
-    /* Implement input enqueue for this subsystem. */
+    /* Copy a validated finite-coordinate event. Invalid input preserves the queue;
+     * FVM_INPUT_MAX_PENDING_EVENTS pending items is the fixed capacity. */
     FVM_API FVM_Result fvm_input_enqueue(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);
     /* Dispatch up to max_events (0 means all). On callback failure the item is
      * already removed; callbacks must not destroy the context or reenter pump.

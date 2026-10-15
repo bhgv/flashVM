@@ -6,6 +6,7 @@
 /* Define FLASHVM INPUT H constant or compilation switch. */
 #define FLASHVM_INPUT_H
 #include "flashvm.h"
+#include "input_limits.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -41,7 +42,7 @@ extern "C"
     typedef struct FVM_InputEvent
     {
         FVM_Gesture gesture;  /* Recognized gesture kind. */
-        unsigned int fingers; /* Number of fingers participating in the gesture. */
+        unsigned int fingers; /* Finger count: 1 through FVM_INPUT_MAX_FINGERS. */
         int direction;        /* Direction of text or a recognized gesture. */
         double x;             /* Horizontal coordinate. */
         double y;             /* Vertical coordinate. */
@@ -66,7 +67,8 @@ extern "C"
                                       FVM_MouseButton, void *);
     /* Update input callback. */
     FVM_API FVM_Result fvm_input_set_callback(FVM_Context *, FVM_InputCallback, void *);
-    /* Dispatch input. */
+    /* Dispatch a finite-coordinate event with supported gesture, finger count and phase.
+     * Invalid input invokes no callback. Direct mapping preserves output on invalid input. */
     FVM_API FVM_Result fvm_input_dispatch(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);
 
 #ifdef __cplusplus

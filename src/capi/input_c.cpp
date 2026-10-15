@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "../core/input_validation.hpp"
 extern "C"
 {
     /* Update input rule. */
@@ -10,7 +11,7 @@ extern "C"
     {
         size_t i;
         if (!c || !rule || rule->struct_size != sizeof(FVM_InputRule) || rule->fingers == 0 ||
-            rule->fingers > 16 || rule->gesture < FVM_GESTURE_TAP ||
+            rule->fingers > FVM_INPUT_MAX_FINGERS || rule->gesture < FVM_GESTURE_TAP ||
             rule->gesture > FVM_GESTURE_WHEEL || rule->button < FVM_MOUSE_NONE ||
             rule->button > FVM_MOUSE_WHEEL_DOWN)
             return FVM_INVALID_ARGUMENT;
@@ -38,7 +39,7 @@ extern "C"
     FVM_Result fvm_input_map(FVM_Context *c, const FVM_InputEvent *e, FVM_MouseButton *out)
     {
         size_t i;
-        if (!c || !e || !out || e->fingers == 0)
+        if (!c || !out || !fvm_input_event_valid(e))
             return FVM_INVALID_ARGUMENT;
         *out = FVM_MOUSE_NONE;
         /* Exact direction wins over wildcard; last registered rule wins for ties. */
@@ -84,8 +85,7 @@ extern "C" FVM_Result fvm_input_dispatch(FVM_Context *c, const FVM_InputEvent *e
     /* Initialization / Инициализация локального состояния. */
     FVM_MouseButton button;
     FVM_Result result;
-    if (!c || !event ||
-        (phase != FVM_INPUT_BEGIN && phase != FVM_INPUT_UPDATE && phase != FVM_INPUT_END))
+    if (!c || !fvm_input_phase_valid(phase))
         return FVM_INVALID_ARGUMENT;
     result = fvm_input_map(c, event, &button);
     if (result != FVM_OK)
