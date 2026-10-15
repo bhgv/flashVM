@@ -282,6 +282,13 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         else if (op == FVM_AVM1_ACTION_AND || op == FVM_AVM1_ACTION_OR)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_logical>,
                 op == FVM_AVM1_ACTION_AND ? FVM_EXEC_LOGICAL_AND : FVM_EXEC_LOGICAL_OR));
+        else if (op == FVM_AVM1_ACTION_EXTENDS)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_extends>, 0));
+        else if (op == FVM_AVM1_ACTION_IMPLEMENTS)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_implements>, 0));
+        else if (op == FVM_AVM1_ACTION_CAST || op == FVM_AVM1_ACTION_INSTANCE_OF)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_class_match>,
+                                               op == FVM_AVM1_ACTION_CAST));
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));
         else if (op == FVM_AVM1_ACTION_SET_VARIABLE)

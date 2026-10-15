@@ -108,6 +108,12 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Establish inheritance using rooted constructor/prototype services. */
+FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
+/* Install versioned interface declarations with bounded operand consumption. */
+FVM_Result fvm_jit_implements(FVM_JitInvocation *, unsigned int);
+/* Test membership or cast with the corresponding source operand order. */
+FVM_Result fvm_jit_class_match(FVM_JitInvocation *, unsigned int);
 /* Compare rooted values with legacy numeric/metamethod semantics. */
 FVM_Result fvm_jit_legacy_compare(FVM_JitInvocation *, unsigned int);
 /* Apply versioned AND/OR truth conversion to both operands. */

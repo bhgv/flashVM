@@ -1,7 +1,14 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.359
+# Условия окончательной приёмки / Final acceptance gates — v0.360
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.360 adds native Extends/Implements/InstanceOf/Cast through shared class services.
+All 732 AGG, 732 Cairo and 713 minimal Linux Release checks have passing evidence
+after generated ELF execute-permission repairs; three class tests pass restricted
+heap/global ASan+UBSan (stack ASan/LSan disabled). JIT_CLASSES.md records isolated
+versioned, snapshot, accessor/boxing, exception and allocation checks. All stages
+and real foreign-platform runtime acceptance remain open.
 
 v0.359 adds native legacy Equals/Less and logical And/Or. All 729 AGG, 729 Cairo
 and 710 minimal Linux Release checks have passing evidence after generated ELF

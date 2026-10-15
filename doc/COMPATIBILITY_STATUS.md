@@ -2827,3 +2827,10 @@ JIT_LEGACY.md records 1944 primitive combinations in three execution modes,
 missing inputs, numeric conversion order, collecting/throwing left/right hooks
 and allocation failures. Остальные инструкции, полная совместимость и все стадии
 приёмки, включая реальные запуски других CPU/ОС, остаются открытыми.
+
+## v0.360: native class Actions
+
+Extends/Implements/InstanceOf/Cast share rooted class/interface services.
+JIT_CLASSES.md records isolated versioned execution, interface snapshots,
+collecting/throwing accessors and primitive boxing, missing operands and allocation
+failures. Полная семантика Flash, остальные инструкции и все стадии открыты.
