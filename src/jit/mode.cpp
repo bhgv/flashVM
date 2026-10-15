@@ -2,6 +2,7 @@
  * diagnostics. */
 #include "internal.hpp"
 #include "mode_internal.hpp"
+#include "../avm1/block.hpp"
 #include "../avm1/handlers/native_body.hpp"
 #include "../avm1/handlers/script_call.hpp"
 #include "../avm1/target_scope.hpp"
@@ -174,11 +175,15 @@ struct RootReplay
     FVM_Context *context; /* Owning context. */
     FVM_JitCode *code;    /* Context-owned source snapshot, stable through this retry. */
     FVM_Object *receiver; /* [GC:] Root receiver retained by the caller's scope. */
+    bool bounded;        /* Stored frame records permit implicit End at their boundary. */
 };
 /* Existing root framing validation and interpreter setup remain authoritative. */
 FVM_Result replay_root(void *raw)
 {
     RootReplay *r = (RootReplay *)raw;
+    if (r->bounded)
+        return fvm_avm1_execute_block_receiver(r->context, r->code->source.begin(),
+                                                r->code->source.size(), r->receiver);
     return fvm_avm1_execute_receiver(r->context, r->code->source.begin(), r->code->source.size(),
                                      r->receiver);
 }
@@ -272,7 +277,7 @@ FVM_Result fvm_execution_select_code(FVM_Context *c, const void *source, size_t 
 }
 /* Root actions can enter native code without inventing function-local bindings or arguments. */
 FVM_Result fvm_execution_try_root(FVM_Context *c, const void *source, size_t size,
-                                  FVM_Object *receiver, bool *handled)
+                                  FVM_Object *receiver, bool *handled, bool bounded)
 {
     *handled = false;
     if (fvm_execution_effective_mode(c) != FVM_EXECUTION_JIT ||
@@ -315,6 +320,7 @@ FVM_Result fvm_execution_try_root(FVM_Context *c, const void *source, size_t siz
             task.context = c;
             task.code = code;
             task.receiver = receiver;
+            task.bounded = bounded;
             replay(c, "", 0, c->debug_offset, replay_root, &task);
         }
         return status;

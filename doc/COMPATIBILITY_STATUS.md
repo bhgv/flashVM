@@ -2903,3 +2903,9 @@ JIT_DISPATCH.md records host/SWF4–8 behavior, counted requests, ordered GC/thr
 nested frame/pool/target preservation, bounded recursion/budget, fallback and
 compile/invoke allocation failures. Полная совместимость Flash, browser/streaming
 и реальные запуски других ОС/CPU остаются открытыми; ни одна стадия не закрыта.
+
+
+v0.369: bounded stored-frame diagnostic replay preserves implicit End framing;
+`execution_mode_frame_replay` checks host/SWF4–8 and success/throw retries.
+Диагностический повтор сохраняет границы кадра с неявным End, исходное исключение,
+бюджет и корни. This correction does not close any roadmap stage; все стадии открыты.

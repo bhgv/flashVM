@@ -1,7 +1,17 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.368
+# Условия окончательной приёмки / Final acceptance gates — v0.369
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.369 retains bounded stored-frame framing during opt-in interpreter replay.
+The regression first failed on v0.368 for an unloaded implicit-End frame. It now
+covers host/SWF4–8, explicit/implicit End, replay enabled/disabled, successful and
+throwing retries, restored original exception/budget/roots and inactive cached code.
+All 755 AGG, 755 Cairo and 736 minimal Linux Release checks have passing
+evidence after generated ELF permission repairs and reruns. Four frame/root/
+allocation/dispatch checks pass restricted heap/global ASan+UBSan (stack ASan
+and LeakSanitizer disabled). All roadmap stages and foreign-platform acceptance
+remain open.
 
 v0.368 adds native GetURL/GetURL2/Call and automatic JIT selection for validated
 stored frame blocks, with named-breakpoint exclusion. All 754 AGG, 754 Cairo and

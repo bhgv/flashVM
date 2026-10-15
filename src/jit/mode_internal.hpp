@@ -10,8 +10,9 @@ FVM_Result fvm_debug_breakpoint_poll(FVM_Context *);
 FVM_ExecutionMode fvm_execution_effective_mode(FVM_Context *);
 /* Find/compile an automatic body; null code means safe interpreter fallback. */
 FVM_Result fvm_execution_select_code(FVM_Context *, const void *, size_t, FVM_JitCode **);
-/* Try a validated root body, preserving normal interpreter fallback and root activation rules. */
-FVM_Result fvm_execution_try_root(FVM_Context *, const void *, size_t, FVM_Object *, bool *handled);
+/* Try a validated root/frame body; bounded framing is retained during diagnostic replay. */
+FVM_Result fvm_execution_try_root(FVM_Context *, const void *, size_t, FVM_Object *, bool *handled,
+                                  bool bounded = false);
 /* Emit a step event only during diagnostic replay; the ordinary native path remains quiet. */
 void fvm_execution_trace_step(FVM_Context *, unsigned long);
 /* Retry a whole script with fresh activation, then restore the original exception and budget. */

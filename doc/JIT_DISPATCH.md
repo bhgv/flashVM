@@ -41,3 +41,16 @@ Linux Release: all 754 AGG, 754 Cairo and 735 minimal checks have passing eviden
 after generated ELF execute-permission repairs and reruns. Five dispatch/callback/
 allocation/frame/invalid checks pass restricted heap/global ASan+UBSan; stack
 ASan and LeakSanitizer remain disabled.
+
+### Bounded diagnostic replay — v0.369
+
+Automatic stored-frame entries retain their bounded framing when opt-in exception
+replay enters the interpreter. A host frame without an explicit End remains valid
+during the retry, just as it was during native entry. Ordinary root entries keep
+their existing framing requirements. Retry effects remain observable; the original
+exception, instruction budget, roots and active-code state are restored afterward.
+`execution_mode_frame_replay` covers host/SWF4–8, explicit/implicit End, replay on/off,
+and both successful and throwing retries with exact entry/step counters.
+
+v0.369 validation: 755 AGG / 755 Cairo / 736 minimal passing checks after ELF
+permission repairs; four restricted heap/global ASan+UBSan checks pass.

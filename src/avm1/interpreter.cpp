@@ -2066,7 +2066,7 @@ FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *c, const void *data, siz
     if (!fvm_debug_has_breakpoints(c, c->debug_function))
     {
         bool handled = false;
-        FVM_Result native = fvm_execution_try_root(c, data, size, receiver, &handled);
+        FVM_Result native = fvm_execution_try_root(c, data, size, receiver, &handled, true);
         if (handled)
             return native;
     }

@@ -129,3 +129,9 @@ Stored frame blocks also honor automatic selection as of v0.368, including Call,
 frame actions and initialization blocks. Their active named breakpoint exclusion
 precedes native selection; unsupported bodies retain interpreter fallback. See
 [JIT_DISPATCH.md](JIT_DISPATCH.md) for the tested frame-entry scope and limits.
+
+Bounded frame replay (v0.369): stored frame diagnostic retries use the same
+implicit-End acceptance as their original entry; ordinary roots keep their normal
+framing checks. / Диагностический повтор сохранённого кадра сохраняет допустимый
+неявный End; обычные корневые входы сохраняют прежнюю проверку границ.
+See `execution_mode_frame_replay` and [dispatch contracts](JIT_DISPATCH.md).
