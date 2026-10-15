@@ -234,3 +234,15 @@ clarification, fallback rules and remaining double ancestry/snapshot limitations
 Добавлены независимые C89 application/inverse матрицы сцены binary32; общий
 обработчик загруженной точки делегирует им числовую работу. Контекст, байткод,
 стек и GC числовым сервисам не нужны. Остальные стадии не закрываются.
+
+### v0.339: explicit world snapshot and scene composition
+
+matrix_multiply_twips.cpp owns context-free numeric composition; clip_world_matrix.cpp
+owns the rooted physical world query shared by C/generated callers and loaded
+point conversion. Safe scalar preparation moved to core/scene_numeric.hpp.
+Neither service accepts bytecode, Action IDs or an operand stack. Host double
+point behavior and existing callback serialization IDs remain unchanged.
+See CLIP_WORLD_MATRIX.md for snapshot/cycle/error contracts and remaining scope.
+
+Общий запрос мировой матрицы и числовое умножение доступны C/JIT отдельно от
+байткода и стека. Переносимость, сырая сцена и завершение стадий ещё открыты.

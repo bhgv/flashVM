@@ -15,6 +15,13 @@ inline bool supported()
            FLT_MAX_EXP == FVM_MATRIX_FLOAT_MAX_EXPONENT &&
            sizeof(float) == FVM_MATRIX_FLOAT_BYTES && CHAR_BIT == FVM_MATRIX_BYTE_BITS;
 }
+/* Compute two separately rounded products and their binary32 sum, excluding FMA. */
+inline float linear(float a, float b, float x, float y)
+{
+    volatile float first = a * x, second = b * y;
+    volatile float result = first + second;
+    return result;
+}
 /* Round a binary32 term without unsafe floating-to-integer casts or C99 rounding APIs. */
 inline long rounded_twip(float value)
 {

@@ -90,3 +90,15 @@ C89, host/SWF4–8, обе точки входа и направления, OOM/
 переполнение и сохранение signed MAX при singular fallback. Отдельный C89 caller
 собран и выполнен без VM, только с двумя C++98 объектами и libm. Стек ASan,
 утечки, другие платформы, Cairo и Flash Player здесь не проверялись.
+
+## v0.339 per-ancestor composition follow-up
+
+CLIP_WORLD_MATRIX.md adds binary32 composition and an explicit C world query.
+Loaded point ancestry no longer composes the complete world matrix in double;
+local source snapshots still use the existing native getter/double model.
+The host point path remains double. Scroll rectangles/Stage and the other
+subsystems listed above remain open.
+
+В v0.339 композиция предков загруженной точки переведена на binary32 с
+округлением каждого уровня; оставшаяся double-граница — локальные snapshots.
+Хостовый путь не изменён. См. CLIP_WORLD_MATRIX.md.

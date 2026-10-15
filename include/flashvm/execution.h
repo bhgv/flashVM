@@ -3,6 +3,7 @@
 #ifndef FLASHVM_EXECUTION_H
 #define FLASHVM_EXECUTION_H /* Public execution service guard. */
 #include "value.h"
+#include "matrix.h"
 /* Context-local legacy register bank shared by generated and interpreted activations. */
 #define FVM_EXEC_GLOBAL_REGISTER_COUNT 4U
 /* Maximum explicit interface values accepted by the value-based declaration service. */
@@ -19,14 +20,20 @@
 extern "C"
 {
 #endif
+    /* Query a native clip's physical world matrix using per-ancestor binary32 composition.
+     * Local geometry follows existing native getter semantics; root locks do not change it.
+     * Clip must be an owned native instance. Errors preserve output; temporary roots and a
+     * native GC barrier protect callbacks. No bytecode or interpreter stack is required. */
+    FVM_API FVM_Result fvm_exec_clip_world_matrix(FVM_Context *, FVM_Object *clip,
+                                                   FVM_TwipMatrix *out);
     /* Convert an object-valued point in place: reverse=0 local to world, nonzero world
      * to local. Writes x then y; setter errors may leave x changed. Loaded SWFs read
      * only own numeric x/y fields, ignore invalid/missing fields and use an unchanged
      * point for singular inverse. Host mode retains field coercion and strict errors.
      * Loaded inputs truncate/saturate to signed 32-bit twips (NaN becomes zero).
      * Loaded final application uses binary32 terms and nearest/even output twips.
-     * Loaded inverse uses binary32 epsilon and rounded translation; ancestor composition
-     * and raw geometry snapshots still use the native double scene model. */
+     * Loaded ancestry/inverse/application use binary32 and rounded translation. Local
+     * source geometry snapshots still use the existing native getter/double model. */
     FVM_API FVM_Result fvm_exec_clip_point(FVM_Context *, FVM_Object *clip, int reverse,
                                            const FVM_Value *point);
     /* Copy a native source clip's local matrix and color into destination atomically.

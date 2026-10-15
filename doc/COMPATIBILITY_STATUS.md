@@ -2648,3 +2648,16 @@ snapshots still use the old double model. See SCENE_MATRIX.md; no stage is close
 Реализованы отдельные C89-сервисы binary32 application/inverse, подключённые к
 загруженным точкам. Уточнено различие сырых SWF 16.16 и матриц сцены binary32.
 Композиция предков, raw snapshots, другие подсистемы и стадии ещё открыты.
+
+### v0.339 Per-ancestor scene matrix composition
+
+Implemented: context-free C89 binary32 composition and rooted physical world
+query fvm_exec_clip_world_matrix. Loaded point ancestry now composes per level;
+host point conversion keeps double behavior. Root-lock independence, bounded
+cycles, alias/errors and getter-driven load mode stability are covered by new
+fixtures. Local getter/decomposition snapshots, scrollRect/Stage, other display
+objects and remaining subsystems/stages stay open. See CLIP_WORLD_MATRIX.md.
+
+Композиция предков точки вынесена в общие C-сервисы; loaded-путь теперь
+округляет каждый уровень. Хостовый режим сохранён, выбор режима защищён от
+загрузки SWF из getter. Raw snapshots и перечисленные ограничения не закрыты.

@@ -10,9 +10,4 @@
 #define FVM_CLIP_POINT_X_NAME "x"
 #define FVM_CLIP_POINT_Y_NAME "y"
 #define FVM_CLIP_POINT_FIELD_UNITS 1U
-/* Loaded point coordinates first enter the SWF signed 32-bit twip representation.
- * Floating bounds avoid implementation-defined integer casts and overflow on 32-bit hosts. */
-#define FVM_CLIP_POINT_TWIPS_PER_PIXEL 20.0
-#define FVM_CLIP_POINT_MAX_TWIPS 2147483647.0
-#define FVM_CLIP_POINT_MIN_TWIPS (-2147483648.0)
 #endif
