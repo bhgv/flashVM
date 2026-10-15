@@ -1,5 +1,6 @@
 /* FlashVM: dynamic addition, equality and ordering with all supported SWF policies. */
 #include "support.hpp"
+#include "execution_roots.h"
 #include "../../standard/string_order.hpp"
 #include "../../standard/primitive_state.hpp"
 #include <cstring>
@@ -94,10 +95,10 @@ struct EqualityRoots
   public:
     /* [GC:] Publish initialized values only after the vector allocation succeeds. */
     EqualityRoots(FVM_Context *owner, const FVM_Value &left, const FVM_Value &right)
-        : context(owner), values(2)
+        : context(owner), values(FVM_EQUALITY_ROOT_COUNT)
     {
-        values[0] = left;
-        values[1] = right;
+        values[FVM_EQUALITY_LEFT_ROOT] = left;
+        values[FVM_EQUALITY_RIGHT_ROOT] = right;
         frame.previous = context->gc_frames;
         frame.stack = &values;
         frame.locals = 0;
@@ -115,10 +116,10 @@ struct EqualityRoots
 static FVM_Result equal(FVM_Context *c, FVM_Value input_a, FVM_Value input_b, bool &result,
                         unsigned int depth = 0)
 {
-    if (depth > 8)
+    if (depth > FVM_EQUALITY_MAX_COERCION_DEPTH)
         return FVM_ERROR;
     EqualityRoots roots(c, input_a, input_b);
-    FVM_Value &a = roots.values[0], &b = roots.values[1];
+    FVM_Value &a = roots.values[FVM_EQUALITY_LEFT_ROOT], &b = roots.values[FVM_EQUALITY_RIGHT_ROOT];
     if (c->swf_loaded && c->swf_info.version <= FVM_SWF_VERSION_5)
     {
         FVM_Result status = fvm_avm1_primitive(c, &b, false, &b);
@@ -208,13 +209,14 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
             return FVM_OK;
         }
         /* [GC:] Retain transformed primitives and derived strings across subsequent callbacks. */
-        FVM_ExecutionRoots roots(c, 4);
+        FVM_ExecutionRoots roots(c, FVM_COMPARE_ROOT_COUNT);
         fvm_detail::vector<FVM_Value> &converted = roots.values;
-        converted[0] = *left_value;
-        converted[1] = *right_value;
-        fvm_value_undefined(&converted[2]);
-        fvm_value_undefined(&converted[3]);
-        FVM_Value &left = converted[0], &right = converted[1];
+        converted[FVM_COMPARE_LEFT_ROOT] = *left_value;
+        converted[FVM_COMPARE_RIGHT_ROOT] = *right_value;
+        fvm_value_undefined(&converted[FVM_COMPARE_LEFT_TEXT_ROOT]);
+        fvm_value_undefined(&converted[FVM_COMPARE_RIGHT_TEXT_ROOT]);
+        FVM_Value &left = converted[FVM_COMPARE_LEFT_ROOT],
+                  &right = converted[FVM_COMPARE_RIGHT_ROOT];
         FVM_Value output;
         FVM_Result r = FVM_OK;
         if (operation != FVM_EXEC_STRICT_EQUAL)
@@ -223,10 +225,12 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
                                : operation == FVM_EXEC_LESS      ? "__lt"
                                : operation == FVM_EXEC_GREATER   ? "__gt"
                                                                  : "__eq";
-            FVM_Value operands[2] = {left, right};
-            r = fvm_value_meta_invoke(c, operands, hook, 2, operands, &output);
+            FVM_Value operands[FVM_COMPARE_META_ARGUMENT_COUNT] = {left, right};
+            r = fvm_value_meta_invoke(c, operands, hook, FVM_COMPARE_META_ARGUMENT_COUNT, operands,
+                                      &output);
             if (r == FVM_NOT_FOUND)
-                r = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &output);
+                r = fvm_value_meta_invoke(c, operands + 1, hook, FVM_COMPARE_META_ARGUMENT_COUNT,
+                                          operands, &output);
             if (r == FVM_OK)
             {
                 if (operation != FVM_EXEC_ADD_DYNAMIC)
@@ -275,7 +279,8 @@ extern "C" FVM_Result fvm_exec_compare(FVM_Context *c, FVM_ExecutionCompare oper
             if (r == FVM_OK && operation == FVM_EXEC_ADD_DYNAMIC &&
                 (left.type == FVM_VALUE_STRING || right.type == FVM_VALUE_STRING))
             {
-                FVM_Value &x = converted[2], &y = converted[3];
+                FVM_Value &x = converted[FVM_COMPARE_LEFT_TEXT_ROOT],
+                          &y = converted[FVM_COMPARE_RIGHT_TEXT_ROOT];
                 r = fvm_avm1_string(c, left, &x);
                 if (r == FVM_OK)
                     r = fvm_avm1_string(c, right, &y);

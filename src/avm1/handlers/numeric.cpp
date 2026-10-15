@@ -1,5 +1,6 @@
 /* FlashVM: numeric semantics for C callers and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 /* Convert a numeric operand to the low 32 unsigned bits without undefined float-to-int casts. */
 static unsigned long integer_bits(double value)
 {
@@ -26,9 +27,9 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 2);
-        roots.values[0] = *left_value;
-        roots.values[1] = *right_value;
+        FVM_ExecutionRoots roots(c, FVM_NUMERIC_ROOT_COUNT);
+        roots.values[FVM_NUMERIC_LEFT_ROOT] = *left_value;
+        roots.values[FVM_NUMERIC_RIGHT_ROOT] = *right_value;
         if (operation <= FVM_EXEC_DIVIDE)
         {
             /* [GC:] Both operands stay in the temporary roots across hooks and coercion. */
@@ -38,9 +39,11 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
                                : operation == FVM_EXEC_SUBTRACT ? "__sub"
                                : operation == FVM_EXEC_MULTIPLY ? "__mul"
                                                                 : "__div";
-            FVM_Result status = fvm_value_meta_invoke(c, operands, hook, 2, operands, &result);
+            FVM_Result status = fvm_value_meta_invoke(
+                c, operands, hook, FVM_NUMERIC_META_ARGUMENT_COUNT, operands, &result);
             if (status == FVM_NOT_FOUND)
-                status = fvm_value_meta_invoke(c, operands + 1, hook, 2, operands, &result);
+                status = fvm_value_meta_invoke(c, operands + 1, hook,
+                                               FVM_NUMERIC_META_ARGUMENT_COUNT, operands, &result);
             if (status != FVM_OK && status != FVM_NOT_FOUND)
                 return status;
             if (status == FVM_NOT_FOUND)
@@ -78,9 +81,9 @@ extern "C" FVM_Result fvm_exec_numeric(FVM_Context *c, FVM_ExecutionNumeric oper
         /* Convert operands in the historical remainder/bit-operation order. */
         double left = 0, right = 0;
         /* Remainder and bit operations convert the top/right operand first. */
-        FVM_Result r = fvm_avm1_number(c, &roots.values[1], &right);
+        FVM_Result r = fvm_avm1_number(c, &roots.values[FVM_NUMERIC_RIGHT_ROOT], &right);
         if (r == FVM_OK)
-            r = fvm_avm1_number(c, &roots.values[0], &left);
+            r = fvm_avm1_number(c, &roots.values[FVM_NUMERIC_LEFT_ROOT], &left);
         if (r != FVM_OK)
             return r;
         double result = 0;

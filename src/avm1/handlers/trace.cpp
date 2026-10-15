@@ -1,5 +1,6 @@
 /* FlashVM: trace semantics for C callers and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_trace(FVM_Context *c, const FVM_Value *input)
 {
@@ -7,13 +8,13 @@ extern "C" FVM_Result fvm_exec_trace(FVM_Context *c, const FVM_Value *input)
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 1);
-        roots.values[0] = *input;
+        FVM_ExecutionRoots roots(c, FVM_TRACE_ROOT_COUNT);
+        roots.values[FVM_TRACE_INPUT_ROOT] = *input;
         /* [GC:] The input remains in the temporary roots during toString execution. */
         FVM_Value text, ignored;
-        FVM_Result status = roots.values[0].type == FVM_VALUE_UNDEFINED
+        FVM_Result status = roots.values[FVM_TRACE_INPUT_ROOT].type == FVM_VALUE_UNDEFINED
                                 ? fvm_value_string(&text, "undefined")
-                                : fvm_avm1_string(c, roots.values[0], &text);
+                                : fvm_avm1_string(c, roots.values[FVM_TRACE_INPUT_ROOT], &text);
         if (status != FVM_OK)
             return status;
         FVM_NativeEntry sink = c->avm1_trace;
@@ -22,7 +23,8 @@ extern "C" FVM_Result fvm_exec_trace(FVM_Context *c, const FVM_Value *input)
             fvm_value_undefined(&ignored);
             /* [GC:] Prevent collection while the copied sink/capture and text are borrowed. */
             FVM_NativeCallGuard guard(c);
-            status = sink.callback(c, c->global, 1, &text, &ignored, sink.userdata);
+            status = sink.callback(c, c->global, FVM_TRACE_SINK_ARGUMENT_COUNT, &text, &ignored,
+                                   sink.userdata);
             if (status != FVM_OK)
                 return status;
         }

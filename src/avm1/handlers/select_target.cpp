@@ -1,5 +1,6 @@
 /* FlashVM: select target semantics for C callers and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *input)
 {
@@ -7,9 +8,9 @@ extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *in
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 2);
-        roots.values[0] = *input;
-        FVM_Value &path = roots.values[1];
+        FVM_ExecutionRoots roots(c, FVM_SELECT_TARGET_ROOT_COUNT);
+        roots.values[FVM_SELECT_TARGET_INPUT_ROOT] = *input;
+        FVM_Value &path = roots.values[FVM_SELECT_TARGET_PATH_ROOT];
         FVM_Result status = FVM_OK;
         FVM_Object *target = 0;
         bool reset = false, invalid = false;
@@ -19,7 +20,7 @@ extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *in
             invalid = !reset;
         }
         else
-            status = fvm_avm1_string(c, roots.values[0], &path);
+            status = fvm_avm1_string(c, roots.values[FVM_SELECT_TARGET_INPUT_ROOT], &path);
         if (status != FVM_OK)
             return status;
         if (!reset && !invalid)

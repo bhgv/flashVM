@@ -2450,3 +2450,11 @@ movieclip_remove.cpp, using common raw-state/depth helpers in movieclip_storage.
 No graph/callback identifiers, depth policies or Action coverage change.
 Транзакция вынесена из основного MovieClip-файла; проверки состояния и глубин общие.
 See CLIP_DETACH_SERVICE.md for scope and validation limits.
+
+### v0.299 — named execution roots / Имена корней общих обработчиков
+
+Nine remaining handlers use documented role/count macros; recursive equality has
+its own root layout and named recursion bound. Call-frame's unused third root is
+removed. Callback arities remain separate from GC sizes; C ABI and action coverage
+are unchanged. See EXECUTION_ROOT_LAYOUTS.md for roles and validation boundaries.
+Оставшиеся числовые индексы корней заменены смысловыми именами; все стадии открыты.

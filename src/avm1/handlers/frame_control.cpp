@@ -1,5 +1,6 @@
 /* FlashVM: frame control semantics for C callers and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_frame_control(FVM_Context *c, FVM_Object *clip,
                                              FVM_ExecutionFrame command, const FVM_Value *frame,
@@ -11,13 +12,15 @@ extern "C" FVM_Result fvm_exec_frame_control(FVM_Context *c, FVM_Object *clip,
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 2);
-        roots.values[0].type = FVM_VALUE_OBJECT;
-        roots.values[0].object = clip;
+        FVM_ExecutionRoots roots(c, FVM_FRAME_CONTROL_ROOT_COUNT);
+        roots.values[FVM_FRAME_CONTROL_CLIP_ROOT].type = FVM_VALUE_OBJECT;
+        roots.values[FVM_FRAME_CONTROL_CLIP_ROOT].object = clip;
         if (command == FVM_EXEC_GOTO_FRAME)
-            roots.values[1] = *frame;
+            roots.values[FVM_FRAME_CONTROL_FRAME_ROOT] = *frame;
         return fvm_movieclip_frame_control(
-            c, clip, command, command == FVM_EXEC_GOTO_FRAME ? &roots.values[1] : 0, playing);
+            c, clip, command,
+            command == FVM_EXEC_GOTO_FRAME ? &roots.values[FVM_FRAME_CONTROL_FRAME_ROOT] : 0,
+            playing);
     }
     catch (const std::bad_alloc &)
     {

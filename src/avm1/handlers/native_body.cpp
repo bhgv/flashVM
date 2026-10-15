@@ -1,6 +1,7 @@
 /* FlashVM: execute a prepared native script body with script activation semantics. */
 #include "native_body.hpp"
 #include "support.hpp"
+#include "execution_roots.h"
 #include "../target_scope.hpp"
 #include "../../core/exception_internal.hpp"
 #include "../../core/finalizer_entry.hpp"
@@ -8,9 +9,12 @@
 FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry,
                                 const FVM_ScriptFrame &frame, FVM_Value *out)
 {
-    FVM_ExecutionRoots roots(c, 3);
-    FVM_Object *objects[3] = {entry.capture, frame.implicit_this, c->script_this};
-    for (size_t i = 0; i < 3; ++i)
+    FVM_ExecutionRoots roots(c, FVM_NATIVE_BODY_ROOT_COUNT);
+    FVM_Object *objects[FVM_NATIVE_BODY_ROOT_COUNT];
+    objects[FVM_NATIVE_BODY_CAPTURE_ROOT] = entry.capture;
+    objects[FVM_NATIVE_BODY_THIS_ROOT] = frame.implicit_this;
+    objects[FVM_NATIVE_BODY_PREVIOUS_THIS_ROOT] = c->script_this;
+    for (size_t i = 0; i < FVM_NATIVE_BODY_ROOT_COUNT; ++i)
         if (objects[i])
         {
             roots.values[i].type = FVM_VALUE_OBJECT;

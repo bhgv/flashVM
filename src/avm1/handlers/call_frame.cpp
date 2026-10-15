@@ -1,5 +1,6 @@
 /* FlashVM: call frame semantics for C callers and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_receiver,
                                           const FVM_Value *input)
@@ -9,14 +10,14 @@ extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_rece
         return FVM_INVALID_ARGUMENT;
     try
     {
-        FVM_ExecutionRoots roots(c, 3);
-        roots.values[0] = *input;
+        FVM_ExecutionRoots roots(c, FVM_CALL_FRAME_ROOT_COUNT);
+        roots.values[FVM_CALL_FRAME_ARGUMENT_ROOT] = *input;
         if (scope_receiver)
         {
-            roots.values[1].type = FVM_VALUE_OBJECT;
-            roots.values[1].object = scope_receiver;
+            roots.values[FVM_CALL_FRAME_RECEIVER_ROOT].type = FVM_VALUE_OBJECT;
+            roots.values[FVM_CALL_FRAME_RECEIVER_ROOT].object = scope_receiver;
         }
-        FVM_Value argument = roots.values[0];
+        FVM_Value argument = roots.values[FVM_CALL_FRAME_ARGUMENT_ROOT];
         FVM_Result status = FVM_OK;
         if (argument.type != FVM_VALUE_NUMBER)
         {
@@ -28,7 +29,7 @@ extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_rece
         if (status != FVM_OK)
             return status;
         /* [GC:] Keep the converted label live until the nested frame has finished. */
-        roots.values[0] = argument;
+        roots.values[FVM_CALL_FRAME_ARGUMENT_ROOT] = argument;
         FVM_Object *target =
             scope_receiver && scope_receiver->resource_kind == FVM_RESOURCE_MOVIECLIP
                 ? scope_receiver

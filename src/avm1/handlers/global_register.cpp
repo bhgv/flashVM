@@ -1,5 +1,6 @@
 /* FlashVM: retained context-global value slots shared by interpreted and generated code. */
 #include "support.hpp"
+#include "execution_roots.h"
 #include "flashvm/standard.h"
 /* [GC:] Own retained strings and publish a new root only after preparation succeeds. */
 extern "C" FVM_Result fvm_exec_global_register(FVM_Context *c, int write, unsigned int index,
@@ -28,17 +29,18 @@ extern "C" FVM_Result fvm_exec_global_register(FVM_Context *c, int write, unsign
     }
     try
     {
-        FVM_ExecutionRoots roots(c, 1);
-        roots.values[0] = *input;
+        FVM_ExecutionRoots roots(c, FVM_GLOBAL_REGISTER_ROOT_COUNT);
+        roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT] = *input;
         if (input->type == FVM_VALUE_STRING)
         {
-            FVM_Result status = fvm_value_to_string(c, input, &roots.values[0]);
+            FVM_Result status =
+                fvm_value_to_string(c, input, &roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT]);
             if (status != FVM_OK)
                 return status;
-            roots.values[0].metatable = input->metatable;
+            roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT].metatable = input->metatable;
         }
-        c->avm1_global_registers[index] = roots.values[0];
-        *out = roots.values[0];
+        c->avm1_global_registers[index] = roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT];
+        *out = roots.values[FVM_GLOBAL_REGISTER_INPUT_ROOT];
         return FVM_OK;
     }
     catch (const std::bad_alloc &)
