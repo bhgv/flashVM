@@ -139,3 +139,18 @@ query and atomic assignment. It shares versioned Boolean conversion and roots
 without accepting instruction bytes or an operand stack. Native getter/setter
 bridges each occupy a separate standard file; root/path lookup reads raw native
 state through movieclip_root_locked.cpp. See MOVIECLIP_LOCKROOT.md.
+
+### v0.321–0.322: explicit sibling construction and CloneSprite
+
+The stable duplicateMovieClip callback delegates to duplicate_clip.cpp's explicit
+C value service. duplicate_target.cpp handles signed depth/name/source coercion
+and resolution independently from AVM1 instruction encoding. CloneSprite's loop
+adapter only prepares three operands, selects the explicit start and consumes
+the request without pushing a result. Native instance preparation retains its
+existing bridge and collector barrier; remaining construction decomposition and
+full Flash duplicate semantics stay open. See DUPLICATE_CLIP_SERVICE.md and
+AVM1_CLONE_SPRITE.md.
+
+Сервисы дублирования принимают значения и объекты, без байткода и стека.
+В интерпретаторе остаются подготовка операндов и выбор начальной цели.
+Полная совместимость дублирования и остальные стадии остаются открытыми.

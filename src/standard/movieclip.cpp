@@ -849,7 +849,7 @@ FVM_Result copy_drawing(FVM_Context *c, FVM_Object *source, FVM_Object *destinat
 
 /* Duplicate a sibling at frame 1 with copied display/drawing state and fresh dynamic properties. */
 FVM_Result duplicate_instance(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
-                           FVM_Value *out, void *)
+                              FVM_Value *out, void *)
 {
     fvm_value_undefined(out);
     if (n < FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS)
@@ -943,7 +943,10 @@ FVM_Result duplicate_instance(FVM_Context *c, FVM_Object *o, unsigned int n, con
     r = publish_child(c, p, child, name.string, (long)depth);
     if (r != FVM_OK)
         return r;
-    return finish_instance(c, child, constructor, n > FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX ? a + FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX : 0, out);
+    return finish_instance(
+        c, child, constructor,
+        n > FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX ? a + FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX : 0,
+        out);
 }
 
 /* Keep the stable script callback while sharing explicit construction with generated bodies. */
@@ -953,8 +956,8 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     fvm_value_undefined(out);
     if (n < FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS)
         return FVM_INVALID_ARGUMENT;
-    return fvm_exec_duplicate_clip(c, o, a + FVM_MOVIECLIP_DUPLICATE_NAME_INDEX,
-        a + FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX,
+    return fvm_exec_duplicate_clip(
+        c, o, a + FVM_MOVIECLIP_DUPLICATE_NAME_INDEX, a + FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX,
         n > FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX ? a + FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX : 0,
         out);
 }
@@ -2756,20 +2759,21 @@ FVM_Result fvm_movieclip_duplicate_instance(FVM_Context *c, FVM_Object *clip,
     if (initial)
         values[FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX] = *initial;
     return duplicate_instance(c, clip,
-        initial ? FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY : FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS,
-        values, out, 0);
+                              initial ? FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY
+                                      : FVM_MOVIECLIP_DUPLICATE_REQUIRED_ARGUMENTS,
+                              values, out, 0);
 }
 
 /* Read world-space geometry; callers retain the instance and block collection. */
 FVM_Result fvm_movieclip_world_bounds(FVM_Context *c, FVM_Object *clip, FVM_PathBounds &out,
-                                     bool &any)
+                                      bool &any)
 {
     return bounds(c, clip, identity(), true, out, any, 0);
 }
 
 /* Read painted world-space geometry under the caller's collector barrier. */
 FVM_Result fvm_movieclip_world_shape_hit(FVM_Context *c, FVM_Object *clip, double x, double y,
-                                        bool &yes)
+                                         bool &yes)
 {
     return shape_hit(c, clip, x, y, yes, 0);
 }

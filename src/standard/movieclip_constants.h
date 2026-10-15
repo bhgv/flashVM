@@ -74,4 +74,8 @@
 #define FVM_MOVIECLIP_DUPLICATE_DEPTH_INDEX 1U /* Coercible native public depth. */
 #define FVM_MOVIECLIP_DUPLICATE_INITIAL_INDEX 2U /* Optional initialization value. */
 #define FVM_MOVIECLIP_DUPLICATE_ARGUMENT_CAPACITY 3U /* Complete native adapter operand array. */
+/* Absolute AVM1 clone depths use a separate bias from SWF placement depth encoding. */
+#define FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS 16384L
+/* Historical clone upper bound: 2^31 minus 16777220, matching AVM_MAX_DEPTH. */
+#define FVM_MOVIECLIP_DUPLICATE_MAX_ABSOLUTE_DEPTH 2130706428L
 #endif

@@ -656,3 +656,18 @@ native limitations and the absence of a scene-rollback promise.
 
 Linux: по 628/628 AGG/Cairo, три теста ограниченных ASan/UBSan и по четыре
 исходных SWF. Все стадии роудмапа остаются открытыми.
+
+## v0.322 CloneSprite / Общий запрос дублирования
+
+Linux GCC/G++ 13.3 Release: AGG 632/632 and Cairo 632/632 CTest checks pass.
+Four focused clone tests pass under the restricted heap/global ASan+UBSan
+profile, including every direct/interpreter allocation boundary and collecting
+coercions. Stack instrumentation and LeakSanitizer remain disabled.
+Four recovered unmodified pinned originals again match exact stdout, exit zero
+and empty stderr in both Release builds. No SWF15 fixture is relabeled or counted
+as SWF≤8 acceptance. Source references now cover 96/100 catalogued Action codes;
+--require-all still correctly fails. See AVM1_CLONE_SPRITE.md for native limits.
+
+Linux: по 632/632 AGG/Cairo, четыре целевых теста ограниченных ASan/UBSan и по
+четыре исходных SWF. Реестр диспетчеризации — 96/100 ссылок на ветки, без заявления
+полной семантики. Все стадии открыты; JIT и остальные ОС не объявлены готовыми.

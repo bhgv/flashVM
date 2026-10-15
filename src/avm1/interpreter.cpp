@@ -1093,6 +1093,25 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.op == FVM_AVM1_ACTION_GET_PROPERTY)
                     stack.push_back(result);
             }
+            else if (a.op == FVM_AVM1_ACTION_CLONE_SPRITE)
+            { /* The shared C request owns coercion, path resolution and native construction. */
+                FVM_Result status = fvm_avm1_require_operands(c->swf_loaded, stack,
+                                                              FVM_AVM1_CLONE_OPERANDS);
+                FVM_Object *start = 0;
+                if (status == FVM_OK)
+                    status = variable_receiver(c, self, &start);
+                if (status != FVM_OK)
+                    return status;
+                size_t first = stack.size() - FVM_AVM1_CLONE_OPERANDS;
+                FVM_Value result;
+                status = fvm_exec_duplicate_target(c, start,
+                    &stack[first + FVM_AVM1_CLONE_SOURCE_OFFSET],
+                    &stack[first + FVM_AVM1_CLONE_NAME_OFFSET],
+                    &stack[first + FVM_AVM1_CLONE_DEPTH_OFFSET], &result);
+                if (status != FVM_OK)
+                    return status;
+                stack.resize(first);
+            }
             else if (a.op == FVM_AVM1_ACTION_REMOVE_SPRITE)
             { /* Value resolution/removal is shared; activation target changes stay in the adapter. */
                 FVM_Result status = fvm_avm1_require_value(c->swf_loaded, stack);

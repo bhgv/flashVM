@@ -62,4 +62,9 @@
                                            */
 #define FVM_AVM1_METHOD_OWNER_OFFSET 2U   /* Receiver lies below the method name. */
 #define FVM_AVM1_METHOD_FIRST_ARGUMENT 4U /* First argument lies below count/receiver/name. */
+/* CloneSprite consumes source, instance name and absolute display depth. */
+#define FVM_AVM1_CLONE_OPERANDS 3U /* Full clone request, with loaded missing-pop padding. */
+#define FVM_AVM1_CLONE_SOURCE_OFFSET 0U /* Source relative to the first prepared operand. */
+#define FVM_AVM1_CLONE_NAME_OFFSET 1U /* New instance name. */
+#define FVM_AVM1_CLONE_DEPTH_OFFSET 2U /* Absolute display depth converted first. */
 #endif

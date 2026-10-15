@@ -196,6 +196,15 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Coerce absolute display depth, then name, then resolve source from an explicit start.
+     * Duplicate natively without script method lookup. Absolute depth differs from public
+     * depth by the native display bias. Missing sources/invalid Flash depths yield undefined;
+     * depths beyond the implemented native range return unsupported. Errors preserve out.
+     * [GC:] Retains all operands through collecting coercions and native construction. */
+    FVM_API FVM_Result fvm_exec_duplicate_target(FVM_Context *, FVM_Object *start,
+                                                  const FVM_Value *source, const FVM_Value *name,
+                                                  const FVM_Value *depth, FVM_Value *out);
+
     /* Duplicate a native sibling with explicit name/depth and optional initialization value.
      * Uses the native public-depth range and existing instance construction policy, without
      * looking up replaceable script methods. A root has no sibling and returns undefined.

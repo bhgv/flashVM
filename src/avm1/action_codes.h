@@ -51,6 +51,8 @@
 #define FVM_AVM1_ACTION_GET_PROPERTY 0x22U
 /* Write an indexed intrinsic display property. */
 #define FVM_AVM1_ACTION_SET_PROPERTY 0x23U
+/* Duplicate a resolved display source at an absolute display depth. */
+#define FVM_AVM1_ACTION_CLONE_SPRITE 0x24U
 /* Resolve and remove a dynamically eligible display clip. */
 #define FVM_AVM1_ACTION_REMOVE_SPRITE 0x25U
 /* Convert and deliver a trace value. */
