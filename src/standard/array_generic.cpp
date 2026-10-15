@@ -100,6 +100,28 @@ void legacy_data_element(FVM_Object *o, unsigned long index, FVM_Value &out)
         out = slot->second;
 }
 
+/* Read a signed raw own key without interpreting prototypes or invoking accessors. */
+void legacy_signed_element(FVM_Object *o, long index, FVM_Value &out)
+{
+    if (index >= 0)
+    {
+        legacy_data_element(o, (unsigned long)index, out);
+        return;
+    }
+    fvm_value_undefined(&out);
+    char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
+    std::sprintf(key, "%ld", index);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(key);
+    if (property != o->properties.end())
+        out = property->second;
+    else
+    {
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(key);
+        if (accessor != o->accessors.end())
+            fvm_base_accessor_data(accessor->second, out);
+    }
+}
+
 /* Capture positive own-data length for copying/joining, optionally exposing the full signed value. */
 FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
                                long *signed_length = 0)
@@ -503,6 +525,54 @@ FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
     return status;
 }
 
+/* Copy the signed source range selected by loaded slice on a negative length. */
+FVM_Result negative_slice(FVM_Context *c, FVM_Object *o, long length,
+                           unsigned int n, const FVM_Value *a, FVM_Value *out,
+                           FVM_ArrayWorkScope &work)
+{
+    double first = 0;
+    FVM_Result status = legacy_index(c, n, a, 0, 0, first);
+    if (status != FVM_OK)
+        return status;
+    if (first < 0 && first + length < FVM_INT32_MIN_NUMBER)
+        return FVM_UNSUPPORTED;
+    long start = first < 0 ? 0 : length;
+    long end = length;
+    if (n > 1 && a[1].type != FVM_VALUE_UNDEFINED)
+    {
+        double last = 0;
+        status = legacy_index(c, n, a, 1, 0, last);
+        if (status != FVM_OK)
+            return status;
+        if (last < 0 && last + length < FVM_INT32_MIN_NUMBER)
+            return FVM_UNSUPPORTED;
+        end = last < 0 ? 0 : length;
+    }
+    double count = end > start ? (double)end - start : 0;
+    if (count > FVM_INT32_MAX_NUMBER)
+        return FVM_UNSUPPORTED;
+    FVM_Object *result = 0;
+    status = fvm_array_create_like(c, o->resource_kind == FVM_RESOURCE_ARRAY ? o : 0,
+                                  (unsigned long)count, &result, true);
+    if (status != FVM_OK)
+        return status;
+    /* [GC:] Retain copied managed values in the unfinished result until publication. */
+    FVM_ObjectRootScope roots(c, result);
+    for (unsigned long i = 0; i < (unsigned long)count; ++i)
+    {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
+        FVM_Value value;
+        legacy_signed_element(o, (long)((double)start + i), value);
+        status = fvm_array_store_own(c, result, i, value);
+        if (status != FVM_OK)
+            return status;
+    }
+    object(out, result);
+    return FVM_OK;
+}
+
 /* Run signed borrowed end operations without widening native Array storage. */
 FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
                          long length, unsigned int n, const FVM_Value *a,
@@ -556,16 +626,7 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
     char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
     std::sprintf(key, "%ld", length - 1);
     FVM_Value value;
-    fvm_value_undefined(&value);
-    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(key);
-    if (property != o->properties.end())
-        value = property->second;
-    else
-    {
-        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(key);
-        if (accessor != o->accessors.end())
-            fvm_base_accessor_data(accessor->second, value);
-    }
+    legacy_signed_element(o, length - 1, value);
     /* [GC:] Native invocation defers collection while the deleted raw value is unpublished. */
     int removed = 0;
     FVM_Result status = fvm_object_delete(c, o, key, &removed);
@@ -801,16 +862,19 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
 
     /* Initialization / Инициализация локального состояния. */
     unsigned long count = 0;
+    long signed_length = 0;
     FVM_Result r = FVM_OK;
     if (!std::strcmp(method, "splice"))
         count = prepared->length;
     else if (c->swf_loaded && (!std::strcmp(method, "join") || !std::strcmp(method, "slice") || !std::strcmp(method, "reverse") ||
                              !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn")))
-        r = legacy_data_length(c, o, count);
+        r = legacy_data_length(c, o, count, &signed_length);
     else
         r = length(c, o, count);
     if (r != FVM_OK)
         return r;
+    if (c->swf_loaded && signed_length < 0 && !std::strcmp(method, "slice"))
+        return negative_slice(c, o, signed_length, n, a, out, work);
     if (!std::strcmp(method, "push"))
     {
         if ((double)count + n > 4294967295.0)

@@ -1,5 +1,5 @@
-Development version: **0.374** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.374 ` and an English description. Increase the subversion before each
+Development version: **0.375** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.375 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.374** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.374 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.375** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.375 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -509,3 +509,5 @@ root OOM containment; [English](doc/JIT_TRY.md) / [Русский](doc/JIT_TRY.r
 Borrowed negative splice / отрицательная длина: [EN](doc/ARRAY_NEGATIVE_SPLICE.md) / [RU](doc/ARRAY_NEGATIVE_SPLICE.ru.md).
 
 Signed borrowed end operations / знаковые заимствованные методы: [EN](doc/ARRAY_NEGATIVE_ENDS.md) / [RU](doc/ARRAY_NEGATIVE_ENDS.ru.md).
+
+Negative loaded slice / slice с отрицательной длиной: [EN](doc/ARRAY_NEGATIVE_SLICE.md) / [RU](doc/ARRAY_NEGATIVE_SLICE.ru.md).

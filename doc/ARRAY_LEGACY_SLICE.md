@@ -42,3 +42,8 @@ undefined end, negative wrapped length, budget exhaustion and coercion mutation
 in SWF6..8. Rules follow pinned primary source. Original array_slice has a SWF15
 header and remains outside the supported range; no oracle pass is claimed.
 Full Array/prototype/function-version semantics and all stages remain open.
+
+As of v0.375 negative signed ranges are retained and may copy negative own keys;
+see [EN](ARRAY_NEGATIVE_SLICE.md) / [RU](ARRAY_NEGATIVE_SLICE.ru.md).
+С v0.375 отрицательный знаковый диапазон сохраняется и может копировать
+собственные отрицательные ключи; прежние проверки пустого результата остаются.

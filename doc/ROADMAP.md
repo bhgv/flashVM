@@ -353,3 +353,16 @@ Validation v0.374: all 771 AGG / 771 Cairo / 752 minimal Linux Release checks
 have passing evidence after ELF execution-permission repairs and failed-test
 reruns. Five restricted heap/global ASan+UBSan checks pass (stack ASan and LSan
 disabled): both new end-operation tests, legacy push/unshift and negative splice.
+
+
+v0.375: loaded slice preserves negative signed length through bound conversion
+and copies selected own negative keys for borrowed/native sources. Dense holes,
+raw accessors, source retention, budget and allocation cleanup are covered.
+See [EN](ARRAY_NEGATIVE_SLICE.md) / [RU](ARRAY_NEGATIVE_SLICE.ru.md).
+Все стадии остаются открытыми; signed overflow/result Int32 bounds remain.
+
+Validation v0.375: 773 AGG / 773 Cairo / 754 minimal Linux Release checks
+have passing evidence (AGG/Cairo ELF permission repairs and failed-test reruns;
+minimal passed the full run directly). Five restricted heap/global ASan+UBSan
+checks pass: both negative-slice tests, both negative-end tests and legacy slice.
+Stack ASan and LeakSanitizer remain disabled in this environment.

@@ -1,7 +1,20 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.374
+# Условия окончательной приёмки / Final acceptance gates — v0.375
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.375 preserves negative signed lengths through loaded slice bound conversion,
+copying raw own negative keys into rooted dense native results. Both native and
+borrowed sources, holes, accessor data, length-changing coercion, work limits,
+allocation failure/GC/retry and source retention are covered. Signed own-key
+reading is shared with negative pop without changing its deletion rules.
+Validation v0.375: 773 AGG / 773 Cairo / 754 minimal Linux Release checks
+have passing evidence (AGG/Cairo ELF permission repairs and failed-test reruns;
+minimal passed the full run directly). Five restricted heap/global ASan+UBSan
+checks pass: both negative-slice tests, both negative-end tests and legacy slice.
+Stack ASan and LeakSanitizer remain disabled in this environment.
+Signed bound-addition overflow and results above Int32 maximum remain
+unsupported; ARRAY_NEGATIVE_SLICE.md / .ru.md record the contract. No stage closes.
 
 v0.374 adds negative-length borrowed push/pop/shift/unshift with signed own
 keys and method-specific deletion/length rules. Readonly/nondeletable flags,
