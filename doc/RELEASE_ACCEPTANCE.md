@@ -743,3 +743,19 @@ See CLIP_POINTER.md; no full input/player-version equivalence or JIT is claimed.
 
 Linux: по 639/639 AGG/Cairo, четыре проверки ограниченных ASan/UBSan и по четыре
 исходных SWF. Все стадии открыты; полный drag и приёмка других ОС ещё не выполнены.
+
+## v0.328 native drag engine / Нативное перетаскивание
+
+Linux GCC/G++ 13.3 Release: all 642 CTest checks have passing evidence in AGG
+and Cairo. Initial runs had only BAD_COMMAND launch failures: two AGG and six
+Cairo existing ELF files lost execute permission. Restoring those exact files
+and rerunning only those tests passes; no behavior failure was retried away.
+Five focused drag/input tests pass under restricted heap/global ASan+UBSan
+(stack ASan and LeakSanitizer disabled). Four recovered unmodified pinned SWFs
+match exact stdout, exit zero and empty stderr in both profiles.
+See NATIVE_DRAG_SERVICE.md for C-only scope and remaining compatibility work.
+
+Linux: все 642 проверки каждой сборки прошли с повторным запуском двух AGG и
+шести Cairo тестов после восстановления прав исполнения ELF. Пять проверок
+ограниченных ASan/UBSan и по четыре исходных SWF. Drag пока подключён из C и
+host input; Action/скриптовые адаптеры ещё открыты. Все стадии открыты.

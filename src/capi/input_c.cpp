@@ -92,6 +92,8 @@ extern "C" FVM_Result fvm_input_dispatch(FVM_Context *c, const FVM_InputEvent *e
     if (result != FVM_OK)
         return result;
     result = fvm_input_set_pointer(c, event->x, event->y);
+    if (result == FVM_OK)
+        result = fvm_exec_drag_update(c);
     if (result != FVM_OK)
         return result;
     try

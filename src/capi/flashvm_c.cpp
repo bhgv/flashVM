@@ -182,6 +182,12 @@ extern "C"
         /* [GC:] New contexts have no armed finalizer preparation. */
         context->pending_finalizer = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        context->drag_clip = 0;
+        context->drag_lock_center = context->drag_constrained = context->drag_updating = false;
+        context->drag_bounds.x_min = context->drag_bounds.y_min = 0;
+        context->drag_bounds.x_max = context->drag_bounds.y_max = 0;
+        context->drag_last_world_x = context->drag_last_world_y = 0;
+        context->drag_revision = 0;
         context->pointer_world_x = context->pointer_world_y = 0;
         context->pumping_input = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -221,6 +227,8 @@ extern "C"
         /* Computation / Вычисление и обновление состояния. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->destroying = true;
+        /* [GC:] Release the native drag root before finalization destroys the object graph. */
+        context->drag_clip = 0;
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         context->gc_collecting = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

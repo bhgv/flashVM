@@ -315,6 +315,14 @@ struct FVM_Context
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */
     fvm_detail::vector<FVM_QueuedInput> queued_input; /* [GC:] Input events awaiting delivery. */
+    FVM_Object *drag_clip; /* [GC:] Context-owned root of the currently dragged native instance. */
+    bool drag_lock_center; /* Whether dragging centers the clip on the pointer. */
+    bool drag_constrained; /* Whether normalized parent-space bounds apply. */
+    FVM_ExecutionDragBounds drag_bounds; /* Parent-space constraint rectangle; no managed edges. */
+    double drag_last_world_x; /* Last effective pointer X after clamping, for delta dragging. */
+    double drag_last_world_y; /* Last effective pointer Y after clamping, for delta dragging. */
+    unsigned long drag_revision; /* Changes when a drag is replaced/ended to reject stale work. */
+    bool drag_updating; /* Reentry guard during matrix getters and transform publication. */
     double pointer_world_x; /* Last accepted host pointer X; no managed edges. */
     double pointer_world_y; /* Last accepted host pointer Y; no managed edges. */
     bool pumping_input; /* [GC:] Whether input delivery is already in progress. */

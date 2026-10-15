@@ -196,6 +196,28 @@ extern "C"
      * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
      * This explicit-object policy does not resolve Action target paths or deliver unload events. */
     FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+    /* Optional normalized drag limits in the dragged clip's parent's pixel space. */
+    typedef struct FVM_ExecutionDragBounds
+    {
+        double x_min; /* Minimum parent-space X; nonfinite input becomes zero. */
+        double y_min; /* Minimum parent-space Y; nonfinite input becomes zero. */
+        double x_max; /* Maximum parent-space X; reversed limits are swapped. */
+        double y_max; /* Maximum parent-space Y; reversed limits are swapped. */
+    } FVM_ExecutionDragBounds;
+    /* Begin/replace native dragging without moving yet; NULL bounds means unconstrained.
+     * lock_center selects pointer-centered positioning; otherwise motion uses mouse deltas.
+     * [GC:] The active instance is retained as a context root until end/removal. */
+    FVM_API FVM_Result fvm_exec_drag_begin(FVM_Context *, FVM_Object *, int lock_center,
+                                            const FVM_ExecutionDragBounds *bounds);
+    /* Apply the current pointer through parent transforms, clamp and atomically update position.
+     * Removed targets stop dragging. Reentrant update is invalid; superseded work is discarded. */
+    FVM_API FVM_Result fvm_exec_drag_update(FVM_Context *);
+    /* Flush pending motion then end the context-wide drag. Inside an update, cancel immediately.
+     * Update errors preserve active state. Callback side effects are not rolled back. */
+    FVM_API FVM_Result fvm_exec_drag_end(FVM_Context *);
+    /* Read the active target as an object value or undefined, without allocation or callbacks. */
+    FVM_API FVM_Result fvm_exec_drag_target(FVM_Context *, FVM_Value *out);
+
     /* Snapshot the context pointer in a native clip's local coordinates using its world matrix.
      * Outputs must be non-NULL and distinct. Invalid/singular/nonfinite transforms and other
      * errors preserve both outputs. No activation, bytecode or replaceable mouse property is used.

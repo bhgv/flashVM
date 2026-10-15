@@ -92,6 +92,8 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
     /* [GC:] Current display targets remain live between target changes and nested calls. */
     mark_object(c->avm1_base_clip, pending);
     mark_object(c->avm1_target_clip, pending);
+    /* [GC:] Drag targets stay alive even after all script bindings/pins are released. */
+    mark_object(c->drag_clip, pending);
     /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
     mark_object(c->calling_constructor, pending);
     /* [GC:] Retain the function used to resolve the current method owner. */
