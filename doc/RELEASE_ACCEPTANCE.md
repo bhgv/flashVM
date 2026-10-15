@@ -456,3 +456,11 @@ cover override bypass, invalid objects and repeated calls; allocation injection
 checks link/root preservation through this public entry. See CLIP_DETACH_SERVICE.md.
 Принудительное отсоединение доступно из C; Action RemoveSprite, исторические
 ограничения глубин, события и восстановление цели остаются открытыми.
+
+### v0.298 — shared removal implementation / Декомпозиция отсоединения
+
+The native callback and C service now share the single transaction in
+movieclip_remove.cpp, using common raw-state/depth helpers in movieclip_storage.hpp.
+No graph/callback identifiers, depth policies or Action coverage change.
+Транзакция вынесена из основного MovieClip-файла; проверки состояния и глубин общие.
+See CLIP_DETACH_SERVICE.md for scope and validation limits.

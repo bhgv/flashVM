@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_constants.h"
+#include "movieclip_storage.hpp"
 #include "movieclip_path_constants.h"
 #include "../avm1/display_property_ids.h"
 #include "../avm1/block.hpp"
@@ -42,8 +43,18 @@ enum
     CLIP = FVM_RESOURCE_MOVIECLIP,
     CLIP_CLASS = FVM_RESOURCE_MOVIECLIP_CLASS
 };
-typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
-typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
+using fvm_movieclip_storage::Slots;
+using fvm_movieclip_storage::Properties;
+using fvm_movieclip_storage::object;
+using fvm_movieclip_storage::number;
+using fvm_movieclip_storage::state;
+using fvm_movieclip_storage::field;
+using fvm_movieclip_storage::private_object;
+using fvm_movieclip_storage::parent;
+using fvm_movieclip_storage::integer_field;
+using fvm_movieclip_storage::depth_field;
+using fvm_movieclip_storage::slot_bias;
+using fvm_movieclip_storage::slot_key;
 
 /* Release a temporary native vector path on every return or allocation exception. */
 struct OwnedPath
@@ -65,50 +76,6 @@ struct OwnedPath
     /* Prevent assignment from transferring ownership implicitly. */
     OwnedPath &operator=(const OwnedPath &);
 };
-
-/* Compute and return object. */
-FVM_Value object(FVM_Object *o)
-{
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value v;
-    fvm_value_undefined(&v);
-
-    /* Computation / Вычисление и обновление состояния. */
-    v.type = o ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
-    v.object = o;
-    return v;
-}
-
-/* Compute and return number. */
-FVM_Value number(double n)
-{
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value v;
-    fvm_value_number(&v, n);
-    return v;
-}
-
-/* Compute and return state. */
-FVM_Result state(FVM_Object *o, FVM_Object *&out)
-{
-    if (!o || o->resource_kind != CLIP || !o->resource_result_valid ||
-        o->resource_result.type != FVM_VALUE_OBJECT || !o->resource_result.object)
-        return FVM_INVALID_ARGUMENT;
-    out = o->resource_result.object;
-    return FVM_OK;
-}
-
-/* Compute and return field. */
-FVM_Result field(FVM_Object *o, const char *name, FVM_Value &out)
-{
-    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.find(name);
-    if (i == o->properties.end())
-        return FVM_INVALID_ARGUMENT;
-    out = i->second;
-    return FVM_OK;
-}
 
 /* Distinguish internal static display nodes from script-visible MovieClip instances. */
 bool static_art(FVM_Object *o)
@@ -166,73 +133,6 @@ unsigned long packed_rgb(double value)
     return (unsigned long)reduced;
 }
 
-/* Compute and return private object. */
-FVM_Result private_object(FVM_Object *data, const char *name, FVM_Object *&out)
-{
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value v;
-    FVM_Result r = field(data, name, v);
-    if (r != FVM_OK || v.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-    out = v.object;
-    return FVM_OK;
-}
-
-/* Compute and return parent. */
-FVM_Object *parent(FVM_Object *o)
-{
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *data = 0;
-    FVM_Value v;
-    if (state(o, data) != FVM_OK || field(data, "parent", v) != FVM_OK ||
-        v.type != FVM_VALUE_OBJECT)
-        return 0;
-    return v.object;
-}
-
-/* Compute and return integer field. */
-FVM_Result integer_field(FVM_Object *data, const char *name, unsigned long limit,
-                         unsigned long &out)
-{
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Value v;
-    FVM_Result r = field(data, name, v);
-    if (r != FVM_OK || v.type != FVM_VALUE_NUMBER || !(v.number >= 0 && v.number <= limit) ||
-        v.number != std::floor(v.number))
-        return FVM_INVALID_ARGUMENT;
-    out = (unsigned long)v.number;
-    return FVM_OK;
-}
-
-/* Read a signed ActionScript depth without converting negative values to unsigned slots. */
-FVM_Result depth_field(FVM_Object *data, long &out)
-{
-    FVM_Value value;
-    FVM_Result r = field(data, "depth", value);
-    if (r != FVM_OK || value.type != FVM_VALUE_NUMBER ||
-        !(value.number >= FVM_MOVIECLIP_MIN_PUBLIC_DEPTH &&
-          value.number <= FVM_MOVIECLIP_MAX_PUBLIC_DEPTH) ||
-        value.number != std::floor(value.number))
-        return FVM_INVALID_ARGUMENT;
-    out = (long)value.number;
-    return FVM_OK;
-}
-
-/* Read the slot encoding; snapshots before v0.27 use unbiased nonnegative indices. */
-FVM_Result slot_bias(FVM_Object *data, unsigned long &bias)
-{
-    bias = 0;
-    if (data->properties.find("slot_bias") == data->properties.end())
-        return FVM_OK;
-    FVM_Result r = integer_field(data, "slot_bias", FVM_MOVIECLIP_CHILD_SLOT_BIAS, bias);
-    return r == FVM_OK && (bias == 0 || bias == FVM_MOVIECLIP_CHILD_SLOT_BIAS)
-               ? FVM_OK
-               : FVM_INVALID_ARGUMENT;
-}
-
 /* [GC:] Upgrade a legacy child table atomically, preserving all existing object edges. */
 FVM_Result ensure_slot_bias(FVM_Object *data, FVM_Object *children)
 {
@@ -253,20 +153,6 @@ FVM_Result ensure_slot_bias(FVM_Object *data, FVM_Object *children)
     return FVM_OK;
 }
 
-/* Translate a public depth into its parent's internal unsigned slot key. */
-FVM_Result slot_key(FVM_Object *data, long depth, unsigned long &key)
-{
-    unsigned long bias = 0;
-    FVM_Result r = slot_bias(data, bias);
-    if (r != FVM_OK)
-        return r;
-    if (depth < FVM_MOVIECLIP_MIN_PUBLIC_DEPTH || depth > FVM_MOVIECLIP_MAX_PUBLIC_DEPTH)
-        return FVM_INVALID_ARGUMENT;
-    if (depth < 0 && !bias)
-        return FVM_NOT_FOUND;
-    key = (unsigned long)(depth + (long)bias);
-    return FVM_OK;
-}
 
 /* Compute and return make. */
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1043,75 +929,16 @@ FVM_Result duplicate_movie(FVM_Context *c, FVM_Object *o, unsigned int n, const 
     return finish_instance(c, child, constructor, n > 2 ? a + 2 : 0, out);
 }
 
-/* Prepare every ownership-map change before detaching a clip from its parent. */
+/* Adapt the stable native callback signature to the shared forced-detachment operation. */
 FVM_Result remove(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Value *, FVM_Value *out,
                   void *)
 {
-    if (!c || !o || o->owner != c || !out)
+    if (!out)
         return FVM_INVALID_ARGUMENT;
-    try
-    {
-        FVM_Object *data = 0;
-        FVM_Result status = state(o, data);
-        if (status != FVM_OK)
-            return status;
-        FVM_Object *p = parent(o), *children = 0;
-        unsigned long key = 0;
-        if (p)
-        {
-            if (p->owner != c)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Object *parent_data = 0;
-            long depth = 0;
-            status = state(p, parent_data);
-            if (status == FVM_OK)
-                status = private_object(parent_data, "children", children);
-            if (status == FVM_OK)
-                status = depth_field(data, depth);
-            if (status == FVM_OK)
-                status = slot_key(parent_data, depth, key);
-            if (status != FVM_OK)
-                return status;
-        }
-        /* [GC:] Source maps keep managed edges alive until all replacement maps are prepared. */
-        Properties detached = data->properties;
-        detached["parent"] = object(0);
-        detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
-        Slots next_children;
-        Properties next_bindings;
-        if (p)
-        {
-            next_children = children->indexed;
-            next_bindings = p->properties;
-            Slots::iterator slot = next_children.find(key);
-            if (slot != next_children.end() && slot->second.type == FVM_VALUE_OBJECT &&
-                slot->second.object == o)
-                next_children.erase(key);
-            FVM_Value name;
-            fvm_value_undefined(&name);
-            if (field(o, "_name", name) == FVM_OK && name.type == FVM_VALUE_STRING)
-            {
-                fvm_detail::string binding(name.string, fvm_string_size(name));
-                Properties::iterator entry = next_bindings.find(binding);
-                if (entry != next_bindings.end() && entry->second.type == FVM_VALUE_OBJECT &&
-                    entry->second.object == o)
-                    next_bindings.erase(binding);
-            }
-        }
-        /* [GC:] Publish only prepared maps; no allocation or script occurs after the first swap. */
-        if (p)
-        {
-            children->indexed.swap(next_children);
-            p->properties.swap(next_bindings);
-        }
-        data->properties.swap(detached);
+    FVM_Result status = fvm_movieclip_scene_remove(c, o);
+    if (status == FVM_OK)
         fvm_value_undefined(out);
-        return FVM_OK;
-    }
-    catch (const std::bad_alloc &)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
+    return status;
 }
 
 /* Read depth. */
@@ -3083,12 +2910,6 @@ FVM_Result fvm_movieclip_scene_replace(FVM_Context *c, FVM_Object *o, FVM_Object
     return fvm_movieclip_scene_update(c, o, placement);
 }
 
-/* Remove an authored instance through the same validated parent/depth unlink operation. */
-FVM_Result fvm_movieclip_scene_remove(FVM_Context *c, FVM_Object *o)
-{
-    FVM_Value ignored;
-    return remove(c, o, 0, 0, &ignored, 0);
-}
 
 /* Read intrinsic fields independently from replaceable named property accessors. */
 FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,

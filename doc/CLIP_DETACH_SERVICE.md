@@ -52,3 +52,30 @@ context lacked standard installation; setup was corrected before successful
 validation. All 26 accepted original SWFs matched the pinned oracle in each
 renderer profile. Dispatch coverage remains 94 references out of the pinned
 100-entry catalog, with six absent; this bounded audit is not semantic completion.
+
+## Shared operation body — v0.298
+
+The complete transactional detachment body now lives in the single-operation
+movieclip_remove.cpp file. The stable removeMovieClip native callback and the C
+execution service both delegate to fvm_movieclip_scene_remove. Native callback
+serialization identifiers and the graph schema remain unchanged.
+
+movieclip_storage.hpp contains the shared raw field/state/depth helpers used by
+the main MovieClip implementation and the extracted operation. This keeps slot
+validation, legacy bias handling and counted name cleanup consistent without
+exposing interpreter internals or duplicating the transaction. Helpers do not
+perform script property dispatch; callers retain the previous rooting/barrier
+responsibilities. No historical removal policy or new Action is introduced.
+
+Тело транзакционного отсоединения вынесено в отдельный movieclip_remove.cpp.
+Нативный метод и C-сервис используют одну операцию. Общие проверки приватного
+состояния и глубин вынесены в movieclip_storage.hpp; правила старых графов и
+идентификаторы сериализации нативных методов сохранены. Это декомпозиция без
+изменения заявленной семантики.
+
+Validation for v0.298: Linux AGG and Cairo each passed 581 tests, with three AGG
+and four Cairo launch-permission failures repaired and passed on retry. The four
+affected heap/global ASan+UBSan fixtures passed (no stack/leak coverage). All 26
+accepted original SWFs matched the oracle in both profiles. Native graph transfer,
+legacy depth migration, named bindings and injected allocation failures are
+included in regression coverage; full removal/event semantics remain open.
