@@ -20,7 +20,8 @@ extern "C"
     FVM_API FVM_Result fvm_input_enqueue(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);
     /* Dispatch up to max_events (0 means all). On callback failure the item is
      * already removed; callbacks must not destroy the context or reenter pump.
-     * processed may be NULL. */
+     * processed counts successful deliveries only and may be NULL. Callback exceptions
+     * become dispatch error codes; the pump guard resets and remaining items are retained. */
     /* Implement input pump for this subsystem. */
     FVM_API FVM_Result fvm_input_pump(FVM_Context *, unsigned int max_events,
                                       unsigned int *processed);

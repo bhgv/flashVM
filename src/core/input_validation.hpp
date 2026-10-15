@@ -4,7 +4,7 @@
 #include "flashvm/input.h"
 #include "flashvm/input_limits.h"
 #include <cfloat>
-/* Require supported gesture/finger ranges and finite world coordinates before publishing input. */
+/* Require supported gesture/finger ranges and finite host coordinates before publishing input. */
 inline bool fvm_input_event_valid(const FVM_InputEvent *event)
 {
     return event && event->fingers && event->fingers <= FVM_INPUT_MAX_FINGERS &&

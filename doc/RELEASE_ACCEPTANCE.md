@@ -686,3 +686,19 @@ Linux: 633/633 AGG; все 633 Cairo прошли с повторным запу
 теста после восстановления права исполнения ELF. Четыре целевых теста
 ограниченных ASan/UBSan и по четыре исходных SWF. См. INPUT_VALIDATION.md.
 Все стадии остаются открытыми.
+
+## v0.324 callback failure recovery / Восстановление после исключений ввода
+
+Linux GCC/G++ 13.3 Release Cairo passes 634/634 CTest checks directly. AGG has
+633 passes and one BAD_COMMAND launch failure for bitmap_noise_allocation; after
+restoring that exact ELF's execute bit, its focused rerun passes. Thus all 634
+checks have passing evidence in each profile, without retrying behavior failures.
+Five focused input tests pass in the restricted heap/global ASan+UBSan profile
+(stack ASan and LeakSanitizer disabled), including GC inside throwing callbacks.
+Four recovered unmodified pinned SWFs match exact stdout, exit zero and empty
+stderr in each Release build. See INPUT_CALLBACK_FAILURES.md; all stages open.
+
+Linux: 634/634 Cairo; все 634 AGG прошли с повторным запуском одного теста после
+восстановления права исполнения ELF. Пять тестов ограниченных ASan/UBSan и по
+четыре исходных SWF. Проверены исключения host callbacks и восстановление очереди;
+полная поддержка Flash, JIT и приёмка остальных ОС остаются открытыми.

@@ -68,7 +68,8 @@ extern "C"
     /* Update input callback. */
     FVM_API FVM_Result fvm_input_set_callback(FVM_Context *, FVM_InputCallback, void *);
     /* Dispatch a finite-coordinate event with supported gesture, finger count and phase.
-     * Invalid input invokes no callback. Direct mapping preserves output on invalid input. */
+     * Invalid input invokes no callback. Direct mapping preserves output on invalid input.
+     * C++ callback exceptions are contained: bad_alloc gives OUT_OF_MEMORY, others ERROR. */
     FVM_API FVM_Result fvm_input_dispatch(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);
 
 #ifdef __cplusplus

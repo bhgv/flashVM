@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/7/9: input callback failure recovery | Проверено для сценариев v0.324 | C++ exceptions contained at C dispatch boundary; queued pump resets, remaining/enqueued events survive, processed counts successes; INPUT_CALLBACK_FAILURES.md. Full MovieClip/input lifecycle remains open. |
 | 3/7/9: consistent host input validation | Проверено для сценариев v0.323 | Direct/queued input share gesture/finger/finite-coordinate/phase checks; C89 limits header, invalid-input side effects and FIFO capacity coverage; INPUT_VALIDATION.md. MovieClip input/drag integration and other OS execution remain open. |
 | 2/3/6/7: CloneSprite | Проверено для сценариев v0.322 | Explicit C89 request, Int32 depth/name/source order, absolute bias, raw Action, missing operands, collecting callbacks/throws/OOM; AVM1_CLONE_SPRITE.md. Native range/display type/removed ancestry gaps remain. |
 | 3/6/7: intrinsic C sibling construction | Проверено для сценариев v0.321 | Shared duplicateMovieClip service, direct C89 graphics/initialization/transport, host/SWF4–8 and OOM; DUPLICATE_CLIP_SERVICE.md. Full duplicate/version/depth semantics open. |

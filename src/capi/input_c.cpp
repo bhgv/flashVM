@@ -4,6 +4,7 @@
 
 #include "../core/runtime.hpp"
 #include "../core/input_validation.hpp"
+#include <new>
 extern "C"
 {
     /* Update input rule. */
@@ -90,7 +91,18 @@ extern "C" FVM_Result fvm_input_dispatch(FVM_Context *c, const FVM_InputEvent *e
     result = fvm_input_map(c, event, &button);
     if (result != FVM_OK)
         return result;
-    if (c->input_callback)
-        c->input_callback(c, event, phase, button, c->input_userdata);
-    return FVM_OK;
+    try
+    {
+        if (c->input_callback)
+            c->input_callback(c, event, phase, button, c->input_userdata);
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
 }
