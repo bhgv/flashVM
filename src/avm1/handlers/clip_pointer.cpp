@@ -1,5 +1,6 @@
 /* FlashVM: explicit clip-local pointer projection for C callers and generated bodies. */
 #include "support.hpp"
+#include "flashvm/affine.h"
 #include "clip_pointer_constants.h"
 #include "../../core/scene_numeric.hpp"
 /* Snapshot pointer coordinates before matrix getters and publish both local values on success. */
@@ -59,15 +60,10 @@ extern "C" FVM_Result fvm_exec_clip_pointer(FVM_Context *c, FVM_Object *clip, FV
         FVM_Result status = fvm_movieclip_world_matrix(c, clip, world);
         if (status != FVM_OK)
             return status;
-        double determinant = world.xx * world.yy - world.xy * world.yx;
-        double limit = std::numeric_limits<double>::max();
-        if (!determinant || !(determinant >= -limit && determinant <= limit))
-            return FVM_INVALID_ARGUMENT;
-        double dx = pointer_x - world.x0, dy = pointer_y - world.y0;
-        double x = (world.yy * dx - world.xy * dy) / determinant;
-        double y = (world.xx * dy - world.yx * dx) / determinant;
-        if (!(x >= -limit && x <= limit && y >= -limit && y <= limit))
-            return FVM_INVALID_ARGUMENT;
+        double x = 0, y = 0;
+        status = fvm_affine_inverse_point(&world, FVM_AFFINE_POINT, pointer_x, pointer_y, &x, &y);
+        if (status != FVM_OK)
+            return status;
         fvm_value_number(out_x, x);
         fvm_value_number(out_y, y);
         return FVM_OK;

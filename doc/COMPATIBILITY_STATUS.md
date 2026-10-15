@@ -2661,3 +2661,11 @@ objects and remaining subsystems/stages stay open. See CLIP_WORLD_MATRIX.md.
 Композиция предков точки вынесена в общие C-сервисы; loaded-путь теперь
 округляет каждый уровень. Хостовый режим сохранён, выбор режима защищён от
 загрузки SWF из getter. Raw snapshots и перечисленные ограничения не закрыты.
+
+## v0.341: common host inverse projection
+
+Host pointer and drag adapters share the context-free C89 inverse point/vector
+service; see AFFINE_PROJECTION.md for contracts and numerical limits. Direct
+C89, alias/error and allocation-disabled cases supplement existing adapter
+coverage. Перетаскивание сохраняет прежнюю double-семантику; точная совместимость
+Flash и завершение этапов roadmap этим изменением не подтверждаются.

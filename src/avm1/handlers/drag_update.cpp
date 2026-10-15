@@ -4,6 +4,7 @@
 #include "../../standard/movieclip_storage.hpp"
 #include "../../standard/movieclip_scene.hpp"
 #include "flashvm/movieclip.h"
+#include "flashvm/affine.h"
 /* Transform pointer motion, clamp and publish position only after all allocating preparation. */
 extern "C" FVM_Result fvm_exec_drag_update(FVM_Context *c)
 {
@@ -52,14 +53,13 @@ extern "C" FVM_Result fvm_exec_drag_update(FVM_Context *c)
             return fvm_exec_drag_end(c);
         if (fvm_movieclip_storage::parent(clip) != parent)
             return FVM_OK;
-        double determinant = world.xx * world.yy - world.xy * world.yx;
+        double x = 0, y = 0;
+        status = fvm_affine_inverse_point(&world, center ? FVM_AFFINE_POINT : FVM_AFFINE_VECTOR,
+                                          center ? pointer_x : pointer_x - last_x,
+                                          center ? pointer_y : pointer_y - last_y, &x, &y);
+        if (status != FVM_OK)
+            return status;
         double limit = std::numeric_limits<double>::max();
-        if (!determinant || !(determinant >= -limit && determinant <= limit))
-            return FVM_INVALID_ARGUMENT;
-        double dx = pointer_x - (center ? world.x0 : last_x);
-        double dy = pointer_y - (center ? world.y0 : last_y);
-        double x = (world.yy * dx - world.xy * dy) / determinant;
-        double y = (world.xx * dy - world.yx * dx) / determinant;
         if (!center)
         {
             x += local.x0;

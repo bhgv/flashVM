@@ -246,3 +246,9 @@ See CLIP_WORLD_MATRIX.md for snapshot/cycle/error contracts and remaining scope.
 
 Общий запрос мировой матрицы и числовое умножение доступны C/JIT отдельно от
 байткода и стека. Переносимость, сырая сцена и завершение стадий ещё открыты.
+
+In v0.341, host pointer projection and drag inverse projection share the
+context-free C89 `fvm_affine_inverse_point` service (AFFINE_PROJECTION.md).
+The execution adapters retain state, callbacks, GC barriers and publication.
+В v0.341 числовая double-проекция мыши/drag вынесена в общий C-интерфейс;
+состояние и корни остаются в адаптерах. Это не завершает этапы roadmap.
