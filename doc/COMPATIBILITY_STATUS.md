@@ -2728,3 +2728,18 @@ RV32I и RV64I, а также исключение тел с breakpoint из JIT
 v0.348 adds five Linux machine encoders and interpreter-only breakpoint bodies,
 plus worker/multiple-VM examples. New ISA evidence is synthetic-helper emulator
 execution, not full foreign-CPU/OS acceptance; stages 8/9 remain open.
+
+## v0.349: platform validation infrastructure
+
+Implemented: native AGG/Cairo/minimal release runner, failure-aware evidence,
+explicit-device Android CTest/ADB adapter and cross-build exclusion of host-only
+Python process harnesses. Host adapter tests cover quoting, failed push, timeout,
+remote nonzero status and invalid paths. Cross-configuration inspection proves
+all 675 minimal-profile target commands use the selected adapter and file-process
+fixture ordering remains present. This is not Android execution evidence.
+Real Windows/macOS/Android acceptance and all roadmap stages remain open.
+See PLATFORM_VALIDATION.md for use and exact runtime evidence.
+
+Добавлены повторяемые прогоны и адаптер Android; проверены ошибки транспорта
+на хосте и регистрация кросс-тестов. Реальный запуск Android этим не подтверждён,
+полнота Flash и стадии 1–9 не объявлены завершёнными.

@@ -147,3 +147,14 @@ RV32I и RV64I, а также исключение тел с breakpoint из JIT
 v0.348 adds five Linux machine encoders and interpreter-only breakpoint bodies,
 plus worker/multiple-VM examples. New ISA evidence is synthetic-helper emulator
 execution, not full foreign-CPU/OS acceptance; stages 8/9 remain open.
+
+Контрольная точка v0.349: повторяемые Release-профили AGG/Cairo/minimal,
+проверочный прогон с журналами и статусом ошибок, ADB-адаптер исполнения CTest.
+Кросс-сборка больше не регистрирует Python-сценарии, запускающие целевые бинарники
+на хосте в обход адаптера. См. PLATFORM_VALIDATION.ru.md. Реальные запуски
+Windows/macOS/Android и окончательная приёмка всех стадий по-прежнему необходимы.
+
+v0.349 adds native release-profile validation and an explicit-device Android
+CTest adapter. Cross-builds omit host-only process harnesses instead of launching
+foreign binaries locally. See PLATFORM_VALIDATION.md. This is stage 9 validation
+infrastructure; it does not close any stage or supply missing target-OS evidence.

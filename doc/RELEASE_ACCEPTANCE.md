@@ -1,7 +1,22 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.125
+# Условия окончательной приёмки / Final acceptance gates — v0.349
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+Текущая инфраструктура проверки платформ описана в
+[PLATFORM_VALIDATION.ru.md](PLATFORM_VALIDATION.ru.md). Исторические контрольные
+точки ниже не отменяют JIT v0.346–0.348 и действующий запрет выдачи архивов.
+Новые инструменты не заменяют реальные запуски Windows/macOS/Android.
+
+The current native/JIT evidence is in JIT_ARCHITECTURES.md; repeatable platform
+runs are in [PLATFORM_VALIDATION.md](PLATFORM_VALIDATION.md). Older checkpoints
+below describe their own versions. The standing instruction disables source/Git
+archive delivery. All nine stages remain open.
+
+v0.349 Linux Release evidence: AGG 701/701, Cairo 701/701, minimal 682/682,
+with examples/reference runner. Generated-ELF permission repairs were needed
+before the final full passing runs; see PLATFORM_VALIDATION.md for scope and
+failure-path checks. Windows/macOS/Android have no new runtime evidence.
 
 | Стадия | Проверенная часть | Что требуется для завершения |
 | --- | --- | --- |
@@ -12,7 +27,7 @@
 | 5 | Selected standard classes and host input/network/URL request bridges | Complete AS1/AS2 inventory, XML/XMLSocket/LoadVars/SharedObject, loaders/timers/events/system APIs |
 | 6 | Selected graph/resource/worker/channel/mutex transport, nested fault context | Distributed failures/ownership reconciliation and deadlocks, all built-in graph cases and extension-module acceptance |
 | 7 | Selected GC roots/cycles/native captures/finalizers, freeze/peek/local wait cycles | All-subsystem fault/stress acceptance, full distributed debugger graphs and complete memory-tool evidence |
-| 8 | Interpreter only; JIT selection rejects configuration | Actual ARM32/AArch64/x86/x64/RV32/RV64 machine code, ports and interpreter-equivalence acceptance on each target |
+| 8 | Linux x64 native subset and runtime modes; five additional Linux ABI encoders checked with synthetic helpers in Unicorn | Complete native semantics, real foreign-CPU/OS execution, GC/debug/exception and interpreter-equivalence acceptance on each target |
 | 9 | Linux x86_64 AGG and Cairo Release builds/runs; portable and restricted sanitizer profiles | Real Windows/macOS/Android builds/runs, supported display adapters, source-vendored static dependency audit, reproducible release archives and stages 1–8 acceptance |
 
 ## Проверки этой среды / Evidence from this environment
@@ -27,8 +42,8 @@
 | macOS | No runtime evidence in this session | No macOS runner/SDK available |
 | Android | No runtime evidence in this session | No Android device/NDK/emulator available |
 
-JIT, media and unsupported presentation keys must continue to fail configuration
-until real implementations exist. A platform key, source adapter, cross-compile
+The JIT build-default preset, media and unsupported presentation keys still fail
+configuration; runtime JIT modes do exist. A platform key, source adapter, cross-compile
 or successful subset suite is not a substitute for execution on that platform.
 
 Counted constructor/stack names and parameter aliases have since been implemented

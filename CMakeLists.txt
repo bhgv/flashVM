@@ -192,7 +192,7 @@ endif()
 if(FVM_BUILD_TESTS)
   find_package(Python3 COMPONENTS Interpreter QUIET)
 endif()
-if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS)
+if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
   if(Python3_Interpreter_FOUND)
     add_test(NAME flashvm_network_independent_processes
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_resource_process.py
@@ -201,14 +201,16 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS)
   endif()
 endif()
 
-if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_android_adapter_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_android_adapter.py)
   add_test(NAME flashvm_error_independent_processes
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_error_process.py
             $<TARGET_FILE:flashvm_tests_error_transfer_process>)
   set_tests_properties(flashvm_error_independent_processes PROPERTIES TIMEOUT 60)
 endif()
 
-if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_objects_independent_processes
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_objects_process.py
             $<TARGET_FILE:flashvm_tests_objects_transfer_process>)
@@ -222,7 +224,7 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
 endif()
 
 # POSIX TZ rule strings are a libc calendar-port check, not cross-platform proof.
-if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND UNIX)
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND UNIX AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_date_timezone_profiles
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_date_timezones.py
             $<TARGET_FILE:flashvm_tests_date_timezone>)
@@ -233,10 +235,20 @@ endif()
 if(FVM_BUILD_REFERENCE_RUNNER)
   add_executable(flashvm_reference_swf tools/reference_swf.c)
   target_link_libraries(flashvm_reference_swf PRIVATE flashvm)
-  if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND)
+  if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
     add_test(NAME flashvm_reference_runner
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_reference_runner.py
               $<TARGET_FILE:flashvm_reference_swf>)
     set_tests_properties(flashvm_reference_runner PROPERTIES TIMEOUT 60)
+  endif()
+endif()
+
+# Host Python process harnesses cannot launch target binaries through CTest's
+# emulator property. Omit them explicitly rather than report host execution as
+# target evidence. Native test executables still use CMAKE_CROSSCOMPILING_EMULATOR.
+if(FVM_BUILD_TESTS AND CMAKE_CROSSCOMPILING)
+  message(STATUS "Cross tests: host Python process/timezone/reference harnesses omitted")
+  if(NOT CMAKE_CROSSCOMPILING_EMULATOR)
+    message(STATUS "Cross tests are build-only until a target execution adapter is configured")
   endif()
 endif()

@@ -1,5 +1,9 @@
 # Offline builds and platform validation
 
+The v0.349 [platform runner](PLATFORM_VALIDATION.md) provides reusable AGG/Cairo/
+minimal native validation and an Android ADB execution adapter for cross CTest.
+Actual non-Linux runs are still required; adding these tools does not close stage 9.
+
 CMake 3.10+ selects strict C90/C++98 modes, with pedantic errors on GCC/Clang
 and errors for undeclared C functions. All required third-party source is in
 `external/`. No configure-time download or system Cairo/SQLite fallback occurs.
@@ -34,7 +38,8 @@ same DEFS.txt and vendor source lists. Sanitizer limits are recorded in
 
 Only Linux x86_64 execution is validated. Portable source/configuration does
 not establish Windows/macOS/Android readiness. FB/GLES/OGL/DX/SDL1/SDL2/SDL3,
-JIT and media are reserved keys; selecting them produces a configuration error.
+the JIT build-default preset and media are reserved keys; selecting them produces
+a configuration error. Runtime JIT modes are documented in [JIT.md](JIT.md).
 
 FONTS adds bundled static FreeType 2.14.3, HarfBuzz 1.8.8, libunibreak 6.1 and
 FriBidi 1.0.16, plus AGG/Cairo FreeType adapters. Fontconfig/system font discovery
