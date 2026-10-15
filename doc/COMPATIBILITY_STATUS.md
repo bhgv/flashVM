@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/7: native clip detach identity | Проверено для сценариев v0.312 | C89 query; fresh roots vs removed/replaced wrappers, legacy/malformed state, GC and atomic OOM. CLIP_DETACH_IDENTITY.md. Descendants/unload/RemoveSprite remain open. |
 | 2: missing constant-pool entries | Проверено для сценариев v0.311 | Push Constant8/16: host/SWF4–8, absent/one-entry pool, boundaries, truncation and OOM. AVM1_CONSTANT_MISSING.md. Полная строковая семантика открыта. |
 | 2: empty StoreRegister | Проверено для сценариев v0.310 | host/SWF4–8, global/private Function2, ignored slots, malformed payload and OOM; AVM1_STORE_MISSING.md. Полная семантика функций открыта. |
 | 2: missing call operands | Проверено для сценариев v0.309 | CallFunction/NewObject/CallMethod/NewMethod: host/SWF4–8, fixed layout, zero arguments, GC/throws/OOM. См. AVM1_CALL_MISSING.md. Полная семантика вызовов открыта. |

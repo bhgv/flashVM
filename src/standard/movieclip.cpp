@@ -214,6 +214,8 @@ FVM_Result make(FVM_Context *c, const char *name, unsigned int frames, FVM_Objec
     o->resource_result = object(data);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["parent"] = object(0);
+    /* A new native root/instance has never been detached, even without a parent. */
+    data->properties["detached"] = number(FVM_MOVIECLIP_ATTACHED_STATE);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     data->properties["children"] = object(children);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -483,6 +485,7 @@ FVM_Result publish_child(FVM_Object *o, FVM_Object *child, const char *name, lon
         detached = old_data->properties;
         /* [GC:] The detached node no longer owns its former parent through this edge. */
         detached["parent"] = object(0);
+        detached["detached"] = number(FVM_MOVIECLIP_DETACHED_STATE);
         detached["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
     }
 

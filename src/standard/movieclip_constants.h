@@ -45,4 +45,8 @@
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \
     "$classPrototype" /* Private Boolean marking the builtin prototype, not a live display         \
                          instance. */
+/* Native instance has not undergone a detach/replacement transaction. */
+#define FVM_MOVIECLIP_ATTACHED_STATE 0U
+/* Native instance was explicitly detached or displaced from its parent slot. */
+#define FVM_MOVIECLIP_DETACHED_STATE 1U
 #endif

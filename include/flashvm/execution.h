@@ -182,6 +182,10 @@ extern "C"
      * not resolve targets, dispatch unload events or alter the activation's selected target.
      * [GC:] Retains the operand; allocation errors preserve parent/slot/binding/playback links. */
     FVM_API FVM_Result fvm_exec_detach_clip(FVM_Context *, FVM_Object *);
+    /* Read this native instance's committed detach/replacement marker, bypassing script fields.
+     * A new parentless root is false; descendants are not implicitly marked by this query.
+     * Legacy state without a marker reads false. Errors preserve the caller output. */
+    FVM_API FVM_Result fvm_exec_clip_detached(FVM_Context *, FVM_Object *, FVM_Value *out);
     /* Prepare a frame/label without seeking: nonnumbers stringify once; complete decimal digits
      * become numbers. with_bias adds scene_bias to numbers only, including zero bias when enabled.
      * Context supplies versioned coercion; no Action flags or bytecode are accepted.

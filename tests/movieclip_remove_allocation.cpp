@@ -34,14 +34,14 @@ int main()
             if(r==FVM_OK)
             {
                 assert(children->indexed.empty() && root->properties.find("child")==root->properties.end());
-                assert(data->properties["parent"].type==FVM_VALUE_NULL && data->properties["playing"].number==0);success=true;
+                assert(data->properties["parent"].type==FVM_VALUE_NULL && data->properties["playing"].number==0 && data->properties["detached"].number==1);success=true;
             }
             else
             {
                 assert(r==FVM_OUT_OF_MEMORY && root->properties.size()==bindings && data->properties.size()==fields);
                 assert(children->indexed.size()==1 && children->indexed.find(key)->second.object==clip);
                 assert(root->properties.find("child")->second.object==clip);
-                assert(data->properties["parent"].object==root && data->properties["playing"].number==1);++failures;
+                assert(data->properties["parent"].object==root && data->properties["playing"].number==1 && data->properties["detached"].number==0);++failures;
             }
             assert(fvm_gc_collect(c,0)==FVM_OK);
         }

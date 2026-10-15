@@ -562,3 +562,10 @@ Loaded Constant8/16 misses produce undefined and continue; malformed index field
 and strict host behavior retain their errors. Separate documented macros describe
 the wire widths. Raw returned-value/continuation and allocation fixtures are
 recorded in AVM1_CONSTANT_MISSING.md. All roadmap stages remain open.
+
+### v0.312 — native detach identity / Признак отсоединённого клипа
+
+Native removal and depth replacement commit an explicit private marker together
+with parent/playback state. A value-based C89 query bypasses script overrides and
+handles older state. Atomic removal failure checks include the marker. See
+CLIP_DETACH_IDENTITY.md. Descendant/unload/Action policy and all stages stay open.
