@@ -1,7 +1,22 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.375
+# Условия окончательной приёмки / Final acceptance gates — v0.376
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.376 removes the arbitrary 65,536 source-length rejection from loaded generic
+shift/unshift/reverse/splice. Existing charged loops retain shared instruction
+budgets and stop polling; native/borrowed length, raw data and flags are unchanged.
+Successful 65,537-slot native/borrowed mutations, inherited accessor bypass,
+SWF4–8 budget failures and allocation/GC/retry are covered. Host mutation and
+generic sorting bounds remain separate named constants.
+Validation v0.376: all 775 AGG / 775 Cairo / 756 minimal Linux Release checks
+have passing evidence after nine ELF permission repairs and failed-test reruns
+(4 AGG, 2 Cairo, 3 minimal). Five restricted heap/global ASan+UBSan checks pass,
+including both new large-mutation checks, legacy unshift/splice flags and negative
+end operations. Stack ASan and LeakSanitizer remain disabled. The new scoped
+constant header also passes a strict C89 syntax probe.
+See ARRAY_LOADED_LARGE_MUTATION.md / .ru.md. Full Array semantics, real foreign
+platform execution and all nine roadmap stages remain open.
 
 v0.375 preserves negative signed lengths through loaded slice bound conversion,
 copying raw own negative keys into rooted dense native results. Both native and

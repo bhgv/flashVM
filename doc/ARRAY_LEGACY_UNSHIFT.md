@@ -42,3 +42,8 @@ promised. Public ABI and wire format remain unchanged.
 
 Current negative borrowed behavior: [EN](ARRAY_NEGATIVE_ENDS.md) /
 [RU](ARRAY_NEGATIVE_ENDS.ru.md). Native negative storage remains unsupported.
+
+As of v0.376 loaded generic mutation loops no longer reject lengths above
+65536 solely by traversal size. Host and sorting bounds remain.
+С v0.376 загруженные мутации общего пути ограничиваются бюджетом вместо
+предела длины 65536; [EN](ARRAY_LOADED_LARGE_MUTATION.md) / [RU](ARRAY_LOADED_LARGE_MUTATION.ru.md).

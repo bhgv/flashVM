@@ -6,6 +6,7 @@
 #include "array_work.hpp"
 #include "array_splice_constants.h"
 #include "array_signed_constants.h"
+#include "array_traversal_constants.h"
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
@@ -733,8 +734,6 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             return status;
         if (signed_length < 0)
             return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
-        if (!std::strcmp(method, "shift") && count > 65536)
-            return FVM_UNSUPPORTED;
         fvm_value_undefined(out);
         if (!count)
             return FVM_OK;
@@ -823,7 +822,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             return status;
         if (signed_length < 0)
             return negative_end(c, o, method, signed_length, n, a, out, mutation_work);
-        if (count > 65536 || (double)count + n > FVM_INT32_MAX_NUMBER)
+        if ((double)count + n > FVM_INT32_MAX_NUMBER)
             return FVM_UNSUPPORTED;
         for (unsigned long i = count; i; --i)
         {
@@ -903,8 +902,11 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
             *out = value;
         return r;
     }
-    /* Remaining mutating/sorting traversals retain their explicit size restriction. */
-    if (count > 65536 && std::strcmp(method, "slice") && std::strcmp(method, "join") && std::strcmp(method, "splice"))
+    /* Loaded mutations use charged loops; host mutations and sorting retain their bounds. */
+    bool bounded_sort = !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn");
+    if ((bounded_sort && count > FVM_ARRAY_GENERIC_SORT_MAX_LENGTH) ||
+        (!c->swf_loaded && !bounded_sort && count > FVM_ARRAY_HOST_MUTATION_MAX_LENGTH &&
+         (!std::strcmp(method, "shift") || !std::strcmp(method, "unshift") || !std::strcmp(method, "reverse"))))
         return FVM_UNSUPPORTED;
     if (!std::strcmp(method, "shift"))
     {
@@ -985,7 +987,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
         unsigned long deleted = splice ? prepared->deleted : 0;
         unsigned long end = start + deleted;
         unsigned int added = splice ? prepared->added : 0;
-        if (splice && (count > 65536 || (c->swf_loaded && (double)count - deleted + added > 2147483647.0)))
+        if (splice && ((!c->swf_loaded && count > FVM_ARRAY_HOST_MUTATION_MAX_LENGTH) ||
+                       (c->swf_loaded && (double)count - deleted + added > FVM_INT32_MAX_NUMBER)))
             return FVM_UNSUPPORTED;
         if (!splice)
         {

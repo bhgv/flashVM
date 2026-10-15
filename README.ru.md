@@ -1,4 +1,4 @@
-Версия разработки: **0.375** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.376** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -283,3 +283,5 @@ Borrowed negative splice / отрицательная длина: [EN](doc/ARRAY
 Signed borrowed end operations / знаковые заимствованные методы: [EN](doc/ARRAY_NEGATIVE_ENDS.md) / [RU](doc/ARRAY_NEGATIVE_ENDS.ru.md).
 
 Negative loaded slice / slice с отрицательной длиной: [EN](doc/ARRAY_NEGATIVE_SLICE.md) / [RU](doc/ARRAY_NEGATIVE_SLICE.ru.md).
+
+Large loaded Array mutations / большие загруженные массивы: [EN](doc/ARRAY_LOADED_LARGE_MUTATION.md) / [RU](doc/ARRAY_LOADED_LARGE_MUTATION.ru.md).

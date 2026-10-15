@@ -43,3 +43,8 @@ As of v0.373 the borrowed negative-length restriction is narrowed: see
 
 С v0.373 отрицательная длина заимствованного splice поддерживается в пределах
 [нового контракта](ARRAY_NEGATIVE_SPLICE.ru.md); ограничение настоящего Array сохраняется.
+
+As of v0.376 loaded generic mutation loops no longer reject lengths above
+65536 solely by traversal size. Host and sorting bounds remain.
+С v0.376 загруженные мутации общего пути ограничиваются бюджетом вместо
+предела длины 65536; [EN](ARRAY_LOADED_LARGE_MUTATION.md) / [RU](ARRAY_LOADED_LARGE_MUTATION.ru.md).

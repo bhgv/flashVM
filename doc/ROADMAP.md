@@ -366,3 +366,17 @@ have passing evidence (AGG/Cairo ELF permission repairs and failed-test reruns;
 minimal passed the full run directly). Five restricted heap/global ASan+UBSan
 checks pass: both negative-slice tests, both negative-end tests and legacy slice.
 Stack ASan and LeakSanitizer remain disabled in this environment.
+
+
+v0.376: loaded generic shift/unshift/reverse/splice drop the arbitrary 65536
+source-length restriction; charged loops keep shared budget/cancellation policy.
+Successful native/borrowed traversal, SWF4–8 budget failure and allocation/GC/retry
+are covered; host/sort limits remain. [EN](ARRAY_LOADED_LARGE_MUTATION.md) /
+[RU](ARRAY_LOADED_LARGE_MUTATION.ru.md). Все стадии остаются открытыми.
+
+Validation v0.376: all 775 AGG / 775 Cairo / 756 minimal Linux Release checks
+have passing evidence after nine ELF permission repairs and failed-test reruns
+(4 AGG, 2 Cairo, 3 minimal). Five restricted heap/global ASan+UBSan checks pass,
+including both new large-mutation checks, legacy unshift/splice flags and negative
+end operations. Stack ASan and LeakSanitizer remain disabled. The new scoped
+constant header also passes a strict C89 syntax probe.
