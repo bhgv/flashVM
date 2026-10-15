@@ -63,6 +63,8 @@ The compiler currently accepts:
   (v0.364; [contracts and checks](JIT_ENUMERATE.md)).
 - NextFrame/PreviousFrame/Play/Stop/GotoFrame/GotoLabel/GotoFrame2 via intrinsic timeline services
   (v0.365; [contracts and checks](JIT_TIMELINE.md)).
+- CloneSprite/RemoveSprite/StartDrag/EndDrag via rooted intrinsic scene services
+  (v0.366; [contracts and checks](JIT_SCENE.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).

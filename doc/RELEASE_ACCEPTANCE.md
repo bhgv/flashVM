@@ -1,7 +1,16 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.365
+# Условия окончательной приёмки / Final acceptance gates — v0.366
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.366 adds native CloneSprite/RemoveSprite/StartDrag/EndDrag through shared scene
+services. All 747 AGG, 747 Cairo and 728 minimal Linux Release checks have passing
+evidence after generated ELF execute-permission repairs and reruns. Three scene
+checks pass restricted heap/global ASan+UBSan (stack ASan/LeakSanitizer disabled).
+JIT_SCENE.md records ordered collecting/throwing coercion, unpinned detached drag
+roots, selected-target repair, deferred motion, EndDrag exception/retry and fresh-
+context allocation failures. Full Flash scene semantics, other Actions and real
+foreign-platform acceptance remain open; no stage is closed.
 
 v0.365 adds seven native timeline Actions through shared intrinsic frame services.
 All 744 AGG, 744 Cairo and 725 minimal Linux Release checks pass after generated

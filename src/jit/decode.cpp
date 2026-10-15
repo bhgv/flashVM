@@ -339,6 +339,14 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         else if (op == FVM_AVM1_ACTION_ENUMERATE || op == FVM_AVM1_ACTION_ENUMERATE2)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_enumerate>,
                                                op == FVM_AVM1_ACTION_ENUMERATE));
+        else if (op == FVM_AVM1_ACTION_CLONE_SPRITE)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_clone_sprite>, 0));
+        else if (op == FVM_AVM1_ACTION_REMOVE_SPRITE)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_remove_sprite>, 0));
+        else if (op == FVM_AVM1_ACTION_START_DRAG)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_start_drag>, 0));
+        else if (op == FVM_AVM1_ACTION_END_DRAG)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_end_drag>, 0));
         else if (op == FVM_AVM1_ACTION_TRACE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_trace>, 0));
         else if (op == FVM_AVM1_ACTION_THROW)

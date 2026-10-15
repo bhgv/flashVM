@@ -128,6 +128,14 @@ FVM_Result fvm_jit_frame_control(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_frame_literal(FVM_JitInvocation *, unsigned int);
 /* Prepare a dynamic frame request before resolving its selected timeline. */
 FVM_Result fvm_jit_frame_value(FVM_JitInvocation *, unsigned int);
+/* Clone a native scene target while retaining all encoded request operands. */
+FVM_Result fvm_jit_clone_sprite(FVM_JitInvocation *, unsigned int);
+/* Remove a dynamic scene target and repair the activation's selected timeline. */
+FVM_Result fvm_jit_remove_sprite(FVM_JitInvocation *, unsigned int);
+/* Resolve a drag target before ordered flag and bound conversion. */
+FVM_Result fvm_jit_start_drag(FVM_JitInvocation *, unsigned int);
+/* Flush pending drag motion and release the active drag target. */
+FVM_Result fvm_jit_end_drag(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

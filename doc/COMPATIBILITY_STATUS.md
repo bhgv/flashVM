@@ -2876,3 +2876,12 @@ JIT_TIMELINE.md records isolated host/SWF4–8 equivalence, bounds/labels/bias,
 collecting/throwing coercion, changed targets, malformed records and compile/invoke
 allocation failures. Полная сцена SWF, совместимость Flash и реальные запуски
 других ОС/CPU остаются открытыми; ни одна стадия не закрыта.
+
+## v0.366: native clone, remove and drag Actions
+
+CloneSprite/RemoveSprite/StartDrag/EndDrag share rooted native scene services.
+JIT_SCENE.md records isolated host/SWF4–8 equivalence, intrinsic clone/removal,
+selected-target repair, ordered collecting/throwing coercion, detached drag roots,
+EndDrag exception/retry and allocation failures. Полная совместимость сцены Flash,
+оставшиеся инструкции и реальные запуски других ОС/CPU остаются открытыми.
+Ни одна стадия не закрыта.
