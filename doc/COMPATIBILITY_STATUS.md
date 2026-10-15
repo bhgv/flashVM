@@ -2433,3 +2433,12 @@ movieclip_remove_names and movieclip_remove_allocation, including host/SWF4–8
 replacement and direct scene rename. See MOVIECLIP_REMOVAL_ATOMICITY.md.
 Поиск связи при замене и переименовании больше не усекает имя по NUL.
 Full rename semantics, RemoveSprite and all roadmap stages remain open.
+
+### v0.297 — explicit forced clip detachment / Явное отсоединение клипа
+
+The C89 fvm_exec_detach_clip service exposes native forced scene removal without
+bytecode or script method lookup. Host/SWF4–8 and positive/negative-depth fixtures
+cover override bypass, invalid objects and repeated calls; allocation injection
+checks link/root preservation through this public entry. See CLIP_DETACH_SERVICE.md.
+Принудительное отсоединение доступно из C; Action RemoveSprite, исторические
+ограничения глубин, события и восстановление цели остаются открытыми.

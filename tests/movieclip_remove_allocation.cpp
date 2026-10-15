@@ -3,6 +3,7 @@
 #include "execution_services_allocation.cpp"
 #undef main
 #include "../src/core/runtime.hpp"
+#include "flashvm/execution.h"
 #include "../src/standard/movieclip_scene.hpp"
 static FVM_Object *child(FVM_Context *c,FVM_Object *root,const char *name,double depth)
 {
@@ -28,7 +29,7 @@ int main()
         for(long boundary=0;boundary<2000 && !success;++boundary)
         {
             FVM_GCRootFrame *roots=c->gc_frames;
-            allowance=boundary;FVM_Result r=fvm_movieclip_scene_remove(c,clip);allowance=-1;
+            allowance=boundary;FVM_Result r=fvm_exec_detach_clip(c,clip);allowance=-1;
             assert(c->gc_frames==roots);
             if(r==FVM_OK)
             {

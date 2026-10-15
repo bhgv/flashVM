@@ -174,6 +174,12 @@ extern "C"
      * [GC:] Retains original operands through constructor callbacks. Output may alias either. */
     FVM_API FVM_Result fvm_exec_cast(FVM_Context *, const FVM_Value *value,
                                       const FVM_Value *constructor, FVM_Value *out);
+    /* Force native scene detachment, including authored/negative depths, without method lookup.
+     * Accepts only native clip instances owned by the context. Repeated detachment is allowed;
+     * a parentless root is stopped. This is not historical Action RemoveSprite policy and does
+     * not resolve targets, dispatch unload events or alter the activation's selected target.
+     * [GC:] Retains the operand; allocation errors preserve parent/slot/binding/playback links. */
+    FVM_API FVM_Result fvm_exec_detach_clip(FVM_Context *, FVM_Object *);
     /* Execute a built-in frame command on an explicit clip. */
     FVM_API FVM_Result fvm_exec_frame_control(FVM_Context *, FVM_Object *, FVM_ExecutionFrame,
                                               const FVM_Value *frame, int playing);
