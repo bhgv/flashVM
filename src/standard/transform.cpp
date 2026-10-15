@@ -1,6 +1,8 @@
 /* FlashVM: managed AS2 Transform objects retaining live MovieClip references and typed snapshots.
  */
 #include "transform_state.hpp"
+#include "transform_constants.h"
+#include "flashvm/property.h"
 #include "transform_scene.hpp"
 #include "color_transform_state.hpp"
 #include "../core/native_call_guard.hpp"
@@ -17,9 +19,9 @@ const char *const rectangle_names[] = {"x", "y", "width", "height"};
 /* Recognize a script-visible MovieClip, excluding private static display-art nodes. */
 bool movieclip(FVM_Context *c, FVM_Object *o)
 {
-    if (!o || o->owner != c || o->resource_kind != FVM_RESOURCE_MOVIECLIP || !o->resource_result_valid ||
-        o->resource_result.type != FVM_VALUE_OBJECT || !o->resource_result.object ||
-        o->resource_result.object->owner != c)
+    if (!o || o->owner != c || o->resource_kind != FVM_RESOURCE_MOVIECLIP ||
+        !o->resource_result_valid || o->resource_result.type != FVM_VALUE_OBJECT ||
+        !o->resource_result.object || o->resource_result.object->owner != c)
         return false;
     /* [GC:] Inspect the clip's owned display state while its caller protects the graph. */
     FVM_Object *data = o->resource_result.object;
@@ -84,7 +86,7 @@ FVM_Result snapshot(FVM_Context *c, void *bindings, const char *name, unsigned i
     FVM_Result r = captured_class(c, bindings, name, klass);
     if (r != FVM_OK)
         return r;
-    FVM_Value values[6];
+    FVM_Value values[FVM_TRANSFORM_MATRIX_COMPONENT_COUNT];
     for (unsigned int i = 0; i < count; ++i)
         values[i] = scalar(numbers[i]);
     return create(c, klass, kind, fields, count, values, 0, out);
@@ -101,20 +103,24 @@ FVM_Result get(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *
     FVM_Object *target = clip(c, self);
     if (!target)
         return FVM_OK;
-    if (Property == 0 || Property == 2)
+    if (Property == FVM_TRANSFORM_PROPERTY_MATRIX ||
+        Property == FVM_TRANSFORM_PROPERTY_WORLD_MATRIX)
     {
         FVM_Affine m;
-        FVM_Result r = Property == 0 ? fvm_movieclip_get_matrix(c, target, &m)
-                                     : fvm_transform_scene_matrix(c, target, &m);
+        FVM_Result r = Property == FVM_TRANSFORM_PROPERTY_MATRIX
+                           ? fvm_movieclip_get_matrix(c, target, &m)
+                           : fvm_transform_scene_matrix(c, target, &m);
         if (r != FVM_OK)
             return r;
         const double values[] = {m.xx, m.yx, m.xy, m.yy, m.x0, m.y0};
-        return snapshot(c, bindings, "Matrix", FVM_GEOMETRY_MATRIX, matrix_names, 6, values, out);
+        return snapshot(c, bindings, "Matrix", FVM_GEOMETRY_MATRIX, matrix_names,
+                        FVM_TRANSFORM_MATRIX_COMPONENT_COUNT, values, out);
     }
-    if (Property == 1 || Property == 3)
+    if (Property == FVM_TRANSFORM_PROPERTY_COLOR || Property == FVM_TRANSFORM_PROPERTY_WORLD_COLOR)
     {
-        double values[8];
-        FVM_Result r = fvm_transform_scene_color(c, target, Property == 3, values);
+        double values[FVM_TRANSFORM_COLOR_COMPONENT_COUNT];
+        FVM_Result r = fvm_transform_scene_color(
+            c, target, Property == FVM_TRANSFORM_PROPERTY_WORLD_COLOR, values);
         FVM_Object *klass = 0;
         if (r == FVM_OK)
             r = captured_class(c, bindings, "ColorTransform", klass);
@@ -127,8 +133,8 @@ FVM_Result get(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Value *
     double left = std::floor(bounds.x_min), top = std::floor(bounds.y_min);
     double right = std::ceil(bounds.x_max), bottom = std::ceil(bounds.y_max);
     double values[] = {left, top, right - left, bottom - top};
-    return snapshot(c, bindings, "Rectangle", FVM_GEOMETRY_RECTANGLE, rectangle_names, 4, values,
-                    out);
+    return snapshot(c, bindings, "Rectangle", FVM_GEOMETRY_RECTANGLE, rectangle_names,
+                    FVM_TRANSFORM_RECTANGLE_COMPONENT_COUNT, values, out);
 }
 
 /* Apply Matrix-shaped values or typed native ColorTransform channels to the retained clip. */
@@ -141,24 +147,25 @@ FVM_Result put(FVM_Context *c, FVM_Object *self, unsigned int argc, const FVM_Va
     FVM_Object *target = clip(c, self);
     if (!target || !argc || args[0].type != FVM_VALUE_OBJECT)
         return FVM_OK;
-    if (Property == 1)
+    if (Property == FVM_TRANSFORM_PROPERTY_COLOR)
     {
-        double values[8];
+        double values[FVM_TRANSFORM_COLOR_COMPONENT_COUNT];
         if (!fvm_color_transform_values(c, args[0].object, values))
             return FVM_OK;
         return fvm_transform_scene_set_color(c, target, values);
     }
-    double values[6];
-    FVM_Result r = numbers(c, args[0].object, matrix_names, 6, values);
+    double values[FVM_TRANSFORM_MATRIX_COMPONENT_COUNT];
+    FVM_Result r =
+        numbers(c, args[0].object, matrix_names, FVM_TRANSFORM_MATRIX_COMPONENT_COUNT, values);
     if (r != FVM_OK)
         return r;
     FVM_Affine m;
-    m.xx = values[0];
-    m.yx = values[1];
-    m.xy = values[2];
-    m.yy = values[3];
-    m.x0 = values[4];
-    m.y0 = values[5];
+    m.xx = values[FVM_TRANSFORM_MATRIX_A];
+    m.yx = values[FVM_TRANSFORM_MATRIX_B];
+    m.xy = values[FVM_TRANSFORM_MATRIX_C];
+    m.yy = values[FVM_TRANSFORM_MATRIX_D];
+    m.x0 = values[FVM_TRANSFORM_MATRIX_TX];
+    m.y0 = values[FVM_TRANSFORM_MATRIX_TY];
     return fvm_movieclip_set_matrix(c, target, &m);
 }
 
@@ -179,8 +186,12 @@ FVM_Result movieclip_get(FVM_Context *c, FVM_Object *self, unsigned int, const F
 }
 const char *const names[] = {"matrix", "colorTransform", "concatenatedMatrix",
                              "concatenatedColorTransform", "pixelBounds"};
-const FVM_NativeFunction getters[] = {get<0>, get<1>, get<2>, get<3>, get<4>};
-const FVM_NativeFunction setters[] = {put<0>, put<1>};
+const FVM_NativeFunction getters[] = {
+    get<FVM_TRANSFORM_PROPERTY_MATRIX>, get<FVM_TRANSFORM_PROPERTY_COLOR>,
+    get<FVM_TRANSFORM_PROPERTY_WORLD_MATRIX>, get<FVM_TRANSFORM_PROPERTY_WORLD_COLOR>,
+    get<FVM_TRANSFORM_PROPERTY_PIXEL_BOUNDS>};
+const FVM_NativeFunction setters[] = {put<FVM_TRANSFORM_PROPERTY_MATRIX>,
+                                      put<FVM_TRANSFORM_PROPERTY_COLOR>};
 } // namespace
 
 /* [GC:] Install Transform classes and accessor factory roots into staged namespace maps. */
@@ -207,7 +218,7 @@ FVM_Result fvm_transform_stage(FVM_Context *c, FVM_Object *geometry, FVM_Object 
     klass->properties["prototype"] = managed(prototype);
     /* [GC:] Keep constructor identity reachable through each instance prototype. */
     prototype->properties["constructor"] = managed(klass);
-    prototype->attributes["constructor"] = 3;
+    prototype->attributes["constructor"] = FVM_PROPERTY_BUILTIN_FLAGS;
     FVM_NativeEntry entry;
     entry.callback = constructor;
     /* [GC:] Constructor userdata aliases its class capture. */
@@ -220,17 +231,20 @@ FVM_Result fvm_transform_stage(FVM_Context *c, FVM_Object *geometry, FVM_Object 
     geometry->properties["Transform"] = managed(klass);
     /* [GC:] All geometry factory roots share the Transform identity as well. */
     bindings->properties["Transform"] = managed(klass);
-    for (unsigned int i = 0; i < 5; ++i)
+    for (unsigned int i = 0; i < FVM_TRANSFORM_PROPERTY_COUNT; ++i)
     {
         FVM_AccessorEntry accessor;
         accessor.getter = getters[i];
-        accessor.setter = i < 2 ? setters[i] : 0;
+        accessor.setter = i < FVM_TRANSFORM_WRITABLE_COUNT ? setters[i] : 0;
         /* [GC:] Accessor userdata aliases its retained geometry factory captures. */
         accessor.userdata = bindings;
         /* [GC:] Keep snapshot-producing classes alive after graph transport and collection. */
         accessor.root = bindings;
         prototype->accessors[names[i]] = accessor;
-        prototype->attributes[names[i]] = i < 2 ? 3 : 7;
+        prototype->attributes[names[i]] =
+            i < FVM_TRANSFORM_WRITABLE_COUNT
+                ? FVM_PROPERTY_BUILTIN_FLAGS
+                : (FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY);
     }
     return FVM_OK;
 }
@@ -265,7 +279,7 @@ FVM_Result fvm_transform_install_movieclip(FVM_Context *c, FVM_Object *prototype
     /* [GC:] Every clip inheriting this accessor keeps its Transform factory graph reachable. */
     accessor.root = klass;
     prototype->accessors["transform"] = accessor;
-    prototype->attributes["transform"] = 7;
+    prototype->attributes["transform"] = (FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY);
     return FVM_OK;
 }
 
@@ -273,28 +287,30 @@ FVM_Result fvm_transform_install_movieclip(FVM_Context *c, FVM_Object *prototype
 unsigned long fvm_transform_callback_id(FVM_NativeFunction callback)
 {
     if (callback == constructor)
-        return 1400;
+        return FVM_TRANSFORM_CALLBACK_CONSTRUCTOR;
     if (callback == movieclip_get)
-        return 1401;
-    for (unsigned int i = 0; i < 5; ++i)
+        return FVM_TRANSFORM_CALLBACK_MOVIECLIP_GET;
+    for (unsigned int i = 0; i < FVM_TRANSFORM_PROPERTY_COUNT; ++i)
         if (callback == getters[i])
-            return 1410 + i;
-    for (unsigned int i = 0; i < 2; ++i)
+            return FVM_TRANSFORM_CALLBACK_GETTER_BASE + i;
+    for (unsigned int i = 0; i < FVM_TRANSFORM_WRITABLE_COUNT; ++i)
         if (callback == setters[i])
-            return 1420 + i;
+            return FVM_TRANSFORM_CALLBACK_SETTER_BASE + i;
     return 0;
 }
 
 /* Restore only known Transform constructors and property accessors. */
 FVM_NativeFunction fvm_transform_callback_from_id(unsigned long id)
 {
-    if (id == 1400)
+    if (id == FVM_TRANSFORM_CALLBACK_CONSTRUCTOR)
         return constructor;
-    if (id == 1401)
+    if (id == FVM_TRANSFORM_CALLBACK_MOVIECLIP_GET)
         return movieclip_get;
-    if (id >= 1410 && id < 1415)
-        return getters[id - 1410];
-    if (id >= 1420 && id < 1422)
-        return setters[id - 1420];
+    if (id >= FVM_TRANSFORM_CALLBACK_GETTER_BASE &&
+        id < (FVM_TRANSFORM_CALLBACK_GETTER_BASE + FVM_TRANSFORM_PROPERTY_COUNT))
+        return getters[id - FVM_TRANSFORM_CALLBACK_GETTER_BASE];
+    if (id >= FVM_TRANSFORM_CALLBACK_SETTER_BASE &&
+        id < (FVM_TRANSFORM_CALLBACK_SETTER_BASE + FVM_TRANSFORM_WRITABLE_COUNT))
+        return setters[id - FVM_TRANSFORM_CALLBACK_SETTER_BASE];
     return 0;
 }

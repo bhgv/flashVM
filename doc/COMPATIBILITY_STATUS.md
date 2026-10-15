@@ -2547,3 +2547,14 @@ Loaded missing count/constructor values become undefined; zero count preserves
 prototype snapshots and does not box primitive constructors. Raw host/SWF4–8 and
 allocation-failure fixtures verify continuation, root restoration and no Number
 callback. See AVM1_IMPLEMENTS_MISSING.md. Historical policy gaps/all stages stay open.
+
+### v0.331 Transform schema constants
+
+[TRANSFORM_CONSTANTS.md](TRANSFORM_CONSTANTS.md) records named native property
+selectors, affine snapshot slots and preserved callback transport identities.
+The raw-ID regression protects historical identities and rejects unused ranges;
+this refactoring adds no compatibility capability and closes no roadmap stage.
+
+В v0.331 числовая схема Transform получила смысловые макросы в отдельном .h.
+Проверка исторических ID независима от новых макросов. Возможности и формат
+переноса не изменены; стадии роудмапа остаются открытыми.
