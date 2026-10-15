@@ -26,11 +26,15 @@ int main(void)
   fvm_value_number(&out,91);assert(fvm_object_set(c,clip,"_xmouse",&out)==FVM_OK && fvm_exec_display_property(c,1,&target,&index,&out,&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED && fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_OK);close_to(x.number,4);close_to(y.number,6);
   assert(fvm_get_global(c,"MovieClip",&ctor)==FVM_OK && fvm_object_get(c,ctor.object,"prototype",&proto)==FVM_OK && fvm_object_get(c,proto.object,"_xmouse",&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);
   fvm_value_number(&x,73);fvm_value_number(&y,74);assert(fvm_exec_clip_pointer(c,clip,&x,&x)==FVM_INVALID_ARGUMENT && x.number==73 && fvm_exec_clip_pointer(c,plain,&x,&y)==FVM_INVALID_ARGUMENT && x.number==73 && y.number==74 && fvm_exec_clip_pointer(c,proto.object,&x,&y)==FVM_INVALID_ARGUMENT);
-  assert(fvm_movieclip_set_matrix(c,clip,&singular)==FVM_OK && fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_INVALID_ARGUMENT && x.number==73 && y.number==74 && fvm_movieclip_set_matrix(c,clip,&child_matrix)==FVM_OK);
+  assert(fvm_movieclip_set_matrix(c,clip,&singular)==FVM_OK);
+  if(profile){assert(fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_OK);close_to(x.number,0.9);close_to(y.number,3.15);}
+  else assert(fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_INVALID_ARGUMENT && x.number==73 && y.number==74);
+  assert(fvm_movieclip_set_matrix(c,clip,&child_matrix)==FVM_OK);
   assert(fvm_channel_create(&channel)==FVM_OK && fvm_channel_send_value(c,channel,&target,0)==FVM_OK && fvm_channel_receive_value(other,channel,&out,0)==FVM_OK && out.type==FVM_VALUE_OBJECT && fvm_gc_pin(other,out.object)==FVM_OK);fvm_channel_destroy(channel);
   assert(fvm_input_set_pointer(other,20,30)==FVM_OK && fvm_object_get(other,out.object,"_xmouse",&x)==FVM_OK && fvm_object_get(other,out.object,"_ymouse",&y)==FVM_OK);close_to(x.number,-7);close_to(y.number,5);
   assert(fvm_object_define_accessor_rooted(c,clip,"_xmouse",replaced,0,0,0)==FVM_OK && fvm_object_get(c,clip,"_xmouse",&out)==FVM_OK && out.number==999 && fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_OK);close_to(x.number,4);
   fvm_value_number(&index,20);assert(fvm_exec_display_property(c,0,&target,&index,0,&out)==FVM_OK);close_to(out.number,4);
+  {FVM_Affine identity={1,0,0,1,0,0};assert(fvm_movieclip_set_matrix(c,root,&identity)==FVM_OK && fvm_movieclip_set_matrix(c,clip,&identity)==FVM_OK && fvm_input_set_pointer(c,18.5,-19.5)==FVM_OK && fvm_exec_clip_pointer(c,clip,&x,&y)==FVM_OK);close_to(x.number,profile?18:18.5);close_to(y.number,profile?-20:-19.5);}
   assert(fvm_gc_collect(c,0)==FVM_OK && fvm_gc_collect(other,0)==FVM_OK);fvm_context_destroy(other);fvm_context_destroy(c);
  }
  fvm_runtime_destroy(rt);return 0;

@@ -251,8 +251,9 @@ extern "C"
     FVM_API FVM_Result fvm_exec_drag_target(FVM_Context *, FVM_Value *out);
 
     /* Snapshot the context pointer in a native clip's local coordinates using its world matrix.
-     * Outputs must be non-NULL and distinct. Invalid/singular/nonfinite transforms and other
-     * errors preserve both outputs. No activation, bytecode or replaceable mouse property is used.
+     * Outputs must be non-NULL and distinct; errors preserve both outputs. Loaded SWFs use
+     * binary32 device-pixel rounding and identity fallback for singular projection. Unloaded
+     * hosts retain strict finite double projection. No bytecode or replaceable mouse property is used.
      * [GC:] Retains the clip and blocks collection while transform getters can execute script. */
     FVM_API FVM_Result fvm_exec_clip_pointer(FVM_Context *, FVM_Object *clip,
                                               FVM_Value *local_x, FVM_Value *local_y);

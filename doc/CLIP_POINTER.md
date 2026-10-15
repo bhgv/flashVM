@@ -56,3 +56,26 @@ resolution, local values and legacy readonly coercion suppression in SWF4–8.
 Сохранена прежняя политика преобразований readonly-записи для старого профиля
 Flash. Полная историческая точность, округление twips, удалённые предки,
 мышиные события и drag остаются открытыми; стадии роудмапа не закрываются.
+
+## v0.340: loaded scene arithmetic / арифметика загруженной сцены
+
+Loaded SWF4–8 pointer queries now use the common C binary32 world, matrix
+composition, inverse and integer-twip point services. The pointer and loaded/host
+mode are captured before geometry callbacks. With the current unit device-pixel
+ratio, global twips pass through device-space rounding before the inverse
+local-twip projection; singular projections use identity in device-pixel space.
+Unloaded hosts retain the strict double path and singular errors. Both outputs
+remain atomic on failure. Named and indexed getters share this operation.
+
+Для загруженных SWF4–8 запрос мыши использует общие C-функции матриц и точек:
+коэффициенты binary32, целые twip, промежуточное округление экранных пикселей.
+При необратимой проекции применяется единичная матрица в экранном пространстве.
+Режим и положение мыши фиксируются до вызова getter. Для контекста без SWF
+сохранены double и ошибка при вырожденной матрице.
+
+Evidence: `execution_clip_pointer` covers SWF4–8, singular fallback, half/even
+pixel rounding, host policy, named/indexed reads and transported getters.
+Primary comparison: Ruffle `core/src/display_object.rs::local_mouse_position`,
+commit `2372a4e148a67d68efd796f4477b3cddd4f880cd`. This is a source comparison,
+not a Flash Player oracle. Stage view scaling/device-pixel ratios other than one
+and full display-list integration remain open; no roadmap stage is closed.
