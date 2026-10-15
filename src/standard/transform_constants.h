@@ -22,6 +22,7 @@
 /* Existing serialized callback identities; never renumber when extending Transform. */
 #define FVM_TRANSFORM_CALLBACK_CONSTRUCTOR 1400UL
 #define FVM_TRANSFORM_CALLBACK_MOVIECLIP_GET 1401UL
+#define FVM_TRANSFORM_CALLBACK_MOVIECLIP_SET 1402UL /* Appended setter; prior IDs stay stable. */
 #define FVM_TRANSFORM_CALLBACK_GETTER_BASE 1410UL
 #define FVM_TRANSFORM_CALLBACK_SETTER_BASE 1420UL
 #endif

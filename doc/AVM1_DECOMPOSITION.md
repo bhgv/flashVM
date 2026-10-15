@@ -187,3 +187,14 @@ appending method entries. See MOVIECLIP_DRAG.md.
 
 Скриптовые адаптеры вынесены по одному в файл; подготовка значений и движение
 используют общий C-слой. Полная семантика Flash и стадии роудмапа остаются открытыми.
+
+### v0.332: atomic local transform copy
+
+clip_copy_transform.cpp provides fvm_exec_clip_copy_transform for native clip
+identities, without Action IDs or an interpreter stack. A typed MovieClip.transform
+setter shares it with C/generated callers; paired public/private map rollback
+keeps matrix and color publication atomic on failures. See CLIP_COPY_TRANSFORM.md.
+
+Общий C-сервис копирования локальной матрицы и цвета доступен будущему JIT и
+setter MovieClip.transform. Исходные getter-побочные эффекты не откатываются;
+публикация у получателя атомарна. Все стадии остаются открытыми.

@@ -2558,3 +2558,17 @@ this refactoring adds no compatibility capability and closes no roadmap stage.
 В v0.331 числовая схема Transform получила смысловые макросы в отдельном .h.
 Проверка исторических ID независима от новых макросов. Возможности и формат
 переноса не изменены; стадии роудмапа остаются открытыми.
+
+### v0.332 MovieClip.transform assignment
+
+Implemented: typed Transform-to-native-clip assignment and explicit C89 local
+matrix/color copy. Source/destination identity and unrelated scene state are
+preserved; copying does not retain the source. New setter callback 1402 is
+transportable. Source queries retain the existing native geometry getter policy,
+so exact raw Flash display-state snapshot parity is still open. Historical
+version/attribute availability and full Transform semantics are not certified.
+See [CLIP_COPY_TRANSFORM.md](CLIP_COPY_TRANSFORM.md).
+
+Реализовано присваивание типизированного Transform через общий C89-сервис;
+матрица и цвет публикуются вместе, источник не удерживается. Точное совпадение
+с сырыми снимками Flash, версиями доступности и всеми атрибутами ещё открыто.

@@ -184,6 +184,16 @@ FVM_Result movieclip_get(FVM_Context *c, FVM_Object *self, unsigned int, const F
         *out = managed(result);
     return r;
 }
+/* Assign from a typed Transform's retained clip; plain objects and unbound values do nothing. */
+FVM_Result movieclip_put(FVM_Context *c, FVM_Object *self, unsigned int argc, const FVM_Value *args,
+                         FVM_Value *out, void *)
+{
+    fvm_value_undefined(out);
+    if (!movieclip(c, self) || !argc || args[0].type != FVM_VALUE_OBJECT)
+        return FVM_OK;
+    FVM_Object *source = clip(c, args[0].object);
+    return source ? fvm_exec_clip_copy_transform(c, self, source) : FVM_OK;
+}
 const char *const names[] = {"matrix", "colorTransform", "concatenatedMatrix",
                              "concatenatedColorTransform", "pixelBounds"};
 const FVM_NativeFunction getters[] = {
@@ -274,12 +284,13 @@ FVM_Result fvm_transform_install_movieclip(FVM_Context *c, FVM_Object *prototype
     FVM_Object *klass = geometry->second.object->properties.find("Transform")->second.object;
     FVM_AccessorEntry accessor;
     accessor.getter = movieclip_get;
+    accessor.setter = movieclip_put;
     /* [GC:] Native userdata aliases the retained Transform class. */
     accessor.userdata = klass;
     /* [GC:] Every clip inheriting this accessor keeps its Transform factory graph reachable. */
     accessor.root = klass;
     prototype->accessors["transform"] = accessor;
-    prototype->attributes["transform"] = (FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY);
+    prototype->attributes["transform"] = FVM_PROPERTY_BUILTIN_FLAGS;
     return FVM_OK;
 }
 
@@ -290,6 +301,8 @@ unsigned long fvm_transform_callback_id(FVM_NativeFunction callback)
         return FVM_TRANSFORM_CALLBACK_CONSTRUCTOR;
     if (callback == movieclip_get)
         return FVM_TRANSFORM_CALLBACK_MOVIECLIP_GET;
+    if (callback == movieclip_put)
+        return FVM_TRANSFORM_CALLBACK_MOVIECLIP_SET;
     for (unsigned int i = 0; i < FVM_TRANSFORM_PROPERTY_COUNT; ++i)
         if (callback == getters[i])
             return FVM_TRANSFORM_CALLBACK_GETTER_BASE + i;
@@ -306,6 +319,8 @@ FVM_NativeFunction fvm_transform_callback_from_id(unsigned long id)
         return constructor;
     if (id == FVM_TRANSFORM_CALLBACK_MOVIECLIP_GET)
         return movieclip_get;
+    if (id == FVM_TRANSFORM_CALLBACK_MOVIECLIP_SET)
+        return movieclip_put;
     if (id >= FVM_TRANSFORM_CALLBACK_GETTER_BASE &&
         id < (FVM_TRANSFORM_CALLBACK_GETTER_BASE + FVM_TRANSFORM_PROPERTY_COUNT))
         return getters[id - FVM_TRANSFORM_CALLBACK_GETTER_BASE];

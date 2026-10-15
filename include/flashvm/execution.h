@@ -19,6 +19,12 @@
 extern "C"
 {
 #endif
+    /* Copy a native source clip's local matrix and color into destination atomically.
+     * Both clips must belong to context and be native instances. Source geometry
+     * getters follow existing native snapshot rules; their side effects are retained.
+     * The destination keeps its own identity, children, parent and timeline. */
+    FVM_API FVM_Result fvm_exec_clip_copy_transform(FVM_Context *, FVM_Object *destination,
+                                                    FVM_Object *source);
     /* Poll worker cancellation and scheduled GC after accounting work. */
 #define FVM_EXEC_POLL 1U
     /* [GC:] Account semantic instruction units in an active interpreted/generated activation.
