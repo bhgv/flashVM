@@ -10,7 +10,8 @@ SWF5: отсутствующий/undefined delimiter означает comma, exp
 string_legacy_split проверяет SWF4..8/host, default/empty/undefined delimiter,
 negative/2^31/wrapping/infinity limits, boolean версии 4, Object delimiter,
 порядок limit→delimiter, ошибки обеих фаз и восстановление root/depth state.
-Cap 65536 частей сохранён; полнота boxed overrides, исключительных ресурсов,
+До v0.382 cap 65536 частей сохранялся; теперь он остаётся только у host
+(STRING_LOADED_WORK.ru.md). полнота boxed overrides, исключительных ресурсов,
 независимая сверка Flash Player и все стадии остаются открытыми.
 
 ## English
@@ -24,6 +25,6 @@ absent/empty delimiters. Host rules are unchanged.
 
 Tests cover SWF4..8/host default/empty/undefined delimiters, negative/2^31/wrapping/
 infinite limits, SWF4 boolean conversion, Object delimiters, limit-before-delimiter
-ordering, errors in either phase and restored root/depth state. The 65536-part
-cap remains; full boxed overrides, exceptional resources, independent original
+ordering, errors in either phase and restored root/depth state. Since v0.382 the 65536-part cap remains only for unloaded hosts
+(STRING_LOADED_WORK.md); full boxed overrides, exceptional resources, independent original
 Flash Player validation and all stages remain open. Reference: pinned split.

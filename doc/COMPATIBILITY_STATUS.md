@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: loaded String traversal work | Проверено для сценариев v0.382 | Loaded split passes 65537 fields; split/search scans and split UTF-16 copies share nested AVM1 work, with OOM/GC/retry, conversion exceptions and interpreter/native equivalence. Host cap retained; decoding/full conformance open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7/8: budgeted interface membership | Проверено для сценариев v0.381 | Loaded InstanceOf removes 4096 visited-node rejection; identity hash set, shared charged traversal, saturation/OOM/GC/retry and large interpreter/native graphs. Host/prototype bounds retained. INSTANCE_OF_GRAPH_WORK.md / .ru.md. |
 | 1/3/6/7/8: registerClass legacy casing | Проверено для сценариев v0.380 | SWF4–6 UTF-16-unit folded registration/query/removal; stored spelling replacement, atomic OOM, GC/transfer, attach/duplicate/fallback and interpreter/native CallMethod. Separate global environments/mixed provenance remain open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes/named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
@@ -3012,3 +3013,12 @@ callbacks/allocation/data and large-sort/negative-end Array regressions.
 Stack ASan and LeakSanitizer remain disabled. The new native polling and revised
 membership constants headers pass a strict C89 syntax probe. No new original
 external SWF oracle or foreign-OS acceptance is claimed. All nine stages remain open.
+
+Validation v0.382: all 796 AGG / 796 Cairo / 777 minimal Linux Release checks
+have passing evidence after three ELF execution-permission repairs and targeted
+reruns (two AGG, one minimal; Cairo passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: four new work/allocation/callback/native cases
+plus legacy split/search/receiver and character-allocation checks. Stack ASan
+and LeakSanitizer remain disabled. The revised String constants header passes
+a strict C89 syntax probe. No new original external SWF oracle or foreign-OS
+run is claimed. All nine roadmap stages remain open.

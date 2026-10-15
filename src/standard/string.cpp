@@ -8,6 +8,8 @@
 #include "../core/numeric_constants.h"
 #include "attribute_stage.hpp"
 #include "../core/string_internal.hpp"
+#include "../core/execution_work_scope.hpp"
+#include "../core/object_root_scope.hpp"
 #include "../../external/unicode/case_table.hpp"
 #include "../../external/flash_case/case_table.hpp"
 #include "../avm1/coercion.hpp"
@@ -37,17 +39,30 @@ FVM_Result decode(const FVM_Value &text, Units &units)
     return fvm_string_units(text, units);
 }
 
-/* Encode the current value. */
-FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, FVM_Value *out)
+/* Encode counted units, optionally charging native work before each emitted UTF-16 unit. */
+FVM_Result encode(FVM_Context *c, const Units &units, size_t start, size_t end, FVM_Value *out,
+                  FVM_ExecutionWorkScope *work = 0)
 {
     fvm_detail::vector<char> text;
     for (size_t i = start; i < end; ++i)
     {
+        if (work)
+        {
+            FVM_Result status = work->step();
+            if (status != FVM_OK)
+                return status;
+        }
         unsigned long cp = units[i];
         if (cp >= FVM_UTF16_HIGH_SURROGATE_BASE && cp <= FVM_UTF16_HIGH_SURROGATE_MAX &&
             i + 1 < end && units[i + 1] >= FVM_UTF16_LOW_SURROGATE_BASE &&
             units[i + 1] <= FVM_UTF16_LOW_SURROGATE_MAX)
         {
+            if (work)
+            {
+                FVM_Result status = work->step();
+                if (status != FVM_OK)
+                    return status;
+            }
             cp = FVM_UTF16_SUPPLEMENTARY_OFFSET +
                  ((cp - FVM_UTF16_HIGH_SURROGATE_BASE) << FVM_UTF16_PAIR_PAYLOAD_BITS) +
                  units[++i] - FVM_UTF16_LOW_SURROGATE_BASE;
@@ -285,6 +300,7 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units haystack, needle;
     FVM_Result result = receiver(c, self, haystack);
     if (result != FVM_OK)
@@ -343,13 +359,21 @@ FVM_Result search(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
         start = max;
     for (size_t i = start; i <= max;)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         bool equal = true;
         for (size_t j = 0; j < needle.size(); ++j)
+        {
+            result = work.step();
+            if (result != FVM_OK)
+                return result;
             if (haystack[i + j] != needle[j])
             {
                 equal = false;
                 break;
             }
+        }
         if (equal)
         {
             fvm_value_number(out, (double)i);
@@ -433,6 +457,7 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units input, separator;
     FVM_Result r = receiver(c, self, input);
     if (r != FVM_OK)
@@ -489,11 +514,16 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         return r;
 
     /* Initialization / Инициализация локального состояния. */
+    /* [GC:] Retain the unfinished result until all charged copies and own stores complete. */
+    FVM_ObjectRootScope roots(c, result);
     unsigned long count = 0;
     size_t start = 0;
     /* Walk UTF-16 boundaries, retaining empty fields for nonempty separators. */
     for (size_t position = 0; count < limit && position <= input.size();)
     {
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
         size_t end = position;
         bool matched = false;
         if (absent)
@@ -514,21 +544,26 @@ FVM_Result split(FVM_Context *c, FVM_Object *self, unsigned int n, const FVM_Val
         {
             matched = true;
             for (size_t j = 0; j < separator.size(); ++j)
+            {
+                r = work.step();
+                if (r != FVM_OK)
+                    return r;
                 if (separator[j] != input[position + j])
                 {
                     matched = false;
                     break;
                 }
+            }
         }
         if (!matched)
         {
             ++position;
             continue;
         }
-        if (count >= FVM_STRING_SPLIT_MAX_FIELDS)
+        if (!c->swf_loaded && count >= FVM_STRING_HOST_SPLIT_MAX_FIELDS)
             return FVM_OUT_OF_MEMORY;
         FVM_Value part;
-        r = encode(c, input, start, end, &part);
+        r = encode(c, input, start, end, &part, &work);
         if (r == FVM_OK)
             r = fvm_array_store_own(c, result, count++, part);
         if (r != FVM_OK)

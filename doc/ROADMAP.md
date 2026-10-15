@@ -461,3 +461,21 @@ callbacks/allocation/data and large-sort/negative-end Array regressions.
 Stack ASan and LeakSanitizer remain disabled. The new native polling and revised
 membership constants headers pass a strict C89 syntax probe. No new original
 external SWF oracle or foreign-OS acceptance is claimed. All nine stages remain open.
+
+
+v0.382: loaded String.split removes its 65536-field runtime rejection;
+loaded split/indexOf/lastIndexOf share nested execution work for scan positions,
+comparisons and split UTF-16 copies. Large results, failed long prefixes,
+finite/unlimited/saturated/nested budgets, OOM/GC/retry and interpreter/native
+calls are covered. Host bounds and existing SWF delimiter/limit rules remain.
+[EN](STRING_LOADED_WORK.md) / [RU](STRING_LOADED_WORK.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.382: all 796 AGG / 796 Cairo / 777 minimal Linux Release checks
+have passing evidence after three ELF execution-permission repairs and targeted
+reruns (two AGG, one minimal; Cairo passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: four new work/allocation/callback/native cases
+plus legacy split/search/receiver and character-allocation checks. Stack ASan
+and LeakSanitizer remain disabled. The revised String constants header passes
+a strict C89 syntax probe. No new original external SWF oracle or foreign-OS
+run is claimed. All nine roadmap stages remain open.

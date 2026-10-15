@@ -26,3 +26,5 @@ strings, receiver-before-missing ordering/errors, NaN/infinity/overflow/negative
 positions, explicit undefined and empty needles; root/depth state is restored.
 Split limits, boxed overrides, independent full Flash Player verification and all
 stages remain open. Reference: pinned globals/string.rs index_of/last_index_of.
+
+Since v0.382 loaded scan positions/comparisons share native execution work: [EN](STRING_LOADED_WORK.md) / [RU](STRING_LOADED_WORK.ru.md).
