@@ -13,6 +13,8 @@
 #define FVM_EXEC_MAX_SCENE_FRAME_BIAS 65535UL
 /* Preserve the unloaded named-constructor argument-vector bound. */
 #define FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS 65536U
+/* Maximum positional parent-space limit values accepted by drag value preparation. */
+#define FVM_EXEC_DRAG_BOUND_LIMIT 4U
 #ifdef __cplusplus
 extern "C"
 {
@@ -204,6 +206,13 @@ extern "C"
         double x_max; /* Maximum parent-space X; reversed limits are swapped. */
         double y_max; /* Maximum parent-space Y; reversed limits are swapped. */
     } FVM_ExecutionDragBounds;
+    /* Prepare script-style drag options: optional versioned Boolean center plus 0..4 bounds.
+     * Any supplied bound enables constraints; missing trailing limits convert from undefined.
+     * Numeric conversion order is xMin/yMin/xMax/yMax. Extra counts/foreign inputs are invalid.
+     * [GC:] Retains clip/all values through collecting conversions before replacing active state. */
+    FVM_API FVM_Result fvm_exec_drag_values(FVM_Context *, FVM_Object *, const FVM_Value *center,
+                                             unsigned int bound_count, const FVM_Value *bounds);
+
     /* Begin/replace native dragging without moving yet; NULL bounds means unconstrained.
      * lock_center selects pointer-centered positioning; otherwise motion uses mouse deltas.
      * [GC:] The active instance is retained as a context root until end/removal. */

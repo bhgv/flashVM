@@ -176,3 +176,14 @@ See INPUT_POINTER.md, CLIP_POINTER.md, NATIVE_DRAG_SERVICE.md and AVM1_DRAG.md.
 
 Координаты и drag используют общий C-слой без байткода и стека; в цикле остаётся
 адаптация операндов. Полная совместимость и остальные стадии остаются открытыми.
+
+### v0.330: native drag method adapters
+
+The one-function movieclip_start_drag.cpp and movieclip_stop_drag.cpp adapters
+share the native engine with the Action dispatches. drag_values.cpp prepares
+versioned Boolean center and forward positional limits for C/native/generated
+callers, without an interpreter stack. Existing callback IDs are preserved by
+appending method entries. See MOVIECLIP_DRAG.md.
+
+Скриптовые адаптеры вынесены по одному в файл; подготовка значений и движение
+используют общий C-слой. Полная семантика Flash и стадии роудмапа остаются открытыми.

@@ -67,3 +67,9 @@ previous pointer, active state and restored root/native/update scopes.
 StartDrag and EndDrag Action adapters now use this engine; see AVM1_DRAG.md.
 Script method registration and the listed full compatibility gaps remain open.
 Action-аdаптеры подключены в v0.329; скриптовые методы и остальные ограничения открыты.
+
+### v0.330 script integration / Скриптовые методы
+
+MovieClip.startDrag/stopDrag now share this engine through fvm_exec_drag_values;
+see MOVIECLIP_DRAG.md. The original v0.328 C-only checkpoint above is historical.
+Скриптовые методы подключены; прежнее описание C-only относится к точке v0.328.

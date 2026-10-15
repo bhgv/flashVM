@@ -50,3 +50,10 @@ side effects if a later interpreter safe point fails.
 исключения на каждом шаге, GC, удалённая цель и отказы памяти. Скриптовые методы
 startDrag/stopDrag пока не зарегистрированы. Полные события, drop-target,
 точность twips и другие открытые ограничения не объявляются завершёнными.
+
+### v0.330 follow-up / Продолжение
+
+Native startDrag/stopDrag adapters now share script-style C option preparation;
+see MOVIECLIP_DRAG.md. Their Boolean/forward-limit semantics remain distinct
+from the Action's integer flags/reverse stack-pop order. Full gaps stay open.
+В v0.330 подключены скриптовые адаптеры; полные ограничения совместимости остаются.

@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/6/7: MovieClip drag methods | Проверено для сценариев v0.330 | startDrag/stopDrag share C value preparation, versioned truth, partial/forward bounds, stable appended IDs/transport, collecting direct calls/native barriers and OOM; MOVIECLIP_DRAG.md. Full input/drop/twip semantics open. |
 | 2/3/7: StartDrag/EndDrag | Проверено для сценариев v0.329 | Raw Actions use shared C services; exact flag-one policy, seven-step coercion order, detached-target GC, missing operands and OOM; AVM1_DRAG.md. Script adapters/full mouse behavior remain open. |
 | 3/7: explicit native drag engine | Проверено для сценариев v0.328 | C89 begin/update/end/target, transforms/limits/input order, drag-only GC root, cancellation/replacement and atomic OOM; NATIVE_DRAG_SERVICE.md. Script/Action adapters, drop-target and full Flash semantics open. |
 | 2/3/6/7: clip-local pointer coordinates | Проверено для сценариев v0.327 | C89 shared projection, _xmouse/_ymouse, GetProperty 20/21, readonly legacy policy, matrices, callback IDs/transport and OOM; CLIP_POINTER.md. Exact twips, detached ancestry and full input/drag open. |

@@ -772,3 +772,17 @@ references now cover 98/100 entries, with ToggleQuality/StopSounds absent;
 Linux: по 645/645 AGG/Cairo, три теста ограниченных ASan/UBSan и по четыре
 исходных SWF. Проверка ссылок на Action-ветки — 98/100, без заявления полной
 совместимости; все стадии открыты.
+
+## v0.330 MovieClip drag methods / Скриптовые методы drag
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 648/648 CTest checks directly.
+Three new C89/native option, callback/GC and allocation checks pass in restricted
+heap/global ASan+UBSan (stack ASan and LeakSanitizer disabled). Four recovered
+unmodified pinned SWFs match exact stdout, exit zero and empty stderr in both
+Release profiles. Channel transport preserves appended callback IDs and uses
+independent destination pointer/drag state. Source Action references remain
+98/100; only ToggleQuality/StopSounds lack dispatch. See MOVIECLIP_DRAG.md.
+
+Linux: по 648/648 AGG/Cairo, три новых теста ограниченных ASan/UBSan и по четыре
+исходных SWF. Проверены C и нативные методы, GC в преобразованиях, частичные
+аргументы, канал, исключения и отказы памяти. Все стадии роудмапа остаются открытыми.

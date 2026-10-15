@@ -7,6 +7,7 @@
 #include "movieclip_construction.hpp"
 #include "movieclip_lockroot.hpp"
 #include "movieclip_pointer.hpp"
+#include "movieclip_drag.hpp"
 #include "movieclip_constants.h"
 #include "movieclip_storage.hpp"
 #include "movieclip_path_constants.h"
@@ -2584,7 +2585,9 @@ const Method methods[] = {{"toString", clip_string},
                           {"duplicateMovieClip", duplicate_movie},
                           {"beginGradientFill", fvm_movieclip_gradient_begin},
                           {"beginBitmapFill", fvm_movieclip_bitmap_begin},
-                          {"attachBitmap", attach_bitmap}};
+                          {"attachBitmap", attach_bitmap},
+                          {"startDrag", fvm_movieclip_start_drag},
+                          {"stopDrag", fvm_movieclip_stop_drag}};
 } // namespace
 
 /* Compose intrinsic world geometry under the caller's root/native-barrier scope. */
