@@ -44,8 +44,8 @@ extern "C"
         FVM_Gesture gesture;  /* Recognized gesture kind. */
         unsigned int fingers; /* Finger count: 1 through FVM_INPUT_MAX_FINGERS. */
         int direction;        /* Direction of text or a recognized gesture. */
-        double x;             /* Horizontal coordinate. */
-        double y;             /* Vertical coordinate. */
+        double x;             /* Pointer X in native stage/world pixels. */
+        double y;             /* Pointer Y in native stage/world pixels. */
     } FVM_InputEvent;
     /* direction: -1=left, 1=right, -2=up, 2=down, 0=any. */
     /* Update input rule. */
@@ -67,7 +67,15 @@ extern "C"
                                       FVM_MouseButton, void *);
     /* Update input callback. */
     FVM_API FVM_Result fvm_input_set_callback(FVM_Context *, FVM_InputCallback, void *);
+    /* Set a finite world-space pointer position without delivering an event or callback.
+     * Invalid input preserves both coordinates; contexts own independent pointer state. */
+    FVM_API FVM_Result fvm_input_set_pointer(FVM_Context *, double world_x, double world_y);
+    /* Read the latest pointer position (initially zero). Outputs must be non-NULL and distinct;
+     * invalid arguments preserve both outputs. Like other context input APIs, owning-thread only. */
+    FVM_API FVM_Result fvm_input_get_pointer(FVM_Context *, double *world_x, double *world_y);
+
     /* Dispatch a finite-coordinate event with supported gesture, finger count and phase.
+     * Position is published before callback delivery and remains after callback errors.
      * Invalid input invokes no callback. Direct mapping preserves output on invalid input.
      * C++ callback exceptions are contained: bad_alloc gives OUT_OF_MEMORY, others ERROR. */
     FVM_API FVM_Result fvm_input_dispatch(FVM_Context *, const FVM_InputEvent *, FVM_InputPhase);

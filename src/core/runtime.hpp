@@ -315,6 +315,8 @@ struct FVM_Context
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */
     fvm_detail::vector<FVM_QueuedInput> queued_input; /* [GC:] Input events awaiting delivery. */
+    double pointer_world_x; /* Last accepted host pointer X; no managed edges. */
+    double pointer_world_y; /* Last accepted host pointer Y; no managed edges. */
     bool pumping_input; /* [GC:] Whether input delivery is already in progress. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_InputCallback

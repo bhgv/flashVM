@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/7/9: context pointer position | Проверено для сценариев v0.326 | C89 world-pointer set/get, independent contexts, queued vs immediate publication and callback error visibility; INPUT_POINTER.md. Relative clip coordinates and drag remain open. |
 | 3/6/7: native construction decomposition | Проверено для сценариев v0.325 | Drawing copier and sprite class selector moved to individual files with token-identical bodies; shared private contracts, graphics/transport/GC/OOM coverage; MOVIECLIP_CONSTRUCTION_DECOMPOSITION.md. Remaining decomposition and full semantics open. |
 | 3/7/9: input callback failure recovery | Проверено для сценариев v0.324 | C++ exceptions contained at C dispatch boundary; queued pump resets, remaining/enqueued events survive, processed counts successes; INPUT_CALLBACK_FAILURES.md. Full MovieClip/input lifecycle remains open. |
 | 3/7/9: consistent host input validation | Проверено для сценариев v0.323 | Direct/queued input share gesture/finger/finite-coordinate/phase checks; C89 limits header, invalid-input side effects and FIFO capacity coverage; INPUT_VALIDATION.md. MovieClip input/drag integration and other OS execution remain open. |

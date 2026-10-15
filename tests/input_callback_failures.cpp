@@ -8,6 +8,7 @@ static unsigned callback_mode,callback_calls;
 static double last_x;
 static void receive(FVM_Context *c,const FVM_InputEvent *event,FVM_InputPhase,FVM_MouseButton,void *)
 {
+ double x,y;assert(fvm_input_get_pointer(c,&x,&y)==FVM_OK && x==event->x && y==event->y);
  ++callback_calls;last_x=event->x;assert(fvm_gc_collect(c,0)==FVM_OK);
  if(c->pumping_input){unsigned nested=99;assert(fvm_input_pump(c,1,&nested)==FVM_INVALID_ARGUMENT && !nested && c->pumping_input);}
  if(callback_mode==3){FVM_InputEvent next=*event;next.x=9;assert(fvm_input_enqueue(c,&next,FVM_INPUT_END)==FVM_OK);throw 17;}

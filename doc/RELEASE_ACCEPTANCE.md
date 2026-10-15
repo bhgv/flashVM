@@ -716,3 +716,17 @@ in both profiles. See MOVIECLIP_CONSTRUCTION_DECOMPOSITION.md. All stages open.
 Linux: по 634/634 AGG/Cairo без повторных запусков, десять целевых проверок
 ограниченных ASan/UBSan и по четыре исходных SWF. Перенос функций подтверждён
 сравнением токенов и существующими сценариями; алгоритмы и публичный ABI сохранены.
+
+## v0.326 world pointer state / Мировая позиция указателя
+
+Linux GCC/G++ 13.3 Release Cairo passes 635/635 CTest checks directly. AGG has
+634 passes and one BAD_COMMAND launch failure for the existing
+execution_removed_target_selection_allocation ELF. Restoring its execute bit
+and rerunning that exact test succeeds, giving all 635 passing checks.
+Six input checks pass in the restricted heap/global ASan+UBSan profile (stack
+ASan and LeakSanitizer disabled). Four recovered unmodified pinned original SWFs
+match exact stdout, exit zero and empty stderr in each profile. See INPUT_POINTER.md.
+
+Linux: все 635 проверок каждой сборки прошли; AGG потребовал восстановления
+права исполнения одного существующего ELF и его повторного запуска. Шесть
+проверок ограниченных ASan/UBSan и по четыре исходных SWF. Все стадии открыты.

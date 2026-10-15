@@ -91,6 +91,9 @@ extern "C" FVM_Result fvm_input_dispatch(FVM_Context *c, const FVM_InputEvent *e
     result = fvm_input_map(c, event, &button);
     if (result != FVM_OK)
         return result;
+    result = fvm_input_set_pointer(c, event->x, event->y);
+    if (result != FVM_OK)
+        return result;
     try
     {
         if (c->input_callback)
