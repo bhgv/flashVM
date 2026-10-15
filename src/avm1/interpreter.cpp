@@ -417,7 +417,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 size_t body = 0, count = 0, next = 0;
                 if (!fvm_with_record(data, size, a.payload, a.length, body, count, next))
                     return FVM_INVALID_ARGUMENT;
-                if (stack.empty()) return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value value = stack.back();
                 if (value.type != FVM_VALUE_NULL && value.type != FVM_VALUE_UNDEFINED)
                 {
@@ -1060,14 +1062,21 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_GET_PROPERTY || a.op == FVM_AVM1_ACTION_SET_PROPERTY)
             { /* GetProperty/SetProperty resolve display targets after numeric index coercion. */
-                const size_t count = a.op == FVM_AVM1_ACTION_GET_PROPERTY ? 2 : 3;
-                if (stack.size() < count)
-                    return FVM_ERROR;
+                const size_t count = a.op == FVM_AVM1_ACTION_GET_PROPERTY
+                                         ? FVM_AVM1_DISPLAY_READ_OPERANDS
+                                         : FVM_AVM1_DISPLAY_WRITE_OPERANDS;
+                FVM_Result prepared = fvm_avm1_require_operands(c->swf_loaded, stack, count);
+                if (prepared != FVM_OK)
+                    return prepared;
                 size_t first = stack.size() - count;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_display_property(
-                    c, a.op == FVM_AVM1_ACTION_SET_PROPERTY, &stack[first], &stack[first + 1],
-                    a.op == FVM_AVM1_ACTION_SET_PROPERTY ? &stack[first + 2] : 0, &result);
+                    c, a.op == FVM_AVM1_ACTION_SET_PROPERTY, &stack[first],
+                    &stack[first + FVM_AVM1_DISPLAY_INDEX_OFFSET],
+                    a.op == FVM_AVM1_ACTION_SET_PROPERTY
+                        ? &stack[first + FVM_AVM1_DISPLAY_VALUE_OFFSET]
+                        : 0,
+                    &result);
                 if (status != FVM_OK)
                     return status;
                 stack.resize(first);
@@ -1100,23 +1109,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_GET_URL || a.op == FVM_AVM1_ACTION_GET_URL2)
             { /* GetURL/GetURL2 delegate counted requests to an explicitly registered host sink. */
-                fvm_detail::vector<FVM_Value> request(3);
-                /* [GC:] The first converted target survives URL coercion that can collect. */
+                fvm_detail::vector<FVM_Value> request(FVM_AVM1_URL_REQUEST_ROOT_COUNT);
+                /* [GC:] Retain original request values during the shared service's coercion. */
                 RootGuard request_roots(c, &request, 0, 0, &registers);
                 unsigned int flags = 0;
                 FVM_Result status = FVM_OK;
                 if (a.op == FVM_AVM1_ACTION_GET_URL2)
                 {
-                    if (a.length != 1)
+                    if (a.length != FVM_AVM1_URL_FLAGS_BYTES)
                         return FVM_INVALID_ARGUMENT;
                     flags = data[a.payload];
                     if ((flags & FVM_AVM1_URL_RESERVED_MASK) ||
                         (flags & FVM_AVM1_URL_METHOD_MASK) == FVM_AVM1_URL_INVALID_METHOD)
                         return FVM_INVALID_ARGUMENT;
-                    if (stack.size() < FVM_AVM1_URL_OPERANDS)
-                        return FVM_ERROR;
-                    request[1] = stack.back();
-                    request[0] = stack[stack.size() - FVM_AVM1_URL_OPERANDS];
+                    FVM_Result prepared =
+                        fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_URL_OPERANDS);
+                    if (prepared != FVM_OK)
+                        return prepared;
+                    request[FVM_AVM1_URL_REQUEST_TARGET_ROOT] = stack.back();
+                    request[FVM_AVM1_URL_REQUEST_URL_ROOT] =
+                        stack[stack.size() - FVM_AVM1_URL_OPERANDS];
                 }
                 else
                 {
@@ -1132,16 +1144,19 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         return FVM_INVALID_ARGUMENT;
                     if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_6)
                         for (size_t i = 0; i < a.length; ++i)
-                            if (payload[i] > 127)
+                            if (payload[i] > FVM_AVM1_URL_LEGACY_MAX_BYTE)
                                 return FVM_UNSUPPORTED;
-                    status = own_string(c, (const char *)payload, &request[0], first);
+                    status = own_string(c, (const char *)payload,
+                                        &request[FVM_AVM1_URL_REQUEST_URL_ROOT], first);
                     if (status == FVM_OK)
                         status =
-                            own_string(c, (const char *)separator + 1, &request[1], remaining - 1);
+                            own_string(c, (const char *)separator + 1,
+                                       &request[FVM_AVM1_URL_REQUEST_TARGET_ROOT], remaining - 1);
                 }
                 if (status != FVM_OK)
                     return status;
-                status = fvm_exec_url(c, &request[0], &request[1], flags);
+                status = fvm_exec_url(c, &request[FVM_AVM1_URL_REQUEST_URL_ROOT],
+                                      &request[FVM_AVM1_URL_REQUEST_TARGET_ROOT], flags);
                 if (status != FVM_OK)
                     return status;
                 if (a.op == FVM_AVM1_ACTION_GET_URL2)

@@ -509,3 +509,11 @@ Six loaded variable/declaration/target actions now supply undefined on missing
 operands; host name/stack checks stay strict. Raw SWF4–8 fixtures observe live
 SetTarget2 reset/invalidation and caller restoration, plus named scope operations.
 See AVM1_VARIABLE_TARGET_MISSING.md. Full scope/target semantics remain open.
+
+### v0.305 — missing display/URL/With operands / Свойства, URL и With
+
+Four loaded actions prepare missing undefined values while retaining payload
+validation order and host strictness. Raw SWF4–8 tests distinguish target paths,
+URL sink arguments and skipped With bodies. Display/URL layout constants are
+named; an unused URL root is removed. See AVM1_DISPLAY_URL_WITH_MISSING.md.
+Полные семантики и все стадии роудмапа остаются открытыми.

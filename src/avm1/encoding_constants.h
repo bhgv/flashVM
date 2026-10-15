@@ -63,6 +63,10 @@
 #define FVM_AVM1_URL_METHOD_MASK 3U
 /* Reserved HTTP method bit combination. */
 #define FVM_AVM1_URL_INVALID_METHOD 3U
+/* GetURL2 carries one encoded request-policy byte after its Action header. */
+#define FVM_AVM1_URL_FLAGS_BYTES 1U
+/* Legacy URL payloads currently support only ASCII before SWF6. */
+#define FVM_AVM1_URL_LEGACY_MAX_BYTE 0x7fU
 /* Reserved GetURL2 payload bits rejected during validation. */
 #define FVM_AVM1_URL_RESERVED_MASK 0x3cU
 /* HTTP method bits plus load-target and load-variables request bits. */
