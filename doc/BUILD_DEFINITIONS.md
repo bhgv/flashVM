@@ -15,7 +15,7 @@ rejects unknown keys, duplicates, empty groups and competing selections.
 | Database | SQLITE | NO_SQLITE |
 | Native input/TCP | OS_PORTS | NO_OS_PORTS |
 | Worker render jobs | RENDER_JOBS | NO_RENDER_JOBS |
-| Execution | INTERPRETER | JIT — automatic mode not implemented; explicit subset: JIT.md |
+| Execution | INTERPRETER | JIT — build-default preset reserved; runtime modes: EXECUTION_MODES.md |
 | Media | NO_MEDIA | MEDIA — not implemented |
 
 `AUTO_PLATFORM` resolves to the target OS reported by the CMake toolchain.

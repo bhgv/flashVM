@@ -91,7 +91,7 @@ FVM_Result fvm_jit_get_variable(FVM_JitInvocation *s, unsigned int)
         c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && c->script_this
             ? c->script_this
             : s->frame->receiver,
-        1, &s->stack->back(), &result);
+        s->frame->activation != 0, &s->stack->back(), &result);
     if (status == FVM_OK)
         s->stack->back() = result;
     return status;

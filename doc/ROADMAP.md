@@ -127,3 +127,14 @@ The user reprioritized working JIT/interpreter use on 15 October. v0.346 adds an
 explicit Linux x86-64 native subset and runnable C89 example (JIT.md). Stage 8
 remains open: this is not full AVM1 coverage, automatic compilation, other-CPU
 code generation or cross-platform acceptance.
+
+Контрольная точка v0.347: по уточнению пользователя добавлены опции interpreter/JIT
+при входе, переключение для следующих кадров во время исполнения, автоматический
+контекстный кеш и явный диагностический replay с логом/статистикой. См.
+EXECUTION_MODES.md. Активный native-кадр не переписывается; побочные эффекты
+повтора не откатываются. Полнота backend/AVM1 и стадии 8/9 остаются открытыми.
+
+v0.347 adds user-requested runtime mode selection/switching and opt-in interpreter
+exception replay with logs/statistics. See EXECUTION_MODES.md. Active native
+frames are not deoptimized in place; replay is not state rollback. Full native
+coverage and roadmap acceptance remain open.

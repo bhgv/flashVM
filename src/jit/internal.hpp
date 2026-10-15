@@ -44,6 +44,8 @@ struct FVM_JitConstant
 /* Host-owned program and executable mapping, intentionally outside graph transport. */
 struct FVM_JitCode
 {
+    fvm_detail::vector<unsigned char>
+        source; /* Owned source snapshot for root diagnostic replay. */
     fvm_detail::vector<FVM_JitConstant> constants; /* No managed references. */
     fvm_detail::vector<FVM_JitAction> actions;     /* Source map and compile-time call plan. */
     void *memory;                                  /* RX-only native instruction mapping. */

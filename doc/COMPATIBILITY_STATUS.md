@@ -2709,3 +2709,13 @@ accepted operations, executable regressions and limitations. This supersedes
 older historical statements that no native backend exists; full JIT coverage,
 automatic selection, other CPU/OS backends and roadmap stages remain open.
 Первый backend исполняет машинный код, но готовность полного JIT не заявляется.
+
+## v0.347: runtime execution modes and diagnostic replay
+
+Interpreter/JIT entry options and a same-thread switching API now select root
+and function execution. A bounded context-owned native cache falls back on
+unsupported bodies. Opt-in FVM_EXCEPTION replay recreates interpreter activation,
+logs checkpoints and preserves the original thrown graph/fault/budget after
+retry success, a different exception or OOM. EXECUTION_MODES.md records contracts,
+executable cases, duplicated-effect semantics and backend/profile limitations.
+Режимы и диагностика реализованы для первого backend; полный JIT остаётся открытым.

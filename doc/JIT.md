@@ -1,4 +1,8 @@
-# Explicit native compiler — v0.346 / Явный нативный компилятор
+# Native compiler and execution modes — v0.347 / JIT и режимы исполнения
+
+Runtime selection, switching and exception replay are available through
+[execution options](EXECUTION_MODES.md). The low-level explicit API below remains
+available for embedding-owned code.
 
 An experimental **Linux x86-64 System V** backend now emits and executes machine
 code for an AVM1 subset. Native blocks contain direct calls to compile-time
@@ -47,9 +51,10 @@ They are not thread-safe. Keep a handle alive while attached to any function;
 unbind **every** attachment before `fvm_jit_destroy`. Destruction during an active
 invocation is rejected. The native-body graph codec already drops process-local
 attachments during transfer, preserving original bytecode. No generated code
-serialization, automatic function discovery, hotness policy or code cache exists.
-`DEFS.txt` JIT mode and `FVM_FEATURE_JIT` remain unavailable: use the explicit API
-with the normal interpreter configuration. Other CPU/OS backends return unsupported.
+serialization or hotness policy exists. Runtime JIT mode now compiles/caches
+supported bodies automatically (EXECUTION_MODES.md). The `DEFS.txt` JIT build-default
+preset and `FVM_FEATURE_JIT` remain unavailable: runtime options work with the
+normal interpreter configuration. Other CPU/OS backends return unsupported.
 
 ## Lifetime, GC and failures
 
@@ -96,7 +101,7 @@ CPU execution, full Action coverage or Flash Player oracle equivalence is claime
 Код хранится в RW-памяти только при подготовке, затем память становится RX.
 Корни стека, лимит инструкций, GC и ошибки согласованы с общими службами VM.
 Исключения C++ не пересекают машинный код. Handle должен оставаться живым до
-снятия всех привязок; освобождение во время вызова запрещено. Нет автоматического
-кеша, переноса кода между процессами и backend для остальных ОС/архитектур.
+снятия всех привязок; освобождение во время вызова запрещено. В v0.347 добавлены автоматический контекстный кеш и режимы при вызове
+(EXECUTION_MODES.md). Нет переноса кода между процессами и backend для остальных ОС/архитектур.
 Полный интерпретатор, JIT всех требуемых архитектур и стадии roadmap остаются
 открытыми; тесты выше подтверждают только перечисленные сценарии.

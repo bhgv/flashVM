@@ -41,8 +41,8 @@ OS_PORTS
 RENDER_JOBS
 # NO_RENDER_JOBS
 
-# Execution: automatic JIT mode is not implemented; explicit subset API: doc/JIT.md.
-# Исполнение: автоматический JIT ещё не реализован; явный API подмножества: doc/JIT.md.
+# Build-default execution: INTERPRETER includes runtime interpreter/JIT options (doc/JIT.md).
+# Ключ JIT пока не реализован как профиль по умолчанию; режим выбирается при вызове API.
 INTERPRETER
 # JIT
 

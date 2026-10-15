@@ -20,7 +20,9 @@ extern "C" FVM_Result fvm_jit_compile(const void *bytes, size_t size, FVM_JitCod
     try
     {
         code = new FVM_JitCode;
-        FVM_Result status = fvm_jit_decode((const unsigned char *)bytes, size, *code);
+        code->source.resize(size);
+        std::memcpy(code->source.begin(), bytes, size);
+        FVM_Result status = fvm_jit_decode(code->source.begin(), size, *code);
         if (status == FVM_OK)
             status = fvm_jit_emit(*code);
         if (status != FVM_OK)
@@ -82,6 +84,7 @@ extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame,
         typedef FVM_Result (*Entry)(FVM_JitInvocation *);
         Entry entry;
         std::memcpy(&entry, &code->memory, sizeof(entry));
+        ++c->execution_mode.stats.native_entries;
         FVM_Result status = entry(&state);
         if (status == FVM_OK)
             *out = state.result;

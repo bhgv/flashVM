@@ -5,6 +5,7 @@
 #include "support.hpp"
 #include "flashvm/standard.h"
 #include "native_body.hpp"
+#include "../../jit/mode_internal.hpp"
 #include "../../standard/function_state.hpp"
 #include "../../standard/base_state.hpp"
 #include "../../standard/super.hpp"
@@ -386,6 +387,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         }
     };
     FVM_Result status;
+    bool ran_jit = false;
+    unsigned long native_fault_offset = 0;
     try
     {
         DebugFrame debug(c);
@@ -429,8 +432,25 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 c->lexical_scopes.pop_back();
             }
         } scope(c);
+        FVM_ExecutionMode mode = fvm_execution_effective_mode(c);
+        if (mode == FVM_EXECUTION_INTERPRETER && native_entry.callback == fvm_jit_body)
+            native_entry = FVM_ScriptBodyEntry();
+        if (mode == FVM_EXECUTION_JIT && !native_entry.callback)
+        {
+            FVM_JitCode *code = 0;
+            status =
+                fvm_execution_select_code(c, snapshot.body.begin(), snapshot.body.size(), &code);
+            if (status != FVM_OK)
+                return status;
+            if (code)
+            {
+                native_entry.callback = fvm_jit_body;
+                native_entry.userdata = code;
+            }
+        }
         if (native_entry.callback)
         {
+            ran_jit = native_entry.callback == fvm_jit_body;
             FVM_ScriptFrame prepared;
             prepared.struct_size = sizeof(prepared);
             prepared.abi_version = FVM_SCRIPT_FRAME_ABI;
@@ -444,12 +464,14 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 fvm_value_undefined(&prepared.super_value);
             prepared.argc = argc;
             prepared.argv = args;
-            prepared.register_count = execution.global_registers ? FVM_EXEC_GLOBAL_REGISTER_COUNT
-                                                                 : (unsigned int)execution.registers.size();
-            prepared.registers = execution.global_registers ? c->avm1_global_registers
-                                                            : execution.registers.begin();
+            prepared.register_count = execution.global_registers
+                                          ? FVM_EXEC_GLOBAL_REGISTER_COUNT
+                                          : (unsigned int)execution.registers.size();
+            prepared.registers =
+                execution.global_registers ? c->avm1_global_registers : execution.registers.begin();
             prepared.capture = native_entry.capture;
             status = fvm_exec_native_body(c, native_entry, prepared, result);
+            native_fault_offset = c->debug_offset;
         }
         else
             status = fvm_avm1_interpret_function(c, snapshot, result, &frame, receiver, &execution,
@@ -459,6 +481,9 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
     {
         return FVM_OUT_OF_MEMORY;
     }
+    if (ran_jit && status == FVM_EXCEPTION)
+        fvm_execution_replay_function(c, name, snapshot, argc, args, receiver, closure, callee,
+                                      base_clip, native_fault_offset);
     /* A returned bytecode literal must outlive the function snapshot. */
     if (status == FVM_OK && result && result->type == FVM_VALUE_STRING)
     {

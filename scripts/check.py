@@ -73,7 +73,7 @@ def run(command):
 
 
 sources = (list(root.glob('src/**/*.cpp')) + list(root.glob('src/**/*.c')) +
-           [root / 'ports/file_port.c', root / 'ports/calendar_port.c'] + list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
+           [root / 'ports/code_port.c', root / 'ports/file_port.c', root / 'ports/calendar_port.c'] + list(root.glob('ports/linux/*.c')) + list(root.glob('external/mini_regex/*.c')))
 sources += [root / 'external/zlib/upstream' / name for name in [
     'adler32.c', 'crc32.c', 'deflate.c', 'trees.c', 'inflate.c', 'inftrees.c',
     'inffast.c', 'zutil.c', 'compress.c', 'uncompr.c']]

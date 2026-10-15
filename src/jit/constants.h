@@ -42,10 +42,16 @@
 #define FVM_JIT_POP 0U
 #define FVM_JIT_DUPLICATE 1U
 #define FVM_JIT_SWAP 2U
-#define FVM_JIT_BINARY_VALUES 2U /* Operand count for arithmetic, comparisons and swaps. */
-#define FVM_JIT_UNARY_VALUES 1U  /* Operand count for return, truth and duplication. */
-#define FVM_JIT_ENDBR_0 0xf3U    /* ENDBR64 supports CET indirect branch tracking entry. */
-#define FVM_JIT_ENDBR_1 0x0fU    /* ENDBR64 second byte. */
-#define FVM_JIT_ENDBR_2 0x1eU    /* ENDBR64 third byte. */
-#define FVM_JIT_ENDBR_3 0xfaU    /* ENDBR64 fourth byte. */
+#define FVM_JIT_BINARY_VALUES 2U       /* Operand count for arithmetic, comparisons and swaps. */
+#define FVM_JIT_UNARY_VALUES 1U        /* Operand count for return, truth and duplication. */
+#define FVM_JIT_ENDBR_0 0xf3U          /* ENDBR64 supports CET indirect branch tracking entry. */
+#define FVM_JIT_ENDBR_1 0x0fU          /* ENDBR64 second byte. */
+#define FVM_JIT_ENDBR_2 0x1eU          /* ENDBR64 third byte. */
+#define FVM_JIT_ENDBR_3 0xfaU          /* ENDBR64 fourth byte. */
+#define FVM_JIT_CACHE_ENTRIES 32U      /* Bound positive and negative automatic cache entries. */
+#define FVM_JIT_CACHE_BYTES 33554432UL /* Bound total emitted bytes retained by a context. */
+#define FVM_JIT_REPLAY_EXCEPTION_ROOT                                                              \
+    0U /* [GC:] Original thrown value while retry clears pending state. */
+#define FVM_JIT_REPLAY_ROOT_COUNT 1U /* [GC:] Complete replay preservation layout. */
+#define FVM_JIT_LOG_LABEL_BYTES 256U /* Maximum default diagnostic label output. */
 #endif

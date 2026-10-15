@@ -7,6 +7,7 @@
 #define FLASHVM_INTERNAL_RUNTIME_HPP
 #include "flashvm/value.h"
 #include "flashvm/execution.h"
+#include "../jit/mode_state.hpp"
 #include "resource_kinds.h"
 #include "numeric_constants.h"
 #include "../swf/format_constants.h"
@@ -229,6 +230,7 @@ struct FVM_Context
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Работаем с очередью объектов для итеративного обхода графа. */
+    FVM_ExecutionModeState execution_mode; /* Context-owned native cache, policy and diagnostic counters. */
     FVM_Object *calling_constructor; /* [GC:] Constructor identity of the current call mode. */
     FVM_Object *calling_function;    /* [GC:] Function whose selected method owner is recorded. */
     FVM_Object *calling_owner; /* [GC:] Prototype or object that supplied the current method. */

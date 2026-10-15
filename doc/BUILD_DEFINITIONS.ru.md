@@ -13,7 +13,7 @@
 | База данных | SQLITE | NO_SQLITE |
 | Нативный ввод/TCP | OS_PORTS | NO_OS_PORTS |
 | Задания отрисовки | RENDER_JOBS | NO_RENDER_JOBS |
-| Исполнение | INTERPRETER | JIT — автоматический режим не реализован; явный API: JIT.md |
+| Исполнение | INTERPRETER | JIT — профиль по умолчанию зарезервирован; режимы API: EXECUTION_MODES.md |
 | Мультимедиа | NO_MEDIA | MEDIA — пока не реализован |
 
 `AUTO_PLATFORM` выбирает целевую ОС из toolchain CMake. Явный ключ ОС должен

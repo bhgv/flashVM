@@ -12,6 +12,7 @@
 #include "../core/numeric_constants.h"
 #include "../swf/record_constants.h"
 #include "handlers/script_call.hpp"
+#include "../jit/mode_internal.hpp"
 #include "block.hpp"
 #include "coercion.hpp"
 #include "target_scope.hpp"
@@ -302,6 +303,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
     unsigned long &steps = execution.steps;
     if (!c || (!data && size) || depth > FVM_AVM1_MAX_BLOCK_DEPTH)
         return FVM_INVALID_ARGUMENT;
+    ++c->execution_mode.stats.interpreter_entries;
     if (returned && !shared)
         fvm_value_undefined(returned);
     try
@@ -1915,6 +1917,10 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
                                  : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
+    bool handled = false;
+    FVM_Result native = fvm_execution_try_root(c, data, size, c->global, &handled);
+    if (handled)
+        return native;
     return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0, 0, 0, 0, c->swf_loaded,
                    c->global);
 }
@@ -2060,6 +2066,10 @@ extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data
                                  : fvm_avm1_inspect(data, size, &info);
     if (r != FVM_OK)
         return r;
+    bool handled = false;
+    FVM_Result native = fvm_execution_try_root(c, data, size, receiver, &handled);
+    if (handled)
+        return native;
     return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0, 0, c->swf_loaded,
                    receiver);
 }

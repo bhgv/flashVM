@@ -3,6 +3,7 @@
 #include "flashvm/execution.h"
 #include "flashvm/gc.h"
 #include "flashvm/worker.h"
+#include "../../jit/mode_internal.hpp"
 #include <limits>
 #include <new>
 /* [GC:] Poll only where the caller has published every live managed value as a root. */
@@ -14,6 +15,7 @@ extern "C" FVM_Result fvm_exec_checkpoint(FVM_Context *c, unsigned long units,
     try
     {
         fvm_debug_update_location(c, location);
+        fvm_execution_trace_step(c, location);
         if (units > std::numeric_limits<unsigned long>::max() - c->avm1_steps)
             return FVM_ERROR;
         c->avm1_steps += units;
