@@ -525,3 +525,10 @@ coercion, alias/error preservation and separate scene-bias policy. Timeline wire
 widths/root layouts use named macros. Raw Call/GotoFrame2 underflow fixtures cover
 SWF4–8 alongside direct C, collecting/throwing callbacks and allocation injection.
 See FRAME_REQUEST_SERVICE.md. Complete frame semantics and all stages remain open.
+
+### v0.307 — missing class operands / Недостающие операнды классов
+
+Loaded Extends/CastOp/InstanceOf supply missing undefined values with preserved
+operand roles. Raw host/SWF4–8 fixtures verify primitive boxing, superclass getter
+GC/throws and root/execution restoration. C services, interface counts and ABI
+remain unchanged. See AVM1_CLASS_MISSING.md. All stages remain open.

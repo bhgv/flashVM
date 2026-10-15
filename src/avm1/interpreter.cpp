@@ -925,8 +925,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_EXTENDS)
             {
-                if (stack.size() < FVM_AVM1_EXTENDS_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_EXTENDS_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Result status = fvm_exec_extends(c,
                     &stack[stack.size() - FVM_AVM1_EXTENDS_OPERANDS], &stack.back());
                 if (status != FVM_OK)
@@ -953,8 +955,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_CAST)
             {
-                if (stack.size() < FVM_AVM1_CAST_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_CAST_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status = fvm_exec_cast(c, &stack.back(),
                     &stack[stack.size() - FVM_AVM1_CAST_OPERANDS], &result);
@@ -965,8 +969,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_INSTANCE_OF)
             {
-                if (stack.size() < FVM_AVM1_INSTANCE_OF_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_INSTANCE_OF_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value membership;
                 FVM_Result status = fvm_exec_instance_of(c,
                     &stack[stack.size() - FVM_AVM1_INSTANCE_OF_OPERANDS], &stack.back(), &membership);
