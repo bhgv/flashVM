@@ -569,3 +569,10 @@ Native removal and depth replacement commit an explicit private marker together
 with parent/playback state. A value-based C89 query bypasses script overrides and
 handles older state. Atomic removal failure checks include the marker. See
 CLIP_DETACH_IDENTITY.md. Descendant/unload/Action policy and all stages stay open.
+
+### v0.313 — dynamic removal policy / Правила удаления динамического клипа
+
+A shared C89 service filters intrinsic depth, parent and detached ancestry before
+atomic native removal. Script overrides cannot replace the policy. Raw C and
+allocation fixtures cover supported depth boundaries, roots and detached subtrees.
+See DYNAMIC_CLIP_REMOVAL_SERVICE.md. Action/lifecycle gaps and all stages stay open.

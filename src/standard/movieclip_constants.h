@@ -49,4 +49,8 @@
 #define FVM_MOVIECLIP_ATTACHED_STATE 0U
 /* Native instance was explicitly detached or displaced from its parent slot. */
 #define FVM_MOVIECLIP_DETACHED_STATE 1U
+/* First public depth removable through the dynamic-clip execution policy. */
+#define FVM_MOVIECLIP_MIN_DYNAMIC_DEPTH 0L
+/* Guard against cyclic/corrupt native parent chains during removal eligibility checks. */
+#define FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS 256U
 #endif

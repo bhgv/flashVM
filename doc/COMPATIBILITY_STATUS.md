@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/7: dynamic native removal policy | Проверено для сценариев v0.313 | C89 explicit-object service, intrinsic depth/ancestry, host/SWF4–8 and OOM. DYNAMIC_CLIP_REMOVAL_SERVICE.md. RemoveSprite dispatch/path/unload policy remains open. |
 | 3/7: native clip detach identity | Проверено для сценариев v0.312 | C89 query; fresh roots vs removed/replaced wrappers, legacy/malformed state, GC and atomic OOM. CLIP_DETACH_IDENTITY.md. Descendants/unload/RemoveSprite remain open. |
 | 2: missing constant-pool entries | Проверено для сценариев v0.311 | Push Constant8/16: host/SWF4–8, absent/one-entry pool, boundaries, truncation and OOM. AVM1_CONSTANT_MISSING.md. Полная строковая семантика открыта. |
 | 2: empty StoreRegister | Проверено для сценариев v0.310 | host/SWF4–8, global/private Function2, ignored slots, malformed payload and OOM; AVM1_STORE_MISSING.md. Полная семантика функций открыта. |

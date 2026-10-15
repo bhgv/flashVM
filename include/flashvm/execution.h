@@ -186,6 +186,11 @@ extern "C"
      * A new parentless root is false; descendants are not implicitly marked by this query.
      * Legacy state without a marker reads false. Errors preserve the caller output. */
     FVM_API FVM_Result fvm_exec_clip_detached(FVM_Context *, FVM_Object *, FVM_Value *out);
+    /* Remove an attached native instance at nonnegative public depth; otherwise succeed unchanged.
+     * Detached ancestors suppress removal. Uses intrinsic state without script method lookup.
+     * This explicit-object policy does not resolve Action target paths or deliver unload events. */
+    FVM_API FVM_Result fvm_exec_remove_dynamic_clip(FVM_Context *, FVM_Object *);
+
     /* Prepare a frame/label without seeking: nonnumbers stringify once; complete decimal digits
      * become numbers. with_bias adds scene_bias to numbers only, including zero bias when enabled.
      * Context supplies versioned coercion; no Action flags or bytecode are accepted.
