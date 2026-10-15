@@ -4,6 +4,8 @@
 
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "array_splice_constants.h"
+#include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
 #include "../core/object_root_scope.hpp"
@@ -470,6 +472,36 @@ FVM_Result sparse_slice(FVM_Context *c, FVM_Object *source, FVM_Object *result,
     return FVM_OK;
 }
 
+/* Insert into signed own keys without invoking accessors, setters or watches. */
+FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
+                           const FVM_ArraySpliceBounds &bounds, FVM_Value *out,
+                           FVM_ArrayWorkScope &work)
+{
+    FVM_Object *result = 0;
+    FVM_Result status = fvm_array_create_like(c, 0, 0, &result, true);
+    if (status != FVM_OK)
+        return status;
+    /* [GC:] Retain the removed array until every insertion and length write succeeds. */
+    FVM_ObjectRootScope roots(c, result);
+    for (unsigned int i = 0; i < bounds.added; ++i)
+    {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
+        char key[FVM_ARRAY_SPLICE_SIGNED_KEY_CAPACITY];
+        std::sprintf(key, "%ld", (long)((double)bounds.negative_length + i));
+        status = fvm_base_store_data(c, o, key, a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], false);
+        if (status != FVM_OK)
+            return status;
+    }
+    FVM_Value value;
+    fvm_value_number(&value, (double)bounds.negative_length + bounds.added);
+    status = fvm_base_store_data(c, o, "length", value, false);
+    if (status == FVM_OK)
+        object(out, result);
+    return status;
+}
+
 /* Execute a borrowed method with captured splice bounds or caller-owned fast metadata.
  * [GC:] Fast metadata must contain no unrooted managed edges and lives through this call. */
 FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n,
@@ -496,6 +528,8 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                                   !std::strcmp(method, "concat") ||
                                   (c->swf_loaded && (!std::strcmp(method, "splice") || !std::strcmp(method, "reverse") ||
                                                     !std::strcmp(method, "sort") || !std::strcmp(method, "sortOn"))));
+    if (prepared && prepared->negative_length < 0)
+        return negative_splice(c, o, a, *prepared, out, work);
     if (!std::strcmp(method, "concat"))
     {
         FVM_Object *result = 0;
@@ -1059,9 +1093,26 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
                               : length(c, o, out.length);
     if (status != FVM_OK)
         return status;
-    /* Negative lengths require signed destination indices; reject before mutating an unsupported case. */
+    /* Borrowed objects retain signed keys; native arrays still need a signed storage model. */
     if (c->swf_loaded && signed_length < 0)
-        return FVM_UNSUPPORTED;
+    {
+        if (o->resource_kind == FVM_RESOURCE_ARRAY ||
+            (first < 0 && first + signed_length < FVM_INT32_MIN_NUMBER))
+            return FVM_UNSUPPORTED;
+        if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
+            return FVM_OK;
+        status = legacy_index(c, n, a, 1, first < 0 ? signed_length : 0, last);
+        if (status != FVM_OK)
+            return status;
+        if (first < 0 || last < 0)
+            return FVM_OK;
+        out.added = n > FVM_ARRAY_SPLICE_INSERT_ARGUMENT ? n - FVM_ARRAY_SPLICE_INSERT_ARGUMENT : 0;
+        if ((double)signed_length + out.added > FVM_INT32_MAX_NUMBER)
+            return FVM_UNSUPPORTED;
+        out.negative_length = signed_length;
+        out.rejected = false;
+        return FVM_OK;
+    }
     out.start = bound(first, out.length);
     if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
         return FVM_OK;

@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/7: borrowed negative splice | Проверено для сценариев v0.373 | SWF4–8 signed own keys, captured conversions, zero crossing, readonly flags, budget failure, allocation sweep and cleanup; ARRAY_NEGATIVE_SPLICE.md / .ru.md. Native Array negative storage and signed overflow remain open. |
 | 3/6/7: MovieClip drag methods | Проверено для сценариев v0.330 | startDrag/stopDrag share C value preparation, versioned truth, partial/forward bounds, stable appended IDs/transport, collecting direct calls/native barriers and OOM; MOVIECLIP_DRAG.md. Full input/drop/twip semantics open. |
 | 2/3/7: StartDrag/EndDrag | Проверено для сценариев v0.329 | Raw Actions use shared C services; exact flag-one policy, seven-step coercion order, detached-target GC, missing operands and OOM; AVM1_DRAG.md. Script adapters/full mouse behavior remain open. |
 | 3/7: explicit native drag engine | Проверено для сценариев v0.328 | C89 begin/update/end/target, transforms/limits/input order, drag-only GC root, cancellation/replacement and atomic OOM; NATIVE_DRAG_SERVICE.md. Script/Action adapters, drop-target and full Flash semantics open. |
@@ -2934,3 +2935,13 @@ preserves versioned catch-name/register rules. Root JIT selection now contains
 allocation failure before breakpoint lookup. JIT_TRY.md / .ru.md document tests,
 non-script error behavior and remaining conformance/platform gaps. Ни одна стадия
 не закрыта; полная совместимость и реальные запуски других ОС остаются открытыми.
+
+
+v0.373: borrowed loaded negative-length splice uses signed own insertion keys,
+captured conversion bounds and rooted empty removals; native negative storage
+and signed overflow remain unsupported. Этапы остаются открытыми.
+See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).
+
+Validation v0.373: 769 AGG / 769 Cairo / 750 minimal Release checks pass after
+private-header rebuild and ELF permission repairs/reruns; five restricted
+heap/global ASan+UBSan splice checks pass (stack ASan/LSan disabled).

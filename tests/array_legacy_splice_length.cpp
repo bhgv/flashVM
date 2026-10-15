@@ -1,4 +1,4 @@
-/* Loaded splice captures own signed length; negative mutation indices stay explicitly unsupported. */
+/* Loaded splice captures own signed length; negative borrowed lengths retain signed keys. */
 #define FVM_ARRAY_LEGACY_FIXTURE_ONLY
 #include "array_legacy_join.cpp"
 static unsigned converted;
@@ -33,8 +33,8 @@ int main()
         FVM_Object *counter = 0; assert(fvm_construct(c, "Object", 0, 0, &counter) == FVM_OK);
         assert(fvm_object_define_method_rooted(c, counter, "valueOf", count, 0, 0) == FVM_OK);
         args[1] = object(counter); converted = 0;
-        assert(borrow(c, array, "splice", o, 2, args, &out) == FVM_UNSUPPORTED && converted == 0);
-        number(c, o, "length", 4294967295.0); assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
+        assert(borrow(c, array, "splice", o, 2, args, &out) == FVM_OK && converted == 1);
+        number(c, out.object, "length", 0); number(c, o, "length", -1); assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
         fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

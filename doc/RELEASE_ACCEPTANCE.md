@@ -1,7 +1,17 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.372
+# Условия окончательной приёмки / Final acceptance gates — v0.373
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.373 adds signed own-key insertion for loaded borrowed splice with negative
+captured length. All 769 AGG, 769 Cairo and 750 minimal Linux Release checks have
+passing evidence after rebuilding both private-header consumers and repairing
+ELF execution permissions with failed-test reruns. Five splice checks pass the
+restricted heap/global ASan+UBSan configuration (stack ASan and LSan disabled),
+including the new allocation sweep, GC-after-failure and retry checks. Readonly
+keys/length, work-budget failure, SWF4–8 zero crossing and conversion side effects
+are covered. Native Array negative storage and signed arithmetic overflow remain
+unsupported. See ARRAY_NEGATIVE_SPLICE.md / .ru.md. No stage is closed.
 
 v0.372 adds native Try/Catch/Finally using owned child mappings and the shared
 With block runner. Suspended baselines, host bindings, returns and exceptions are
@@ -998,3 +1008,9 @@ independent destination pointer/drag state. Source Action references remain
 Linux: по 648/648 AGG/Cairo, три новых теста ограниченных ASan/UBSan и по четыре
 исходных SWF. Проверены C и нативные методы, GC в преобразованиях, частичные
 аргументы, канал, исключения и отказы памяти. Все стадии роудмапа остаются открытыми.
+
+
+v0.373: borrowed loaded negative-length splice uses signed own insertion keys,
+captured conversion bounds and rooted empty removals; native negative storage
+and signed overflow remain unsupported. Этапы остаются открытыми.
+See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).

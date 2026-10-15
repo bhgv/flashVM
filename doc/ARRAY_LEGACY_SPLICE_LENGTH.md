@@ -1,5 +1,8 @@
 # Длина splice / Loaded splice own-data length — v0.135
 
+Историческая запись v0.135; изменение v0.373 описано ниже.
+Historical v0.135 checkpoint; see the v0.373 update below.
+
 Загруженный splice читает собственную хранимую длину и преобразует её в signed
 Int32 после start и до deleteCount. Getter и длина прототипа не используются;
 положительная wrapped-длина 2^32+3 означает 3. Отсутствующая data-длина означает 0.
@@ -34,3 +37,9 @@ The SWF6..8 test covers virtual/inherited length, preserved existing indices at
 zero own length, positive wrapping, negative no-mutation/no-delete-coercion and
 root/depth restoration. Negative signed mutations, set_data/movement, full
 version conformance and every roadmap stage remain open.
+
+As of v0.373 the borrowed negative-length restriction is narrowed: see
+[negative splice](ARRAY_NEGATIVE_SPLICE.md). Native Array negative storage remains unsupported.
+
+С v0.373 отрицательная длина заимствованного splice поддерживается в пределах
+[нового контракта](ARRAY_NEGATIVE_SPLICE.ru.md); ограничение настоящего Array сохраняется.

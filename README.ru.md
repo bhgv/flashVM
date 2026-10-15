@@ -1,4 +1,4 @@
-Версия разработки: **0.372** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.373** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -277,3 +277,5 @@ Multi-architecture JIT, breakpoints, threads and multiple VM examples / JIT дл
 
 Нативные Try/Catch/Finally: сохранение исключений/Return, catch по имени/регистру
 и защита root-входа от OOM; [English](doc/JIT_TRY.md) / [Русский](doc/JIT_TRY.ru.md).
+
+Borrowed negative splice / отрицательная длина: [EN](doc/ARRAY_NEGATIVE_SPLICE.md) / [RU](doc/ARRAY_NEGATIVE_SPLICE.ru.md).

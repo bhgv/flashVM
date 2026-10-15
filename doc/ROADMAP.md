@@ -332,3 +332,13 @@ preserves versioned catch-name/register rules. Root JIT selection now contains
 allocation failure before breakpoint lookup. JIT_TRY.md / .ru.md document tests,
 non-script error behavior and remaining conformance/platform gaps. Ни одна стадия
 не закрыта; полная совместимость и реальные запуски других ОС остаются открытыми.
+
+
+v0.373: borrowed loaded negative-length splice uses signed own insertion keys,
+captured conversion bounds and rooted empty removals; native negative storage
+and signed overflow remain unsupported. Этапы остаются открытыми.
+See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).
+
+Validation v0.373: 769 AGG / 769 Cairo / 750 minimal Release checks pass after
+private-header rebuild and ELF permission repairs/reruns; five restricted
+heap/global ASan+UBSan splice checks pass (stack ASan/LSan disabled).
