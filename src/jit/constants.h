@@ -45,6 +45,14 @@
 /* Member access modes are independent of the AVM1 action encoding. */
 #define FVM_JIT_MEMBER_READ 0U  /* Read owner/key and leave the resolved value. */
 #define FVM_JIT_MEMBER_WRITE 1U /* Assign owner/key/value and consume all three. */
+/* Unary semantic helper selectors, independent of Action byte identifiers. */
+#define FVM_JIT_UNARY_INTEGER 0U   /* Versioned Int32 conversion. */
+#define FVM_JIT_UNARY_NUMBER 1U    /* Versioned numeric conversion. */
+#define FVM_JIT_UNARY_STRING 2U    /* Counted managed string conversion. */
+#define FVM_JIT_UNARY_TYPE 3U      /* Versioned typeof name. */
+#define FVM_JIT_UNARY_INCREMENT 4U /* Numeric increment with coercion. */
+#define FVM_JIT_UNARY_DECREMENT 5U /* Numeric decrement with coercion. */
+#define FVM_JIT_UNARY_NOT 6U       /* Versioned logical negation. */
 #define FVM_JIT_BINARY_VALUES 2U       /* Operand count for arithmetic, comparisons and swaps. */
 #define FVM_JIT_UNARY_VALUES 1U        /* Operand count for return, truth and duplication. */
 #define FVM_JIT_ENDBR_0 0xf3U          /* ENDBR64 supports CET indirect branch tracking entry. */

@@ -8,6 +8,7 @@
 #include "encoding_constants.h"
 #include "operand_constants.h"
 #include "operand_stack.hpp"
+#include "number_decode.hpp"
 #include "literal_constants.h"
 #include "../core/numeric_constants.h"
 #include "../swf/record_constants.h"
@@ -708,23 +709,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                     else if (type == FVM_AVM1_PUSH_FLOAT)
                     {
-                        if (end - p < 4)
+                        if (end - p < FVM_AVM1_DWORD_BYTES)
                             return FVM_INVALID_ARGUMENT;
                         unsigned long bits = u32(data + p);
-                        unsigned int exponent = (unsigned int)((bits >> FVM_FLOAT_FRACTION_BITS) &
-                                                               FVM_FLOAT_EXPONENT_MASK);
-                        unsigned long fraction = bits & FVM_FLOAT_FRACTION_MASK;
-                        double number;
-                        if (exponent == FVM_FLOAT_EXPONENT_MASK)
-                            number = fraction ? std::numeric_limits<double>::quiet_NaN()
-                                              : std::numeric_limits<double>::infinity();
-                        else
-                            number = std::ldexp(
-                                (double)(fraction + (exponent ? FVM_FLOAT_IMPLICIT_ONE : 0)),
-                                exponent ? (int)exponent - FVM_FLOAT_NORMAL_SCALE_BIAS
-                                         : -FVM_FLOAT_SUBNORMAL_SCALE_BIAS);
-                        fvm_value_number(&v, (bits & FVM_UINT32_SIGN_BIT) ? -number : number);
-                        p += 4;
+                        fvm_value_number(&v, fvm_avm1_decode_float(bits));
+                        p += FVM_AVM1_DWORD_BYTES;
                     }
                     else if (type == FVM_AVM1_PUSH_REGISTER)
                     {
@@ -748,22 +737,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                         /* AVM1 stores the high 32-bit word first, each word LE.
                          * Decode arithmetically to avoid alignment/endian casts. */
                         unsigned long high = u32(data + p), low = u32(data + p + FVM_AVM1_DWORD_BYTES);
-                        unsigned int exponent =
-                            (unsigned int)((high >> FVM_DOUBLE_HIGH_FRACTION_BITS) &
-                                           FVM_DOUBLE_EXPONENT_MASK);
-                        double fraction =
-                            (double)(high & FVM_DOUBLE_HIGH_FRACTION_MASK) * FVM_UINT32_MODULUS +
-                            (double)low;
-                        double number;
-                        if (exponent == FVM_DOUBLE_EXPONENT_MASK)
-                            number = fraction ? std::numeric_limits<double>::quiet_NaN()
-                                              : std::numeric_limits<double>::infinity();
-                        else
-                            number =
-                                std::ldexp(fraction + (exponent ? FVM_DOUBLE_IMPLICIT_ONE : 0.0),
-                                           exponent ? (int)exponent - FVM_DOUBLE_NORMAL_SCALE_BIAS
-                                                    : -FVM_DOUBLE_SUBNORMAL_SCALE_BIAS);
-                        fvm_value_number(&v, (high & FVM_UINT32_SIGN_BIT) ? -number : number);
+                        fvm_value_number(&v, fvm_avm1_decode_double(high, low));
                         p += FVM_AVM1_DOUBLE_BYTES;
                     }
                     else if (type == FVM_AVM1_PUSH_CONSTANT8 || type == FVM_AVM1_PUSH_CONSTANT16)

@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.350
+# Условия окончательной приёмки / Final acceptance gates — v0.351
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.351 adds native numeric literals/unary operations and shared interpreter IEEE
+decoding. Final full Linux Release runs pass directly: 706 AGG, 706 Cairo and 687
+minimal tests; nine restricted ASan+UBSan checks also pass. See JIT_NUMBERS.md for
+intermediate permission repairs and the updated fallback fixture. Real foreign
+target/OS acceptance and the remaining roadmap requirements are still open.
 
 v0.350 extends the native reference subset. Linux Release has passing evidence
 for all 704 AGG, 704 Cairo and 685 minimal checks, with documented ELF permission

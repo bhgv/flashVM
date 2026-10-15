@@ -2752,3 +2752,13 @@ activation, versioned coercion and operand policy. Differential host/SWF4–8,
 setter GC/exception and allocation-boundary tests are in JIT_REFERENCES.md.
 Six restricted heap/global ASan+UBSan checks pass; full Action coverage and real
 foreign-target/platform acceptance remain open. Все стадии roadmap ещё открыты.
+
+## v0.351: native numbers and unary operations
+
+Implemented/locally verified: float/double Push and ToInteger, ToNumber, ToString,
+TypeOf, Increment, Decrement, Not. Interpreter/native IEEE decoding now shares the
+same arithmetic helpers. Raw independent literal values and host/SWF4–8 comparisons
+cover manual/automatic native entries, missing inputs, collecting/throwing coercion
+and allocation failures. See JIT_NUMBERS.md. Nine restricted ASan+UBSan checks
+pass. Full Action/Flash coverage, foreign-runtime execution and stages 1–9 remain
+open. Это расширение нативного подмножества, а не завершение JIT или выпуска.

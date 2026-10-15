@@ -79,6 +79,8 @@ FVM_Result fvm_jit_checkpoint(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_push(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_numeric(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_compare(FVM_JitInvocation *, unsigned int);
+/* Convert or transform a rooted top operand through the shared unary C services. */
+FVM_Result fvm_jit_unary(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_get_variable(FVM_JitInvocation *, unsigned int);
 /* Assign a scoped variable using the interpreter's target and script-this rules. */
 FVM_Result fvm_jit_set_variable(FVM_JitInvocation *, unsigned int);

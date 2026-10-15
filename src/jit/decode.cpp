@@ -3,6 +3,7 @@
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
+#include "../avm1/number_decode.hpp"
 #include "../core/numeric_constants.h"
 namespace
 {
@@ -36,6 +37,21 @@ FVM_Result push(const unsigned char *data, size_t begin, size_t end, FVM_JitCode
                                                   ? (double)bits - FVM_UINT32_MODULUS
                                                   : (double)bits);
             begin += FVM_AVM1_DWORD_BYTES;
+        }
+        else if (type == FVM_AVM1_PUSH_FLOAT)
+        {
+            if (end - begin < FVM_AVM1_DWORD_BYTES)
+                return FVM_INVALID_ARGUMENT;
+            fvm_value_number(&constant.value, fvm_avm1_decode_float(dword(data + begin)));
+            begin += FVM_AVM1_DWORD_BYTES;
+        }
+        else if (type == FVM_AVM1_PUSH_DOUBLE)
+        {
+            if (end - begin < FVM_AVM1_DOUBLE_BYTES)
+                return FVM_INVALID_ARGUMENT;
+            fvm_value_number(&constant.value, fvm_avm1_decode_double(
+                dword(data + begin), dword(data + begin + FVM_AVM1_DWORD_BYTES)));
+            begin += FVM_AVM1_DOUBLE_BYTES;
         }
         else if (type == FVM_AVM1_PUSH_STRING)
         {
@@ -151,6 +167,20 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
         {
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_return>, 0));
             action.branch = FVM_JIT_EXIT;
+        }
+        else if (op == FVM_AVM1_ACTION_TO_INTEGER || op == FVM_AVM1_ACTION_TO_NUMBER ||
+                 op == FVM_AVM1_ACTION_TO_STRING || op == FVM_AVM1_ACTION_TYPE_OF ||
+                 op == FVM_AVM1_ACTION_INCREMENT || op == FVM_AVM1_ACTION_DECREMENT ||
+                 op == FVM_AVM1_ACTION_NOT)
+        {
+            unsigned int operation = op == FVM_AVM1_ACTION_TO_INTEGER ? FVM_JIT_UNARY_INTEGER
+                : op == FVM_AVM1_ACTION_TO_NUMBER ? FVM_JIT_UNARY_NUMBER
+                : op == FVM_AVM1_ACTION_TO_STRING ? FVM_JIT_UNARY_STRING
+                : op == FVM_AVM1_ACTION_TYPE_OF ? FVM_JIT_UNARY_TYPE
+                : op == FVM_AVM1_ACTION_INCREMENT ? FVM_JIT_UNARY_INCREMENT
+                : op == FVM_AVM1_ACTION_DECREMENT ? FVM_JIT_UNARY_DECREMENT
+                                                 : FVM_JIT_UNARY_NOT;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_unary>, operation));
         }
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));

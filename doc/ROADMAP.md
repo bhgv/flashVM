@@ -163,3 +163,8 @@ v0.350 extends the native subset with SetVariable, DefineLocal/DefineLocal2,
 GetMember/SetMember and Delete/Delete2 using the shared interpreter C services.
 JIT_REFERENCES.md records host/SWF4–8, GC/setter/exception and allocation checks.
 Это расширение стадии 8; полнота AVM1 и итоговая приёмка всех стадий ещё открыты.
+
+v0.351 adds native float/double literals and seven unary operations with shared
+interpreter numeric decoding, explicit/automatic execution checks and restricted
+memory-tool coverage (JIT_NUMBERS.md). Полная семантика AVM1, оставшиеся подсистемы
+и реальные запуски других ОС по-прежнему необходимы для закрытия всех стадий.

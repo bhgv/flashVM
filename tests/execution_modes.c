@@ -5,7 +5,8 @@
 int main(void)
 {
  const unsigned char body[]={0x96,3,0,0,'x',0,0x1c,0x96,5,0,7,22,0,0,0,0x0a,0x3e,0};
- const unsigned char unsupported[]={0x96,4,0,0,'4','2',0,0x4a,0x3e,0};const char *params[]={"x"};
+ /* ConstantPool remains unsupported; ToNumber now compiles natively. */
+ const unsigned char unsupported[]={0x88,2,0,0,0,0x96,5,0,7,42,0,0,0,0x3e,0};const char *params[]={"x"};
  FVM_Config cfg;FVM_Runtime *rt;FVM_Context *c;FVM_Object *fn,*fallback;FVM_Value arg,out;FVM_ExecutionOptions options,current;FVM_ExecutionStats stats;unsigned long native;
  assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK && fvm_standard_install(c)==FVM_OK && fvm_execution_options_init(&options)==FVM_OK && options.mode==FVM_EXECUTION_INTERPRETER && !options.flags);
  assert(fvm_function_create_avm1(c,body,sizeof(body),1,params,0,&fn)==FVM_OK);fvm_value_number(&arg,20);
