@@ -9,6 +9,8 @@ int main(void)
  const unsigned char bad_branch[]={0x99,1,0,0,0};FVM_JitCode *code=0,*keep;
  const unsigned char short_float[]={0x96,4,0,1,0,0,0};
  const unsigned char short_double[]={0x96,8,0,6,0,0,0,0,0,0,0};
+ const unsigned char short_register[]={0x96,1,0,4};
+ const unsigned char long_store[]={0x87,2,0,0,0};
  assert(fvm_jit_compile(0,1,&code)==FVM_INVALID_ARGUMENT && !code && fvm_jit_compile(good,0,&code)==FVM_INVALID_ARGUMENT && !code && fvm_jit_compile(good,1,0)==FVM_INVALID_ARGUMENT);
  if(!fvm_jit_available())return 0;
  assert(fvm_jit_compile(good,sizeof(good),&code)==FVM_OK);keep=code;
@@ -19,5 +21,7 @@ int main(void)
  assert(fvm_jit_compile(bad_branch,sizeof(bad_branch),&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_compile(short_float,sizeof(short_float),&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_compile(short_double,sizeof(short_double),&code)==FVM_INVALID_ARGUMENT && code==keep);
+ assert(fvm_jit_compile(short_register,sizeof(short_register),&code)==FVM_INVALID_ARGUMENT && code==keep);
+ assert(fvm_jit_compile(long_store,sizeof(long_store),&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_destroy(code)==FVM_OK);return 0;
 }

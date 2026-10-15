@@ -5,6 +5,7 @@
 #include "../avm1/handlers/native_body.hpp"
 #include "../avm1/handlers/script_call.hpp"
 #include "../avm1/target_scope.hpp"
+#include "../avm1/encoding_constants.h"
 #include "flashvm/exception.h"
 #include <cstdio>
 /* Release all positive cache entries; no managed object graph edges are retained here. */
@@ -291,11 +292,17 @@ FVM_Result fvm_execution_try_root(FVM_Context *c, const void *source, size_t siz
     {
         /* [GC:] Reset root target selection exactly as a fresh interpreted root block does. */
         FVM_AVM1TargetScope target(c, receiver, false);
+        /* [GC:] Unloaded root blocks own a fresh legacy bank; loaded roots use
+         * the persistent context bank, matching the interpreter's root entry. */
+        FVM_ExecutionRoots registers(c, c->swf_loaded ? 0 : FVM_AVM1_LEGACY_REGISTER_COUNT);
         FVM_ScriptFrame frame;
         std::memset(&frame, 0, sizeof(frame));
         frame.struct_size = sizeof(frame);
         frame.abi_version = FVM_SCRIPT_FRAME_ABI;
         frame.receiver = frame.implicit_this = receiver;
+        frame.register_count = c->swf_loaded ? FVM_EXEC_GLOBAL_REGISTER_COUNT
+                                             : FVM_AVM1_LEGACY_REGISTER_COUNT;
+        frame.registers = c->swf_loaded ? c->avm1_global_registers : registers.values.begin();
         fvm_value_undefined(&frame.super_value);
         FVM_ScriptBodyEntry entry;
         entry.callback = fvm_jit_body;

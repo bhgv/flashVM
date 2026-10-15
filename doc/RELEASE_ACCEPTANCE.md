@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.351
+# Условия окончательной приёмки / Final acceptance gates — v0.352
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.352 adds native register reads/stores and matching prepared/root bank lifetimes.
+Linux Release has passing evidence for 709 AGG, 709 Cairo and 690 minimal tests,
+after documented generated-artifact repairs; nine focused restricted ASan+UBSan
+checks pass. JIT_REGISTERS.md records exact scope and limits. This is not complete
+AVM1/JIT or non-Linux acceptance, and all stages remain open.
 
 v0.351 adds native numeric literals/unary operations and shared interpreter IEEE
 decoding. Final full Linux Release runs pass directly: 706 AGG, 706 Cairo and 687

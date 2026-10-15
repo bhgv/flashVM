@@ -2762,3 +2762,12 @@ cover manual/automatic native entries, missing inputs, collecting/throwing coerc
 and allocation failures. See JIT_NUMBERS.md. Nine restricted ASan+UBSan checks
 pass. Full Action/Flash coverage, foreign-runtime execution and stages 1–9 remain
 open. Это расширение нативного подмножества, а не завершение JIT или выпуска.
+
+## v0.352: native register banks
+
+Implemented: Push-register and StoreRegister over the prepared private/global
+banks, including Function2 preloads and explicit rooted host/native root banks.
+Host/SWF4–8, manual/automatic, boundary/missing-value, GC-only-register retention
+and counted-string allocation tests are in JIT_REGISTERS.md. Constant pools,
+function definitions/calls, complete Action coverage and foreign runtime/platform
+acceptance remain open. Все девять стадий не объявляются завершёнными.

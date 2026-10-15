@@ -36,7 +36,9 @@ It changes no function. Attach only after success; on `FVM_UNSUPPORTED`, leave t
 original function interpreted. Compile the same bytes used to create the function.
 The compiler currently accepts:
 
-- Push: signed integer, float/double, terminated string, Boolean, null and undefined.
+- Push: signed integer, float/double, register, terminated string, Boolean, null and undefined.
+- StoreRegister and prepared Function2/global/root banks
+  (v0.352; [contracts and checks](JIT_REGISTERS.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).
@@ -46,7 +48,7 @@ The compiler currently accepts:
   (v0.351; [contracts and checks](JIT_NUMBERS.md)).
 - Jump and If, with target validation and native forward/backward relocation.
 
-All other operations, including register/constant-pool Push,
+All other operations, including constant-pool Push,
 Function definitions, calls, object/array construction and exception blocks, return
 `FVM_UNSUPPORTED` at compile time. Support in the interpreter does not imply
 support in this compiler. Invalid supported record layouts/branch targets return

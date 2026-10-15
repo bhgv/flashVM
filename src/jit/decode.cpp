@@ -27,6 +27,13 @@ FVM_Result push(const unsigned char *data, size_t begin, size_t end, FVM_JitCode
     while (begin < end)
     {
         unsigned int type = data[begin++];
+        if (type == FVM_AVM1_PUSH_REGISTER)
+        {
+            if (begin == end)
+                return FVM_INVALID_ARGUMENT;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_load_register>, data[begin++]));
+            continue;
+        }
         FVM_JitConstant constant;
         if (type == FVM_AVM1_PUSH_INTEGER)
         {
@@ -181,6 +188,12 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
                 : op == FVM_AVM1_ACTION_DECREMENT ? FVM_JIT_UNARY_DECREMENT
                                                  : FVM_JIT_UNARY_NOT;
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_unary>, operation));
+        }
+        else if (op == FVM_AVM1_ACTION_STORE_REGISTER)
+        {
+            if (length != FVM_AVM1_STORE_REGISTER_BYTES)
+                return FVM_INVALID_ARGUMENT;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_store_register>, data[payload]));
         }
         else if (op == FVM_AVM1_ACTION_GET_VARIABLE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_get_variable>, 0));

@@ -168,3 +168,8 @@ v0.351 adds native float/double literals and seven unary operations with shared
 interpreter numeric decoding, explicit/automatic execution checks and restricted
 memory-tool coverage (JIT_NUMBERS.md). Полная семантика AVM1, оставшиеся подсистемы
 и реальные запуски других ОС по-прежнему необходимы для закрытия всех стадий.
+
+v0.352 adds native register reads/stores over shared prepared Function2/legacy
+banks and rooted native root-block banks. JIT_REGISTERS.md records versioned,
+manual/automatic, GC and allocation checks. Это ещё один проверяемый пункт стадии
+8; полнота всех стадий, другие CPU/ОС и финальная приёмка остаются открытыми.
