@@ -1257,8 +1257,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_STRING_EQUALS || a.op == FVM_AVM1_ACTION_STRING_ADD ||
                      a.op == FVM_AVM1_ACTION_STRING_LESS || a.op == FVM_AVM1_ACTION_STRING_GREATER)
             { /* Explicit string operations use shared rooted value services. */
-                if (stack.size() < FVM_AVM1_STRING_BINARY_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_STRING_BINARY_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 const FVM_Value *left = &stack[stack.size() - FVM_AVM1_STRING_BINARY_OPERANDS];
                 FVM_Value output;
                 FVM_Result status;
@@ -1360,8 +1362,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                      a.op == FVM_AVM1_ACTION_EQUALS2 || a.op == FVM_AVM1_ACTION_STRICT_EQUALS ||
                      a.op == FVM_AVM1_ACTION_GREATER)
             {
-                if (stack.size() < FVM_AVM1_COMPARE_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_COMPARE_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_ExecutionCompare operation = a.op == FVM_AVM1_ACTION_ADD2 ? FVM_EXEC_ADD_DYNAMIC
                                                  : a.op == FVM_AVM1_ACTION_LESS2   ? FVM_EXEC_LESS
                                                  : a.op == FVM_AVM1_ACTION_EQUALS2 ? FVM_EXEC_EQUAL
@@ -1446,8 +1450,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_MODULO ||
                      (a.op >= FVM_AVM1_ACTION_BIT_AND && a.op <= FVM_AVM1_ACTION_BIT_URSHIFT))
             {
-                if (stack.size() < FVM_AVM1_NUMERIC_BINARY_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_NUMERIC_BINARY_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_ExecutionNumeric operation =
                     a.op == FVM_AVM1_ACTION_MODULO       ? FVM_EXEC_REMAINDER
                     : a.op == FVM_AVM1_ACTION_BIT_AND    ? FVM_EXEC_BIT_AND
@@ -1543,8 +1549,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                      a.op == FVM_AVM1_ACTION_AND || a.op == FVM_AVM1_ACTION_OR)
             {
                 /* [GC:] Keep both operands in the rooted stack through native coercion. */
-                if (stack.size() < FVM_AVM1_LEGACY_BINARY_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_LEGACY_BINARY_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Value result;
                 FVM_Result status;
                 if (a.op == FVM_AVM1_ACTION_EQUALS || a.op == FVM_AVM1_ACTION_LESS)
@@ -1641,8 +1649,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             else if (a.op == FVM_AVM1_ACTION_ADD || a.op == FVM_AVM1_ACTION_SUBTRACT ||
                      a.op == FVM_AVM1_ACTION_MULTIPLY || a.op == FVM_AVM1_ACTION_DIVIDE)
             {
-                if (stack.size() < FVM_AVM1_NUMERIC_BINARY_OPERANDS)
-                    return FVM_ERROR;
+                FVM_Result prepared =
+                    fvm_avm1_require_operands(c->swf_loaded, stack, FVM_AVM1_NUMERIC_BINARY_OPERANDS);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_ExecutionNumeric operation =
                     a.op == FVM_AVM1_ACTION_ADD        ? FVM_EXEC_ADD
                     : a.op == FVM_AVM1_ACTION_SUBTRACT ? FVM_EXEC_SUBTRACT

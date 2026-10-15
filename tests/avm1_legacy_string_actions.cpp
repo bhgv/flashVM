@@ -38,7 +38,7 @@ int main()
     fvm_value_undefined(&a);a.type=FVM_VALUE_OBJECT;a.object=left;b=a;b.object=right;
     assert(fvm_gc_string_mode(c,FVM_GC_STRINGS_TRACED)==FVM_OK);
     for(unsigned i=0;i<20;++i){result=binary(c,0x21,a,b);assert(!std::strcmp(result.string,"LEFTprefixsuffix"));FVM_Value collected;assert(fvm_get_global(c,"collected",&collected)==FVM_OK && collected.number>=1);assert(!binary(c,0x13,a,b).boolean);assert(binary(c,0x29,a,b).boolean);assert(binary(c,0x68,b,a).boolean);}
-    const unsigned ops[]={0x13,0x14,0x15,0x18,0x21,0x29,0x31,0x35,0x68};for(unsigned i=0;i<sizeof(ops)/sizeof(*ops);++i){unsigned char empty[]={(unsigned char)ops[i],0};assert(fvm_avm1_execute(c,empty,sizeof(empty))==((ops[i]==0x14 || ops[i]==0x18 || ops[i]==0x31)?FVM_OK:FVM_ERROR));}
+    const unsigned ops[]={0x13,0x14,0x15,0x18,0x21,0x29,0x31,0x35,0x68};for(unsigned i=0;i<sizeof(ops)/sizeof(*ops);++i){unsigned char empty[]={(unsigned char)ops[i],0};assert(fvm_avm1_execute(c,empty,sizeof(empty))==((ops[i]==0x15 || ops[i]==0x35)?FVM_ERROR:FVM_OK));}
     FVM_Context *legacy=0;assert(fvm_context_create(rt,&legacy)==FVM_OK);unsigned char older[sizeof(swf)];std::memcpy(older,swf,sizeof(swf));older[3]=5;assert(fvm_load_memory(legacy,older,sizeof(older))==FVM_OK);assert(fvm_standard_install(legacy)==FVM_OK);
     fvm_value_string(&a,"abcd");assert(unary(legacy,0x14,a).number==4);fvm_value_string(&a,"\xc3\xa9");assert(fvm_set_global(legacy,"input",&a)==FVM_OK);Bytes unsupported;global(unsupported,"input");unsupported.push_back(0x14);unsupported.push_back(0);assert(fvm_avm1_execute(legacy,unsupported.begin(),unsupported.size())==FVM_UNSUPPORTED);fvm_context_destroy(legacy);
     fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;

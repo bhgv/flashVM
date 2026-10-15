@@ -480,3 +480,11 @@ the shared C service. Raw-byte fixtures cover SWF4–8 and strict host execution
 allocation injection verifies root/execution restoration. See AVM1_UNARY_MISSING.md.
 Загруженный SWF получает исторические преобразования undefined; другие случаи
 недостатка операндов, полная семантика AVM1 и все стадии остаются открытыми.
+
+### v0.301 — missing binary operands / Недостающие бинарные значения
+
+Twenty-four audited loaded binary actions now supply undefined below existing
+top operands, preserving right/left position and shared C coercion semantics.
+Raw-byte fixtures cover zero/one values, SWF4–8, strict host mode, collecting
+valueOf and allocation failures. See AVM1_BINARY_MISSING.md. Other stack policies
+and all roadmap stages remain open. Порядок аргументов проверен отдельно.

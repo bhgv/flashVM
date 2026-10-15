@@ -8,15 +8,17 @@ int main()
 {
     FVM_Config cfg;FVM_Runtime *rt=0;
     assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK);
-    for(unsigned version=4;version<=8;++version)
+    for(unsigned variant=0;variant<3;++variant)for(unsigned version=4;version<=8;++version)
     {
         FVM_Context *c=0;unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};swf[3]=(unsigned char)version;
         assert(fvm_context_create(rt,&c)==FVM_OK && fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);
-        const unsigned char code[]={0x50,0x17,0};bool success=false;unsigned failures=0;
+        const unsigned char unary[]={0x50,0x17,0},empty_binary[]={0x0b,0x17,0},one_binary[]={0x96,5,0,7,7,0,0,0,0x0b,0x17,0};
+        const unsigned char *code=variant==0?unary:variant==1?empty_binary:one_binary;
+        size_t size=variant==0?sizeof(unary):variant==1?sizeof(empty_binary):sizeof(one_binary);bool success=false;unsigned failures=0;
         for(long boundary=0;boundary<2000 && !success;++boundary)
         {
             FVM_GCRootFrame *roots=c->gc_frames;
-            allowance=boundary;FVM_Result r=fvm_avm1_execute(c,code,sizeof(code));allowance=-1;
+            allowance=boundary;FVM_Result r=fvm_avm1_execute(c,code,size);allowance=-1;
             assert(c->gc_frames==roots && !c->avm1_execution_depth && !c->script_depth);
             if(r==FVM_OK)success=true;else {assert(r==FVM_OUT_OF_MEMORY);++failures;}
             assert(fvm_gc_collect(c,0)==FVM_OK);
