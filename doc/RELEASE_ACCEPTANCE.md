@@ -555,3 +555,10 @@ host strictness and malformed-payload ordering remain intact. The register
 selector width has a documented semantic macro. Raw global/private Function2
 and allocation-failure coverage is recorded in AVM1_STORE_MISSING.md.
 All roadmap stages remain open.
+
+### v0.311 — missing pool entries / Отсутствующие строки таблицы
+
+Loaded Constant8/16 misses produce undefined and continue; malformed index fields
+and strict host behavior retain their errors. Separate documented macros describe
+the wire widths. Raw returned-value/continuation and allocation fixtures are
+recorded in AVM1_CONSTANT_MISSING.md. All roadmap stages remain open.

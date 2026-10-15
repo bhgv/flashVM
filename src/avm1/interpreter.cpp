@@ -762,17 +762,26 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     }
                     else if (type == FVM_AVM1_PUSH_CONSTANT8 || type == FVM_AVM1_PUSH_CONSTANT16)
                     {
-                        size_t width = type == FVM_AVM1_PUSH_CONSTANT8 ? 1 : 2;
+                        size_t width = type == FVM_AVM1_PUSH_CONSTANT8
+                                           ? FVM_AVM1_CONSTANT8_INDEX_BYTES
+                                           : FVM_AVM1_CONSTANT16_INDEX_BYTES;
                         if (end - p < width)
                             return FVM_INVALID_ARGUMENT;
                         unsigned int index =
                             type == FVM_AVM1_PUSH_CONSTANT8 ? data[p] : u16(data + p);
                         p += width;
                         if (index >= constants.size())
-                            return FVM_INVALID_ARGUMENT;
-                        FVM_Result result = own_string(c, constants[index].c_str(), &v);
-                        if (result != FVM_OK)
-                            return result;
+                        {
+                            if (!c->swf_loaded)
+                                return FVM_INVALID_ARGUMENT;
+                            /* Missing pool entries retain the initialized undefined value. */
+                        }
+                        else
+                        {
+                            FVM_Result result = own_string(c, constants[index].c_str(), &v);
+                            if (result != FVM_OK)
+                                return result;
+                        }
                     }
                     else if (type == FVM_AVM1_PUSH_NULL)
                         v.type = FVM_VALUE_NULL;

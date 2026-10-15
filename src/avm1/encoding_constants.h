@@ -135,4 +135,8 @@
 #define FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET 2U
 /* StoreRegister carries one unsigned byte selecting a register bank slot. */
 #define FVM_AVM1_STORE_REGISTER_BYTES 1U
+/* Constant8 selects a pool entry using one unsigned byte. */
+#define FVM_AVM1_CONSTANT8_INDEX_BYTES 1U
+/* Constant16 selects a pool entry using a little-endian unsigned short. */
+#define FVM_AVM1_CONSTANT16_INDEX_BYTES 2U
 #endif
