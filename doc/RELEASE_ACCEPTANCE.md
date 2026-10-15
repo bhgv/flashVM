@@ -1,7 +1,23 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.379
+# Условия окончательной приёмки / Final acceptance gates — v0.380
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.380: SWF4–6 registerClass linkage names use shared Flash unit folding for
+registration, C lookup/removal and native attach/duplicate/fallback selection.
+Case replacement publishes constructor and new spelling atomically; GC/transfer,
+OOM/retry and interpreted/explicit/automatic CallMethod are covered. Separate
+global environments and exact mixed-movie provenance remain open.
+[EN](OBJECT_REGISTER_CLASS_CASE.md) / [RU](OBJECT_REGISTER_CLASS_CASE.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.380: all 789 AGG / 789 Cairo / 770 minimal Linux Release checks
+have passing evidence after three ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo; minimal passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
+C89 registry, name/transfer, sprite resources and duplicate-version checks.
+Stack ASan and LeakSanitizer remain disabled. No new original external SWF
+oracle or foreign-OS run is claimed. All nine roadmap stages remain open.
 
 v0.379: indexed MovieClip width/height reads use parent-space vector bounds,
 including descendant transforms and singular ancestors. Traversal snapshots and

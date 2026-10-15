@@ -426,3 +426,20 @@ Eight restricted heap/global ASan+UBSan checks pass: the four new dimension
 checks plus standard MovieClip, AVM1/JIT display properties and geometry
 allocation. Stack ASan and LeakSanitizer remain disabled. No new external SWF
 oracle or foreign-OS runtime acceptance is claimed. All nine stages remain open.
+
+
+v0.380: SWF4–6 registerClass linkage names use shared Flash unit folding for
+registration, C lookup/removal and native attach/duplicate/fallback selection.
+Case replacement publishes constructor and new spelling atomically; GC/transfer,
+OOM/retry and interpreted/explicit/automatic CallMethod are covered. Separate
+global environments and exact mixed-movie provenance remain open.
+[EN](OBJECT_REGISTER_CLASS_CASE.md) / [RU](OBJECT_REGISTER_CLASS_CASE.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.380: all 789 AGG / 789 Cairo / 770 minimal Linux Release checks
+have passing evidence after three ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo; minimal passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
+C89 registry, name/transfer, sprite resources and duplicate-version checks.
+Stack ASan and LeakSanitizer remain disabled. No new original external SWF
+oracle or foreign-OS run is claimed. All nine roadmap stages remain open.

@@ -8,6 +8,8 @@
 #include "array_traversal_constants.h"
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
+#include "../avm1/scope_keywords.hpp"
+#include "../swf/format_constants.h"
 #include "base_state.hpp"
 #include "../core/prototype_data.hpp"
 #include "attribute_stage.hpp"
@@ -1640,6 +1642,20 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     return sort_impl(c, o, 0, 0, out, &spec);
 }
 
+/* Select stored linkage spelling without script lookup or case-fold allocations. */
+fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered_entry(
+    FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &entries,
+    const fvm_detail::string &key)
+{
+    if (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7)
+        return entries.find(key);
+    for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry = entries.begin();
+         entry != entries.end(); ++entry)
+        if (fvm_avm1_folded_name_equal(entry->first, key))
+            return entry;
+    return entries.end();
+}
+
 /* Register class. */
 FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                           FVM_Value *out, void *userdata)
@@ -1669,7 +1685,30 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     r = fvm_property_key(name.string, size, key);
     if (r != FVM_OK)
         return r;
-    if (a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED)
+    bool remove = a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED;
+    if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7)
+    {
+        if (remove)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
+                registered_entry(c, registry->properties, key);
+            if (entry != registry->properties.end())
+                registry->properties.erase(entry->first);
+        }
+        else
+        {
+            /* [GC:] The native call barrier retains copied constructors until atomic publication.
+             * Stage erase/insert together: OOM must preserve the old spelling and constructor. */
+            fvm_detail::map<fvm_detail::string, FVM_Value> staged = registry->properties;
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
+                registered_entry(c, staged, key);
+            if (entry != staged.end())
+                staged.erase(entry->first);
+            staged[key] = a[1];
+            registry->properties.swap(staged);
+        }
+    }
+    else if (remove)
         registry->properties.erase(key);
     else
         registry->properties[key] = a[1];
@@ -2620,17 +2659,26 @@ extern "C" FVM_Result fvm_registered_class_bytes(FVM_Context *c, const char *nam
         FVM_Result r = fvm_base_class_registry(c, &registry);
         if (r != FVM_OK)
             return r;
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-            registry->properties.find(key);
-        if (entry == registry->properties.end())
-            return FVM_NOT_FOUND;
-        if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object->invocable.callback)
-            return FVM_INVALID_ARGUMENT;
-        *out = entry->second.object;
-        return FVM_OK;
+        return fvm_base_registered_class(c, registry, key, out);
     }
     catch (const std::bad_alloc &)
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Resolve a raw registry with the active context's legacy linkage comparison policy. */
+FVM_Result fvm_base_registered_class(FVM_Context *c, FVM_Object *registry,
+                                     const fvm_detail::string &key, FVM_Object **out)
+{
+    if (!c || !registry || registry->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
+        registered_entry(c, registry->properties, key);
+    if (entry == registry->properties.end())
+        return FVM_NOT_FOUND;
+    if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object->invocable.callback)
+        return FVM_INVALID_ARGUMENT;
+    *out = entry->second.object;
+    return FVM_OK;
 }

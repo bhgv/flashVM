@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/3/6/7/8: registerClass legacy casing | Проверено для сценариев v0.380 | SWF4–6 UTF-16-unit folded registration/query/removal; stored spelling replacement, atomic OOM, GC/transfer, attach/duplicate/fallback and interpreter/native CallMethod. Separate global environments/mixed provenance remain open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes/named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
 | 1/2/3/7/8: Unicode legacy display paths | Проверено для сценариев v0.378 | SWF4–6 Flash unit folding for child/property paths; counted NUL/surrogates, collecting own/inherited getters, OOM and interpreter/native targets; MOVIECLIP_UNICODE_PATHS.md / .ru.md. Duplicate-name/full player semantics remain open. |
 | 1/7: large loaded sorting | Проверено для сценариев v0.377 | Native/borrowed sort/sortOn above 65536, charged partial captures/reversal/index output, permutations/indices, budget and OOM/GC/retry; ARRAY_LOADED_LARGE_SORT.md / .ru.md. Host limits and full Flash semantics remain open. |
@@ -2993,3 +2994,11 @@ Eight restricted heap/global ASan+UBSan checks pass: the four new dimension
 checks plus standard MovieClip, AVM1/JIT display properties and geometry
 allocation. Stack ASan and LeakSanitizer remain disabled. No new external SWF
 oracle or foreign-OS runtime acceptance is claimed. All nine stages remain open.
+
+Validation v0.380: all 789 AGG / 789 Cairo / 770 minimal Linux Release checks
+have passing evidence after three ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo; minimal passed initially). Eight restricted heap/
+global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
+C89 registry, name/transfer, sprite resources and duplicate-version checks.
+Stack ASan and LeakSanitizer remain disabled. No new original external SWF
+oracle or foreign-OS run is claimed. All nine roadmap stages remain open.

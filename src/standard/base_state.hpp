@@ -36,6 +36,10 @@ void fvm_base_commit_loaded(FVM_BasePrototypeActivation &);
 /* Return the registry backing Object.registerClass in this context. */
 FVM_Result fvm_base_class_registry(FVM_Context *, FVM_Object **);
 
+/* Read a constructor from a current/transported registry using versioned linkage casing. */
+FVM_Result fvm_base_registered_class(FVM_Context *, FVM_Object *, const fvm_detail::string &,
+                                     FVM_Object **);
+
 /* Validate base. */
 FVM_Result fvm_base_validate(FVM_Context *);
 

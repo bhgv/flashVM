@@ -26,3 +26,5 @@ constructor invocation without installing standard globals at the receiver.
 Existing scene/sprite and registry transport coverage remains required. No ABI
 or wire changes. Separate case-insensitive environments, function/base-clip
 versions, typed serialization, full symbol binding and all stages remain open.
+
+В v0.380 добавлено сравнение linkage по регистру SWF4–6: [RU](OBJECT_REGISTER_CLASS_CASE.ru.md) / [EN](OBJECT_REGISTER_CLASS_CASE.md). Отдельные среды и смешанные версии остаются открытыми.

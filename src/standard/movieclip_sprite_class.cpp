@@ -24,14 +24,11 @@ FVM_Result fvm_movieclip_sprite_class(FVM_Context *c, FVM_Object *library, const
         return r;
     if (classes)
     {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered =
-            classes->properties.find(linkage);
-        if (registered != classes->properties.end())
+        r = fvm_base_registered_class(c, classes, linkage, &constructor);
+        if (r != FVM_OK && r != FVM_NOT_FOUND)
+            return r;
+        if (constructor)
         {
-            if (registered->second.type != FVM_VALUE_OBJECT ||
-                !registered->second.object->invocable.callback)
-                return FVM_INVALID_ARGUMENT;
-            constructor = registered->second.object;
             FVM_Value prototype;
             r = fvm_object_get(c, constructor, "prototype", &prototype);
             if (r != FVM_OK)
