@@ -154,3 +154,14 @@ AVM1_CLONE_SPRITE.md.
 Сервисы дублирования принимают значения и объекты, без байткода и стека.
 В интерпретаторе остаются подготовка операндов и выбор начальной цели.
 Полная совместимость дублирования и остальные стадии остаются открытыми.
+
+### v0.325: native construction dependencies in individual files
+
+movieclip_copy_drawing.cpp and movieclip_sprite_class.cpp each contain one moved
+function, shared by the native construction paths used through the explicit C
+services. Their bodies are token-identical after symbol renaming; the private
+movieclip_construction.hpp records root/barrier contracts. No script callback ID
+or public ABI changes. See MOVIECLIP_CONSTRUCTION_DECOMPOSITION.md.
+
+Два помощника создания клипов вынесены по одному в файл без изменения алгоритма.
+Остальная декомпозиция и все стадии роудмапа остаются открытыми.

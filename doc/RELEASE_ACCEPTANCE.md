@@ -702,3 +702,17 @@ Linux: 634/634 Cairo; все 634 AGG прошли с повторным запу
 восстановления права исполнения ELF. Пять тестов ограниченных ASan/UBSan и по
 четыре исходных SWF. Проверены исключения host callbacks и восстановление очереди;
 полная поддержка Flash, JIT и приёмка остальных ОС остаются открытыми.
+
+## v0.325 construction decomposition / Декомпозиция создания клипов
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 634/634 CTest checks directly.
+Ten focused native/script duplication, CloneSprite, gradient/bitmap allocation
+and transport checks pass under the restricted heap/global ASan+UBSan profile;
+stack ASan and LeakSanitizer remain disabled. The two moved helper bodies match
+the previous source token-for-token after symbol renaming. Four recovered
+unmodified pinned original SWFs match exact stdout, exit zero and empty stderr
+in both profiles. See MOVIECLIP_CONSTRUCTION_DECOMPOSITION.md. All stages open.
+
+Linux: по 634/634 AGG/Cairo без повторных запусков, десять целевых проверок
+ограниченных ASan/UBSan и по четыре исходных SWF. Перенос функций подтверждён
+сравнением токенов и существующими сценариями; алгоритмы и публичный ABI сохранены.
