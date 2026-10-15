@@ -502,3 +502,10 @@ Loaded StringExtract/MBStringExtract, GetMember/SetMember and Delete now prepare
 undefined below existing operands. Fixtures cover all missing counts, host/SWF4–8,
 collecting name coercion after dropping globals, and three-operand allocation
 failures. See AVM1_MEMBER_STRING_MISSING.md. Full semantics and all stages stay open.
+
+### v0.304 — missing variable/target operands / Имена переменных и целей
+
+Six loaded variable/declaration/target actions now supply undefined on missing
+operands; host name/stack checks stay strict. Raw SWF4–8 fixtures observe live
+SetTarget2 reset/invalidation and caller restoration, plus named scope operations.
+See AVM1_VARIABLE_TARGET_MISSING.md. Full scope/target semantics remain open.

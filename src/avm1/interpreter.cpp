@@ -1087,8 +1087,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 }
                 else
                 {
-                    if (stack.empty())
-                        return FVM_ERROR;
+                    FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                    if (prepared != FVM_OK)
+                        return prepared;
                     path = stack.back();
                 }
                 FVM_Result status = fvm_exec_select_target(c, &path);
@@ -1514,8 +1515,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_DELETE2)
             {
-                if (stack.empty())
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Object *target = 0;
                 FVM_Result status = variable_receiver(c, self, &target);
                 FVM_Value result;
@@ -1606,8 +1608,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             {
                 size_t operands = a.op == FVM_AVM1_ACTION_DEFINE_LOCAL
                     ? FVM_AVM1_DECLARE_INITIALIZED_OPERANDS : FVM_AVM1_DECLARE_ONLY_OPERANDS;
-                if (stack.size() < operands)
-                    return FVM_ERROR;
+                FVM_Result prepared = fvm_avm1_require_operands(c->swf_loaded, stack, operands);
+                if (prepared != FVM_OK)
+                    return prepared;
                 FVM_Object *target = 0;
                 FVM_Result status = variable_receiver(c, self, &target);
                 if (status == FVM_OK)
@@ -1625,7 +1628,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_GET_VARIABLE)
             {
-                if (stack.empty() || (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING))
+                FVM_Result prepared = fvm_avm1_require_value(c->swf_loaded, stack);
+                if (prepared != FVM_OK)
+                    return prepared;
+                if (!c->swf_loaded && stack.back().type != FVM_VALUE_STRING)
                     return FVM_ERROR;
                 FVM_Object *target = 0;
                 FVM_Result r = variable_receiver(c, self, &target);
@@ -1643,10 +1649,13 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             }
             else if (a.op == FVM_AVM1_ACTION_SET_VARIABLE)
             {
-                if (stack.size() < FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT ||
-                    (!c->swf_loaded &&
-                     stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type !=
-                         FVM_VALUE_STRING))
+                FVM_Result prepared = fvm_avm1_require_operands(
+                    c->swf_loaded, stack, FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT);
+                if (prepared != FVM_OK)
+                    return prepared;
+                if (!c->swf_loaded &&
+                    stack[stack.size() - FVM_AVM1_VARIABLE_WRITE_OPERAND_COUNT].type !=
+                        FVM_VALUE_STRING)
                     return FVM_ERROR;
                 FVM_Object *target = 0;
                 FVM_Result status = variable_receiver(c, self, &target);
