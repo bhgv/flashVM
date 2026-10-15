@@ -1,4 +1,4 @@
-Версия разработки: **0.367** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.368** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -40,6 +40,7 @@ Enumerate/Enumerate2: [контракты и проверки](doc/JIT_ENUMERATE
 Нативные команды таймлайна: [контракты и проверки](doc/JIT_TIMELINE.ru.md).
 CloneSprite/RemoveSprite/StartDrag/EndDrag: [контракты и проверки](doc/JIT_SCENE.ru.md).
 WaitForFrame/WaitForFrame2: [контракты и проверки](doc/JIT_WAIT_FRAMES.ru.md).
+GetURL/GetURL2/Call и JIT кадров: [контракты и проверки](doc/JIT_DISPATCH.ru.md).
 
 Контрольный коммит зависимостей: `extern/` объединена с `external/`.
 Включены исходники и настройки Cairo 1.16.0, Pixman 0.38.4 и SQLite 3.50.4.

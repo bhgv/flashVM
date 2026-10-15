@@ -124,3 +124,8 @@ callback логгера либо stderr по умолчанию, а также �
 
 For architecture builds, breakpoint-driven interpretation, independent OS workers
 and multiple simultaneous VM instances, see [JIT_ARCHITECTURES.md](JIT_ARCHITECTURES.md).
+
+Stored frame blocks also honor automatic selection as of v0.368, including Call,
+frame actions and initialization blocks. Their active named breakpoint exclusion
+precedes native selection; unsupported bodies retain interpreter fallback. See
+[JIT_DISPATCH.md](JIT_DISPATCH.md) for the tested frame-entry scope and limits.

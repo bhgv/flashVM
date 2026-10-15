@@ -1,6 +1,7 @@
 /* FlashVM: bounded AVM1 subset lowering into semantic calls and native control-flow labels. */
 #include "internal.hpp"
 #include "timeline_constants.h"
+#include "url_constants.h"
 #include "../avm1/action_codes.h"
 #include "../avm1/encoding_constants.h"
 #include "../avm1/operand_constants.h"
@@ -267,6 +268,39 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             action.branch = FVM_JIT_CONDITIONAL;
             skips.push_back(FrameSkip(code.actions.size(),
                 data[payload + (direct ? FVM_AVM1_WAIT_DIRECT_SKIP_OFFSET : 0)]));
+        }
+        else if (op == FVM_AVM1_ACTION_GET_URL)
+        {
+            const unsigned char *separator = (const unsigned char *)std::memchr(data + payload, 0, length);
+            if (!separator)
+                return FVM_INVALID_ARGUMENT;
+            size_t first = (size_t)(separator - (data + payload));
+            size_t remaining = length - first - 1;
+            if (!remaining || data[position - 1] || std::memchr(separator + 1, 0, remaining - 1))
+                return FVM_INVALID_ARGUMENT;
+            if (code.constants.size() > FVM_JIT_MAX_CONSTANTS - FVM_JIT_URL_LITERAL_CONSTANT_COUNT)
+                return FVM_UNSUPPORTED;
+            unsigned int index = (unsigned int)code.constants.size();
+            FVM_JitConstant url, target;
+            url.value.type = target.value.type = FVM_VALUE_STRING;
+            url.text = fvm_detail::string((const char *)data + payload, first);
+            target.text = fvm_detail::string((const char *)separator + 1, remaining - 1);
+            code.constants.push_back(url);
+            code.constants.push_back(target);
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_url_literal>, index));
+        }
+        else if (op == FVM_AVM1_ACTION_GET_URL2)
+        {
+            if (length != FVM_AVM1_URL_FLAGS_BYTES || (data[payload] & FVM_AVM1_URL_RESERVED_MASK) ||
+                (data[payload] & FVM_AVM1_URL_METHOD_MASK) == FVM_AVM1_URL_INVALID_METHOD)
+                return FVM_INVALID_ARGUMENT;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_url_values>, data[payload]));
+        }
+        else if (op == FVM_AVM1_ACTION_CALL)
+        {
+            if (length)
+                return FVM_INVALID_ARGUMENT;
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_call_frame>, 0));
         }
         else if (op == FVM_AVM1_ACTION_SET_TARGET2)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_target_value>, 0));

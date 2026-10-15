@@ -2894,3 +2894,12 @@ equivalence, strict text/missing inputs, collecting/throwing conversion, compile
 invoke allocation failures, invalid targets and exact early/implicit-End budgets.
 Неподдерживаемые блоки, полная совместимость Flash и реальные запуски других
 ОС/CPU остаются открытыми; ни одна стадия не закрыта.
+
+## v0.368: native URL and stored-frame dispatch
+
+GetURL/GetURL2/Call share rooted host/frame services. Validated stored frame
+blocks now follow automatic JIT selection with named-breakpoint exclusion.
+JIT_DISPATCH.md records host/SWF4–8 behavior, counted requests, ordered GC/throws,
+nested frame/pool/target preservation, bounded recursion/budget, fallback and
+compile/invoke allocation failures. Полная совместимость Flash, browser/streaming
+и реальные запуски других ОС/CPU остаются открытыми; ни одна стадия не закрыта.

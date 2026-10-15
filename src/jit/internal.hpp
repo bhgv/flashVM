@@ -142,6 +142,12 @@ FVM_Result fvm_jit_end_drag(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_wait_direct(FVM_JitInvocation *, unsigned int);
 /* Convert and consume a dynamic frame request before setting the skip predicate. */
 FVM_Result fvm_jit_wait_value(FVM_JitInvocation *, unsigned int);
+/* Deliver a code-owned literal URL/target pair with versioned legacy-byte policy. */
+FVM_Result fvm_jit_url_literal(FVM_JitInvocation *, unsigned int);
+/* Deliver two rooted request operands through the shared host URL service. */
+FVM_Result fvm_jit_url_values(FVM_JitInvocation *, unsigned int);
+/* Execute a selected timeline frame while retaining its source request. */
+FVM_Result fvm_jit_call_frame(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

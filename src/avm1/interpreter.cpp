@@ -2060,7 +2060,16 @@ FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *c, const void *data, siz
     FVM_AVM1Info info;
     info.struct_size = sizeof(info);
     FVM_Result result = fvm_avm1_inspect_block(data, size, &info);
-    return result == FVM_OK ? execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0,
-                                      0, true, receiver)
-                            : result;
+    if (result != FVM_OK)
+        return result;
+    /* Stored frame identities keep their own interpreter breakpoint exclusion. */
+    if (!fvm_debug_has_breakpoints(c, c->debug_function))
+    {
+        bool handled = false;
+        FVM_Result native = fvm_execution_try_root(c, data, size, receiver, &handled);
+        if (handled)
+            return native;
+    }
+    return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0,
+                   0, true, receiver);
 }

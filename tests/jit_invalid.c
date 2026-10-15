@@ -6,6 +6,9 @@ int main(void)
  const unsigned char bad_waits[][12]={{0x8a,2,0,0,0,0},{0x8d,0,0,0},
  {0x99,2,0,7,0,0x8a,3,0,0x81,0x3e,255,0}};
  const unsigned int wait_sizes[]={6,4,12};
+ const unsigned char bad_dispatch[][10]={{0x83,1,0,'u',0},{0x83,2,0,'u',0,0},
+ {0x83,3,0,0,0,0,0},{0x9a,0,0,0},{0x9a,1,0,3,0},{0x9a,1,0,4,0},{0x9e,1,0,0,0}};
+ const unsigned int dispatch_sizes[]={5,6,7,4,5,5,5};
  const unsigned char good[]={0};const unsigned char unsupported[]={0x08,0};
  const unsigned char short_record[]={0x96,5,0,7};const unsigned char bad_string[]={0x96,2,0,0,'x'};
  const unsigned char bad_target[]={0x99,2,0,1,0,0x96,5,0,7,1,0,0,0,0};
@@ -32,5 +35,6 @@ int main(void)
  assert(fvm_jit_compile(long_store,sizeof(long_store),&code)==FVM_INVALID_ARGUMENT && code==keep);
  for(i=0;i<sizeof(bad_sizes)/sizeof(bad_sizes[0]);++i)assert(fvm_jit_compile(bad_frames[i],bad_sizes[i],&code)==FVM_INVALID_ARGUMENT && code==keep);
  for(i=0;i<sizeof(wait_sizes)/sizeof(wait_sizes[0]);++i)assert(fvm_jit_compile(bad_waits[i],wait_sizes[i],&code)==FVM_INVALID_ARGUMENT && code==keep);
+ for(i=0;i<sizeof(dispatch_sizes)/sizeof(dispatch_sizes[0]);++i)assert(fvm_jit_compile(bad_dispatch[i],dispatch_sizes[i],&code)==FVM_INVALID_ARGUMENT && code==keep);
  assert(fvm_jit_destroy(code)==FVM_OK);return 0;
 }

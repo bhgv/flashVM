@@ -1,7 +1,18 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.367
+# Условия окончательной приёмки / Final acceptance gates — v0.368
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.368 adds native GetURL/GetURL2/Call and automatic JIT selection for validated
+stored frame blocks, with named-breakpoint exclusion. All 754 AGG, 754 Cairo and
+735 minimal Linux Release checks have passing evidence after generated ELF
+permission repairs and reruns. Five dispatch/callback/allocation/frame/invalid
+checks pass restricted heap/global ASan+UBSan (stack ASan/LeakSanitizer disabled).
+JIT_DISPATCH.md records counted/legacy URLs, sink errors, nested GC, exact native/
+interpreter counters, pool isolation, bounded recursion/recovery, breakpoint/cache
+selection, implicit-End blocks and shared instruction limits. Tests use local
+recording sinks without network/navigation. Full Flash compatibility, remaining
+structured native Actions and real foreign-platform acceptance remain open.
 
 v0.367 adds native WaitForFrame/WaitForFrame2 with counted-record conditional
 branches, shared availability conversion and uncharged successful early exits.

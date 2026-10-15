@@ -67,6 +67,8 @@ The compiler currently accepts:
   (v0.366; [contracts and checks](JIT_SCENE.md)).
 - WaitForFrame/WaitForFrame2 with counted-record branches and uncharged early exits
   (v0.367; [contracts and checks](JIT_WAIT_FRAMES.md)).
+- GetURL/GetURL2 and Call via shared host/frame dispatch; automatic stored frame entry
+  (v0.368; [contracts and checks](JIT_DISPATCH.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).
