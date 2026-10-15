@@ -1093,6 +1093,66 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 if (a.op == FVM_AVM1_ACTION_GET_PROPERTY)
                     stack.push_back(result);
             }
+            else if (a.op == FVM_AVM1_ACTION_START_DRAG)
+            { /* Decode only operands here; conversion, resolution and motion use shared C APIs. */
+                FVM_Result status = fvm_avm1_require_operands(c->swf_loaded, stack,
+                                                              FVM_AVM1_DRAG_FIXED_OPERANDS);
+                FVM_Object *start = 0;
+                if (status == FVM_OK)
+                    status = variable_receiver(c, self, &start);
+                if (status != FVM_OK)
+                    return status;
+                fvm_detail::vector<FVM_Value> target(FVM_AVM1_DRAG_ROOT_COUNT);
+                fvm_value_undefined(&target[FVM_AVM1_DRAG_TARGET_ROOT]);
+                /* [GC:] Target resolution precedes later collecting flag/bounds conversions. */
+                RootGuard target_roots(c, &target, 0, 0, &registers);
+                status = fvm_exec_resolve_clip(c, start, &stack.back(), 1,
+                    &target[FVM_AVM1_DRAG_TARGET_ROOT]);
+                if (status != FVM_OK)
+                    return status;
+                stack.pop_back();
+                FVM_Value numeric;
+                status = fvm_exec_to_number(c, 1, &stack.back(), &numeric);
+                if (status != FVM_OK)
+                    return status;
+                bool center = numeric.number == FVM_AVM1_DRAG_ENABLED_INTEGER;
+                stack.pop_back();
+                status = fvm_exec_to_number(c, 1, &stack.back(), &numeric);
+                if (status != FVM_OK)
+                    return status;
+                bool constrained = numeric.number == FVM_AVM1_DRAG_ENABLED_INTEGER;
+                stack.pop_back();
+                FVM_ExecutionDragBounds bounds;
+                if (constrained)
+                {
+                    status = fvm_avm1_require_operands(c->swf_loaded, stack,
+                                                        FVM_AVM1_DRAG_BOUND_OPERANDS);
+                    if (status != FVM_OK)
+                        return status;
+                    double *limits[] = {&bounds.y_max, &bounds.x_max, &bounds.y_min, &bounds.x_min};
+                    for (unsigned int i = 0; i < FVM_AVM1_DRAG_BOUND_OPERANDS; ++i)
+                    {
+                        status = fvm_exec_to_number(c, 0, &stack.back(), &numeric);
+                        if (status != FVM_OK)
+                            return status;
+                        *limits[i] = numeric.number;
+                        stack.pop_back();
+                    }
+                }
+                const FVM_Value &clip = target[FVM_AVM1_DRAG_TARGET_ROOT];
+                if (clip.type == FVM_VALUE_OBJECT)
+                {
+                    status = fvm_exec_drag_begin(c, clip.object, center, constrained ? &bounds : 0);
+                    if (status != FVM_OK)
+                        return status;
+                }
+            }
+            else if (a.op == FVM_AVM1_ACTION_END_DRAG)
+            {
+                FVM_Result status = fvm_exec_drag_end(c);
+                if (status != FVM_OK)
+                    return status;
+            }
             else if (a.op == FVM_AVM1_ACTION_CLONE_SPRITE)
             { /* The shared C request owns coercion, path resolution and native construction. */
                 FVM_Result status = fvm_avm1_require_operands(c->swf_loaded, stack,

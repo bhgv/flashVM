@@ -57,6 +57,10 @@
 #define FVM_AVM1_ACTION_REMOVE_SPRITE 0x25U
 /* Convert and deliver a trace value. */
 #define FVM_AVM1_ACTION_TRACE 0x26U
+/* Resolve a display target and begin optional centered/constrained dragging. */
+#define FVM_AVM1_ACTION_START_DRAG 0x27U
+/* Flush and end the current context-wide drag. */
+#define FVM_AVM1_ACTION_END_DRAG 0x28U
 /* Compare converted strings for ordering. */
 #define FVM_AVM1_ACTION_STRING_LESS 0x29U
 /* Raise the supplied ActionScript value. */

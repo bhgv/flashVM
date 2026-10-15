@@ -67,4 +67,10 @@
 #define FVM_AVM1_CLONE_SOURCE_OFFSET 0U /* Source relative to the first prepared operand. */
 #define FVM_AVM1_CLONE_NAME_OFFSET 1U /* New instance name. */
 #define FVM_AVM1_CLONE_DEPTH_OFFSET 2U /* Absolute display depth converted first. */
+/* StartDrag pops target, center flag and constraint flag, followed by optional limits. */
+#define FVM_AVM1_DRAG_FIXED_OPERANDS 3U /* Required control operands before optional bounds. */
+#define FVM_AVM1_DRAG_BOUND_OPERANDS 4U /* yMax/xMax/yMin/xMin are popped in that order. */
+#define FVM_AVM1_DRAG_ENABLED_INTEGER 1L /* Only Int32 value one enables encoded drag flags. */
+#define FVM_AVM1_DRAG_TARGET_ROOT 0U /* [GC:] Resolved instance through later flag/limit coercions. */
+#define FVM_AVM1_DRAG_ROOT_COUNT 1U /* [GC:] Complete adapter target temporary layout. */
 #endif

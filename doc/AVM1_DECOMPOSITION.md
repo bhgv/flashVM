@@ -165,3 +165,14 @@ or public ABI changes. See MOVIECLIP_CONSTRUCTION_DECOMPOSITION.md.
 
 Два помощника создания клипов вынесены по одному в файл без изменения алгоритма.
 Остальная декомпозиция и все стадии роудмапа остаются открытыми.
+
+### v0.326–0.329: shared pointer and drag execution
+
+Context pointer input, clip-local pointer projection and native begin/update/end
+operations now have explicit C interfaces. StartDrag/EndDrag adapters retain only
+operand preparation, encoded flag interpretation and selected-start handling;
+coercion, path resolution, geometry and rooted drag lifetime use shared services.
+See INPUT_POINTER.md, CLIP_POINTER.md, NATIVE_DRAG_SERVICE.md and AVM1_DRAG.md.
+
+Координаты и drag используют общий C-слой без байткода и стека; в цикле остаётся
+адаптация операндов. Полная совместимость и остальные стадии остаются открытыми.

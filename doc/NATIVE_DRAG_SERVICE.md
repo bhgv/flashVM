@@ -61,3 +61,9 @@ previous pointer, active state and restored root/native/update scopes.
 Проверены GC, исключения, вложенное обновление, вырожденный родитель и повтор
 после ошибки. Это C-слой: Action StartDrag/EndDrag и скриптовые методы ещё не
 подключены. Drop-target, полная точность twips и порядок событий остаются открытыми.
+
+### v0.329 follow-up / Продолжение
+
+StartDrag and EndDrag Action adapters now use this engine; see AVM1_DRAG.md.
+Script method registration and the listed full compatibility gaps remain open.
+Action-аdаптеры подключены в v0.329; скриптовые методы и остальные ограничения открыты.

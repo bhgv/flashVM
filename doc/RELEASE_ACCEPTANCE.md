@@ -759,3 +759,16 @@ Linux: все 642 проверки каждой сборки прошли с п�
 шести Cairo тестов после восстановления прав исполнения ELF. Пять проверок
 ограниченных ASan/UBSan и по четыре исходных SWF. Drag пока подключён из C и
 host input; Action/скриптовые адаптеры ещё открыты. Все стадии открыты.
+
+## v0.329 StartDrag / EndDrag
+
+Linux GCC/G++ 13.3 Release AGG and Cairo each pass 645/645 CTest checks directly.
+Three raw Action/coercion/GC/allocation checks pass in restricted heap/global
+ASan+UBSan (stack ASan and LeakSanitizer disabled). Four recovered original SWFs
+match exact stdout, exit zero and empty stderr in both profiles. Source Action
+references now cover 98/100 entries, with ToggleQuality/StopSounds absent;
+--require-all remains an expected failure. See AVM1_DRAG.md for supported scope.
+
+Linux: по 645/645 AGG/Cairo, три теста ограниченных ASan/UBSan и по четыре
+исходных SWF. Проверка ссылок на Action-ветки — 98/100, без заявления полной
+совместимости; все стадии открыты.
