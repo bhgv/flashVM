@@ -268,3 +268,8 @@ In v0.344, `fvm_exec_literal_count` extracts versioned count conversion as well.
 The adapter handles undefined rejection without consuming entry operands; it
 still owns encoded layout and stack publication. Преобразование счётчика,
 построение Array и построение Object теперь доступны через отдельные C-функции.
+
+In v0.345, NewObject count preparation delegates to `fvm_exec_constructor_count`,
+preserving its distinct host bound and loaded call-count semantics. The obsolete
+literal-limit alias leaves the bytecode header. См. NEW_OBJECT_NAMES.md;
+адаптер сохраняет порядок имени/счётчика и отвечает только за раскладку аргументов.

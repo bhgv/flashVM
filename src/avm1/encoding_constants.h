@@ -57,8 +57,6 @@
 #define FVM_AVM1_MAX_BLOCK_DEPTH 64U
 /* Maximum accepted encoded call argument count. */
 #define FVM_AVM1_MAX_CALL_ARGUMENTS 65535U
-/* Bound on materialized Array/Object literal entries. */
-#define FVM_AVM1_MAX_LITERAL_ENTRIES 65536UL
 /* Register slots prepared for a legacy DefineFunction body. */
 #define FVM_AVM1_LEGACY_REGISTER_COUNT 4U
 /* Largest Function2 register/count byte value. */

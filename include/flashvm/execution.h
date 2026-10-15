@@ -481,6 +481,12 @@ extern "C"
      * Actual counts above the method-service bound fail; errors preserve out. */
     FVM_API FVM_Result fvm_exec_argument_count(FVM_Context *, const FVM_Value *,
                                               size_t available, unsigned int *out);
+    /* Prepare named-constructor argument count without bytecode or stack access.
+     * Loaded SWFs share argument_count coercion/capping and its method-service bound.
+     * Hosts require an integral Number, sufficient values, and the distinct constructor bound.
+     * Errors preserve out. [GC:] Retains loaded coercible input through callbacks. */
+    FVM_API FVM_Result fvm_exec_constructor_count(FVM_Context *, const FVM_Value *,
+                                                 size_t available, unsigned int *out);
     /* Dispatch a resolved named binding, or the existing named fallback when absent.
      * found distinguishes an undefined binding from a missing name. The caller supplies
      * scope resolution and receiver; [GC:] values remain retained across calls/construction.

@@ -50,3 +50,36 @@ external SWFs have exact matching stdout and empty stderr in both profiles.
 Seven selected ASan/UBSan fixtures pass with heap/global instrumentation;
 stack and leak checks are unavailable in this environment. No other-platform
 or generated-machine-code execution is claimed.
+
+## v0.345: constructor count preparation / Подготовка числа аргументов
+
+`fvm_exec_constructor_count` now supplies NewObject count preparation as an
+explicit C89 service. It accepts a count value, number of available arguments
+and output count, without reading bytecode or a stack. Name conversion remains
+before count conversion in the interpreter. In an unloaded host, the count must
+be an integral Number, fit available arguments and not exceed
+`FVM_EXEC_MAX_CONSTRUCTOR_ARGUMENTS` (65536). Invalid host counts return
+`FVM_ERROR`. Loaded SWFs delegate to `fvm_exec_argument_count`: AVM1 conversion,
+UInt32 wrapping and capping to available values precede the 65535 method bound.
+This preserves the deliberately distinct host and loaded policies.
+
+The loaded conversion roots its input through script callbacks; all failures
+preserve the output count. Host numeric validation allocates nothing. The obsolete
+literal-bound macro was removed from the bytecode encoding header: constructor
+limits now use the semantic public .h constant rather than a literal-layout name.
+
+В v0.345 подготовка числа аргументов NewObject вынесена в C-сервис без стека
+и пи-кода. Сохранены строгий host-предел 65536 и loaded-предел 65535 после
+преобразования UInt32 и ограничения доступными аргументами. Имя по-прежнему
+преобразуется первым. При ошибке выходной счётчик не меняется; вход удерживается
+через callbacks/GC. Host-проверка не выделяет память. Это декомпозиция существующей
+семантики, а не завершение интерпретатора или стадии JIT.
+
+Evidence: `execution_constructor_count` covers C89 host/SWF4–8, the two boundary
+policies, availability, signed/fractional/nonfinite inputs, wrapping, foreign values
+and invalid pointers. It also feeds 65536 prepared arguments into direct Array
+construction in a host context. `execution_constructor_count_callbacks` collects
+from script valueOf and checks exceptions/root restoration.
+`execution_constructor_count_allocation` walks loaded allocation failures and
+checks host validation with allocation disabled. Existing raw named-count and
+NewObject-name tests cover interpreter integration and coercion order.

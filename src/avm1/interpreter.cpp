@@ -1266,25 +1266,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     stack.back() = name;
                 }
                 unsigned int argc = 0;
-                if (c->swf_loaded)
-                {
-                    FVM_Result count_status = fvm_exec_argument_count(
-                        c, &stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS],
-                        stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS, &argc);
-                    if (count_status != FVM_OK)
-                        return count_status;
-                }
-                else
-                {
-                    const FVM_Value &count =
-                        stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS];
-                    if (count.type != FVM_VALUE_NUMBER ||
-                        !(count.number >= 0 && count.number <= FVM_AVM1_MAX_LITERAL_ENTRIES) ||
-                        count.number != std::floor(count.number) ||
-                        count.number > stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS)
-                        return FVM_ERROR;
-                    argc = (unsigned int)count.number;
-                }
+                FVM_Result count_status = fvm_exec_constructor_count(
+                    c, &stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS],
+                    stack.size() - FVM_AVM1_NEW_OBJECT_FIXED_OPERANDS, &argc);
+                if (count_status != FVM_OK)
+                    return count_status;
                 fvm_detail::vector<FVM_Value> args(argc);
                 for (unsigned int i = 0; i < argc; ++i)
                     args[i] = stack[stack.size() - FVM_AVM1_NEW_OBJECT_FIRST_ARGUMENT - i];

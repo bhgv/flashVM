@@ -2692,3 +2692,10 @@ signed rejection, NaN/fractions and the materialization bound. C89 cases plus
 collecting valueOf, exceptions, aliases and allocation-failure coverage are
 recorded in LITERAL_SERVICES.md. Чтение операндов и изменение стека остаются
 в интерпретаторе; этапы roadmap не закрыты.
+
+## v0.345: named-constructor count preparation
+
+C89 count preparation is shared with NewObject: host bound 65536, loaded UInt32
+conversion/capping and bound 65535. Boundary construction, callbacks/GC, errors
+and allocation failures are covered in NEW_OBJECT_NAMES.md. Сохранён порядок
+преобразования имени и счётчика; этапы roadmap остаются открытыми.
