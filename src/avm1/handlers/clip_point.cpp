@@ -6,6 +6,26 @@ namespace
 {
 /* Stored own property map; raw lookup never evaluates accessors or prototypes. */
 typedef fvm_detail::map<fvm_detail::string, FVM_Value> PointProperties;
+/* Reproduce loaded point input conversion: NaN to zero, saturation, then truncation to twips.
+ * Keep the bounded twip integer in double so C++98 needs no wider-than-long integer type. */
+double loaded_coordinate(double pixels)
+{
+    if (pixels != pixels)
+        return 0;
+    /* Clamp pixels first so even DBL_MAX and infinities never overflow the product. */
+    if (pixels >= FVM_CLIP_POINT_MAX_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL)
+        return FVM_CLIP_POINT_MAX_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+    if (pixels <= FVM_CLIP_POINT_MIN_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL)
+        return FVM_CLIP_POINT_MIN_TWIPS / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+    double twips = pixels * FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+    if (twips >= FVM_CLIP_POINT_MAX_TWIPS)
+        twips = FVM_CLIP_POINT_MAX_TWIPS;
+    else if (twips <= FVM_CLIP_POINT_MIN_TWIPS)
+        twips = FVM_CLIP_POINT_MIN_TWIPS;
+    else
+        twips = twips < 0 ? std::ceil(twips) : std::floor(twips);
+    return twips / FVM_CLIP_POINT_TWIPS_PER_PIXEL;
+}
 /* Preserve the strict host point-field lookup/coercion and finite-number validation. */
 FVM_Result coordinate(FVM_Context *c, FVM_Object *point, const char *name, double &out)
 {
@@ -47,11 +67,8 @@ extern "C" FVM_Result fvm_exec_clip_point(FVM_Context *c, FVM_Object *clip, int 
             if (own_x == target->properties.end() || own_y == target->properties.end() ||
                 own_x->second.type != FVM_VALUE_NUMBER || own_y->second.type != FVM_VALUE_NUMBER)
                 return FVM_OK;
-            x = own_x->second.number;
-            y = own_y->second.number;
-            double limit = std::numeric_limits<double>::max();
-            if (!(x >= -limit && x <= limit && y >= -limit && y <= limit))
-                return FVM_INVALID_ARGUMENT;
+            x = loaded_coordinate(own_x->second.number);
+            y = loaded_coordinate(own_y->second.number);
         }
         else
         {

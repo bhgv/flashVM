@@ -2597,3 +2597,15 @@ snapshot parity remain open. See AVM1_POINT_FIELDS.md; no stage is closed.
 Загруженные SWF используют собственные числовые поля точки, без getters и
 преобразования типов; неподходящие аргументы игнорируются. Хостовый режим
 сохранён. Точные twips, NaN/Infinity и старые правила регистра ещё открыты.
+
+### v0.335 Loaded point input representation
+
+Implemented: truncating/saturating signed 32-bit input twips and NaN/Infinity
+normalization for loaded point conversion, with host-double policy preserved.
+This replaces the preceding input-nonfinite limitation; full matrix/output twip
+arithmetic and Flash Player oracle comparison remain open. Constants use scoped
+macros. See AVM1_POINT_TWIPS.md; no roadmap stage is closed.
+
+Числовой вход точки теперь нормализуется в signed 32-bit twips, включая
+NaN/Infinity. Матрица и результат ещё не имеют полной fixed-point семантики;
+эталонные проверки Flash и остальные стадии остаются открытыми.

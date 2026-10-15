@@ -23,7 +23,8 @@ extern "C"
      * to local. Writes x then y; setter errors may leave x changed. Loaded SWFs read
      * only own numeric x/y fields, ignore invalid/missing fields and use an unchanged
      * point for singular inverse. Host mode retains field coercion and strict errors.
-     * Nonfinite coordinates remain rejected; exact twip conversion is not provided. */
+     * Loaded inputs truncate/saturate to signed 32-bit twips (NaN becomes zero).
+     * Matrix application still uses native double arithmetic, not full fixed-point parity. */
     FVM_API FVM_Result fvm_exec_clip_point(FVM_Context *, FVM_Object *clip, int reverse,
                                            const FVM_Value *point);
     /* Copy a native source clip's local matrix and color into destination atomically.

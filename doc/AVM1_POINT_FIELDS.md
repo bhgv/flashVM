@@ -44,3 +44,14 @@ restriction. No Flash Player, other platform or Cairo rerun is claimed here.
 ASan heap/global + UBSan. Отказы памяти проверены для host и всех SWF4–8.
 Эталонный Flash Player, другие платформы, Cairo, стек ASan и утечки в этом
 прогоне не заявляются.
+
+## v0.335 input representation follow-up
+
+Loaded numeric inputs now normalize NaN/Infinity and truncate/saturate to signed
+32-bit twips; the v0.334 nonfinite limitation above is historical. See
+AVM1_POINT_TWIPS.md. Matrix composition/application and output-twip arithmetic
+remain native-double operations, not full Flash fixed-point equivalence.
+
+В v0.335 NaN/Infinity входных числовых координат нормализуются, вход переводится
+в signed 32-bit twips. Ограничение v0.334 выше историческое; точная матричная
+арифметика и преобразование результата ещё открыты.
