@@ -55,6 +55,8 @@ The compiler currently accepts:
   (v0.359; [contracts and checks](JIT_LEGACY.md)).
 - Extends, ImplementsOp, InstanceOf and CastOp with shared class semantics
   (v0.360; [contracts and checks](JIT_CLASSES.md)).
+- GetProperty/SetProperty/TargetPath with shared scene and counted-path semantics
+  (v0.362; [contracts and checks](JIT_DISPLAY.md)).
 - End, Return, GetVariable, Pop, PushDuplicate and StackSwap.
 - SetVariable, DefineLocal/DefineLocal2, GetMember/SetMember and Delete/Delete2
   (v0.350; [contracts and checks](JIT_REFERENCES.md)).

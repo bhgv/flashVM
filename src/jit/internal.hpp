@@ -108,6 +108,10 @@ FVM_Result fvm_jit_member(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_call_method(FVM_JitInvocation *, unsigned int);
 /* Invoke a named function or constructor through shared lexical/target lookup. */
 FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
+/* Read/write indexed display properties through rooted shared scene semantics. */
+FVM_Result fvm_jit_display_property(FVM_JitInvocation *, unsigned int);
+/* Box an input and return its native counted timeline path when applicable. */
+FVM_Result fvm_jit_target_path(FVM_JitInvocation *, unsigned int);
 /* Establish inheritance using rooted constructor/prototype services. */
 FVM_Result fvm_jit_extends(FVM_JitInvocation *, unsigned int);
 /* Install versioned interface declarations with bounded operand consumption. */

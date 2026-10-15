@@ -1,7 +1,14 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.361
+# Условия окончательной приёмки / Final acceptance gates — v0.362
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.362 adds native GetProperty/SetProperty/TargetPath through shared scene services.
+All 736 AGG, 736 Cairo and 717 minimal Linux Release checks have passing evidence
+after generated ELF execute-permission repairs. Six display/class checks pass
+restricted heap/global ASan+UBSan (stack ASan/LSan disabled). JIT_DISPLAY.md records
+versioned targets, ordered collecting/throwing coercion, skipped writes, counted
+paths and allocation checks. Complete compatibility and all stages remain open.
 
 v0.361 adds an optional fail-closed platform encoder-emulation gate. The actual
 validate_platform.py --profile all --jit-emulator run passes 733 AGG, 733 Cairo

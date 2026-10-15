@@ -2843,3 +2843,11 @@ Failures and optimized Python cannot produce passing emulation evidence; five
 host-only orchestration tests cover failure states and stale-fixture isolation.
 PLATFORM_VALIDATION.md records usage and scope. Это инфраструктура стадий 8/9,
 а не реальный запуск полной VM на других CPU/ОС или завершение стадий.
+
+## v0.362: native display-property and path Actions
+
+GetProperty/SetProperty/TargetPath share rooted scene and counted-path services.
+JIT_DISPLAY.md records isolated host/SWF4–8 execution, target selection, ordered
+collecting/throwing coercion, skipped readonly/invalid writes, counted native paths
+and allocation failures. Остальные поля, полная семантика Flash и все стадии
+приёмки, включая реальные запуски других CPU/ОС, остаются открытыми.

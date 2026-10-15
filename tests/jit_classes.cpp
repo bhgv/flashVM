@@ -12,7 +12,7 @@ static FVM_Object *class_create(FVM_Context *c,const char *name)
     assert(fvm_function_create_avm1(c,empty,sizeof(empty),0,0,0,&object)==FVM_OK && fvm_gc_pin(c,object)==FVM_OK);
     FVM_Value value=class_value(object);assert(fvm_set_global(c,name,&value)==FVM_OK);return object;
 }
-static FVM_Value class_run(FVM_Context *c,const Program &p,FVM_Result expected=FVM_OK)
+static FVM_Value class_run(FVM_Context *c,const Program &p,FVM_Result expected=FVM_OK,FVM_Object *receiver=0)
 {
     FVM_Object *fn=0;FVM_JitCode *code=0;FVM_Value out;fvm_value_undefined(&out);
     assert(fvm_function_create_avm1(c,p.bytes.begin(),p.bytes.size(),0,0,0,&fn)==FVM_OK && fvm_gc_pin(c,fn)==FVM_OK);
@@ -20,7 +20,7 @@ static FVM_Value class_run(FVM_Context *c,const Program &p,FVM_Result expected=F
     assert(fvm_execution_set_mode(c,class_mode==2?FVM_EXECUTION_JIT:FVM_EXECUTION_MANUAL,0)==FVM_OK);
     if(class_mode==1)assert(fvm_function_set_body(c,fn,fvm_jit_body,code,0)==FVM_OK);
     unsigned long entries=c->execution_mode.stats.native_entries;FVM_GCRootFrame *roots=c->gc_frames;
-    assert(fvm_function_invoke(c,fn,0,0,0,&out)==expected);
+    assert(fvm_function_invoke(c,fn,receiver,0,0,&out)==expected);
     assert(c->execution_mode.stats.native_entries==entries+(class_mode!=0));
     assert(c->gc_frames==roots && !c->gc_native_depth && !c->script_depth && !code->active);
     if(expected==FVM_EXCEPTION)assert(fvm_exception_clear(c)==FVM_OK);

@@ -1,4 +1,4 @@
-Версия разработки: **0.361** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.362** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -33,6 +33,8 @@ Equals/Less и And/Or используют общие версионные пр�
 [контракты и проверки](doc/JIT_LEGACY.ru.md).
 Extends/Implements/InstanceOf/Cast используют общие сервисы с корнями GC;
 [контракты и проверки](doc/JIT_CLASSES.ru.md).
+GetProperty/SetProperty/TargetPath используют общие нативные сервисы сцены;
+[контракты и проверки](doc/JIT_DISPLAY.ru.md).
 
 Контрольный коммит зависимостей: `extern/` объединена с `external/`.
 Включены исходники и настройки Cairo 1.16.0, Pixman 0.38.4 и SQLite 3.50.4.
