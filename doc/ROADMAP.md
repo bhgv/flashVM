@@ -178,3 +178,11 @@ v0.353 adds ConstantPool and indexed Push to native execution, with captured
 activation snapshots, runtime branch-dependent selection and scoped nested-body
 restoration (JIT_POOLS.md). Все форматы Push представлены в нативном подмножестве;
 полная реализация инструкций, остальных подсистем и приёмка всех стадий ещё нужны.
+
+## v0.354: native method dispatch
+
+CallMethod/NewMethod use shared rooted AVM1 services, preserving count/name
+validation, ordered arguments, nullish-owner behavior and constructor semantics.
+JIT_METHODS.md records host/SWF4–8, explicit/automatic, GC, exception and
+allocation checks. Именованные вызовы, остальные инструкции и все стадии
+роудмапа, включая реальные запуски других платформ, остаются открытыми.

@@ -1,7 +1,13 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.353
+# Условия окончательной приёмки / Final acceptance gates — v0.354
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.354 adds native CallMethod/NewMethod via shared AVM1 dispatch. All 715 AGG,
+715 Cairo and 696 minimal Release checks have passing evidence after restoring
+generated ELF execute permissions and rebuilding the corrected method fixture.
+Both new tests pass restricted heap/global ASan+UBSan; stack ASan and LSan remain
+disabled. JIT_METHODS.md records scope. All nine stages remain open.
 
 v0.353 adds native ConstantPool and indexed Push with captured activation pools.
 Linux Release has passing evidence for all 713 AGG, 713 Cairo and 694 minimal

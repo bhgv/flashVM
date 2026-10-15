@@ -249,6 +249,9 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             action.calls.push_back(FVM_JitCall(
                 fvm_jit_safe<fvm_jit_declare_variable>, op == FVM_AVM1_ACTION_DEFINE_LOCAL
                     ? FVM_EXEC_DECLARE_INITIALIZED : FVM_EXEC_DECLARE_UNINITIALIZED));
+        else if (op == FVM_AVM1_ACTION_CALL_METHOD || op == FVM_AVM1_ACTION_NEW_METHOD)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_call_method>,
+                op == FVM_AVM1_ACTION_NEW_METHOD));
         else if (op == FVM_AVM1_ACTION_GET_MEMBER || op == FVM_AVM1_ACTION_SET_MEMBER)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_member>,
                 op == FVM_AVM1_ACTION_SET_MEMBER ? FVM_JIT_MEMBER_WRITE : FVM_JIT_MEMBER_READ));

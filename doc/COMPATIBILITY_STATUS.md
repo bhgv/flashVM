@@ -2780,3 +2780,11 @@ Host/SWF4–8 differential, branch/cache isolation, returned-string lifetime,
 allocation and malformed/bounded-input fixtures are in JIT_POOLS.md. Ten restricted
 ASan+UBSan checks pass. Other Actions, full Flash/reference equivalence and real
 foreign-target/platform acceptance remain open. Все стадии остаются открытыми.
+
+## v0.354: native method dispatch
+
+CallMethod/NewMethod use shared rooted AVM1 services, preserving count/name
+validation, ordered arguments, nullish-owner behavior and constructor semantics.
+JIT_METHODS.md records host/SWF4–8, explicit/automatic, GC, exception and
+allocation checks. Именованные вызовы, остальные инструкции и все стадии
+роудмапа, включая реальные запуски других платформ, остаются открытыми.
