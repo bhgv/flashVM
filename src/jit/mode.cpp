@@ -274,7 +274,8 @@ FVM_Result fvm_execution_try_root(FVM_Context *c, const void *source, size_t siz
                                   FVM_Object *receiver, bool *handled)
 {
     *handled = false;
-    if (fvm_execution_effective_mode(c) != FVM_EXECUTION_JIT)
+    if (fvm_execution_effective_mode(c) != FVM_EXECUTION_JIT ||
+        fvm_debug_has_breakpoints(c, fvm_detail::string()))
         return FVM_OK;
     FVM_JitCode *code = 0;
     FVM_Result status = fvm_execution_select_code(c, source, size, &code);

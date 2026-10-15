@@ -121,3 +121,6 @@ callback логгера либо stderr по умолчанию, а также �
 кеша, fallback и шагов повтора. Пример запуска приведён выше; он показывает оба
 режима и реальный сценарий native exception → interpreter replay → log/stats.
 Это работающая интеграция первого backend, а не завершение полного JIT.
+
+For architecture builds, breakpoint-driven interpretation, independent OS workers
+and multiple simultaneous VM instances, see [JIT_ARCHITECTURES.md](JIT_ARCHITECTURES.md).

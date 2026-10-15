@@ -49,7 +49,7 @@ void conditional(fvm_detail::vector<unsigned char> &bytes, fvm_detail::vector<Fi
 }
 } // namespace
 /* Preserve r12, maintain System V call alignment, and never unwind through executable pages. */
-FVM_Result fvm_jit_emit(FVM_JitCode &code)
+FVM_Result fvm_jit_emit_x64(FVM_JitCode &code)
 {
     fvm_detail::vector<unsigned char> bytes;
     fvm_detail::vector<Fixup> fixups;

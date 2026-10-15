@@ -1,7 +1,7 @@
 /* Native code pages execute successfully but reject writes in an isolated child process. */
 #include "../src/jit/internal.hpp"
 #include <cassert>
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
@@ -10,7 +10,7 @@
 int main()
 {
  if(!fvm_jit_available())return 0;
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
  const unsigned char body[]={0};FVM_JitCode *code=0;
  assert(fvm_jit_compile(body,sizeof(body),&code)==FVM_OK && code->memory && code->bytes>0 && !code->active);
  pid_t child=fork();assert(child>=0);

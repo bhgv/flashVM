@@ -4,6 +4,7 @@
 #include "flashvm/jit.h"
 #include "../avm1/handlers/support.hpp"
 #include "constants.h"
+#include "backend.hpp"
 #include "../../ports/code_port.h"
 struct FVM_JitInvocation;
 /* Each emitted call has a fixed semantic helper, never a bytecode-dispatch callback. */

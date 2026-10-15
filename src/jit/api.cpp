@@ -4,8 +4,8 @@
 /* Availability is limited to the implemented ABI, not merely the processor family. */
 extern "C" int fvm_jit_available(void)
 {
-    return fvm_port_code_supported() && sizeof(FVM_JitStep) == FVM_JIT_ADDRESS_BYTES &&
-           sizeof(void *) == FVM_JIT_ADDRESS_BYTES;
+    return fvm_port_code_supported() && sizeof(FVM_JitStep) == sizeof(void *) &&
+           fvm_jit_target_width(fvm_jit_host_target()) == sizeof(void *);
 }
 /* Publish a handle only after complete decoding, relocation and W^X sealing. */
 extern "C" FVM_Result fvm_jit_compile(const void *bytes, size_t size, FVM_JitCode **out)

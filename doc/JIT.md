@@ -1,3 +1,7 @@
+Current architecture and debugger extension: [JIT_ARCHITECTURES.md](JIT_ARCHITECTURES.md)
+(v0.348). The x86-64-only limitations below describe the initial v0.346 checkpoint;
+five additional Linux ABI encoders are now implemented with separate test evidence.
+
 # Native compiler and execution modes — v0.347 / JIT и режимы исполнения
 
 Runtime selection, switching and exception replay are available through

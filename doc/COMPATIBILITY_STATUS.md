@@ -2719,3 +2719,12 @@ logs checkpoints and preserves the original thrown graph/fault/budget after
 retry success, a different exception or OOM. EXECUTION_MODES.md records contracts,
 executable cases, duplicated-effect semantics and backend/profile limitations.
 Режимы и диагностика реализованы для первого backend; полный JIT остаётся открытым.
+
+Контрольная точка v0.348: добавлены Linux ABI encoders x86, ARMv7 A32, ARM64,
+RV32I и RV64I, а также исключение тел с breakpoint из JIT, примеры workers и
+нескольких VM. См. JIT_ARCHITECTURES.md. Новые ISA проверены в Unicorn; полные
+сборки/запуски VM на чужих CPU и ОС не проверены. Стадии 8/9 остаются открытыми.
+
+v0.348 adds five Linux machine encoders and interpreter-only breakpoint bodies,
+plus worker/multiple-VM examples. New ISA evidence is synthetic-helper emulator
+execution, not full foreign-CPU/OS acceptance; stages 8/9 remain open.

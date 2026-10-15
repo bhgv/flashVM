@@ -54,4 +54,21 @@
     0U /* [GC:] Original thrown value while retry clears pending state. */
 #define FVM_JIT_REPLAY_ROOT_COUNT 1U /* [GC:] Complete replay preservation layout. */
 #define FVM_JIT_LOG_LABEL_BYTES 256U /* Maximum default diagnostic label output. */
+/* Architecture widths, PC rules and long-branch relocation fields. */
+#define FVM_JIT_ARM_MIN_ARCH 7U      /* A32 MOVW/MOVT and BLX backend minimum architecture. */
+#define FVM_JIT_POINTER32_BITS 32U   /* Linux ILP32 address width. */
+#define FVM_JIT_POINTER64_BITS 64U   /* Linux LP64 address width. */
+#define FVM_JIT_POINTER32_BYTES 4U   /* ILP32 address encoding size. */
+#define FVM_JIT_POINTER64_BYTES 8U   /* LP64 address encoding size. */
+#define FVM_JIT_ARM_PC_BIAS 8U       /* A32 branch PC points two instructions ahead. */
+#define FVM_JIT_INSTRUCTION_SHIFT 2U /* Aligned instructions occupy four bytes. */
+#define FVM_JIT_ARM_BRANCH_MASK 0x00ffffffUL   /* A32 signed imm24 field. */
+#define FVM_JIT_ARM64_BRANCH_MASK 0x03ffffffUL /* A64 signed imm26 field. */
+#define FVM_JIT_U32_MASK 0xffffffffUL          /* Restrict relocations to modulo 2^32. */
+#define FVM_JIT_RV_ROUND 0x800UL               /* Round high bits around signed low imm12. */
+#define FVM_JIT_RV_HIGH_MASK 0xfffff000UL      /* AUIPC/LUI high immediate field. */
+#define FVM_JIT_RV_LOW_MASK 0xfffUL            /* Signed I-type low immediate field. */
+#define FVM_JIT_RV_IMMEDIATE_SHIFT 20U         /* I-type immediate bit position. */
+#define FVM_JIT_RV_AUIPC_T0 0x00000297UL       /* PC-relative high-address load. */
+#define FVM_JIT_RV_JALR_T0 0x00028067UL        /* Indirect branch without updating RA. */
 #endif

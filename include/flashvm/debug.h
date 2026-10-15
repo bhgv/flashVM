@@ -11,6 +11,27 @@
 extern "C"
 {
 #endif
+    /* Borrowed location valid only during the synchronous interpreter breakpoint callback. */
+    typedef struct FVM_DebugBreakpoint
+    {
+        const char *function; /* Function name; empty for top-level actions. */
+        const char *source;   /* Mapped source name, possibly empty. */
+        unsigned long offset; /* Action offset within the current body. */
+        unsigned long line;   /* Mapped source line, or zero. */
+    } FVM_DebugBreakpoint;
+    /* Return OK to resume, another status to stop. Do not reenter, collect or destroy the VM.
+     * Callbacks may set/remove breakpoints and change execution mode on the owning thread. */
+    typedef FVM_Result (*FVM_DebugBreakpointHandler)(FVM_Context *, const FVM_DebugBreakpoint *,
+                                                     void *);
+    /* Set/remove an exact bytecode offset. Any breakpoint forces the named body's next entry
+     * through the interpreter, including explicitly attached JIT bodies. Active native frames
+     * finish unchanged; no in-place deoptimization. Empty function selects top-level blocks.
+     * Function names identify all same-named bodies, not a unique function object. */
+    FVM_API FVM_Result fvm_debug_set_breakpoint(FVM_Context *, const char *function,
+                                                unsigned long offset, int enabled);
+    /* Install a synchronous debugger host callback, or null to clear it; userdata is borrowed. */
+    FVM_API FVM_Result fvm_debug_set_breakpoint_handler(FVM_Context *, FVM_DebugBreakpointHandler,
+                                                        void *);
     /* Source mapping supplied by the embedding application; AVM1 updates offset.
        Unknown source/line is empty/zero. Copied snapshots contain no VM pointers. */
     /* Update debug location. */
@@ -127,9 +148,11 @@ extern "C"
     /* Implement debug script function at for this subsystem. */
     FVM_API FVM_Result fvm_debug_script_function_at(FVM_Context *, size_t, const char **);
     /* Return full borrowed registry names; views expire on registry mutation or destruction. */
-    FVM_API FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *, size_t, const char **, size_t *);
+    FVM_API FVM_Result fvm_debug_native_function_at_bytes(FVM_Context *, size_t, const char **,
+                                                          size_t *);
     /* Return the counted script name using the same bounded registry snapshot order. */
-    FVM_API FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *, size_t, const char **, size_t *);
+    FVM_API FVM_Result fvm_debug_script_function_at_bytes(FVM_Context *, size_t, const char **,
+                                                          size_t *);
 #ifdef __cplusplus
 }
 #endif

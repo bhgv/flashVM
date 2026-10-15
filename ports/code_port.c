@@ -1,9 +1,9 @@
-/* FlashVM: Linux x86-64 W^X executable mappings; other targets fail explicitly. */
+/* FlashVM: Linux W^X executable mappings with instruction-cache synchronization. */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* Request MAP_ANONYMOUS from the platform headers. */
 #endif
 #include "code_port.h"
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
@@ -12,8 +12,13 @@
 /* No backend is inferred from pointer width alone. */
 int fvm_port_code_supported(void)
 {
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__) || defined(__arm__) ||          \
+                          defined(__aarch64__) || defined(__riscv))
     return 1;
+#else
+    return 0;
+#endif
 #else
     return 0;
 #endif
@@ -21,7 +26,7 @@ int fvm_port_code_supported(void)
 /* Never map RWX or retain writable aliases after sealing the instruction stream. */
 FVM_Result fvm_port_code_create(const void *bytes, size_t size, void **out, size_t *mapped)
 {
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
     long page;
     size_t length, padding;
     void *memory;
@@ -43,6 +48,13 @@ FVM_Result fvm_port_code_create(const void *bytes, size_t size, void **out, size
         munmap(memory, length);
         return FVM_UNSUPPORTED;
     }
+#if defined(__GNUC__)
+    /* Publish only after the architecture/compiler cache synchronization has completed. */
+    __builtin___clear_cache((char *)memory, (char *)memory + size);
+#else
+    munmap(memory, length);
+    return FVM_UNSUPPORTED;
+#endif
     *out = memory;
     *mapped = length;
     return FVM_OK;
@@ -57,7 +69,7 @@ FVM_Result fvm_port_code_create(const void *bytes, size_t size, void **out, size
 /* The caller guarantees no active native frame can return into this mapping. */
 void fvm_port_code_release(void *memory, size_t mapped)
 {
-#if defined(__linux__) && defined(__x86_64__)
+#if defined(__linux__)
     if (memory && mapped)
         munmap(memory, mapped);
 #else

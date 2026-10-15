@@ -2,6 +2,10 @@
 #ifndef FVM_EXECUTION_MODE_INTERNAL_HPP
 #define FVM_EXECUTION_MODE_INTERNAL_HPP /* Internal runtime policy interface guard. */
 #include "../core/runtime.hpp"
+/* Query whether an entire named body must enter the interpreter for breakpoint support. */
+bool fvm_debug_has_breakpoints(FVM_Context *, const fvm_detail::string &);
+/* Dispatch only from the interpreter, after normal source mapping/checkpoint accounting. */
+FVM_Result fvm_debug_breakpoint_poll(FVM_Context *);
 /* Diagnostic replay overrides the requested policy until all retry calls return. */
 FVM_ExecutionMode fvm_execution_effective_mode(FVM_Context *);
 /* Find/compile an automatic body; null code means safe interpreter fallback. */

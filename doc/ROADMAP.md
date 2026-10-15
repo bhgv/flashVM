@@ -138,3 +138,12 @@ v0.347 adds user-requested runtime mode selection/switching and opt-in interpret
 exception replay with logs/statistics. See EXECUTION_MODES.md. Active native
 frames are not deoptimized in place; replay is not state rollback. Full native
 coverage and roadmap acceptance remain open.
+
+Контрольная точка v0.348: добавлены Linux ABI encoders x86, ARMv7 A32, ARM64,
+RV32I и RV64I, а также исключение тел с breakpoint из JIT, примеры workers и
+нескольких VM. См. JIT_ARCHITECTURES.md. Новые ISA проверены в Unicorn; полные
+сборки/запуски VM на чужих CPU и ОС не проверены. Стадии 8/9 остаются открытыми.
+
+v0.348 adds five Linux machine encoders and interpreter-only breakpoint bodies,
+plus worker/multiple-VM examples. New ISA evidence is synthetic-helper emulator
+execution, not full foreign-CPU/OS acceptance; stages 8/9 remain open.

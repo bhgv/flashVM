@@ -1,4 +1,4 @@
-Версия разработки: **0.347** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.348** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -221,8 +221,12 @@ Loaded numeric text and strict NaN / Числовой текст и строги
 
 Named uppercase constants / Смысловые макросы: [header map and evidence](doc/SEMANTIC_CONSTANTS.md).
 
-В v0.347 добавлен явный экспериментальный JIT Linux x86-64.
+В v0.348 добавлен явный экспериментальный JIT Linux x86-64.
 [Сборка и запуск примера интерпретатор/JIT](doc/JIT.md); полный JIT остаётся открытым.
 
 Режимы интерпретации/JIT при вызове, переключение во время исполнения и
 диагностический повтор после исключения: [API и пример](doc/EXECUTION_MODES.md).
+
+Multi-architecture JIT, breakpoints, threads and multiple VM examples / JIT для разных CPU, отладка, потоки и несколько VM: [JIT_ARCHITECTURES.md](doc/JIT_ARCHITECTURES.md).
+
+Подробное руководство: [JIT, отладка, потоки и несколько VM](doc/JIT_ARCHITECTURES.ru.md).

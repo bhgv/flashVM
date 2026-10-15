@@ -393,6 +393,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 (steps & FVM_AVM1_POLL_INTERVAL_MASK) == 1UL ? FVM_EXEC_POLL : 0);
             if (checkpoint != FVM_OK)
                 return checkpoint;
+            FVM_Result breakpoint = fvm_debug_breakpoint_poll(c);
+            if (breakpoint != FVM_OK)
+                return breakpoint;
             if (a.op == FVM_AVM1_ACTION_END)
                 return FVM_OK;
             if (a.op == FVM_AVM1_ACTION_RETURN)

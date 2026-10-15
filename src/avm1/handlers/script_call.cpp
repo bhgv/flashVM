@@ -432,7 +432,9 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 c->lexical_scopes.pop_back();
             }
         } scope(c);
-        FVM_ExecutionMode mode = fvm_execution_effective_mode(c);
+        FVM_ExecutionMode mode = fvm_debug_has_breakpoints(c, c->debug_function)
+                                     ? FVM_EXECUTION_INTERPRETER
+                                     : fvm_execution_effective_mode(c);
         if (mode == FVM_EXECUTION_INTERPRETER && native_entry.callback == fvm_jit_body)
             native_entry = FVM_ScriptBodyEntry();
         if (mode == FVM_EXECUTION_JIT && !native_entry.callback)
