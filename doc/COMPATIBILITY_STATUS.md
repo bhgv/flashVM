@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/3/7: removed target selection | Проверено для сценариев v0.316 | SetTarget/2 filter detached bases/descendants; live sibling paths, host/SWF4–8 and unchanged selection on OOM. AVM1_REMOVED_TARGET_SELECTION.md. Full unload/scope policy open. |
 | 3/6/7: removed native AVM1 ancestry | Проверено для сценариев v0.315 | Retained parent/root, absolute paths, target fallback, GC, channel remapping and atomic OOM; MOVIECLIP_REMOVED_ANCESTRY.md. Unload/lockroot/full lifetime open. |
 | 2/3/7: RemoveSprite native dispatch | Проверено для сценариев v0.314 | Shared explicit C89 target removal; host/SWF4–8, GC/throws/OOM, activation target fallback. AVM1_REMOVE_SPRITE.md. Retained native ancestry added v0.315; unload and complete display lifetime open. |
 | 3/7: dynamic native removal policy | Проверено для сценариев v0.313 | C89 explicit-object service, intrinsic depth/ancestry, host/SWF4–8 and OOM. DYNAMIC_CLIP_REMOVAL_SERVICE.md. RemoveSprite dispatch/path/unload policy remains open. |

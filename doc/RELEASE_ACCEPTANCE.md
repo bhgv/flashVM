@@ -591,3 +591,10 @@ Loaded removal/replacement commits a historical parent edge alongside physical
 detachment. Intrinsic parent/root/path reads share a versioned helper. Host behavior
 stays parentless. GC, channel remapping and allocation checks are documented in
 MOVIECLIP_REMOVED_ANCESTRY.md. All stages and full unload/lifetime policy stay open.
+
+### v0.316 — removed target selection / Выбор удалённой цели
+
+The shared loaded selection service filters detached native bases/descendants
+before publishing a target. Host behavior and initial activation construction
+remain unchanged. Raw activation probes and allocation checks are recorded in
+AVM1_REMOVED_TARGET_SELECTION.md. Full lifetime policy and all stages stay open.

@@ -1,6 +1,7 @@
 /* FlashVM: select target semantics for C callers and generated code. */
 #include "support.hpp"
 #include "execution_roots.h"
+#include "../../standard/movieclip_scene.hpp"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *input)
 {
@@ -33,6 +34,15 @@ extern "C" FVM_Result fvm_exec_select_target(FVM_Context *c, const FVM_Value *in
             if (status != FVM_OK)
                 return status;
             if (target && target->resource_kind != FVM_RESOURCE_MOVIECLIP)
+                target = 0;
+        }
+        if (c->swf_loaded && target)
+        {
+            bool removed = false;
+            status = fvm_movieclip_scene_removed(c, target, &removed);
+            if (status != FVM_OK)
+                return status;
+            if (removed)
                 target = 0;
         }
         /* [GC:] Adopt the selected clip before operand roots are released. */
