@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/3/7/8: Unicode legacy display paths | Проверено для сценариев v0.378 | SWF4–6 Flash unit folding for child/property paths; counted NUL/surrogates, collecting own/inherited getters, OOM and interpreter/native targets; MOVIECLIP_UNICODE_PATHS.md / .ru.md. Duplicate-name/full player semantics remain open. |
 | 1/7: large loaded sorting | Проверено для сценариев v0.377 | Native/borrowed sort/sortOn above 65536, charged partial captures/reversal/index output, permutations/indices, budget and OOM/GC/retry; ARRAY_LOADED_LARGE_SORT.md / .ru.md. Host limits and full Flash semantics remain open. |
 | 1/7: large loaded generic mutations | Проверено для сценариев v0.376 | shift/unshift/reverse/splice above 65536 use shared budgets, with native/borrowed success, prototype accessor bypass and OOM/GC/retry; ARRAY_LOADED_LARGE_MUTATION.md / .ru.md. Host/sort bounds and full conformance remain open. |
 | 1/7: negative loaded slice | Проверено для сценариев v0.375 | SWF4–8 native/borrowed signed ranges, dense raw own copy, coercion mutations, source retention, budgets and allocation/GC/retry; ARRAY_NEGATIVE_SLICE.md / .ru.md. Signed overflow and result length above Int32 maximum remain open. |
@@ -2975,3 +2976,11 @@ global ASan+UBSan checks pass: both new large-sort checks, legacy allocation,
 comparator, snapshot and no-op checks. Stack ASan and LeakSanitizer remain
 disabled. The revised scoped constant header passes strict C89 syntax checking.
 Original external SWF traces were not rerun; no new external oracle pass is claimed.
+
+Validation v0.378: all 781 AGG / 781 Cairo / 762 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and failed-test
+reruns (two per profile). Seven restricted heap/global ASan+UBSan checks pass:
+four new Unicode path/target checks plus existing resolver, JIT target and point
+case checks. Stack ASan and LeakSanitizer remain disabled. Both revised scoped
+constant headers pass strict C89 syntax checking. No new external SWF oracle
+or foreign-OS runtime acceptance is claimed.

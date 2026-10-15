@@ -40,21 +40,6 @@ FVM_Result parent(FVM_Context *c, FVM_Object *clip, FVM_Object *&out)
         return FVM_OK;
     return fvm_movieclip_avm1_parent(c, clip, &out);
 }
-/* Fold only ASCII for the verified SWF 4–6 path-name subset. */
-unsigned char lower(unsigned char value)
-{
-    return value >= 'A' && value <= 'Z' ? (unsigned char)(value + ('a' - 'A')) : value;
-}
-/* Compare complete counted ASCII names independently from the host locale. */
-bool ascii_equal(const fvm_detail::string &a, const fvm_detail::string &b)
-{
-    if (a.size() != b.size())
-        return false;
-    for (size_t i = 0; i < a.size(); ++i)
-        if (lower((unsigned char)a[i]) != lower((unsigned char)b[i]))
-            return false;
-    return true;
-}
 /* Find the existing property spelling so accessor/method dispatch retains its owner contract. */
 template <class T>
 bool key(fvm_detail::map<fvm_detail::string, T> &entries, const fvm_detail::string &name,
@@ -69,7 +54,7 @@ bool key(fvm_detail::map<fvm_detail::string, T> &entries, const fvm_detail::stri
     }
     for (typename fvm_detail::map<fvm_detail::string, T>::iterator i = entries.begin();
          i != entries.end(); ++i)
-        if (ascii_equal(i->first, name))
+        if (fvm_avm1_folded_name_equal(i->first, name))
         {
             out = i->first;
             return true;
@@ -154,7 +139,7 @@ FVM_Result child(FVM_Object *receiver, const fvm_detail::string &name, bool sens
             match = order == 0;
         }
         else
-            match = ascii_equal(fvm_detail::string(stored->second.string,
+            match = fvm_avm1_folded_name_equal(fvm_detail::string(stored->second.string,
                                                    fvm_string_size(stored->second)), name);
         if (match)
         {
@@ -247,11 +232,6 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
         fvm_detail::string text(path.string, fvm_string_size(path));
         bool modern = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5;
         bool sensitive = !c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7;
-        /* Historical non-ASCII case tables are a separate unresolved compatibility boundary. */
-        if (!sensitive)
-            for (size_t i = 0; i < text.size(); ++i)
-                if ((unsigned char)text[i] > FVM_MOVIECLIP_PATH_ASCII_MAX)
-                    return FVM_UNSUPPORTED;
         size_t at = 0;
         bool first = true, slash = false;
         FVM_Object *cursor = start;
@@ -327,13 +307,13 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                 }
                 else if (first && modern &&
                          (sensitive ? name == fvm_detail::string("_root")
-                                    : ascii_equal(name, "_root")))
+                                    : fvm_avm1_folded_name_equal(name, "_root")))
                 {
                     value.type = FVM_VALUE_OBJECT;
                     value.object = root;
                 }
                 else if (first && (sensitive ? name == fvm_detail::string("_level0")
-                                             : ascii_equal(name, "_level0")))
+                                             : fvm_avm1_folded_name_equal(name, "_level0")))
                 {
                     status = fvm_get_global(c, "_level0", &value);
                     if (status == FVM_OK && value.type == FVM_VALUE_UNDEFINED)

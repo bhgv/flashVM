@@ -1,8 +1,67 @@
-/* FlashVM: shared version/case recognition for implicit scope namespace keywords. */
+/* FlashVM: shared Flash case comparison and versioned implicit scope keywords. */
 #include "scope_keywords.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../../external/flash_case/case_table.hpp"
+namespace
+{
+/* Fold one UTF-16 unit through the same pinned table as loaded String casing. */
+unsigned long lower_unit(unsigned long unit)
+{
+    size_t first = 0, last = sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
+    while (first < last)
+    {
+        size_t middle = first + (last - first) / 2;
+        if (fvm_flash_lowercase[middle][FVM_SCOPE_CASE_SOURCE_COLUMN] < unit)
+            first = middle + 1;
+        else
+            last = middle;
+    }
+    if (first < sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]) &&
+        fvm_flash_lowercase[first][FVM_SCOPE_CASE_SOURCE_COLUMN] == unit)
+        return fvm_flash_lowercase[first][FVM_SCOPE_CASE_RESULT_COLUMN];
+    return unit;
+}
+}
+/* Compare counted names by individually folded UTF-16 units without allocating or invoking script. */
+bool fvm_avm1_folded_name_equal(const fvm_detail::string &left, const fvm_detail::string &right)
+{
+    const char *text[FVM_SCOPE_NAME_OPERAND_COUNT] = {left.data(), right.data()};
+    size_t length[FVM_SCOPE_NAME_OPERAND_COUNT] = {left.size(), right.size()};
+    size_t offset[FVM_SCOPE_NAME_OPERAND_COUNT] = {0, 0};
+    unsigned long pending[FVM_SCOPE_NAME_OPERAND_COUNT] = {0, 0};
+    for (;;)
+    {
+        unsigned long unit[FVM_SCOPE_NAME_OPERAND_COUNT] = {0, 0};
+        bool end[FVM_SCOPE_NAME_OPERAND_COUNT];
+        for (unsigned int i = 0; i < FVM_SCOPE_NAME_OPERAND_COUNT; ++i)
+        {
+            end[i] = !pending[i] && offset[i] == length[i];
+            if (end[i])
+                continue;
+            if (pending[i])
+            {
+                unit[i] = pending[i];
+                pending[i] = 0;
+            }
+            else
+            {
+                if (fvm_string_read(text[i], length[i], offset[i], unit[i]) != FVM_OK)
+                    return false;
+                if (unit[i] >= FVM_UTF16_SUPPLEMENTARY_OFFSET)
+                {
+                    unit[i] -= FVM_UTF16_SUPPLEMENTARY_OFFSET;
+                    pending[i] = FVM_UTF16_LOW_SURROGATE_BASE + (unit[i] & FVM_UTF16_PAIR_PAYLOAD_MASK);
+                    unit[i] = FVM_UTF16_HIGH_SURROGATE_BASE + (unit[i] >> FVM_UTF16_PAIR_PAYLOAD_BITS);
+                }
+            }
+        }
+        if (end[0] || end[1])
+            return end[0] && end[1];
+        if (lower_unit(unit[0]) != lower_unit(unit[1]))
+            return false;
+    }
+}
 /* Match counted UCS2 keyword units using the pinned Flash lowercase map when needed. */
 bool fvm_avm1_keyword_name(const fvm_detail::string &name, const char *expected, size_t units,
                            bool sensitive)
@@ -15,18 +74,7 @@ bool fvm_avm1_keyword_name(const fvm_detail::string &name, const char *expected,
         unsigned long unit = 0;
         if (fvm_string_read(name.data(), name.size(), offset, unit) != FVM_OK)
             return false;
-        size_t first = 0, last = sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
-        while (first < last)
-        {
-            size_t middle = first + (last - first) / 2;
-            if (fvm_flash_lowercase[middle][FVM_SCOPE_KEYWORD_CASE_SOURCE_COLUMN] < unit)
-                first = middle + 1;
-            else
-                last = middle;
-        }
-        if (first < sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]) &&
-            fvm_flash_lowercase[first][FVM_SCOPE_KEYWORD_CASE_SOURCE_COLUMN] == unit)
-            unit = fvm_flash_lowercase[first][FVM_SCOPE_KEYWORD_CASE_RESULT_COLUMN];
+        unit = lower_unit(unit);
         if (unit != (unsigned char)expected[i])
             return false;
     }

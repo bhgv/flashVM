@@ -17,8 +17,10 @@
 #define FVM_SCOPE_PATH_ROOT 1U                  /* Native root reference, loaded SWF5+. */
 #define FVM_SCOPE_PATH_PARENT 2U                /* Native parent reference, loaded SWF5+. */
 #define FVM_SCOPE_PATH_GLOBAL 3U                /* Context namespace reference, loaded SWF6+. */
-#define FVM_SCOPE_KEYWORD_CASE_SOURCE_COLUMN 0U /* Original unit in pinned Flash lowercase map. */
-#define FVM_SCOPE_KEYWORD_CASE_RESULT_COLUMN                                                       \
+#define FVM_SCOPE_CASE_SOURCE_COLUMN 0U /* Original unit in pinned Flash lowercase map. */
+#define FVM_SCOPE_CASE_RESULT_COLUMN                                                       \
     1U /* Lowercase unit in pinned Flash lowercase map.                                            \
         */
+/* Two counted names participate in allocation-free folded comparison. */
+#define FVM_SCOPE_NAME_OPERAND_COUNT 2U
 #endif

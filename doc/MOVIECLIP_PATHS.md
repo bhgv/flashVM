@@ -61,3 +61,7 @@ avm1_frame_call additionally checks child/absolute/parent frame calls and counte
 prefixes without moving either playhead. All 273 core tests in AGG/Cairo and the
 additional AGG runner test pass; three focused tests pass in each portable and
 restricted ASan/UBSan profile. No roadmap stage is closed by these results.
+
+The v0.111 ASCII-only restriction is superseded in v0.378 by shared pinned
+Flash unit folding: [EN](MOVIECLIP_UNICODE_PATHS.md) / [RU](MOVIECLIP_UNICODE_PATHS.ru.md).
+Ограничение ASCII из v0.111 снято в v0.378; актуальные границы описаны по ссылкам.

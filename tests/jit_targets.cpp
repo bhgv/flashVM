@@ -40,7 +40,7 @@ static void target_literal(Program &p,const char *path)
 }
 static void target_finish(Program &p)
 {p.number(0);p.text("probe");p.op(0x3d);p.finish();}
-#ifndef FVM_TARGET_FIXTURE_ONLY
+#if !defined(FVM_TARGET_FIXTURE_ONLY) || defined(FVM_TARGET_COMPARE_FIXTURE)
 static void target_compare(FVM_Context *c,FVM_Object *root,const Program &p,FVM_Object *selected,
                            FVM_Result expected=FVM_OK,FVM_Object *coercion=0)
 {
@@ -67,6 +67,8 @@ static void target_compare(FVM_Context *c,FVM_Object *root,const Program &p,FVM_
     assert(fvm_execution_set_mode(c,FVM_EXECUTION_MANUAL,0)==FVM_OK);
     assert(fvm_function_set_body(c,fn,0,0,0)==FVM_OK && fvm_jit_destroy(code)==FVM_OK);
 }
+#endif
+#ifndef FVM_TARGET_FIXTURE_ONLY
 int main()
 {
     if(!fvm_jit_available())return 0;

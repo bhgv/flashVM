@@ -395,3 +395,18 @@ global ASan+UBSan checks pass: both new large-sort checks, legacy allocation,
 comparator, snapshot and no-op checks. Stack ASan and LeakSanitizer remain
 disabled. The revised scoped constant header passes strict C89 syntax checking.
 Original external SWF traces were not rerun; no new external oracle pass is claimed.
+
+
+v0.378: SWF4–6 display paths accept non-ASCII names through allocation-free
+Flash UTF-16-unit lowercase comparison; SWF7–8/host remain sensitive. Child/alias
+lookup, counted NUL/surrogates, collecting script getters, OOM/retry and native/
+interpreted target selection are covered. [EN](MOVIECLIP_UNICODE_PATHS.md) /
+[RU](MOVIECLIP_UNICODE_PATHS.ru.md). Все стадии остаются открытыми.
+
+Validation v0.378: all 781 AGG / 781 Cairo / 762 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and failed-test
+reruns (two per profile). Seven restricted heap/global ASan+UBSan checks pass:
+four new Unicode path/target checks plus existing resolver, JIT target and point
+case checks. Stack ASan and LeakSanitizer remain disabled. Both revised scoped
+constant headers pass strict C89 syntax checking. No new external SWF oracle
+or foreign-OS runtime acceptance is claimed.

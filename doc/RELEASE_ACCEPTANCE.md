@@ -1,7 +1,24 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.377
+# Условия окончательной приёмки / Final acceptance gates — v0.378
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.378 replaces the SWF4–6 display-path non-ASCII rejection with shared pinned
+Flash UTF-16-unit name folding. Children and fallback properties/accessors retain
+counted NUL/surrogates and actual spelling; SWF7–8/host stay sensitive. Keyword
+folding reuses the same lookup. Real collecting own/inherited getters retain a
+temporary intermediate receiver through success, exceptions and errors. OOM/retry,
+allocation-free comparison and interpreted/explicit/automatic native target
+selection are covered, including a genuine child/property collision.
+Validation v0.378: all 781 AGG / 781 Cairo / 762 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and failed-test
+reruns (two per profile). Seven restricted heap/global ASan+UBSan checks pass:
+four new Unicode path/target checks plus existing resolver, JIT target and point
+case checks. Stack ASan and LeakSanitizer remain disabled. Both revised scoped
+constant headers pass strict C89 syntax checking. No new external SWF oracle
+or foreign-OS runtime acceptance is claimed.
+MOVIECLIP_UNICODE_PATHS.md / .ru.md document duplicate-name, encoding, removed
+reference and other remaining bounds. All nine roadmap stages remain open.
 
 v0.377 removes the loaded positive-length 65,536 rejection from native/borrowed
 sort/sortOn. Input capture now links roots before incremental charged appends;

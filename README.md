@@ -1,5 +1,5 @@
-Development version: **0.377** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.377 ` and an English description. Increase the subversion before each
+Development version: **0.378** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.378 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.377** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.377 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.378** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.378 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -515,3 +515,5 @@ Negative loaded slice / slice с отрицательной длиной: [EN](d
 Large loaded Array mutations / большие загруженные массивы: [EN](doc/ARRAY_LOADED_LARGE_MUTATION.md) / [RU](doc/ARRAY_LOADED_LARGE_MUTATION.ru.md).
 
 Large loaded sorting / сортировка больших массивов: [EN](doc/ARRAY_LOADED_LARGE_SORT.md) / [RU](doc/ARRAY_LOADED_LARGE_SORT.ru.md).
+
+Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIECLIP_UNICODE_PATHS.md) / [RU](doc/MOVIECLIP_UNICODE_PATHS.ru.md).
