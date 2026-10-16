@@ -52,3 +52,23 @@ This is source comparison, not a fresh Adobe Player run. All stages remain open.
 Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
 heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
 executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+## v0.419: ordinary argument properties
+
+Loaded capture reads decimal-named properties through the ordinary object bridge
+on every source kind. Native Number/Boolean/String/Date lists therefore expose
+own and inherited fields/getters instead of bypassing them through the raw table
+API. Each getter receives the original source as receiver. Missing fields become
+undefined. Earlier captured values remain snapshots if a later getter mutates
+or removes their source slots. The host table-index contract stays unchanged.
+
+`function_apply_properties` checks SWF4–8 across four native classes, inherited
+script getters, traced NUL strings, collection after source mutation, missing
+slots, plain and counted script failures, no target call after failure and retry.
+Its first target assertion failed on v0.418. This uses the same pinned Function
+reference above; complete __resolve/metatable, borrowed apply and large argument
+semantics still require separate evidence. All nine stages remain open.
+
+Validation v0.419 / Проверка: minimal Release 835/835; AGG Release 4/4 and
+heap/global ASan+UBSan 4/4 apply/function tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. Other-platform runtime acceptance remains open.

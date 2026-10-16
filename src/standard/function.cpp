@@ -234,7 +234,15 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         FVM_ValueVectorRootScope argument_roots(c, args);
         for (unsigned int i = 0; i < (unsigned int)count; ++i)
         {
-            r = fvm_table_get_index(c, a[1].object, i, &args[i]);
+            if (c->swf_loaded)
+            {
+                /* Loaded apply uses ordinary named lookup even on native non-Array objects. */
+                char name[FVM_FUNCTION_APPLY_INDEX_KEY_BYTES];
+                std::sprintf(name, "%u", i);
+                r = fvm_object_get(c, a[1].object, name, &args[i]);
+            }
+            else
+                r = fvm_table_get_index(c, a[1].object, i, &args[i]);
             if (r != FVM_OK)
                 return r;
         }

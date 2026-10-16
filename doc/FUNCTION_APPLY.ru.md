@@ -43,3 +43,20 @@ function_apply_loaded проверяет примитивы, дробные/об
 Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
 heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
 executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+## v0.419: обычные свойства аргументов
+
+Загруженный apply читает числовые имена через обычный объектный путь для любого
+типа источника. Собственные и наследуемые свойства/getters Number/Boolean/String/
+Date больше не пропускаются сырым индексным API. Получатель getter — исходный
+объект; отсутствующие элементы дают undefined. Уже полученные значения остаются
+снимками, даже если следующий getter меняет исходный слот и запускает GC.
+Host API сохраняет прежний индексный путь. function_apply_properties проверяет
+SWF4–8, четыре native-класса, наследуемый script getter, NUL, мутацию и GC,
+пропуски, ошибки/исключения, отсутствие вызова цели после отказа и восстановление.
+Полная семантика __resolve/metatable, заимствование apply и большие списки ещё
+не подтверждены; все стадии открыты.
+
+Validation v0.419 / Проверка: minimal Release 835/835; AGG Release 4/4 and
+heap/global ASan+UBSan 4/4 apply/function tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. Other-platform runtime acceptance remains open.

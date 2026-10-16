@@ -3194,3 +3194,13 @@ All nine stages remain open.
 Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
 heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
 executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+### v0.419 — apply property capture / Чтение свойств apply
+
+Loaded native Number/Boolean/String/Date lists use ordinary named properties,
+original getter receiver and retained snapshots across mutation/GC/failure.
+[EN](FUNCTION_APPLY.md) / [RU](FUNCTION_APPLY.ru.md). All stages remain open.
+
+Validation v0.419 / Проверка: minimal Release 835/835; AGG Release 4/4 and
+heap/global ASan+UBSan 4/4 apply/function tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. Other-platform runtime acceptance remains open.
