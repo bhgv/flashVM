@@ -142,15 +142,21 @@ unsigned long get(const unsigned char *p)
            p[3];
 }
 
-/* Compute and return valid hex. */
-bool valid_hex(const fvm_detail::string &s)
+/* Validate every counted identity byte; an embedded NUL is not a terminator here. */
+bool valid_hex_bytes(const unsigned char *bytes, size_t size)
 {
-    if (s.size() != 32)
-        return false;
-    for (size_t i = 0; i < s.size(); ++i)
-        if (!((s[i] >= '0' && s[i] <= '9') || (s[i] >= 'a' && s[i] <= 'f')))
+    for (size_t i = 0; i < size; ++i)
+        if (!((bytes[i] >= '0' && bytes[i] <= '9') ||
+              (bytes[i] >= 'a' && bytes[i] <= 'f')))
             return false;
     return true;
+}
+
+/* Accept only the canonical fixed-width hexadecimal identity used in capability URIs. */
+bool valid_hex(const fvm_detail::string &value)
+{
+    return value.size() == FVM_CAPABILITY_TOKEN_BYTES &&
+           valid_hex_bytes((const unsigned char *)value.c_str(), value.size());
 }
 
 /* Parse the current value. */
@@ -476,11 +482,12 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         /* [GC:] Only mutex ownership operations need a stable client-context identity. */
         if ((h[5] == 1 || h[5] == 2) && e.kind == 8)
         {
-            if (!get(h + 104))
-                return FVM_ERROR;
+            if (!get(h + FVM_CAPABILITY_PEER_CONTEXT_OFFSET) ||
+                !valid_hex_bytes(h + FVM_CAPABILITY_PEER_SOURCE_OFFSET, FVM_CAPABILITY_PEER_SOURCE_BYTES))
+                return FVM_INVALID_ARGUMENT;
             char key[FVM_CAPABILITY_PEER_KEY_STORAGE];
-            std::memcpy(key, h + 72, FVM_CAPABILITY_PEER_SOURCE_BYTES);
-            std::sprintf(key + FVM_CAPABILITY_PEER_SOURCE_BYTES, FVM_CAPABILITY_PEER_CONTEXT_FORMAT, get(h + 104));
+            std::memcpy(key, h + FVM_CAPABILITY_PEER_SOURCE_OFFSET, FVM_CAPABILITY_PEER_SOURCE_BYTES);
+            std::sprintf(key + FVM_CAPABILITY_PEER_SOURCE_BYTES, FVM_CAPABILITY_PEER_CONTEXT_FORMAT, get(h + FVM_CAPABILITY_PEER_CONTEXT_OFFSET));
             for (size_t i = 0; i < b->peers.size(); ++i)
                 if (!std::strcmp(b->peers[i].key, key))
                     c = b->peers[i].context;

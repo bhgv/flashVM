@@ -1,4 +1,4 @@
-# Live function interfaces (v0.406)
+# Live function interfaces (v0.407)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -108,3 +108,9 @@ inside the C API and preserves explicit failure statuses. A failed valid startup
 returns a null handle; allocation failures report `FVM_OUT_OF_MEMORY`. The startup
 sweep covers constructor/runtime/string boundaries, occupied listener failure and
 successful reuse of the port after stopping the original listener.
+
+In v0.407, incoming mutex ownership identities and function source/call IDs are
+validated as counted canonical lowercase hexadecimal bytes, not C-string prefixes.
+Function source context zero is rejected. Malformed metadata cannot create peer
+heaps or enter original functions; valid messages still recover after rejection.
+These identities are routing/correlation metadata, not authentication.

@@ -108,6 +108,11 @@ FVM_Result dispatch_function(FVM_ResourceBroker *b, const unsigned char *h,
     const unsigned char *input, size_t size, unsigned char **output, size_t *length,
     FVM_ExceptionInfo &fault, bool &has_fault)
 {
+    /* Reject malformed routing identities before acquiring a source heap lease. */
+    if (!get(h + FVM_FUNCTION_RPC_CONTEXT_OFFSET) ||
+        !valid_hex_bytes(h + FVM_FUNCTION_RPC_SOURCE_OFFSET, FVM_FUNCTION_RPC_ID_BYTES) ||
+        !valid_hex_bytes(h + FVM_FUNCTION_RPC_CALL_ID, FVM_FUNCTION_RPC_ID_BYTES))
+        return FVM_INVALID_ARGUMENT;
     FunctionCallScope call(b);
     FVM_Object *function = 0;
     {

@@ -9,4 +9,6 @@
 #define FVM_CAPABILITY_PEER_CONTEXT_FORMAT "%08lx" /* Fixed context suffix after validated u32 decoding. */
 #define FVM_CAPABILITY_ADVERTISED_HOST_MAX 200U /* DNS/IPv4 host bound keeping capability URIs bounded. */
 #define FVM_CAPABILITY_SESSION_STORAGE 33U /* Authority session nonce and NUL, independent of call IDs. */
+#define FVM_CAPABILITY_PEER_SOURCE_OFFSET 72U /* Source process nonce in the resource request prefix. */
+#define FVM_CAPABILITY_PEER_CONTEXT_OFFSET 104U /* Unsigned source context word in the resource request prefix. */
 #endif

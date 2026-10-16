@@ -1436,3 +1436,16 @@ heap/global ASan+UBSan. Minimal Release passes 819/819 with untracked generated
 mode-restoring native launchers (unchanged binaries/arguments/assertions) for the
 runner's permission-reset issue. Expanded private constants pass strict C89.
 Stack ASan and LeakSanitizer disabled; all stages and foreign runtime acceptance open.
+
+v0.407: validate counted canonical lowercase-hex source/call identities and
+nonzero function source contexts before peer creation or original-function entry.
+RU: NUL/не-hex ID не усекутся как C-строки и не вызывают исходную функцию.
+Raw TCP regression reproduces malformed-source acceptance before the fix, then
+verifies rejection without peer/lock mutation, separate process/context mutex
+ownership, bad function source/call/context fields, exact reply correlation and
+valid recovery with exactly two original calls. Sixteen focused checks pass in
+AGG Release and restricted heap/global ASan+UBSan. Minimal Release passes 820/820.
+Untracked generated native launchers restore runner-reset executable mode in
+minimal/sanitizer without changing binaries, arguments or assertions. Private
+constants pass strict C89. Stack ASan and LeakSanitizer disabled. Identity fields
+are metadata, not authentication; all stages and foreign runtime acceptance open.

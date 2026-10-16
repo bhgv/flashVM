@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 6/7/9: counted request identities | Проверено для v0.407 | Raw TCP NUL/nonhex source/call IDs and zero source context reject before peer creation/function entry. Distinct process/context ownership remains independent; valid requests recover. IDs are metadata, not authentication. broker_request_identity. |
 | 6/7/9: authority startup C boundary | Проверено для v0.406 | Member constructor failures are contained as OUT_OF_MEMORY with null output; explicit errors retain status and initialized handles unwind. Allocation sweep, occupied listener and post-stop port reuse. broker_start_allocation. |
 | 6/7: persistent-peer stop under OOM | Проверено для v0.405 | Inline nonce/context keys avoid allocations while clearing mutex peer records. All-new-denied stop releases two acquired remote locks while preserving original-function/host pins until source detachment. broker_peer_stop_allocation. |
 | 6/7: individual function revocation/OOM cleanup | Проверено для v0.403 | Explicit revoke drops one authority root, stale interfaces reject, re-export changes target, host/other-owner pins survive. Inline fixed tokens avoid allocation in revoke/detach/entry removal at stop; mixed channel/function all-new-denied check. REMOTE_FUNCTIONS.md / .ru.md. |
