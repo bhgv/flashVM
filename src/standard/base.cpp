@@ -2489,18 +2489,21 @@ void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
     if (object_ctor != c->constructors.end() && object_ctor->second.callback == object_constructor && object_ctor->second.root)
     {
         FVM_Object *klass = object_ctor->second.root;
+        /* Class metadata is independent of the public prototype descriptor. */
+        out.class_attributes = klass->attributes;
+        fvm_stage_default_method_flags(klass, "registerClass", register_class,
+                                      FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY,
+                                      out.class_attributes);
+        out.object_class = klass;
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
         if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_OBJECT && stored->second.object &&
             stored->second.object->resource_kind == OBJECT_OBJECT)
         {
             FVM_Object *proto = stored->second.object;
             out.object_attributes = proto->attributes;
-            out.class_attributes = klass->attributes;
             for (size_t i = 0; i < sizeof(object_methods) / sizeof(object_methods[0]); ++i)
                 fvm_stage_default_method_flags(proto, object_methods[i].name, object_methods[i].callback, 3, out.object_attributes);
-            fvm_stage_default_method_flags(klass, "registerClass", register_class, 7, out.class_attributes);
             out.object_prototype = proto;
-            out.object_class = klass;
         }
     }
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Array");
@@ -2546,11 +2549,10 @@ void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
 /* Publish an already prepared Array prototype as an ordinary object. */
 void fvm_base_commit_loaded(FVM_BasePrototypeActivation &prepared)
 {
-    if (prepared.object_prototype)
-    {
-        prepared.object_prototype->attributes.swap(prepared.object_attributes);
+    if (prepared.object_class)
         prepared.object_class->attributes.swap(prepared.class_attributes);
-    }
+    if (prepared.object_prototype)
+        prepared.object_prototype->attributes.swap(prepared.object_attributes);
     FVM_Object *proto = prepared.prototype;
     if (!proto)
         return;

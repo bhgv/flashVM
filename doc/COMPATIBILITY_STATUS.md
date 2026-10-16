@@ -4213,3 +4213,11 @@ prototypes. Сохраняются изменённые поля/флаги, pri
 проверяются OOM, GC, перенос и C/AVM1/JIT. See
 [STATIC_CLASS_ACTIVATION.md](STATIC_CLASS_ACTIVATION.md). This is a first-load
 metadata fix, not completion of stage 1 or any other roadmap stage.
+
+### v0.485 — independent String/Object class activation
+
+First-load String.fromCharCode and Object.registerClass attributes now activate
+independently of public prototype state. Подготовка атомарна при OOM, getter
+prototype не вызывается, изменённые поля/флаги и reload сохраняются.
+See [STATIC_CLASS_ACTIVATION.md](STATIC_CLASS_ACTIVATION.md). All nine stages
+remain open; full customized prototype and platform acceptance is not claimed.

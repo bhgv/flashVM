@@ -30,3 +30,25 @@ Primary metadata references: pinned Ruffle
 and [Date declarations](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/date.rs).
 Host-before-load activation is FlashVM integration behavior, not a claim that
 Flash Player exposes the same embedding lifecycle. All nine stages remain open.
+
+## v0.485 — String and Object
+
+RU: Независимая подготовка распространена на String.fromCharCode и
+Object.registerClass. fromCharCode получает DONT_ENUM|DONT_DELETE и остаётся
+доступным для записи; registerClass также получает READ_ONLY. Изменённый или
+удалённый public prototype не препятствует обновлению нетронутых статических
+методов. Изменённые поля класса и явные флаги сохраняются. Getter prototype
+не выполняется; OOM не публикует частичные флаги.
+
+EN: String static attributes now participate in the central precommit stage;
+String prototype conversion no longer owns the class attribute transaction.
+Object prepares/commits its class independently of its prototype as well.
+The same three regressions cover all four classes, eight static fields, seven
+prototype shapes, SWF4–8, C/interpreter/explicit/automatic JIT, graph transport,
+GC, edited fields, first-load OOM and reload. The existing customized prototype
+layout policy is unchanged. No public API, callback ID or graph format changes.
+
+Additional primary sources: pinned
+[String declarations](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/string.rs)
+and [Object declarations](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/object.rs).
+All nine roadmap stages remain open.

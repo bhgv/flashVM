@@ -5,11 +5,11 @@ int main()
     FVM_Config cfg; FVM_Runtime *rt = 0;
     assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
     for (unsigned version = 4; version <= 8; ++version)
-    for (unsigned field = 0; field < 6; ++field)
+    for (unsigned field = 0; field < 8; ++field)
     for (unsigned kind = 0; kind < 5; ++kind) {
-        if (field == 5 && kind == 4) continue;
+        if (field >= 5 && kind == 4) continue;
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK && fvm_standard_install(c) == FVM_OK);
-        FVM_Object *klass = static_class(c, field == 5); static_prototype(c, klass, kind == 4 ? 0 : 4);
+        FVM_Object *klass = static_class(c, field < 5 ? 0 : field - 4); static_prototype(c, klass, kind == 4 ? 0 : 4);
         FVM_Value original, value; assert(fvm_object_get(c, klass, static_fields[field], &original) == FVM_OK);
         if (!kind) { assert(fvm_object_set_property_flags(c, klass, static_fields[field], 0, 7) == FVM_OK && fvm_object_set_property_flags(c, klass, static_fields[field], 2, 0) == FVM_OK); }
         if (kind == 1) { fvm_value_number(&original, 81); assert(fvm_object_set(c, klass, static_fields[field], &original) == FVM_OK); }

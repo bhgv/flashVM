@@ -2884,3 +2884,17 @@ GC, reload, custom class fields/flags/metadata and new/new[] OOM rollback/retry.
 Prototype getters remain uncalled. No ABI, callback or graph format changes.
 The existing customized-prototype layout policy remains; all nine stages and
 non-Linux runtime acceptance remain open. See STATIC_CLASS_ACTIVATION.md.
+
+### v0.485 — independent String/Object class activation
+
+RU: Linux minimal: 958 тестов, 946 прошли в полном прогоне; оставшиеся 12
+не запускались без права исполнения и прошли после его восстановления.
+Расширенные три теста четырёх классов прошли в AGG и heap/global ASan+UBSan
+(3/3 в каждом; stack ASan и LeakSanitizer отключены).
+
+EN: Extended attribute and OOM regressions fail with v0.484 base/string/numeric
+implementations. Tests distinguish writable protected fromCharCode (flags 3)
+from readonly registerClass (flags 7), preserving custom descriptors, fields,
+flags and reload edits without invoking prototype getters. Both install orders
+remain covered by the complete suite. No ABI/callback/graph format changes;
+all nine stages and non-Linux runtime acceptance remain open.

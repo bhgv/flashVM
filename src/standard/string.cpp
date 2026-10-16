@@ -999,6 +999,20 @@ FVM_Result fvm_string_validate(FVM_Context *c)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
+/* [GC:] Constructor capture retains the class while its static flags are staged.
+ * Public prototype replacement must not disable an untouched fromCharCode method. */
+void fvm_string_prepare_class_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("String");
+    if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+        return;
+    FVM_Object *klass = ctor->second.root;
+    out.attributes = klass->attributes;
+    fvm_stage_default_method_flags(klass, "fromCharCode", from_char_code,
+                                  FVM_PROPERTY_BUILTIN_FLAGS, out.attributes);
+    out.prototype = klass;
+}
+
 /* [GC:] Drop only the default host prototype's native text/length after all allocating lookups.
  * Class roots keep the candidate alive; this operation performs no user callbacks. */
 FVM_Result fvm_string_activate_loaded(FVM_Context *c)
@@ -1027,10 +1041,8 @@ FVM_Result fvm_string_activate_loaded(FVM_Context *c)
             (flags != proto->attributes.end() && flags->second))
             return FVM_OK;
         fvm_detail::map<fvm_detail::string, unsigned int> prototype_attributes = proto->attributes;
-        fvm_detail::map<fvm_detail::string, unsigned int> class_attributes = klass->attributes;
         for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
             fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback, 3, prototype_attributes);
-        fvm_stage_default_method_flags(klass, "fromCharCode", from_char_code, 3, class_attributes);
         if (flags != proto->attributes.end())
             prototype_attributes.erase(flags->first);
         /* Commit without further allocation; callers publish decoded SWF state immediately afterwards. */
@@ -1038,7 +1050,6 @@ FVM_Result fvm_string_activate_loaded(FVM_Context *c)
         if (flags != proto->attributes.end())
             proto->attributes.erase(flags->first);
         proto->attributes.swap(prototype_attributes);
-        klass->attributes.swap(class_attributes);
         proto->resource_kind = STRING_GENERIC_PROTOTYPE;
         proto->resource_result_valid = false;
         fvm_value_undefined(&proto->resource_result);

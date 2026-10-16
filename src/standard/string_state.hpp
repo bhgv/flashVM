@@ -16,6 +16,11 @@ FVM_Result fvm_string_case(FVM_Context *, const FVM_Value &, FVM_Value *, bool);
 /* Validate string. */
 FVM_Result fvm_string_validate(FVM_Context *);
 
+/* Prepared static attributes are shared with the transaction coordinator. */
+struct FVM_MethodAttributeActivation;
+/* Prepare fromCharCode attributes independently of public prototype state; may throw. */
+void fvm_string_prepare_class_loaded(FVM_Context *, FVM_MethodAttributeActivation &);
+
 /* Convert an untouched host String prototype before successful SWF publication; no callbacks. */
 FVM_Result fvm_string_activate_loaded(FVM_Context *);
 

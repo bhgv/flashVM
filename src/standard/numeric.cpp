@@ -711,6 +711,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
     {
         MathActivation math_attributes;
         math_prepare_loaded(c, math_attributes);
+        FVM_MethodAttributeActivation string_class_attributes;
+        fvm_string_prepare_class_loaded(c, string_class_attributes);
         FVM_MethodAttributeActivation function_attributes, error_attributes;
         fvm_function_prepare_loaded(c, function_attributes);
         fvm_error_prepare_loaded(c, error_attributes);
@@ -762,6 +764,7 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         if (math_attributes.attributes.prototype)
             math_attributes.attributes.prototype->properties.swap(math_attributes.properties);
         fvm_commit_method_attributes(math_attributes.attributes);
+        fvm_commit_method_attributes(string_class_attributes);
         fvm_commit_method_attributes(function_attributes);
         fvm_commit_method_attributes(error_attributes);
         fvm_base_commit_loaded(base);
