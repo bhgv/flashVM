@@ -168,3 +168,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Глубина и корни конструктора через super: [v0.508](SUPER_CONSTRUCTOR_DEPTH.md).
 
 Глубина super анонимного CallMethod: [v0.509](ANONYMOUS_CALL_SUPER.md).
+
+Глубина super при CallFunction: [v0.510](FUNCTION_CALL_SUPER_DEPTH.md).

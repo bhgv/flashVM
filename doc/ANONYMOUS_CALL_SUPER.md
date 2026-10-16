@@ -44,3 +44,10 @@ binaries and reruns; Cairo passed directly. Eight targeted ASan/UBSan tests,
 a strict C89 depth-header probe and 26 Unicorn branch/error cases across x86,
 ARM, ARM64, RV32 and RV64 passed. Native x64 ran in host suites. Foreign-OS
 acceptance and complete SWF compatibility remain open.
+
+Follow-up source audit in v0.510: original activation.rs action_call_method passes
+Undefined this for anonymous calls. FlashVM's current execution bridge preserves
+an object-valued anonymous this, so v0.509 establishes its depth policy but does
+not complete original anonymous this/super value semantics. This remains open.
+Уточнение v0.510: исходный анонимный CallMethod передаёт Undefined как this;
+текущий мост FlashVM сохраняет объект. Полная семантика этого значения ещё открыта.

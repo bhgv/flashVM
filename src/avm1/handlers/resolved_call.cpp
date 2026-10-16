@@ -5,6 +5,8 @@
 #include "script_call.hpp"
 #include "../../standard/construction.hpp"
 #include "../../core/property_key.hpp"
+#include "../../core/call_scope.hpp"
+#include "../../core/function_call_constants.h"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
 /* Dispatch a found binding or existing named fallback without lexical/bytecode dependencies. */
@@ -58,7 +60,17 @@ extern "C" FVM_Result fvm_exec_resolved_call(FVM_Context *c, int construct, cons
             }
         }
         else if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
-            status = fvm_function_invoke(c, callable.object, receiver, argc, args, &result);
+        {
+            if (c->swf_loaded)
+            {
+                /* [GC:] Qualified lookup owners remain in caller roots; function-value
+                 * invocation has its own identity and explicit depth zero. */
+                FVM_CallScope call(c, 0, callable.object, 0, FVM_FUNCTION_CALL_SUPER_DEPTH);
+                status = fvm_function_invoke(c, callable.object, receiver, argc, args, &result);
+            }
+            else
+                status = fvm_function_invoke(c, callable.object, receiver, argc, args, &result);
+        }
         else if (found)
             status = FVM_UNSUPPORTED;
         else

@@ -176,3 +176,5 @@ Explicit-super selected method depth: [v0.507](SUPER_MEMBER_DEPTH.md).
 Explicit-super constructor depth and roots: [v0.508](SUPER_CONSTRUCTOR_DEPTH.md).
 
 Anonymous CallMethod superclass depth: [v0.509](ANONYMOUS_CALL_SUPER.md).
+
+CallFunction superclass depth: [v0.510](FUNCTION_CALL_SUPER_DEPTH.md).

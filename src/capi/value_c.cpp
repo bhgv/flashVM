@@ -9,6 +9,7 @@
 #include "../core/property_resolve.hpp"
 #include "../core/property_resolve_constants.h"
 #include "../core/member_call_constants.h"
+#include "../core/function_call_constants.h"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
@@ -1738,7 +1739,16 @@ extern "C"
             if (result != FVM_OK)
                 return result;
             if (callable.type == FVM_VALUE_OBJECT && callable.object->invocable.callback)
+            {
+                if (c->swf_loaded)
+                {
+                    /* [GC:] Named global function values retain identity independently of
+                     * a binding getter/resolver that may delete the original property. */
+                    FVM_CallScope call(c, 0, callable.object, 0, FVM_FUNCTION_CALL_SUPER_DEPTH);
+                    return fvm_function_invoke(c, callable.object, c->global, argc, args, out);
+                }
                 return fvm_function_invoke(c, callable.object, c->global, argc, args, out);
+            }
             return fvm_stack_call_bytes(c, key.data(), key.size(), argc, args, out);
         }
         catch (const std::bad_alloc &)
