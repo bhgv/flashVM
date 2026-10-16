@@ -2186,11 +2186,14 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
 }
 
 /* Store own ActionScript data while retaining virtual properties and bypassing callbacks. */
-FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
+FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::string &requested_name,
                                const FVM_Value &input, bool note_length)
 {
     if (!c || !o || o->owner != c)
         return FVM_INVALID_ARGUMENT;
+    /* Raw writes retain legacy-equivalent own spelling without invoking callbacks. */
+    fvm_detail::string name = requested_name;
+    fvm_property_select_own_name(c, o, name);
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find(name);
     if (flags != o->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
         return FVM_OK;

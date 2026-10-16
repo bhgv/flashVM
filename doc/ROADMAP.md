@@ -1153,3 +1153,22 @@ object_setter_case_replacement воспроизвёл прежнюю запис�
 Validation v0.437: Linux minimal 866/866; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. All nine stages and foreign OS execution remain open.
+
+## v0.438 — регистр raw length заимствованных Array-методов
+
+В загруженных SWF4–6 заимствованные Array-методы находят собственные raw-данные
+`LENGTH` как `length`, включая сохранённые данные virtual-свойства. Raw-запись
+выбирает существующее написание перед проверкой readonly и обновлением данных
+дескриптора. Getter/setter не вызываются. SWF7–8 различают регистр. Основание —
+закреплённые script_object.rs length/get_data/set_length/set_data и
+globals/array.rs push/splice.
+
+array_borrowed_length_case воспроизвёл пустой slice при `LENGTH=2`, затем
+проверяет slice/push/splice, обычные/virtual/readonly данные, SWF4–8, отсутствие
+дублирующего имени, отдельное имя с NUL и счётчики callback.
+jit_array_borrowed_length_case повторяет матрицу с настоящими нативными входами
+CallMethod. Общая совместимость Array, остальных ресурсов и все стадии открыты.
+
+Проверено v0.438: Linux minimal 868/868; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.

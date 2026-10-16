@@ -10,6 +10,7 @@
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
 #include "../core/object_root_scope.hpp"
 #include "base_state.hpp"
 #include "../core/string_internal.hpp"
@@ -135,12 +136,12 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
         value = o->resource_result;
     else
     {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find("length");
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = fvm_property_find(c, o->properties, fvm_detail::string("length"));
         if (property != o->properties.end())
             value = property->second;
         else
         {
-            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find("length");
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = fvm_property_find(c, o->accessors, fvm_detail::string("length"));
             if (accessor != o->accessors.end())
                 fvm_base_accessor_data(accessor->second, value);
         }

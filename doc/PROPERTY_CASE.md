@@ -249,3 +249,21 @@ accessor replacement, broader collisions and all nine stages remain open.
 Validation v0.437: Linux minimal 866/866; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers were applied;
 stack ASan and LeakSanitizer remain disabled. Foreign OS execution is open.
+
+## v0.438 — borrowed Array raw length casing
+
+Loaded borrowed Array methods now find own raw `LENGTH` data/virtual storage
+as `length` in SWF4–6. Raw writes select the existing own spelling before
+readonly checks and descriptor-data updates. No getter/setter is executed.
+SWF7–8 remain case-sensitive. This follows pinned script_object.rs
+length/get_data/set_length/set_data and globals/array.rs push/splice.
+
+array_borrowed_length_case reproduces the former empty slice with `LENGTH=2`,
+and checks slice/push/splice for ordinary, virtual and readonly virtual data,
+SWF4–8, retained spelling, NUL-suffixed separate names and callback counts.
+jit_array_borrowed_length_case repeats the matrix with real native CallMethod
+entries. Broader Array behavior, all resources and all nine stages remain open.
+
+Validation v0.438: Linux minimal 868/868; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.

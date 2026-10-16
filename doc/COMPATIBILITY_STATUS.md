@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: borrowed Array raw length casing | Проверено для v0.438 | slice/push/splice resolve own LENGTH storage and flags in SWF4–6 without callbacks; SWF7–8 exact. Virtual/readonly/NUL and actual native CallMethod matrix. PROPERTY_CASE.md / .ru.md; full Array and stages remain open. |
 | 1/2/7/8: setter replacement spelling | Проверено для v0.437 | SWF4–6 reselect recreated data/virtual property and readonly flags after collecting setter; host/SWF7–8 exact. Counted strings and real native SetMember entries. PROPERTY_CASE.md / .ru.md; native replacements and stages remain open. |
 | 1/2/7/8: watcher throw completion | Проверено для v0.432–434 | Deferred thrown graph survives collecting setters; own/inherited/readonly/numeric/Array order, getter-only, JIT entries and OOM recovery. WATCH_THROW.md / .ru.md. Other errors/resources/collisions remain open. |
 | 1/2/6/7/8: super callback identity | Проверено для v0.435–436 | Borrowed definition/watch no-op with coercion validation; no parent invocation from virtual get/set; host/direct calls retained, GC/queue/native paths. PROPERTY_CASE.md / .ru.md. Full super remains open. |
