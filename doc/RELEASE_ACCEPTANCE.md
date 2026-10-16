@@ -1379,3 +1379,16 @@ heap/global ASan+UBSan, including the actual two-process exchange. Example passe
 strict C89 syntax both with OS_PORTS and with its disabled stub. Stack ASan and
 LeakSanitizer disabled. Cross-compiling does not register the host subprocess
 harness; Windows/macOS/Android runtime acceptance and all stages remain open.
+
+v0.402: the function_rpc tutorial supports separate processes, two independent
+VM runtimes on separate execution threads, and configurable LAN listening/
+advertised IPv4 or DNS host/port. Thread mode uses public Worker-owned runtime
+and copied primitive URI, then actual TCP invocation into the original VM.
+RU: три схемы с командами в FUNCTION_RPC_EXAMPLES.md / .ru.md.
+Validation: full Linux minimal Release CTest passes 816/816. Usage, independent
+VM-thread and process/LAN-configuration checks pass in minimal and AGG Release
+and restricted heap/global ASan+UBSan. Process cases use default loopback,
+wildcard/interface binds, advertised IPv4/DNS and reject malformed ports before
+startup. Updated example passes strict C89 enabled/stub syntax. Stack ASan and
+LeakSanitizer disabled. Tests are local: no two-physical-computer LAN execution
+or Windows/macOS/Android runtime certification is claimed. All stages remain open.

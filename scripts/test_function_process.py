@@ -12,10 +12,9 @@ def read_uri(stream, lines):
     lines.put(stream.readline().strip())
 
 
-def main():
-    """Start an authority, invoke four results in a client, then reclaim source state."""
-    program = str(pathlib.Path(sys.argv[1]).resolve())
-    owner = subprocess.Popen([program, "serve"], stdin=subprocess.PIPE,
+def exchange(program, server_arguments):
+    """Reclaim four original calls with default or explicit listener/advertised addresses."""
+    owner = subprocess.Popen([program, "serve"] + server_arguments, stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     lines = queue.Queue()
     reader = threading.Thread(target=read_uri, args=(owner.stdout, lines), daemon=True)
@@ -39,7 +38,20 @@ def main():
             owner.kill()
             owner.communicate()
         reader.join(timeout=1)
-    print("PASS codec-free original C callback across separate authority/client processes")
+
+
+def main():
+    """Exercise separate runtimes/threads, processes and LAN-ready listener configuration."""
+    program = str(pathlib.Path(sys.argv[1]).resolve())
+    for bad_port in ["", "-1", "-0", "+1", " 0", "0 ", "65536", "1x", "999999999999999999999999"]:
+        invalid = subprocess.run([program, "serve", "0.0.0.0", "127.0.0.1", bad_port],
+                                 capture_output=True, text=True, timeout=5)
+        if invalid.returncode != 2 or "PORT" not in invalid.stderr:
+            raise RuntimeError("Invalid listener port was not rejected before startup")
+    exchange(program, [])
+    exchange(program, ["0.0.0.0", "127.0.0.1", "0"])
+    exchange(program, ["127.0.0.1", "localhost", "0"])
+    print("PASS separate processes; wildcard/interface bind; advertised IPv4/DNS; invalid ports")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-# Live function interfaces (v0.401)
+# Live function interfaces (v0.402)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -82,3 +82,5 @@ codec, serialized native address or shared userdata is involved.
 startup/client/shutdown waits and child cleanup. It is registered only for native
 socket-enabled builds with tests, examples and Python available; the example
 without arguments displays usage and returns immediately.
+
+[Process, independent VM-thread and LAN commands](FUNCTION_RPC_EXAMPLES.md) — v0.402.

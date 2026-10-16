@@ -192,6 +192,11 @@ endif()
 if(FVM_BUILD_TESTS)
   find_package(Python3 COMPONENTS Interpreter QUIET)
 endif()
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_function_independent_threads
+    COMMAND $<TARGET_FILE:flashvm_examples_embedding_function_rpc_main> threads)
+  set_tests_properties(flashvm_function_independent_threads PROPERTIES TIMEOUT 30)
+endif()
 if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
   if(Python3_Interpreter_FOUND)
     add_test(NAME flashvm_network_independent_processes
