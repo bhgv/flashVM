@@ -26,7 +26,8 @@ static void run(FVM_Context *c, Bytes &b) { b.push_back(0); assert(fvm_avm1_exec
 static FVM_Value function(FVM_Context *c, const char *name)
 {
     FVM_Object *f = 0;
-    assert(fvm_construct(c, "Function", 0, 0, &f) == FVM_OK);
+    const unsigned char empty_body[] = {0};
+    assert(fvm_function_create_avm1(c, empty_body, sizeof(empty_body), 0, 0, 0, &f) == FVM_OK);
     FVM_Value v; fvm_value_undefined(&v); v.type = FVM_VALUE_OBJECT; v.object = f;
     assert(fvm_set_global(c, name, &v) == FVM_OK); return v;
 }

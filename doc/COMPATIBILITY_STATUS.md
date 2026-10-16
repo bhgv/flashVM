@@ -4098,3 +4098,17 @@ source. No new foreign-OS/device or full foreign-CPU run is claimed.
 Проверка v0.474: Linux minimal 930/930; все 949 AGG-проверок прошли в полном
 прогоне и повторе 14 запусков после восстановления прав исполнения. Выбранные
 heap/global ASan+UBSan — 4/4. Stack ASan/LeakSanitizer отключены; все стадии открыты.
+
+### v0.475 — Function class call boundary
+
+RU: Исправлены вызовы `Function()` для SWF 4–8 и создание без аргументов;
+первый аргумент обычного вызова сохраняет тип и значение. Отдельный callback
+сериализуется под ID 809. Host без SWF сохраняет прежнюю пустую функцию.
+AVM1 сохраняет примитив из `new Function(value)`; object-only C API по-прежнему
+отклоняет такой результат.
+
+EN: Loaded Function calls preserve the first argument, or create a bare object
+when absent. Empty construction uses the stored prototype and constructor
+metadata, without creating a callable script body. Unloaded host behavior is
+preserved. AVM1 native construction preserves primitive results; public object-only C
+construction still rejects them.

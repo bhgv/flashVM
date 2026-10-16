@@ -1904,3 +1904,19 @@ source. No new foreign-OS/device or full foreign-CPU run is claimed.
 Проверка v0.474: Linux minimal 930/930; все 949 AGG-проверок прошли в полном
 прогоне и повторе 14 запусков после восстановления прав исполнения. Выбранные
 heap/global ASan+UBSan — 4/4. Stack ASan/LeakSanitizer отключены; все стадии открыты.
+
+### v0.475: Function class calls / вызовы класса Function
+
+Loaded SWF 4–8 `Function()` returns a bare object without arguments and preserves
+its first argument without coercion otherwise. Empty `new Function()` allocates
+an ordinary object with the stored prototype and hidden constructor identities;
+an object argument is returned unchanged. Unloaded host behavior is retained.
+The separate call callback has stable graph identity 809. AVM1 NewObject/NewMethod retain native primitive results through an internal
+value-returning boundary; the public object-only C API retains its strict contract. This does not close stages 1, 2, 5, 8 or 9.
+
+В SWF 4–8 `Function()` возвращает объект без прототипа при отсутствии аргументов,
+иначе первый аргумент без преобразований. `new Function()` без аргументов создаёт
+обычный объект с сохранённым прототипом и скрытыми идентификаторами конструктора;
+объект в первом аргументе возвращается неизменным. Поведение host API без SWF
+сохранено. NewObject/NewMethod сохраняют примитивные результаты через внутренний путь
+создания значений; публичный object-only C API сохраняет строгий контракт. Этапы остаются открытыми.

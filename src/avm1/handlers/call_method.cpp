@@ -2,6 +2,7 @@
 #include "support.hpp"
 #include "call_method_constants.h"
 #include "script_call.hpp"
+#include "../../standard/construction.hpp"
 #include "../../core/property_key.hpp"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -105,13 +106,7 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
                 *out = result;
                 return FVM_OK;
             }
-            FVM_Object *instance = 0;
-            status = fvm_function_construct(c, function.object, argc, args, &instance);
-            if (status == FVM_OK)
-            {
-                result.type = FVM_VALUE_OBJECT;
-                result.object = instance;
-            }
+            status = fvm_function_construct_value(c, function.object, argc, args, &result);
         }
         else if (name.empty())
         {

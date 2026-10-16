@@ -1060,7 +1060,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         result = fvm_date_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
             return result;
-        result = fvm_function_stage(c, globals, constructors);
+        result = fvm_function_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
             return result;
         result = fvm_movieclip_stage(c, globals, constructors);
@@ -1122,7 +1122,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator g = globals.find(i->first);
             if ((i->first == "Number" || i->first == "Boolean" || i->first == "String" ||
                  i->first == "Object" || i->first == "Array" || i->first == "Date" ||
-                 i->first == "Error") &&
+                 i->first == "Error" || i->first == "Function") &&
                 g != globals.end() && g->second.type == FVM_VALUE_OBJECT &&
                 g->second.object->constructable.callback)
                 g->second.object->invocable = i->second;

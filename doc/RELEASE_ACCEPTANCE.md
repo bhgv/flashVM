@@ -2702,3 +2702,23 @@ source. No new foreign-OS/device or full foreign-CPU run is claimed.
 Проверка v0.474: Linux minimal 930/930; все 949 AGG-проверок прошли в полном
 прогоне и повторе 14 запусков после восстановления прав исполнения. Выбранные
 heap/global ASan+UBSan — 4/4. Stack ASan/LeakSanitizer отключены; все стадии открыты.
+
+### v0.475 — Function call and native construction values
+
+RU: Добавлены `function_class_calls`, `native_constructor_values` и
+`construction_value_allocation`. SWF 4–8: обычный вызов, NewObject и NewMethod,
+интерпретатор/явный/автоматический JIT, значения первого аргумента, конструкторные
+идентификаторы, перенос callback 809 в контекст без стандартной библиотеки,
+GC, ошибки, исключения и чужие объекты. Отказы new/new[] проверены до первого
+успеха с повторным вызовом; строковый результат сохраняет встроенный NUL и
+собственные байты после изменения исходного буфера. Регрессия воспроизведена
+на реализации Function из v0.474 (адаптирована только сигнатура staging).
+
+EN: Linux minimal ran 933 tests: 916 passed initially, 17 could not execute
+because generated binaries lacked executable permission; all 17 passed after
+permission repair. The three new tests also passed under AGG and heap/global
+ASan plus UBSan. Stack ASan and LeakSanitizer remain disabled in this sandbox;
+no new native non-Linux or foreign-ISA execution evidence is claimed.
+Two inheritance fixtures now create actual AVM1 functions instead of relying on
+the previously incorrect callable result of loaded `new Function()`.
+All nine roadmap stages remain open.

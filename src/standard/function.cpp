@@ -6,6 +6,7 @@
 #include "function_state.hpp"
 #include "constructor_identity.hpp"
 #include "function_apply_constants.h"
+#include "function_callback_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../avm1/handlers/class_prototype.hpp"
 #include "../avm1/scope_keywords.hpp"
@@ -306,11 +307,26 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
 }
 
 /* Compute and return constructor. */
-FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
+FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                        FVM_Value *out, void *ud)
 {
 
     /* Initialization / Инициализация локального состояния. */
+    if (c->swf_loaded)
+    {
+        FVM_Object *instance = 0;
+        FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)ud,
+                                                          FVM_RESOURCE_PLAIN_OBJECT, &instance);
+        if (result == FVM_OK)
+        {
+            fvm_value_undefined(out);
+            out->type = FVM_VALUE_OBJECT;
+            out->object = instance;
+            if (count)
+                *out = args[0];
+        }
+        return result;
+    }
     FVM_Object *fn = 0;
     FVM_ScriptFunction body;
     body.body.push_back(0);
@@ -333,6 +349,28 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Val
     out->type = FVM_VALUE_OBJECT;
     out->object = fn;
     return FVM_OK;
+}
+
+/* Loaded Function() returns its first argument or a fresh bare object. */
+FVM_Result function_call(FVM_Context *c, FVM_Object *self, unsigned int count,
+                         const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return constructor(c, self, count, args, out, userdata);
+    if (count)
+    {
+        *out = args[0];
+        return FVM_OK;
+    }
+    FVM_Object *object = 0;
+    FVM_Result result = fvm_object_create(c, &object);
+    if (result == FVM_OK)
+    {
+        fvm_value_undefined(out);
+        out->type = FVM_VALUE_OBJECT;
+        out->object = object;
+    }
+    return result;
 }
 
 /* Read the parameter bound to this arguments index through its retained descriptor. */
@@ -524,7 +562,8 @@ fvm_function_stage(FVM_Context *c,
                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                    fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                   fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+                   fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
+                   fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -599,6 +638,8 @@ fvm_function_stage(FVM_Context *c,
     e.userdata = klass;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["Function"] = e;
+    e.callback = function_call;
+    functions["Function"] = e;
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1312,30 +1353,32 @@ extern "C" FVM_Result fvm_function_construct(
 /* Map a native function callback to its stable serialization identifier. */
 unsigned long fvm_function_callback_id(FVM_NativeFunction cb)
 {
-    return cb == fvm_super_callback() ? 808
-           : cb == script             ? 800
-           : cb == call               ? 801
-           : cb == apply              ? 802
-           : cb == function_text      ? 803
-           : cb == empty              ? 804
-           : cb == constructor        ? 805
-           : cb == argument_get       ? 806
-           : cb == argument_set       ? 807
+    return cb == fvm_super_callback() ? FVM_FUNCTION_CALLBACK_SUPER
+           : cb == script             ? FVM_FUNCTION_CALLBACK_SCRIPT
+           : cb == call               ? FVM_FUNCTION_CALLBACK_CALL_ADAPTER
+           : cb == apply              ? FVM_FUNCTION_CALLBACK_APPLY_ADAPTER
+           : cb == function_text      ? FVM_FUNCTION_CALLBACK_TEXT
+           : cb == empty              ? FVM_FUNCTION_CALLBACK_EMPTY
+           : cb == function_call      ? FVM_FUNCTION_CALLBACK_CLASS_CALL
+           : cb == constructor        ? FVM_FUNCTION_CALLBACK_CONSTRUCTOR
+           : cb == argument_get       ? FVM_FUNCTION_CALLBACK_ARGUMENT_GET
+           : cb == argument_set       ? FVM_FUNCTION_CALLBACK_ARGUMENT_SET
                                       : 0;
 }
 
 /* Restore a native function callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_function_callback_from_id(unsigned long id)
 {
-    return id == 808   ? fvm_super_callback()
-           : id == 800 ? script
-           : id == 801 ? call
-           : id == 802 ? apply
-           : id == 803 ? function_text
-           : id == 804 ? empty
-           : id == 805 ? constructor
-           : id == 806 ? argument_get
-           : id == 807 ? argument_set
+    return id == FVM_FUNCTION_CALLBACK_SUPER   ? fvm_super_callback()
+           : id == FVM_FUNCTION_CALLBACK_SCRIPT ? script
+           : id == FVM_FUNCTION_CALLBACK_CALL_ADAPTER ? call
+           : id == FVM_FUNCTION_CALLBACK_APPLY_ADAPTER ? apply
+           : id == FVM_FUNCTION_CALLBACK_TEXT ? function_text
+           : id == FVM_FUNCTION_CALLBACK_EMPTY ? empty
+           : id == FVM_FUNCTION_CALLBACK_CLASS_CALL ? function_call
+           : id == FVM_FUNCTION_CALLBACK_CONSTRUCTOR ? constructor
+           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_GET ? argument_get
+           : id == FVM_FUNCTION_CALLBACK_ARGUMENT_SET ? argument_set
                        : 0;
 }
 

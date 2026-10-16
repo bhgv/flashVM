@@ -3,6 +3,7 @@
 #include "support.hpp"
 #include "resolved_call_constants.h"
 #include "script_call.hpp"
+#include "../../standard/construction.hpp"
 #include "../../core/property_key.hpp"
 #include "flashvm/function.h"
 #include "flashvm/standard.h"
@@ -46,11 +47,11 @@ extern "C" FVM_Result fvm_exec_resolved_call(FVM_Context *c, int construct, cons
             FVM_Object *instance = 0;
             if (found)
                 status = callable.type == FVM_VALUE_OBJECT
-                             ? fvm_function_construct(c, callable.object, argc, args, &instance)
+                             ? fvm_function_construct_value(c, callable.object, argc, args, &result)
                              : FVM_UNSUPPORTED;
             else
                 status = fvm_construct_bytes(c, key.data(), key.size(), argc, args, &instance);
-            if (status == FVM_OK)
+            if (!found && status == FVM_OK)
             {
                 result.type = FVM_VALUE_OBJECT;
                 result.object = instance;
