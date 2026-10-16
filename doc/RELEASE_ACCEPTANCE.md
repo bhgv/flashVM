@@ -2474,3 +2474,21 @@ PermissionError after an executable-mode reset. Restoring that mode and rerunnin
 the driver passed 1/1, covering all 924 cases across these runs. Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.462 — direct Function construction snapshots arguments
+
+fvm_function_construct retains an unpinned input Function and snapshots/roots
+arguments before native factory dispatch or script prototype access. A prototype
+getter may collect or mutate the caller's array before constructor invocation.
+External borrowed string buffers remain caller-owned for the complete call;
+ordinary native callbacks retain their GC barrier. No overlapping output-pointer
+contract is introduced. function_construct_arguments first failed after native
+factory mutation and checks host/SWF4–8, direct script/native construction,
+collecting prototype getters, traced NUL strings, cyclic arguments, mutation,
+object returns, errors/exceptions and root/depth cleanup/reclamation. The native
+constructable entry is an internal fixture for built-in factory dispatch.
+Full constructor/allocator/concurrency compatibility and all stages remain open.
+
+Validation v0.462: complete Linux minimal 906/906; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.

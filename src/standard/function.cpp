@@ -1169,6 +1169,15 @@ extern "C" FVM_Result fvm_function_construct(
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Direct C callers may supply an unpinned Function and arguments. Keep
+           them live and stable before prototype access can mutate caller storage or collect. */
+        FVM_ObjectRootScope function_root(c, fn);
+        fvm_detail::vector<FVM_Value> arguments;
+        FVM_ValueVectorRootScope argument_roots(c, arguments);
+        arguments.reserve(n);
+        for (unsigned int i = 0; i < n; ++i)
+            arguments.push_back(a[i]);
+        a = n ? arguments.begin() : 0;
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fn->constructable.callback)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
