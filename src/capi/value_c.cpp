@@ -402,7 +402,7 @@ FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const fvm_deta
 
 /* Write an ordinary property using accessors, attributes and metadata hooks. */
 FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const fvm_detail::string &requested_name,
-                               const FVM_Value *v, bool allow_meta, bool prepared_watch)
+                               const FVM_Value *v, bool allow_meta, bool prepared_watch, bool super_write)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -429,6 +429,19 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             return r;
     }
 
+    /* Loaded super forwards watcher and membership to the actual receiver,
+     * but its local storage is inert even when the receiver owns a virtual. */
+    const bool loaded_super = c->swf_loaded && super_write;
+    if (loaded_super)
+    {
+        int own = 0;
+        r = fvm_object_has_own_bytes(c, o, name.data(), name.size(), &own);
+        if (r != FVM_OK)
+            return r;
+        if (own)
+            return write.finish(FVM_OK);
+    }
+
     /* Watchers observe requested spelling and may replace the own property.
      * Select the current stored spelling only after their callback has returned. */
     if (!fvm_property_select_own_name(c, o, name) &&
@@ -437,7 +450,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         name = "__proto__";
 
     /* Canonical table writes already prepared growth before entering this fallback. */
-    if (c->swf_loaded && start == o && !prepared_watch)
+    if (c->swf_loaded && !loaded_super && start == o && !prepared_watch)
     {
         r = fvm_array_prepare_index(c, o, name);
         if (r != FVM_OK)
@@ -446,7 +459,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
-    FVM_Object *flag_cursor = start;
+    FVM_Object *flag_cursor = loaded_super ? 0 : start;
     for (; flag_cursor && flag_depth++ < FVM_PROTOTYPE_MAX_DEPTH; flag_cursor = flag_cursor->prototype)
     {
         unsigned int flags = 0;
@@ -469,7 +482,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
-    if (start != o)
+    if (start != o && !loaded_super)
     {
         unsigned int own_flags = 0;
         FVM_Result flag_result = fvm_object_property_flags_bytes(c, o, name.data(), name.size(), &own_flags);
@@ -498,7 +511,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     /* Initialization / Инициализация локального состояния. */
     /* Loaded ordinary writes search through inherited data for virtuals.
      * Own data prevents that search; setters retain the original receiver.
-     * Host and selected-super writes keep their existing lookup policy. */
+     * Loaded super searches through inherited data without writing local storage. */
     FVM_Object *cursor = start;
     unsigned int accessor_depth = 0;
     while (cursor && accessor_depth++ < FVM_PROTOTYPE_MAX_DEPTH)
@@ -511,7 +524,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             continue;
         }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (c->swf_loaded && start == o ? cursor == o && fvm_property_own_write_data(c, cursor, name) :
+        if (c->swf_loaded && (start == o || loaded_super) ? cursor == o && fvm_property_own_write_data(c, cursor, name) :
             fvm_property_find(c, cursor->properties, name) != cursor->properties.end())
             break;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -576,6 +589,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     }
     if (accessor_depth > FVM_PROTOTYPE_MAX_DEPTH)
         return FVM_ERROR;
+    /* A loaded super facade never falls through to data, metatable or __proto__ writes. */
+    if (loaded_super)
+        return write.finish(FVM_OK);
     /* An existing own property is always written directly. */
     if (allow_meta && o->properties.find(name) == o->properties.end())
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

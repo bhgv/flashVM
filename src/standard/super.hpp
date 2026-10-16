@@ -24,7 +24,8 @@ FVM_NativeFunction fvm_super_callback();
 /* Read from a selected prototype chain with a separate accessor receiver. */
 FVM_Result fvm_object_get_from(FVM_Context *, FVM_Object *, FVM_Object *, const fvm_detail::string &, FVM_Value *,
                                bool, bool allow_resolve = true);
-/* Write through a selected accessor chain; prepared_watch avoids repeating an indexed watcher. */
+/* Write through a selected accessor chain; prepared_watch avoids repeating an indexed watcher.
+ * super_write suppresses loaded facade storage and gates lookup on receiver membership. */
 FVM_Result fvm_object_set_from(FVM_Context *, FVM_Object *, FVM_Object *, const fvm_detail::string &,
-                               const FVM_Value *, bool, bool prepared_watch = false);
+                               const FVM_Value *, bool, bool prepared_watch = false, bool super_write = false);
 #endif

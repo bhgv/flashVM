@@ -46,3 +46,5 @@ Validation: Linux Release minimal 993/993 and AGG 1012/1012 after restoring
 execute permissions on affected generated binaries. Five targeted restricted
 ASan/UBSan tests pass (three new deep-dispatch tests plus existing inherited
 Array setter and thrown-watcher tests). No foreign OS runtime gate is closed.
+
+Loaded selected-super writes are addressed separately in [v0.497](SUPER_PROPERTY_WRITES.md).

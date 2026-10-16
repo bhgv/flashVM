@@ -337,9 +337,9 @@ FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     if (result != FVM_OK)
         return result;
     unsigned long index;
-    if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
+    if (!c->swf_loaded && fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
         return FVM_UNSUPPORTED;
-    return fvm_object_set_from(c, receiver, start, name, value, false);
+    return fvm_object_set_from(c, receiver, start, name, value, false, false, true);
 }
 
 /* Loaded super membership follows its actual receiver, not the parent lookup
