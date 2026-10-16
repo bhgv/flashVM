@@ -1449,3 +1449,17 @@ Untracked generated native launchers restore runner-reset executable mode in
 minimal/sanitizer without changing binaries, arguments or assertions. Private
 constants pass strict C89. Stack ASan and LeakSanitizer disabled. Identity fields
 are metadata, not authentication; all stages and foreign runtime acceptance open.
+
+v0.408: use the production ProjectVersion.cmake module to register VERSION.txt
+as a configuration dependency, refreshing project metadata on an ordinary build
+without manual configure. RU: версия проекта обновляется при изменении только
+VERSION.txt. The isolated compiler-free fixture reproduces stale metadata without
+the dependency, then passes configure/build/edit/build/rebuild with Unix Makefiles,
+Ninja and Ninja Multi-Config on Linux. Registered fixture passes in minimal,
+AGG, sanitizer-configured and no-OS build directories; this is a host metadata
+check, not new sanitizer runtime evidence. Actual caches report project 0.408.
+Full minimal Release passes 821/821, using generated untracked mode-restoring
+native launchers for runner-reset permissions; binaries/assertions are unchanged.
+The fixture does not modify checkout VERSION.txt and inherits native generator/
+make/platform/toolset settings. Windows/macOS/Android runtime and physical LAN
+acceptance remain open, as do all nine roadmap stages.

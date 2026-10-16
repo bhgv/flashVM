@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION.txt" FVM_VERSION LIMIT_COUNT 1)
+include(cmake/ProjectVersion.cmake)
 project(FlashVM VERSION "${FVM_VERSION}" LANGUAGES C CXX)
 
 # The VM and bundled backends must build without modern C/C++ language modes.
@@ -213,6 +213,24 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  # Use the production version module and the same native generator in an isolated fixture.
+  set(FVM_VERSION_CHECK_ARGS --cmake "${CMAKE_COMMAND}"
+    --module "${PROJECT_SOURCE_DIR}/cmake/ProjectVersion.cmake"
+    --generator "${CMAKE_GENERATOR}")
+  if(CMAKE_MAKE_PROGRAM)
+    list(APPEND FVM_VERSION_CHECK_ARGS --make-program "${CMAKE_MAKE_PROGRAM}")
+  endif()
+  if(CMAKE_GENERATOR_PLATFORM)
+    list(APPEND FVM_VERSION_CHECK_ARGS --platform "${CMAKE_GENERATOR_PLATFORM}")
+  endif()
+  if(CMAKE_GENERATOR_TOOLSET)
+    list(APPEND FVM_VERSION_CHECK_ARGS --toolset "${CMAKE_GENERATOR_TOOLSET}")
+  endif()
+  add_test(NAME flashvm_build_version_refresh
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_build_version.py
+            ${FVM_VERSION_CHECK_ARGS})
+  set_tests_properties(flashvm_build_version_refresh PROPERTIES TIMEOUT 60)
+
   add_test(NAME flashvm_platform_encoder_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_platform_encoder.py)
   add_test(NAME flashvm_android_adapter_host
