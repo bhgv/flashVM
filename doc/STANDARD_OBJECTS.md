@@ -164,3 +164,5 @@ Loaded virtual getters/setters use fixed superclass depth: [v0.501](PROPERTY_CAL
 Loaded watcher superclass depth: [v0.502 details and tests](WATCH_CALLBACK_SUPER.md).
 
 Watcher old-value visibility: [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).
+
+Resolver callback super depth: [v0.504](RESOLVE_CALLBACK_SUPER.md).

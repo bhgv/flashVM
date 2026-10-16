@@ -5,4 +5,6 @@
 #define FVM_PROPERTY_RESOLVE_NAME "__resolve"
 /* Bound nested resolver callbacks independently of their native/script representation. */
 #define FVM_PROPERTY_RESOLVE_MAX_DEPTH 64U
+/* A resolver is a function callback, independent of the resolver property's owner. */
+#define FVM_PROPERTY_RESOLVE_SUPER_DEPTH 0U
 #endif

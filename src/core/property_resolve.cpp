@@ -88,8 +88,9 @@ FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *r
             FVM_Result status = fvm_value_string_bytes(&argument, name.c_str(), name.size());
             if (status != FVM_OK)
                 return status;
-            /* [GC:] Resolver calls have no selected member owner; preserve the caller's identity. */
-            FVM_CallScope call(c, 0, resolver.object, 0);
+            /* [GC:] Retain callback identity and restore the caller after explicit depth-zero
+             * execution. Resolver storage does not select a member owner. */
+            FVM_CallScope call(c, 0, resolver.object, 0, FVM_PROPERTY_RESOLVE_SUPER_DEPTH);
             FVM_Value result;
             fvm_value_undefined(&result);
             status = fvm_function_invoke(c, resolver.object, receiver, 1, &argument, &result);
