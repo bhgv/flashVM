@@ -21,13 +21,9 @@ int main()
         for (unsigned i = 0; i < 4; ++i) assert(fvm_object_set_prototype(c, nodes[i], i < chain ? nodes[i + 1] : 0) == FVM_OK);
         if (!route) { int removed = 0; assert(fvm_object_delete(c, c->global, "anonymousFunction", &removed) == FVM_OK && removed); FVM_Value name; if (undefined_name) fvm_value_undefined(&name); else fvm_value_string(&name, ""); assert(fvm_exec_call_method(c, 0, &value, &name, c->global, 0, 0, &out) == FVM_OK); }
         else { Program code; code.number(0); code.variable("anonymousFunction"); code.variable("this"); code.text("anonymousFunction"); code.op(0x3a); code.op(0x17); if (undefined_name) code.variable("undefined"); else code.text(""); code.op(0x52); code.finish(); out = boxing_run(c, code, route - 1, FVM_OK); }
-        if (kind == 2 || kind == 3) assert(out.type == FVM_VALUE_UNDEFINED);
-        else {
-            assert(out.type == FVM_VALUE_OBJECT && out.object->resource_kind == FVM_RESOURCE_SUPER && out.object->resource_result.object->properties["depth"].number == 0);
-            FVM_Object *facade = out.object; assert(fvm_gc_pin(c, facade) == FVM_OK && fvm_gc_collect(c, 0) == FVM_OK && fvm_object_get(c, facade, "marker", &out) == FVM_OK);
-            if (chain) assert(out.type == FVM_VALUE_NUMBER && out.number == 1); else assert(out.type == FVM_VALUE_UNDEFINED);
-        }
-        assert(!c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH); fvm_context_destroy(c);
+        assert(out.type == FVM_VALUE_UNDEFINED);
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
+        assert(!c->calling_this_undefined && !c->script_this_undefined && !c->script_this && !c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);
 }

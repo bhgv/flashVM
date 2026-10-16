@@ -15,11 +15,11 @@ int main()
             FVM_Object *function = adapter_super_function(c, 0); assert(fvm_gc_pin(c, function) == FVM_OK);
             FVM_Value owner = class_value(function), name, value, out; fvm_value_string(&name, ""); fvm_value_string_bytes(&value, "r\0s", 3); allowance = boundary;
             FVM_Result status = fvm_exec_call_method(c, 0, &owner, &name, c->global, 1, &value, &out); allowance = -1;
-            assert(!c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
+            assert(!c->calling_this_undefined && !c->script_this_undefined && !c->script_this && !c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
             if (status == FVM_OUT_OF_MEMORY) { failed = true; assert(fvm_gc_collect(c, 0) == FVM_OK && fvm_exec_call_method(c, 0, &owner, &name, c->global, 1, &value, &out) == FVM_OK); }
             else { assert(status == FVM_OK); success = true; }
-            assert(out.type == FVM_VALUE_OBJECT && out.object->resource_result.object->properties["depth"].number == 0);
-            assert(fvm_gc_pin(c, out.object) == FVM_OK && fvm_gc_collect(c, 0) == FVM_OK); fvm_context_destroy(c);
+            assert(out.type == FVM_VALUE_UNDEFINED);
+            assert(fvm_gc_collect(c, 0) == FVM_OK); fvm_context_destroy(c);
         }
         assert(failed && success);
     }

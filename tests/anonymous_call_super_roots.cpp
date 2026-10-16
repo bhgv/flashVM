@@ -9,6 +9,7 @@ static unsigned mode;
 static FVM_Result body(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out, void *)
 {
     assert(frame->receiver == c->global && c->calling_function == function && !c->calling_owner && !c->calling_constructor && c->calling_super_depth == 0);
+    assert(!frame->implicit_this && !c->script_this && c->script_this_undefined && c->calling_this_undefined);
     int removed = 0; assert(fvm_object_delete(c, c->global, "anonymousFunction", &removed) == FVM_OK && removed);
     assert(fvm_object_set_prototype(c, c->global, 0) == FVM_OK && fvm_gc_collect(c, 0) == FVM_OK);
     bool alive = false; for (size_t i = 0; i < c->objects.size(); ++i) alive |= c->objects[i] == capture; assert(alive);
@@ -32,8 +33,8 @@ int main()
           else { Program code; code.number(0); code.variable("anonymousFunction"); code.text(""); code.op(0x52); code.finish(); out = boxing_run(c, code, route - 1, expected); }
           assert(c->calling_super_depth == 7);
         }
-        if (!mode) assert(out.type == FVM_VALUE_OBJECT && out.object->resource_result.object->properties["depth"].number == 0);
-        assert(!c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && !c->calling_constructor && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH && !c->exception_pending); fvm_context_destroy(c);
+        if (!mode) assert(out.type == FVM_VALUE_UNDEFINED);
+        assert(!c->calling_this_undefined && !c->script_this_undefined && !c->script_this && !c->gc_frames && !c->gc_native_depth && !c->calling_function && !c->calling_owner && !c->calling_constructor && c->calling_super_depth == FVM_CALL_SCOPE_INFER_SUPER_DEPTH && !c->exception_pending); fvm_context_destroy(c);
     }
     /* Unloaded host inference still has no super for a function without a defining owner. */
     FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK && fvm_standard_install(c) == FVM_OK);

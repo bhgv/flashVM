@@ -42,3 +42,9 @@ Validation / Проверка: full Linux x64 C++98 minimal 1046, AGG 1065 and C
 1066 tests passed after execute-permission repairs on 5/5/7 generated binaries
 and reruns. Six targeted ASan/UBSan tests and a strict C89 depth-header probe
 passed. Foreign-OS acceptance and complete SWF compatibility remain open.
+
+Follow-up v0.512: anonymous script this/preloads/super are corrected to Undefined;
+see [current contract](ANONYMOUS_UNDEFINED_THIS.md). Earlier object/facade
+expectations above describe the historical implementation and are superseded.
+Уточнение v0.512: ожидания объекта this/super в старых проверках исправлены;
+актуальная семантика описана в связанном документе.

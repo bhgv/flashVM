@@ -118,7 +118,7 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
             {
                 /* [GC:] An anonymous Function call has no defining member owner. Retain its
                  * identity and depth zero; a super facade publishes its own constructor scope. */
-                FVM_CallScope call(c, 0, receiver, 0, FVM_ANONYMOUS_CALL_SUPER_DEPTH);
+                FVM_CallScope call(c, 0, receiver, 0, FVM_ANONYMOUS_CALL_SUPER_DEPTH, true);
                 status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
             }
             else

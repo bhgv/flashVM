@@ -43,16 +43,20 @@ FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry
     struct ThisScope
     {
         FVM_Context *context; /* Owner of scoped implicit this. */
+        bool previous_undefined; /* Saved scalar value of the caller this cell. */
         FVM_Object *previous; /* [GC:] Suspended identity retained above. */
         /* Publish prepared this for nested calls. */
-        ThisScope(FVM_Context *c, FVM_Object *value) : context(c), previous(c->script_this)
+        ThisScope(FVM_Context *c, FVM_Object *value) : context(c), previous_undefined(c->script_this_undefined),
+                                                       previous(c->script_this)
         {
             c->script_this = value;
+            c->script_this_undefined = c->swf_loaded && c->script_depth && !value;
         }
         /* Restore identity on all exits. */
         ~ThisScope()
         {
             context->script_this = previous;
+            context->script_this_undefined = previous_undefined;
         }
     } identity(c, frame.implicit_this);
     /* The shared activation builder already selected its definition timeline. */

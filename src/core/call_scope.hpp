@@ -11,6 +11,7 @@ class FVM_CallScope
     FVM_Object *old_constructor_; /* [GC:] Constructor restored when the nested call ends. */
     FVM_Object *old_function_;    /* [GC:] Function restored when the nested call ends. */
     FVM_Object *old_owner_;       /* [GC:] Prototype owner restored when the nested call ends. */
+    bool old_this_undefined_; /* Actual this metadata restored after nested invocation. */
     unsigned int old_super_depth_; /* Explicit/inferred superclass depth restored after nesting. */
     /* [GC:] Inline frames retain saved/active identities without allocating a temporary vector. */
     FVM_GCRootFrame frames_[FVM_CALL_SCOPE_SNAPSHOT_COUNT];
@@ -22,9 +23,11 @@ class FVM_CallScope
   public:
     /* [GC:] Publish invocation identities and optional explicit superclass depth for one call. */
     FVM_CallScope(FVM_Context *c, FVM_Object *constructor, FVM_Object *function, FVM_Object *owner,
-                  unsigned int super_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH)
+                  unsigned int super_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH,
+                  bool undefined_this = false)
         : context_(c), old_constructor_(c->calling_constructor), old_function_(c->calling_function),
-          old_owner_(c->calling_owner), old_super_depth_(c->calling_super_depth)
+          old_owner_(c->calling_owner), old_this_undefined_(c->calling_this_undefined),
+          old_super_depth_(c->calling_super_depth)
     {
         /* [GC:] Build complete snapshots before changing context-visible metadata. */
         FVM_Object *objects[FVM_CALL_SCOPE_SNAPSHOT_COUNT] = {
@@ -42,6 +45,7 @@ class FVM_CallScope
         c->calling_function = function;
         c->calling_owner = owner;
         c->calling_super_depth = super_depth;
+        c->calling_this_undefined = undefined_this;
     }
     /* [GC:] Restore invocation identity and roots even when the callee throws. */
     ~FVM_CallScope()
@@ -50,6 +54,7 @@ class FVM_CallScope
         context_->calling_function = old_function_;
         context_->calling_owner = old_owner_;
         context_->calling_super_depth = old_super_depth_;
+        context_->calling_this_undefined = old_this_undefined_;
         /* [GC:] Detach the inline chain after restoring the previous invocation identity. */
         context_->gc_frames = frames_[0].previous;
     }

@@ -28,10 +28,12 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
 
     /* [GC:] A flagged loaded Function2 inherits the caller cell; its register
      * preload still receives the actual receiver according to the flags. */
-    FVM_Object *local_this = receiver ? receiver : c->global;
+    const bool actual_undefined = c->swf_loaded && c->calling_function == callee &&
+                                  c->calling_this_undefined;
+    FVM_Object *local_this = actual_undefined ? 0 : receiver ? receiver : c->global;
     if (c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && fn.function2 &&
         (fn.flags & FVM_AVM1_F2_THIS_FLAGS))
-        local_this = c->script_this ? c->script_this : c->global;
+        local_this = c->script_this_undefined ? 0 : c->script_this ? c->script_this : c->global;
     /* [GC:] Root the definition timeline and restore the caller's target metadata
      * across both activation preparation and body execution. */
     FVM_AVM1TargetScope targets(c, base_clip ? base_clip : c->avm1_target_active ? 0 : receiver,
@@ -218,7 +220,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         {
             FVM_Value named_this;
             fvm_value_undefined(&named_this);
-            if (!fn.function2 || !(fn.flags & FVM_AVM1_F2_SUPPRESS_THIS))
+            if (!actual_undefined && (!fn.function2 || !(fn.flags & FVM_AVM1_F2_SUPPRESS_THIS)))
             {
                 named_this.type = FVM_VALUE_OBJECT;
                 named_this.object = receiver ? receiver : c->global;
@@ -264,8 +266,11 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             FVM_Value common[FVM_AVM1_PRELOAD_COUNT];
             for (unsigned int i = 0; i < FVM_AVM1_PRELOAD_COUNT; ++i)
                 fvm_value_undefined(common + i);
-            common[FVM_AVM1_PRELOAD_THIS_INDEX].type = FVM_VALUE_OBJECT;
-            common[FVM_AVM1_PRELOAD_THIS_INDEX].object = receiver ? receiver : c->global;
+            if (!actual_undefined)
+            {
+                common[FVM_AVM1_PRELOAD_THIS_INDEX].type = FVM_VALUE_OBJECT;
+                common[FVM_AVM1_PRELOAD_THIS_INDEX].object = receiver ? receiver : c->global;
+            }
             common[FVM_AVM1_PRELOAD_ARGUMENTS_INDEX] = implicit_arguments;
             common[FVM_AVM1_PRELOAD_SUPER_INDEX] = implicit_super;
             /* Paired flags suppress preloaded this/super, but arguments still

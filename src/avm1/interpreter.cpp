@@ -250,6 +250,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         FVM_Context *context;
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         FVM_GCRootFrame frame, register_frame;
+        bool previous_this_undefined; /* Saved scalar value of the caller this cell. */
         FVM_Object *previous_this; /* [GC:] Caller identity retained by its suspended frame. */
         /* Initialize Root Guard and its owned state. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -259,7 +260,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   fvm_detail::vector<FVM_Value> *reg, FVM_Object *current_this = 0)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            : context(c), previous_this(c->script_this)
+            : context(c), previous_this_undefined(c->script_this_undefined),
+              previous_this(c->script_this)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
 
@@ -283,6 +285,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             register_frame.receiver = current_this    ? current_this
                                       : previous_this ? previous_this
                                                       : r;
+            c->script_this_undefined = c->swf_loaded && !current_this &&
+                                       (c->calling_this_undefined || previous_this_undefined);
+            if (c->script_this_undefined)
+                register_frame.receiver = 0;
             c->script_this = register_frame.receiver;
             /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             c->gc_frames = &register_frame;
@@ -297,6 +303,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             context->gc_frames = frame.previous;
             /* [GC:] Restore caller identity on normal, exception and OOM exits. */
             context->script_this = previous_this;
+            context->script_this_undefined = previous_this_undefined;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

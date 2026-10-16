@@ -145,6 +145,7 @@ extern "C"
         /* [GC:] A new context has no active script caller identity. */
         context->script_callee = 0;
         context->script_this = 0;
+        context->script_this_undefined = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->string_depth = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -160,6 +161,7 @@ extern "C"
         /* [GC:] Работаем с выбранным режимом планирования сборки. */
         /* [GC:] No constructor/method invocation is active in a new context. */
         context->calling_constructor = context->calling_function = context->calling_owner = 0;
+        context->calling_this_undefined = false;
         context->calling_super_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH;
         context->calling_setter_owner = 0;
         context->calling_setter_name = 0;

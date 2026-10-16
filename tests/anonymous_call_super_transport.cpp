@@ -1,4 +1,4 @@
-/* Pure AVM1 Function values restored into another context use that anonymous receiver at depth zero. */
+/* Transported pure AVM1 Functions retain Undefined anonymous this/super in the destination. */
 #define FVM_FUNCTION_ADAPTER_SUPER_FIXTURE_ONLY
 #include "function_adapter_super.cpp"
 int main()
@@ -13,9 +13,9 @@ int main()
         assert(fvm_set_global(other, "anonymousFunction", &value) == FVM_OK); FVM_Object *parent = 0; assert(fvm_construct(other, "Object", 0, 0, &parent) == FVM_OK); fvm_value_number(&out, 81); assert(fvm_object_set(other, parent, "marker", &out) == FVM_OK && fvm_object_set_prototype(other, other->global, parent) == FVM_OK);
         if (!route) { int removed = 0; assert(fvm_object_delete(other, other->global, "anonymousFunction", &removed) == FVM_OK && removed); fvm_value_undefined(&name); assert(fvm_exec_call_method(other, 0, &value, &name, other->global, 0, 0, &out) == FVM_OK); }
         else { Program code; code.number(0); code.variable("anonymousFunction"); code.variable("this"); code.text("anonymousFunction"); code.op(0x3a); code.op(0x17); code.text(""); code.op(0x52); code.finish(); out = boxing_run(other, code, route - 1, FVM_OK); }
-        assert(out.type == FVM_VALUE_OBJECT && out.object->resource_result.object->properties["depth"].number == 0 && out.object->resource_result.object->properties["receiver"].object == other->global);
-        assert(fvm_gc_pin(other, out.object) == FVM_OK && fvm_gc_collect(other, 0) == FVM_OK && fvm_object_get(other, out.object, "marker", &out) == FVM_OK && out.type == FVM_VALUE_NUMBER && out.number == 81);
-        assert(!other->gc_frames && !other->gc_native_depth && !other->calling_function && !other->calling_owner); fvm_context_destroy(other); fvm_context_destroy(c);
+        assert(out.type == FVM_VALUE_UNDEFINED);
+        assert(fvm_gc_collect(other, 0) == FVM_OK && fvm_object_get(other, other->global, "marker", &out) == FVM_OK && out.type == FVM_VALUE_NUMBER && out.number == 81);
+        assert(!other->calling_this_undefined && !other->script_this_undefined && !other->script_this && !other->gc_frames && !other->gc_native_depth && !other->calling_function && !other->calling_owner); fvm_context_destroy(other); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);
 }

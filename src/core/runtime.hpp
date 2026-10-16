@@ -234,6 +234,7 @@ struct FVM_Context
     FVM_Object *calling_constructor; /* [GC:] Constructor identity of the current call mode. */
     FVM_Object *calling_function;    /* [GC:] Function whose selected method owner is recorded. */
     FVM_Object *calling_owner; /* [GC:] Prototype or object that supplied the current method. */
+    bool calling_this_undefined; /* Actual this is Undefined for the current anonymous invocation. */
     unsigned int calling_super_depth; /* Explicit superclass depth, or the call-scope inference sentinel. */
     FVM_Object *calling_setter_owner; /* [GC:] Accessor lookup owner retained by the active setter scope. */
     const fvm_detail::string *calling_setter_name; /* Borrowed immutable key owned by the active setter scope. */
@@ -338,6 +339,7 @@ struct FVM_Context
         script_functions;         /* [GC:] Named script function bytecode records. */
     unsigned int script_depth;    /* [GC:] Current nested script invocation depth. */
     FVM_Object *script_callee;    /* [GC:] Active script function identity for arguments.caller. */
+    bool script_this_undefined; /* The active script this cell holds Undefined rather than an object. */
     FVM_Object *script_this;      /* [GC:] Current object-valued implicit this, separate from call receiver. */
     unsigned int string_depth;    /* [GC:] Recursion guard for string coercion. */
     unsigned int primitive_depth; /* [GC:] Recursion guard for primitive coercion. */

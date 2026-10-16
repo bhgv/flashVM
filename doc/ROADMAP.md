@@ -2118,3 +2118,15 @@ sharing the AVM1 budget and worker cancellation scope. Проверены C/dire
 GC и OOM/retry. See [ARRAY_SPLICE_BUDGET.md](ARRAY_SPLICE_BUDGET.md).
 Argument-coercion side effects remain visible after a staging error. Generic
 mutations retain their existing partial-write policy; all nine stages remain open.
+
+### v0.512 — Undefined this for anonymous CallMethod
+
+Implemented / реализовано: anonymous loaded CallMethod supplies an Undefined
+script this cell, separates Function2 preloads from inherited caller cells,
+and creates no super facade for an Undefined actual receiver. Named nested
+calls restore their own receiver, then the suspended caller metadata.
+Tests / проверки: anonymous_undefined_this, its roots/allocation/transport
+variants, and corrected anonymous_call_super regressions; interpreter and native
+JIT body bridges share the policy. See [RU/EN contract](ANONYMOUS_UNDEFINED_THIS.md).
+Qualified string paths, native receiver coercion, complete AVM1 compatibility
+and all nine roadmap stages remain open / остаются открытыми.

@@ -51,3 +51,9 @@ an object-valued anonymous this, so v0.509 establishes its depth policy but does
 not complete original anonymous this/super value semantics. This remains open.
 Уточнение v0.510: исходный анонимный CallMethod передаёт Undefined как this;
 текущий мост FlashVM сохраняет объект. Полная семантика этого значения ещё открыта.
+
+Follow-up v0.512: anonymous script this/preloads/super are corrected to Undefined;
+see [current contract](ANONYMOUS_UNDEFINED_THIS.md). Earlier object/facade
+expectations above describe the historical implementation and are superseded.
+Уточнение v0.512: ожидания объекта this/super в старых проверках исправлены;
+актуальная семантика описана в связанном документе.

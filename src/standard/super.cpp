@@ -155,7 +155,8 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
                             FVM_Value *out)
 {
     fvm_value_undefined(out);
-    if (!callee || !receiver)
+    if (!callee || !receiver ||
+        (c->calling_function == callee && c->calling_this_undefined))
         return FVM_OK;
     try
     {
