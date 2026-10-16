@@ -150,3 +150,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Вызовы числовых членов согласованы между C API и AVM1: [v0.499](OBJECT_INDEXED_CALL.md).
 
 Глубина super при Function.call/apply: [v0.500](FUNCTION_ADAPTER_SUPER.md).
+
+Фиксированная глубина super в виртуальных getter/setter: [v0.501](PROPERTY_CALLBACK_SUPER.md).

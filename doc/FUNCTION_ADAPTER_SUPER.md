@@ -57,3 +57,5 @@ checks pass: four new adapter-super tests plus borrowed/apply/super adapter and
 super-conversion allocation controls. Both new/revised constants headers pass a
 standalone C89 pedantic syntax probe. Stack ASan/LeakSanitizer and foreign OS
 runtime acceptance remain outside this evidence.
+
+Getter/setter callback depth is addressed separately in [v0.501](PROPERTY_CALLBACK_SUPER.md).

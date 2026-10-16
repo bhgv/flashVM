@@ -158,3 +158,5 @@ Selected indexed ancestor reads and numeric super-method owner identity: [v0.498
 Ordinary indexed member calls now agree between C and AVM1: [v0.499](OBJECT_INDEXED_CALL.md).
 
 Loaded Function.call/apply use explicit superclass depth one: [v0.500](FUNCTION_ADAPTER_SUPER.md).
+
+Loaded virtual getters/setters use fixed superclass depth: [v0.501](PROPERTY_CALLBACK_SUPER.md).

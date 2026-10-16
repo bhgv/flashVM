@@ -15,6 +15,7 @@
 #include "base_state.hpp"
 #include "base_constants.h"
 #include "property_flag_constants.h"
+#include "property_super_constants.h"
 #include "property_flag_lookup.hpp"
 #include "constructor_identity.hpp"
 #include "class_registry_constants.h"
@@ -28,6 +29,7 @@
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
 #include "../core/property_write.hpp"
+#include "../core/call_scope.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/execution.h"
@@ -1934,6 +1936,21 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     fvm_value_boolean(out, 1);
     return FVM_OK;
 }
+/* Invoke a script virtual with fixed loaded superclass depth, preserving host inference. */
+FVM_Result invoke_script_property(FVM_Context *c, FVM_Object *receiver, FVM_Object *function,
+                                  unsigned int count, const FVM_Value *args, FVM_Value *out)
+{
+    if (c->swf_loaded)
+    {
+        /* [GC:] The surrounding accessor scope retains the actual descriptor owner;
+         * this activation retains callback identities and its explicit superclass depth. */
+        FVM_CallScope scope(c, 0, function, receiver ? receiver->prototype : 0,
+                            FVM_PROPERTY_CALLBACK_SUPER_DEPTH);
+        return fvm_function_invoke(c, function, receiver, count, args, out);
+    }
+    return fvm_function_invoke(c, function, receiver, count, args, out);
+}
+
 /* The descriptor is a traced object, not a host pointer: getter and setter
  * closures remain live and travel with the property through graph channels. */
 /* Read script property. */
@@ -1958,7 +1975,7 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
             *out = data->second;
         return FVM_OK;
     }
-    return fvm_function_invoke(c, function.object, receiver, 0, 0, out);
+    return invoke_script_property(c, receiver, function.object, 0, 0, out);
 }
 
 /* Persist ordinary own data after a script setter removes its descriptor, without calling another setter. */
@@ -2012,7 +2029,7 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
         fvm_value_undefined(out);
     else
     {
-        r = fvm_function_invoke(c, function.object, receiver, n, args, out);
+        r = invoke_script_property(c, receiver, function.object, n, args, out);
         if (r != FVM_OK)
             return r;
     }
