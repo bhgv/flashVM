@@ -576,3 +576,7 @@ Strict scalar text and native size bounds are retained; full TextField compatibi
 
 v0.394: TextFormat validates complete counted alignment/font/URL/target values.
 RU: скрытый NUL не обходит ограничения форматирования; стадии остаются открытыми.
+
+
+v0.395: TextField graph restore enforces native byte/scalar storage bounds
+before native/font allocation. RU: проверка повреждённых графов и отката. Стадии открыты.

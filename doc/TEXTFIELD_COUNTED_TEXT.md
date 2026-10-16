@@ -34,3 +34,16 @@ This preserves the existing supported-style subset rather than claiming URL or
 new alignment/font behavior. Staged field styles remain unchanged on rejection.
 textformat_counted_keywords checks current/future formatting and extent, plus
 exact valid keywords and zero-count borrowed strings with nonempty backing data.
+
+## v0.395 restored native text limits
+
+Graph restoration now rejects native text beyond 16384 bytes or 4096 validated
+Unicode scalars before allocating a Field or importing its fonts. Previously
+restoration checked UTF-8 but could bypass the editing envelope. Invalid native
+payloads return FVM_INVALID_ARGUMENT and graph restoration rolls back objects,
+allocation counters and imported fonts. The valid 4096-scalar and supplementary
+16384-byte/8192-unit boundaries remain accepted.
+
+textfield_restore_limits grows a real serialized text payload, updates its
+length/envelope size and CRC, and verifies 4097-scalar and 16385-byte rejection
+with no publication or leftover state. Valid boundary records round-trip.

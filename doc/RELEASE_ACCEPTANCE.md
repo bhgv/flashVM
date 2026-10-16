@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.394
+# Условия окончательной приёмки / Final acceptance gates — v0.395
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1290,3 +1290,12 @@ Validation v0.394: ten rebuilt text/graph checks pass in Linux Release
 AGG/Cairo/minimal and restricted heap/global ASan+UBSan. Font-enabled checks
 exercise full counted formatting validation; disabled-font configurations retain
 stub behavior. Stack ASan and LeakSanitizer disabled. All stages remain open.
+
+
+v0.395: TextField graph restore enforces native byte/scalar storage bounds
+before native/font allocation. RU: проверка повреждённых графов и отката. Стадии открыты.
+Validation v0.395: eleven rebuilt text/graph checks pass in Linux Release
+AGG/Cairo/minimal and restricted heap/global ASan+UBSan. New font-enabled cases
+reject CRC-valid oversized native payloads with rollback and accept exact scalar,
+byte and UTF-16 boundaries. Font-disabled behavior remains unchanged; stack
+ASan and LeakSanitizer disabled. All stages remain open.

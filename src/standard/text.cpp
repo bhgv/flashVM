@@ -1397,8 +1397,12 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
 {
     if (!context->standard_text_library)
         return FVM_UNSUPPORTED;
+    size_t scalar_count = 0;
+    /* Validate the same storage envelope as editing before allocating native state or fonts. */
     if (!finite_range(state.width, 0, 1000000) || !finite_range(state.height, 0, 1000000) ||
-        fvm_utf8_validate(state.text.c_str(), state.text.size(), 0) != FVM_UTF8_OK)
+        state.text.size() > FVM_TEXT_FIELD_MAX_BYTES ||
+        fvm_utf8_validate(state.text.c_str(), state.text.size(), &scalar_count) != FVM_UTF8_OK ||
+        scalar_count > FVM_TEXT_FIELD_MAX_SCALARS)
         return FVM_INVALID_ARGUMENT;
     Field *field = new Field;
     try
