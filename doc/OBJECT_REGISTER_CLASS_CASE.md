@@ -81,3 +81,22 @@ to a movie of the opposite version group, checks SWF4–8 under ambient SWF6/8,
 raw metadata validation, GC and channel transport. The allocation companion
 sweeps replacement failures while base/ambient versions differ. Source comparison:
 Object.registerClass above uses activation.base_clip().movie().version().
+
+## v0.392 symbol constructor provenance
+
+Attachment, intrinsic duplication and authored symbol placement now select the
+constructor environment by the retained source library version, matching the
+pinned MovieClip get_registered_avm1_constructor source (movie().version()).
+They do not change ambient execution metadata. A destination live Object registry
+still takes precedence; transported fallback registries use the same source
+version. Old libraries lacking metadata retain ambient lookup.
+
+movieclip_registered_provenance checks SWF5–8 symbols under ambient SWF6/8,
+attachment, duplication, authored placement, GC, both transported environments
+without destination standard installation and old-library fallback. Its allocation
+companion sweeps mixed-version attach failures/retry; constructor failures may
+leave an already published child, as before. jit_registered_provenance checks
+registration base-version selection in interpreted/explicit/automatic native
+execution for SWF4–8 vs ambient6/8. Full globals and API provenance remain open.
+
+[Primary symbol constructor lookup](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/display_object/movie_clip.rs).

@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/3/6/7/8: symbol constructor version | Проверено для сценариев v0.392 | attach/duplicate/authored placement select source library environment under mixed versions; GC/transport/fallback and attach OOM/retry. Native registration provenance verified separately. Other API/global provenance open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 1/2/3/6/7: registration source version | Проверено для сценариев v0.391 | Retained library SWF version and active base-clip selection after name coercion; real SetTarget/CallMethod across SWF4–8 vs ambient6/8, GC/transfer and OOM. Old graphs fall back; other APIs open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 1/2/3/6/7: separate constructor environments | Проверено для сценариев v0.390 | Independent legacy/exact maps, reload, counted names, GC, transfer and atomic replacement failures. Old flat records retain prior policy. Full globals/base-clip provenance open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
 | 1/2/7: String character budget | Проверено для сценариев v0.389 | string_character_work: SWF4–8, index callbacks, nested/saturated budgets, exceptions, native GC barrier and lone-surrogate extraction. Receiver decoding work remains open. STRING_LOADED_WORK.md / .ru.md. |

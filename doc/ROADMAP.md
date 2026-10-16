@@ -562,3 +562,8 @@ channel transport and replacement OOM. Старые плоские записи 
 v0.391: retained source-movie metadata selects registerClass environment from
 the activation base clip, independently of SetTarget/ambient version.
 RU: версия базового клипа для регистрации; старые графы используют fallback. Стадии открыты.
+
+
+v0.392: attach/duplicate/authored placement choose registered constructors by
+source symbol version, including transported fallback maps.
+RU: версия символа при создании экземпляров; старые библиотеки используют fallback. Стадии открыты.

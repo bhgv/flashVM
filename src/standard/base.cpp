@@ -2707,9 +2707,19 @@ extern "C" FVM_Result fvm_registered_class_bytes(FVM_Context *c, const char *nam
 FVM_Result fvm_base_registered_class(FVM_Context *c, FVM_Object *registry,
                                      const fvm_detail::string &key, FVM_Object **out)
 {
-    if (!c || !registry || registry->owner != c || !out)
+    if (!c)
         return FVM_INVALID_ARGUMENT;
-    bool legacy = c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7;
+    return fvm_base_registered_class_version(c, registry, key,
+        c->swf_loaded ? c->swf_info.version : 0, out);
+}
+
+/* Select the source movie's constructor environment without changing ambient execution state. */
+FVM_Result fvm_base_registered_class_version(FVM_Context *c, FVM_Object *registry,
+    const fvm_detail::string &key, unsigned int version, FVM_Object **out)
+{
+    if (!c || !registry || registry->owner != c || !out || version > FVM_SWF_VERSION_8)
+        return FVM_INVALID_ARGUMENT;
+    bool legacy = version && version < FVM_SWF_VERSION_7;
     registry = registry_environment(c, registry, legacy);
     if (!registry)
         return FVM_INVALID_ARGUMENT;

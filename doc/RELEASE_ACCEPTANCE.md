@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.391
+# Условия окончательной приёмки / Final acceptance gates — v0.392
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1261,3 +1261,14 @@ Linux Release AGG/Cairo/minimal and restricted heap/global ASan+UBSan, including
 source-version callbacks/transport, replacement OOM, sprite-load OOM and native
 timeline allocation. Stack ASan and LeakSanitizer disabled. The new source
 metadata constants header passes strict C89 syntax. All stages remain open.
+
+
+v0.392: attach/duplicate/authored placement choose registered constructors by
+source symbol version, including transported fallback maps.
+RU: версия символа при создании экземпляров; старые библиотеки используют fallback. Стадии открыты.
+Validation v0.392: 36 rebuilt AGG registry/scene/timeline/duplicate checks pass;
+17 rebuilt registry/scene/native checks pass in Cairo and minimal Release and
+restricted heap/global ASan+UBSan. This includes three new source-provenance,
+attach-allocation and interpreted/explicit/automatic registration cases. Stack
+ASan and LeakSanitizer disabled. Source comparison is not a Flash Player oracle;
+full-profile and non-Linux acceptance remain open, as do all roadmap stages.

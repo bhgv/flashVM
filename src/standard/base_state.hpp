@@ -40,6 +40,10 @@ FVM_Result fvm_base_class_registry(FVM_Context *, FVM_Object **);
 FVM_Result fvm_base_registered_class(FVM_Context *, FVM_Object *, const fvm_detail::string &,
                                      FVM_Object **);
 
+/* Resolve with explicit source-movie version; zero denotes the unloaded exact policy. */
+FVM_Result fvm_base_registered_class_version(FVM_Context *, FVM_Object *,
+    const fvm_detail::string &, unsigned int, FVM_Object **);
+
 /* Validate base. */
 FVM_Result fvm_base_validate(FVM_Context *);
 

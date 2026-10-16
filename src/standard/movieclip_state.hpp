@@ -14,6 +14,8 @@ FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string
 
 /* Validate movieclip. */
 FVM_Result fvm_movieclip_validate(FVM_Context *);
+/* Read optional source version directly from a retained scene library. */
+FVM_Result fvm_movieclip_library_version(FVM_Context *, FVM_Object *, unsigned int *);
 /* Read retained source SWF version, or the ambient policy for native/old graphs. */
 FVM_Result fvm_movieclip_movie_version(FVM_Context *, FVM_Object *, unsigned int *);
 /* Read physical parent or the retained loaded-AVM1 parent after native detachment. */

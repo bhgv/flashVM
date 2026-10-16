@@ -2,6 +2,7 @@
 #include "movieclip_construction.hpp"
 #include "movieclip_storage.hpp"
 #include "base_state.hpp"
+#include "movieclip_state.hpp"
 using namespace fvm_movieclip_storage;
 /* [GC:] The caller retains the library/constructor and blocks collection through prototype getters.
  */
@@ -24,7 +25,11 @@ FVM_Result fvm_movieclip_sprite_class(FVM_Context *c, FVM_Object *library, const
         return r;
     if (classes)
     {
-        r = fvm_base_registered_class(c, classes, linkage, &constructor);
+        unsigned int version = 0;
+        r = fvm_movieclip_library_version(c, library, &version);
+        if (r != FVM_OK)
+            return r;
+        r = fvm_base_registered_class_version(c, classes, linkage, version, &constructor);
         if (r != FVM_OK && r != FVM_NOT_FOUND)
             return r;
         if (constructor)
