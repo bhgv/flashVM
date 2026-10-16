@@ -769,3 +769,23 @@ Validation v0.420: Linux minimal 838/838; AGG 7/7; heap/global ASan+UBSan 7/7.
 Generated native-mode launchers compensate for workspace executable-mode resets.
 Stack ASan and LeakSanitizer are disabled in this environment. Other platforms
 and completion of all nine stages remain unverified/open.
+
+## v0.421 — заимствованные адаптеры и невызываемые цели
+
+В загруженных SWF4–8 заимствованные Function.call/apply возвращают undefined,
+если у цели нет callback вызова. Упаковка this и подготовка длины/индексов apply
+выполняются раньше: ошибки getter, исключения со встроенным NUL и исчерпание
+квоты продолжают передаваться вызывающему. Host API сохраняет UNSUPPORTED;
+прямой публичный вызов и C/script/удалённые вызываемые интерфейсы не меняются.
+Основание — закреплённая версия Ruffle function.rs по ссылке выше.
+
+function_borrowed_adapters воспроизводит прежний сбой и проверяет версии SWF4–8,
+host, настоящую сборку GC внутри script getter, исключения, повторный вызов,
+вызываемую цель и порядок проверки бюджета. jit_function_apply дополнен обоими
+адаптерами через интерпретатор и два режима JIT с входом в машинный код.
+Полная семантика super и Function, как и все девять стадий, остаётся открытой.
+
+Проверено v0.421: Linux minimal 839/839; AGG 9/9; heap/global ASan+UBSan
+9/9, включая регрессию удалённых функций. Использованы генерируемые средства
+восстановления права запуска; stack ASan/LeakSanitizer отключены. Другие ОС
+не проверены; все стадии остаются открытыми.

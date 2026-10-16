@@ -33,6 +33,20 @@ int main()
             out = class_run(c, call); assert(out.number == 2);
             fvm_value_number(&value, 5); assert(fvm_set_global(c, "applyList", &value) == FVM_OK);
             out = class_run(c, call); assert(out.number == 0);
+            FVM_Object *plain = 0;
+            assert(fvm_object_create(c, &plain) == FVM_OK); value = apply_object(plain);
+            assert(fvm_set_global(c, "plainTarget", &value) == FVM_OK);
+            value = apply_object(source); assert(fvm_set_global(c, "applyList", &value) == FVM_OK);
+            assert(fvm_object_get(c, fn, "apply", &value) == FVM_OK && fvm_set_global(c, "borrowApply", &value) == FVM_OK);
+            assert(fvm_object_get(c, fn, "call", &value) == FVM_OK && fvm_set_global(c, "borrowCall", &value) == FVM_OK);
+            Program borrowed_apply;
+            borrowed_apply.variable("applyList"); borrowed_apply.op(0x96); borrowed_apply.op(1); borrowed_apply.op(0); borrowed_apply.op(2);
+            borrowed_apply.variable("plainTarget"); borrowed_apply.number(3); borrowed_apply.variable("borrowApply"); borrowed_apply.text("call"); borrowed_apply.op(0x52); borrowed_apply.finish();
+            work_calls = 0; out = class_run(c, borrowed_apply); assert(out.type == FVM_VALUE_UNDEFINED && !work_calls);
+            Program borrowed_call;
+            borrowed_call.number(99); borrowed_call.op(0x96); borrowed_call.op(1); borrowed_call.op(0); borrowed_call.op(2);
+            borrowed_call.variable("plainTarget"); borrowed_call.number(3); borrowed_call.variable("borrowCall"); borrowed_call.text("call"); borrowed_call.op(0x52); borrowed_call.finish();
+            out = class_run(c, borrowed_call); assert(out.type == FVM_VALUE_UNDEFINED && !work_calls);
             assert(fvm_gc_collect(c, 0) == FVM_OK && !c->gc_frames && !c->gc_native_depth);
             fvm_context_destroy(c);
         }

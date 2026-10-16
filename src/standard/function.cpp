@@ -114,6 +114,19 @@ FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bund
     return fvm_construct(c, type, 1, value, out);
 }
 
+/* Loaded borrowed adapters return undefined for non-callable targets only after
+ * receiver boxing and argument preparation have completed successfully. */
+FVM_Result invoke_adapter(FVM_Context *c, FVM_Object *fn, FVM_Object *receiver,
+                           unsigned int n, const FVM_Value *args, FVM_Value *out)
+{
+    if (c->swf_loaded && fn && !fn->invocable.callback)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    return fvm_function_invoke(c, fn, receiver, n, args, out);
+}
+
 /* Call the current value. */
 FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
                 void *userdata)
@@ -126,7 +139,7 @@ FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value 
         if (r != FVM_OK)
             return r;
     }
-    return fvm_function_invoke(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
+    return invoke_adapter(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
 }
 
 /* Find own length with loaded casing, charging each legacy fallback candidate. */
@@ -228,7 +241,7 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
     if (n > 1 && a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED)
     {
         if (a[1].type != FVM_VALUE_OBJECT)
-            return c->swf_loaded ? fvm_function_invoke(c, fn, receiver, 0, 0, out)
+            return c->swf_loaded ? invoke_adapter(c, fn, receiver, 0, 0, out)
                                   : FVM_INVALID_ARGUMENT;
         double count = 0;
         FVM_Result r = FVM_OK;
@@ -272,9 +285,9 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
             if (r != FVM_OK)
                 return r;
         }
-        return fvm_function_invoke(c, fn, receiver, (unsigned int)count, args.begin(), out);
+        return invoke_adapter(c, fn, receiver, (unsigned int)count, args.begin(), out);
     }
-    return fvm_function_invoke(c, fn, receiver, 0, 0, out);
+    return invoke_adapter(c, fn, receiver, 0, 0, out);
 }
 
 /* Compute and return constructor. */

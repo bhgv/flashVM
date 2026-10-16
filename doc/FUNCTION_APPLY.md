@@ -103,3 +103,23 @@ Validation v0.420: Linux minimal 838/838; AGG 7/7; heap/global ASan+UBSan 7/7.
 Generated native-mode launchers compensate for workspace executable-mode resets.
 Stack ASan and LeakSanitizer are disabled in this environment. Other platforms
 and completion of all nine stages remain unverified/open.
+
+## v0.421 — borrowed adapters and non-callable targets
+
+Loaded SWF4–8 Function.call/apply return undefined when their borrowed receiver
+has no invocation callback. Receiver boxing and apply length/index preparation
+still happen first: getter errors, counted exceptions and quota exhaustion are
+preserved. Host API behavior remains UNSUPPORTED for the same non-callable target;
+public direct invocation and callable C/script/remote interfaces retain dispatch.
+The behavior follows the pinned Ruffle function.rs reference linked above.
+
+`function_borrowed_adapters` reproduces the old failure and checks all loaded
+versions plus host behavior, actual GC in a script getter, counted exception
+forwarding, retry, callable dispatch and quota-before-result ordering.
+`jit_function_apply` also executes both borrowed adapters through interpreted,
+attached and automatic native CallMethod paths. Complete super-adapter semantics,
+full Function compatibility and all nine roadmap stages remain open.
+
+Validation v0.421: Linux minimal 839/839; AGG 9/9; heap/global ASan+UBSan
+9/9, including remote-function regression. Generated executable-mode launchers
+were used; stack ASan/LeakSanitizer remain disabled. No other OS certification.
