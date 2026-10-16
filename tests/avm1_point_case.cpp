@@ -24,8 +24,8 @@ int main()
   if(mode==3){fvm_value_number(&v,1);assert(fvm_object_set_bytes(c,point,"X\0tail",6,&v)==FVM_OK);}
   if(mode==4)number(c,point,"x",1);
   fvm_value_undefined(&v);v.type=FVM_VALUE_OBJECT;v.object=point;calls=0;FVM_GCRootFrame *roots=c->gc_frames;FVM_Result r=native?fvm_object_call(c,clip,"localToGlobal",1,&v,&out):fvm_exec_clip_point(c,clip,0,&v);
-  bool folded=profile && profile<4 && (mode==0 || mode==4);assert(r==(profile?FVM_OK:FVM_INVALID_ARGUMENT) && !calls && c->gc_frames==roots && !c->gc_native_depth && !c->script_depth);assert(fvm_object_get(c,point,"Y",&out)==FVM_OK && out.number==(folded?26:2));if(mode==0){assert(fvm_object_get(c,point,"X",&out)==FVM_OK && out.number==(folded?12:1));assert(fvm_object_get(c,point,"x",&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);}
-  assert(fvm_object_get(c,point,"y",&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);
+  bool folded=profile && profile<4 && (mode==0 || mode==4);assert(r==(profile?FVM_OK:FVM_INVALID_ARGUMENT) && !calls && c->gc_frames==roots && !c->gc_native_depth && !c->script_depth);assert(fvm_object_get(c,point,"Y",&out)==FVM_OK && out.number==(folded?26:2));if(mode==0){assert(fvm_object_get(c,point,"X",&out)==FVM_OK && out.number==(folded?12:1));assert(fvm_object_get(c,point,"x",&out)==FVM_OK && (profile && profile<4 ? out.type==FVM_VALUE_NUMBER && out.number==12 : out.type==FVM_VALUE_UNDEFINED));}
+  assert(fvm_object_get(c,point,"y",&out)==FVM_OK && (profile && profile<4 ? out.type==FVM_VALUE_NUMBER && out.number==(folded?26:2) : out.type==FVM_VALUE_UNDEFINED));
   if(folded){assert((native?fvm_object_call(c,clip,"globalToLocal",1,&v,&out):fvm_exec_clip_point(c,clip,1,&v))==FVM_OK);assert(fvm_object_get(c,point,mode==4?"x":"X",&out)==FVM_OK && out.number==1 && fvm_object_get(c,point,"Y",&out)==FVM_OK && out.number==2);}
   assert(fvm_gc_collect(c,0)==FVM_OK);fvm_context_destroy(c);
  }

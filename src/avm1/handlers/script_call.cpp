@@ -223,9 +223,14 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 named_this.type = FVM_VALUE_OBJECT;
                 named_this.object = receiver ? receiver : c->global;
             }
-            stored = fvm_object_set(c, activation, "this", &named_this);
-            if (stored != FVM_OK)
-                return stored;
+            /* Loaded SWF5+ resolves this through its activation cell, not a synthetic
+             * ordinary property which would incorrectly fold THIS in SWF5 locals. */
+            if (!c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5)
+            {
+                stored = fvm_object_set(c, activation, "this", &named_this);
+                if (stored != FVM_OK)
+                    return stored;
+            }
             FVM_Value named_super = implicit_super;
             if (fn.function2 && (fn.flags & FVM_AVM1_F2_SUPPRESS_SUPER))
                 fvm_value_undefined(&named_super);

@@ -54,8 +54,8 @@ int main()
         fvm_value_number(&value,17);assert(fvm_object_set(c,parent,"alive",&value)==FVM_OK);
         class_accessor(c,super,class_callback(c,read_parent,parent),0);
         class_accessor(c,sub,class_callback(c,read_empty,0),class_callback(c,write_child,0));
-        value=class_value(sub);assert(fvm_set_global(c,"Sub",&value)==FVM_OK);value=class_value(super);assert(fvm_set_global(c,"Super",&value)==FVM_OK);
-        super_expected=super;gets=sets=0;Program p;p.variable("Sub");p.variable("Super");p.op(0x69);p.number(42);p.finish();
+        value=class_value(sub);assert(fvm_set_global(c,"Sub",&value)==FVM_OK);value=class_value(super);assert(fvm_set_global(c,"ParentClass",&value)==FVM_OK);
+        super_expected=super;gets=sets=0;Program p;p.variable("Sub");p.variable("ParentClass");p.op(0x69);p.number(42);p.finish();
         class_run(c,p,failure?FVM_EXCEPTION:FVM_OK);assert(gets==1 && sets==(failure==1?0U:1U));
         assert(fvm_gc_collect(c,0)==FVM_OK);
         if(failure!=1)assert(fvm_get_global(c,"published",&value)==FVM_OK && value.type==FVM_VALUE_OBJECT);

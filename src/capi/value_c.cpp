@@ -17,6 +17,7 @@
 #include <cstring>
 #include "../core/string_internal.hpp"
 #include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
 #include <new>
 #include "../core/call_scope.hpp"
 #include "../core/setter_scope.hpp"
@@ -89,11 +90,11 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const fvm_detail::string
         {
             /* Function-valued data/accessor dispatch is still unsupported. A data
              * assignment must nevertheless shadow a previously registered method. */
-            if (object->properties.find(key) != object->properties.end() ||
-                object->accessors.find(key) != object->accessors.end())
+            if (fvm_property_find(object->owner, object->properties, key) != object->properties.end() ||
+                fvm_property_find(object->owner, object->accessors, key) != object->accessors.end())
                 return FVM_UNSUPPORTED;
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
-                object->methods.find(key);
+                fvm_property_find(object->owner, object->methods, key);
             if (method != object->methods.end())
             {
                 *out = method->second;
@@ -125,7 +126,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = o->properties.find(name);
+            fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = fvm_property_find(c, o->properties, name);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (it != o->properties.end())
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -139,7 +140,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                o->accessors.find(name);
+                fvm_property_find(c, o->accessors, name);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (accessor != o->accessors.end() &&
                 !fvm_movieclip_hidden_path_accessor(c, accessor->second))
@@ -206,11 +207,11 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                o->methods.find(name);
+                fvm_property_find(c, o->methods, name);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (method != o->methods.end())
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return fvm_function_wrap_entry(c, o, name, method->second, out);
+                return fvm_function_wrap_entry(c, o, method->first, method->second, out);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             /* Intrinsic display paths follow ordinary own members, before prototypes. */
             int intrinsic = 0;
@@ -868,11 +869,11 @@ extern "C"
                 return FVM_OK;
             }
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::const_iterator accessor =
-                o->accessors.find(key);
+                fvm_property_find(c, o->accessors, key);
             bool visible_accessor = accessor != o->accessors.end() &&
                 !fvm_movieclip_hidden_path_accessor(c, accessor->second);
-            *out = o->properties.find(key) != o->properties.end() || visible_accessor ||
-                   o->methods.find(key) != o->methods.end();
+            *out = fvm_property_find(c, o->properties, key) != o->properties.end() || visible_accessor ||
+                   fvm_property_find(c, o->methods, key) != o->methods.end();
             return FVM_OK;
         }
         catch (...)
@@ -948,6 +949,16 @@ extern "C"
             if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_set_index(c, o, index, v);
+            if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7)
+            {
+                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data = fvm_property_find(c, o->properties, key);
+                fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = fvm_property_find(c, o->accessors, key);
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = fvm_property_find(c, o->methods, key);
+                if (data != o->properties.end()) key = data->first;
+                else if (accessor != o->accessors.end()) key = accessor->first;
+                else if (method != o->methods.end()) key = method->first;
+                else if (fvm_object_prototype_name(c, key) && fvm_object_intrinsic_prototype(c, o, &key)) key = "__proto__";
+            }
             return fvm_object_set_no_index(c, o, key, v);
         }
         catch (const std::bad_alloc &)

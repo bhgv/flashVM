@@ -8,6 +8,7 @@
 #include "flashvm/property.h"
 #include <new>
 #include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
 /* Compute and return object property flags. */
 extern "C" FVM_Result fvm_object_property_flags(FVM_Context *c, FVM_Object *o, const char *name,
                                                 unsigned int *out)
@@ -27,7 +28,7 @@ extern "C" FVM_Result fvm_object_property_flags_bytes(FVM_Context *c, FVM_Object
         FVM_Result normalized = fvm_property_key(name, size, key);
         if (normalized != FVM_OK)
             return normalized;
-        fvm_detail::map<fvm_detail::string, unsigned int>::iterator i = o->attributes.find(key);
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator i = fvm_property_find(c, o->attributes, key);
         *out = i == o->attributes.end() ? 0 : i->second;
         return FVM_OK;
     }
