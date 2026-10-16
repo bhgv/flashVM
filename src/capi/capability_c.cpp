@@ -3,6 +3,7 @@
  */
 
 #include "graph_constants.h"
+#include "capability_constants.h"
 #include "function_rpc_constants.h"
 #include "flashvm/function.h"
 #include "flashvm/serialization.h"
@@ -34,12 +35,15 @@ const size_t limit = 64UL * 1024UL * 1024UL;
 /* Define Entry struct and its representation. */
 struct Entry
 {
-    fvm_detail::string token; /* Random bearer identity for this export. */
+    char token[FVM_CAPABILITY_TOKEN_STORAGE]; /* Inline bearer identity; cleanup never allocates. */
     unsigned long kind; /* Resource or live-function capability kind. */
     void *handle; /* Retained native resource or pinned original function. */
     FVM_Context *owner; /* [GC:] Original function heap, borrowed until context detachment. */
     /* Ordinary resource entries have no VM owner. */
-    Entry() : kind(0), handle(0), owner(0) {}
+    Entry() : kind(0), handle(0), owner(0)
+    {
+        std::memset(token, 0, sizeof(token));
+    }
 };
 
 /* Define Peer struct and its representation. */
@@ -456,7 +460,7 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
             return FVM_ERROR;
         bool found = false;
         for (size_t i = 0; i < b->entries.size(); ++i)
-            if (b->entries[i].kind == h[6] && !std::memcmp(h + 40, b->entries[i].token.c_str(), 32))
+            if (b->entries[i].kind == h[6] && !std::memcmp(h + 40, b->entries[i].token, FVM_CAPABILITY_TOKEN_BYTES))
             {
                 e = b->entries[i];
                 found = true;
@@ -759,6 +763,31 @@ extern "C" FVM_Result fvm_context_function_serve(FVM_Context *c, int enabled)
     }
     return FVM_OK;
 }
+/* [GC:] Retire one canonical original target and release only its authority-owned root. */
+extern "C" FVM_Result fvm_context_function_revoke(FVM_Context *c, FVM_Object *function)
+{
+    if (!c || !c->broker || !function)
+        return FVM_INVALID_ARGUMENT;
+    FVM_ResourceBroker *broker = c->broker;
+    Lock guard(broker->sync);
+    FunctionOwner *owner = function_owner(broker, c);
+    /* Check the handoff state before reading any object from a potentially active heap. */
+    if (owner && (owner->serving || owner->active))
+        return FVM_ERROR;
+    if (c->destroying || function->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    for (size_t i = 0; i < broker->entries.size(); ++i)
+        if (broker->entries[i].kind == FVM_FUNCTION_CAPABILITY_KIND &&
+            broker->entries[i].owner == c && broker->entries[i].handle == function)
+        {
+            FVM_Result status = fvm_gc_unpin(c, function);
+            if (status != FVM_OK)
+                return status;
+            broker->entries.erase(broker->entries.begin() + i);
+            return FVM_OK;
+        }
+    return FVM_NOT_FOUND;
+}
 /* [GC:] Reclaim an idle original heap before destruction or broker replacement. */
 FVM_Result fvm_function_context_quiesce(FVM_Context *c)
 {
@@ -787,7 +816,7 @@ void fvm_function_context_cleanup(FVM_Context *c)
         if (b->entries[i-1].kind == FVM_FUNCTION_CAPABILITY_KIND && b->entries[i-1].owner == c)
         {
             fvm_gc_unpin(c, (FVM_Object *)b->entries[i-1].handle);
-            b->entries.erase(b->entries.begin() + (i-1));
+            b->entries.erase(b->entries.begin() + (i - 1));
         }
     for (size_t i = b->function_owners.size(); i; --i)
         if (b->function_owners[i-1].context == c)
@@ -842,7 +871,7 @@ FVM_Result fvm_function_capability_export(FVM_Context *c, FVM_Object *function,
         entry.kind = FVM_FUNCTION_CAPABILITY_KIND;
         entry.owner = c;
         entry.handle = function;
-        entry.token = token;
+        std::memcpy(entry.token, token.c_str(), sizeof(entry.token));
         FVM_Result status = fvm_gc_pin(c, function);
         if (status != FVM_OK)
             return status;
@@ -1004,7 +1033,7 @@ extern "C" void fvm_broker_stop(FVM_ResourceBroker *b)
     /* Function entries retain only owner-managed roots; detach them on the owner thread. */
     for (size_t i = b->entries.size(); i; --i)
         if (b->entries[i-1].kind != FVM_FUNCTION_CAPABILITY_KIND)
-            b->entries.erase(b->entries.begin() + (i-1));
+            b->entries.erase(b->entries.begin() + (i - 1));
 }
 
 /* Release broker. */
@@ -1068,13 +1097,13 @@ FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::stri
         return FVM_ERROR;
     for (size_t i = 0; i < b->entries.size(); ++i)
         if (b->entries[i].kind == entry.kind && b->entries[i].handle == entry.handle)
-            entry.token = b->entries[i].token;
-    if (entry.token.empty())
+            std::memcpy(entry.token, b->entries[i].token, sizeof(entry.token));
+    if (!entry.token[0])
     {
         char token[33];
         if (!hex(token))
             return FVM_ERROR;
-        entry.token = token;
+        std::memcpy(entry.token, token, sizeof(entry.token));
         r = entry.kind == 8 ? fvm_mutex_retain((FVM_Mutex *)entry.handle)
                             : fvm_channel_retain((FVM_Channel *)entry.handle);
         if (r != FVM_OK)
@@ -1096,7 +1125,7 @@ FVM_Result fvm_capability_export(FVM_Context *c, FVM_Object *o, fvm_detail::stri
 
     /* Computation / Вычисление и обновление состояния. */
     std::sprintf(uri_buffer, "fvm://%s:%u/%s/%s/%lu", b->host.c_str(), (unsigned int)b->port,
-                 b->session.c_str(), entry.token.c_str(), entry.kind);
+                 b->session.c_str(), entry.token, entry.kind);
     uri = uri_buffer;
     return FVM_OK;
 }
@@ -1126,7 +1155,7 @@ FVM_Result fvm_capability_import(FVM_Context *c, const char *uri, unsigned long 
         for (size_t i = 0; i < c->broker->entries.size(); ++i)
         {
             const Entry &e = c->broker->entries[i];
-            if (e.kind == parsed.kind && e.token == parsed.token)
+            if (e.kind == parsed.kind && !std::strcmp(e.token, parsed.token.c_str()))
             {
                 int state = 0;
                 FVM_Result r = closed(e, &state);
@@ -1234,6 +1263,9 @@ FVM_Result fvm_function_context_quiesce(FVM_Context *) { return FVM_OK; }
 void fvm_function_context_cleanup(FVM_Context *) {}
 /* Report unavailable live function transfer policy. */
 extern "C" FVM_Result fvm_context_function_transfer(FVM_Context *, int)
+{ return FVM_UNSUPPORTED; }
+/* No authority-owned function roots can be revoked without platform transport. */
+extern "C" FVM_Result fvm_context_function_revoke(FVM_Context *, FVM_Object *)
 { return FVM_UNSUPPORTED; }
 /* Report unavailable original-heap service ownership. */
 extern "C" FVM_Result fvm_context_function_serve(FVM_Context *, int)

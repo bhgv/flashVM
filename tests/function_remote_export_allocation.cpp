@@ -63,6 +63,7 @@ void operator delete[](void *p, const std::nothrow_t &) throw()
 }
 #define FVM_REMOTE_FUNCTION_FIXTURE_ONLY
 #include "function_remote.cpp"
+#ifndef FVM_REMOTE_FUNCTION_ALLOCATION_FIXTURE_ONLY
 int main()
 {
 #ifdef OS_PORTS
@@ -81,3 +82,5 @@ int main()
  assert(succeeded && failures>=3);fvm_broker_stop(broker);fvm_broker_release(broker);fvm_runtime_destroy(runtime);
 #endif
 }
+
+#endif

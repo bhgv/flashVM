@@ -54,6 +54,11 @@ extern "C"
      * Calls execute serially on the original heap, retaining native callback/userdata/captures.
      * Same-authority nested calls route directly on that thread with bounded depth. No automatic call retry. */
     FVM_API FVM_Result fvm_context_function_serve(FVM_Context *, int enabled);
+    /* [GC:] Revoke one exported original function and release its broker-owned root.
+     * Reclaim the source with function_serve(context, 0) first; serving/active returns ERROR.
+     * Existing interfaces become stale. Re-export uses a fresh target; other exports/host pins
+     * remain intact. No target returns NOT_FOUND; this operation allocates no memory. */
+    FVM_API FVM_Result fvm_context_function_revoke(FVM_Context *, FVM_Object *function);
     /* Open channel network. */
     FVM_API FVM_Result fvm_channel_open_network(FVM_Context *, const char *, FVM_Channel **);
 #ifdef __cplusplus

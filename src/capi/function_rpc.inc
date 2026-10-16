@@ -120,7 +120,7 @@ FVM_Result dispatch_function(FVM_ResourceBroker *b, const unsigned char *h,
         {
             Entry &entry = b->entries[i];
             if (entry.kind == FVM_FUNCTION_CAPABILITY_KIND &&
-                !std::memcmp(h + FVM_FUNCTION_RPC_TARGET_OFFSET, entry.token.c_str(), FVM_FUNCTION_RPC_ID_BYTES))
+                !std::memcmp(h + FVM_FUNCTION_RPC_TARGET_OFFSET, entry.token, FVM_FUNCTION_RPC_ID_BYTES))
             {
                 FunctionOwner *owner = function_owner(b, entry.owner);
                 if (!owner || !owner->serving || owner->active == ULONG_MAX)

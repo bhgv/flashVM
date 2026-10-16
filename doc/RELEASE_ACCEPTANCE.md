@@ -1392,3 +1392,17 @@ wildcard/interface binds, advertised IPv4/DNS and reject malformed ports before
 startup. Updated example passes strict C89 enabled/stub syntax. Stack ASan and
 LeakSanitizer disabled. Tests are local: no two-physical-computer LAN execution
 or Windows/macOS/Android runtime certification is claimed. All stages remain open.
+
+v0.403: individually revoke an original function after reclaiming its source.
+Drop only its authority root, reject old interfaces, and generate a fresh target
+on re-export while preserving other owners and host pins. Retain fixed-width
+broker tokens inline so vector entry cleanup allocates no temporary strings.
+RU: отзыв функции и удаление смешанных записей брокера без выделений памяти.
+Validation: full Linux minimal Release CTest passes 817/817. Thirteen focused
+broker/function/process/thread checks pass in AGG Release and restricted heap/
+global ASan+UBSan; the full minimal run includes them. New all-C++-allocations-
+denied case covers serving rejection, revoke/missing revoke, fresh vs stale
+URI, two heaps' independent pins, context detachment and broker stop with mixed
+channel/function entries. Two disabled-OS-port checks pass in a fresh no-OS build.
+Public/new private constants pass strict C89 syntax. Stack ASan and LeakSanitizer
+disabled; physical LAN and non-Linux runtime validation remain open, as do all stages.

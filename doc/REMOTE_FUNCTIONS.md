@@ -1,4 +1,4 @@
-# Live function interfaces (v0.402)
+# Live function interfaces (v0.403)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -84,3 +84,15 @@ socket-enabled builds with tests, examples and Python available; the example
 without arguments displays usage and returns immediately.
 
 [Process, independent VM-thread and LAN commands](FUNCTION_RPC_EXAMPLES.md) — v0.402.
+
+In v0.403, `fvm_context_function_revoke(context, function)` retires one canonical
+original target and drops only its broker-owned GC pin. Reclaim the source with
+`function_serve(context, 0)` first: a serving or active source returns `FVM_ERROR`
+before any object read. No matching export returns `FVM_NOT_FOUND`. Existing
+interfaces become stale; re-export creates a fresh URI while other targets and
+host pins remain live. Broker target tokens now occupy fixed inline storage,
+so revoke, function detachment and entry removal during stop do not allocate
+strings while releasing resources/roots. `function_remote_cleanup_allocation`
+checks these operations with every C++ allocation denied and mixed channel/
+function entries from two original heaps. This is not a promise that arbitrary
+user finalizers or full graph rollback require no memory.
