@@ -177,6 +177,14 @@ static FVM_Result number(FVM_Context *c, const FVM_Value &v, double &out)
                ? FVM_OK
                : FVM_INVALID_ARGUMENT;
 }
+/* Match a formatting keyword by its complete counted bytes, never a terminated prefix. */
+static bool style_keyword(const FVM_Value &value, const char *expected)
+{
+    size_t size = std::strlen(expected);
+    return value.type == FVM_VALUE_STRING && fvm_string_size(value) == size &&
+           !std::memcmp(value.string, expected, size);
+}
+
 /* Only explicitly implemented formatting is applied. Null/undefined properties
  * leave the previous style unchanged; unsupported visible effects are rejected. */
 /* Compute and return merge style. */
@@ -195,26 +203,27 @@ static FVM_Result merge_style(FVM_Context *c, FVM_Object *format, Style &style)
         const char *name = properties[i];
         if (std::strcmp(name, "font") == 0)
         {
-            if (v.type != FVM_VALUE_STRING)
+            if (v.type != FVM_VALUE_STRING ||
+                std::memchr(v.string, 0, fvm_string_size(v)))
                 return FVM_UNSUPPORTED;
-            style.font = v.string;
+            style.font = fvm_detail::string(v.string, fvm_string_size(v));
         }
         else if (std::strcmp(name, "align") == 0)
         {
             if (v.type != FVM_VALUE_STRING)
                 return FVM_UNSUPPORTED;
-            if (std::strcmp(v.string, "left") == 0)
+            if (style_keyword(v, "left"))
                 style.alignment = FVM_TEXT_ALIGN_LEFT;
-            else if (std::strcmp(v.string, "center") == 0)
+            else if (style_keyword(v, "center"))
                 style.alignment = FVM_TEXT_ALIGN_CENTER;
-            else if (std::strcmp(v.string, "right") == 0)
+            else if (style_keyword(v, "right"))
                 style.alignment = FVM_TEXT_ALIGN_RIGHT;
             else
                 return FVM_UNSUPPORTED;
         }
         else if (std::strcmp(name, "url") == 0 || std::strcmp(name, "target") == 0)
         {
-            if (v.type != FVM_VALUE_STRING || v.string[0])
+            if (v.type != FVM_VALUE_STRING || fvm_string_size(v))
                 return FVM_UNSUPPORTED;
         }
         else if (std::strcmp(name, "tabStops") == 0)

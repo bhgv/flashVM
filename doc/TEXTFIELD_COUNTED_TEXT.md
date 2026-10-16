@@ -24,3 +24,13 @@ Pinned source comparison: [TextField setters/replacement](https://github.com/ruf
 and [EditText scalar storage](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/display_object/edit_text.rs).
 This does not certify original-player NUL glyph/layout behavior. HTML, styled
 spans, code-unit editing, full coercion/version rules and scene integration remain open.
+
+## v0.394 formatting string validation
+
+Alignment keywords now compare complete counted bytes. Font names containing
+NUL reject unsupported rather than selecting a registered prefix. URL/target
+accept only truly empty strings; a leading NUL no longer hides a nonempty value.
+This preserves the existing supported-style subset rather than claiming URL or
+new alignment/font behavior. Staged field styles remain unchanged on rejection.
+textformat_counted_keywords checks current/future formatting and extent, plus
+exact valid keywords and zero-count borrowed strings with nonempty backing data.

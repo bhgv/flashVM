@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.393
+# Условия окончательной приёмки / Final acceptance gates — v0.394
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1282,3 +1282,11 @@ AGG/Cairo/minimal and restricted heap/global ASan+UBSan. Font-disabled checks
 retain unavailable-font behavior; font-enabled cases cover counted NUL layout,
 editing, OOM/GC and binary/queue round trips. Stack ASan and LeakSanitizer
 remain disabled. The new text constants header passes strict C89 syntax.
+
+
+v0.394: TextFormat validates complete counted alignment/font/URL/target values.
+RU: скрытый NUL не обходит ограничения форматирования; стадии остаются открытыми.
+Validation v0.394: ten rebuilt text/graph checks pass in Linux Release
+AGG/Cairo/minimal and restricted heap/global ASan+UBSan. Font-enabled checks
+exercise full counted formatting validation; disabled-font configurations retain
+stub behavior. Stack ASan and LeakSanitizer disabled. All stages remain open.

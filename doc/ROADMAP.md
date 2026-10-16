@@ -572,3 +572,7 @@ RU: версия символа при создании экземпляров; 
 v0.393: counted TextField storage preserves embedded NUL through layout, UTF-16
 range edits, GC and binary/queue graph transport. RU: хранение текста с NUL.
 Strict scalar text and native size bounds are retained; full TextField compatibility remains open.
+
+
+v0.394: TextFormat validates complete counted alignment/font/URL/target values.
+RU: скрытый NUL не обходит ограничения форматирования; стадии остаются открытыми.
