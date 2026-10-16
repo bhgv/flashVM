@@ -166,3 +166,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Глубина выбранного метода через super: [v0.507](SUPER_MEMBER_DEPTH.md).
 
 Глубина и корни конструктора через super: [v0.508](SUPER_CONSTRUCTOR_DEPTH.md).
+
+Глубина super анонимного CallMethod: [v0.509](ANONYMOUS_CALL_SUPER.md).

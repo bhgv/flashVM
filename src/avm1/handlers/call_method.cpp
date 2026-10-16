@@ -1,6 +1,8 @@
 /* FlashVM: value-based CallMethod/NewMethod semantics for interpreted and generated bodies. */
 #include "support.hpp"
 #include "call_method_constants.h"
+#include "anonymous_call_constants.h"
+#include "../../core/call_scope.hpp"
 #include "script_call.hpp"
 #include "../../standard/construction.hpp"
 #include "../../core/property_key.hpp"
@@ -112,6 +114,13 @@ extern "C" FVM_Result fvm_exec_call_method(FVM_Context *c, int construct,
         {
             if (c->swf_loaded && !receiver->invocable.callback)
                 status = FVM_OK;
+            else if (c->swf_loaded)
+            {
+                /* [GC:] An anonymous Function call has no defining member owner. Retain its
+                 * identity and depth zero; a super facade publishes its own constructor scope. */
+                FVM_CallScope call(c, 0, receiver, 0, FVM_ANONYMOUS_CALL_SUPER_DEPTH);
+                status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
+            }
             else
                 status = fvm_function_invoke(c, receiver, anonymous_this, argc, args, &result);
         }
