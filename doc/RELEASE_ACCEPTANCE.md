@@ -3034,3 +3034,23 @@ numeric/legacy regression checks passed heap/global ASan+UBSan. The final
 host-only setter assertions passed in minimal, AGG and sanitizer profiles.
 Stack ASan/LSan remain disabled. The direct numeric assignment regression fails
 against v0.491. Only current-host Linux execution is evidenced here.
+
+
+### v0.493 — budgeted fast native splice staging
+
+Fast loaded splice now charges stored-index copying and inserted arguments,
+sharing the AVM1 budget and worker cancellation scope. Проверены C/direct invoke/
+интерпретатор/JIT, sparse/ignored tails, real worker stop, staged-source preservation,
+GC и OOM/retry. See [ARRAY_SPLICE_BUDGET.md](ARRAY_SPLICE_BUDGET.md).
+Argument-coercion side effects remain visible after a staging error. Generic
+mutations retain their existing partial-write policy; all nine stages remain open.
+
+Validation v0.493: complete minimal Release passed 970/988 initially and 18/18
+after executable-permission repair; complete AGG Release passed 989/1007
+initially and 18/18 after permission repair. No functional failures remained.
+All six focused fast-budget/shared-splice checks passed heap/global ASan+UBSan.
+The final traced-string OOM case passed in minimal, AGG and sanitizer profiles.
+Ten actual Linux worker threads exercise cooperative stop in the two added
+staging phases, with the instruction limit disabled. Stack ASan/LSan remain
+disabled. The direct budget regression fails against v0.492. Foreign-platform
+runtime validation and all nine roadmap stages remain open.

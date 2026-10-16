@@ -952,6 +952,9 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
     Slots next;
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
     {
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
         /* A deletion callback may have extended the source beyond the captured interval. */
         if (i->first >= length)
             continue;
@@ -979,6 +982,9 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         }
     for (unsigned int i = 0; i < added; ++i)
     {
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
         FVM_Value v;
         r = owned(c, a[i + 2], v);
         if (r != FVM_OK)

@@ -4291,3 +4291,13 @@ version flags и методы, записывающие/не записываю�
 See [ARRAY_NUMERIC_LENGTH.md](ARRAY_NUMERIC_LENGTH.md) for RU/EN contracts,
 coverage and wire-reader compatibility. Nonnumeric/virtual length and all nine
 roadmap stages remain open.
+
+
+### v0.493 — budgeted fast native splice staging
+
+Fast loaded splice now charges stored-index copying and inserted arguments,
+sharing the AVM1 budget and worker cancellation scope. Проверены C/direct invoke/
+интерпретатор/JIT, sparse/ignored tails, real worker stop, staged-source preservation,
+GC и OOM/retry. See [ARRAY_SPLICE_BUDGET.md](ARRAY_SPLICE_BUDGET.md).
+Argument-coercion side effects remain visible after a staging error. Generic
+mutations retain their existing partial-write policy; all nine stages remain open.
