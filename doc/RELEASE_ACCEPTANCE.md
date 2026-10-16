@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.388
+# Условия окончательной приёмки / Final acceptance gates — v0.389
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1232,3 +1232,12 @@ pass in restricted heap/global ASan+UBSan: range copies, builders, callbacks,
 casing, interpreted/explicit/automatic native copies and existing loaded-work
 allocation failures. Stack ASan and LeakSanitizer remain disabled. Targeted
 checks do not certify full compatibility; all nine stages remain open.
+
+
+v0.389: loaded charAt/charCodeAt share receiver/index callback work and charge
+one extracted UTF-16 unit. RU: общий бюджет извлечения символа; стадии открыты.
+Validation v0.389: all 44 String executables are rebuilt and pass in Linux
+AGG/Cairo/minimal Release. Seven rebuilt restricted heap/global ASan+UBSan
+checks pass, adding character callback/budget extraction to the six v0.388
+checks. Stack ASan and LeakSanitizer remain disabled. No full-suite, original
+external-oracle or foreign-platform acceptance is claimed for this checkpoint.

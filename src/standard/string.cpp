@@ -190,6 +190,7 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units units;
     FVM_Result result = receiver(c, self, units);
     if (result != FVM_OK)
@@ -212,10 +213,13 @@ FVM_Result character(FVM_Context *c, FVM_Object *self, unsigned int count, const
     size_t i = (size_t)index;
     if (code)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         fvm_value_number(out, units[i]);
         return FVM_OK;
     }
-    return encode(c, units, i, i + 1, out);
+    return encode(c, units, i, i + 1, out, &work);
 }
 
 /* Compute and return char at. */

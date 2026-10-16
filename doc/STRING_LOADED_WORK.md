@@ -75,3 +75,11 @@ decoding and the intermediate representation conversion are not newly charged.
 v0.388 native coverage: jit_string_copy_work checks concat, slice, substring,
 substr, both casing methods and fromCharCode in interpreted, explicit-native
 and automatic-native execution, with budget failure/retry and post-call GC.
+
+## v0.389 character extraction
+
+Loaded charAt/charCodeAt enter shared work before receiver/index coercion and
+charge one successfully extracted UTF-16 unit. Out-of-range results perform no
+extraction charge. Index callbacks can no longer reset an outer native budget.
+Exceptions preserve unwinding; charAt keeps lone-surrogate WTF-8 output.
+Receiver decoding is still not charged per unit; unloaded host policy remains.

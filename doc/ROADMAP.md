@@ -548,3 +548,7 @@ work with callbacks. RU: общий бюджет построения строк
 v0.388: public loaded String casing charges UCS2 mapping and UTF-16 output
 with shared work; internal property folding keeps its caller policy.
 RU: учёт публичного изменения регистра; все девять стадий открыты.
+
+
+v0.389: loaded charAt/charCodeAt share receiver/index callback work and charge
+one extracted UTF-16 unit. RU: общий бюджет извлечения символа; стадии открыты.

@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7: String character budget | Проверено для сценариев v0.389 | string_character_work: SWF4–8, index callbacks, nested/saturated budgets, exceptions, native GC barrier and lone-surrogate extraction. Receiver decoding work remains open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7: String casing budget | Проверено для сценариев v0.388 | string_case_work: SWF4–8/host, counted NUL, lone/paired surrogates, exact/nested/saturated budgets, unchanged internal folding policy. Intermediate decode work remains open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7: String builder budget | Проверено для сценариев v0.387 | string_build_work/_callbacks: SWF4–8/host, UTF-16 pairs/NUL, empty arguments, nested/saturated budget, conversion order/exceptions and GC barrier. Decoding/full conformance open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7: String range copy budget | Проверено для сценариев v0.386 | string_portion_work: SWF4–8/host, paired/lone surrogates, exact budgets, nested/saturated counter, no partial output. Decode work remains open. STRING_LOADED_WORK.md / .ru.md. |
