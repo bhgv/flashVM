@@ -72,3 +72,26 @@ when they fail. Variable scope, transport/OOM and all stages remain open.
 Validation v0.451: complete Linux minimal 892/892; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 5/5 targeted checks each. Executable-mode launchers
 applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.452 — resolver OOM publication
+
+The resolver invokes into a private result and publishes it only on OK. In
+particular, failure while snapshotting a returned view of the temporary counted
+request name leaves the public output undefined instead of a dangling string.
+Exceptions remain in the context; error values are not published as successful
+results. Registration/callback side effects are not rolled back.
+
+object_resolve_allocation reproduced the unsafe output under new/new[] failure.
+Fresh-context sweeps cover every boundary up to first completed OK/exception in
+SWF4–8, named NUL/indexed reads, native Function/script body/native method
+resolvers, cyclic captured exception payloads, root/recursion/script-depth
+cleanup, pending payload preservation, GC/retry and retained successful strings.
+These are C++ allocation boundaries, not every C/OS allocator or a full
+concurrency proof. Variable scope, graph transport and all stages remain open.
+
+Validation v0.452: complete Linux minimal 893/893 and AGG 912/912;
+AGG/Linux-hosted NO_OS_PORTS/heap-global ASan+UBSan targeted checks 6/6 each.
+The first full AGG run found one old jit_array_sort_on_case object predating
+the private context layout. Removing that stale object forced recompilation;
+the full 912-case rerun passed. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.

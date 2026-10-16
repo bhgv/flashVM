@@ -81,7 +81,13 @@ FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *r
                 return status;
             /* [GC:] Resolver calls have no selected member owner; preserve the caller's identity. */
             FVM_CallScope call(c, 0, resolver.object, 0);
-            return fvm_function_invoke(c, resolver.object, receiver, 1, &argument, out);
+            FVM_Value result;
+            fvm_value_undefined(&result);
+            status = fvm_function_invoke(c, resolver.object, receiver, 1, &argument, &result);
+            /* Publish only a completed result; failed string snapshots may still point into name. */
+            if (status == FVM_OK)
+                *out = result;
+            return status;
         }
         owner = owner->prototype;
     }
