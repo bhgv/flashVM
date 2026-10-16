@@ -54,7 +54,9 @@ int main()
                 assert(status == (watch_fault == 1 ? FVM_ERROR : FVM_EXCEPTION));
                 if (watch_fault == 2) { assert(fvm_exception_get(c, &out) == FVM_OK && fvm_value_string_size(&out) == 12 && !std::memcmp(out.string, "watch\0failed", 12)); assert(fvm_exception_clear(c) == FVM_OK); }
             } else assert(status == FVM_OK);
-            assert(fvm_object_get_bytes(c, object, "MiXeD\0Name", 10, &out) == FVM_OK && out.number == (folded && watch_fault != 1 && watch_fault != 2 ? 82 : 9));
+            assert(fvm_object_get_bytes(c, object, "MiXeD\0Name", 10, &out) == FVM_OK);
+            if (folded && watch_fault == 2) assert(out.type == FVM_VALUE_UNDEFINED);
+            else assert(out.type == FVM_VALUE_NUMBER && out.number == (folded && watch_fault != 1 ? 82 : 9));
             assert(!c->gc_frames && !c->gc_native_depth && c->watch_running.empty());
             if (watch_fault != 3 || !folded) {
                 fvm_value_string_bytes(args, "MIXED\0NAME", 10);

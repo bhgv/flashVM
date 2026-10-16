@@ -3477,3 +3477,40 @@ accessor overrides, exception writeback, budgets and all stages remain open.
 Validation v0.431: Linux minimal 855/855; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated mode launchers used; stack ASan and
 LeakSanitizer disabled. Other OS execution and complete-stage acceptance open.
+
+## v0.432 — thrown watcher assignment
+
+v0.432 completes loaded Object/Array assignment after a script watcher throws:
+the assigned value becomes undefined. A successful own write then returns the
+original exception; readonly data stays unchanged and still returns the exception.
+Own virtual setters run with undefined and the original watcher exception wins
+over a later setter exception. Inherited virtual dispatch returns the setter's
+result, consuming the watcher exception when the setter succeeds; its own throw
+is propagated. Host watcher failure policy is unchanged.
+
+The source basis is Ruffle commit 2372a4e148a67d68efd796f4477b3cddd4f880cd:
+[object.rs set_internal](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object.rs)
+and [script_object.rs call_watcher](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/script_object.rs).
+The latter changes a thrown watch value to undefined; set_internal continues
+assignment and treats inherited setters separately from own set_local.
+
+[GC:] FVM_WatchWriteScope saves the thrown graph before clearing pending state.
+Its explicit root frame protects counted strings, objects and cycles through
+setter execution and collection. Destruction restores pending ownership before
+unlinking the saved frame. It unwinds before the enclosing lookup-owner root.
+Saving may allocate; failure before suspension leaves the original pending
+exception intact. Ordinary non-throwing writes allocate no saved-value vector.
+
+`object_watch_throw` first failed on v0.431. Host/SWF4–8 cover named data,
+Object/Array numeric slots, readonly data, own/inherited script accessors, setter
+success/throw and error priority. A self-cyclic object thrown by the watcher
+survives a real collecting setter; pending state is suspended inside that setter.
+Existing counted-string/interpreter/native watch fixtures now expect undefined
+writeback for loaded throws. Raw runtime FVM_ERROR and allocation failures retain
+fail-fast handling; their equivalence to reference errors is not certified.
+Custom native length/resource setters, metatables, recursion limits and complete
+watcher/SWF compatibility require further checks. All nine stages remain open.
+
+Validation v0.432: Linux minimal 856/856; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other operating systems and all stages remain open.

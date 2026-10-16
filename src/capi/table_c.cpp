@@ -6,6 +6,7 @@
 #include "../standard/base_state.hpp"
 #include "../standard/super.hpp"
 #include "../core/property_watch.hpp"
+#include "../core/watch_write_scope.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
 #include "../core/runtime.hpp"
@@ -62,6 +63,7 @@ extern "C"
         bool prepared_watch = false;
         if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
+        FVM_WatchWriteScope write(c);
         if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
         {
             if (key > 0xffffffffUL)
@@ -72,7 +74,7 @@ extern "C"
                 return fvm_object_set(c, o, name, v);
             if (c->swf_loaded)
             {
-                r = fvm_property_watch_prepare(c, o, name, v, &watched);
+                r = write.defer(fvm_property_watch_prepare(c, o, name, v, &watched), watched);
                 if (r != FVM_OK)
                     return r;
                 prepared_watch = true;
@@ -90,7 +92,7 @@ extern "C"
                 fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
                 if (!c->swf_loaded || script == o->accessors.end() ||
                     !fvm_base_script_accessor(script->second))
-                    return FVM_OK;
+                    return write.finish(FVM_OK);
             }
             if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && key >= o->resource_result.number)
             {
@@ -98,7 +100,7 @@ extern "C"
                 if (status != FVM_OK)
                     return status;
                 if (flags & 4)
-                    return FVM_OK;
+                    return write.finish(FVM_OK);
             }
         }
         if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
@@ -113,8 +115,8 @@ extern "C"
                     cursor->properties.find(name) != cursor->properties.end())
                     break;
                 if (cursor->accessors.find(name) != cursor->accessors.end())
-                    return prepared_watch ? fvm_object_set_from(c, o, o, name, &watched, true, true)
-                                          : fvm_object_set_no_index(c, o, name, v);
+                    return write.finish(prepared_watch ? fvm_object_set_from(c, o, o, name, &watched, true, true)
+                                                       : fvm_object_set_no_index(c, o, name, v), cursor != o);
                 cursor = cursor->prototype;
             }
             if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
@@ -140,7 +142,7 @@ extern "C"
         {
             return FVM_OUT_OF_MEMORY;
         }
-        return FVM_OK;
+        return write.finish(FVM_OK);
     }
     /* Read index. */
     static FVM_Result get_index(FVM_Context *c, FVM_Object *o, unsigned long key, FVM_Value *out)

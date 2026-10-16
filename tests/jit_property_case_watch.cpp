@@ -27,7 +27,9 @@ int main()
         out = class_run(c, p, expected);
         assert(watch_calls == (folded ? 1U : 0U));
         if (expected == FVM_OK) assert(out.number == 99);
-        assert(fvm_object_get_bytes(c, object, "MiXeD\0Name", 10, &value) == FVM_OK && value.number == (folded && expected == FVM_OK ? 82 : 9));
+        assert(fvm_object_get_bytes(c, object, "MiXeD\0Name", 10, &value) == FVM_OK);
+        if (folded && watch_fault == 2) assert(value.type == FVM_VALUE_UNDEFINED);
+        else assert(value.type == FVM_VALUE_NUMBER && value.number == (folded && expected == FVM_OK ? 82 : 9));
         assert(c->watch_running.empty() && !c->gc_frames && !c->gc_native_depth);
         fvm_context_destroy(c);
     }

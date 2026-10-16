@@ -6,6 +6,7 @@
 #include "flashvm/function.h"
 #include "../standard/base_state.hpp"
 #include "../core/property_watch.hpp"
+#include "../core/watch_write_scope.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
@@ -395,11 +396,13 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
 
     /* [GC:] Watchers may detach the selected prototype lookup owner; retain it through re-resolution. */
     FVM_ObjectRootScope lookup_roots(c, start);
+    /* [GC:] Deferred exception roots must unwind before the lookup-owner frame. */
+    FVM_WatchWriteScope write(c);
     FVM_Value watched = *v;
     FVM_Result r = FVM_OK;
     if (c->swf_loaded && !prepared_watch)
     {
-        r = fvm_property_watch_prepare(c, o, name, v, &watched);
+        r = write.defer(fvm_property_watch_prepare(c, o, name, v, &watched), watched);
         if (r != FVM_OK)
             return r;
     }
@@ -429,7 +432,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
                                    !fvm_base_script_accessor(script->second)))
-                return FVM_OK;
+                return write.finish(FVM_OK);
         }
     }
     if (flag_cursor)
@@ -449,7 +452,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
                                    !fvm_base_script_accessor(script->second)))
-                return FVM_OK;
+                return write.finish(FVM_OK);
         }
     }
     if (!c->swf_loaded && !prepared_watch)
@@ -488,7 +491,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (!entry.setter)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return FVM_OK;
+                return write.finish(FVM_OK);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value result;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -507,9 +510,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                  * roots its copied argument before any collection. Preserve outer C barriers. */
                 FVM_NativeCallGuard guard(c, !fvm_base_script_accessor(entry));
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return fvm_exception_complete(
+                return write.finish(fvm_exception_complete(
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c, o, entry.setter(c, o, 1, &copy, &result, entry.userdata));
+                    c, o, entry.setter(c, o, 1, &copy, &result, entry.userdata)), cursor != o);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -584,7 +587,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                      * сборщик. */
                     FVM_NativeCallGuard native_guard(c);
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                    return fn->second.callback(c, o, 4, args, &result, fn->second.userdata);
+                    return write.finish(fn->second.callback(c, o, 4, args, &result, fn->second.userdata));
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -624,7 +627,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 args[3] = copy;
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return fvm_function_invoke(c, m->second.object, o, 4, args, &result);
+                return write.finish(fvm_function_invoke(c, m->second.object, o, 4, args, &result));
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -643,7 +646,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     }
     /* Loaded raw __proto__ data also controls inheritance when no user setter intercepts it. */
     if (c->swf_loaded && name == fvm_detail::string("__proto__"))
-        return fvm_object_store_raw_prototype(c, o, copy);
+        return write.finish(fvm_object_store_raw_prototype(c, o, copy));
     try
     {
         o->properties[name] = copy;
@@ -655,7 +658,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     {
         return FVM_OUT_OF_MEMORY;
     }
-    return FVM_OK;
+    return write.finish(FVM_OK);
 }
 /* Write an ordinary property through the receiver's complete property chain. */
 FVM_Result fvm_object_set_no_index(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name,
