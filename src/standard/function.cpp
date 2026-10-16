@@ -1012,21 +1012,29 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    fvm_value_undefined(out);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!c || !fn || fn->owner != c || (self && self->owner != c) || (n && !args) || c->destroying)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    {
+        fvm_value_undefined(out);
         return FVM_INVALID_ARGUMENT;
+    }
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
     for (unsigned int i = 0; i < n; ++i)
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_validate_value(c, args + i) != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+        {
+            fvm_value_undefined(out);
             return FVM_INVALID_ARGUMENT;
+        }
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (!fn->invocable.callback)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
+    {
+        fvm_value_undefined(out);
         return FVM_UNSUPPORTED;
+    }
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
     try
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1048,6 +1056,10 @@ fvm_function_invoke(FVM_Context *c, FVM_Object *fn, FVM_Object *self,
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             roots.push_back(args[i]);
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
+        /* Pass the snapshot, then clear a possibly aliased result only after copying.
+           The frame below retains the same values when callbacks mutate caller storage. */
+        args = n ? roots.begin() + (roots.size() - n) : 0;
+        fvm_value_undefined(out);
         FVM_GCRootFrame frame;
         /* [GC:] Сохраняем предыдущий корень для восстановления цепочки после выхода. */
         frame.previous = c->gc_frames;

@@ -165,3 +165,21 @@ All constructor, allocator, concurrency and foreign OS acceptance remains open.
 Validation v0.463: complete Linux minimal 907/907; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.464 — invoke the retained Function argument snapshot
+
+Direct fvm_function_invoke now passes its retained copy to the callback, rather
+than the caller's mutable array. The output is cleared after copying, so it may
+alias any argument. Validation/OOM errors still clear the output; external string
+buffers remain caller-owned. Existing single-frame root layout and native barrier
+policy are retained. function_invoke_arguments first failed after callback mutation
+and checks host/SWF4–8, native/script/trusted-internal callbacks, implicit global
+or explicit unpinned receiver, both aliased argument slots, cyclic inputs, traced
+NUL strings, actual GC where permitted, retained successful strings, errors,
+pending cyclic exception payloads and post-call reclamation/root cleanup.
+Full C embedding, allocator and concurrent collector acceptance remains open.
+
+Validation v0.464: complete Linux minimal 908/908; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. The duplicate
+error-output clear was removed afterwards and the invocation test reran successfully.
+Stack ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
