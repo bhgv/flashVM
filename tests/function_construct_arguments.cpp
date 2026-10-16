@@ -51,7 +51,7 @@ int main()
         global_calls = 0; FVM_Object *output = 0;
         FVM_Result expected = global_fault == 1 ? FVM_ERROR : global_fault == 2 ? FVM_EXCEPTION : FVM_OK;
         assert(fvm_function_construct(c, global_function, 2, global_args, &output) == expected && global_calls == 1);
-        if (expected == FVM_OK) assert(output == global_argument);
+        if (expected == FVM_OK) assert(version && global_route ? output && output != global_argument : output == global_argument);
         if (expected == FVM_EXCEPTION) assert(fvm_exception_get(c, &value) == FVM_OK && value.object == global_argument && fvm_exception_clear(c) == FVM_OK);
         fvm_value_undefined(global_args); fvm_value_undefined(global_args + 1);
         assert(!c->gc_frames && !c->gc_native_depth && !c->resolve_depth && fvm_gc_collect(c, 0) == FVM_OK);

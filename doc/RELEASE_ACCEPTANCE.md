@@ -2526,3 +2526,26 @@ Validation v0.464: complete Linux minimal 908/908; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. The duplicate
 error-output clear was removed afterwards and the invocation test reran successfully.
 Stack ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.465 — loaded script constructors ignore returned values
+
+Loaded AVM1 script construction returns its newly allocated receiver regardless
+of the script return value. Only the native factory path propagates its Object
+result. The unloaded host namespace retains its previous Object substitution.
+This follows FunctionObject::construct in pinned Ruffle
+[function.rs](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/function.rs).
+function_constructor_return first reproduced replacement of the allocated this.
+Host/SWF4–8 test real script bytecode returning undefined/Number/Object/Function/
+Array/this, constructor side effects, direct/named C construction, NewObject and
+NewMethod in interpreter/attached/automatic JIT with actual native entries and GC.
+Two earlier argument-lifetime tests now expect the allocated loaded receiver;
+their argument/mutation/GC assertions remain. Full class construction, constructor
+identity properties, native callable construction and all stages remain open.
+
+The first full run found two older boxing fixtures relying on script return
+substitution. TargetPath now expects undefined for the ignored returned clip and
+retains a direct MovieClip positive case; the instanceof callback links the tested
+prototype to the actual allocated receiver. GC, exception and callback-count
+assertions remain. Final validation v0.465: complete Linux minimal 909/909; AGG,
+Linux-hosted NO_OS_PORTS and heap/global ASan+UBSan 8/8 targeted checks each.
+Stack ASan/LeakSanitizer disabled; all stages and foreign OS acceptance open.

@@ -1266,7 +1266,9 @@ extern "C" FVM_Result fvm_function_construct(
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        *out = result.type == FVM_VALUE_OBJECT ? result.object : instance;
+        /* Loaded AVM1 script constructors ignore every returned value. The unloaded
+           embedding namespace retains its existing object-return substitution. */
+        *out = !c->swf_loaded && result.type == FVM_VALUE_OBJECT ? result.object : instance;
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_OK;
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

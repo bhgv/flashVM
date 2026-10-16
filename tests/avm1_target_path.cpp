@@ -1,4 +1,4 @@
-/* TargetPath boxes primitive values, retains returned clips during GC and propagates exceptions. */
+/* TargetPath ignores script-constructor return clips, retains captures through GC and propagates exceptions. */
 #define FVM_VALUE_CALLBACKS_FIXTURE_ONLY
 #include "execution_value_callbacks.cpp"
 #include "../src/core/runtime.hpp"
@@ -26,11 +26,12 @@ int main()
         assert(fvm_function_create_avm1(c,body,sizeof(body),0,0,0,&fn)==FVM_OK && fvm_function_set_body(c,fn,box_path,0,clip.object)==FVM_OK);
         fvm_value_undefined(&input);input.type=FVM_VALUE_OBJECT;input.object=fn;
         assert(fvm_set_global(c,"Number",&input)==FVM_OK);
+        assert(fvm_exec_target_path(c,&clip,&out)==FVM_OK && out.type==FVM_VALUE_STRING && !std::strcmp(out.string,"_level0.child"));
         FVM_GCRootFrame *roots=c->gc_frames;raising=false;fvm_value_number(&input,17);
-        assert(fvm_exec_target_path(c,&input,&out)==FVM_OK && out.type==FVM_VALUE_STRING && !std::strcmp(out.string,"_level0.child"));
+        assert(fvm_exec_target_path(c,&input,&out)==FVM_OK && out.type==FVM_VALUE_UNDEFINED);
         Bytes code;text(code,"result");integer(code,17);code.push_back(0x45);code.push_back(0x1d);code.push_back(0);
         assert(fvm_avm1_execute(c,code.begin(),code.size())==FVM_OK && fvm_get_global(c,"result",&out)==FVM_OK);
-        assert(out.type==FVM_VALUE_STRING && !std::strcmp(out.string,"_level0.child"));
+        assert(out.type==FVM_VALUE_UNDEFINED);
         raising=true;
         assert(fvm_exec_target_path(c,&input,&input)==FVM_EXCEPTION && input.type==FVM_VALUE_NUMBER && input.number==17);
         assert(c->gc_frames==roots && fvm_exception_clear(c)==FVM_OK);raising=false;

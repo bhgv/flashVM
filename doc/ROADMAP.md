@@ -1657,3 +1657,24 @@ function_invoke_arguments воспроизвёл порчу; проверяет 
 Проверка v0.464: Linux minimal 908/908; AGG, Linux-hosted NO_OS_PORTS
 и heap/global ASan+UBSan — по 4/4. После удаления повторной очистки выхода
 тест вызова выполнен ещё раз. Stack ASan/LeakSanitizer отключены; стадии открыты.
+
+## v0.465 — скриптовый конструктор AVM1 игнорирует return
+
+Загруженный скриптовый конструктор возвращает созданный this независимо от
+возвращённого значения скрипта. Нативная фабрика сохраняет собственный Object;
+host сохраняет прежнюю подстановку возвращённого объекта. Эталон —
+FunctionObject::construct в Ruffle function.rs, commit
+2372a4e148a67d68efd796f4477b3cddd4f880cd.
+function_constructor_return воспроизвёл подмену this. Реальный байткод host/SWF4–8
+возвращает undefined/Number/Object/Function/Array/this; проверены побочные эффекты,
+прямой и именованный C API, NewObject/NewMethod в трёх режимах с native entries,
+GC. Два ранних теста аргументов ожидают правильный this, сохраняя проверки
+аргументов/мутаций/GC. Полная классовая семантика, свойства идентичности
+конструктора, нативные callable-конструкторы и все стадии остаются открытыми.
+
+Первый полный прогон нашёл два старых boxing-теста с неверной подстановкой
+return. Ожидания исправлены: TargetPath сохраняет положительную проверку реального
+MovieClip, instanceof связывает prototype с созданным this. GC, исключения и
+счётчики сохранены. Итог v0.465: Linux minimal 909/909; AGG, Linux-hosted
+NO_OS_PORTS и heap/global ASan+UBSan — по 8/8. Stack ASan/LeakSanitizer
+отключены; все стадии и приёмка на других ОС остаются открытыми.
