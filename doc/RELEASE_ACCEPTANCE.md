@@ -2943,3 +2943,21 @@ buffer bound. No public C89 signatures, callback IDs or graph layout changed;
 pre-v0.487 readers still reject attribute values above 7. Builtin declaration
 version annotations, intrinsic/display interactions, foreign-OS runtime checks
 and all nine roadmap stages remain open. See PROPERTY_VERSION_FLAGS.md.
+
+
+### v0.488 — exhaustive property attribute regression coverage
+
+Добавлены полный перебор 65 536 UInt16-наборов атрибутов для SWF4–8,
+проверки записи/readonly/удаления и повторных вызовов интерпретатора,
+явного и автоматического JIT. See [PROPERTY_VERSION_FLAGS.md](PROPERTY_VERSION_FLAGS.md).
+This strengthens regression evidence for stages 1/7/8; it adds no new player
+feature and closes none of the nine stages. Foreign OS/architecture runtime
+acceptance and the builtin version-annotation audit remain open.
+
+Validation for v0.488: 11/11 related property tests passed in minimal Release
+and 11/11 in AGG Release. Both new exhaustive matrices passed heap/global
+ASan+UBSan: attribute transitions in 23.62 s, execution in 126.51 s.
+The first instrumented execution attempt reached the old 30 s CTest timeout;
+the committed per-matrix timeout is 180 s. Stack ASan and LeakSanitizer remain
+disabled by the existing environment setup. No production behavior changed;
+the complete project suite was not rerun for this coverage-only increment.

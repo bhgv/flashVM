@@ -2056,3 +2056,13 @@ getter, нативных методов, __resolve и super; запись сни
 See [PROPERTY_VERSION_FLAGS.md](PROPERTY_VERSION_FLAGS.md) for tests, embedding
 contracts and old-reader limitations. The builtin version-annotation audit,
 intrinsic field interactions and all nine roadmap stages remain open.
+
+
+### v0.488 — exhaustive property attribute regression coverage
+
+Добавлены полный перебор 65 536 UInt16-наборов атрибутов для SWF4–8,
+проверки записи/readonly/удаления и повторных вызовов интерпретатора,
+явного и автоматического JIT. See [PROPERTY_VERSION_FLAGS.md](PROPERTY_VERSION_FLAGS.md).
+This strengthens regression evidence for stages 1/7/8; it adds no new player
+feature and closes none of the nine stages. Foreign OS/architecture runtime
+acceptance and the builtin version-annotation audit remain open.

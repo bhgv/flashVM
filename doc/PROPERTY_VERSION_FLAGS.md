@@ -53,3 +53,28 @@ This is source-based comparison, not a new original Flash Player oracle run.
 Builtin declarations have not yet received a complete version-annotation audit;
 MovieClip intrinsic-field interactions, metatable extensions, SWF>8 and all nine
 roadmap stages remain open. Public C89 signatures/callback IDs are unchanged.
+
+
+### v0.488 — exhaustive UInt16 regression matrix / полный перебор
+
+`property_version_exhaustive` checks all 65,536 attribute combinations for each
+SWF4–8 version (327,680 cases). Independent literal masks select the expected
+own/prototype value. Each case also checks own membership, clear-before-set
+precedence using a rotated clear mask, readonly preservation of the raw value,
+version-bit removal on successful writes, and deletion independently of read
+visibility. Periodic collection checks the rooted lookup graph.
+
+`property_version_exhaustive_execution` reuses one function per version and
+execution mode across the entire attribute range: interpreter, explicitly bound
+native JIT and automatic JIT (983,040 calls when native JIT is available).
+Every invocation checks both the result and native-entry counter; frame/depth
+state must return to its original state. This covers changing attributes between
+calls without recreating the function or explicit compiled body.
+
+Проверка охватывает все UInt16-наборы для SWF4–8, включая одновременные
+биты видимости, readonly и запрета удаления. Повторные вызовы проверяют
+наблюдаемость изменения атрибутов интерпретатором и JIT. Это регрессионная
+проверка существующей реализации, а не новая функциональность плеера.
+Only the current native host backend executes here; this does not establish
+foreign-architecture or Windows/macOS/Android runtime acceptance. The reference
+masks are source-based; no original Flash Player oracle was run.
