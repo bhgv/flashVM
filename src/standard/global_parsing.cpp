@@ -3,6 +3,9 @@
  */
 
 #include "global_parsing.hpp"
+#include "parsing_constants.h"
+#include "../core/string_internal.hpp"
+#include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
@@ -48,9 +51,9 @@ int digit(unsigned char c)
     if (c >= '0' && c <= '9')
         return c - '0';
     if (c >= 'a' && c <= 'z')
-        return c - 'a' + 10;
+        return c - 'a' + FVM_PARSING_LETTER_DIGIT_FIRST;
     if (c >= 'A' && c <= 'Z')
-        return c - 'A' + 10;
+        return c - 'A' + FVM_PARSING_LETTER_DIGIT_FIRST;
     return -1;
 }
 
@@ -73,10 +76,96 @@ double integer_radix(double value)
     /* Initialization / Инициализация локального состояния. */
     /* ToInt32 without an out-of-range floating-to-integer cast. */
     double truncated = value < 0 ? -std::floor(-value) : std::floor(value);
-    double wrapped = std::fmod(truncated, 4294967296.0);
+    double wrapped = std::fmod(truncated, FVM_UINT32_MODULUS);
     if (wrapped < 0)
-        wrapped += 4294967296.0;
-    return wrapped >= 2147483648.0 ? wrapped - 4294967296.0 : wrapped;
+        wrapped += FVM_UINT32_MODULUS;
+    return wrapped >= (-FVM_INT32_MIN_NUMBER) ? wrapped - FVM_UINT32_MODULUS : wrapped;
+}
+/* Recognize the restricted whitespace set used after raw AVM1 integer prefix selection. */
+bool integer_space(unsigned char byte)
+{
+    return byte == FVM_PARSING_INT_SPACE_TAB || byte == FVM_PARSING_INT_SPACE_LF ||
+           byte == FVM_PARSING_INT_SPACE_CR || byte == FVM_PARSING_INT_SPACE_ASCII;
+}
+
+/* Parse loaded AVM1 integers: radix callbacks precede text callbacks, and raw prefixes
+ * are inspected before whitespace. Counted bytes preserve embedded NUL as a non-digit. */
+FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value *args,
+                            FVM_Value *out)
+{
+    if (!count)
+    {
+        fvm_value_undefined(out);
+        return FVM_OK;
+    }
+    unsigned int base = FVM_PARSING_RADIX_DECIMAL;
+    if (count > 1)
+    {
+        double number = 0;
+        FVM_Result status = fvm_avm1_number(c, args + 1, &number);
+        if (status != FVM_OK)
+            return status;
+        number = integer_radix(number);
+        if (number < FVM_PARSING_RADIX_MIN || number > FVM_PARSING_RADIX_MAX)
+            return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+        base = (unsigned int)number;
+    }
+    FVM_Value text;
+    FVM_Result status = fvm_avm1_string(c, args[0], &text);
+    if (status != FVM_OK)
+        return status;
+    const char *bytes = text.string;
+    size_t size = fvm_string_size(text), at = 0;
+    bool signed_prefix = size && (bytes[0] == '+' || bytes[0] == '-');
+    size_t first = signed_prefix ? 1 : 0;
+    bool zero_prefix = first < size && bytes[first] == '0';
+    bool hex = zero_prefix && size - first >= FVM_PARSING_HEX_PREFIX_BYTES &&
+               (bytes[first + 1] == 'x' || bytes[first + 1] == 'X');
+    bool ignore_sign = false;
+    if (hex)
+    {
+        if (signed_prefix)
+        {
+            if (count < 2 || base < FVM_PARSING_SIGNED_HEX_MIN_RADIX)
+                return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
+            ignore_sign = true;
+        }
+        else
+        {
+            at = FVM_PARSING_HEX_PREFIX_BYTES;
+            if (count < 2)
+                base = FVM_PARSING_RADIX_HEX;
+        }
+    }
+    else if (zero_prefix && count < 2)
+    {
+        bool octal = true;
+        for (size_t i = first + 1; i < size; ++i)
+            if (bytes[i] < '0' || bytes[i] > '7')
+            {
+                octal = false;
+                break;
+            }
+        if (octal)
+            base = FVM_PARSING_RADIX_OCTAL;
+    }
+    while (at < size && integer_space((unsigned char)bytes[at]))
+        ++at;
+    bool negative = at < size && bytes[at] == '-' && !ignore_sign;
+    if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
+        ++at;
+    bool any = false;
+    double number = 0;
+    for (; at < size; ++at)
+    {
+        int value = digit((unsigned char)bytes[at]);
+        if (value < 0 || (unsigned int)value >= base)
+            break;
+        any = true;
+        number = number * base + value;
+    }
+    return numeric_result(out, any ? (negative ? -number : number)
+                                   : std::numeric_limits<double>::quiet_NaN());
 }
 } // namespace
 /* Convert String(...) with loaded AVM1 rules or the unloaded host contract. */
@@ -94,6 +183,8 @@ FVM_Result fvm_builtin_parse_int(FVM_Context *c, FVM_Object *, unsigned int coun
                                  const FVM_Value *args, FVM_Value *out, void *)
 {
 
+    if (c->swf_loaded)
+        return loaded_parse_int(c, count, args, out);
     /* Initialization / Инициализация локального состояния. */
     FVM_Value text;
     FVM_Result result = input_string(c, count, args, &text);

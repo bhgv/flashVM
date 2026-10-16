@@ -3112,3 +3112,15 @@ Validation v0.411 / Проверка: minimal Release 822/822; AGG Release 4/4;
 heap/global ASan+UBSan 4/4 string tests. Strict C89 public-header syntax passed.
 Native test launchers restore executable modes; stack ASan/LSan are disabled.
 Other platforms and complete Flash compatibility remain unverified.
+
+### v0.412 — loaded parseInt / Загруженный parseInt
+
+Separate SWF4–8 parsing now uses radix-before-text coercion, explicit-base
+validation, raw hex/octal and counted-prefix rules; unloaded host behavior stays.
+[EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md). All stages remain open.
+User reconfirmed SWF ≤8 only on 16 October; AVM2/AS3/SWF9+ are outside this scope.
+
+Validation v0.412 / Проверка: Linux minimal Release 823/823 CTests; AGG Release
+and heap/global ASan+UBSan each passed all three global-parsing executables.
+Native launchers restore workspace executable modes; stack ASan/LSan disabled.
+Other-platform runtime and all nine stage acceptance remain open.

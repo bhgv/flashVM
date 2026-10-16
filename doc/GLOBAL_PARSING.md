@@ -53,3 +53,34 @@ a bounded development checkpoint, not complete SWF 8 compatibility.
 
 Since v0.12 a native String wrapper is also available; the primitive conversion
 function described here is retained. See [STANDARD_STRING.md](STANDARD_STRING.md).
+
+## Loaded parseInt — v0.412
+
+Loaded SWF4–8 now use a separate AVM1 path; the original host contract above
+remains for unloaded contexts. No arguments return undefined. A present radix
+is coerced first through loaded numeric rules and Int32 wrapping; only 2–36
+are accepted, so explicit zero/undefined/NaN do not infer a base. Invalid radix
+skips string conversion. Text then uses loaded ToString, once.
+
+Raw prefixes are inspected before trimming tab/LF/CR/space. A leading unsigned
+0x is stripped even with a nonhex explicit radix; a signed raw 0x is rejected
+unless the explicit base accepts x (34–36), in which case its sign is ignored.
+After prefix removal, whitespace and a sign may occur. Omitted radix infers
+octal only for an entire raw signed/unsigned octal spelling; a trailing space,
+NUL or other suffix makes it decimal. Non-ASCII bytes stop digit scanning;
+embedded NUL is retained as a nondigit, not discarded before octal inference.
+Negative zero and binary64 overflow are preserved. Arbitrarily long integer
+rounding, other player generations and complete compatibility remain open.
+
+Reference: pinned [Ruffle AVM1 globals](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals.rs)
+and its [parseInt expected trace](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/tests/tests/swfs/avm1/parse_int/output.txt).
+These are a reproducible comparison baseline, not a fresh Adobe Player run.
+`global_parse_int_loaded` checks SWF4–8 prefixes, wrapping, missing values,
+counted/unterminated text, callback order, invalid-radix short circuit, propagated
+exceptions, native GC barriers and scope cleanup. The missing-argument assertion
+failed before implementation. Existing global_parsing tests retain host rules.
+
+Validation v0.412 / Проверка: Linux minimal Release 823/823 CTests; AGG Release
+and heap/global ASan+UBSan each passed all three global-parsing executables.
+Native launchers restore workspace executable modes; stack ASan/LSan disabled.
+Other-platform runtime and all nine stage acceptance remain open.
