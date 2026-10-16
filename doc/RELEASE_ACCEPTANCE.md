@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.392
+# Условия окончательной приёмки / Final acceptance gates — v0.393
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1272,3 +1272,13 @@ restricted heap/global ASan+UBSan. This includes three new source-provenance,
 attach-allocation and interpreted/explicit/automatic registration cases. Stack
 ASan and LeakSanitizer disabled. Source comparison is not a Flash Player oracle;
 full-profile and non-Linux acceptance remain open, as do all roadmap stages.
+
+
+v0.393: counted TextField storage preserves embedded NUL through layout, UTF-16
+range edits, GC and binary/queue graph transport. RU: хранение текста с NUL.
+Strict scalar text and native size bounds are retained; full TextField compatibility remains open.
+Validation v0.393: nine rebuilt text/graph checks pass in Linux Release
+AGG/Cairo/minimal and restricted heap/global ASan+UBSan. Font-disabled checks
+retain unavailable-font behavior; font-enabled cases cover counted NUL layout,
+editing, OOM/GC and binary/queue round trips. Stack ASan and LeakSanitizer
+remain disabled. The new text constants header passes strict C89 syntax.

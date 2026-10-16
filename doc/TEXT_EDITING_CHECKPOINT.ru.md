@@ -60,3 +60,7 @@ UNSUPPORTED. Выполнение Windows/macOS/Android, полный TextField 
 Основным остаётся внутренний Git/архив. Эти изменения не отправлены в зеркало:
 его последняя явно запрошенная версия — 0a9c53d. Следующие обновления только
 по прямой команде, с документированной схемой HTTP-буфера 64 МиБ.
+
+
+v0.393: counted embedded-NUL storage/edit/layout/transport added; see
+[EN](TEXTFIELD_COUNTED_TEXT.md) / [RU](TEXTFIELD_COUNTED_TEXT.ru.md).

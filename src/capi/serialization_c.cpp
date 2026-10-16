@@ -938,7 +938,8 @@ struct Reader
         /* Computation / Вычисление и обновление состояния. */
         s.current = text_style();
         s.future = text_style();
-        s.text = string();
+        /* Native TextField content is counted value text, not a terminated selector/key. */
+        s.text = string(true);
         s.width = number();
         s.height = number();
         unsigned long multiline = byte(), wrap = byte();

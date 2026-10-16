@@ -1,0 +1,26 @@
+# Counted TextField content — v0.393
+
+Native fields now retain a byte length with their context-owned UTF-8 buffer.
+Embedded NUL participates in text/length, range validation, replaceText,
+getTextFormat ranges, TextFormat.getTextExtent, native layout and contours.
+Code after NUL is no longer truncated. Supplementary scalars still count as two
+UTF-16 units; splitting a surrogate pair and lone-surrogate text remain unsupported.
+The existing 4096-scalar/16384-byte envelope is an implementation limit, not a
+Flash Player limit. Native indices remain bounded by 8192 UTF-16 units.
+
+[GC:] A reachable field retains the entire counted arena buffer through its
+existing pointer root. Replacements publish pointer/length together only after
+validation and allocation. Failed edits preserve old text and style; retry works.
+Snapshot size/text and restoration preserve the count. The existing graph text
+payload is decoded as value text, allowing NUL with graph versions >=4; selector,
+font and property-key validation is unchanged. No ABI or graph-version bump.
+
+textfield_counted_text checks unloaded/SWF4–8 content, layout past NUL, extent,
+range formatting, replacement/aliasing, traced GC and binary/queue transport with
+embedded fonts. Its allocation companion sweeps setter and replaceText failures.
+Font-disabled configurations exercise their existing unavailable-font policy.
+
+Pinned source comparison: [TextField setters/replacement](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/text_field.rs)
+and [EditText scalar storage](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/display_object/edit_text.rs).
+This does not certify original-player NUL glyph/layout behavior. HTML, styled
+spans, code-unit editing, full coercion/version rules and scene integration remain open.

@@ -60,3 +60,7 @@ execution or full TextField/SWF 8 compatibility is claimed.
 The internal Git/archive is authoritative. This development checkpoint is not
 pushed: the mirror remains at the explicitly requested 0a9c53d update. Future
 updates require a direct command and the documented 64 MiB HTTP-buffer workflow.
+
+
+v0.393: counted embedded-NUL storage/edit/layout/transport added; see
+[EN](TEXTFIELD_COUNTED_TEXT.md) / [RU](TEXTFIELD_COUNTED_TEXT.ru.md).

@@ -567,3 +567,8 @@ RU: версия базового клипа для регистрации; ст
 v0.392: attach/duplicate/authored placement choose registered constructors by
 source symbol version, including transported fallback maps.
 RU: версия символа при создании экземпляров; старые библиотеки используют fallback. Стадии открыты.
+
+
+v0.393: counted TextField storage preserves embedded NUL through layout, UTF-16
+range edits, GC and binary/queue graph transport. RU: хранение текста с NUL.
+Strict scalar text and native size bounds are retained; full TextField compatibility remains open.

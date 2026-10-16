@@ -13,6 +13,7 @@
 #include <limits>
 
 #include "text_state.hpp"
+#include "text_constants.h"
 /* Release standard text state owned by the destroyed context. */
 void fvm_standard_text_cleanup(FVM_Context *context)
 {
@@ -76,12 +77,13 @@ struct Style
 struct Field
 {
     Style current, future;
-    const char *text;
+    const char *text; /* [GC:] Context-owned text retained by the reachable field. */
+    size_t text_size; /* Counted UTF-8 bytes, including embedded NUL. */
     double width, height;
     bool multiline, wrap;
     FVM_TextLayout *layout;
     /* Initialize Field and its owned state. */
-    Field() : text(""), width(100), height(100), multiline(false), wrap(false), layout(0)
+    Field() : text(""), text_size(0), width(100), height(100), multiline(false), wrap(false), layout(0)
     {
     }
     /* Release the resources owned by this Field instance. */
@@ -272,8 +274,8 @@ static FVM_Result open_font(FVM_Context *c, const Style &style, FVM_Font **out)
 }
 
 /* Build layout. */
-static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *text, double width,
-                               bool multiline, FVM_TextLayout **out, FVM_FontMetrics *font_metrics)
+static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *text, size_t size,
+                               double width, bool multiline, FVM_TextLayout **out, FVM_FontMetrics *font_metrics)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -289,7 +291,7 @@ static FVM_Result build_layout(FVM_Context *c, const Style &style, const char *t
     double spacing = metrics.ascent + metrics.descent + style.leading;
     if (!finite_range(spacing, 1.0 / 64, 1000000))
         return FVM_INVALID_ARGUMENT;
-    size_t size = std::strlen(text), offset = 0;
+    size_t offset = 0;
     while (!multiline && offset < size)
     {
         unsigned long cp;
@@ -319,7 +321,8 @@ static FVM_Result ensure_layout(FVM_Context *c, Field *field)
     double width = field->wrap && field->multiline ? field->width - 4 : 0;
     if (field->wrap && field->multiline && width <= 0)
         width = 1.0 / 64;
-    return build_layout(c, field->current, field->text, width, field->multiline, &field->layout, 0);
+    return build_layout(c, field->current, field->text, field->text_size, width,
+                        field->multiline, &field->layout, 0);
 }
 
 /* Read extent. */
@@ -344,7 +347,8 @@ static FVM_Result get_extent(FVM_Context *c, FVM_Object *self, unsigned int n, c
     /* Initialization / Инициализация локального состояния. */
     LayoutOwner layout;
     FVM_FontMetrics font_metrics;
-    result = build_layout(c, style, a[0].string, width, true, &layout.layout, &font_metrics);
+    result = build_layout(c, style, a[0].string, fvm_string_size(a[0]), width, true,
+                          &layout.layout, &font_metrics);
     if (result != FVM_OK)
         return result;
     FVM_TextLayoutMetrics metrics;
@@ -478,11 +482,11 @@ static FVM_Result style_format(FVM_Context *c, const Style &style, FVM_Value *ou
  * Unicode scalars, so a boundary inside a surrogate pair cannot be represented.
  * Validate the entire string and never publish a partial offset on failure. */
 /* Compute and return text boundary. */
-static FVM_Result text_boundary(const char *text, size_t index, size_t &byte, size_t &length)
+static FVM_Result text_boundary(const char *text, size_t bytes, size_t index, size_t &byte, size_t &length)
 {
 
     /* Initialization / Инициализация локального состояния. */
-    size_t offset = 0, units = 0, bytes = std::strlen(text), found = 0;
+    size_t offset = 0, units = 0, found = 0;
     bool boundary = index == 0;
     while (offset < bytes)
     {
@@ -518,14 +522,14 @@ static FVM_Result text_index(FVM_Context *c, const FVM_Value &value, size_t &ind
     if (result != FVM_OK)
         return result;
     /* 4096 supported scalars can occupy at most 8192 UTF-16 units. */
-    if (!finite_range(d, 0, 8192) || d != std::floor(d))
+    if (!finite_range(d, 0, FVM_TEXT_FIELD_MAX_UNITS) || d != std::floor(d))
         return FVM_INVALID_ARGUMENT;
     index = (size_t)d;
     return FVM_OK;
 }
 
 /* Compute and return text range. */
-static FVM_Result text_range(FVM_Context *c, const char *text, unsigned int n,
+static FVM_Result text_range(FVM_Context *c, const char *text, size_t bytes, unsigned int n,
                              const FVM_Value *args, size_t &begin, size_t &end, size_t &length)
 {
 
@@ -543,10 +547,10 @@ static FVM_Result text_range(FVM_Context *c, const char *text, unsigned int n,
     }
     if (last < first)
         return FVM_INVALID_ARGUMENT;
-    result = text_boundary(text, first, begin, length);
+    result = text_boundary(text, bytes, first, begin, length);
     if (result != FVM_OK)
         return result;
-    return text_boundary(text, last, end, ignored);
+    return text_boundary(text, bytes, last, end, ignored);
 }
 
 /* Compute and return replace text. */
@@ -561,21 +565,19 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
     /* Initialization / Инициализация локального состояния. */
     Field *field = (Field *)self->resource;
     size_t begin, end, length;
-    FVM_Result result = text_range(c, field->text, 2, args, begin, end, length);
+    FVM_Result result = text_range(c, field->text, field->text_size, 2, args, begin, end, length);
     if (result != FVM_OK)
         return result;
 
     /* Initialization / Инициализация локального состояния. */
     const char *replacement = args[2].string;
-    size_t bytes = std::strlen(field->text), inserted = fvm_string_size(args[2]), count;
-    if (std::memchr(replacement, 0, inserted))
-        return FVM_UNSUPPORTED;
-    if (inserted > 16384)
+    size_t bytes = field->text_size, inserted = fvm_string_size(args[2]), count;
+    if (inserted > FVM_TEXT_FIELD_MAX_BYTES)
         return FVM_UNSUPPORTED;
     if (fvm_utf8_validate(replacement, inserted, &count) != FVM_UTF8_OK)
         return FVM_INVALID_ARGUMENT;
     size_t total = bytes - (end - begin) + inserted;
-    if (total > 16384)
+    if (total > FVM_TEXT_FIELD_MAX_BYTES)
         return FVM_UNSUPPORTED;
     if (begin == end && !inserted)
     {
@@ -592,7 +594,7 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         joined[total] = 0;
         if (fvm_utf8_validate(joined.begin(), total, &count) != FVM_UTF8_OK)
             return FVM_INVALID_ARGUMENT;
-        if (count > 4096)
+        if (count > FVM_TEXT_FIELD_MAX_SCALARS)
             return FVM_UNSUPPORTED;
         /* Preserve the uniform current format. In an empty field the first
          * inserted text uses the future format. Styled spans are not simulated. */
@@ -615,6 +617,7 @@ static FVM_Result replace_text(FVM_Context *c, FVM_Object *self, unsigned int n,
         /* All validation/allocation completes before changing the field. Old
          * context-owned text snapshots and aliased replacement strings survive. */
         field->text = owned;
+        field->text_size = total;
         field->current.swap(next);
         field->invalidate();
         fvm_value_undefined(out);
@@ -645,7 +648,7 @@ static FVM_Result field_method(FVM_Context *c, FVM_Object *self, unsigned int n,
             if (future || n > 2)
                 return FVM_UNSUPPORTED;
             size_t begin, end, length;
-            FVM_Result result = text_range(c, field->text, n, args, begin, end, length);
+            FVM_Result result = text_range(c, field->text, field->text_size, n, args, begin, end, length);
             if (result != FVM_OK)
                 return result;
             if (begin == end)
@@ -700,7 +703,7 @@ static FVM_Result field_get(FVM_Context *c, FVM_Object *self, unsigned int, cons
     Field *field = (Field *)self->resource;
     const char *name = (const char *)userdata;
     if (std::strcmp(name, "text") == 0)
-        return fvm_value_string(out, field->text);
+        return fvm_value_string_bytes(out, field->text, field->text_size);
     if (std::strcmp(name, "multiline") == 0)
         fvm_value_boolean(out, field->multiline);
     else if (std::strcmp(name, "wordWrap") == 0)
@@ -713,7 +716,7 @@ static FVM_Result field_get(FVM_Context *c, FVM_Object *self, unsigned int, cons
         fvm_value_number(out, field->current.color);
     else if (std::strcmp(name, "length") == 0)
     {
-        size_t offset = 0, size = std::strlen(field->text), units = 0;
+        size_t offset = 0, size = field->text_size, units = 0;
         while (offset < size)
         {
             unsigned long cp;
@@ -753,15 +756,14 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
         if (args[0].type != FVM_VALUE_STRING)
             return FVM_UNSUPPORTED;
         size_t size = fvm_string_size(args[0]), count = 0;
-        if (std::memchr(args[0].string, 0, size))
-            return FVM_UNSUPPORTED;
-        if (size > 16384 || fvm_utf8_validate(args[0].string, size, &count) != FVM_UTF8_OK)
+        if (size > FVM_TEXT_FIELD_MAX_BYTES || fvm_utf8_validate(args[0].string, size, &count) != FVM_UTF8_OK)
             return FVM_INVALID_ARGUMENT;
-        if (count > 4096)
+        if (count > FVM_TEXT_FIELD_MAX_SCALARS)
             return FVM_UNSUPPORTED;
         Style next = field->future;
         field->current.swap(next);
         field->text = args[0].string;
+        field->text_size = size;
         field->invalidate();
     }
     else if (std::strcmp(name, "multiline") == 0 || std::strcmp(name, "wordWrap") == 0)
@@ -1358,7 +1360,7 @@ size_t fvm_textfield_snapshot_size(FVM_Object *object)
         context->fonts.find(field->future.font);
     if (a == context->fonts.end() || b == context->fonts.end())
         return (size_t)-1;
-    return 128 + std::strlen(field->text) + field->current.font.size() + field->future.font.size() +
+    return 128 + field->text_size + field->current.font.size() + field->future.font.size() +
            a->second->bytes.size() + b->second->bytes.size();
 }
 
@@ -1372,7 +1374,7 @@ FVM_Result fvm_textfield_snapshot(FVM_Object *object, FVM_TextFieldState &out)
     /* Computation / Вычисление и обновление состояния. */
     snapshot_style(object->owner, field->current, out.current);
     snapshot_style(object->owner, field->future, out.future);
-    out.text = field->text;
+    out.text = fvm_detail::string(field->text, field->text_size);
     out.width = field->width;
     out.height = field->height;
     out.multiline = field->multiline;
@@ -1435,6 +1437,7 @@ FVM_Result fvm_textfield_restore(FVM_Context *context, FVM_Object *object,
             throw;
         }
         field->text = text;
+        field->text_size = state.text.size();
         field->width = state.width;
         field->height = state.height;
         field->multiline = state.multiline;
