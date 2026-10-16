@@ -413,12 +413,16 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units joined;
     FVM_Result result = receiver(c, self, joined);
     if (result != FVM_OK)
         return result;
     for (unsigned int i = 0; i < count; ++i)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         FVM_Value text;
         result = c->swf_loaded ? fvm_avm1_string(c, args[i], &text)
                                : fvm_value_to_string(c, args + i, &text);
@@ -428,18 +432,22 @@ FVM_Result concat(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
         if (result != FVM_OK)
             return result;
     }
-    return encode(c, joined, 0, joined.size(), out);
+    return encode(c, joined, 0, joined.size(), out, &work);
 }
 
 /* Resolve from char code. */
 FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                           FVM_Value *out, void *)
 {
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units units;
     for (unsigned int i = 0; i < count; ++i)
     {
+        FVM_Result result = work.step();
+        if (result != FVM_OK)
+            return result;
         double number = 0;
-        FVM_Result result = argument(c, count, args, i, 0, number);
+        result = argument(c, count, args, i, 0, number);
         if (result != FVM_OK)
             return result;
         if (std::fabs(number) == std::numeric_limits<double>::infinity())
@@ -449,7 +457,7 @@ FVM_Result from_char_code(FVM_Context *c, FVM_Object *, unsigned int count, cons
             number += FVM_UTF16_UNIT_MODULUS;
         units.push_back((unsigned int)number);
     }
-    return encode(c, units, 0, units.size(), out);
+    return encode(c, units, 0, units.size(), out, &work);
 }
 
 /* Compute and return split. */

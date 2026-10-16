@@ -54,3 +54,12 @@ and charge each emitted UTF-16 unit. Supplementary pairs charge twice; lone
 surrogates retain counted WTF-8 storage. Missing-argument noops remain outside
 the scope. Failure publishes no partial result. Decoding and index conversion
 are not newly charged per unit; host behavior is unchanged.
+
+## v0.387 builders
+
+Loaded concat/fromCharCode enter shared work before coercion, charge each
+argument before conversion (including empty strings), then each emitted UTF-16
+unit. Conversion order stays left to right until an error; partial results are
+not published. Budget failure may stop before later callbacks. Decoding remains
+unaccounted per unit, and host accounting is unchanged. Native callbacks keep
+the existing GC barrier.

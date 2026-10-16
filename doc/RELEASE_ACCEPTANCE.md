@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.386
+# Условия окончательной приёмки / Final acceptance gates — v0.387
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1213,3 +1213,11 @@ Validation v0.386: 39 AGG String CTest checks pass. New range-copy and existing
 loaded-work checks pass in Cairo/minimal Release and restricted heap/global
 ASan+UBSan (stack ASan and LeakSanitizer disabled). These are targeted Linux
 checks; no new full-profile, external-oracle or foreign-platform claim.
+
+
+v0.387: concat/fromCharCode charge argument visits and UTF-16 output, sharing
+work with callbacks. RU: общий бюджет построения строк; все стадии открыты.
+Validation v0.387: 41 AGG String CTest checks pass. Builder, builder-callback and
+range-copy checks also pass in Cairo/minimal Release and restricted heap/global
+ASan+UBSan; stack ASan and LeakSanitizer disabled. No full-profile, new external
+oracle or non-Linux execution is claimed.

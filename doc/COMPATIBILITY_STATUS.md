@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7: String builder budget | Проверено для сценариев v0.387 | string_build_work/_callbacks: SWF4–8/host, UTF-16 pairs/NUL, empty arguments, nested/saturated budget, conversion order/exceptions and GC barrier. Decoding/full conformance open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7: String range copy budget | Проверено для сценариев v0.386 | string_portion_work: SWF4–8/host, paired/lone surrogates, exact budgets, nested/saturated counter, no partial output. Decode work remains open. STRING_LOADED_WORK.md / .ru.md. |
 | 2/3/4/7/8: indexed dimension writes | Проверено для сценариев v0.385 | SetProperty 8/9 coerces value and atomically publishes two scales from untransformed vector bounds using pinned rotation rules; degenerate/descendant/GC/OOM and native checks. Named/full geometry semantics open. MOVIECLIP_DIMENSION_WRITES.md / .ru.md. |
 | 1/2/6/7/8: loaded Number nondecimal values | Проверено для сценариев v0.384 | All 34 nondecimal bases use pinned Int32 truncation/MIN-sentinel digit policy; boundaries/fractions/NaN, counted control bytes, captured radix coercion, OOM/GC/transfer and native equivalence. Historical player profiles open. NUMBER_LOADED_RADIX.md / .ru.md. |

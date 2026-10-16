@@ -539,3 +539,7 @@ All nine roadmap stages remain open.
 v0.386: loaded String range copies charge each emitted UTF-16 unit with shared
 nested work, saturation/error atomicity and missing-argument noops.
 RU: учёт копирования slice/substring/substr; все девять стадий открыты.
+
+
+v0.387: concat/fromCharCode charge argument visits and UTF-16 output, sharing
+work with callbacks. RU: общий бюджет построения строк; все стадии открыты.
