@@ -1,5 +1,5 @@
-Development version: **0.430** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.430 ` and an English description. Increase the subversion before each
+Development version: **0.431** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.431 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.430** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.430 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.431** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.431 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -518,7 +518,7 @@ Large loaded sorting / сортировка больших массивов: [EN
 
 Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIECLIP_UNICODE_PATHS.md) / [RU](doc/MOVIECLIP_UNICODE_PATHS.ru.md).
 
-[Live function interfaces](doc/REMOTE_FUNCTIONS.md) — v0.430.
+[Live function interfaces](doc/REMOTE_FUNCTIONS.md) — v0.431.
 
 [Function RPC examples: processes, independent VM threads and LAN](doc/FUNCTION_RPC_EXAMPLES.md).
 

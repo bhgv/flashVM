@@ -1835,3 +1835,22 @@ lifetimes require their own acceptance. All nine roadmap stages remain open.
 Validation v0.430: Linux minimal 853/853; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 6/6 each. Generated mode launchers used; stack ASan and
 LeakSanitizer disabled. Other OS and complete-stage acceptance remain open.
+
+## v0.431 — raw Array length in case-varied watchers
+
+Getter-free watcher old-value lookup recognizes Array resource length with the
+same counted Flash case rule as ordinary loaded names. SWF4–6 writing LENGTH
+while watching length receives old length 3, requested name LENGTH and new value
+5; returning 4 resizes the Array to four elements. SWF7–8 preserve distinct names;
+host native-length watch policy is unchanged. NUL suffixes remain distinct.
+
+`array_case_watch_length` failed on v0.430's old-value assertion, then checks
+host/SWF4–8, callback arguments, actual getter-free resource value, real GC,
+resize and NUL-suffix isolation. `jit_array_case_watch_length` repeats resize via
+interpreted, attached and automatic native SetMember with native-entry assertions.
+This supplements the pinned watcher/property-name reference; complete Array
+accessor overrides, exception writeback, budgets and all stages remain open.
+
+Validation v0.431: Linux minimal 855/855; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 5/5 each. Generated mode launchers used; stack ASan and
+LeakSanitizer disabled. Other OS execution and complete-stage acceptance open.

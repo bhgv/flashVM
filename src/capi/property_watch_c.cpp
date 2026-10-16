@@ -9,6 +9,7 @@
 #include <cstring>
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_watch_constants.h"
 #include <new>
 /* Compute and return property watchable. */
 bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
@@ -60,7 +61,10 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
             *out = property->second;
             return FVM_OK;
         }
-        if (o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" && o->resource_result_valid)
+        if (o->resource_kind == FVM_RESOURCE_ARRAY && o->resource_result_valid &&
+            fvm_avm1_keyword_name(name, FVM_WATCH_ARRAY_LENGTH_NAME,
+                                   FVM_WATCH_ARRAY_LENGTH_UNITS,
+                                   c->swf_info.version >= FVM_SWF_VERSION_7))
         {
             *out = o->resource_result;
             return FVM_OK;
