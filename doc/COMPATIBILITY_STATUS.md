@@ -3087,3 +3087,14 @@ see [UTF16_STRINGS.md](UTF16_STRINGS.md). Проверка без выделен
 этапы 1–9 остаются открытыми. Linux minimal Release: 822/822 CTests passed. Generated native-test launchers
 restore executable mode before exec because the workspace resets file modes;
 test bodies and assertions are unchanged. Other-platform acceptance remains open.
+
+### v0.410 — UTF-16 buffer preflight / Проверка ёмкости UTF-16
+
+Valid short buffers now publish required length without allocation or writes;
+malformed input and overlapping copy behavior are preserved.
+[Details / Подробности](UTF16_STRINGS.md). All nine stages remain open.
+
+Validation v0.410 / Проверка: Linux minimal Release 822/822; AGG Release
+4/4 focused string tests; heap/global ASan+UBSan 4/4. Generated native launchers
+restore workspace executable permissions; stack ASan and LSan remain disabled.
+No other-platform runtime or complete stage acceptance is claimed.

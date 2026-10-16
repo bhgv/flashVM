@@ -54,7 +54,9 @@ extern "C"
     /* Convert UTF-16 code units into context-owned WTF-8 string storage. */
     FVM_API FVM_Result fvm_value_string_utf16(FVM_Context *, const unsigned short *, size_t,
                                               FVM_Value *);
-    /* Query or copy the UTF-16 code units represented by this string value. */
+    /* Query or copy UTF-16 units. Count-only and insufficient-capacity checks allocate
+     * no memory. Short capacity returns INVALID_ARGUMENT and the required length,
+     * without writing output; malformed strings report zero length. */
     FVM_API FVM_Result fvm_value_get_utf16(const FVM_Value *, unsigned short *, size_t, size_t *);
     /* Create object. */
     FVM_API FVM_Result fvm_object_create(FVM_Context *, FVM_Object **);

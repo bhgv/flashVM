@@ -126,15 +126,17 @@ extern "C" FVM_Result fvm_value_get_utf16(const FVM_Value *value, unsigned short
     *length = 0;
     try
     {
-        if (!out && !capacity)
-            return fvm_string_unit_count(*value, *length);
+        /* Validate before checking capacity; malformed input publishes no partial count.
+         * Short buffers are rejected without allocating or writing any output. */
+        FVM_Result r = fvm_string_unit_count(*value, *length);
+        if (r != FVM_OK || (!out && !capacity))
+            return r;
+        if (capacity < *length)
+            return FVM_INVALID_ARGUMENT;
         fvm_detail::vector<unsigned int> units;
-        FVM_Result r = fvm_string_units(*value, units);
+        r = fvm_string_units(*value, units);
         if (r != FVM_OK)
             return r;
-        *length = units.size();
-        if (capacity < units.size())
-            return FVM_INVALID_ARGUMENT;
         for (size_t i = 0; i < units.size(); ++i)
             out[i] = (unsigned short)units[i];
         return FVM_OK;

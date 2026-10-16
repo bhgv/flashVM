@@ -117,3 +117,24 @@ and all roadmap stage acceptance remain open.
 
 Regression: `flashvm_tests_string_length_allocation` denies every C++ allocation
 while checking supplementary/NUL/lone-surrogate, empty and malformed queries.
+
+## v0.410: short UTF-16 buffers / Короткие буферы UTF-16
+
+`fvm_value_get_utf16` validates and measures before allocating copy storage.
+A valid string and insufficient capacity return `FVM_INVALID_ARGUMENT`, publish
+its required unit count and leave output untouched even when allocations fail.
+Malformed input still returns a zero count before checking capacity. Sufficient
+buffers retain the decoded snapshot, including overlapping input/output; that
+copy path still allocates memory and performs another decoding pass.
+
+При недостаточной ёмкости API сообщает требуемую длину без выделений и без
+записи в буфер. Повреждённая строка отклоняется с нулевой длиной. Для достаточного
+буфера сохранён промежуточный снимок: перекрытие входа и выхода поддерживается,
+но копирование по-прежнему выделяет память и повторяет декодирование.
+Regression: `flashvm_tests_string_length_allocation` checks denied-allocation
+short buffers, complete malformed-input validation, output sentinels and overlap.
+
+Validation v0.410 / Проверка: Linux minimal Release 822/822; AGG Release
+4/4 focused string tests; heap/global ASan+UBSan 4/4. Generated native launchers
+restore workspace executable permissions; stack ASan and LSan remain disabled.
+No other-platform runtime or complete stage acceptance is claimed.
