@@ -1006,11 +1006,23 @@ extern "C"
             FVM_Result result = fvm_property_key(name, size, key);
             if (result != FVM_OK)
                 return result;
+            /* Determine binding presence before getters can delete or replace their slots.
+               An inherited undefined binding also suppresses the registered native fallback. */
+            int present = 0;
+            unsigned int depth = 0;
+            for (FVM_Object *cursor = c->global; cursor; cursor = cursor->prototype)
+            {
+                if (++depth > FVM_PROTOTYPE_MAX_DEPTH)
+                    return FVM_ERROR;
+                result = fvm_object_has_own_bytes(c, cursor, key.data(), key.size(), &present);
+                if (result != FVM_OK)
+                    return result;
+                if (present)
+                    break;
+            }
             result = fvm_object_get_bytes(c, c->global, key.data(), key.size(), out);
-            if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED)
+            if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED || present)
                 return result;
-            if (c->global->properties.find(key) != c->global->properties.end())
-                return FVM_OK;
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
                 c->functions.find(key);
             return fn == c->functions.end() ? FVM_OK

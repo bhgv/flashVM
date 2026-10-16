@@ -3662,3 +3662,18 @@ actual native entries. This is scope exclusion, not full scope compatibility.
 Validation v0.454: Linux minimal 896/896; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 targeted checks each. Stack ASan/LeakSanitizer
 disabled; all stages and foreign OS acceptance remain open.
+
+## v0.455 — global undefined retains binding identity
+
+The C global getter snapshots property-chain presence before invoking a getter.
+Own/inherited undefined and a getter deleting its own binding suppress registered
+native fallback for that read. A later read after deletion can find the native
+Function. Versioned property selection is used instead of an exact own-data-only
+map test. Missing-property resolver behavior remains available in this explicit
+C API. global_undefined_binding reproduced the old fallback and checks host and
+SWF4–8, own/inherited data, native getters, deletion and folded spelling. This
+is a C namespace precedence fix, not complete global/variable compatibility.
+
+Validation v0.455: complete Linux minimal 897/897; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
