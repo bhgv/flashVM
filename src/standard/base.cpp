@@ -2191,6 +2191,9 @@ FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::
 {
     if (!c || !o || o->owner != c)
         return FVM_INVALID_ARGUMENT;
+    /* Loaded raw set_data/set_element cannot create storage on a super facade. */
+    if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_SUPER)
+        return FVM_OK;
     /* Raw writes retain legacy-equivalent own spelling without invoking callbacks. */
     fvm_detail::string name = requested_name;
     fvm_property_select_own_name(c, o, name);

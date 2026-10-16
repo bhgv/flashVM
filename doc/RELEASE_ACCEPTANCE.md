@@ -2020,3 +2020,24 @@ entries. Broader Array behavior, all resources and all nine stages remain open.
 Validation v0.438: Linux minimal 868/868; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.439 — borrowed Array methods on super
+
+The loaded raw own-data write bridge ignores super facades. In particular,
+Array.push/unshift/splice borrowed with Function.call no longer create private
+indices or a length slot on escaped super. Return values and direct superclass
+calls retain their contracts; host writes are unchanged. Pinned
+script_object.rs set_element/set_length explicitly return without storing on
+NativeObject::Super. This correction concerns Array raw writes, not a claim
+about every ordinary super assignment or C extension operation.
+
+array_borrowed_super reproduced the facade mutation, then runs push, unshift,
+splice, slice, pop, shift and reverse successively for SWF5–8. It checks return
+values, unchanged raw storage and receiver state, actual GC after each method,
+and clean call/root state. jit_array_borrowed_super repeats all calls in the
+interpreter and two native modes, asserting actual entries. Full super/Array,
+transport and all nine acceptance stages remain open.
+
+Validation v0.439: Linux minimal 870/870; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
