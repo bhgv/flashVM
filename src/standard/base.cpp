@@ -2386,10 +2386,71 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &entry, FVM_Value &out)
     return true;
 }
 
+/* Parse decimal property names with leading ASCII whitespace and Int32 wrapping.
+ * Storage keys remain literal; this parser controls only native Array length. */
+static bool array_named_index(const fvm_detail::string &name, long &index)
+{
+    size_t pos = 0;
+    while (pos < name.size() && (name[pos] == ' ' || name[pos] == '\t' ||
+           name[pos] == '\n' || name[pos] == '\r' || name[pos] == '\v' || name[pos] == '\f'))
+        ++pos;
+    bool negative = false;
+    if (pos < name.size() && (name[pos] == '+' || name[pos] == '-'))
+        negative = name[pos++] == '-';
+    if (pos == name.size())
+        return false;
+    unsigned long bits = 0;
+    for (; pos < name.size(); ++pos)
+    {
+        if (name[pos] < '0' || name[pos] > '9')
+            return false;
+        bits = (bits * FVM_ARRAY_INDEX_RADIX + (unsigned long)(name[pos] - '0')) & FVM_UINT32_MASK;
+    }
+    if (negative)
+        bits = (0UL - bits) & FVM_UINT32_MASK;
+    index = bits <= FVM_UINT32_MAGNITUDE_MASK ? (long)bits : -1L - (long)(FVM_UINT32_MASK - bits);
+    return true;
+}
+
+/* Grow before own data flags/setters, but leave inherited virtual dispatch alone. */
+FVM_Result fvm_array_prepare_index(FVM_Context *c, FVM_Object *o, const fvm_detail::string &name)
+{
+    long index = 0;
+    if (!c->swf_loaded || !array(o) || !array_named_index(name, index))
+        return FVM_OK;
+    unsigned long key = 0;
+    const bool canonical = fvm_as_index(name.c_str(), &key);
+    FVM_Object *cursor = o;
+    unsigned int depth = 0;
+    for (; cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH; cursor = cursor->prototype)
+    {
+        if (cursor != o && !fvm_property_available(c, cursor, name))
+            continue;
+        if ((canonical && cursor->indexed.find(key) != cursor->indexed.end()) ||
+            cursor->properties.find(name) != cursor->properties.end())
+            break;
+        if (cursor->accessors.find(name) != cursor->accessors.end())
+        {
+            if (cursor != o)
+                return FVM_OK;
+            break;
+        }
+    }
+    if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
+        return FVM_ERROR;
+    if (index < fvm_array_number_length(o->resource_result.number))
+        return FVM_OK;
+    FVM_Value length, ignored;
+    fvm_value_number(&length, index == FVM_INT32_MAX_LONG ? FVM_INT32_MIN_NUMBER : (double)index + 1);
+    return array_resize(c, o, 1, &length, &ignored, 0);
+}
+
 /* Update Array length after writing an indexed property. */
 void fvm_array_note_index(FVM_Object *o, unsigned long key)
 {
-    if (array(o) && key < 0xffffffffUL && key >= size(o))
+    if (array(o) && key < FVM_UINT32_MASK &&
+        (o->owner->swf_loaded ? fvm_array_number_length((double)key) >=
+         fvm_array_number_length(o->resource_result.number) : key >= size(o)))
     {
         if (o->owner->swf_loaded)
         {
@@ -2403,7 +2464,9 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
                     o->attributes.erase(flags->first);
             }
         }
-        fvm_value_number(&o->resource_result, (double)key + 1);
+        const long signed_key = fvm_array_number_length((double)key);
+        fvm_value_number(&o->resource_result, o->owner->swf_loaded ?
+            (signed_key == FVM_INT32_MAX_LONG ? FVM_INT32_MIN_NUMBER : (double)signed_key + 1) : (double)key + 1);
     }
 }
 

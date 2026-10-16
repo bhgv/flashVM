@@ -435,6 +435,14 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         fvm_object_prototype_name(c, name) && fvm_object_intrinsic_prototype(c, o, &name))
         name = "__proto__";
 
+    /* Canonical table writes already prepared growth before entering this fallback. */
+    if (c->swf_loaded && start == o && !prepared_watch)
+    {
+        r = fvm_array_prepare_index(c, o, name);
+        if (r != FVM_OK)
+            return r;
+    }
+
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
     FVM_Object *flag_cursor = start;

@@ -47,6 +47,9 @@ int main()
         assert(borrow(c, array, "slice", o, 2, args, &out) == FVM_OK); number(c, out.object, "length", 3); number(c, o, "length", 99);
         fvm_value_number(&value, 4294967293.0); assert(fvm_object_set(c, array, "length", &value) == FVM_OK);
         fvm_value_string(&value, "kept"); assert(fvm_object_set(c, array, "-3", &value) == FVM_OK);
+        /* Ordinary signed assignment now grows length; restore the captured slice fixture. */
+        number(c, array, "length", -2);
+        fvm_value_number(&value, 4294967293.0); assert(fvm_object_set(c, array, "length", &value) == FVM_OK);
         fvm_value_number(args, 0);
         assert(borrow(c, array, "slice", array, 2, args, &out) == FVM_OK); number(c, out.object, "length", 3);
         assert(fvm_gc_pin(c, out.object) == FVM_OK); assert(fvm_gc_collect(c, 0) == FVM_OK);

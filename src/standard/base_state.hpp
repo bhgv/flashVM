@@ -57,6 +57,9 @@ FVM_NativeFunction fvm_base_callback_from_id(unsigned long);
 /* Parse a canonical ActionScript indexed property name. */
 bool fvm_as_index(const char *, unsigned long *);
 
+/* Prepare loaded Array growth before own flags/setters, retaining literal spelling. */
+FVM_Result fvm_array_prepare_index(FVM_Context *, FVM_Object *, const fvm_detail::string &);
+
 /* Update Array length after writing an indexed property. */
 void fvm_array_note_index(FVM_Object *, unsigned long);
 

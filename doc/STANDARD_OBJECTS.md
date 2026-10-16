@@ -146,3 +146,5 @@ Root DoInitAction: [SWF_INIT_ACTION.md](SWF_INIT_ACTION.md) records deferred sou
 Loaded script constructor prototypes: [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_FUNCTION_OBJECT_PROTOTYPE.md) records cached Object inheritance, flags, addProperty, GC and transfer; AS2 reference traces still differ.
 
 Builtin super prototype projection: [AVM1_SUPER_PROTOTYPE.md](AVM1_SUPER_PROTOTYPE.md) records GC/transfer/live parent checks and the passing original AS2 SWF8 trace. Raw prototype semantics remain open.
+
+Signed literal property names and overflow growth: [v0.494](ARRAY_NAMED_INDEX.md).
