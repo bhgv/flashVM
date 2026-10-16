@@ -111,3 +111,27 @@ Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
 heap/global ASan+UBSan each passed all four global-parsing executables.
 Native mode-restoring launchers used; stack ASan/LSan disabled.
 Other-platform runtime acceptance and all nine stages remain open.
+
+## Loaded traversal budgets — v0.414
+
+Loaded parseInt/parseFloat share the current AVM1 work scope, including radix
+and ToString callbacks; nested calls cannot reset the parent's budget. Integer
+octal inspection, consumed ASCII spaces and inspected digit candidates are
+charged. Float leading whitespace scalars, consumed grammar bytes and inspected
+accumulation bytes are charged. Decimal scaling has at most 32 squaring steps
+per digit. The quota is FlashVM's execution policy, not a claim about Adobe's
+instruction accounting. Missing arguments do no scanning; unloaded host rules
+remain unbudgeted. General input validation/coercion work is not fully charged.
+
+`global_parsing_loaded_work` checks exact thresholds, 65537-digit input, nested
+conversion, inherited/saturated counters, retry and host isolation. Its first
+quota assertion failed on v0.413. `global_parsing_loaded_allocation` sweeps every
+allocation up to success through callback conversion, then collects and checks
+scope cleanup. `jit_global_parsing` checks SWF4–8 interpreted/attached/automatic
+native CallFunction: exact reference value, radix rule, missing arguments,
+shared work counts, bounded failure and retry; real native entries are asserted.
+Other JIT architectures, worker-stop stress and full conformance remain open.
+
+Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
+heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. All nine stage acceptances remain open.

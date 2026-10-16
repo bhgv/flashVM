@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: loaded global numeric parsing | Проверено для v0.412–v0.414 | SWF4–8 radix-before-text parseInt, raw prefixes, counted NUL, decimal accumulation and exponent wrap; exact rounding fixture, work quotas, OOM/GC cleanup and real native CallFunction. GLOBAL_PARSING.md / .ru.md. Full whitespace/rounding/player oracle remains open. |
 | 9: automatic project version refresh | Проверено для v0.408 | Production CMake version module registers VERSION.txt as a configure dependency. Isolated version-only edit/build/rebuild fixture checks metadata refresh without changing checkout version. BUILD_VERSION.md / .ru.md; foreign execution remains open. |
 | 6/7/9: counted request identities | Проверено для v0.407 | Raw TCP NUL/nonhex source/call IDs and zero source context reject before peer creation/function entry. Distinct process/context ownership remains independent; valid requests recover. IDs are metadata, not authentication. broker_request_identity. |
 | 6/7/9: authority startup C boundary | Проверено для v0.406 | Member constructor failures are contained as OUT_OF_MEMORY with null output; explicit errors retain status and initialized handles unwind. Allocation sweep, occupied listener and post-stop port reuse. broker_start_allocation. |
@@ -3135,3 +3136,14 @@ Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
 heap/global ASan+UBSan each passed all four global-parsing executables.
 Native mode-restoring launchers used; stack ASan/LSan disabled.
 Other-platform runtime acceptance and all nine stages remain open.
+
+### v0.414 — parsing work/GC/JIT / Бюджет, GC и JIT разбора
+
+Loaded numeric scans share nested AVM1 work and saturated counters. Exact quota,
+allocation-failure cleanup and real interpreted/attached/automatic native call
+regressions added. [EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md).
+All nine stages remain open; no complete decoder/coercion budget is claimed.
+
+Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
+heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. All nine stage acceptances remain open.

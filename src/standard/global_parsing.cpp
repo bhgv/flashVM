@@ -9,6 +9,7 @@
 #include "parsing_constants.h"
 #include "../core/string_internal.hpp"
 #include "../core/numeric_constants.h"
+#include "../core/execution_work_scope.hpp"
 #include "../avm1/coercion.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
@@ -101,6 +102,7 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
         fvm_value_undefined(out);
         return FVM_OK;
     }
+    FVM_ExecutionWorkScope work(c);
     unsigned int base = FVM_PARSING_RADIX_DECIMAL;
     if (count > 1)
     {
@@ -144,16 +146,26 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
     {
         bool octal = true;
         for (size_t i = first + 1; i < size; ++i)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             if (bytes[i] < '0' || bytes[i] > '7')
             {
                 octal = false;
                 break;
             }
+        }
         if (octal)
             base = FVM_PARSING_RADIX_OCTAL;
     }
     while (at < size && integer_space((unsigned char)bytes[at]))
+    {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         ++at;
+    }
     bool negative = at < size && bytes[at] == '-' && !ignore_sign;
     if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
         ++at;
@@ -161,6 +173,9 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
     double number = 0;
     for (; at < size; ++at)
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         int value = digit((unsigned char)bytes[at]);
         if (value < 0 || (unsigned int)value >= base)
             break;
@@ -198,13 +213,28 @@ FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Valu
         fvm_value_undefined(out);
         return FVM_OK;
     }
+    FVM_ExecutionWorkScope work(c);
     FVM_Value text;
     FVM_Result status = fvm_avm1_string(c, args[0], &text);
     if (status != FVM_OK)
         return status;
     size_t size = fvm_string_size(text);
     const char *bytes = text.string;
-    size_t at = (size_t)(skip_space(bytes, size) - bytes);
+    size_t at = 0;
+    while (at < size)
+    {
+        size_t next = at;
+        unsigned long point = 0;
+        status = fvm_string_read(bytes, size, next, point);
+        if (status != FVM_OK)
+            return status;
+        if (!space(point))
+            break;
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
+        at = next;
+    }
     bool negative = at < size && bytes[at] == '-';
     if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
         ++at;
@@ -212,27 +242,49 @@ FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Valu
     unsigned long whole_digits = 0;
     while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         ++at;
         whole_digits = (whole_digits + 1) & FVM_UINT32_MASK;
     }
     unsigned long power = (whole_digits - 1) & FVM_UINT32_MASK;
     if (at < size && bytes[at] == '.')
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         ++at;
         while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             ++at;
+        }
     }
     if (at == start)
         return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
     if (at < size && (bytes[at] == 'e' || bytes[at] == 'E'))
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         ++at;
         bool minus = at < size && bytes[at] == '-';
         if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             ++at;
+        }
         unsigned long exponent = 0;
         while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
         {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             exponent = (exponent * FVM_PARSING_RADIX_DECIMAL +
                         (unsigned int)(bytes[at++] - '0')) & FVM_UINT32_MASK;
         }
@@ -243,6 +295,9 @@ FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Valu
     double number = 0;
     for (at = start; at < size; ++at)
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         if (bytes[at] >= '0' && bytes[at] <= '9')
         {
             number += loaded_decimal_shift((unsigned int)(bytes[at] - '0'), power);

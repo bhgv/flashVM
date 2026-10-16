@@ -98,3 +98,23 @@ Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
 heap/global ASan+UBSan each passed all four global-parsing executables.
 Native mode-restoring launchers used; stack ASan/LSan disabled.
 Other-platform runtime acceptance and all nine stages remain open.
+
+## Общий бюджет обходов — v0.414
+
+parseInt/parseFloat загруженного SWF делят бюджет AVM1 с преобразованием основания,
+ToString и вложенными вызовами. Учитываются проходы восьмеричной проверки,
+пробелов, цифр, дроби/экспоненты и накопления; счётчик не переполняется. Это политика
+FlashVM, а не эмуляция числа инструкций Adobe. Масштабирование одной цифры имеет
+не более 32 шагов; общая валидация/преобразования ещё учитываются не полностью.
+Host API без SWF сохраняет прежнюю политику без такого лимита.
+
+Тесты global_parsing_loaded_work проверяют пороги, 65537 цифр, вложенность,
+насыщение счётчика и повторный вызов. global_parsing_loaded_allocation перебирает
+отказы выделений до успеха, проверяя GC/work-области и сборку после каждого отказа.
+jit_global_parsing сверяет интерпретатор, подключённый и автоматический JIT для
+SWF4–8, включая вход в машинный код, точный результат, лимит, ошибку и восстановление.
+Другие архитектуры и полная совместимость остаются открытыми.
+
+Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
+heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. All nine stage acceptances remain open.

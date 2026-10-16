@@ -1519,3 +1519,14 @@ Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
 heap/global ASan+UBSan each passed all four global-parsing executables.
 Native mode-restoring launchers used; stack ASan/LSan disabled.
 Other-platform runtime acceptance and all nine stages remain open.
+
+### v0.414 — parsing work/GC/JIT / Бюджет, GC и JIT разбора
+
+Loaded numeric scans share nested AVM1 work and saturated counters. Exact quota,
+allocation-failure cleanup and real interpreted/attached/automatic native call
+regressions added. [EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md).
+All nine stages remain open; no complete decoder/coercion budget is claimed.
+
+Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
+heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
+used; stack ASan/LSan disabled. All nine stage acceptances remain open.
