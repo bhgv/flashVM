@@ -2041,3 +2041,23 @@ transport and all nine acceptance stages remain open.
 Validation v0.439: Linux minimal 870/870; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.440 — registerClass rejects super constructors
+
+Loaded Object.registerClass rejects a super facade as a constructor before
+coercing the linkage name. A callable parent interface is not a Function
+constructor. Invalid registration leaves the existing constructor intact.
+Host acceptance and null/undefined unregistration remain unchanged. Pinned
+globals/object.rs register_class validates as_function before string coercion.
+
+object_register_class_super reproduces the old acceptance/name callback, then
+checks SWF5–8 and host, NUL linkage keys, callback counts, suppression of a
+throwing name conversion for invalid constructors, propagation for valid
+constructors, existing registration preservation, successful retry and null
+unregistration followed by GC. jit_object_register_class_super repeats
+registration through interpreted/explicit/automatic CallMethod with real
+native entries. General constructor semantics and all stages remain open.
+
+Validation v0.440: Linux minimal 872/872; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.

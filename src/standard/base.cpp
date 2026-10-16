@@ -1687,7 +1687,8 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
 
     /* Validate the constructor before name coercion can run user code. */
     if (a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED &&
-        (a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback))
+        (a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback ||
+         (c->swf_loaded && a[1].object->resource_kind == FVM_RESOURCE_SUPER)))
         return FVM_OK;
 
     /* Initialization / Инициализация локального состояния. */
