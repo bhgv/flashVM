@@ -1,4 +1,4 @@
-Версия разработки: **0.465** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.466** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -290,13 +290,13 @@ Large loaded sorting / сортировка больших массивов: [EN
 
 Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIECLIP_UNICODE_PATHS.md) / [RU](doc/MOVIECLIP_UNICODE_PATHS.ru.md).
 
-[Интерфейсы оригинальных функций](doc/REMOTE_FUNCTIONS.ru.md) — v0.465.
+[Интерфейсы оригинальных функций](doc/REMOTE_FUNCTIONS.ru.md) — v0.466.
 
 [Примеры RPC функций: процессы, независимые VM-потоки и LAN](doc/FUNCTION_RPC_EXAMPLES.ru.md).
 
 [Автоматическое обновление версии в CMake](doc/BUILD_VERSION.ru.md).
 
-[Загруженный Object.__resolve](doc/OBJECT_RESOLVE.ru.md) — v0.465: обработчик
+[Загруженный Object.__resolve](doc/OBJECT_RESOLVE.ru.md) — v0.466: обработчик
 отсутствующего свойства, counted-имена, регистр SWF, корни GC и предел рекурсии.
 
 [Пример resolver на C89](examples/embedding/property_resolve/README.ru.md).

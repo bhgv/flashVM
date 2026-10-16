@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "function_state.hpp"
+#include "constructor_identity.hpp"
 #include "function_apply_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../avm1/scope_keywords.hpp"
@@ -1256,6 +1257,10 @@ extern "C" FVM_Result fvm_function_construct(
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             instance->prototype = proto.object;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        /* Define the loaded receiver's own identities before user constructor code runs. */
+        r = fvm_function_define_constructor(c, instance, fn);
+        if (r != FVM_OK)
+            return r;
         FVM_Value result;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         /* [GC:] Retain constructor identity and restore the caller mode on every exit. */

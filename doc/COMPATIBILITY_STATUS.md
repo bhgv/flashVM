@@ -3854,3 +3854,23 @@ prototype to the actual allocated receiver. GC, exception and callback-count
 assertions remain. Final validation v0.465: complete Linux minimal 909/909; AGG,
 Linux-hosted NO_OS_PORTS and heap/global ASan+UBSan 8/8 targeted checks each.
 Stack ASan/LeakSanitizer disabled; all stages and foreign OS acceptance open.
+
+## v0.466 — script instance constructor identities
+
+Before a loaded script constructor body runs, the new receiver gets own
+__constructor__ and, before SWF7, constructor properties pointing to the callee.
+Flags are DONT_ENUM only: both are writable/deletable. Forced stored definitions
+bypass inherited setters/watchers. A shared private helper stages property/flag
+maps before publication and removes exact obsolete own virtual slots afterwards;
+OOM preserves the observable receiver's previous metadata. The unloaded host
+namespace is unchanged. Reference: FunctionObject::define_constructor_props in
+[pinned function.rs](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/function.rs).
+function_constructor_identity reproduced missing own metadata and checks host/
+SWF4–8, pre-body visibility, inherited accessor traps, flags, hidden enumeration,
+write/delete, real GC, serialized graph identity without destination installation,
+and actual NewObject entries in interpreter/attached/automatic JIT. Registered
+MovieClip construction, native factory identities and all stages remain open.
+
+Validation v0.466: complete Linux minimal 910/910; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 6/6 targeted checks each. Stack ASan/LeakSanitizer
+disabled; all stages and foreign OS acceptance remain open.

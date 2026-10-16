@@ -1678,3 +1678,21 @@ MovieClip, instanceof связывает prototype с созданным this. G
 счётчики сохранены. Итог v0.465: Linux minimal 909/909; AGG, Linux-hosted
 NO_OS_PORTS и heap/global ASan+UBSan — по 8/8. Stack ASan/LeakSanitizer
 отключены; все стадии и приёмка на других ОС остаются открытыми.
+
+## v0.466 — собственные свойства идентичности скриптового конструктора
+
+До входа в тело созданный this получает __constructor__, а до SWF7 также
+constructor со ссылкой на callee. Флаг только DONT_ENUM: свойства доступны
+для записи/удаления. Принудительные stored-свойства обходят наследуемые setters
+и watchers. Общий helper подготавливает карты свойств/флагов до публикации,
+затем удаляет точные старые virtual-слоты; OOM сохраняет прежние метаданные.
+Host сохранён. Эталон — define_constructor_props в закреплённом Ruffle function.rs.
+function_constructor_identity воспроизвёл отсутствие own-свойств; проверяет
+host/SWF4–8, видимость в теле, accessor traps, флаги, перечисление, запись/удаление,
+GC, сериализацию графа без установки стандартной библиотеки в приёмнике,
+NewObject в трёх режимах с native entries. MovieClip, нативные фабрики и стадии
+остаются открытыми.
+
+Проверка v0.466: Linux minimal 910/910; AGG, Linux-hosted NO_OS_PORTS
+и heap/global ASan+UBSan — по 6/6. Stack ASan/LeakSanitizer отключены;
+все стадии и приёмка на других ОС остаются открытыми.
