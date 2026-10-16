@@ -2,6 +2,7 @@
 #include "support.hpp"
 #include "variable_lookup_constants.h"
 #include "../../core/property_key.hpp"
+#include "../../core/property_lookup.hpp"
 #include "../scope_keywords.hpp"
 #include "../../standard/function_state.hpp"
 /* Preserve local/global this spelling rules across SWF5, SWF6 and case-sensitive SWF7+. */
@@ -145,10 +146,11 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
                     if (status == FVM_OK && !found)
                     {
                         fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator entry =
-                            c->functions.find(key);
+                            fvm_property_find(c, c->functions, key);
                         if (entry != c->functions.end())
                         {
-                            status = fvm_function_wrap_entry(c, 0, key, entry->second, &result);
+                            status = fvm_function_wrap_entry(c, 0, entry->first, entry->second,
+                                                               &result);
                             if (status == FVM_OK)
                                 found = 1;
                         }

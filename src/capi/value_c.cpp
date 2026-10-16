@@ -1024,9 +1024,9 @@ extern "C"
             if (result != FVM_OK || out->type != FVM_VALUE_UNDEFINED || present)
                 return result;
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator fn =
-                c->functions.find(key);
+                fvm_property_find(c, c->functions, key);
             return fn == c->functions.end() ? FVM_OK
-                                            : fvm_function_wrap_entry(c, 0, key, fn->second, out);
+                                            : fvm_function_wrap_entry(c, 0, fn->first, fn->second, out);
         }
         catch (const std::bad_alloc &)
         {
@@ -1197,7 +1197,7 @@ extern "C"
                 }
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c->functions.find(key);
+                    fvm_property_find(c, c->functions, key);
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
                 if (it == c->functions.end())
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -1608,7 +1608,7 @@ extern "C"
             if (result != FVM_OK)
                 return result;
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator registered =
-                c->functions.find(key);
+                fvm_property_find(c, c->functions, key);
             if (registered != c->functions.end())
             {
                 /* Copy the entry before a callback can replace its registration. */

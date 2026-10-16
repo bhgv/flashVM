@@ -3677,3 +3677,17 @@ is a C namespace precedence fix, not complete global/variable compatibility.
 Validation v0.455: complete Linux minimal 897/897; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.456 — native global names use loaded case selection
+
+Registered native global reads, ordinary variable fallback and direct C/global
+member calls use the existing versioned property selector: SWF4–6 fold UTF-16
+case; host and SWF7–8 stay exact. Wrapping uses the stored registration name so
+aliases share one Function identity. global_native_case first failed on an alias
+read; it checks host/SWF4–8, ASCII and counted NUL/Unicode, lookup/call APIs,
+callback counts and CallFunction in interpreter/attached/automatic JIT. This
+covers reads/calls; registration collision/update policy remains separate.
+
+Validation v0.456: complete Linux minimal 898/898; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
