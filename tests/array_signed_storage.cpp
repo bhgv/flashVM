@@ -37,10 +37,12 @@ int main()
         assert(fvm_object_set_property_flags(c, array, "length", 0, 4) == FVM_OK);
         fvm_value_number(&input, 0); assert(fvm_object_set(c, array, "length", &input) == FVM_OK);
         assert(fvm_object_get(c, array, "length", &length) == FVM_OK && length.number == 0);
-        /* Encoder validates the extended representation before publishing wire data. */
-        const double invalid[] = {-2147483649.0, -0.5, 4294967296.0, std::numeric_limits<double>::quiet_NaN()};
+        /* Numeric lengths are unrestricted; native state must still have a Number tag. */
+        const FVM_ValueType invalid[] = {FVM_VALUE_UNDEFINED, FVM_VALUE_NULL, FVM_VALUE_BOOLEAN, FVM_VALUE_OBJECT};
         for (unsigned i = 0; i < 4; ++i) {
-            array->resource_result.number = invalid[i]; data = 0; bytes = 0;
+            fvm_value_undefined(&array->resource_result); array->resource_result.type = invalid[i];
+            if (invalid[i] == FVM_VALUE_OBJECT) array->resource_result.object = array;
+            data = 0; bytes = 0;
             assert(fvm_value_serialize(c, &value, &data, &bytes) == FVM_UNSUPPORTED && !data && !bytes);
         }
         assert(!c->gc_frames && !c->gc_native_depth); fvm_context_destroy(c);

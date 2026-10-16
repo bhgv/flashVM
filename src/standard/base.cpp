@@ -5,6 +5,8 @@
 #include "string_state.hpp"
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "array_length.hpp"
+#include "array_signed_constants.h"
 #include "array_traversal_constants.h"
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
@@ -65,17 +67,20 @@ FVM_Result owned(FVM_Context *c, const FVM_Value &src, FVM_Value &dst)
 /* Return the nonnegative traversal extent without casting signed length to unsigned. */
 unsigned long size(FVM_Object *o)
 {
-    return o->resource_result.number > 0 ? (unsigned long)o->resource_result.number : 0;
+    if (o->owner->swf_loaded)
+    {
+        const long length = fvm_array_number_length(o->resource_result.number);
+        return length > 0 ? (unsigned long)length : 0;
+    }
+    const double length = o->resource_result.number;
+    return length > 0 && length <= FVM_UINT32_MAX_NUMBER ? (unsigned long)length : 0;
 }
 
-/* Validate native numeric length, including the signed AVM1 constructor range. */
+/* Validate numeric native length; loaded assignment retains every Number representation. */
 bool array(FVM_Object *o)
 {
     return o && o->resource_kind == ARRAY_OBJECT && o->resource_result_valid &&
-           o->resource_result.type == FVM_VALUE_NUMBER &&
-           o->resource_result.number >= FVM_INT32_MIN_NUMBER &&
-           o->resource_result.number <= FVM_UINT32_MAX_NUMBER &&
-           o->resource_result.number == std::floor(o->resource_result.number);
+           o->resource_result.type == FVM_VALUE_NUMBER;
 }
 
 /* Validate and apply an Array length update, removing truncated entries. */
@@ -84,7 +89,7 @@ FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
 {
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
-    fvm_value_number(out, o->resource_result.number);
+    *out = o->resource_result;
     return FVM_OK;
 }
 
@@ -175,22 +180,22 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     FVM_Result r = fvm_value_to_number(c, a, &length);
     if (r != FVM_OK)
         return r;
-    if (length < 0 || length > 4294967295.0 || length != std::floor(length))
+    const bool raw_number = c->swf_loaded && a[0].type == FVM_VALUE_NUMBER;
+    if (!raw_number && (length < 0 || length > FVM_UINT32_MAX_NUMBER || length != std::floor(length)))
         return FVM_INVALID_ARGUMENT;
     if (c->swf_loaded)
     {
-        /* Deletion bounds use signed AVM1 indices; high unsigned lengths wrap
-         * negative and do not turn sparse arrays into billions of deletions. */
-        unsigned long old_length = size(o);
-        if (old_length >= 2147483648UL)
-            old_length = 0;
-        unsigned long first = length >= 2147483648.0 ? 0 : (unsigned long)length;
+        /* Read current length after conversion callbacks, then use Int32 bounds.
+         * The original numeric input, including NaN/fractions, remains the stored data. */
+        const unsigned long old_length = size(o);
+        const long signed_first = fvm_array_number_length(length);
+        const unsigned long first = signed_first > 0 ? (unsigned long)signed_first : 0;
         for (unsigned long index = first; index < old_length; ++index)
         {
             r = work.step();
             if (r != FVM_OK)
                 return r;
-            char name[32];
+            char name[FVM_ARRAY_SIGNED_KEY_CAPACITY];
             std::sprintf(name, "%lu", index);
             int removed = 0;
             r = fvm_object_delete(c, o, name, &removed);
@@ -203,7 +208,11 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
             return r;
         if (!(flags & FVM_PROPERTY_READ_ONLY))
         {
-            o->resource_result.number = length;
+            /* [GC:] Numeric data retains its traced primitive metatable until replacement. */
+            if (raw_number)
+                o->resource_result = a[0];
+            else
+                fvm_value_number(&o->resource_result, length);
             fvm_property_clear_versions(c, o, "length");
         }
         fvm_value_undefined(out);
@@ -213,7 +222,7 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         if (i->first >= length)
         {
-            char name[32];
+            char name[FVM_ARRAY_SIGNED_KEY_CAPACITY];
             std::sprintf(name, "%lu", i->first);
             unsigned int flags = 0;
             r = fvm_object_property_flags(c, o, name, &flags);
@@ -229,6 +238,7 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
     r = commit_slots(c, o, kept, (unsigned long)length);
     if (r != FVM_OK)
         return r;
+    fvm_value_number(&o->resource_result, o->resource_result.number);
     fvm_value_undefined(out);
     return FVM_OK;
 }
@@ -1394,9 +1404,6 @@ FVM_Result sort_impl(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Va
     unsigned long length = size(o);
     if (!c->swf_loaded && length > FVM_ARRAY_HOST_NATIVE_SORT_MAX_LENGTH)
         return FVM_OUT_OF_MEMORY;
-    /* Signed-negative native storage still needs a separate representation contract. */
-    if (c->swf_loaded && (double)length > FVM_INT32_MAX_NUMBER)
-        return FVM_UNSUPPORTED;
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flags = 0;
@@ -2390,7 +2397,7 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
                     o->attributes.erase(flags->first);
             }
         }
-        o->resource_result.number = (double)key + 1;
+        fvm_value_number(&o->resource_result, (double)key + 1);
     }
 }
 

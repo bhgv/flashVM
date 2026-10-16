@@ -4280,3 +4280,14 @@ negative bounds принудительно выбирают generic путь д�
 nondelete, virtual data, version bits, C/AVM1/JIT, GC/перенос, OOM и бюджет.
 See [ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md). Signed overflow,
 arbitrary/virtual native length and all nine roadmap stages remain open.
+
+
+### v0.492 — retained numeric Array length
+
+Loaded numeric length assignment retains fractional, signed, nonfinite and
+out-of-Uint32 Numbers, with separate wrapping Int32 traversal/truncation bounds.
+Сохраняются primitive metatable/GC-циклы и графовый перенос; readonly/nondelete,
+version flags и методы, записывающие/не записывающие length, проверены отдельно.
+See [ARRAY_NUMERIC_LENGTH.md](ARRAY_NUMERIC_LENGTH.md) for RU/EN contracts,
+coverage and wire-reader compatibility. Nonnumeric/virtual length and all nine
+roadmap stages remain open.

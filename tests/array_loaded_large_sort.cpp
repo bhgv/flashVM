@@ -75,9 +75,10 @@ int main()
         /* Raw high unsigned length remains distinct from constructor Int32 clamping. */
         assert(fvm_construct(c, "Array", 0, 0, &source) == FVM_OK);
         fvm_value_number(&value, 4294967295.0); assert(fvm_object_set(c, source, "length", &value) == FVM_OK);
-        fvm_value_number(args, 16); assert(fvm_object_call(c, source, "sort", 1, args, &out) == FVM_UNSUPPORTED);
+        fvm_value_number(args, 16); assert(fvm_object_call(c, source, "sort", 1, args, &out) == FVM_OK && out.object == source);
         fvm_value_string(args, "field"); fvm_value_number(args + 1, 16);
-        assert(fvm_object_call(c, source, "sortOn", 2, args, &out) == FVM_UNSUPPORTED);
+        assert(fvm_object_call(c, source, "sortOn", 2, args, &out) == FVM_OK && out.object == source);
+        number(c, source, "length", 4294967295.0);
         assert(c->gc_frames == 0 && c->avm1_execution_depth == 0); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

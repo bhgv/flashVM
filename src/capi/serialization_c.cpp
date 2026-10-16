@@ -444,12 +444,6 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                              ? FVM_VALUE_OBJECT
                              : FVM_VALUE_NUMBER),
                 FVM_UNSUPPORTED);
-            if (dst.kind == FVM_RESOURCE_ARRAY)
-            {
-                const double length = src->resource_result.number;
-                require(length >= FVM_INT32_MIN_NUMBER && length <= FVM_UINT32_MAX_NUMBER &&
-                        length == std::floor(length), FVM_UNSUPPORTED);
-            }
             if (dst.kind == FVM_RESOURCE_COLOR_TRANSFORM)
             {
                 double native_channels[8];
@@ -1047,7 +1041,9 @@ Graph read_graph(Reader &r, unsigned int version)
         require(known_kind(o.kind), FVM_UNSUPPORTED);
         /* Bitmap native payload is validated as binary storage, not as ActionScript text. */
         o.state = r.value(o.kind == FVM_RESOURCE_BITMAP_DATA);
-        require(o.state.metatable == none);
+        /* [GC:] Array length is retained numeric user data; its primitive metatable
+         * is validated and restored through the ordinary graph identity map. */
+        require(o.kind == FVM_RESOURCE_ARRAY || o.state.metatable == none);
         if (o.kind == FVM_RESOURCE_TEXT_FIELD)
             o.text = r.text_field();
         o.prototype = r.ref();
@@ -1196,8 +1192,6 @@ Graph read_graph(Reader &r, unsigned int version)
                     std::fabs(o.state.number) <= 8640000000000000.0);
         if (o.kind == FVM_RESOURCE_ARRAY)
         {
-            require(o.state.number >= FVM_INT32_MIN_NUMBER && o.state.number <= FVM_UINT32_MAX_NUMBER &&
-                    o.state.number == std::floor(o.state.number));
             for (fvm_detail::map<unsigned long, Value>::iterator slot = o.indexed.begin();
                  slot != o.indexed.end(); ++slot)
                 /* Native arrays may retain own slots outside readonly or reduced length. */

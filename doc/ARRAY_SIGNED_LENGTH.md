@@ -84,3 +84,11 @@ All nine roadmap stages remain open; only the native host JIT runs these cases.
 Native negative-length splice is now implemented, including captured bounds
 when coercion changes the live length. See [ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md)
 for RU/EN semantics, coverage and remaining signed-overflow/virtual-length limits.
+
+
+## v0.492 — numeric assignment beyond integral storage
+
+Numeric length assignment now retains every Number and its primitive metatable;
+Int32 traversal is separate from storage. See [ARRAY_NUMERIC_LENGTH.md](ARRAY_NUMERIC_LENGTH.md).
+The earlier integral encoder restrictions in this historical checkpoint are
+superseded. Nonnumeric/virtual length assignment remains open.

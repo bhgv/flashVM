@@ -3015,3 +3015,22 @@ checks passed heap/global ASan+UBSan, as did the signed constructor after its
 zero-sign assertion was made C++98-portable. Stack ASan/LSan remain disabled.
 The native splice regression fails against v0.490. These are current-host Linux
 results, not original Flash Player or foreign-platform acceptance evidence.
+
+
+### v0.492 — retained numeric Array length
+
+Loaded numeric length assignment retains fractional, signed, nonfinite and
+out-of-Uint32 Numbers, with separate wrapping Int32 traversal/truncation bounds.
+Сохраняются primitive metatable/GC-циклы и графовый перенос; readonly/nondelete,
+version flags и методы, записывающие/не записывающие length, проверены отдельно.
+See [ARRAY_NUMERIC_LENGTH.md](ARRAY_NUMERIC_LENGTH.md) for RU/EN contracts,
+coverage and wire-reader compatibility. Nonnumeric/virtual length and all nine
+roadmap stages remain open.
+
+Validation v0.492: complete minimal Release passed 970/984 initially and 14/14
+after executable-permission repair; AGG Release passed 983/1003 initially and
+20/20 after permission repair. No functional failures remained. All six focused
+numeric/legacy regression checks passed heap/global ASan+UBSan. The final
+host-only setter assertions passed in minimal, AGG and sanitizer profiles.
+Stack ASan/LSan remain disabled. The direct numeric assignment regression fails
+against v0.491. Only current-host Linux execution is evidenced here.

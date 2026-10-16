@@ -4,6 +4,7 @@
 
 #include "array_generic.hpp"
 #include "array_work.hpp"
+#include "array_length.hpp"
 #include "array_splice_constants.h"
 #include "array_signed_constants.h"
 #include "array_traversal_constants.h"
@@ -150,17 +151,10 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
     FVM_Result status = fvm_avm1_number(c, &value, &number);
     if (status != FVM_OK)
         return status;
-    out = 0;
-    if (!(number == number) || !number || std::fabs(number) == HUGE_VAL)
-        return FVM_OK;
-    number = number < 0 ? -std::floor(-number) : std::floor(number);
-    number = std::fmod(number, 4294967296.0);
-    if (number < 0)
-        number += 4294967296.0;
+    const long length = fvm_array_number_length(number);
     if (signed_length)
-        *signed_length = (long)(number < 2147483648.0 ? number : number - 4294967296.0);
-    if (number < 2147483648.0)
-        out = (unsigned long)number;
+        *signed_length = length;
+    out = length > 0 ? (unsigned long)length : 0;
     return FVM_OK;
 }
 
@@ -180,7 +174,7 @@ void legacy_native_length(FVM_Object *o, double count)
 /* Extend native Array length before raw own element storage without invoking accessors/watchers. */
 FVM_Result legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index, const FVM_Value &value)
 {
-    if (o->resource_kind == FVM_RESOURCE_ARRAY && index >= o->resource_result.number)
+    if (o->resource_kind == FVM_RESOURCE_ARRAY && (double)index >= fvm_array_number_length(o->resource_result.number))
         legacy_native_length(o, index + 1);
     char key[32];
     std::sprintf(key, "%lu", index);
@@ -1309,9 +1303,18 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
 /* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
-    if (!o || o->resource_kind != FVM_RESOURCE_ARRAY ||
-        (o->resource_result_valid && o->resource_result.number < 0))
+    if (!o || o->resource_kind != FVM_RESOURCE_ARRAY)
         return true;
+    if (o->resource_result_valid)
+    {
+        if (o->resource_result.metatable)
+            return true;
+        const double length = o->resource_result.number;
+        /* Fast storage assumes canonical integral bounds; loaded traversal is signed. */
+        const double maximum = o->owner->swf_loaded ? FVM_INT32_MAX_NUMBER : FVM_UINT32_MAX_NUMBER;
+        if (!(length >= 0 && length <= maximum && length == std::floor(length)))
+            return true;
+    }
     for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, o = o->prototype)
     {
         if (depth && !o->indexed.empty())
