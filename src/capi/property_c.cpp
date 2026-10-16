@@ -127,6 +127,8 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
             o->prototype = 0;
         o->properties.erase(key);
         o->methods.erase(key);
+        /* [GC:] Deleted methods must not retain captures through their lazy wrapper cache. */
+        o->method_values.erase(key);
         o->accessors.erase(key);
         o->attributes.erase(key);
         *deleted = 1;

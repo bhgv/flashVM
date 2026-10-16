@@ -647,6 +647,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     try
     {
         o->properties[name] = copy;
+        /* [GC:] Published own data replaces the hidden method and lazy wrapper roots. */
+        o->methods.erase(name);
+        o->method_values.erase(name);
     }
     catch (...)
     {
@@ -1306,6 +1309,15 @@ extern "C"
                 return FVM_INVALID_ARGUMENT;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             object->methods[key] = entry;
+            /* [GC:] Release a stale lazy wrapper only after replacement succeeds.
+             * Exported/pinned Functions retain their own callback capture. */
+            fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator cached =
+                object->method_values.find(key);
+            if (cached != object->method_values.end() &&
+                (cached->second->invocable.callback != entry.callback ||
+                 cached->second->invocable.userdata != entry.userdata ||
+                 cached->second->invocable.root != entry.root))
+                object->method_values.erase(key);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1381,6 +1393,9 @@ extern "C"
             if (object->properties.find(key) != object->properties.end())
                 return FVM_INVALID_ARGUMENT;
             object->accessors[key] = entry;
+            /* [GC:] A published accessor shadows and replaces any native method root. */
+            object->methods.erase(key);
+            object->method_values.erase(key);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
