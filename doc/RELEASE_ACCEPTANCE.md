@@ -2403,3 +2403,22 @@ This does not establish complete C embedding or concurrent-context safety.
 Validation v0.457: complete Linux minimal 899/899; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.458 — replace native registrations without stale capture roots
+
+Native registration updates retain the selected existing spelling in SWF4–6.
+Publication removes a cached wrapper only when callback, userdata, capture or
+collector-entry policy changed. An identical registration keeps Function identity;
+an explicitly saved old Function retains its original callback/capture. Stale
+cache entries no longer keep an otherwise unreachable old capture alive.
+The stored name is copied before publication, so allocation failure preserves
+the previous registration and cache. Host/SWF7–8 alternate names remain distinct.
+global_native_replacement reproduced the stale root and covers versioned updates,
+real GC, cycles, saved old Functions, new callbacks and identical registration.
+global_native_replacement_allocation sweeps new/new[] boundaries through first
+successful replacement, checks old identity/root retention on OOM and retry/GC.
+This is not a full allocator/concurrent registration proof; all stages remain open.
+
+Validation v0.458: complete Linux minimal 901/901; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.

@@ -1078,7 +1078,23 @@ extern "C"
             entry.callback = callback;
             entry.userdata = userdata;
             entry.root = root;
+            /* A legacy alternate spelling updates the existing registration. Copy its
+               identity before publication so allocation failure preserves the old entry. */
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator previous =
+                fvm_property_find(c, c->functions, key);
+            if (previous != c->functions.end())
+                key = previous->first;
             c->functions[key] = entry;
+            /* [GC:] A stale cached wrapper must not keep the replaced capture alive.
+               Saved Function values retain their own original entry through normal roots. */
+            fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator cached =
+                c->function_objects.find(key);
+            if (cached != c->function_objects.end() &&
+                (cached->second->invocable.callback != entry.callback ||
+                 cached->second->invocable.userdata != entry.userdata ||
+                 cached->second->invocable.root != entry.root ||
+                 cached->second->invocable.collector_entry != entry.collector_entry))
+                c->function_objects.erase(key);
             return FVM_OK;
         }
         catch (const std::bad_alloc &)
