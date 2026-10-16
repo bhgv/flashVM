@@ -79,9 +79,29 @@ extern "C"
                     return r;
                 prepared_watch = true;
             }
-            /* Loaded Array growth precedes indexed data flags and virtual setter dispatch. */
+            /* Inherited virtual dispatch precedes Array.set_local and must not
+             * grow length. Own writes still grow before readonly/setter handling. */
             if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
-                fvm_array_note_index(o, key);
+            {
+                bool inherited_setter = false;
+                FVM_Object *cursor = o;
+                unsigned int depth = 0;
+                for (; cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH; cursor = cursor->prototype)
+                {
+                    if (cursor->indexed.find(key) != cursor->indexed.end() ||
+                        cursor->properties.find(name) != cursor->properties.end())
+                        break;
+                    if (cursor->accessors.find(name) != cursor->accessors.end())
+                    {
+                        inherited_setter = cursor != o;
+                        break;
+                    }
+                }
+                if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
+                    return FVM_ERROR;
+                if (!inherited_setter)
+                    fvm_array_note_index(o, key);
+            }
             unsigned int flags = 0;
             FVM_Result status = fvm_object_property_flags(c, o, name, &flags);
             if (status != FVM_OK)

@@ -3514,3 +3514,24 @@ watcher/SWF compatibility require further checks. All nine stages remain open.
 Validation v0.432: Linux minimal 856/856; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other operating systems and all stages remain open.
+
+## v0.433 — Array growth excludes inherited virtual dispatch
+
+An indexed loaded Array write now resolves whether a virtual property is inherited
+before growing length. Inherited setters, including getter-only virtual properties,
+do not enter Array.set_local, so they do not grow the receiver. Own writes retain
+growth before readonly checks and own setter invocation. This refines the earlier
+blanket growth-before-setter policy. Pinned object.rs set_internal dispatches
+inherited setters before script_object.rs set_local performs native Array growth.
+
+`array_inherited_setter_length` failed on v0.432: an inherited index 5 setter saw
+length 6 instead of 0. Host/SWF4–8 checks own/inherited dispatch, real GC, setter
+throws, thrown watchers and priority/consumption rules; inherited writes leave no
+own slot. The native fixture repeats all loaded cases in interpreter/attached/
+automatic JIT modes, asserting native entry counts and length inside the setter.
+Full Array side effects, resource-specific errors, malformed graphs and work
+accounting remain open. No complete stage or platform certification is implied.
+
+Validation v0.433: Linux minimal 858/858; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.

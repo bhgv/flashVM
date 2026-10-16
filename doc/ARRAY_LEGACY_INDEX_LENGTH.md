@@ -35,3 +35,12 @@ allocating destination objects. Virtual length, signed/wrapping indices, version
 masks, ordinary truncation/nondelete rules and all stages remain open. Allocation
 failure after growth may leave the longer length without a completed write;
 loaded atomicity is not claimed. Reference: pinned ScriptObject.set_local.
+
+## v0.433 clarification / Уточнение
+
+The growth-before-setter rule above applies to own writes. Inherited virtual
+setters dispatch before Array.set_local and do not grow length; success/throw,
+watcher errors, GC and actual native paths are checked in WATCH_THROW.md.
+Правило роста до setter относится к собственным записям. Наследуемый virtual
+setter обрабатывает запись до Array.set_local без роста; подробности и проверки
+в WATCH_THROW.ru.md. Полная Array-совместимость и все стадии остаются открытыми.
