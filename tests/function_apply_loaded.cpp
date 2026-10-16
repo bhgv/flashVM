@@ -88,8 +88,8 @@ int main()
             assert(apply_count(c, fn, apply_object(length_source), 0) == FVM_OK);
         }
         FVM_Object *bounded = 0; assert(fvm_construct(c, "Object", 0, 0, &bounded) == FVM_OK);
-        const double rejected[] = {-1, 65537, 4294967295.0};
-        for (unsigned i = 0; i < 3; ++i) {
+        const double rejected[] = {-1, 4294967295.0};
+        for (unsigned i = 0; i < sizeof(rejected)/sizeof(rejected[0]); ++i) {
             fvm_value_number(&value, rejected[i]); assert(fvm_object_set(c, bounded, "length", &value) == FVM_OK);
             assert(apply_count(c, fn, apply_object(bounded), 0) == FVM_UNSUPPORTED);
         }

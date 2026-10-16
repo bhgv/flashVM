@@ -3204,3 +3204,15 @@ original getter receiver and retained snapshots across mutation/GC/failure.
 Validation v0.419 / Проверка: minimal Release 835/835; AGG Release 4/4 and
 heap/global ASan+UBSan 4/4 apply/function tests. Native mode-restoring launchers
 used; stack ASan/LSan disabled. Other-platform runtime acceptance remains open.
+
+### v0.420 — incremental apply work / Постепенный apply с бюджетом
+
+Loaded positive Int32 lists grow rooted capture under shared work; the former
+65536 cap is removed. C/script 65537 slots, huge bounded allocation, OOM/unwind
+and real native CallMethod checks added. Host/negative-length policy retained.
+[EN](FUNCTION_APPLY.md) / [RU](FUNCTION_APPLY.ru.md). All stages remain open.
+
+Validation v0.420: Linux minimal 838/838; AGG 7/7; heap/global ASan+UBSan 7/7.
+Generated native-mode launchers compensate for workspace executable-mode resets.
+Stack ASan and LeakSanitizer are disabled in this environment. Other platforms
+and completion of all nine stages remain unverified/open.

@@ -15,6 +15,7 @@
 #include "../core/call_scope.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/value_vector_root_scope.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "super.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
@@ -128,30 +129,44 @@ FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value 
     return fvm_function_invoke(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
 }
 
-/* Find an own stored length entry using loaded version casing, without invoking accessors. */
+/* Find own length with loaded casing, charging each legacy fallback candidate. */
 template <class Entries>
-typename Entries::iterator apply_length_slot(FVM_Context *c, Entries &entries)
+FVM_Result apply_length_slot(FVM_Context *c, Entries &entries, FVM_ExecutionWorkScope &work,
+                              typename Entries::iterator &found)
 {
-    typename Entries::iterator found = entries.find(FVM_FUNCTION_APPLY_LENGTH_NAME);
+    found = entries.find(FVM_FUNCTION_APPLY_LENGTH_NAME);
     if (found != entries.end() || c->swf_info.version >= FVM_SWF_VERSION_7)
-        return found;
+        return FVM_OK;
     for (found = entries.begin(); found != entries.end(); ++found)
+    {
+        FVM_Result status = work.step();
+        if (status != FVM_OK)
+            return status;
         if (fvm_avm1_keyword_name(found->first, FVM_FUNCTION_APPLY_LENGTH_NAME,
                                   FVM_FUNCTION_APPLY_LENGTH_UNITS, false))
-            return found;
-    return entries.end();
+            return FVM_OK;
+    }
+    return FVM_OK;
 }
 
-/* Capture own raw length (including retained script-property data), then coerce once.
- * Negative or oversized wrapped lengths retain an explicit bounded-runtime rejection. */
-FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
+/* Capture raw length once under the caller's budget. Positive Int32 lengths can be
+ * gathered incrementally; negative lengths retain an explicit runtime rejection. */
+FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count,
+                               FVM_ExecutionWorkScope &work)
 {
     FVM_Value value;
     fvm_value_undefined(&value);
-    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property =
-        apply_length_slot(c, source->properties);
-    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
-        apply_length_slot(c, source->accessors);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property;
+    FVM_Result status = apply_length_slot(c, source->properties, work, property);
+    if (status != FVM_OK)
+        return status;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = source->accessors.end();
+    if (property == source->properties.end())
+    {
+        status = apply_length_slot(c, source->accessors, work, accessor);
+        if (status != FVM_OK)
+            return status;
+    }
     if (property != source->properties.end())
         value = property->second;
     else if (accessor != source->accessors.end())
@@ -162,11 +177,13 @@ FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
     }
     else
     {
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
-            apply_length_slot(c, source->methods);
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method;
+        status = apply_length_slot(c, source->methods, work, method);
+        if (status != FVM_OK)
+            return status;
         if (method != source->methods.end())
         {
-            FVM_Result status = fvm_function_wrap_entry(c, source, method->first, method->second, &value);
+            status = fvm_function_wrap_entry(c, source, method->first, method->second, &value);
             if (status != FVM_OK)
                 return status;
         }
@@ -176,7 +193,7 @@ FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
     /* [GC:] Length conversion may remove its own source slot and invoke collecting accessors. */
     FVM_ObjectRootScope length_roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);
     double number = 0;
-    FVM_Result status = fvm_avm1_number(c, &value, &number);
+    status = fvm_avm1_number(c, &value, &number);
     if (status != FVM_OK)
         return status;
     count = 0;
@@ -185,7 +202,7 @@ FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
     number = std::fmod(number < 0 ? std::ceil(number) : std::floor(number), FVM_UINT32_MODULUS);
     if (number < 0)
         number += FVM_UINT32_MODULUS;
-    if (number >= FVM_UINT32_SIGN_BIT || number > FVM_FUNCTION_APPLY_LOADED_LIMIT)
+    if (number >= FVM_UINT32_SIGN_BIT)
         return FVM_UNSUPPORTED;
     count = number;
     return FVM_OK;
@@ -195,6 +212,8 @@ FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
 FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *userdata)
 {
+    /* Loaded boxing, conversion and element callbacks inherit one execution quota. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     FVM_Object *receiver = n && a[0].type == FVM_VALUE_OBJECT ? a[0].object : c->global;
     /* apply and call use the same primitive receiver boxing rules. */
     if (n && a[0].type != FVM_VALUE_OBJECT && a[0].type != FVM_VALUE_UNDEFINED &&
@@ -214,7 +233,7 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         double count = 0;
         FVM_Result r = FVM_OK;
         if (c->swf_loaded)
-            r = apply_loaded_count(c, a[1].object, count);
+            r = apply_loaded_count(c, a[1].object, count, work);
         else
         {
             FVM_Value length;
@@ -227,7 +246,7 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         }
         if (r != FVM_OK)
             return r;
-        fvm_detail::vector<FVM_Value> args((size_t)count);
+        fvm_detail::vector<FVM_Value> args(c->swf_loaded ? 0 : (size_t)count);
         for (size_t i = 0; i < args.size(); ++i)
             fvm_value_undefined(&args[i]);
         /* [GC:] Later script getters may collect values returned by earlier getters. */
@@ -236,6 +255,13 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         {
             if (c->swf_loaded)
             {
+                r = work.step();
+                if (r != FVM_OK)
+                    return r;
+                FVM_Value absent;
+                fvm_value_undefined(&absent);
+                /* [GC:] Publish an initialized slot before its getter can collect. */
+                args.push_back(absent);
                 /* Loaded apply uses ordinary named lookup even on native non-Array objects. */
                 char name[FVM_FUNCTION_APPLY_INDEX_KEY_BYTES];
                 std::sprintf(name, "%u", i);

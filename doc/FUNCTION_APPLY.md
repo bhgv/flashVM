@@ -72,3 +72,34 @@ semantics still require separate evidence. All nine stages remain open.
 Validation v0.419 / Проверка: minimal Release 835/835; AGG Release 4/4 and
 heap/global ASan+UBSan 4/4 apply/function tests. Native mode-restoring launchers
 used; stack ASan/LSan disabled. Other-platform runtime acceptance remains open.
+
+## v0.420: incremental loaded capture and shared work
+
+Loaded apply no longer rejects positive Int32 lengths above 65536. It grows the
+rooted argument vector one visited slot at a time, charging before lookup and
+allocation. Boxing, raw length conversion, legacy name fallback, getters and the
+target share the caller's AVM1 work scope; nested callbacks cannot reset it.
+Each legacy length-name candidate and each argument visit consume one unit.
+The host retains its 65536 limit and unbudgeted capture. Negative signed lengths
+remain UNSUPPORTED. This supersedes the loaded upper bound in v0.418.
+
+`function_apply_work` checks exact quotas, nested parseInt conversion, inherited
+and saturated counters, bounded legacy name search and retry. A sparse 65537-item
+list reaches both a C callback and a prepared script body, whose arguments Array
+and last slot survive real GC. An Int32-max list with quota four stops before
+target invocation. `function_apply_allocation` sweeps failures through success
+and checks scope/invocation cleanup; a 4096-byte allocation ceiling proves the
+huge-list/quota-four path avoids full-length preallocation. Host quota isolation
+is checked. `jit_function_apply` compares interpreted/attached/automatic native
+CallMethod work counts, quota failure/retry, fractional length and primitive lists;
+actual native entries are asserted. The quota regression failed on v0.419.
+
+These are local-runtime checks, not large RPC or physical-platform certification.
+General value validation, lookup internals and target activation work are not
+fully charged. Unlimited-quota calls still depend on available memory. Complete
+negative-length/borrowed-function compatibility and all stages remain open.
+
+Validation v0.420: Linux minimal 838/838; AGG 7/7; heap/global ASan+UBSan 7/7.
+Generated native-mode launchers compensate for workspace executable-mode resets.
+Stack ASan and LeakSanitizer are disabled in this environment. Other platforms
+and completion of all nine stages remain unverified/open.
