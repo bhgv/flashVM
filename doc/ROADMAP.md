@@ -515,3 +515,22 @@ legacy radix/conversion, C89 standard Number and native numeric regressions.
 Stack ASan and LeakSanitizer remain disabled. The new scoped radix constants
 header passes a strict C89 syntax probe. No original external SWF oracle or
 foreign-OS acceptance was added. All nine roadmap stages remain open.
+
+
+v0.385: SetProperty width/height computes both intrinsic scales from
+untransformed vector/descendant bounds using pinned rotation rules. Singular
+ancestors, degenerate geometry, coercion GC/detachment, atomic OOM/errors and
+interpreted/explicit/automatic native writes are covered. Named dimensions and
+full geometry conformance remain open.
+[EN](MOVIECLIP_DIMENSION_WRITES.md) / [RU](MOVIECLIP_DIMENSION_WRITES.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.385: all 807 AGG / 807 Cairo / 788 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo, three minimal). Eight restricted heap/global
+ASan+UBSan checks pass: four new dimension write/allocation/callback/native
+cases plus previous dimension reads, AVM1 display properties, native indexed
+reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
+The revised MovieClip constants header passes a strict C89 syntax probe.
+No new original external SWF oracle or foreign-OS run is claimed.
+All nine roadmap stages remain open.

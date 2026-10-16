@@ -12,7 +12,8 @@ Named `_width`/`_height` replacements do not intercept these indexed reads.
 Index coercion still precedes target resolution and can run script/GC. The
 selected input/target stays rooted even when a coercion detaches it. Successful
 results may alias an input. Errors and allocation failure leave output intact.
-Width/height writes remain explicitly unsupported. No public ABI, callback ID or
+Since v0.385 indexed writes are supported in the bounded vector model
+(MOVIECLIP_DIMENSION_WRITES.md). No public ABI, callback ID or
 graph format changes.
 
 [GC:] Geometry traversal holds the native collection barrier and copies each
@@ -34,7 +35,7 @@ Primary implementation comparison:
 This supports the parent-space choice; it does not certify all geometry details.
 
 Tests: movieclip_indexed_size covers host/SWF4–8 empty/transformed/descendant
-bounds, shear, singular ancestors, aliasing and unchanged unsupported setters.
+bounds, shear, singular ancestors, aliasing and a write smoke check (updated in v0.385).
 movieclip_indexed_size_callbacks covers removal during a transform getter,
 named getter bypass, errors, actual collecting index coercion, detachment,
 exceptions and root/barrier restoration. movieclip_indexed_size_allocation

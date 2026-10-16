@@ -30,6 +30,8 @@
 #define FVM_MOVIECLIP_MAX_HIT_COORDINATE 2000000.0
 /* SWF position quantization: twenty integer twips represent one pixel. */
 #define FVM_MOVIECLIP_TWIPS_PER_PIXEL 20.0
+/* Intrinsic dimension setters store scale as percent rather than unit ratios. */
+#define FVM_MOVIECLIP_DIMENSION_PERCENT 100.0
 /* Degree/radian conversion and rotation normalization bounds. */
 #define FVM_MOVIECLIP_DEGREES_PER_TURN 360.0
 #define FVM_MOVIECLIP_DEGREES_PER_HALF_TURN 180.0

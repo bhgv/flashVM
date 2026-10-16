@@ -13,7 +13,8 @@ Implemented/tested indices: 0 _x, 1 _y, 2 _xscale, 3 _yscale, 4 _currentframe,
 5 _totalframes, 6 _alpha, 7 _visible, 10 _rotation, 11 _target, 12 _framesloaded,
 13 _name. v0.327 also supports 20 _xmouse and 21 _ymouse through the shared
 clip-local pointer query (CLIP_POINTER.md). v0.379 adds indexed vector dimension
-reads 8/9 (MOVIECLIP_INDEXED_SIZE.md); their writes and system/media
+reads 8/9 (MOVIECLIP_INDEXED_SIZE.md); v0.385 adds vector dimension writes
+(MOVIECLIP_DIMENSION_WRITES.md). System/media
 fields 14–19 explicitly return FVM_UNSUPPORTED for a valid target. Pointer reads
 project the context position through the inverse world matrix; other scalar reads use stored intrinsic fields;
 frame counts and slash target use native state. Visibility reads a boolean.
@@ -40,7 +41,8 @@ later collection. This read-only API performs no allocation or script entry.
 readonly/no-op поведение и сохранение отсоединённого клипа при настоящем GC.
 В v0.327 добавлены 20 _xmouse и 21 _ymouse через общий C-сервис
 локальных координат (CLIP_POINTER.md). В v0.379 добавлено чтение векторных
-размеров 8/9 (MOVIECLIP_INDEXED_SIZE.ru.md); их запись и системные индексы
+размеров 8/9 (MOVIECLIP_INDEXED_SIZE.ru.md), в v0.385 — индексная запись
+(MOVIECLIP_DIMENSION_WRITES.ru.md). Системные индексы
 14–19 ещё явно не поддерживаются. Полный named-member
 контракт и согласование имени с родительскими bindings остаются открытыми.
 

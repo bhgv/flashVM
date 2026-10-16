@@ -1,7 +1,25 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.384
+# Условия окончательной приёмки / Final acceptance gates — v0.385
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
+
+v0.385: SetProperty width/height computes both intrinsic scales from
+untransformed vector/descendant bounds using pinned rotation rules. Singular
+ancestors, degenerate geometry, coercion GC/detachment, atomic OOM/errors and
+interpreted/explicit/automatic native writes are covered. Named dimensions and
+full geometry conformance remain open.
+[EN](MOVIECLIP_DIMENSION_WRITES.md) / [RU](MOVIECLIP_DIMENSION_WRITES.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.385: all 807 AGG / 807 Cairo / 788 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo, three minimal). Eight restricted heap/global
+ASan+UBSan checks pass: four new dimension write/allocation/callback/native
+cases plus previous dimension reads, AVM1 display properties, native indexed
+reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
+The revised MovieClip constants header passes a strict C89 syntax probe.
+No new original external SWF oracle or foreign-OS run is claimed.
+All nine roadmap stages remain open.
 
 v0.384: loaded Number.toString nondecimal values follow pinned Int32 truncation
 and MIN-sentinel byte formatting without signed overflow. All 34 bases, fractions,

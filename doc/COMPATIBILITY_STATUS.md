@@ -7,12 +7,13 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/3/4/7/8: indexed dimension writes | Проверено для сценариев v0.385 | SetProperty 8/9 coerces value and atomically publishes two scales from untransformed vector bounds using pinned rotation rules; degenerate/descendant/GC/OOM and native checks. Named/full geometry semantics open. MOVIECLIP_DIMENSION_WRITES.md / .ru.md. |
 | 1/2/6/7/8: loaded Number nondecimal values | Проверено для сценариев v0.384 | All 34 nondecimal bases use pinned Int32 truncation/MIN-sentinel digit policy; boundaries/fractions/NaN, counted control bytes, captured radix coercion, OOM/GC/transfer and native equivalence. Historical player profiles open. NUMBER_LOADED_RADIX.md / .ru.md. |
 | 1/2/7/8: budgeted interface declarations | Проверено для сценариев v0.383 | Loaded snapshot capture/inspection shares AVM1 work; atomic OOM/budget failure, validated allocation-free direct noops, full 65536 count and interpreter/native retry. Public count bound/host policy retained. IMPLEMENTS_WORK.md / .ru.md. |
 | 1/2/7/8: loaded String traversal work | Проверено для сценариев v0.382 | Loaded split passes 65537 fields; split/search scans and split UTF-16 copies share nested AVM1 work, with OOM/GC/retry, conversion exceptions and interpreter/native equivalence. Host cap retained; decoding/full conformance open. STRING_LOADED_WORK.md / .ru.md. |
 | 1/2/7/8: budgeted interface membership | Проверено для сценариев v0.381 | Loaded InstanceOf removes 4096 visited-node rejection; identity hash set, shared charged traversal, saturation/OOM/GC/retry and large interpreter/native graphs. Host/prototype bounds retained. INSTANCE_OF_GRAPH_WORK.md / .ru.md. |
 | 1/3/6/7/8: registerClass legacy casing | Проверено для сценариев v0.380 | SWF4–6 UTF-16-unit folded registration/query/removal; stored spelling replacement, atomic OOM, GC/transfer, attach/duplicate/fallback and interpreter/native CallMethod. Separate global environments/mixed provenance remain open. OBJECT_REGISTER_CLASS_CASE.md / .ru.md. |
-| 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes/named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
+| 2/3/4/7/8: indexed MovieClip dimensions | Проверено для сценариев v0.379 | GetProperty 8/9 reads transformed vector/descendant bounds in parent space, including singular ancestors; snapshot/barrier callbacks, real index-coercion GC, OOM and native equivalence. Writes added in v0.385; named dimensions/full Flash extents open. MOVIECLIP_INDEXED_SIZE.md / .ru.md. |
 | 1/2/3/7/8: Unicode legacy display paths | Проверено для сценариев v0.378 | SWF4–6 Flash unit folding for child/property paths; counted NUL/surrogates, collecting own/inherited getters, OOM and interpreter/native targets; MOVIECLIP_UNICODE_PATHS.md / .ru.md. Duplicate-name/full player semantics remain open. |
 | 1/7: large loaded sorting | Проверено для сценариев v0.377 | Native/borrowed sort/sortOn above 65536, charged partial captures/reversal/index output, permutations/indices, budget and OOM/GC/retry; ARRAY_LOADED_LARGE_SORT.md / .ru.md. Host limits and full Flash semantics remain open. |
 | 1/7: large loaded generic mutations | Проверено для сценариев v0.376 | shift/unshift/reverse/splice above 65536 use shared budgets, with native/borrowed success, prototype accessor bypass and OOM/GC/retry; ARRAY_LOADED_LARGE_MUTATION.md / .ru.md. Host/sort bounds and full conformance remain open. |
@@ -3042,3 +3043,13 @@ legacy radix/conversion, C89 standard Number and native numeric regressions.
 Stack ASan and LeakSanitizer remain disabled. The new scoped radix constants
 header passes a strict C89 syntax probe. No original external SWF oracle or
 foreign-OS acceptance was added. All nine roadmap stages remain open.
+
+Validation v0.385: all 807 AGG / 807 Cairo / 788 minimal Linux Release checks
+have passing evidence after six ELF execution-permission repairs and targeted
+reruns (one AGG, two Cairo, three minimal). Eight restricted heap/global
+ASan+UBSan checks pass: four new dimension write/allocation/callback/native
+cases plus previous dimension reads, AVM1 display properties, native indexed
+reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
+The revised MovieClip constants header passes a strict C89 syntax probe.
+No new original external SWF oracle or foreign-OS run is claimed.
+All nine roadmap stages remain open.

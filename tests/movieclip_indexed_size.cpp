@@ -51,8 +51,8 @@ int main()
         FVM_Value target = size_object(clip), at; fvm_value_number(&at, 8);
         assert(fvm_exec_display_property(c, 0, &target, &at, 0, &target) == FVM_OK && std::fabs(target.number - 32.5) < 1e-7);
         FVM_Value value, out; fvm_value_number(&value, 5); fvm_value_number(&out, 77);
-        target = size_object(clip); assert(fvm_exec_display_property(c, 1, &target, &at, &value, &out) == FVM_UNSUPPORTED && out.number == 77);
-        assert(fvm_gc_collect(c, 0) == FVM_OK); size_expect(c, clip, 8, 32.5);
+        target = size_object(clip); assert(fvm_exec_display_property(c, 1, &target, &at, &value, &out) == FVM_OK && out.type == FVM_VALUE_UNDEFINED);
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
         assert(c->gc_frames == 0 && c->gc_native_depth == 0); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

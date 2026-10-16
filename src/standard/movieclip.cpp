@@ -1612,7 +1612,8 @@ FVM_Result path(FVM_Context *c, FVM_Object *part, const FVM_Affine &matrix, FVM_
 
 /* Collect stable geometry snapshots in world space or an accumulated parent-space transform. */
 FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool stroke,
-                  FVM_PathBounds &out, bool &any, unsigned int depth, bool parent_space = false)
+                  FVM_PathBounds &out, bool &any, unsigned int depth, bool parent_space = false,
+                  bool transform_self = true)
 {
     if (depth > FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
@@ -1633,7 +1634,10 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
     Slots path_snapshot = paths->indexed;
     Slots child_snapshot = children->indexed;
     FVM_Affine world;
-    r = parent_space ? local_matrix(c, o, world) : matrix(c, o, world);
+    if (transform_self)
+        r = parent_space ? local_matrix(c, o, world) : matrix(c, o, world);
+    else
+        world = identity();
     if (r != FVM_OK)
         return r;
     world = multiply(target, world);
@@ -1695,6 +1699,57 @@ FVM_Result bounds(FVM_Context *c, FVM_Object *o, const FVM_Affine &target, bool 
         if (r != FVM_OK)
             return r;
     }
+    return FVM_OK;
+}
+
+/* Undefined dimension ratios propagate to the final zero-scale fallback without dividing by zero. */
+double dimension_ratio(double numerator, double denominator)
+{
+    return denominator != 0 ? numerator / denominator : std::numeric_limits<double>::quiet_NaN();
+}
+
+/* Resize one indexed dimension using untransformed vector bounds and the pinned rotated-scale rule. */
+FVM_Result resize_dimension(FVM_Context *c, FVM_Object *clip, bool width, double requested)
+{
+    /* [GC:] Retain geometry snapshots and staged property edges across descendant transform getters. */
+    FVM_NativeCallGuard guard(c);
+    FVM_PathBounds extent;
+    std::memset(&extent, 0, sizeof(extent));
+    bool any = false;
+    FVM_Result status = bounds(c, clip, identity(), true, extent, any, 0, true, false);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value x, y, rotation;
+    if (field(clip, "_xscale", x) != FVM_OK || field(clip, "_yscale", y) != FVM_OK ||
+        field(clip, "_rotation", rotation) != FVM_OK || x.type != FVM_VALUE_NUMBER ||
+        y.type != FVM_VALUE_NUMBER || rotation.type != FVM_VALUE_NUMBER)
+        return FVM_INVALID_ARGUMENT;
+    double primary = width ? extent.x_max - extent.x_min : extent.y_max - extent.y_min;
+    double other = width ? extent.y_max - extent.y_min : extent.x_max - extent.x_min;
+    double aspect = dimension_ratio(other, primary);
+    double target = primary != 0 ? dimension_ratio(requested, primary) : 0;
+    double target_other = primary != 0 ? dimension_ratio(requested, other) : 0;
+    double old_primary = (width ? x.number : y.number) / FVM_MOVIECLIP_DIMENSION_PERCENT;
+    double old_other = (width ? y.number : x.number) / FVM_MOVIECLIP_DIMENSION_PERCENT;
+    double radians = std::fmod(rotation.number, FVM_MOVIECLIP_DEGREES_PER_TURN) *
+                     std::acos(-1.0) / FVM_MOVIECLIP_DEGREES_PER_HALF_TURN;
+    double cs = std::fabs(std::cos(radians)), sn = std::fabs(std::sin(radians));
+    double denominator = aspect * cs + sn;
+    double changed = dimension_ratio(aspect * (cs * target + sn * target_other),
+                                     (cs + aspect * sn) * denominator);
+    double retained = dimension_ratio(sn * old_primary + aspect * cs * old_other, denominator);
+    if (changed != changed || std::fabs(changed) > DBL_MAX)
+        changed = 0;
+    if (retained != retained || std::fabs(retained) > DBL_MAX)
+        retained = 0;
+    if (std::fabs(changed) > DBL_MAX / FVM_MOVIECLIP_DIMENSION_PERCENT ||
+        std::fabs(retained) > DBL_MAX / FVM_MOVIECLIP_DIMENSION_PERCENT)
+        return FVM_UNSUPPORTED;
+    /* [GC:] Publish both intrinsic scales together; OOM leaves the pre-publication state intact. */
+    Properties staged = clip->properties;
+    staged["_xscale"] = number((width ? changed : retained) * FVM_MOVIECLIP_DIMENSION_PERCENT);
+    staged["_yscale"] = number((width ? retained : changed) * FVM_MOVIECLIP_DIMENSION_PERCENT);
+    clip->properties.swap(staged);
     return FVM_OK;
 }
 
@@ -2908,8 +2963,15 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
     FVM_Result status = state(clip, data);
     if (status != FVM_OK)
         return status;
-    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT ||
-        index > FVM_AVM1_PROPERTY_NAME)
+    if (index == FVM_AVM1_PROPERTY_WIDTH || index == FVM_AVM1_PROPERTY_HEIGHT)
+    {
+        if (input.type != FVM_VALUE_NUMBER)
+            return FVM_INVALID_ARGUMENT;
+        if (input.number != input.number)
+            return FVM_OK;
+        return resize_dimension(c, clip, index == FVM_AVM1_PROPERTY_WIDTH, input.number);
+    }
+    if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_CURRENT_FRAME || index == FVM_AVM1_PROPERTY_TOTAL_FRAMES ||
         index == FVM_AVM1_PROPERTY_TARGET || index == FVM_AVM1_PROPERTY_FRAMES_LOADED)
