@@ -1185,6 +1185,8 @@ extern "C"
                 fvm_value_undefined(out);
                 return normalized;
             }
+            unsigned long index = 0;
+            const bool indexed_name = fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index);
             /* [GC:] Snapshot caller values before clearing an aliased output or running a getter. */
             FVM_ObjectRootScope call_receiver_roots(c, self);
             fvm_detail::vector<FVM_Value> call_args;
@@ -1213,7 +1215,11 @@ extern "C"
                 }
                 if (fvm_property_find(c, cursor->properties, key) != cursor->properties.end() ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    fvm_property_find(c, cursor->accessors, key) != cursor->accessors.end())
+                    fvm_property_find(c, cursor->accessors, key) != cursor->accessors.end() ||
+                    /* Canonical numeric members use indexed storage on standard objects. */
+                    (indexed_name && (cursor->resource_kind == FVM_RESOURCE_ARRAY ||
+                                      cursor->resource_kind == FVM_RESOURCE_OBJECT) &&
+                     cursor->indexed.find(index) != cursor->indexed.end()))
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

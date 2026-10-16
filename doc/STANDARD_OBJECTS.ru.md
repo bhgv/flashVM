@@ -146,3 +146,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Запись через super: числовые имена, watcher и отсутствие локального хранилища — [v0.497](SUPER_PROPERTY_WRITES.md).
 
 Чтение числовых свойств предков и владелец числового super-метода: [v0.498](SUPER_INDEXED_LOOKUP.md).
+
+Вызовы числовых членов согласованы между C API и AVM1: [v0.499](OBJECT_INDEXED_CALL.md).

@@ -154,3 +154,5 @@ Loaded writes search past intermediate prototype data for virtual setters: [v0.4
 Loaded super property writes, numeric names and inert storage: [v0.497](SUPER_PROPERTY_WRITES.md).
 
 Selected indexed ancestor reads and numeric super-method owner identity: [v0.498](SUPER_INDEXED_LOOKUP.md).
+
+Ordinary indexed member calls now agree between C and AVM1: [v0.499](OBJECT_INDEXED_CALL.md).
