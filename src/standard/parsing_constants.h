@@ -1,4 +1,4 @@
-/* FlashVM: loaded radix, whitespace and decimal power rules, distinct from host inference. */
+/* FlashVM: loaded integer radix and whitespace rules, distinct from host inference. */
 #ifndef FVM_STANDARD_PARSING_CONSTANTS_H
 #define FVM_STANDARD_PARSING_CONSTANTS_H /* Guard the private parsing constants. */
 #define FVM_PARSING_RADIX_MIN 2U /* First accepted explicit base. */
@@ -13,6 +13,4 @@
 #define FVM_PARSING_LOADED_SPACE_LF 10U /* Line feed. */
 #define FVM_PARSING_LOADED_SPACE_CR 13U /* Carriage return. */
 #define FVM_PARSING_LOADED_SPACE_ASCII 32U /* Ordinary space. */
-#define FVM_PARSING_POWER_SELECTED_BIT 1UL /* Lowest exponent bit selects multiplication/division. */
-#define FVM_PARSING_POWER_STEP_BITS 1U /* Each squaring consumes one binary exponent bit. */
 #endif

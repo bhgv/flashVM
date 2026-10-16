@@ -158,3 +158,30 @@ open; the comparison is source-pinned, not a new Adobe Player execution.
 Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
 heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
 launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+## Shared decimal Number conversion — v0.416
+
+Loaded Number, ToNumber and numeric AVM1 operands now use the same allocation-free
+counted decimal accumulator as parseFloat. Strict SWF5–8 numeric conversion rejects
+trailing grammar; SWF4 retains prefix parsing and invalid-to-zero fallback.
+Raw octal/hex selection for SWF6–8 remains separate and unchanged. Optional work
+charging is passed by parseFloat; generic numeric coercion retains its previous
+uncharged policy. The old host mantissa token and formatted exponent temporary
+are removed, so primitive decimal coercion no longer allocates those buffers.
+Unloaded host conversion keeps its existing parser.
+
+The reference-pinned exact `.1499999` value now also matches Number/ToNumber;
+SWF4 multiple-dot accumulation, exponent wrap, incomplete exponent, negative zero,
+counted NUL and strict rejection are checked by `avm1_decimal_numbers`. The exact
+rounding assertion failed on v0.415 before this change. `avm1_decimal_allocation`
+denies all C++ allocations during direct primitive conversion and checks the
+shared helper's strict/relaxed and invalid argument contracts. `jit_decimal_numbers`
+checks Number, ToNumber and subtraction across interpreted/attached/automatic
+native execution in SWF4–8, with actual native entry assertions. The Ruffle value.rs
+reference and MIT attribution are retained in src/avm1/decimal.cpp. Full binary64
+rounding, extreme overflow behavior and general coercion work accounting remain open.
+
+Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12 and
+heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
+restore workspace executable modes; stack ASan/LSan disabled. No other-platform
+runtime acceptance or complete stage closure is claimed.

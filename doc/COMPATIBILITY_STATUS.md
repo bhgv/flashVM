@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: shared decimal numeric coercion | Проверено для v0.416 | Number/ToNumber/Subtract and parseFloat share pinned decimal accumulation; strict SWF5–8 vs relaxed SWF4, negative zero/wrapped exponents and allocation-free primitive conversion. Actual native entry tests. GLOBAL_PARSING.md / .ru.md; full binary64/overflow and general coercion budget remain open. |
 | 1/2/7/8: numeric leading whitespace | Проверено для v0.415 | Flash-only TAB/LF/CR/space for loaded Number/ToNumber/parseFloat, host policy retained; 30-unit SWF4–8 matrix, traced strings and real native paths. GLOBAL_PARSING.md / .ru.md. Other numeric syntax/rounding and full player conformance open. |
 | 1/2/7/8: loaded global numeric parsing | Проверено для v0.412–v0.414 | SWF4–8 radix-before-text parseInt, raw prefixes, counted NUL, decimal accumulation and exponent wrap; exact rounding fixture, work quotas, OOM/GC cleanup and real native CallFunction. GLOBAL_PARSING.md / .ru.md. Full whitespace/rounding/player oracle remains open. |
 | 9: automatic project version refresh | Проверено для v0.408 | Production CMake version module registers VERSION.txt as a configure dependency. Isolated version-only edit/build/rebuild fixture checks metadata refresh without changing checkout version. BUILD_VERSION.md / .ru.md; foreign execution remains open. |
@@ -3159,3 +3160,15 @@ traced GC and actual native entry regressions added.
 Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
 heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
 launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+### v0.416 — shared decimal coercion / Общее десятичное преобразование
+
+Loaded Number/ToNumber/numeric operands share reference-ordered decimal
+accumulation with parseFloat; strict SWF5–8, relaxed SWF4 and raw integer radix
+policies retained. Primitive decimal conversion removes temporary allocations.
+[EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md). All nine stages remain open.
+
+Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12 and
+heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
+restore workspace executable modes; stack ASan/LSan disabled. No other-platform
+runtime acceptance or complete stage closure is claimed.

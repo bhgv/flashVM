@@ -1,7 +1,4 @@
 /* FlashVM: Built-in ActionScript objects: global parsing.
- * Loaded floating-point accumulation adapted from Ruffle value.rs at
- * 2372a4e148a67d68efd796f4477b3cddd4f880cd, copyright Ruffle contributors.
- * MIT license: external/flash_case/LICENSE.md.
  * File: src/standard/global_parsing.cpp.
  */
 
@@ -11,6 +8,7 @@
 #include "../core/numeric_constants.h"
 #include "../core/execution_work_scope.hpp"
 #include "../avm1/coercion.hpp"
+#include "../avm1/decimal.hpp"
 #include "../core/runtime.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/utf8.h"
@@ -185,26 +183,7 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
     return numeric_result(out, any ? (negative ? -number : number)
                                    : std::numeric_limits<double>::quiet_NaN());
 }
-/* Scale one decimal digit in the reference multiplication/division order. The power
- * is an Int32 bit pattern; unsigned magnitude avoids negating signed INT32_MIN. */
-double loaded_decimal_shift(unsigned int digit_value, unsigned long power)
-{
-    double value = digit_value, scale = FVM_PARSING_RADIX_DECIMAL;
-    bool negative = power >= FVM_UINT32_SIGN_BIT;
-    unsigned long remaining = negative ? (0UL - power) & FVM_UINT32_MASK : power;
-    while (remaining)
-    {
-        if (remaining & FVM_PARSING_POWER_SELECTED_BIT)
-            value = negative ? value / scale : value * scale;
-        remaining >>= FVM_PARSING_POWER_STEP_BITS;
-        scale *= scale;
-    }
-    return value;
-}
-
-/* Accumulate loaded AVM1 decimal digits without the host parser's rounding or Infinity
- * syntax. Grammar selects the exponent once; subsequent dots are skipped only by the
- * accumulation pass. All exponent arithmetic wraps explicitly at 32 bits. */
+/* Convert the loaded receiver once, then parse decimal text under the shared quota. */
 FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Value *args,
                               FVM_Value *out)
 {
@@ -218,95 +197,9 @@ FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Valu
     FVM_Result status = fvm_avm1_string(c, args[0], &text);
     if (status != FVM_OK)
         return status;
-    size_t size = fvm_string_size(text);
-    const char *bytes = text.string;
-    size_t at = 0;
-    while (at < size)
-    {
-        size_t next = at;
-        unsigned long point = 0;
-        status = fvm_string_read(bytes, size, next, point);
-        if (status != FVM_OK)
-            return status;
-        if (!loaded_space(point))
-            break;
-        status = work.step();
-        if (status != FVM_OK)
-            return status;
-        at = next;
-    }
-    bool negative = at < size && bytes[at] == '-';
-    if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
-        ++at;
-    size_t start = at;
-    unsigned long whole_digits = 0;
-    while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
-    {
-        status = work.step();
-        if (status != FVM_OK)
-            return status;
-        ++at;
-        whole_digits = (whole_digits + 1) & FVM_UINT32_MASK;
-    }
-    unsigned long power = (whole_digits - 1) & FVM_UINT32_MASK;
-    if (at < size && bytes[at] == '.')
-    {
-        status = work.step();
-        if (status != FVM_OK)
-            return status;
-        ++at;
-        while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
-        {
-            status = work.step();
-            if (status != FVM_OK)
-                return status;
-            ++at;
-        }
-    }
-    if (at == start)
-        return numeric_result(out, std::numeric_limits<double>::quiet_NaN());
-    if (at < size && (bytes[at] == 'e' || bytes[at] == 'E'))
-    {
-        status = work.step();
-        if (status != FVM_OK)
-            return status;
-        ++at;
-        bool minus = at < size && bytes[at] == '-';
-        if (at < size && (bytes[at] == '+' || bytes[at] == '-'))
-        {
-            status = work.step();
-            if (status != FVM_OK)
-                return status;
-            ++at;
-        }
-        unsigned long exponent = 0;
-        while (at < size && bytes[at] >= '0' && bytes[at] <= '9')
-        {
-            status = work.step();
-            if (status != FVM_OK)
-                return status;
-            exponent = (exponent * FVM_PARSING_RADIX_DECIMAL +
-                        (unsigned int)(bytes[at++] - '0')) & FVM_UINT32_MASK;
-        }
-        if (minus)
-            exponent = (0UL - exponent) & FVM_UINT32_MASK;
-        power = (power + exponent) & FVM_UINT32_MASK;
-    }
     double number = 0;
-    for (at = start; at < size; ++at)
-    {
-        status = work.step();
-        if (status != FVM_OK)
-            return status;
-        if (bytes[at] >= '0' && bytes[at] <= '9')
-        {
-            number += loaded_decimal_shift((unsigned int)(bytes[at] - '0'), power);
-            power = (power - 1) & FVM_UINT32_MASK;
-        }
-        else if (bytes[at] != '.')
-            break;
-    }
-    return numeric_result(out, negative ? -number : number);
+    status = fvm_avm1_decimal(text.string, fvm_string_size(text), false, &number, &work);
+    return status == FVM_OK ? numeric_result(out, number) : status;
 }
 } // namespace
 /* Convert String(...) with loaded AVM1 rules or the unloaded host contract. */

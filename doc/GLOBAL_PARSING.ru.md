@@ -135,3 +135,24 @@ Host API сохраняет свои прежние правила. avm1_numeric
 Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
 heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
 launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+## Общий десятичный алгоритм Number — v0.416
+
+Number, ToNumber и числовые операнды AVM1 загруженного SWF теперь используют общий
+с parseFloat алгоритм накопления. В SWF5–8 требуется конец грамматики; SWF4
+сохраняет разбор префикса и ноль для некорректного ввода. Правила восьмеричных/
+шестнадцатеричных строк SWF6–8 и host API сохранены. Убраны промежуточные строковые
+буферы мантиссы и экспоненты: прямое преобразование примитивной десятичной строки
+работает даже при запрете C++-выделений. Учёт работы parseFloat сохранён; общий
+учёт работы числового преобразования пока не добавлен.
+
+avm1_decimal_numbers проверяет точное значение .1499999, строгий/префиксный режим,
+точки, экспоненты, NUL и отрицательный ноль; avm1_decimal_allocation — запрет
+выделений; jit_decimal_numbers — Number/ToNumber/Subtract в интерпретаторе и двух
+режимах реального JIT. Источник сравнения и MIT-атрибуция сохранены в decimal.cpp.
+Полные границы binary64, крайние переполнения и все стадии остаются открытыми.
+
+Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12 and
+heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
+restore workspace executable modes; stack ASan/LSan disabled. No other-platform
+runtime acceptance or complete stage closure is claimed.

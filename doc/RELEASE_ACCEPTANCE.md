@@ -1541,3 +1541,15 @@ traced GC and actual native entry regressions added.
 Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
 heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
 launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.
+
+### v0.416 — shared decimal coercion / Общее десятичное преобразование
+
+Loaded Number/ToNumber/numeric operands share reference-ordered decimal
+accumulation with parseFloat; strict SWF5–8, relaxed SWF4 and raw integer radix
+policies retained. Primitive decimal conversion removes temporary allocations.
+[EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md). All nine stages remain open.
+
+Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12 and
+heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
+restore workspace executable modes; stack ASan/LSan disabled. No other-platform
+runtime acceptance or complete stage closure is claimed.

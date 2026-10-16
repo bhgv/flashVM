@@ -2,6 +2,7 @@
 #include "encoding_constants.h"
 #include "coercion_constants.h"
 #include "coercion.hpp"
+#include "decimal.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/primitive_state.hpp"
 #include "../standard/movieclip_state.hpp"
@@ -57,94 +58,13 @@ double integer(const char *text, size_t size, unsigned int base)
         bits = (0UL - bits) & FVM_UINT32_MASK;
     return bits >= FVM_UINT32_SIGN_BIT ? (double)bits - FVM_UINT32_MODULUS : (double)bits;
 }
-/* Flash numeric conversion trims only tab, LF, CR and ASCII space, not the
- * ECMAScript/Unicode whitespace set used by the unloaded host API. */
-bool space(unsigned long value)
+/* Preserve SWF4's invalid-zero fallback while sharing AVM1 decimal digit rounding. */
+FVM_Result decimal(const char *text, size_t size, unsigned int version, double *out)
 {
-    return value == FVM_COERCION_SPACE_TAB || value == FVM_COERCION_SPACE_LF ||
-           value == FVM_COERCION_SPACE_CR || value == FVM_COERCION_SPACE_ASCII;
-}
-/* Validate legacy decimal syntax, then reuse the locale-independent host mantissa conversion. */
-FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned int version,
-                   double *out)
-{
-    size_t at = 0;
-    while (at < size)
-    {
-        size_t next = at;
-        unsigned long point = 0;
-        FVM_Result status = fvm_string_read(text, size, next, point);
-        if (status != FVM_OK)
-            return status;
-        if (!space(point))
-            break;
-        at = next;
-    }
-    size_t start = at;
-    bool negative = at < size && text[at] == '-';
-    if (at < size && (text[at] == '+' || text[at] == '-'))
-        ++at;
-    size_t first = at;
-    bool digits = false;
-    while (at < size && text[at] >= '0' && text[at] <= '9')
-    {
-        digits = true;
-        ++at;
-    }
-    if (at < size && text[at] == '.')
-    {
-        ++at;
-        while (at < size && text[at] >= '0' && text[at] <= '9')
-        {
-            digits = true;
-            ++at;
-        }
-    }
-    bool accepted = at != first;
-    size_t mantissa_end = at;
-    unsigned long exponent = 0;
-    if (at < size && (text[at] == 'e' || text[at] == 'E'))
-    {
-        ++at;
-        bool minus = at < size && text[at] == '-';
-        if (at < size && (text[at] == '+' || text[at] == '-'))
-            ++at;
-        while (at < size && text[at] >= '0' && text[at] <= '9')
-            exponent = (exponent * FVM_COERCION_RADIX_DECIMAL + (unsigned int)(text[at++] - '0')) &
-                       FVM_UINT32_MASK;
-        if (minus)
-            exponent = (0UL - exponent) & FVM_UINT32_MASK;
-    }
-    if (!accepted || (version >= FVM_SWF_VERSION_5 && at != size))
-    {
-        *out = version < FVM_SWF_VERSION_5 ? 0 : std::numeric_limits<double>::quiet_NaN();
-        return FVM_OK;
-    }
-    if (!digits)
-    {
-        *out = negative ? -0.0 : 0.0;
-        return FVM_OK;
-    }
-    fvm_detail::string token(text + start, mantissa_end - start);
-    if (exponent)
-    {
-        double signed_exponent = exponent >= FVM_UINT32_SIGN_BIT
-                                     ? (double)exponent - FVM_UINT32_MODULUS : (double)exponent;
-        char suffix[FVM_COERCION_EXPONENT_SUFFIX_BYTES];
-        std::sprintf(suffix, "e%.0f", signed_exponent);
-        size_t length = std::strlen(suffix);
-        if (token.size() > (size_t)-1 - length)
-            return FVM_OUT_OF_MEMORY;
-        fvm_detail::vector<char> combined(token.size() + length);
-        std::memcpy(combined.begin(), token.data(), token.size());
-        std::memcpy(combined.begin() + token.size(), suffix, length);
-        FVM_Value value;
-        FVM_Result status = fvm_value_string_bytes(&value, combined.begin(), combined.size());
-        return status == FVM_OK ? fvm_value_to_number(context, &value, out) : status;
-    }
-    FVM_Value value;
-    FVM_Result status = fvm_value_string_bytes(&value, token.data(), token.size());
-    return status == FVM_OK ? fvm_value_to_number(context, &value, out) : status;
+    FVM_Result status = fvm_avm1_decimal(text, size, version >= FVM_SWF_VERSION_5, out);
+    if (status == FVM_OK && version < FVM_SWF_VERSION_5 && *out != *out)
+        *out = 0;
+    return status;
 }
 }
 /* [GC:] Resolve a rooted object's one selected method without an ECMAScript fallback cascade. */
@@ -239,7 +159,7 @@ FVM_Result fvm_avm1_number(FVM_Context *context, const FVM_Value *value, double 
             *out = integer(value->string + skip, size - skip, base);
             return FVM_OK;
         }
-        return decimal(context, value->string, size, version, out);
+        return decimal(value->string, size, version, out);
     }
     catch (const std::bad_alloc &)
     {
