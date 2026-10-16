@@ -15,18 +15,19 @@ FVM_Result fvm_base_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM
  * Stored key addresses let the commit erase descriptors without allocating strings. */
 struct FVM_BasePrototypeActivation
 {
+    FVM_Object *attribute_prototype; /* [GC:] Native Array selected for independent method flags. */
     FVM_Object *prototype; /* Candidate native empty prototype, or null to skip activation. */
     const fvm_detail::string *length_key; /* Native length accessor key retained until commit. */
     const fvm_detail::string *flags_key; /* Matching default length attributes key. */
     const fvm_detail::string *locale_key; /* Unchanged legacy locale alias removed at commit. */
     const fvm_detail::string *locale_cache_key; /* [GC:] Optional cached alias key removed with its native slot. */
-    fvm_detail::map<fvm_detail::string, unsigned int> array_attributes; /* Prepared Array method flags without length. */
+    fvm_detail::map<fvm_detail::string, unsigned int> array_attributes; /* Prepared method flags; length is removed only for layout activation. */
     FVM_Object *object_prototype; /* [GC:] Rooted Object prototype selected for default method flags. */
     FVM_Object *object_class; /* [GC:] Rooted class selected for registerClass flags. */
     fvm_detail::map<fvm_detail::string, unsigned int> object_attributes; /* Prepared Object method flags. */
     fvm_detail::map<fvm_detail::string, unsigned int> class_attributes; /* Prepared static Object flags. */
     /* Start with no candidate or retained descriptor keys. */
-    FVM_BasePrototypeActivation() : prototype(0), length_key(0), flags_key(0), locale_key(0), locale_cache_key(0), object_prototype(0), object_class(0) {}
+    FVM_BasePrototypeActivation() : attribute_prototype(0), prototype(0), length_key(0), flags_key(0), locale_key(0), locale_cache_key(0), object_prototype(0), object_class(0) {}
 };
 /* Prepare canonical host Object/Array flags and Array layout; lookups may throw. */
 void fvm_base_prepare_loaded(FVM_Context *, FVM_BasePrototypeActivation &);

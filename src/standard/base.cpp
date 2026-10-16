@@ -2514,6 +2514,15 @@ void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
         return;
     FVM_Object *proto = stored->second.object;
+    if (!proto || proto->resource_kind != ARRAY_OBJECT)
+        return;
+    out.array_attributes = proto->attributes;
+    for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
+        if (std::strcmp(array_methods[i].name, "toLocaleString"))
+            fvm_stage_default_method_flags(proto, array_methods[i].name, array_methods[i].callback,
+                                          FVM_PROPERTY_BUILTIN_FLAGS, out.array_attributes);
+    /* The host-only locale alias remains governed by the existing layout transition. */
+    out.attribute_prototype = proto;
     if (!array(proto) || size(proto) || !proto->indexed.empty())
         return;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("push");
@@ -2524,9 +2533,6 @@ void fvm_base_prepare_loaded(FVM_Context *c, FVM_BasePrototypeActivation &out)
         accessor->second.setter != array_resize || flags == proto->attributes.end() ||
         flags->second != 3 || proto->properties.find("length") != proto->properties.end())
         return;
-    out.array_attributes = proto->attributes;
-    for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
-        fvm_stage_default_method_flags(proto, array_methods[i].name, array_methods[i].callback, 3, out.array_attributes);
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator locale = proto->methods.find("toLocaleString");
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator locale_flags = proto->attributes.find("toLocaleString");
     fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator locale_cache = proto->method_values.find("toLocaleString");
@@ -2555,7 +2561,11 @@ void fvm_base_commit_loaded(FVM_BasePrototypeActivation &prepared)
         prepared.object_prototype->attributes.swap(prepared.object_attributes);
     FVM_Object *proto = prepared.prototype;
     if (!proto)
+    {
+        if (prepared.attribute_prototype)
+            prepared.attribute_prototype->attributes.swap(prepared.array_attributes);
         return;
+    }
     if (prepared.locale_key)
         proto->methods.erase(*prepared.locale_key);
     if (prepared.locale_cache_key)

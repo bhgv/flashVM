@@ -3,6 +3,7 @@
  */
 
 #include "date_state.hpp"
+#include "attribute_stage.hpp"
 #include "date_constants.h"
 #include "constructor_identity.hpp"
 #include "../core/object_root_scope.hpp"
@@ -835,8 +836,8 @@ FVM_Result fvm_date_validate(FVM_Context *c)
                : FVM_INVALID_ARGUMENT;
 }
 
-/* [GC:] Prepare the unchanged invalid host prototype and attribute copies before
- * any primitive commits. Individual user descriptors/flags retain their shapes. */
+/* [GC:] Prepare class and per-method flags independently of optional invalid-payload activation.
+ * Individual user descriptors and flags retain their shapes before any primitive commits. */
 void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Date");
@@ -857,24 +858,20 @@ void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
         return;
     FVM_Object *proto = stored->second.object;
+    if (!proto || proto->resource_kind != DATE_OBJECT)
+        return;
+    /* Attribute preparation is independent of the native payload activation guard. */
+    out.prototype_attributes = proto->attributes;
+    for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
+        fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback,
+                                      FVM_PROPERTY_BUILTIN_FLAGS, out.prototype_attributes);
+    out.attribute_prototype = proto;
     if (!date(proto) || proto->resource_result.number == proto->resource_result.number)
         return;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("getTime");
     if (method == proto->methods.end() || method->second.callback != loaded_value)
         return;
-    out.prototype_attributes = proto->attributes;
-    for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
-    {
-        method = proto->methods.find(methods[i].name);
-        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(methods[i].name);
-        if (method != proto->methods.end() && method->second.callback == methods[i].callback &&
-            flags != out.prototype_attributes.end() && flags->second == FVM_PROPERTY_DONT_ENUM &&
-            proto->properties.find(methods[i].name) == proto->properties.end() &&
-            proto->accessors.find(methods[i].name) == proto->accessors.end())
-            flags->second = FVM_PROPERTY_BUILTIN_FLAGS;
-    }
     out.prototype = proto;
-    out.klass = klass;
 }
 
 /* Publish the prepared Date layout and flag tables without a failing operation. */
@@ -882,12 +879,13 @@ void fvm_date_commit_loaded(FVM_DatePrototypeActivation &prepared)
 {
     if (prepared.klass)
         prepared.klass->attributes.swap(prepared.class_attributes);
+    if (prepared.attribute_prototype)
+        prepared.attribute_prototype->attributes.swap(prepared.prototype_attributes);
     if (!prepared.prototype)
         return;
     prepared.prototype->resource_kind = DATE_GENERIC_PROTOTYPE;
     prepared.prototype->resource_result_valid = false;
     fvm_value_undefined(&prepared.prototype->resource_result);
-    prepared.prototype->attributes.swap(prepared.prototype_attributes);
 }
 
 /* Map a native date callback to its stable serialization identifier. */

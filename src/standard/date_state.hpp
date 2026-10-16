@@ -14,12 +14,13 @@ FVM_Result fvm_date_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM
 /* [GC:] Staged Date layout and attributes remain retained by the constructor capture. */
 struct FVM_DatePrototypeActivation
 {
+    FVM_Object *attribute_prototype; /* [GC:] Native prototype retained for independent method flags. */
     FVM_Object *prototype; /* Unchanged invalid native prototype selected for activation. */
     FVM_Object *klass; /* Captured Date class receiving default UTC attributes. */
     fvm_detail::map<fvm_detail::string, unsigned int> prototype_attributes; /* Prepared method flags. */
     fvm_detail::map<fvm_detail::string, unsigned int> class_attributes; /* Prepared static flags. */
     /* Start without a candidate; temporary maps own only names and numeric flags. */
-    FVM_DatePrototypeActivation() : prototype(0), klass(0) {}
+    FVM_DatePrototypeActivation() : attribute_prototype(0), prototype(0), klass(0) {}
 };
 /* Prepare class flags independently, then any invalid host prototype; may throw. */
 void fvm_date_prepare_loaded(FVM_Context *, FVM_DatePrototypeActivation &);

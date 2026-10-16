@@ -3,6 +3,7 @@
  */
 
 #include "number_state.hpp"
+#include "attribute_stage.hpp"
 #include "constructor_identity.hpp"
 #include "../core/object_root_scope.hpp"
 #include "number_radix_constants.h"
@@ -391,8 +392,8 @@ FVM_Result fvm_number_validate(FVM_Context *c)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 }
 
-/* [GC:] Prepare the unchanged zero-valued prototype and numeric attributes before
- * any mutation. Constructor capture retains both objects throughout preparation. */
+/* [GC:] Prepare class and per-method flags independently of optional payload activation.
+ * Constructor capture retains the class and its native prototype throughout preparation. */
 void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &out)
 {
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Number");
@@ -419,26 +420,24 @@ void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &ou
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
         return;
     FVM_Object *proto = stored->second.object;
-    if (!proto || proto->resource_kind != NUMBER_OBJECT || !proto->resource_result_valid ||
-        proto->resource_result.type != FVM_VALUE_NUMBER || proto->resource_result.number != 0)
+    if (!proto || proto->resource_kind != NUMBER_OBJECT)
+        return;
+    /* One edited method must not prevent default flags on other native methods. */
+    out.prototype_attributes = proto->attributes;
+    fvm_stage_default_method_flags(proto, "valueOf", number_value,
+                                  FVM_PROPERTY_BUILTIN_FLAGS, out.prototype_attributes);
+    fvm_stage_default_method_flags(proto, "toString", number_string,
+                                  FVM_PROPERTY_BUILTIN_FLAGS, out.prototype_attributes);
+    out.attribute_prototype = proto;
+    if (!proto->resource_result_valid || proto->resource_result.type != FVM_VALUE_NUMBER ||
+        proto->resource_result.number != 0)
         return;
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator value = proto->methods.find("valueOf");
     fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator text = proto->methods.find("toString");
     if (value == proto->methods.end() || value->second.callback != number_value ||
         text == proto->methods.end() || text->second.callback != number_string)
         return;
-    out.prototype_attributes = proto->attributes;
-    const char *method_names[] = {"valueOf", "toString"};
-    for (unsigned int i = 0; i < 2; ++i)
-    {
-        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(method_names[i]);
-        if (flags != out.prototype_attributes.end() && flags->second == FVM_PROPERTY_DONT_ENUM &&
-            proto->properties.find(method_names[i]) == proto->properties.end() &&
-            proto->accessors.find(method_names[i]) == proto->accessors.end())
-            flags->second = FVM_PROPERTY_BUILTIN_FLAGS;
-    }
     out.prototype = proto;
-    out.klass = klass;
 }
 
 /* Commit the prepared Number native state and flag maps without a failing operation. */
@@ -446,12 +445,13 @@ void fvm_number_commit_loaded(FVM_NumberPrototypeActivation &prepared)
 {
     if (prepared.klass)
         prepared.klass->attributes.swap(prepared.class_attributes);
+    if (prepared.attribute_prototype)
+        prepared.attribute_prototype->attributes.swap(prepared.prototype_attributes);
     if (!prepared.prototype)
         return;
     prepared.prototype->resource_kind = NUMBER_GENERIC_PROTOTYPE;
     prepared.prototype->resource_result_valid = false;
     fvm_value_undefined(&prepared.prototype->resource_result);
-    prepared.prototype->attributes.swap(prepared.prototype_attributes);
 }
 
 /* Map a native number callback to its stable serialization identifier. */

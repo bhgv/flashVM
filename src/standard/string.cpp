@@ -1013,7 +1013,7 @@ void fvm_string_prepare_class_loaded(FVM_Context *c, FVM_MethodAttributeActivati
     out.prototype = klass;
 }
 
-/* [GC:] Drop only the default host prototype's native text/length after all allocating lookups.
+/* [GC:] Prepare per-method flags before optionally dropping default native text/length.
  * Class roots keep the candidate alive; this operation performs no user callbacks. */
 FVM_Result fvm_string_activate_loaded(FVM_Context *c)
 {
@@ -1029,30 +1029,37 @@ FVM_Result fvm_string_activate_loaded(FVM_Context *c)
         if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
             return FVM_OK;
         FVM_Object *proto = stored->second.object;
-        if (proto->resource_kind != STRING_OBJECT || !proto->resource_result_valid ||
-            proto->resource_result.type != FVM_VALUE_STRING || fvm_string_size(proto->resource_result))
-            return FVM_OK;
-        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("charAt");
-        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = proto->accessors.find("length");
-        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = proto->attributes.find("length");
-        if (method == proto->methods.end() || method->second.callback != char_at ||
-            accessor == proto->accessors.end() || accessor->second.getter != length || accessor->second.setter ||
-            proto->properties.find("length") != proto->properties.end() ||
-            (flags != proto->attributes.end() && flags->second))
+        if (!proto || proto->resource_kind != STRING_OBJECT)
             return FVM_OK;
         fvm_detail::map<fvm_detail::string, unsigned int> prototype_attributes = proto->attributes;
         for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
-            fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback, 3, prototype_attributes);
-        if (flags != proto->attributes.end())
+            fvm_stage_default_method_flags(proto, methods[i].name, methods[i].callback,
+                                          FVM_PROPERTY_BUILTIN_FLAGS, prototype_attributes);
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = proto->methods.find("charAt");
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = proto->accessors.find("length");
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = proto->attributes.find("length");
+        const bool activate_layout = proto->resource_result_valid &&
+            proto->resource_result.type == FVM_VALUE_STRING && !fvm_string_size(proto->resource_result) &&
+            method != proto->methods.end() && method->second.callback == char_at &&
+            accessor != proto->accessors.end() && accessor->second.getter == length && !accessor->second.setter &&
+            proto->properties.find("length") == proto->properties.end() &&
+            (flags == proto->attributes.end() || !flags->second);
+        if (activate_layout && flags != proto->attributes.end())
             prototype_attributes.erase(flags->first);
-        /* Commit without further allocation; callers publish decoded SWF state immediately afterwards. */
-        proto->accessors.erase(accessor->first);
-        if (flags != proto->attributes.end())
-            proto->attributes.erase(flags->first);
+        /* All fallible work precedes both the independent flags and optional layout commit. */
+        if (activate_layout)
+        {
+            proto->accessors.erase(accessor->first);
+            if (flags != proto->attributes.end())
+                proto->attributes.erase(flags->first);
+        }
         proto->attributes.swap(prototype_attributes);
-        proto->resource_kind = STRING_GENERIC_PROTOTYPE;
-        proto->resource_result_valid = false;
-        fvm_value_undefined(&proto->resource_result);
+        if (activate_layout)
+        {
+            proto->resource_kind = STRING_GENERIC_PROTOTYPE;
+            proto->resource_result_valid = false;
+            fvm_value_undefined(&proto->resource_result);
+        }
         return FVM_OK;
     }
     catch (const std::bad_alloc &)

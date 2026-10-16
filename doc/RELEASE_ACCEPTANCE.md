@@ -2898,3 +2898,22 @@ from readonly registerClass (flags 7), preserving custom descriptors, fields,
 flags and reload edits without invoking prototype getters. Both install orders
 remain covered by the complete suite. No ABI/callback/graph format changes;
 all nine stages and non-Linux runtime acceptance remain open.
+
+### v0.486 — per-method prototype activation
+
+RU: Полные Linux прогоны: minimal 960 (942 сразу + 18 после восстановления
+прав запуска), AGG 979 (955 сразу + 22 после восстановления прав + ещё 2 после
+повторного восстановления). Все проверки имеют успешный результат.
+Пять связанных тестов прошли heap/global ASan+UBSan; stack ASan/LSan отключены.
+После заключительной очистки исходников minimal пересобран, пять целевых тестов
+снова прошли. C89 API и форматы переноса не менялись.
+
+EN: Both new regressions fail against v0.485 separately for each of Number,
+Date, String and Array (eight isolated class/test runs). Coverage crosses SWF4–8,
+six anchor/peer shapes, C/interpreter/explicit/automatic JIT writes, deletion,
+serialized graph transfer/GC, reload, first-load new/new[] rollback and retry.
+No getter runs during activation. Custom method data/accessors and explicit
+attributes survive. Conservative native payload/length and host Array locale
+alias transitions remain unchanged. See PROTOTYPE_METHOD_ACTIVATION.md.
+No foreign-OS runtime or original Flash oracle acceptance is claimed;
+all nine roadmap stages remain open.

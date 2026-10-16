@@ -2038,3 +2038,12 @@ independently of public prototype state. Подготовка атомарна �
 prototype не вызывается, изменённые поля/флаги и reload сохраняются.
 See [STATIC_CLASS_ACTIVATION.md](STATIC_CLASS_ACTIVATION.md). All nine stages
 remain open; full customized prototype and platform acceptance is not claimed.
+
+### v0.486 — independent prototype method attributes
+
+Number/Date/String/Array now prepare each canonical native method's default
+SWF attributes independently of optional prototype payload conversion.
+Изменённый anchor-метод не мешает остальным: проверяются пользовательские
+флаги/data/accessor, OOM, GC, перенос и C/AVM1/JIT. See
+[PROTOTYPE_METHOD_ACTIVATION.md](PROTOTYPE_METHOD_ACTIVATION.md). Customized
+payload/layout policy is preserved; all nine roadmap stages remain open.

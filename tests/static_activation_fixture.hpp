@@ -2,7 +2,7 @@
 #ifndef FVM_TEST_STATIC_ACTIVATION_FIXTURE_HPP
 #define FVM_TEST_STATIC_ACTIVATION_FIXTURE_HPP
 #include "math_attribute_fixture.hpp"
-static const char *static_classes[] = {"Number", "Date", "String", "Object"};
+static const char *static_classes[] = {"Number", "Date", "String", "Object", "Array"};
 static const char *static_fields[] = {"MAX_VALUE", "MIN_VALUE", "NaN", "NEGATIVE_INFINITY", "POSITIVE_INFINITY", "UTC", "fromCharCode", "registerClass"};
 static unsigned static_reads;
 static FVM_Result static_getter(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *)
