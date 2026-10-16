@@ -43,3 +43,34 @@ Tests: property_flags_global_boxing, property_flags_conversion,
 property_flags_allocation, standard_property_flags. These checks do not close
 any roadmap stage. Reference: pinned Ruffle AVM1 globals/object.rs
 as_set_prop_flags, commit 2372a4e148a67d68efd796f4477b3cddd4f880cd.
+
+## v0.480: stored spelling and flag-only case folding
+
+ASSetPropFlags property-list lookup is case-insensitive in every loaded SWF,
+including versions 7–8. This differs from ordinary property reads. The selector
+finds own data/accessor/native-method slots without evaluating a getter and stores
+attributes under the selected slot's actual name. Duplicate aliases update the
+same staged entry; an inherited-only name remains untouched. The unloaded host
+path retains exact matching. Ordinary property lookup is unchanged.
+
+Canonical storage prevents an update under `mixed` from leaving stale flags on
+`MiXeD` or creating a detached attribute entry. It also preserves the flags when
+a legacy-context graph is deserialized into a case-sensitive SWF8 context. Tests
+cover initially absent/existing/cleared attributes, set-bit precedence, ASCII,
+counted NUL/Unicode and long names, data/accessor/method slots, enumeration,
+transport/GC, C and three AVM1/JIT modes, plus allocation failures before commit.
+Ordering when multiple distinct own names collide under case folding remains an
+unverified compatibility case; the implementation retains its existing own-slot
+selection preference. Extended version flags remain unsupported.
+
+В ASSetPropFlags имена сравниваются без учёта регистра во всех загруженных SWF,
+включая 7–8. Атрибуты записываются под сохранённым именем выбранного собственного
+свойства. Повторные псевдонимы не создают отдельные записи, свойства прототипа
+не изменяются, getters не вызываются. Поэтому перенос в SWF8 сохраняет флаги.
+Обычный доступ к свойствам и host-поведение не менялись. При отказе памяти новая
+таблица не публикуется. Порядок выбора при нескольких конфликтующих собственных
+именах и дополнительные version-флаги остаются отдельными задачами.
+
+Reference: pinned Ruffle ScriptObject.set_attributes uses
+PropertyMap.get_mut(name, false), independent of activation version.
+Tests: property_flags_case, property_flags_case_allocation.

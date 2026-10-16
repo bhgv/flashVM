@@ -13,6 +13,7 @@
 #include "base_state.hpp"
 #include "base_constants.h"
 #include "property_flag_constants.h"
+#include "property_flag_lookup.hpp"
 #include "constructor_identity.hpp"
 #include "class_registry_constants.h"
 #include "movieclip_state.hpp"
@@ -468,6 +469,10 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     fvm_detail::map<fvm_detail::string, unsigned int> flags = o->attributes;
     for (size_t i = 0; i < names.size(); ++i)
     {
+        /* ASSetPropFlags folds names even in SWF7/8. Attribute keys must retain
+         * the selected own slot's spelling; getters are never evaluated here. */
+        if (c->swf_loaded)
+            fvm_property_flag_select_own_name(o, names[i]);
         int own = 0;
         r = fvm_object_has_own_bytes(c, o, names[i].data(), names[i].size(), &own);
         if (r != FVM_OK)

@@ -2799,3 +2799,23 @@ and LeakSanitizer remain disabled. Conversion callbacks retain the native GC
 barrier; failed mutation is checked with collection before retry. The supported
 attribute mask remains 0–7; extended version flags, non-Linux runtime evidence
 and every roadmap stage remain open. No ABI or callback IDs changed.
+
+### v0.480 — flag-only own-name folding and canonical storage
+
+RU: `property_flags_case` проверяет host/SWF4–8, собственные данные, методы и
+аксессоры, отсутствие вызова getter, ASCII/NUL/Unicode/длинные имена, повторные
+имена и игнорирование inherited-only полей, исходные/устанавливаемые/снимаемые
+биты, перечисление, C/saved function/три AVM1/JIT режима. Данные и методы
+переносятся в SWF8 с GC и сохраняют атрибуты. `property_flags_case_allocation`
+перебирает отказы new/new[] в SWF4–8, проверяет старую таблицу, GC, повтор и
+отсутствие отсоединённых записей под запрошенным написанием. Оба теста падают
+на base.cpp из v0.479. Правило all-version folding подтверждено pinned
+ScriptObject.set_attributes и PropertyMap.get_mut(name, false).
+
+EN: Linux minimal ran 947 tests: 934 passed initially and all 13 unlaunchable
+binaries passed after executable-mode repair. AGG ran 966: 950 passed initially
+and all 16 unlaunchable binaries passed after repair. Both focused heap/global
+ASan+UBSan tests passed (2.22 seconds). Stack ASan/LeakSanitizer remain disabled.
+No new ABI/callback IDs, non-Linux execution or full case-collision insertion
+ordering equivalence is claimed. Extended version flags and all nine roadmap
+stages remain open. Ordinary property lookup behavior is unchanged.

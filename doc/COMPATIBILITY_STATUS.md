@@ -4162,3 +4162,16 @@ then converts the property list. Fractional/negative/NaN narrowing follows the
 pinned reference within the supported mask. Extended version flags remain
 rejected. Tests: property_flags_global_boxing/conversion/allocation.
 See PROPERTY_FLAGS.md; all roadmap stages remain open.
+
+### v0.480 — ASSetPropFlags own-name selection
+
+RU: В SWF4–8 список имён ASSetPropFlags сравнивается без учёта регистра;
+атрибуты сохраняют написание выбранного собственного поля. Проверены данные,
+методы, аксессоры без вызова getters, NUL/Unicode, дубли, наследование,
+перенос в SWF8 и атомарность при OOM. Обычный lookup не менялся.
+
+EN: Flag-only lookup now folds every loaded version and stores canonical own
+names, preserving attributes across case-sensitive graph import. Host matching
+remains exact. Tests: property_flags_case and property_flags_case_allocation.
+Case-collision ordering and extended version flags remain unverified/unsupported;
+this does not close any roadmap stage.

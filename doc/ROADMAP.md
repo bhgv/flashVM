@@ -1979,3 +1979,16 @@ OOM retries are tested. Host behavior and ABI/callback identities are unchanged.
 В ASSetPropFlags исправлены преобразования объекта и числовых флагов, порядок
 побочных эффектов и случаи дробных/отрицательных/NaN значений. Дополнительные
 version-флаги ещё не реализованы. Проверки не закрывают ни один этап роадмапа.
+
+### v0.480: ASSetPropFlags stored names / сохранённые имена атрибутов
+
+Loaded ASSetPropFlags now resolves property-list names case-insensitively even
+for SWF7–8, preserving the selected own slot's stored spelling in the staged
+attribute map. Ordinary lookup and unloaded matching remain unchanged. Tests
+cover data/method/accessor slots, NUL/Unicode/long names, repeated aliases,
+enumeration, transfer into SWF8, three execution modes and OOM retries.
+
+Исправлены сравнение имён и сохранение написания ключа в ASSetPropFlags.
+Унаследованные свойства не изменяются; getters не вызываются. При переносе
+в SWF8 атрибуты сохраняются. Конфликтующие собственные имена, version-флаги и
+приёмка всех стадий остаются открытыми.
