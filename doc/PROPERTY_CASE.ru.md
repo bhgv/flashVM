@@ -461,3 +461,23 @@ getter. Проверены host/SWF4–8, traced-строка с NUL, цикли
 Проверено v0.448: полный Linux minimal 885/885; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Все стадии и другие ОС открыты.
+
+## v0.449 — корень capture активного native-вызова
+
+C-мост вызова метода удерживает capture выбранной native-записи на всё время
+callback. Trusted callback с GC может удалить/заменить свой метод либо
+глобальную fallback-регистрацию, сохраняя активный граф userdata. Корень
+снимается после вызова; замена не откатывается. Обычные публичные native-callback
+сохраняют GC-barrier. collector_entry — внутренний признак trusted-моста, а не
+публичное разрешение C-расширениям обходить защиту.
+
+object_call_native_capture воспроизвёл сборку capture после самоудаления.
+Проверены host/SWF4–8, собственное удаление/наследуемая замена/global fallback,
+циклические capture и аргумент, traced NUL-строка, изменение исходных аргументов,
+OK/исключение/обычная ошибка, GC в callback, удержание pin/pending exception и
+освобождение после возврата/clear/unpin. Другие entry/finalizer/конкуренция и
+все стадии остаются открытыми.
+
+Проверено v0.449: полный Linux minimal 886/886; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Все стадии и другие ОС открыты.

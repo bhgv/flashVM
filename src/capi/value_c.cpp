@@ -1168,6 +1168,8 @@ extern "C"
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            /* [GC:] A trusted callback may remove its registration before collecting its capture. */
+            FVM_ObjectRootScope entry_roots(c, entry.root);
             fvm_resource_fault_begin(c);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_value_undefined(out);

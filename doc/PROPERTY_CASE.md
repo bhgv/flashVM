@@ -483,3 +483,23 @@ lifetime, failure boundaries and all stages remain open.
 Validation v0.448: complete Linux minimal 885/885; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
 applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.449 — active native capture root
+
+The C method-call bridge roots the selected native entry's capture for the
+whole callback. A trusted collecting callback may delete/replace its method
+or global fallback registration without losing the active userdata graph.
+The root ends after the call; replacement is not rolled back. Public ordinary
+native callbacks retain their collector barrier. collector_entry is internal
+trusted-bridge state, not a public extension opt-out.
+
+object_call_native_capture reproduced capture collection after self-removal.
+It checks host/SWF4–8, own deletion/inherited replacement/global replacement,
+cyclic captures and argument graphs, traced NUL strings, caller-array mutation,
+OK/exception/plain error, GC during callbacks, pin/pending-exception retention
+and reclamation after call/clear/unpin. Broader entry/finalizer/concurrency
+coverage and all stages remain open.
+
+Validation v0.449: complete Linux minimal 886/886; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
+applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.

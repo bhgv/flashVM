@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/7: active native C-call capture | Проверено для v0.449 | Trusted own/inherited/global self-removal/replacement, cyclic capture/args, NUL, three status paths, GC retention/reclamation. PROPERTY_CASE.md / .ru.md; ordinary native barriers retained, other entries/finalizers/concurrency and stages open. |
 | 2/7: C call pre-getter arguments | Проверено для v0.448 | Host/SWF4–8 traced NUL/cyclic args, getter mutation/GC, aliased output, getter/callee exceptions, cleanup/reclamation. PROPERTY_CASE.md / .ru.md; native captures/OOM/external buffers and stages open. |
 | 1/2/7: C method call case/owner roots | Проверено для v0.447 | Host/SWF4–8 counted names, own/inherited Function/getter/native/shadowing, collecting deletion/detachment and errors. PROPERTY_CASE.md / .ru.md; call inputs/resolver and stages open. |
 | 1/2/7/8: sortOn raw field casing | Проверено для v0.446 | SWF4–6 data/virtual/length/method selection, SWF7–8 exact, inherited exclusion, NUL/Unicode, unique/indexed returns, cache identity/GC and real native CallMethod. PROPERTY_CASE.md / .ru.md; full sorting/collisions/budgets and stages open. |
