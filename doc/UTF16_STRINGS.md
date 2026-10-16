@@ -97,3 +97,23 @@ LeakSanitizer отключены, container_exceptions.cpp проверяетс�
 Counted property APIs and AVM1 member operations now preserve full keys; graph 8
 transports them. See [COUNTED_PROPERTY_KEYS.md](COUNTED_PROPERTY_KEYS.md).
 Native call/registration and AVM1 variable-name gates remain open.
+
+## v0.409: allocation-free UTF-16 size queries / Подсчёт без выделений
+
+`String.length`, boxed String construction validation and the count-only
+`fvm_value_get_utf16(value, NULL, 0, &length)` path now count UTF-16 units directly
+from counted WTF-8, without an intermediate vector. Supplementary scalars count
+as two; NUL and lone surrogates count as one. Invalid trailing input still fails
+and leaves the public count zero. This removes temporary allocation proportional
+to input size; construction itself still allocates its object and properties.
+The copy-to-buffer path retains its existing behavior. Full Flash string oracle
+and all roadmap stage acceptance remain open.
+
+`String.length`, проверка при создании String и запрос только длины через
+`fvm_value_get_utf16` считают UTF-16 непосредственно, без временного массива.
+Дополнительный символ занимает две единицы, NUL и одиночный суррогат — одну.
+Повреждённый хвост отклоняется, публичная длина остаётся нулевой. Создание объекта
+и его свойств по-прежнему требует памяти. Полная совместимость Flash не заявлена.
+
+Regression: `flashvm_tests_string_length_allocation` denies every C++ allocation
+while checking supplementary/NUL/lone-surrogate, empty and malformed queries.

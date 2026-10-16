@@ -1463,3 +1463,11 @@ native launchers for runner-reset permissions; binaries/assertions are unchanged
 The fixture does not modify checkout VERSION.txt and inherits native generator/
 make/platform/toolset settings. Windows/macOS/Android runtime and physical LAN
 acceptance remain open, as do all nine roadmap stages.
+
+### v0.409 — UTF-16 count memory / Память подсчёта UTF-16
+
+Implemented allocation-free count queries and boxed String length validation;
+see [UTF16_STRINGS.md](UTF16_STRINGS.md). Проверка без выделений добавлена;
+этапы 1–9 остаются открытыми. Linux minimal Release: 822/822 CTests passed. Generated native-test launchers
+restore executable mode before exec because the workspace resets file modes;
+test bodies and assertions are unchanged. Other-platform acceptance remains open.

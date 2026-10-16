@@ -3079,3 +3079,11 @@ All nine roadmap stages remain open.
 Documentation v0.404: standalone EN/RU README files in
 `examples/embedding/function_rpc/` describe purpose, build, process/thread/LAN
 execution and local CTest commands. No runtime compatibility status changes.
+
+### v0.409 — UTF-16 count memory / Память подсчёта UTF-16
+
+Implemented allocation-free count queries and boxed String length validation;
+see [UTF16_STRINGS.md](UTF16_STRINGS.md). Проверка без выделений добавлена;
+этапы 1–9 остаются открытыми. Linux minimal Release: 822/822 CTests passed. Generated native-test launchers
+restore executable mode before exec because the workspace resets file modes;
+test bodies and assertions are unchanged. Other-platform acceptance remains open.

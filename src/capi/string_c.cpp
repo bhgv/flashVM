@@ -126,13 +126,13 @@ extern "C" FVM_Result fvm_value_get_utf16(const FVM_Value *value, unsigned short
     *length = 0;
     try
     {
+        if (!out && !capacity)
+            return fvm_string_unit_count(*value, *length);
         fvm_detail::vector<unsigned int> units;
         FVM_Result r = fvm_string_units(*value, units);
         if (r != FVM_OK)
             return r;
         *length = units.size();
-        if (!out && !capacity)
-            return FVM_OK;
         if (capacity < units.size())
             return FVM_INVALID_ARGUMENT;
         for (size_t i = 0; i < units.size(); ++i)

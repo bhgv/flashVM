@@ -177,10 +177,10 @@ FVM_Result length(FVM_Context *c, FVM_Object *self, unsigned int, const FVM_Valu
     FVM_Result result = value(c, self, 0, 0, &text, 0);
     if (result != FVM_OK)
         return result;
-    Units units;
-    result = decode(text, units);
+    size_t unit_count = 0;
+    result = fvm_string_unit_count(text, unit_count);
     if (result == FVM_OK)
-        fvm_value_number(out, (double)units.size());
+        fvm_value_number(out, (double)unit_count);
     return result;
 }
 
@@ -779,8 +779,8 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
         result = fvm_value_string(&text, "");
     if (result != FVM_OK)
         return result;
-    Units units;
-    result = decode(text, units);
+    size_t unit_count = 0;
+    result = fvm_string_unit_count(text, unit_count);
     if (result != FVM_OK)
         return result;
     result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
@@ -804,7 +804,7 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     {
         /* Boxed String length is own data; changing it does not change stored text. */
         FVM_Value count_value;
-        fvm_value_number(&count_value, (double)units.size());
+        fvm_value_number(&count_value, (double)unit_count);
         object->properties["length"] = count_value;
         object->attributes["length"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
     }

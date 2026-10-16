@@ -38,6 +38,28 @@ inline FVM_Result fvm_string_read(const char *s, size_t n, size_t &at, unsigned 
     return fvm_utf8_read(s, n, &at, &cp) == FVM_UTF8_OK ? FVM_OK : FVM_INVALID_ARGUMENT;
 }
 
+/* Validate counted WTF-8 and count UTF-16 units without allocating a decoded copy.
+ * Publish the count only after complete validation, including any trailing bytes. */
+inline FVM_Result fvm_string_unit_count(const FVM_Value &value, size_t &count)
+{
+    count = 0;
+    if (value.type != FVM_VALUE_STRING || !value.string)
+        return FVM_INVALID_ARGUMENT;
+    size_t n = fvm_string_size(value), at = 0, total = 0;
+    while (at < n)
+    {
+        unsigned long cp = 0;
+        FVM_Result result = fvm_string_read(value.string, n, at, cp);
+        if (result != FVM_OK)
+            return result;
+        ++total;
+        if (cp >= FVM_UTF16_SUPPLEMENTARY_OFFSET)
+            ++total;
+    }
+    count = total;
+    return FVM_OK;
+}
+
 /* Append UTF-16 units, splitting supplementary scalars and retaining lone surrogates/NUL. */
 inline FVM_Result fvm_string_units(const FVM_Value &value, fvm_detail::vector<unsigned int> &units)
 {
