@@ -1366,3 +1366,16 @@ pass. Stack ASan and LeakSanitizer disabled; restricted runner links explicit
 sanitizer defaults because environment-only options do not suppress unavailable
 /proc task enumeration. No cross-authority callback cycle, resource reentrancy
 or non-Linux runtime certification; all nine roadmap stages remain open.
+
+v0.401: a documented C89 function_rpc tutorial serves an unregistered original C
+callback to an independent client process. Server-owned userdata observes four
+attempts; client verifies 42, counted NUL exception, unsupported and plain error.
+A Python native-process harness bounds startup/call/shutdown waits and cleans up
+children. No callback codec or process-local pointer is transferred.
+RU: оригинальная C-функция вызывается из другого процесса через один URI/порт.
+Validation: full Linux minimal Release CTest passes 815/815. Eleven focused
+broker/function/example checks pass in minimal and AGG Release and restricted
+heap/global ASan+UBSan, including the actual two-process exchange. Example passes
+strict C89 syntax both with OS_PORTS and with its disabled stub. Stack ASan and
+LeakSanitizer disabled. Cross-compiling does not register the host subprocess
+harness; Windows/macOS/Android runtime acceptance and all stages remain open.

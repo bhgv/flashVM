@@ -1,4 +1,4 @@
-# Live function interfaces (v0.400)
+# Live function interfaces (v0.401)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -70,3 +70,15 @@ Cross-authority callback cycles remain unsupported; resource operations do not
 use this function-only direct route. `function_remote_nested` covers independent
 original heaps, A→B→A, recursion bounds, counted exceptions, diagnostics, host
 reclaim and subsequent recovery.
+
+The v0.401 C89 tutorial is `examples/embedding/function_rpc/main.c`. Run its
+executable with `serve`, copy the printed URI, then run another process with
+`call URI`. After the client completes, enter a line in the server terminal to
+reclaim the original context and shut down. The original process verifies four
+attempts in its host-owned userdata; the other process verifies value 42, a
+counted NUL exception, unsupported and ordinary error statuses. No callback
+codec, serialized native address or shared userdata is involved.
+`flashvm_function_independent_processes` automates this exchange with bounded
+startup/client/shutdown waits and child cleanup. It is registered only for native
+socket-enabled builds with tests, examples and Python available; the example
+without arguments displays usage and returns immediately.

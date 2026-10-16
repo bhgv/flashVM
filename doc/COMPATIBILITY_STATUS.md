@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 6/7/9: process-separated C function interface | Проверено для сценариев v0.401 | C89 original callback stays in authority process with original userdata; independent client checks value/NUL exception/plain failures. Native Python harness has bounded waits/cleanup; foreign OS runtime validation remains open. REMOTE_FUNCTIONS.md / .ru.md. |
 | 6/7: nested original function calls | Проверено для сценариев v0.400 | Same-authority function interfaces dispatch on the owning thread with copied graphs, original heap leases and depth bound 32. A→B→A, exception/diagnostic propagation and recovery; cross-authority cycles/resource reentrancy remain open. REMOTE_FUNCTIONS.md / .ru.md. |
 | 6/7/8: function export roots/prepared GC | Проверено для сценариев v0.399 | New-target URI allocation precedes publication; failed C++ export allocations leave no target/root, canonical reuse pins once. Original prepared body self-unbind/GC retains capture and cyclic argument frame. Graph-wide export rollback remains open. |
 | 6/7: function reply/value graph | Проверено для сценариев v0.398 | Reject missing OK/EXCEPTION values and contradictory successful fault replies; cyclic receiver/argument aliases and returned C interfaces verified. No unrestricted shared heap or reentrant callback support. |

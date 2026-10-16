@@ -198,6 +198,12 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_resource_process.py
               $<TARGET_FILE:flashvm_tests_resource_network_process>)
     set_tests_properties(flashvm_network_independent_processes PROPERTIES TIMEOUT 35)
+    if(FVM_BUILD_EXAMPLES)
+      add_test(NAME flashvm_function_independent_processes
+        COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_function_process.py
+                $<TARGET_FILE:flashvm_examples_embedding_function_rpc_main>)
+      set_tests_properties(flashvm_function_independent_processes PROPERTIES TIMEOUT 40)
+    endif()
   endif()
 endif()
 
