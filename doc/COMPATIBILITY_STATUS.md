@@ -4187,3 +4187,12 @@ EN: Math metadata now protects all 26 loaded fields, with prepared first-load
 activation and preservation of custom host/reload state. Tests:
 math_loaded_attributes, math_custom_attributes, math_activation_allocation.
 Transport preserves flags; numerical exactness and all roadmap stages remain open.
+
+### v0.482 — сохранение встроенного состояния при reload / builtin reload state
+
+Переход host → loaded теперь выполняется один раз: повторная загрузка SWF4–8
+сохраняет изменённые флаги встроенных прототипов. Проверены все пары версий,
+C/interpreter/explicit/auto JIT, GC и отказ выделения памяти с повтором.
+See [BUILTIN_RELOAD.md](BUILTIN_RELOAD.md). This closes the repeated attribute
+activation regression only; all nine stages and full movie lifecycle semantics
+remain open.

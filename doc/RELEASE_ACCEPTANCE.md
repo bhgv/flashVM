@@ -2841,3 +2841,15 @@ custom-state check after repairing that binary's executable mode. Stack ASan
 and LeakSanitizer remain disabled. Numeric exactness, other namespace semantics,
 non-Linux runtime acceptance and all nine roadmap stages remain open. No ABI,
 resource-kind or serialized callback identity changes.
+
+### v0.482 — builtin reload activation
+
+RU: Полный Linux minimal прогон: 952 теста, 933 прошли сразу; 19 файлов
+без права исполнения прошли после восстановления права и повторного запуска.
+Новые два теста прошли также в AGG и heap/global ASan+UBSan (2/2 в каждом).
+Stack ASan и LeakSanitizer отключены из-за ограничений окружения.
+
+EN: Both reload regressions fail against v0.481 numeric.cpp. Coverage includes
+25 SWF-version transitions, ten builtin fields, C/interpreter/explicit/auto JIT,
+GC, replacement-load OOM rollback and retry. No ABI or callback changes.
+Full movie lifecycle and all nine roadmap stages remain open.

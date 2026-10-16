@@ -2004,3 +2004,12 @@ GC and first-load OOM retries. Existing numeric values/operations are unchanged.
 Исправлены атрибуты Math и атомарная первая загрузка при предварительной установке
 библиотеки. Пользовательские изменения и снятая после загрузки защита сохраняются.
 Числовая точность и полная приёмка всех стадий остаются открытыми.
+
+### v0.482 — сохранение встроенного состояния при reload / builtin reload state
+
+Переход host → loaded теперь выполняется один раз: повторная загрузка SWF4–8
+сохраняет изменённые флаги встроенных прототипов. Проверены все пары версий,
+C/interpreter/explicit/auto JIT, GC и отказ выделения памяти с повтором.
+See [BUILTIN_RELOAD.md](BUILTIN_RELOAD.md). This closes the repeated attribute
+activation regression only; all nine stages and full movie lifecycle semantics
+remain open.

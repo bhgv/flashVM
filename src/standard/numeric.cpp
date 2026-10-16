@@ -678,7 +678,9 @@ const Method global_functions[] = {{"Number", number_call},
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
 FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 {
-    if (!c->standard_library)
+    /* Loaded contexts keep their live builtin state when another movie replaces
+     * the SWF bytes. Host-layout activation belongs only to the first load. */
+    if (!c->standard_library || c->swf_loaded)
         return FVM_OK;
     try
     {
