@@ -4,6 +4,7 @@
 
 #include "graph_constants.h"
 #include "../core/property_version_constants.h"
+#include "../core/numeric_constants.h"
 #include "../core/string_internal.hpp"
 #include "../core/property_key.hpp"
 #include "../standard/movieclip_state.hpp"
@@ -443,6 +444,12 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                              ? FVM_VALUE_OBJECT
                              : FVM_VALUE_NUMBER),
                 FVM_UNSUPPORTED);
+            if (dst.kind == FVM_RESOURCE_ARRAY)
+            {
+                const double length = src->resource_result.number;
+                require(length >= FVM_INT32_MIN_NUMBER && length <= FVM_UINT32_MAX_NUMBER &&
+                        length == std::floor(length), FVM_UNSUPPORTED);
+            }
             if (dst.kind == FVM_RESOURCE_COLOR_TRANSFORM)
             {
                 double native_channels[8];
@@ -1189,7 +1196,7 @@ Graph read_graph(Reader &r, unsigned int version)
                     std::fabs(o.state.number) <= 8640000000000000.0);
         if (o.kind == FVM_RESOURCE_ARRAY)
         {
-            require(o.state.number >= 0 && o.state.number <= 4294967295.0 &&
+            require(o.state.number >= FVM_INT32_MIN_NUMBER && o.state.number <= FVM_UINT32_MAX_NUMBER &&
                     o.state.number == std::floor(o.state.number));
             for (fvm_detail::map<unsigned long, Value>::iterator slot = o.indexed.begin();
                  slot != o.indexed.end(); ++slot)

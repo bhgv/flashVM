@@ -1282,7 +1282,8 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
 /* Compute and return array needs generic. */
 bool fvm_array_needs_generic(FVM_Object *o)
 {
-    if (!o || o->resource_kind != FVM_RESOURCE_ARRAY)
+    if (!o || o->resource_kind != FVM_RESOURCE_ARRAY ||
+        (o->resource_result_valid && o->resource_result.number < 0))
         return true;
     for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth, o = o->prototype)
     {

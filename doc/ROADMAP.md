@@ -2066,3 +2066,14 @@ intrinsic field interactions and all nine roadmap stages remain open.
 This strengthens regression evidence for stages 1/7/8; it adds no new player
 feature and closes none of the nine stages. Foreign OS/architecture runtime
 acceptance and the builtin version-annotation audit remain open.
+
+
+### v0.489 — signed Array constructor length
+
+Загруженные Array(number)/new Array(number) используют clamped Int32,
+включая дробные/отрицательные значения, NaN и бесконечности. Знаковая длина
+сохраняется в native storage и графовом переносе, читается без unsigned-cast;
+проверены readonly, рост индексов, GC и OOM/retry. See
+[ARRAY_SIGNED_LENGTH.md](ARRAY_SIGNED_LENGTH.md) for RU/EN contracts and limits.
+Raw unsigned length assignment remains distinct. Negative native end/splice
+operations, virtual length and all nine roadmap stages remain open.

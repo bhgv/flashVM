@@ -62,18 +62,19 @@ FVM_Result owned(FVM_Context *c, const FVM_Value &src, FVM_Value &dst)
     return r;
 }
 
-/* Return the number of stored elements. */
+/* Return the nonnegative traversal extent without casting signed length to unsigned. */
 unsigned long size(FVM_Object *o)
 {
-    return (unsigned long)o->resource_result.number;
+    return o->resource_result.number > 0 ? (unsigned long)o->resource_result.number : 0;
 }
 
-/* Compute and return array. */
+/* Validate native numeric length, including the signed AVM1 constructor range. */
 bool array(FVM_Object *o)
 {
     return o && o->resource_kind == ARRAY_OBJECT && o->resource_result_valid &&
-           o->resource_result.type == FVM_VALUE_NUMBER && o->resource_result.number >= 0 &&
-           o->resource_result.number <= 4294967295.0 &&
+           o->resource_result.type == FVM_VALUE_NUMBER &&
+           o->resource_result.number >= FVM_INT32_MIN_NUMBER &&
+           o->resource_result.number <= FVM_UINT32_MAX_NUMBER &&
            o->resource_result.number == std::floor(o->resource_result.number);
 }
 
@@ -83,7 +84,7 @@ FVM_Result array_length(FVM_Context *, FVM_Object *o, unsigned int, const FVM_Va
 {
     if (!array(o))
         return FVM_INVALID_ARGUMENT;
-    fvm_value_number(out, size(o));
+    fvm_value_number(out, o->resource_result.number);
     return FVM_OK;
 }
 
@@ -667,13 +668,26 @@ FVM_Result array_build(FVM_Context *c, unsigned int n, const FVM_Value *a,
         if (proto.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
     }
-    unsigned long length = n;
+    double length = n;
     if (n == 1 && a[0].type == FVM_VALUE_NUMBER)
     {
-        double v = a[0].number;
-        if (v < 0 || v > FVM_UINT32_MAX_NUMBER || v != std::floor(v))
-            return FVM_INVALID_ARGUMENT;
-        length = (unsigned long)v;
+        const double value = a[0].number;
+        if (c->swf_loaded)
+        {
+            /* AVM1 numeric construction clamps before truncation; it does not wrap.
+             * Ordered comparisons also send NaN and infinities to the minimum. */
+            length = value >= FVM_INT32_MIN_NUMBER && value <= FVM_INT32_MAX_NUMBER
+                         ? (value < 0 ? std::ceil(value) : std::floor(value))
+                         : FVM_INT32_MIN_NUMBER;
+            if (!length)
+                length = 0; /* Canonicalize constructor negative zero to integer zero. */
+        }
+        else
+        {
+            if (value < 0 || value > FVM_UINT32_MAX_NUMBER || value != std::floor(value))
+                return FVM_INVALID_ARGUMENT;
+            length = value;
+        }
     }
     FVM_Object *o = 0;
     if (c->swf_loaded && !function_call)
@@ -687,9 +701,10 @@ FVM_Result array_build(FVM_Context *c, unsigned int n, const FVM_Value *a,
     }
     else
     {
-        r = fvm_array_create_like(c, 0, length, &o, true);
+        r = fvm_array_create_like(c, 0, length > 0 ? (unsigned long)length : 0, &o, true);
         if (r != FVM_OK)
             return r;
+        o->resource_result.number = length;
         if (!c->swf_loaded)
             o->prototype = proto.object;
     }

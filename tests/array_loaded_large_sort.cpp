@@ -72,7 +72,9 @@ int main()
         const unsigned char swf[] = {'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0};
         assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK); assert(fvm_standard_install(c) == FVM_OK);
         FVM_Object *source = 0; FVM_Value value, args[2], out;
-        fvm_value_number(&value, 4294967295.0); assert(fvm_construct(c, "Array", 1, &value, &source) == FVM_OK);
+        /* Raw high unsigned length remains distinct from constructor Int32 clamping. */
+        assert(fvm_construct(c, "Array", 0, 0, &source) == FVM_OK);
+        fvm_value_number(&value, 4294967295.0); assert(fvm_object_set(c, source, "length", &value) == FVM_OK);
         fvm_value_number(args, 16); assert(fvm_object_call(c, source, "sort", 1, args, &out) == FVM_UNSUPPORTED);
         fvm_value_string(args, "field"); fvm_value_number(args + 1, 16);
         assert(fvm_object_call(c, source, "sortOn", 2, args, &out) == FVM_UNSUPPORTED);

@@ -2961,3 +2961,21 @@ The first instrumented execution attempt reached the old 30 s CTest timeout;
 the committed per-matrix timeout is 180 s. Stack ASan and LeakSanitizer remain
 disabled by the existing environment setup. No production behavior changed;
 the complete project suite was not rerun for this coverage-only increment.
+
+
+### v0.489 — signed Array constructor length
+
+Загруженные Array(number)/new Array(number) используют clamped Int32,
+включая дробные/отрицательные значения, NaN и бесконечности. Знаковая длина
+сохраняется в native storage и графовом переносе, читается без unsigned-cast;
+проверены readonly, рост индексов, GC и OOM/retry. See
+[ARRAY_SIGNED_LENGTH.md](ARRAY_SIGNED_LENGTH.md) for RU/EN contracts and limits.
+Raw unsigned length assignment remains distinct. Negative native end/splice
+operations, virtual length and all nine roadmap stages remain open.
+
+Validation v0.489: minimal Release 973/973 passed in the final complete run.
+AGG Release passed 968/992 initially and the remaining 24/24 after restoring
+executable permissions; no functional failures remained. All three new signed
+Array tests passed heap/global ASan+UBSan. Stack ASan and LSan remain disabled.
+The constructor regression fails against the pre-change library. These are
+Linux-host results; no new foreign-OS or original-player run is claimed.
