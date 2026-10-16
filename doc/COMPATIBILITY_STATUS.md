@@ -3071,3 +3071,7 @@ reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
 The revised MovieClip constants header passes a strict C89 syntax probe.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+Documentation v0.404: standalone EN/RU README files in
+`examples/embedding/function_rpc/` describe purpose, build, process/thread/LAN
+execution and local CTest commands. No runtime compatibility status changes.

@@ -20,3 +20,7 @@ Executable: `flashvm_example_embedding` (when `FVM_BUILD_EXAMPLES=ON`).
 This does **not** execute ActionScript or SWF yet.
 
 Read [Embedding API](../../doc/EMBEDDING_API.md).
+
+Function interfaces across processes, independent VM threads and LAN:
+[function_rpc/README.md](function_rpc/README.md) /
+[Русский](function_rpc/README.ru.md), including build and run commands.

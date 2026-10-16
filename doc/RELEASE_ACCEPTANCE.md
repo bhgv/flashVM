@@ -1406,3 +1406,9 @@ URI, two heaps' independent pins, context detachment and broker stop with mixed
 channel/function entries. Two disabled-OS-port checks pass in a fresh no-OS build.
 Public/new private constants pass strict C89 syntax. Stack ASan and LeakSanitizer
 disabled; physical LAN and non-Linux runtime validation remain open, as do all stages.
+
+v0.404: add standalone EN/RU example README files and link them from the
+embedding index. RU: назначение, требования, команды сборки/запуска/CTest
+находятся непосредственно в function_rpc. Documentation-only change; relative
+links and target/test names checked against source/CMake. No new runtime test
+result or stage completion claim.
