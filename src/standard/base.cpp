@@ -977,18 +977,20 @@ FVM_Result loaded_sort_field(FVM_Context *c, FVM_Object *o, const fvm_detail::st
                              FVM_Value &out)
 {
     fvm_value_undefined(&out);
-    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(name);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property =
+        fvm_property_find(c, o->properties, name);
     if (property != o->properties.end())
     {
         out = property->second;
         return FVM_OK;
     }
-    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+        fvm_property_find(c, o->accessors, name);
     if (accessor != o->accessors.end())
     {
         if (fvm_base_accessor_data(accessor->second, out))
             return FVM_OK;
-        if (o->resource_kind == ARRAY_OBJECT && name == "length" && o->resource_result_valid)
+        if (o->resource_kind == ARRAY_OBJECT && accessor->first == "length" && o->resource_result_valid)
             out = o->resource_result;
         return FVM_OK;
     }
@@ -1002,14 +1004,18 @@ FVM_Result loaded_sort_field(FVM_Context *c, FVM_Object *o, const fvm_detail::st
             return FVM_OK;
         }
     }
-    if (o->resource_kind == ARRAY_OBJECT && name == "length" && o->resource_result_valid)
+    if (o->resource_kind == ARRAY_OBJECT && o->resource_result_valid &&
+        (name == fvm_detail::string("length") ||
+         (c->swf_info.version < FVM_SWF_VERSION_7 &&
+          fvm_avm1_folded_name_equal(name, fvm_detail::string("length")))))
     {
         out = o->resource_result;
         return FVM_OK;
     }
-    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = o->methods.find(name);
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+        fvm_property_find(c, o->methods, name);
     if (method != o->methods.end())
-        return fvm_function_wrap_entry(c, o, name, method->second, &out);
+        return fvm_function_wrap_entry(c, o, method->first, method->second, &out);
     return FVM_OK;
 }
 

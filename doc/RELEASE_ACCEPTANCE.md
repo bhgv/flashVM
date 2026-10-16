@@ -2169,3 +2169,27 @@ Full prototype/reflection behavior and all stages remain open.
 Validation v0.445: Linux minimal 881/881; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.446 — sortOn raw field casing
+
+Loaded Array.sortOn now applies SWF4–6 case equivalence to own stored fields,
+virtual descriptor data and native method entries. Array LENGTH selects native
+length storage under the same version rule. Method wrappers use the actual
+stored name for cache identity. SWF7–8 remain exact, inherited fields remain
+excluded and getters/setters are not called. Host sorting is unchanged. Pinned
+globals/array.rs sort_on_compare uses get_local_stored; script_object.rs
+get_local_stored/property map apply activation case sensitivity.
+
+array_sort_on_case reproduces the previous unsorted differently cased field.
+It checks SWF4–8, ordinary/virtual/inherited/Array-length/native-method fields,
+counted NUL and accented Unicode names, numeric/text comparison, normal/unique/
+indexed return policies, unchanged indexed-return input, zero callbacks, stored
+method cache identity and GC cleanup. jit_array_sort_on_case repeats the matrix
+with actual interpreted/explicit/automatic CallMethod entries. Full sorting,
+collision/budget rules and all stages remain open.
+
+Validation v0.446: complete Linux minimal 883/883 and AGG 902/902;
+AGG/Linux-hosted NO_OS_PORTS/heap-global ASan+UBSan targeted checks 4/4 each.
+The full AGG profile includes fonts/image codecs/SQLite and render jobs;
+it is not a separate Cairo profile or foreign-OS run. Executable-mode
+launchers applied; stack ASan/LeakSanitizer disabled. All stages remain open.

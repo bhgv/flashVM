@@ -397,3 +397,26 @@ GC и топологией скопированного receiver, canonical/uppe
 Проверено v0.445: Linux minimal 881/881; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.
+
+## v0.446 — регистр raw-полей sortOn
+
+Загруженный Array.sortOn учитывает Flash-регистр SWF4–6 для собственных данных,
+данных virtual-дескриптора и нативных методов. LENGTH у Array выбирает native
+length по тому же правилу. Обёртка метода использует сохранённое имя для
+идентичности кэша. SWF7–8 различают регистр; унаследованные поля исключены,
+getter/setter не вызываются. Host-сортировка прежняя. Основание — закреплённые
+globals/array.rs sort_on_compare с get_local_stored и регистрозависимая
+property map script_object.rs.
+
+array_sort_on_case воспроизвёл отсутствие сортировки поля с другим регистром.
+Проверены SWF4–8, обычные/virtual/унаследованные/Array-length/native-method поля,
+NUL и Unicode, числовое/строковое сравнение, обычный/unique/indexed результат,
+неизменность входа при indexed, отсутствие callback, сохранённое имя кэша
+метода и GC. jit_array_sort_on_case повторяет матрицу с настоящими входами
+CallMethod в трёх режимах. Полная сортировка, коллизии/бюджеты и все стадии открыты.
+
+Проверено v0.446: полный Linux minimal 883/883 и AGG 902/902; целевые
+AGG/NO_OS_PORTS на Linux/heap-global ASan+UBSan — по 4/4. Полный AGG-профиль
+включает шрифты/image codecs/SQLite/render jobs; это не отдельный Cairo-профиль
+и не запуск на другой ОС. Применены средства восстановления права запуска;
+stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.
