@@ -1463,6 +1463,12 @@ extern "C"
                 return FVM_INVALID_ARGUMENT;
 
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+            /* Preserve an existing legacy registration's stored identity. All allocating
+               key work precedes publication so failure leaves its capture unchanged. */
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator previous =
+                fvm_property_find(c, c->constructors, key);
+            if (previous != c->constructors.end())
+                key = previous->first;
             c->constructors[key] = entry;
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_OK;
@@ -1535,7 +1541,7 @@ extern "C"
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator found =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                c->constructors.find(key);
+                fvm_property_find(c, c->constructors, key);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (found == c->constructors.end())
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

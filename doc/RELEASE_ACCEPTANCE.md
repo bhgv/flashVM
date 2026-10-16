@@ -2454,3 +2454,23 @@ __resolve. Complete constructor/allocator/concurrency compatibility remains open
 Validation v0.460: complete Linux minimal 903/903 and AGG 922/922; Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.461 — native constructor names use versioned selection
+
+Native constructor lookup and replacement use the same loaded case selector as
+properties/native global functions. SWF4–6 alternate spelling selects and updates
+the existing registration; host/SWF7–8 remain exact. All allocating stored-name
+copying occurs before publication, retaining the old registration/capture on OOM.
+native_constructor_case reproduced unsupported alias lookup and checks host,
+SWF4–8, ASCII/Unicode/NUL, registration count, factory results and cyclic capture
+reclamation after replacement. native_constructor_replacement_allocation sweeps
+new/new[] boundaries through first success, verifies the old factory and root on
+failure, then retry and GC. This is the native embedding registry, not completion
+of ActionNewObject, registerClass, allocators or concurrent context access.
+
+Validation v0.461: complete Linux minimal 905/905. AGG passed 923/924 in
+the full run; the remaining timezone driver failed to launch its binary with
+PermissionError after an executable-mode reset. Restoring that mode and rerunning
+the driver passed 1/1, covering all 924 cases across these runs. Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
