@@ -1,5 +1,7 @@
 /* FlashVM: single-read named member calls with retained receiver and defining prototype. */
 #include "support.hpp"
+#include "../../standard/super.hpp"
+#include "../../core/property_key.hpp"
 #include "invoke_member_constants.h"
 #include "../../core/call_scope.hpp"
 #include "flashvm/function.h"
@@ -28,8 +30,17 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
         {
             FVM_Value result;
             fvm_value_undefined(&result);
-            FVM_Result status = fvm_object_call_bytes(c, receiver, key.string, fvm_string_size(key),
-                                                      argc, args, &result);
+            FVM_Result status;
+            if (c->swf_loaded)
+            {
+                fvm_detail::string property;
+                status = fvm_property_key(key.string, fvm_string_size(key), property);
+                if (status == FVM_OK)
+                    status = fvm_super_invoke(c, receiver, property, argc, args, &result);
+            }
+            else
+                status = fvm_object_call_bytes(c, receiver, key.string, fvm_string_size(key),
+                                                argc, args, &result);
             if (status == FVM_OK)
                 *out = result;
             return status;

@@ -1,6 +1,7 @@
 /* FlashVM: retained superclass facades with receiver-preserving property/method dispatch. */
 #include "super.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_resolve.hpp"
 #include "../core/property_key.hpp"
 #include "inheritance.hpp"
 #include "base_state.hpp"
@@ -250,18 +251,17 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     return fvm_object_get_from(c, start, receiver, name, out, false);
 }
 
-/* Dispatch parent calls; special conversions treat missing/noncallable members as undefined. */
+/* Dispatch parent calls with distinct C/AVM1 absence policy and conversion resolver exclusion. */
 static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
-                            unsigned int count, const FVM_Value *args, FVM_Value *out, bool special)
+                            unsigned int count, const FVM_Value *args, FVM_Value *out, bool special, bool optional)
 {
-    if (special)
-        fvm_value_undefined(out);
+    fvm_value_undefined(out);
     FVM_Object *receiver = 0, *current = 0, *start = 0;
     FVM_Result result = unpack(c, facade, &receiver, &current, &start);
     if (result != FVM_OK)
         return result;
     if (!start)
-        return special ? FVM_OK : FVM_UNSUPPORTED;
+        return optional ? FVM_OK : FVM_UNSUPPORTED;
     FVM_Object *owner = start;
     for (unsigned int depth = 0; owner && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
@@ -271,17 +271,24 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
             break;
         owner = owner->prototype;
     }
-    if (!owner)
-        return special ? FVM_OK : FVM_UNSUPPORTED;
-    /* [GC:] A getter may detach the selected ancestor before returning its method. */
+    /* [GC:] A getter or resolver may detach the selected ancestor before returning its method. */
     FVM_ObjectRootScope owner_roots(c, owner);
     FVM_Value member;
-    result = fvm_object_get_from(c, start, receiver, name, &member, false);
+    if (owner)
+        result = fvm_object_get_from(c, start, receiver, name, &member, false, !special);
+    else
+    {
+        if (special)
+            return FVM_OK;
+        result = fvm_property_resolve(c, start, receiver, name, &member);
+        if (result == FVM_NOT_FOUND)
+            return optional ? FVM_OK : FVM_UNSUPPORTED;
+    }
     if (result != FVM_OK)
         return result;
     if (member.type != FVM_VALUE_OBJECT ||
-        (special && !member.object->invocable.callback && !member.object->callable.callback))
-        return special ? FVM_OK : FVM_UNSUPPORTED;
+        (optional && !member.object->invocable.callback))
+        return optional ? FVM_OK : FVM_UNSUPPORTED;
     /* [GC:] Root the selected owner and preserve it across recursive superclass calls. */
     FVM_CallScope scope(c, 0, member.object, owner);
     return fvm_function_invoke(c, member.object, receiver, count, args, out);
@@ -291,14 +298,21 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
 FVM_Result fvm_super_method(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
                             unsigned int count, const FVM_Value *args, FVM_Value *out)
 {
-    return super_method_dispatch(c, facade, name, count, args, out, false);
+    return super_method_dispatch(c, facade, name, count, args, out, false, false);
 }
 
 /* [GC:] Special conversions share parent receiver/owner roots without a resolver fallback. */
 FVM_Result fvm_super_special(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
                              FVM_Value *out)
 {
-    return super_method_dispatch(c, facade, name, 0, 0, out, true);
+    return super_method_dispatch(c, facade, name, 0, 0, out, true, true);
+}
+
+/* Invoke an AVM1 parent member; only missing/noncallable values become undefined. */
+FVM_Result fvm_super_invoke(FVM_Context *c, FVM_Object *facade, const fvm_detail::string &name,
+                            unsigned int count, const FVM_Value *args, FVM_Value *out)
+{
+    return super_method_dispatch(c, facade, name, count, args, out, false, true);
 }
 
 /* Assign a parent-visible property using the live ancestor setter and actual receiver. */

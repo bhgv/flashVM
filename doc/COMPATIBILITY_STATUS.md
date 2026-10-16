@@ -7,7 +7,8 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
-| 1/2/7/8: loaded Object.__resolve reads | Проверено для v0.450 | Raw own/inherited resolver rules, names/index/super reads, GC/errors, special exclusion, native recursion and actual JIT GetMember. OBJECT_RESOLVE.md / .ru.md; direct C/super method fallback, scope, transport/OOM and stages open. |
+| 1/2/7/8: resolved method invocation | Проверено для v0.451 | C/AVM1 ordinary/super Function dispatch, missing/nonfunction distinction, original rooted args, collecting deletion/detachment and no replay of failing callbacks in JIT. OBJECT_RESOLVE.md / .ru.md; scope/transport/OOM and stages open. |
+| 1/2/7/8: loaded Object.__resolve reads | Проверено для v0.450 | Raw own/inherited resolver rules, names/index/super reads, GC/errors, special exclusion, native recursion and actual JIT GetMember. OBJECT_RESOLVE.md / .ru.md; C/super calls: v0.451; scope/transport/OOM and stages open. |
 | 2/7: active native C-call capture | Проверено для v0.449 | Trusted own/inherited/global self-removal/replacement, cyclic capture/args, NUL, three status paths, GC retention/reclamation. PROPERTY_CASE.md / .ru.md; ordinary native barriers retained, other entries/finalizers/concurrency and stages open. |
 | 2/7: C call pre-getter arguments | Проверено для v0.448 | Host/SWF4–8 traced NUL/cyclic args, getter mutation/GC, aliased output, getter/callee exceptions, cleanup/reclamation. PROPERTY_CASE.md / .ru.md; native captures/OOM/external buffers and stages open. |
 | 1/2/7: C method call case/owner roots | Проверено для v0.447 | Host/SWF4–8 counted names, own/inherited Function/getter/native/shadowing, collecting deletion/detachment and errors. PROPERTY_CASE.md / .ru.md; call inputs/resolver and stages open. |

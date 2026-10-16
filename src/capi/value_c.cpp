@@ -1166,6 +1166,21 @@ extern "C"
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                if (c->swf_loaded)
+                {
+                    FVM_Value function;
+                    FVM_Result status = fvm_property_resolve(c, self, self, key, &function);
+                    if (status != FVM_NOT_FOUND)
+                    {
+                        if (status != FVM_OK)
+                            return status;
+                        if (function.type != FVM_VALUE_OBJECT)
+                            return FVM_UNSUPPORTED;
+                        /* [GC:] A resolver-returned Function has no defining property owner. */
+                        FVM_CallScope scope(c, 0, function.object, 0);
+                        return fvm_function_invoke(c, function.object, self, argc, argv, out);
+                    }
+                }
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     c->functions.find(key);

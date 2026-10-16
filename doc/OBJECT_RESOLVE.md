@@ -39,8 +39,8 @@ native recursion, malformed prototype cycles and recovery. object_resolve_super
 checks original this, self-deletion/detachment, unpinned API-input facade
 survival and exception cleanup.
 
-Direct C missing-method fallback and explicit super method resolver dispatch,
-variable-scope resolution, transport/OOM coverage, broader resources and all
+Direct C/super method resolver dispatch is covered by v0.451 below.
+Variable-scope resolution, transport/OOM coverage, broader resources and all
 nine stages remain open. No new original SWF corpus pass is claimed.
 
 Validation v0.450: complete Linux minimal 890/890; AGG, Linux-hosted NO_OS_PORTS
@@ -48,3 +48,27 @@ and heap/global ASan+UBSan 6/6 targeted checks each. Added metatable precedence
 cases were then rerun in all four profiles. Dependency indexes were refreshed
 for the private context layout change. Executable-mode launchers applied;
 stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.451 — resolver-returned method calls
+
+Loaded direct C missing-method calls and explicit super methods now use the
+raw resolver search. A returned Function runs with the original receiver,
+snapshotted original arguments and no defining property owner. C missing or
+nonfunction values retain UNSUPPORTED; AVM1 parent calls return undefined for
+those values. Actual resolver/callee errors, including UNSUPPORTED, propagate
+without being confused with absence. Special conversions still skip resolver;
+host dispatch and global native fallback without a resolver are retained.
+Ordinary Lua-style callable Objects are not AVM1 Functions.
+
+object_resolve_call reproduced the unsupported direct C call, and a separate
+control caught the super/nonfunction callable distinction. Host/SWF4–8 check
+ordinary/parent receivers, C/AVM1 APIs, Function/scalar/plain Object/Lua callable/
+absent/throwing/unsupported results, original counted method names, cyclic and
+NUL arguments, self-deletion/prototype detachment, caller-array mutation, GC
+and call/root/recursion cleanup. jit_object_resolve_call repeats CallMethod in
+three modes with actual native entries and checks callbacks are not replayed
+when they fail. Variable scope, transport/OOM and all stages remain open.
+
+Validation v0.451: complete Linux minimal 892/892; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 5/5 targeted checks each. Executable-mode launchers
+applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.

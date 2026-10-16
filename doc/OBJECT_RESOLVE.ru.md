@@ -37,8 +37,8 @@ object_resolve_special проверяет исключение преобраз�
 повреждённый цикл прототипов и восстановление. object_resolve_super проверяет
 исходный this, самоудаление/отсоединение, удержание входного фасада и исключения.
 
-Direct C missing-method fallback и явный super-method resolver, scope-поиск
-переменных, перенос/OOM, остальные ресурсы и все стадии остаются открытыми.
+Direct C/super method resolver описан в v0.451 ниже. Scope-поиск переменных,
+перенос/OOM, остальные ресурсы и все стадии остаются открытыми.
 Новых проходов исходного SWF-корпуса не заявлено.
 
 Проверено v0.450: полный Linux minimal 890/890; AGG, NO_OS_PORTS на Linux и
@@ -46,3 +46,26 @@ heap/global ASan+UBSan — по 6/6. Затем добавленные случ�
 повторены во всех четырёх профилях. Обновлены dependency-index для новой private
 раскладки контекста. Применены средства восстановления права запуска;
 stack ASan/LeakSanitizer отключены. Все стадии и другие ОС открыты.
+
+## v0.451 — вызов метода, возвращённого resolver
+
+Загруженные direct C missing-method и явные super-методы используют raw-поиск
+resolver. Возвращённая Function исполняется с исходным this, снимком исходных
+аргументов и без владельца свойства. C для отсутствующего/нефункционального
+значения сохраняет UNSUPPORTED; AVM1 parent-call даёт undefined. Настоящие ошибки
+resolver/метода, включая UNSUPPORTED, передаются и не маскируются как отсутствие.
+Special-преобразования по-прежнему пропускают resolver; host и global native
+fallback без resolver сохранены. Lua-style callable Object не является AVM1 Function.
+
+object_resolve_call воспроизвёл отказ direct C-вызова; отдельный контроль
+выявил различие super/nonfunction callable. Host/SWF4–8 проверяют обычный/
+родительский receiver, C/AVM1 API, Function/scalar/Object/Lua callable/отсутствие/
+исключение/UNSUPPORTED, counted-имя, циклический/NUL аргумент, самоудаление,
+отсоединение прототипа, изменение исходных аргументов, GC и очистку состояния.
+jit_object_resolve_call повторяет CallMethod в трёх режимах с настоящими
+native-входами, проверяя отсутствие повторного callback при ошибке. Scope,
+перенос/OOM и все стадии остаются открытыми.
+
+Проверено v0.451: полный Linux minimal 892/892; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 5/5. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Все стадии и другие ОС открыты.
