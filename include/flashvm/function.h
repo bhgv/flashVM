@@ -36,13 +36,15 @@ extern "C"
     typedef FVM_Result (*FVM_ScriptBody)(FVM_Context *, const FVM_ScriptFrame *, FVM_Value *,
                                          void *);
     /* Attach a context-local native body to an existing script function, preserving bytecode.
-     * NULL body requires NULL userdata/capture and restores interpretation. Graph transfer
-     * drops this process-local attachment and retains the original script body. An active
+     * NULL body requires NULL userdata/capture and restores interpretation. Default graph cloning
+     * drops this process-local attachment and retains the original script body. Live
+     * interfaces (capability.h) invoke the original function, including its attachment. An active
      * invocation keeps its entry/capture snapshot if it rebinds itself. */
     FVM_API FVM_Result fvm_function_set_body(FVM_Context *, FVM_Object *, FVM_ScriptBody,
                                              void *userdata, FVM_Object *capture);
-    /* First-class, context-owned native or AVM1 functions. Native code requires a
-     * stable callback codec before it can be transferred to another context. */
+    /* First-class, context-owned native or AVM1 functions. Default graph cloning of native code requires a
+     * stable callback codec. Live interfaces (capability.h) need no callback codec;
+     * they execute the retained original callback on its authority thread. */
     /* Create function native. */
     FVM_API FVM_Result fvm_function_create_native(FVM_Context *, FVM_NativeFunction, void *,
                                                   FVM_Object *capture, FVM_Object **);

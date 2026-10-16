@@ -1337,3 +1337,17 @@ contradictory/unknown flags, invalid status and malformed diagnostic magic/text.
 The graph case preserves receiver/argument aliases and cycles while isolating
 copies, returns a codec-free C interface and rejects calls after source reclaim.
 Stack ASan and LeakSanitizer disabled; all roadmap stages remain open.
+
+v0.399: finish new function target URI allocation before publishing/pinning the
+export. Failed C++ allocations leave no entry/root; canonical re-export pins
+once. RU: отказ выделения URI не оставляет цель/корень. Public malloc-owned URI
+copy failure and earlier exports of a failing whole graph are not rolled back.
+Eight focused checks pass in Linux AGG/Cairo/minimal Release and restricted
+heap/global ASan+UBSan with sockets enabled. The new prepared-body case proves
+original attachment execution, self-unbinding, active capture/argument roots
+through GC and subsequent original-bytecode execution. C89 public header syntax
+passes. Full rebuilt AGG execution passes 830 checks directly; two additional
+JIT checks pass individually after executable-mode repair, but both full CTest
+attempts encounter recurring permission-denied startup for these same binaries.
+This is not recorded as a clean 832/832 full CTest run. Stack ASan and
+LeakSanitizer disabled; all nine stages and foreign-platform acceptance remain open.

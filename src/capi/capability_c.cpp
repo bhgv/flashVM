@@ -821,27 +821,33 @@ FVM_Result fvm_function_capability_export(FVM_Context *c, FVM_Object *function,
         if (b->entries[i].kind == FVM_FUNCTION_CAPABILITY_KIND && b->entries[i].owner == c &&
             b->entries[i].handle == function)
             token = b->entries[i].token;
-    if (token.empty())
+    bool publish = token.empty();
+    if (publish)
     {
         char id[FVM_FUNCTION_RPC_ID_STORAGE];
         if (!hex(id))
             return FVM_ERROR;
+        token = id;
+    }
+
+    /* Finish allocating the caller's URI before publishing a new retained target. */
+    char address[FVM_FUNCTION_RPC_URI_CAPACITY];
+    std::sprintf(address, "fvm://%s:%u/%s/%s/%lu", b->host.c_str(), (unsigned)b->port,
+                 b->session.c_str(), token.c_str(), FVM_FUNCTION_CAPABILITY_KIND);
+    uri = address;
+    if (publish)
+    {
         Entry entry;
         entry.kind = FVM_FUNCTION_CAPABILITY_KIND;
         entry.owner = c;
         entry.handle = function;
-        entry.token = id;
-        token = entry.token;
+        entry.token = token;
         FVM_Result status = fvm_gc_pin(c, function);
         if (status != FVM_OK)
             return status;
         try { b->entries.push_back(entry); }
         catch (...) { fvm_gc_unpin(c, function); throw; }
     }
-    char address[FVM_FUNCTION_RPC_URI_CAPACITY];
-    std::sprintf(address, "fvm://%s:%u/%s/%s/%lu", b->host.c_str(), (unsigned)b->port,
-                 b->session.c_str(), token.c_str(), FVM_FUNCTION_CAPABILITY_KIND);
-    uri = address;
     return FVM_OK;
 }
 /* [GC:] Build a managed callable facade; no foreign code or userdata pointer is copied. */

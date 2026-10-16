@@ -51,3 +51,11 @@ successful replies claiming a pending fault are rejected before decoding.
 Protocol coverage includes these cases and an invalid result code.
 `function_remote_graph` verifies cyclic arguments, receiver/argument aliases,
 copy isolation, a returned C function interface and rejection after heap reclaim.
+
+In v0.399, new-target URI construction precedes publication and pinning. The
+export allocation sweep verifies failed C++ allocations leave no target/root;
+canonical re-export retains exactly one root. This does not promise rollback of
+an entire graph's earlier exports or a public malloc-owned URI copy failure.
+The prepared-body GC case executes the original attachment, unbinds it during
+the call, collects with the active capture and cyclic arguments live, then
+verifies the next call uses original bytecode.

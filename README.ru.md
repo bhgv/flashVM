@@ -1,4 +1,4 @@
-Версия разработки: **0.398** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.399** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -290,4 +290,4 @@ Large loaded sorting / сортировка больших массивов: [EN
 
 Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIECLIP_UNICODE_PATHS.md) / [RU](doc/MOVIECLIP_UNICODE_PATHS.ru.md).
 
-[Интерфейсы оригинальных функций](doc/REMOTE_FUNCTIONS.ru.md) — v0.398.
+[Интерфейсы оригинальных функций](doc/REMOTE_FUNCTIONS.ru.md) — v0.399.
