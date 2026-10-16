@@ -1,9 +1,9 @@
 /* FlashVM: retained superclass facades with receiver-preserving property/method dispatch. */
 #include "super.hpp"
+#include "super_call_constants.h"
 #include "../core/property_lookup.hpp"
 #include "../core/property_write.hpp"
 #include "../core/property_resolve.hpp"
-#include "../core/property_resolve_constants.h"
 #include "../core/property_key.hpp"
 #include "inheritance.hpp"
 #include "base_state.hpp"
@@ -283,7 +283,8 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
     if (!start)
         return optional ? FVM_OK : FVM_UNSUPPORTED;
     FVM_Object *owner = start;
-    for (unsigned int depth = 0; owner && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
+    unsigned int lookup_depth = 0;
+    for (; owner && lookup_depth < FVM_PROTOTYPE_MAX_DEPTH; ++lookup_depth)
     {
         if (!fvm_property_available(c, owner, name))
         {
@@ -317,14 +318,16 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
         (optional && !member.object->invocable.callback))
         return optional ? FVM_OK : FVM_UNSUPPORTED;
     unsigned int invocation_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH;
-    if (c->swf_loaded && !owner)
+    if (c->swf_loaded)
     {
-        if (captured_depth >= FVM_PROTOTYPE_MAX_DEPTH)
+        const unsigned int relative_depth = owner ? lookup_depth : 0;
+        if (captured_depth >= FVM_PROTOTYPE_MAX_DEPTH ||
+            relative_depth >= FVM_PROTOTYPE_MAX_DEPTH - captured_depth)
             return FVM_ERROR;
-        invocation_depth = captured_depth + FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH;
+        invocation_depth = captured_depth + relative_depth + FVM_SUPER_METHOD_PARENT_OFFSET;
     }
-    /* [GC:] Preserve selected ownership; resolver results instead retain the depth captured
-     * before callback prototype mutations, relative to the original superclass facade. */
+    /* [GC:] Preserve actual ownership separately from pre-getter lookup depth. Both stored
+     * and resolver-returned methods retain their original facade-relative invocation depth. */
     FVM_CallScope scope(c, 0, member.object, owner, invocation_depth);
     return fvm_function_invoke(c, member.object, receiver, count, args, out);
 }
