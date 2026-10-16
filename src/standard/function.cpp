@@ -621,9 +621,11 @@ FVM_Result fvm_function_wrap_entry(
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Object *fn = old == cache.end() ? 0 : old->second;
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+    /* [GC:] New reads must reflect the current callback's collection policy; saved
+       Function objects retain the policy copied at their own creation. */
     if (!fn || fn->invocable.callback != entry.callback ||
-        /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        fn->invocable.userdata != entry.userdata || fn->invocable.root != entry.root)
+        fn->invocable.userdata != entry.userdata || fn->invocable.root != entry.root ||
+        fn->invocable.collector_entry != entry.collector_entry)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

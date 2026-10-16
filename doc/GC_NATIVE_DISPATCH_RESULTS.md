@@ -99,3 +99,18 @@ This is not a full allocator/concurrent registration proof; all stages remain op
 Validation v0.458: complete Linux minimal 901/901; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.459 — wrapper identity includes collector-entry policy
+
+Cached native Function reuse compares collector_entry as well as callback,
+userdata and capture. New reads after an internal policy change get a wrapper
+with the current policy; saved Functions retain their original policy. Public
+native callbacks keep the normal collection barrier. native_wrapper_policy first
+failed on stale cache reuse and checks host/SWF4–8, global/method wrappers,
+ordinary-to-trusted-to-ordinary changes, saved Function invocation, actual GC
+from the trusted fixture and clean roots/depth. The internal fixture does not
+expose a public barrier opt-out or establish full concurrent collector safety.
+
+Validation v0.459: complete Linux minimal 902/902; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
