@@ -8,6 +8,7 @@
 #include "../standard/super.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_write.hpp"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
@@ -119,7 +120,9 @@ extern "C"
                     cursor = cursor->prototype;
                     continue;
                 }
-                if (cursor->indexed.find(key) != cursor->indexed.end() ||
+                /* Only own data blocks loaded virtual dispatch; inherited data is skipped. */
+                if (c->swf_loaded ? cursor == o && fvm_property_own_write_data(c, cursor, fvm_detail::string(name)) :
+                    cursor->indexed.find(key) != cursor->indexed.end() ||
                     cursor->properties.find(name) != cursor->properties.end())
                     break;
                 if (cursor->accessors.find(name) != cursor->accessors.end())

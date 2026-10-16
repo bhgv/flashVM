@@ -140,3 +140,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Проекция встроенного прототипа super: [AVM1_SUPER_PROTOTYPE.md](AVM1_SUPER_PROTOTYPE.md) описывает GC/перенос, живого предка и проходящий AS2 SWF8. Полная raw-модель прототипа остаётся открытой.
 
 Знаковые буквальные имена индексов и переполнение длины: [v0.494](ARRAY_NAMED_INDEX.md).
+
+Запись ищет дальний virtual setter за промежуточными данными прототипов: [v0.495](DEEP_VIRTUAL_WRITE.md).

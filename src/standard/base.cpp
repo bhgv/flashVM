@@ -27,6 +27,7 @@
 #include "../core/property_watch.hpp"
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_write.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/execution.h"
@@ -2418,16 +2419,13 @@ FVM_Result fvm_array_prepare_index(FVM_Context *c, FVM_Object *o, const fvm_deta
     long index = 0;
     if (!c->swf_loaded || !array(o) || !array_named_index(name, index))
         return FVM_OK;
-    unsigned long key = 0;
-    const bool canonical = fvm_as_index(name.c_str(), &key);
     FVM_Object *cursor = o;
     unsigned int depth = 0;
     for (; cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH; cursor = cursor->prototype)
     {
         if (cursor != o && !fvm_property_available(c, cursor, name))
             continue;
-        if ((canonical && cursor->indexed.find(key) != cursor->indexed.end()) ||
-            cursor->properties.find(name) != cursor->properties.end())
+        if (cursor == o && fvm_property_own_write_data(c, cursor, name))
             break;
         if (cursor->accessors.find(name) != cursor->accessors.end())
         {

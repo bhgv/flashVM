@@ -21,6 +21,7 @@
 #include "../core/string_internal.hpp"
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_write.hpp"
 #include <new>
 #include "../core/call_scope.hpp"
 #include "../core/setter_scope.hpp"
@@ -495,8 +496,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         return r;
 
     /* Initialization / Инициализация локального состояния. */
-    /* Own data shadows inherited accessors. An own accessor always wins
-     * over prototype data, and setters bind the original receiver. */
+    /* Loaded ordinary writes search through inherited data for virtuals.
+     * Own data prevents that search; setters retain the original receiver.
+     * Host and selected-super writes keep their existing lookup policy. */
     FVM_Object *cursor = start;
     unsigned int accessor_depth = 0;
     while (cursor && accessor_depth++ < FVM_PROTOTYPE_MAX_DEPTH)
@@ -509,8 +511,8 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             continue;
         }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end())
-            /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        if (c->swf_loaded && start == o ? cursor == o && fvm_property_own_write_data(c, cursor, name) :
+            fvm_property_find(c, cursor->properties, name) != cursor->properties.end())
             break;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator found =

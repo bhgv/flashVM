@@ -148,3 +148,5 @@ Loaded script constructor prototypes: [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_F
 Builtin super prototype projection: [AVM1_SUPER_PROTOTYPE.md](AVM1_SUPER_PROTOTYPE.md) records GC/transfer/live parent checks and the passing original AS2 SWF8 trace. Raw prototype semantics remain open.
 
 Signed literal property names and overflow growth: [v0.494](ARRAY_NAMED_INDEX.md).
+
+Loaded writes search past intermediate prototype data for virtual setters: [v0.495](DEEP_VIRTUAL_WRITE.md).
