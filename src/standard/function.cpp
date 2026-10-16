@@ -119,7 +119,9 @@ FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bund
 FVM_Result invoke_adapter(FVM_Context *c, FVM_Object *fn, FVM_Object *receiver,
                            unsigned int n, const FVM_Value *args, FVM_Value *out)
 {
-    if (c->swf_loaded && fn && !fn->invocable.callback)
+    /* A superclass facade is callable only through direct super dispatch. */
+    if (c->swf_loaded && fn &&
+        (!fn->invocable.callback || fn->resource_kind == FVM_RESOURCE_SUPER))
     {
         fvm_value_undefined(out);
         return FVM_OK;

@@ -3236,3 +3236,25 @@ full Function compatibility and all nine roadmap stages remain open.
 Validation v0.421: Linux minimal 839/839; AGG 9/9; heap/global ASan+UBSan
 9/9, including remote-function regression. Generated executable-mode launchers
 were used; stack ASan/LeakSanitizer remain disabled. No other OS certification.
+
+## v0.422 — super facades require direct dispatch
+
+Loaded Function.call/apply treat a retained super facade as a non-function even
+though FlashVM exposes a native callback for direct superclass invocation.
+Argument preparation still precedes undefined: script index getters run, may
+collect, and propagate errors/counted exceptions. Host borrowed invocation and
+public direct invocation of the facade keep their previous parent dispatch.
+This follows the pinned Ruffle function.rs explicit as_function/direct-super
+separation; it does not certify every super or Function behavior.
+
+`function_super_adapters` first failed against v0.421, then checks loaded SWF5–8
+and host mode, both adapters, parent side effects, real getter GC, errors,
+embedded-NUL exceptions, retry, direct invocation and root/work cleanup.
+Negative signed apply lengths remain explicitly UNSUPPORTED: the reference casts
+them to an allocation size, so treating them as zero is not supported by that
+source. All roadmap stages remain open.
+
+Validation v0.422: Linux minimal 840/840; AGG 13/13; heap/global ASan+UBSan
+13/13, including direct super/owner/prototype and remote-function regressions.
+Generated executable-mode launchers were used. Stack ASan/LeakSanitizer remain
+disabled; no additional operating system or complete-stage acceptance is claimed.
