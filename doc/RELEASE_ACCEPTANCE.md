@@ -2853,3 +2853,20 @@ EN: Both reload regressions fail against v0.481 numeric.cpp. Coverage includes
 25 SWF-version transitions, ten builtin fields, C/interpreter/explicit/auto JIT,
 GC, replacement-load OOM rollback and retry. No ABI or callback changes.
 Full movie lifecycle and all nine roadmap stages remain open.
+
+### v0.483 — canonical loaded Math constants
+
+RU: Linux minimal: полный прогон 955 тестов, 942 прошли сразу; остальные
+13 не запускались из-за потерянного права исполнения и все прошли после
+восстановления права. Связанные восемь тестов прошли в AGG (7 сразу, 1 после
+такого же исправления права) и heap/global ASan+UBSan (8/8).
+Stack ASan и LeakSanitizer по-прежнему отключены в этой среде.
+
+EN: New byte-oracle and allocation tests both fail against v0.482 numeric.cpp.
+The custom-state test preserves flags, edited numbers, primitive metadata and
+deleted slots, including reload/GC. Coverage includes both standard-install
+orders, SWF4–8, C/interpreter/explicit/automatic JIT and serialized graph transfer.
+The private constant header passes a strict C89 compile/run probe. No public ABI,
+callback identity or wire format changes. Fixed constants do not establish exact
+transcendental behavior; all nine roadmap stages and non-Linux execution remain
+open. See MATH_ATTRIBUTES.md for pinned primary references and numeric scope.

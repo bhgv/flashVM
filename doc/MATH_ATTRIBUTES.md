@@ -37,3 +37,25 @@ first-load OOM retries, custom host state, reload and graph transport/GC.
 Reference: pinned Ruffle globals/math.rs OBJECT_DECLS,
 commit 2372a4e148a67d68efd796f4477b3cddd4f880cd.
 All roadmap stages remain open.
+
+## v0.483 — точность констант / exact constants
+
+RU: Загруженный Math получает фиксированные binary64 значения восьми констант.
+В частности, LOG10E равен 0.4342944819032518 вместо округления 1/log(10),
+которое на проверенной Linux libm отличается на один младший бит. Host-only
+значения сохранены. Первая загрузка обновляет только канонические host-поля
+без пользовательских флагов/метатаблиц, подготавливая копии значений и атрибутов
+до атомарной фиксации. Ошибка выделения памяти сохраняет числа и флаги.
+
+EN: Loaded Math constants no longer depend on libm evaluation. All eight values
+match an independent binary64 byte oracle. First-load activation replaces only
+untouched host constants; custom values, flags, primitive metadata, deleted
+slots and already loaded state survive. Existing host-only evaluation remains.
+This does not establish correctly rounded Math functions or full Flash numeric
+compatibility. Tests cover C, interpreter, explicit/automatic JIT, serialized
+graph transfer/GC, first-load allocation failures, custom state and reload.
+
+Sources: [Ruffle Math declarations](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/math.rs)
+use Rust f64 constants; [Rust 1.90.0 constants](https://github.com/rust-lang/rust/blob/1.90.0/library/core/src/num/f64.rs)
+supply the fixed values. Decimal literals are rounded by the C++ compiler;
+byte-oracle tests verify the emitted values on the tested platform.

@@ -34,3 +34,9 @@ and all other acceptance work remain open.
 
 В v0.481 исправлены атрибуты Math и первая загрузка из host-контекста;
 порядок преобразования аргументов и числовые вычисления не менялись.
+
+v0.483 fixes the loaded constants independently of libm, including LOG10E;
+host-only values and Math argument conversion remain unchanged. See
+[MATH_ATTRIBUTES.md](MATH_ATTRIBUTES.md) for numeric scope and evidence.
+В v0.483 фиксированы константы загруженного Math; точность остальных функций
+и полная совместимость численных операций всё ещё не подтверждены.

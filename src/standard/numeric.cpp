@@ -494,8 +494,26 @@ void math_constant_values(double *out)
         out[i] = values[i];
 }
 
+/* Select fixed loaded constants while keeping the historical host-only values. */
+void math_loaded_constant_values(double *out)
+{
+    const double values[FVM_MATH_CONSTANT_COUNT] = {
+        FVM_MATH_CONSTANT_E, FVM_MATH_CONSTANT_LN10, FVM_MATH_CONSTANT_LN2,
+        FVM_MATH_CONSTANT_LOG10E, FVM_MATH_CONSTANT_LOG2E, FVM_MATH_CONSTANT_PI,
+        FVM_MATH_CONSTANT_SQRT1_2, FVM_MATH_CONSTANT_SQRT2};
+    for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
+        out[i] = values[i];
+}
+
+/* Transactional namespace state prepared before any loaded layout is committed. */
+struct MathActivation
+{
+    FVM_MethodAttributeActivation attributes; /* Namespace and prepared flags. */
+    fvm_detail::map<fvm_detail::string, FVM_Value> properties; /* Copied data slots. */
+};
+
 /* Prepare first-load defaults only; replaced globals/slots and custom metadata stay intact. */
-void math_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
+void math_prepare_loaded(FVM_Context *c, MathActivation &state)
 {
     if (c->swf_loaded || c->global->accessors.find("Math") != c->global->accessors.end())
         return;
@@ -504,12 +522,16 @@ void math_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
         global->second.object->resource_kind != FVM_RESOURCE_MATH_NAMESPACE)
         return;
     FVM_Object *math = global->second.object;
+    FVM_MethodAttributeActivation &out = state.attributes;
     out.attributes = math->attributes;
+    state.properties = math->properties;
     for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
         fvm_stage_default_method_flags(math, math_methods[i].name, math_methods[i].callback,
                                       FVM_MATH_LOADED_PROPERTY_FLAGS, out.attributes);
     double values[FVM_MATH_CONSTANT_COUNT];
     math_constant_values(values);
+    double loaded_values[FVM_MATH_CONSTANT_COUNT];
+    math_loaded_constant_values(loaded_values);
     for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
     {
         const char *name = math_constant_names[i];
@@ -520,7 +542,10 @@ void math_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
             (flags == out.attributes.end() || !flags->second) &&
             math->accessors.find(name) == math->accessors.end() &&
             math->methods.find(name) == math->methods.end())
+        {
             out.attributes[name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
+            fvm_value_number(&state.properties[name], loaded_values[i]);
+        }
     }
     /* [GC:] The live global retains this namespace until allocation-free commit. */
     out.prototype = math;
@@ -684,7 +709,7 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         return FVM_OK;
     try
     {
-        FVM_MethodAttributeActivation math_attributes;
+        MathActivation math_attributes;
         math_prepare_loaded(c, math_attributes);
         FVM_MethodAttributeActivation function_attributes, error_attributes;
         fvm_function_prepare_loaded(c, function_attributes);
@@ -732,7 +757,11 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
-        fvm_commit_method_attributes(math_attributes);
+        /* [GC:] Only numeric slots change; the live namespace retains every other edge.
+         * Both swaps allocate nothing after the final fallible activation. */
+        if (math_attributes.attributes.prototype)
+            math_attributes.attributes.prototype->properties.swap(math_attributes.properties);
+        fvm_commit_method_attributes(math_attributes.attributes);
         fvm_commit_method_attributes(function_attributes);
         fvm_commit_method_attributes(error_attributes);
         fvm_base_commit_loaded(base);
@@ -1035,7 +1064,10 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                 math->attributes[math_methods[i].name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
         }
         double values[FVM_MATH_CONSTANT_COUNT];
-        math_constant_values(values);
+        if (c->swf_loaded)
+            math_loaded_constant_values(values);
+        else
+            math_constant_values(values);
         for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
         {
             FVM_Value value;

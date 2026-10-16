@@ -2013,3 +2013,12 @@ C/interpreter/explicit/auto JIT, GC и отказ выделения памят�
 See [BUILTIN_RELOAD.md](BUILTIN_RELOAD.md). This closes the repeated attribute
 activation regression only; all nine stages and full movie lifecycle semantics
 remain open.
+
+### v0.483 — фиксированные Math constants / fixed Math constants
+
+Loaded Math uses canonical binary64 constants, correcting LOG10E's libm-derived
+one-bit rounding discrepancy. Host values and custom state remain preserved;
+first-load updates are transactional under OOM. Проверены побайтовые значения,
+C/AVM1/JIT, перенос графа, GC и повтор после отказа памяти.
+See [MATH_ATTRIBUTES.md](MATH_ATTRIBUTES.md). Exact Math functions, cross-platform
+runtime acceptance and all nine roadmap stages remain open.
