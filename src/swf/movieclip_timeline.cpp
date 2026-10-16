@@ -10,6 +10,7 @@
 #include "../standard/bitmap_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../standard/base_state.hpp"
+#include "../standard/movieclip_provenance_constants.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/avm1.h"
 #include "flashvm/table.h"
@@ -618,6 +619,7 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
 
 /* [GC:] Build immutable sprite definitions and a live linkage/class library for instances. */
 FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char> &bytes,
+                         unsigned int version,
                          const fvm_detail::vector<Timeline> &sprites,
                          const fvm_detail::vector<Export> &exports,
                          const fvm_detail::vector<FVM_SWFShape> &shapes,
@@ -753,6 +755,10 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
     /* [GC:] The library retains the live class registry, builtin prototype and all definitions. */
     if (classes)
         library->properties["classes"] = managed(classes);
+    FVM_Value movie_version;
+    fvm_value_number(&movie_version, version);
+    /* Retain source provenance through reloads and graph transport of any descendant. */
+    library->properties[FVM_MOVIECLIP_LIBRARY_VERSION_NAME] = movie_version;
     library->properties["prototype"] = managed(clip->prototype);
     library->properties["sprites"] = managed(definitions);
     library->properties["exports"] = managed(names);
@@ -802,7 +808,7 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         r = fvm_movieclip_create(c, name, info.frame_count, &clip);
         if (r != FVM_OK)
             return r;
-        r = build_library(c, bytes, sprites, exports, shapes, bitmaps, clip);
+        r = build_library(c, bytes, info.version, sprites, exports, shapes, bitmaps, clip);
         if (r != FVM_OK)
             return r;
         /* [GC:] The root frame controls refer to the same dictionary identities as sprites. */

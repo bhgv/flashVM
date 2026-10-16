@@ -12,6 +12,7 @@
 #include "../swf/format_constants.h"
 #include "base_state.hpp"
 #include "class_registry_constants.h"
+#include "movieclip_state.hpp"
 #include "../core/prototype_data.hpp"
 #include "attribute_stage.hpp"
 #include "function_state.hpp"
@@ -1645,9 +1646,9 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
 
 /* Select the traced legacy environment without allocating or executing callbacks.
  * Old transported flat registries retain their previous shared-map policy. */
-FVM_Object *registry_environment(FVM_Context *c, FVM_Object *registry)
+FVM_Object *registry_environment(FVM_Context *c, FVM_Object *registry, bool legacy)
 {
-    if (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7)
+    if (!legacy)
         return registry;
     fvm_detail::map<unsigned long, FVM_Value>::iterator slot =
         registry->indexed.find(FVM_CLASS_REGISTRY_LEGACY_SLOT);
@@ -1660,10 +1661,10 @@ FVM_Object *registry_environment(FVM_Context *c, FVM_Object *registry)
 
 /* Select stored linkage spelling without script lookup or case-fold allocations. */
 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered_entry(
-    FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &entries,
+    bool legacy, fvm_detail::map<fvm_detail::string, FVM_Value> &entries,
     const fvm_detail::string &key)
 {
-    if (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7)
+    if (!legacy)
         return entries.find(key);
     for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry = entries.begin();
          entry != entries.end(); ++entry)
@@ -1701,16 +1702,21 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     r = fvm_property_key(name.string, size, key);
     if (r != FVM_OK)
         return r;
-    registry = registry_environment(c, registry);
+    unsigned int version = 0;
+    r = fvm_movieclip_movie_version(c, c->avm1_target_active ? c->avm1_base_clip : 0, &version);
+    if (r != FVM_OK)
+        return r;
+    bool legacy = version && version < FVM_SWF_VERSION_7;
+    registry = registry_environment(c, registry, legacy);
     if (!registry)
         return FVM_INVALID_ARGUMENT;
     bool remove = a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED;
-    if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7)
+    if (legacy)
     {
         if (remove)
         {
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-                registered_entry(c, registry->properties, key);
+                registered_entry(legacy, registry->properties, key);
             if (entry != registry->properties.end())
                 registry->properties.erase(entry->first);
         }
@@ -1720,7 +1726,7 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
              * Stage erase/insert together: OOM must preserve the old spelling and constructor. */
             fvm_detail::map<fvm_detail::string, FVM_Value> staged = registry->properties;
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-                registered_entry(c, staged, key);
+                registered_entry(legacy, staged, key);
             if (entry != staged.end())
                 staged.erase(entry->first);
             staged[key] = a[1];
@@ -2703,11 +2709,12 @@ FVM_Result fvm_base_registered_class(FVM_Context *c, FVM_Object *registry,
 {
     if (!c || !registry || registry->owner != c || !out)
         return FVM_INVALID_ARGUMENT;
-    registry = registry_environment(c, registry);
+    bool legacy = c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7;
+    registry = registry_environment(c, registry, legacy);
     if (!registry)
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
-        registered_entry(c, registry->properties, key);
+        registered_entry(legacy, registry->properties, key);
     if (entry == registry->properties.end())
         return FVM_NOT_FOUND;
     if (entry->second.type != FVM_VALUE_OBJECT || !entry->second.object->invocable.callback)

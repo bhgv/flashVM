@@ -557,3 +557,8 @@ one extracted UTF-16 unit. RU: общий бюджет извлечения си
 v0.390: independent traced legacy/exact registerClass maps survive reload, GC,
 channel transport and replacement OOM. Старые плоские записи сохраняют прежнюю
 политику; полное разделение globals/base-clip provenance открыто. Все стадии открыты.
+
+
+v0.391: retained source-movie metadata selects registerClass environment from
+the activation base clip, independently of SetTarget/ambient version.
+RU: версия базового клипа для регистрации; старые графы используют fallback. Стадии открыты.

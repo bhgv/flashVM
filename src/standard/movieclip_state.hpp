@@ -14,6 +14,8 @@ FVM_Result fvm_movieclip_stage(FVM_Context *, fvm_detail::map<fvm_detail::string
 
 /* Validate movieclip. */
 FVM_Result fvm_movieclip_validate(FVM_Context *);
+/* Read retained source SWF version, or the ambient policy for native/old graphs. */
+FVM_Result fvm_movieclip_movie_version(FVM_Context *, FVM_Object *, unsigned int *);
 /* Read physical parent or the retained loaded-AVM1 parent after native detachment. */
 FVM_Result fvm_movieclip_avm1_parent(FVM_Context *, FVM_Object *, FVM_Object **out);
 /* Invoke intrinsic sibling construction with already-rooted values and a native barrier. */

@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.390
+# Условия окончательной приёмки / Final acceptance gates — v0.391
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1251,3 +1251,13 @@ AGG/Cairo/minimal and in restricted heap/global ASan+UBSan (stack ASan and
 LeakSanitizer disabled). Existing transfer-name checks now explicitly activate
 the sender's version environment after verifying legacy entries are hidden in
 the unloaded destination. The new constants header passes strict C89 syntax.
+
+
+v0.391: retained source-movie metadata selects registerClass environment from
+the activation base clip, independently of SetTarget/ambient version.
+RU: версия базового клипа для регистрации; старые графы используют fallback. Стадии открыты.
+Validation v0.391: fourteen rebuilt registry, base and scene checks pass in
+Linux Release AGG/Cairo/minimal and restricted heap/global ASan+UBSan, including
+source-version callbacks/transport, replacement OOM, sprite-load OOM and native
+timeline allocation. Stack ASan and LeakSanitizer disabled. The new source
+metadata constants header passes strict C89 syntax. All stages remain open.

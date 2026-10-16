@@ -65,3 +65,19 @@ independence and OOM/retry without changing the other environment. Full separate
 global builtins and mixed-movie/base-clip provenance selection remain open.
 The pinned runtime GlobalEnv and Object.registerClass sources above are the
 implementation comparison; no original Flash Player oracle is claimed.
+
+## v0.391 registration provenance
+
+New MovieClip libraries retain their source SWF version as raw private metadata,
+which travels with descendants. registerClass now selects its environment and
+linkage comparison from the active base clip after name coercion, independently
+of SetTarget and ambient execution version. C89 queries keep their ambient
+selection. Clips/old libraries without source metadata retain ambient fallback;
+malformed present metadata rejects before registry mutation. Full environment
+and other API version provenance are still open.
+
+object_register_class_provenance executes real AVM1 CallMethod after SetTarget
+to a movie of the opposite version group, checks SWF4–8 under ambient SWF6/8,
+raw metadata validation, GC and channel transport. The allocation companion
+sweeps replacement failures while base/ambient versions differ. Source comparison:
+Object.registerClass above uses activation.base_clip().movie().version().
