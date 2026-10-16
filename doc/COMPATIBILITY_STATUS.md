@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7: C method call case/owner roots | Проверено для v0.447 | Host/SWF4–8 counted names, own/inherited Function/getter/native/shadowing, collecting deletion/detachment and errors. PROPERTY_CASE.md / .ru.md; call inputs/resolver and stages open. |
 | 1/2/7/8: sortOn raw field casing | Проверено для v0.446 | SWF4–6 data/virtual/length/method selection, SWF7–8 exact, inherited exclusion, NUL/Unicode, unique/indexed returns, cache identity/GC and real native CallMethod. PROPERTY_CASE.md / .ru.md; full sorting/collisions/budgets and stages open. |
 | 1/2/6/7/8: super prototype case aliases | Проверено для v0.445 | SWF5–6 intrinsic ancestor projection and folded user overrides; SWF7–8 exact/NUL, queue/GC topology, receiver/counts and actual native GetMember. PROPERTY_CASE.md / .ru.md; full raw proto/reflection and stages open. |
 | 2/7/8: inline invocation roots/OOM | Проверено для v0.444 | Six live identities, all-new-denied entry/nested unwind, reclamation and fresh-context SWF5–8 conversion allocation sweeps with alias/error/GC/retry. PROPERTY_CASE.md / .ru.md; C/OS allocators, concurrent GC and stages open. |

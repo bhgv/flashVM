@@ -1095,16 +1095,19 @@ extern "C"
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             unsigned int levels = 0;
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-            while (cursor && levels++ < 1024)
+            while (cursor && levels++ < FVM_PROTOTYPE_MAX_DEPTH)
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (cursor->properties.find(key) != cursor->properties.end() ||
+                if (fvm_property_find(c, cursor->properties, key) != cursor->properties.end() ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    cursor->accessors.find(key) != cursor->accessors.end())
+                    fvm_property_find(c, cursor->accessors, key) != cursor->accessors.end())
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 {
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+                    /* [GC:] A getter may detach the defining prototype before the method collects. */
+                    FVM_ObjectRootScope receiver_roots(c, self);
+                    FVM_ObjectRootScope owner_roots(c, cursor);
                     FVM_Value member;
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     FVM_Result r = fvm_object_get_bytes(c, self, key.data(), key.size(), &member);
@@ -1121,7 +1124,7 @@ extern "C"
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-                if (cursor->methods.find(key) != cursor->methods.end())
+                if (fvm_property_find(c, cursor->methods, key) != cursor->methods.end())
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     break;
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

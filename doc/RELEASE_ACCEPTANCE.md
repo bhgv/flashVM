@@ -2193,3 +2193,25 @@ AGG/Linux-hosted NO_OS_PORTS/heap-global ASan+UBSan targeted checks 4/4 each.
 The full AGG profile includes fonts/image codecs/SQLite and render jobs;
 it is not a separate Cairo profile or foreign-OS run. Executable-mode
 launchers applied; stack ASan/LeakSanitizer disabled. All stages remain open.
+
+## v0.447 — C method call case and getter owner roots
+
+The counted C method-call bridge now uses the shared SWF4–6 name selector for
+data/accessor dispatch and native-method boundaries. Own Function data shadows
+an inherited native method regardless of legacy-equivalent spelling. Host and
+SWF7–8 remain exact. The selected receiver/owner stay rooted while a getter
+detaches the property/prototype and the returned method collects. The loop uses
+the named prototype-depth bound. C unsupported-name behavior is retained.
+
+object_call_case reproduced the previous failed folded call, then checks
+host/SWF4–8, exact/folded counted NUL names, own/inherited data Functions,
+virtual getters, native methods and native shadowing, exceptions and callback
+counts. Collecting script methods verify original receiver/owner; a getter
+can delete itself and detach the chain before that collection. The shared
+case rule follows pinned AVM1 object.rs call_method/search_prototype and
+script_object.rs property lookup; C failure policy is an embedding contract.
+Broader call inputs, resolver behavior and all stages remain open.
+
+Validation v0.447: complete Linux minimal 884/884; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
+applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
