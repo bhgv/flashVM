@@ -39,6 +39,7 @@ stage or foreign-platform runtime acceptance is closed by this change.
 Validation: Linux Release minimal 990/990 and AGG 1009/1009 after restoring
 execute permissions on affected generated binaries; four targeted restricted
 ASan/UBSan tests pass. Final counted-key graph roundtrips pass in all three
-profiles. Unicorn checks pass for all six JIT targets, including branch/error,
-far-branch and applicable high-address/Thumb variants. These emulator checks
+profiles. Unicorn checks pass for x86, ARM, ARM64, RISC-V and RISC-V64, including
+branch/error, far-branch and applicable high-address/Thumb variants. The x64
+backend is exercised by native Linux JIT tests, not this Unicorn checker. These emulator checks
 do not establish Windows/macOS/Android runtime acceptance.

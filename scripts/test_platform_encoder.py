@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from validate_platform import encoder_command, validate_encoder
+from validate_platform import encoder_command, validate_encoder, compiler_identities
 
 
 def discovery(command=None):
@@ -86,6 +86,61 @@ class EncoderEvidenceTests(unittest.TestCase):
                 record, _, passed = self.exercise(directory, **options)
                 self.assertFalse(passed)
                 self.assertEqual(record['jit_encoder']['status'], 'failed')
+
+
+class CompilerIdentityTests(unittest.TestCase):
+    def fixture(self, root, language='C', version='13.3.0', size='8', vendor='GNU'):
+        directory = Path(root) / 'CMakeFiles' / '4.4.4'
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / ('CMake' + language + 'Compiler.cmake')
+        path.write_text('\n'.join('set(CMAKE_%s_%s "%s")' % (language, suffix, value)
+                                  for suffix, value in [('COMPILER_ID', vendor),
+                                      ('COMPILER_VERSION', version), ('SIZEOF_DATA_PTR', size),
+                                      ('COMPILER_ARCHITECTURE_ID', 'x86_64')]) + '\n', encoding='utf-8')
+        return path
+
+    def cache(self):
+        return {'CMAKE_CACHE_MAJOR_VERSION': '4', 'CMAKE_CACHE_MINOR_VERSION': '4',
+                'CMAKE_CACHE_PATCH_VERSION': '4'}
+
+    def test_active_version_and_independent_languages(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.fixture(root)
+            self.fixture(root, 'CXX', '19.44.35221.0', vendor='MSVC')
+            stale = Path(root) / 'CMakeFiles' / '0.0.0'
+            stale.mkdir(); (stale / 'CMakeCCompiler.cmake').write_text('invalid stale metadata')
+            result = compiler_identities(Path(root), self.cache())
+            self.assertEqual(result['C']['id'], 'GNU')
+            self.assertEqual(result['CXX']['version'], '19.44.35221.0')
+            self.assertEqual(result['C']['pointer_size'], 8)
+            self.assertEqual(result['C']['target'], '')
+            self.assertIn('4.4.4', result['C']['metadata'])
+
+    def test_missing_language_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.fixture(root)
+            with self.assertRaises(OSError):
+                compiler_identities(Path(root), self.cache())
+
+    def test_incomplete_or_computed_identity_is_rejected(self):
+        for version, size, vendor in [('', '8', 'GNU'), ('${VERSION}', '8', 'GNU'),
+                                       ('13.3.0', '0', 'GNU'), ('13.3.0', '8', '')]:
+            with self.subTest(version=version, size=size, vendor=vendor), tempfile.TemporaryDirectory() as root:
+                self.fixture(root, version=version, size=size, vendor=vendor)
+                self.fixture(root, 'CXX')
+                with self.assertRaises(ValueError):
+                    compiler_identities(Path(root), self.cache())
+
+    def test_mixed_pointer_abi_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.fixture(root); self.fixture(root, 'CXX', size='4')
+            with self.assertRaisesRegex(ValueError, 'pointer sizes differ'):
+                compiler_identities(Path(root), self.cache())
+
+    def test_cache_version_cannot_select_an_arbitrary_path(self):
+        for cache in [{}, dict(self.cache(), CMAKE_CACHE_PATCH_VERSION='../other')]:
+            with self.subTest(cache=cache), self.assertRaises(ValueError):
+                compiler_identities(Path('/unused'), cache)
 
 
 if __name__ == '__main__':

@@ -27,6 +27,39 @@ def cache_values(path):
     return values
 
 
+def compiler_identities(build, cache):
+    """Record active CMake compiler detection without executing generated CMake code."""
+    parts = [cache.get('CMAKE_CACHE_' + part + '_VERSION', '')
+             for part in ('MAJOR', 'MINOR', 'PATCH')]
+    if any(not re.fullmatch(r'[0-9]+', part) for part in parts):
+        raise ValueError('active CMake cache version is missing or malformed')
+    directory = build / 'CMakeFiles' / '.'.join(parts)
+    identities = {}
+    fields = {'id': 'COMPILER_ID', 'version': 'COMPILER_VERSION',
+              'platform': 'PLATFORM_ID', 'architecture': 'COMPILER_ARCHITECTURE_ID',
+              'frontend': 'COMPILER_FRONTEND_VARIANT', 'target': 'COMPILER_TARGET',
+              'simulate_id': 'SIMULATE_ID', 'simulate_version': 'SIMULATE_VERSION',
+              'pointer_size': 'SIZEOF_DATA_PTR'}
+    for language in ('C', 'CXX'):
+        path = directory / ('CMake' + language + 'Compiler.cmake')
+        values = {}
+        for line in path.read_text(encoding='utf-8').splitlines():
+            match = re.fullmatch(r'set\((CMAKE_[A-Z0-9_]+) "([^"\r\n]*)"\)', line)
+            if match:
+                values[match[1]] = match[2]
+        identity = {name: values.get('CMAKE_' + language + '_' + suffix, '')
+                    for name, suffix in fields.items()}
+        if (not identity['id'] or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*', identity['version'])
+                or not re.fullmatch(r'[1-9][0-9]*', identity['pointer_size'])):
+            raise ValueError(language + ' compiler identity/version/ABI evidence is incomplete')
+        identity['pointer_size'] = int(identity['pointer_size'])
+        identity['metadata'] = str(path)
+        identities[language] = identity
+    if identities['C']['pointer_size'] != identities['CXX']['pointer_size']:
+        raise ValueError('C and C++ compiler pointer sizes differ')
+    return identities
+
+
 def tool_version(executable):
     """Reject old tools before relying on modern CTest failure/selection options."""
     output = subprocess.check_output([executable, '--version'], text=True, stderr=subprocess.STDOUT)
@@ -146,6 +179,7 @@ def main():
                 raise RuntimeError('native validation requires a native CMake target')
             record['compiler'] = {key: cache.get(key) for key in
                                   ['CMAKE_C_COMPILER', 'CMAKE_CXX_COMPILER', 'CMAKE_GENERATOR']}
+            record['toolchains'] = compiler_identities(build, cache)
             execute('build', [args.cmake, '--build', str(build), '--config', 'Release',
                               '--parallel', str(args.jobs)])
             # Isolate CTest from inherited filters that could silently reduce evidence.

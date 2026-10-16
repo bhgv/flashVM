@@ -137,3 +137,39 @@ The actual all-profile command with --jit-emulator passes 733 AGG, 733 Cairo and
 minimal run failed correctly on two ELF launch permissions; restoring generated
 execute bits allowed the rerun to pass. Five orchestration tests and an explicit
 optimized-checker rejection also pass. No foreign OS/runtime gate is closed.
+
+## Compiler provenance — v0.496
+
+Each profile now records `toolchains.C` and `toolchains.CXX` from CMake's active
+`CMakeFiles/<cache-version>/CMake{C,CXX}Compiler.cmake` detection results: compiler
+ID/version, pointer size in bytes, platform, architecture, frontend, target and
+simulation identity when supplied. The exact metadata path is retained. Compiler
+paths and generator remain in the existing `compiler` record. Missing optional
+fields remain empty; they are not inferred from the Python host architecture.
+
+The runner reads literal scalar detection values without evaluating generated
+CMake code. Missing language metadata, incomplete vendor/version/ABI evidence,
+malformed active-cache version and mismatched C/C++ pointer sizes fail validation
+before building. Old metadata directories are ignored in favor of the active
+cache version. This records configured toolchain identity, not a new foreign
+runtime run or proof that all code paths use the selected instruction set.
+Ten host orchestration tests cover encoder evidence and compiler provenance,
+including independent compiler vendors and rejection of incomplete or mixed ABI
+metadata. Synthetic metadata tests do not establish actual MSVC execution.
+
+### v0.496 Linux Cairo execution evidence
+
+A clean bundled Cairo/fonts/codecs/SQLite/OS-ports build completed on Linux x86-64
+with GNU C/C++ 13.3.0 and CMake/CTest 4.4.4. The final full runner passes 1013/1013
+checks, including the reference runner, and 26 Unicorn 2.1.4 synthetic ISA/ABI
+cases for x86/ARM/ARM64/RV32/RV64. x64 executes natively in the JIT tests.
+Sixteen initial generated binaries lacked execute permission; after restoring
+those bits, the entire runner passed rather than merely its failed subset.
+The passing development record identifies v0.496 with dirty=true on parent
+12aa646, including actual compiler IDs, versions and 8-byte C/C++ pointer sizes.
+
+The sampled linked Array test has only system C/C++ runtime NEEDED libraries;
+Cairo/fonts/codecs/SQLite remain statically linked. Release test flags include
+-std=c++98, -pedantic-errors and -UNDEBUG. Ten host orchestration tests pass.
+This is Linux evidence; Windows/macOS/Android and overall release acceptance
+remain open. No source/history archives were created.
