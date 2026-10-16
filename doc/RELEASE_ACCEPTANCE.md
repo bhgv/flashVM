@@ -1698,3 +1698,26 @@ Validation v0.424: all 842 Linux minimal cases passed (840 initial successes;
 two process tests initially hit workspace child-executable PermissionError, then
 passed 2/2 after restoring mode). AGG 6/6; heap/global ASan+UBSan 6/6. Generated
 mode launchers used; stack ASan/LeakSanitizer disabled. Other OS/stages open.
+
+## v0.425 — inherited setter selection and native execution
+
+The ordinary setter chain now finds data/accessors with the same versioned name
+selector as reads. Own data still shadows inherited setters; host/SWF7–8 exact
+matching remains. Setter activation snapshots the accessor's stored name, not the
+requested variant. Script setter re-resolution and root ownership therefore refer
+to the actual descriptor even when callbacks delete it and detach the prototype.
+
+`object_property_case_setter` first failed on v0.424. It checks counted names with
+NUL across SWF4–8/host, receiver/owner/name identity, real GC, owner detachment and
+descriptor deletion, plain errors, counted exceptions and invocation/root cleanup.
+`jit_property_case_setter` executes the same cases via SetMember in interpreted,
+attached and automatic JIT modes and asserts native entries. The allocator sweep
+`object_property_case_allocation` covers flags/delete/own data updates, failures
+through success, unchanged values/flags on OOM and restored root/setter metadata.
+Watchers, definition APIs, duplicate-order semantics, complete scope/name rules
+and folded traversal work accounting remain open. All nine stages remain open.
+
+Validation v0.425: Linux minimal 845/845; AGG, NO_OS_PORTS and heap/global
+ASan+UBSan 7/7 each. Native entry assertions run on available Linux x64; the
+NO_OS_PORTS configuration is a Linux-hosted build, not another OS run. Generated
+mode launchers used; stack ASan/LeakSanitizer disabled. All stages remain open.

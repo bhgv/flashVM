@@ -416,7 +416,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         {
             if (c->swf_loaded && flag_cursor != o)
                 continue;
-            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = fvm_property_find(c, o->accessors, name);
             bool native_length = c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" &&
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
@@ -436,7 +436,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             return flag_result;
         if (own_flags & FVM_PROPERTY_READ_ONLY)
         {
-            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = o->accessors.find(name);
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator script = fvm_property_find(c, o->accessors, name);
             bool native_length = c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && name == "length" &&
                 script != o->accessors.end() && fvm_base_array_length_accessor(script->second);
             if (!native_length && (!c->swf_loaded || script == o->accessors.end() ||
@@ -463,13 +463,13 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (cursor->properties.find(name) != cursor->properties.end())
+        if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end())
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             break;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator found =
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            cursor->accessors.find(name);
+            fvm_property_find(c, cursor->accessors, name);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (found != cursor->accessors.end() &&
             !fvm_movieclip_hidden_path_accessor(c, found->second))
@@ -494,7 +494,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в
                  * сборщик. */
                 /* [GC:] Retain lookup/capture ownership even if script detaches the descriptor. */
-                FVM_SetterScope setter_scope(c, cursor, o, entry.root, name);
+                FVM_SetterScope setter_scope(c, cursor, o, entry.root, found->first);
                 /* [GC:] The setter scope retains owner/receiver/descriptor; script invocation
                  * roots its copied argument before any collection. Preserve outer C barriers. */
                 FVM_NativeCallGuard guard(c, !fvm_base_script_accessor(entry));
