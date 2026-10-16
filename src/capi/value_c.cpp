@@ -490,8 +490,8 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
             FVM_AccessorEntry entry = found->second;
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (!entry.setter)
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return write.finish(FVM_OK);
+                /* [GC:] Getter-only inherited virtual dispatch consumes the deferred watch error. */
+                return write.finish(FVM_OK, cursor != o);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value result;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

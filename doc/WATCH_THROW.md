@@ -55,3 +55,27 @@ accounting remain open. No complete stage or platform certification is implied.
 Validation v0.433: Linux minimal 858/858; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.
+
+## v0.434 — getter-only dispatch and deferred-error acceptance
+
+A loaded named write through an inherited native getter-only virtual property
+now consumes the watcher exception, as inherited call_setter with no setter does.
+It leaves no own value and does not execute the getter. Own getter-only properties
+still return the watcher exception. Numeric dispatch already followed this rule.
+`object_watch_getter_only` reproduced v0.433's named-path mismatch and checks
+SWF4–8, own/inherited/numeric/named variants, counted exceptions and real watch GC.
+
+`jit_object_watch_throw` executes the complete data/readonly/own/inherited setter
+matrix with cyclic thrown objects and collecting setters in interpreter, attached
+and automatic JIT, asserting actual native entry counts. Allocation failures are
+swept until the first completed throw-writeback in `object_watch_throw_allocation`:
+host/SWF4–8 retain old data on OOM, preserve an already pending exception when
+suspension or subsequent preparation fails, clear state and retry. Saved exception
+payload and root/watch/setter cleanup are checked after every boundary. These
+checks cover own raw writes, not every allocator failure inside a setter.
+Other error mappings, resource setters, recursion/collision limits and all nine
+roadmap stages remain open. Native-accessor policy remains an embedding contract.
+
+Validation v0.434: Linux minimal 861/861; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.
