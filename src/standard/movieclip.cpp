@@ -5,6 +5,7 @@
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_construction.hpp"
+#include "constructor_identity.hpp"
 #include "movieclip_lockroot.hpp"
 #include "movieclip_pointer.hpp"
 #include "movieclip_point.hpp"
@@ -607,6 +608,13 @@ FVM_Result finish_instance(FVM_Context *c, FVM_Object *child, FVM_Object *constr
     {
         /* [GC:] Retain constructor/owner metadata across super calls and exception unwinding. */
         FVM_CallScope scope(c, constructor, constructor, child->prototype);
+        /* The symbol movie controls constructor identities even when caller SWF differs. */
+        unsigned int movie_version = 0;
+        r = fvm_movieclip_movie_version(c, child, &movie_version);
+        if (r == FVM_OK)
+            r = fvm_function_define_constructor(c, child, constructor, movie_version);
+        if (r != FVM_OK)
+            return r;
         FVM_Value ignored;
         r = fvm_function_invoke(c, constructor, child, 0, 0, &ignored);
         if (r != FVM_OK)

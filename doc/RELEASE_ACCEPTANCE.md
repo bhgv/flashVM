@@ -2569,3 +2569,27 @@ MovieClip construction, native factory identities and all stages remain open.
 Validation v0.466: complete Linux minimal 910/910; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 6/6 targeted checks each. Stack ASan/LeakSanitizer
 disabled; all stages and foreign OS acceptance remain open.
+
+## v0.467 — registered MovieClip constructor identities
+
+Attach, duplicate and authored sprite placement now define constructor identities
+before invoking a registered class, after initObject processing. The explicit
+symbol-movie version selects the pre-SWF7 own constructor property, independently
+of ambient SWF and destination context; old libraries keep ambient fallback.
+SWF7+ initObject constructor data remains untouched, while __constructor__ and
+legacy constructor are forced hidden identities. Constructor exceptions retain
+the published clip and metadata. Unregistered/default clip construction is not
+changed. Reference: post_instantiation / construct_on_existing in pinned Ruffle
+[display_object/movie_clip.rs](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/display_object/movie_clip.rs).
+movieclip_constructor_identity reproduced missing pre-body metadata. It checks
+source SWF5–8 vs ambient6/8, both registration environments, init collisions,
+attach/duplicate/authored placement, callback exceptions, GC and graph transfer
+without destination standard installation. constructor_identity_allocation sweeps
+new/new[] failures through first success for SWF4–8 data/accessor/native-method
+slots, preserving old values/flags/cache identity/captures on OOM, retry, forced
+replacement, no callbacks, counted strings and release of obsolete cyclic roots.
+This is not full display lifecycle or all-allocator/concurrent acceptance.
+
+Validation v0.467: complete Linux minimal 912/912 and AGG 931/931; Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 6/6 selected checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.

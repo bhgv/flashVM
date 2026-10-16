@@ -1696,3 +1696,22 @@ NewObject в трёх режимах с native entries. MovieClip, нативн�
 Проверка v0.466: Linux minimal 910/910; AGG, Linux-hosted NO_OS_PORTS
 и heap/global ASan+UBSan — по 6/6. Stack ASan/LeakSanitizer отключены;
 все стадии и приёмка на других ОС остаются открытыми.
+
+## v0.467 — идентичность зарегистрированного класса MovieClip
+
+Attach, duplicate и размещение спрайта из SWF определяют метаданные конструктора
+после initObject, до вызова класса. Версия исходного movie выбирает собственный
+constructor до SWF7 независимо от текущего SWF/контекста приёмника. Старые
+библиотеки используют текущую версию. В SWF7+ поле constructor из initObject
+сохраняется; __constructor__ и legacy constructor принудительно скрываются.
+Исключение сохраняет опубликованный клип с метаданными. Default/unregistered
+классы не изменены. Эталон — post_instantiation/construct_on_existing в Ruffle.
+Тест проверяет source5–8/ambient6,8, оба реестра, коллизии initObject, три пути
+построения, исключения, GC и перенос без установки библиотеки в приёмнике.
+Allocation-тест проверяет SWF4–8, data/accessor/native-method, OOM-сохранность
+значений/флагов/кеша/захватов, повтор, отсутствие callbacks, NUL и освобождение
+циклических корней. Полный lifecycle, все аллокаторы и конкуренция не заявлены.
+
+Проверка v0.467: Linux minimal 912/912, AGG 931/931; Linux-hosted NO_OS_PORTS
+и heap/global ASan+UBSan — по 6/6. Stack ASan/LeakSanitizer отключены;
+все стадии и приёмка на других ОС остаются открытыми.

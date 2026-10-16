@@ -16,11 +16,18 @@ void discard_virtual_slot(FVM_Object *receiver, const fvm_detail::string &name)
 }
 }
 /* Stage the complete property/flag update before changing an observable receiver. */
-FVM_Result fvm_function_define_constructor(FVM_Context *c, FVM_Object *receiver, FVM_Object *callee)
+FVM_Result fvm_function_define_constructor(FVM_Context *c, FVM_Object *receiver, FVM_Object *callee,
+                                             unsigned int movie_version)
 {
     if (!c || !receiver || receiver->owner != c || !callee || callee->owner != c)
         return FVM_INVALID_ARGUMENT;
-    if (!c->swf_loaded || receiver->resource_kind == FVM_RESOURCE_SUPER)
+    if (!movie_version)
+    {
+        if (!c->swf_loaded)
+            return FVM_OK;
+        movie_version = c->swf_info.version;
+    }
+    if (receiver->resource_kind == FVM_RESOURCE_SUPER)
         return FVM_OK;
     try
     {
@@ -29,7 +36,7 @@ FVM_Result fvm_function_define_constructor(FVM_Context *c, FVM_Object *receiver,
         FVM_ObjectRootScope callee_root(c, callee);
         fvm_detail::string internal_name(FVM_CONSTRUCTOR_IDENTITY_INTERNAL_NAME);
         fvm_detail::string legacy_name(FVM_CONSTRUCTOR_IDENTITY_LEGACY_NAME);
-        bool legacy = c->swf_info.version < FVM_SWF_VERSION_7;
+        bool legacy = movie_version < FVM_SWF_VERSION_7;
         fvm_detail::map<fvm_detail::string, FVM_Value> properties = receiver->properties;
         fvm_detail::map<fvm_detail::string, unsigned int> attributes = receiver->attributes;
         FVM_Value value;
