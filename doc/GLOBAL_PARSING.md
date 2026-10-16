@@ -135,3 +135,26 @@ Other JIT architectures, worker-stop stress and full conformance remain open.
 Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
 heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
 used; stack ASan/LSan disabled. All nine stage acceptances remain open.
+
+## Flash-only leading whitespace — v0.415
+
+Loaded parseFloat and AVM1 numeric string conversion (including Number and
+ToNumber actions) now trim only U+0009, U+000A, U+000D and U+0020, matching the
+pinned [Flash whitespace predicate](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/wstr/src/utils.rs)
+used by [WStr trim_start](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/wstr/src/common.rs).
+This supersedes v0.413's retained broad whitespace policy. VT/FF, NBSP, BOM,
+Unicode separators, NUL and lone surrogates stop trimming. Invalid numeric input
+still becomes zero for SWF4 numeric conversion and NaN for SWF5–8; parseFloat and
+parseInt return NaN in all tested loaded versions. Host API whitespace is unchanged.
+
+`avm1_numeric_whitespace` checks 30 units in SWF4–8 through Number, both prefix
+parsers and real ToNumber actions, with traced-string collection between cases.
+Its SWF4 numeric assertion failed on v0.414 before implementation.
+`jit_numeric_whitespace` checks rejected classes in interpreted, attached native
+and automatic native execution, asserting actual native entries for ToNumber and
+parseFloat. Other numeric syntax/rounding and complete Flash compatibility remain
+open; the comparison is source-pinned, not a new Adobe Player execution.
+
+Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
+heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
+launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.

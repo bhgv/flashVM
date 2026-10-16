@@ -21,18 +21,6 @@
                                                                                  */
 #define FVM_COERCION_SPACE_TAB 0x0009UL         /* Horizontal tab accepted before decimal input. */
 #define FVM_COERCION_SPACE_LF 0x000aUL          /* Line feed accepted before decimal input. */
-#define FVM_COERCION_SPACE_VT 0x000bUL          /* Vertical tab accepted before decimal input. */
-#define FVM_COERCION_SPACE_FF 0x000cUL          /* Form feed accepted before decimal input. */
 #define FVM_COERCION_SPACE_CR 0x000dUL          /* Carriage return accepted before decimal input. */
 #define FVM_COERCION_SPACE_ASCII 0x0020UL       /* Ordinary ASCII space. */
-#define FVM_COERCION_SPACE_NBSP 0x00a0UL        /* Non-breaking space. */
-#define FVM_COERCION_SPACE_OGHAM 0x1680UL       /* Ogham space mark. */
-#define FVM_COERCION_SPACE_RANGE_FIRST 0x2000UL /* First supported U+2000..U+200A space. */
-#define FVM_COERCION_SPACE_RANGE_LAST 0x200aUL  /* Last supported U+2000..U+200A space. */
-#define FVM_COERCION_SPACE_LINE_SEPARATOR 0x2028UL      /* Unicode line separator. */
-#define FVM_COERCION_SPACE_PARAGRAPH_SEPARATOR 0x2029UL /* Unicode paragraph separator. */
-#define FVM_COERCION_SPACE_NARROW_NBSP 0x202fUL         /* Narrow non-breaking space. */
-#define FVM_COERCION_SPACE_MEDIUM_MATH 0x205fUL         /* Medium mathematical space. */
-#define FVM_COERCION_SPACE_IDEOGRAPHIC 0x3000UL         /* Ideographic space. */
-#define FVM_COERCION_SPACE_BOM 0xfeffUL /* Byte order mark accepted as leading whitespace. */
 #endif

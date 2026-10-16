@@ -85,11 +85,11 @@ double integer_radix(double value)
         wrapped += FVM_UINT32_MODULUS;
     return wrapped >= (-FVM_INT32_MIN_NUMBER) ? wrapped - FVM_UINT32_MODULUS : wrapped;
 }
-/* Recognize the restricted whitespace set used after raw AVM1 integer prefix selection. */
-bool integer_space(unsigned char byte)
+/* Recognize Flash's four-unit whitespace set before loaded numeric digits. */
+bool loaded_space(unsigned long byte)
 {
-    return byte == FVM_PARSING_INT_SPACE_TAB || byte == FVM_PARSING_INT_SPACE_LF ||
-           byte == FVM_PARSING_INT_SPACE_CR || byte == FVM_PARSING_INT_SPACE_ASCII;
+    return byte == FVM_PARSING_LOADED_SPACE_TAB || byte == FVM_PARSING_LOADED_SPACE_LF ||
+           byte == FVM_PARSING_LOADED_SPACE_CR || byte == FVM_PARSING_LOADED_SPACE_ASCII;
 }
 
 /* Parse loaded AVM1 integers: radix callbacks precede text callbacks, and raw prefixes
@@ -159,7 +159,7 @@ FVM_Result loaded_parse_int(FVM_Context *c, unsigned int count, const FVM_Value 
         if (octal)
             base = FVM_PARSING_RADIX_OCTAL;
     }
-    while (at < size && integer_space((unsigned char)bytes[at]))
+    while (at < size && loaded_space((unsigned char)bytes[at]))
     {
         status = work.step();
         if (status != FVM_OK)
@@ -228,7 +228,7 @@ FVM_Result loaded_parse_float(FVM_Context *c, unsigned int count, const FVM_Valu
         status = fvm_string_read(bytes, size, next, point);
         if (status != FVM_OK)
             return status;
-        if (!space(point))
+        if (!loaded_space(point))
             break;
         status = work.step();
         if (status != FVM_OK)

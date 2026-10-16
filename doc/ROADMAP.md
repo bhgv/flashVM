@@ -702,3 +702,14 @@ All nine stages remain open; no complete decoder/coercion budget is claimed.
 Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
 heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
 used; stack ASan/LSan disabled. All nine stage acceptances remain open.
+
+### v0.415 — numeric leading whitespace / Ведущие пробелы чисел
+
+Loaded Number/ToNumber and parseFloat now share Flash's four-unit leading-space
+policy; host rules stay. SWF4 invalid-zero vs SWF5–8 NaN, counted surrogate/NUL,
+traced GC and actual native entry regressions added.
+[EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md). All nine stages remain open.
+
+Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
+heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
+launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.

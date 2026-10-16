@@ -57,18 +57,12 @@ double integer(const char *text, size_t size, unsigned int base)
         bits = (0UL - bits) & FVM_UINT32_MASK;
     return bits >= FVM_UINT32_SIGN_BIT ? (double)bits - FVM_UINT32_MODULUS : (double)bits;
 }
-/* Recognize the currently supported leading whitespace set in decimal action strings. */
+/* Flash numeric conversion trims only tab, LF, CR and ASCII space, not the
+ * ECMAScript/Unicode whitespace set used by the unloaded host API. */
 bool space(unsigned long value)
 {
     return value == FVM_COERCION_SPACE_TAB || value == FVM_COERCION_SPACE_LF ||
-           value == FVM_COERCION_SPACE_VT || value == FVM_COERCION_SPACE_FF ||
-           value == FVM_COERCION_SPACE_CR || value == FVM_COERCION_SPACE_ASCII ||
-           value == FVM_COERCION_SPACE_NBSP || value == FVM_COERCION_SPACE_OGHAM ||
-           (value >= FVM_COERCION_SPACE_RANGE_FIRST && value <= FVM_COERCION_SPACE_RANGE_LAST) ||
-           value == FVM_COERCION_SPACE_LINE_SEPARATOR ||
-           value == FVM_COERCION_SPACE_PARAGRAPH_SEPARATOR ||
-           value == FVM_COERCION_SPACE_NARROW_NBSP || value == FVM_COERCION_SPACE_MEDIUM_MATH ||
-           value == FVM_COERCION_SPACE_IDEOGRAPHIC || value == FVM_COERCION_SPACE_BOM;
+           value == FVM_COERCION_SPACE_CR || value == FVM_COERCION_SPACE_ASCII;
 }
 /* Validate legacy decimal syntax, then reuse the locale-independent host mantissa conversion. */
 FVM_Result decimal(FVM_Context *context, const char *text, size_t size, unsigned int version,

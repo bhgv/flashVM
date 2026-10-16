@@ -118,3 +118,20 @@ SWF4–8, включая вход в машинный код, точный ре�
 Validation v0.414 / Проверка: minimal Release 827/827; AGG Release 7/7 and
 heap/global ASan+UBSan 7/7 parsing/JIT tests. Native mode-restoring launchers
 used; stack ASan/LSan disabled. All nine stage acceptances remain open.
+
+## Ведущие пробелы Flash — v0.415
+
+Загруженные parseFloat, Number и действие ToNumber пропускают только TAB/LF/CR
+и U+0020, как закреплённый эталон Ruffle (ссылки в [EN](GLOBAL_PARSING.md)).
+Это заменяет широкое множество пробелов, сохранённое в v0.413. VT/FF, NBSP, BOM,
+Unicode-разделители, NUL и суррогаты не пропускаются. Некорректная строка даёт
+ноль при числовом преобразовании SWF4 и NaN в SWF5–8; оба parse-метода дают NaN.
+Host API сохраняет свои прежние правила. avm1_numeric_whitespace проверяет 30
+значений для SWF4–8, три встроенные функции, действие ToNumber и GC строк между
+случаями. jit_numeric_whitespace проверяет ToNumber/parseFloat в интерпретаторе,
+подключённом и автоматическом JIT с подтверждением входов в машинный код.
+Полная совместимость и запуск Adobe Player не заявляются; все стадии открыты.
+
+Validation v0.415 / Проверка: minimal Release 829/829; AGG Release 9/9 and
+heap/global ASan+UBSan 9/9 parsing/whitespace/JIT tests. Native mode-restoring
+launchers used; stack ASan/LSan disabled. Other-platform acceptance remains open.
