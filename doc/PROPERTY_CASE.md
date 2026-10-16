@@ -395,3 +395,24 @@ The first sanitizer run exposed a stale function.cpp object using the old
 CallScope layout; regenerating dependency caches rebuilt it and the check
 passed. Executable-mode launchers applied; stack ASan/LeakSanitizer disabled.
 Foreign OS execution and all stages remain open.
+
+## v0.445 — legacy super prototype aliases
+
+Loaded SWF5–6 case aliases of super.__proto__ now project the selected ancestor
+prototype, as the canonical spelling already did. The override scan uses the
+same versioned name selection, so a differently cased own getter is respected
+before the intrinsic projection. SWF7–8 remain exact; NUL suffixes are distinct.
+This combines pinned super_object.rs proto/base_proto with the case-aware
+script_object.rs property map. It does not complete ordinary raw __proto__
+storage or prototype mutation semantics.
+
+object_super_prototype_case reproduced the old receiver-prototype result for
+uppercase aliases. It checks canonical/upper/mixed/NUL names in SWF5–8, queue
+transfer with GC and copied receiver topology, canonical/upper user getters,
+actual receiver and callback counts. jit_object_super_prototype_case repeats
+GetMember in interpreted/explicit/automatic modes with actual native entries.
+Full prototype/reflection behavior and all stages remain open.
+
+Validation v0.445: Linux minimal 881/881; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.

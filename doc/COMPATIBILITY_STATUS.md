@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/6/7/8: super prototype case aliases | Проверено для v0.445 | SWF5–6 intrinsic ancestor projection and folded user overrides; SWF7–8 exact/NUL, queue/GC topology, receiver/counts and actual native GetMember. PROPERTY_CASE.md / .ru.md; full raw proto/reflection and stages open. |
 | 2/7/8: inline invocation roots/OOM | Проверено для v0.444 | Six live identities, all-new-denied entry/nested unwind, reclamation and fresh-context SWF5–8 conversion allocation sweeps with alias/error/GC/retry. PROPERTY_CASE.md / .ru.md; C/OS allocators, concurrent GC and stages open. |
 | 1/2/7/8: super special conversion identity | Проверено для v0.443 | Original receiver/defining owner, folded names, noncallables, collecting deletion/detachment, errors and native ToNumber/ToString/Add2; PROPERTY_CASE.md / .ru.md. General resolution/OOM and stages remain open. |
 | 1/2/7/8: super string fallback | Проверено для v0.442 | SWF5–8 non-string fallback, NUL/exception/callback counts, Function controls, GC and real native ToString; PROPERTY_CASE.md / .ru.md. Receiver/owner dispatch and full conversions remain open. |

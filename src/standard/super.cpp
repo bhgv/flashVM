@@ -217,16 +217,19 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
     /* Loaded super reads the selected ancestor's intrinsic proto slot. User
      * data/accessors still dispatch normally with the original receiver. This
      * does not implement the still-open ordinary raw __proto__ property model. */
-    if (c->swf_loaded && name == fvm_detail::string("__proto__"))
+    if (c->swf_loaded &&
+        (name == fvm_detail::string("__proto__") ||
+         (c->swf_info.version < FVM_SWF_VERSION_7 &&
+          fvm_avm1_folded_name_equal(name, fvm_detail::string("__proto__")))))
     {
         FVM_Object *cursor = start;
         for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
-            if (cursor->properties.find(name) != cursor->properties.end() ||
-                cursor->methods.find(name) != cursor->methods.end())
+            if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end() ||
+                fvm_property_find(c, cursor->methods, name) != cursor->methods.end())
                 break;
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator entry =
-                cursor->accessors.find(name);
+                fvm_property_find(c, cursor->accessors, name);
             if (entry != cursor->accessors.end())
             {
                 if (fvm_base_prototype_accessor(entry->second))
