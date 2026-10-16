@@ -101,3 +101,25 @@ open. This is a query-only compatibility change.
 Validation v0.426: Linux minimal 846/846; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack
 ASan/LeakSanitizer disabled. No independent Flash or other OS certification.
+
+## v0.427 — watcher name selection
+
+Loaded SWF4–6 watch replacement, dispatch, raw old-value lookup and unwatch use
+Flash name equivalence. The callback receives the requested counted spelling,
+not the stored property spelling. Own-property selection now happens after the
+watcher returns, so callback mutation is resolved against the current table.
+Host/SWF7–8 keep exact watcher names. Getter-free old-value lookup still preserves
+virtual stored data, numeric slots and lazy native methods.
+
+`object_property_case_watch` failed on v0.426's callback-name assertion. It checks
+SWF4–8/host, NUL names, old/new/userData arguments, single-record replacement,
+case-varied unwatch, self-removal followed by real GC, errors/counting exceptions
+and running/root cleanup. Primary reference: pinned script_object.rs watch,
+unwatch and call_watcher, which passes the requested name to Watcher.call.
+Exception-side writeback, watcher recursion identity/collision details, complete
+movie-clip watch behavior and budgeted folded traversal remain open. The existing
+exception policy is retained here; no complete stage is claimed.
+
+Validation v0.427: Linux minimal 847/847; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 5/5 each. Generated mode launchers used; stack ASan and
+LeakSanitizer disabled. Other OS execution and all-stage acceptance remain open.

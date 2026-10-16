@@ -20,6 +20,7 @@
 #include "../core/object_root_scope.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/table.h"
@@ -2034,7 +2035,12 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
         r = fvm_object_set(c, descriptor, "userData", n > 2 ? a + 2 : &undefined);
     if (r != FVM_OK)
         return r;
-    object->watchers[key] = descriptor;
+    fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator existing =
+        fvm_property_find(c, object->watchers, key);
+    if (existing != object->watchers.end())
+        existing->second = descriptor;
+    else
+        object->watchers[key] = descriptor;
     fvm_value_boolean(out, 1);
     return FVM_OK;
 }
@@ -2054,7 +2060,11 @@ FVM_Result unwatch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM
         result = fvm_property_key(name.string, fvm_string_size(name), key);
         if (result != FVM_OK)
             return result;
-        present = object->watchers.find(key) != object->watchers.end();
+        fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator selected =
+            fvm_property_find(c, object->watchers, key);
+        present = selected != object->watchers.end();
+        if (present)
+            key = selected->first;
     }
     if (present)
         object->watchers.erase(key);

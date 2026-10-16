@@ -378,11 +378,12 @@ FVM_Result fvm_object_get_no_index(FVM_Context *c, FVM_Object *o, const fvm_deta
 }
 
 /* Write an ordinary property using accessors, attributes and metadata hooks. */
-FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const fvm_detail::string &name,
+FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start, const fvm_detail::string &requested_name,
                                const FVM_Value *v, bool allow_meta, bool prepared_watch)
 {
 
     /* Initialization / Инициализация локального состояния. */
+    fvm_detail::string name(requested_name);
     FVM_Value copy;
     unsigned int depth = 0;
     if (!c || !o || o->owner != c || fvm_validate_value(c, v) != FVM_OK)
@@ -402,6 +403,13 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         if (r != FVM_OK)
             return r;
     }
+
+    /* Watchers observe requested spelling and may replace the own property.
+     * Select the current stored spelling only after their callback has returned. */
+    if (!fvm_property_select_own_name(c, o, name) &&
+        name != fvm_detail::string("__proto__") &&
+        fvm_object_prototype_name(c, name) && fvm_object_intrinsic_prototype(c, o, &name))
+        name = "__proto__";
 
     /* Initialization / Инициализация локального состояния. */
     unsigned int flag_depth = 0;
@@ -951,10 +959,6 @@ extern "C"
             if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_set_index(c, o, index, v);
-            if (!fvm_property_select_own_name(c, o, key) &&
-                key != fvm_detail::string("__proto__") &&
-                fvm_object_prototype_name(c, key) && fvm_object_intrinsic_prototype(c, o, &key))
-                key = "__proto__";
             return fvm_object_set_no_index(c, o, key, v);
         }
         catch (const std::bad_alloc &)

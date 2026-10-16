@@ -8,6 +8,7 @@
 #include "flashvm/standard.h"
 #include <cstring>
 #include "../core/property_key.hpp"
+#include "../core/property_lookup.hpp"
 #include <new>
 /* Compute and return property watchable. */
 bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
@@ -53,7 +54,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
     unsigned int depth = 0;
     for (FVM_Object *o = object; o && depth++ < FVM_PROTOTYPE_MAX_DEPTH; o = o->prototype)
     {
-        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = o->properties.find(name);
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = fvm_property_find(c, o->properties, name);
         if (property != o->properties.end())
         {
             *out = property->second;
@@ -64,7 +65,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
             *out = o->resource_result;
             return FVM_OK;
         }
-        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = o->accessors.find(name);
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = fvm_property_find(c, o->accessors, name);
         if (accessor != o->accessors.end())
         {
             fvm_base_accessor_data(accessor->second, *out);
@@ -80,7 +81,7 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
             }
         }
         /* Builtin lazy method handles are data; materializing one does not invoke its callback. */
-        if (o->methods.find(name) != o->methods.end())
+        if (fvm_property_find(c, o->methods, name) != o->methods.end())
             return fvm_object_get_bytes(c, o, name.data(), name.size(), out);
     }
     return depth > FVM_PROTOTYPE_MAX_DEPTH ? FVM_ERROR : FVM_OK;
@@ -110,7 +111,7 @@ FVM_Result fvm_property_watch_prepare(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator entry =
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            object->watchers.find(name);
+            fvm_property_find(c, object->watchers, name);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (entry == object->watchers.end() || !fvm_property_watchable(object, name))
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
