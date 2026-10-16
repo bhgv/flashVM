@@ -1,5 +1,6 @@
 /* FlashVM: publish loaded constructor identities without invoking inherited setters or watchers. */
 #include "constructor_identity.hpp"
+#include "../avm1/handlers/class_prototype.hpp"
 #include "constructor_identity_constants.h"
 #include "../core/object_root_scope.hpp"
 #include "../swf/format_constants.h"
@@ -58,6 +59,39 @@ FVM_Result fvm_function_define_constructor(FVM_Context *c, FVM_Object *receiver,
         if (legacy)
             discard_virtual_slot(receiver, legacy_name);
         return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* [GC:] Publish only a complete receiver; callers retain it while coercing native arguments. */
+FVM_Result fvm_function_allocate_instance(FVM_Context *c, FVM_Object *callee,
+                                            int resource_kind, FVM_Object **out)
+{
+    if (out)
+        *out = 0;
+    if (!c || !c->swf_loaded || !callee || callee->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        FVM_ObjectRootScope callee_root(c, callee);
+        FVM_Value prototype;
+        FVM_Result status = fvm_avm1_stored_prototype(c, callee, prototype);
+        if (status != FVM_OK)
+            return status;
+        FVM_Object *instance = 0;
+        status = fvm_object_create(c, &instance);
+        if (status != FVM_OK)
+            return status;
+        FVM_ObjectRootScope instance_root(c, instance);
+        instance->resource_kind = resource_kind;
+        instance->prototype = prototype.type == FVM_VALUE_OBJECT ? prototype.object : 0;
+        status = fvm_function_define_constructor(c, instance, callee);
+        if (status == FVM_OK)
+            *out = instance;
+        return status;
     }
     catch (const std::bad_alloc &)
     {

@@ -3966,3 +3966,25 @@ remain open.
 Validation v0.470: complete Linux minimal 914/914 and AGG 933/933; Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 selected checks each. Stack
 ASan/LeakSanitizer disabled.
+
+### v0.471 — loaded Number receiver before ToNumber
+
+Loaded Number now allocates its receiver using own stored prototype data and
+forced constructor identities before converting its input. Prototype accessors
+are not invoked, primitive/missing prototype data gives no Object prototype,
+and a valueOf mutation cannot replace the selected chain. The unloaded host
+path keeps its existing lookup order. A shared private allocator roots the
+class/receiver and publishes only a fully prepared object. Reference: pinned
+Ruffle FunctionObject::construct/define_constructor_props and number.rs
+constructor, which initializes the preallocated this.
+number_constructor_stored_prototype covers SWF4–8, direct/named C construction,
+three NewObject modes, valueOf mutation, native getter/method, primitive, absent
+and mixed spelling. The native factory barrier rejects in-callback collection;
+post-return GC is exercised. native_instance_allocation sweeps new/new[] failures
+across a cold wrapper and receiver metadata, checking null output, clean state,
+GC and retry. Other native constructors, including String/Boolean, require
+separate validation; all stages remain open.
+
+Validation v0.471: complete Linux minimal 916/916 and AGG 935/935; Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 selected checks each. Stack
+ASan/LeakSanitizer disabled; foreign OS acceptance remains open.

@@ -3,6 +3,8 @@
  */
 
 #include "number_state.hpp"
+#include "constructor_identity.hpp"
+#include "../core/object_root_scope.hpp"
 #include "number_radix_constants.h"
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
@@ -189,27 +191,34 @@ FVM_Result number_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
                               const FVM_Value *args, FVM_Value *out, void *userdata)
 {
 
-    /* Initialization / Инициализация локального состояния. */
-    double value = 0;
-    FVM_Result result = count ? fvm_avm1_number(c, &args[0], &value) : FVM_OK;
-    if (result != FVM_OK)
-        return result;
-    FVM_Value prototype;
-    result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
-    if (result != FVM_OK)
-        return result;
-    if (prototype.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
     FVM_Object *object = 0;
-    result = fvm_object_create(c, &object);
+    FVM_Result result = FVM_OK;
+    if (c->swf_loaded)
+    {
+        result = fvm_function_allocate_instance(c, (FVM_Object *)userdata, NUMBER_OBJECT, &object);
+        if (result != FVM_OK)
+            return result;
+    }
+    /* [GC:] valueOf may detach the class and collect before boxed data is installed. */
+    FVM_ObjectRootScope object_root(c, object);
+    double value = 0;
+    result = count ? fvm_avm1_number(c, &args[0], &value) : FVM_OK;
     if (result != FVM_OK)
         return result;
-
-    /* Computation / Вычисление и обновление состояния. */
-    object->resource_kind = NUMBER_OBJECT;
-    object->prototype = prototype.object;
+    if (!c->swf_loaded)
+    {
+        FVM_Value prototype;
+        result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
+        if (result != FVM_OK)
+            return result;
+        if (prototype.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        result = fvm_object_create(c, &object);
+        if (result != FVM_OK)
+            return result;
+        object->resource_kind = NUMBER_OBJECT;
+        object->prototype = prototype.object;
+    }
     object->resource_result_valid = true;
 
     /* Initialization / Инициализация локального состояния. */

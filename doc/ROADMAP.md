@@ -1773,3 +1773,24 @@ activation.rs action_extends; это отличается от сырых чте
 
 Проверка v0.470: Linux minimal 914/914, AGG 933/933; Linux-hosted NO_OS_PORTS
 и heap/global ASan+UBSan — по 4/4. Stack ASan/LeakSanitizer отключены.
+
+## v0.471 — создание loaded Number до преобразования аргумента
+
+Loaded Number сначала выделяет receiver с собственным сохранённым prototype
+и скрытыми constructor identities; только затем выполняет ToNumber. Getter
+класса не запускается, primitive/отсутствующий prototype даёт пустую Object-цепь,
+изменение класса из valueOf не меняет уже выбранную цепь. Host-путь сохраняет
+прежнее обычное чтение после coercion. Общий внутренний allocator удерживает
+класс и receiver и публикует только полностью подготовленный объект.
+Основание: pinned Ruffle FunctionObject::construct/define_constructor_props и
+number.rs constructor, который заполняет заранее созданный this.
+number_constructor_stored_prototype проверяет SWF4–8, direct/named C API,
+NewObject в трёх режимах, mutation из valueOf, native getter/method, primitive,
+missing и mixed spelling. GC внутри factory блокируется native barrier;
+реальный сборщик проверяется после возврата. native_instance_allocation
+перебирает отказы new/new[] от холодной обёртки до metadata, проверяя null output,
+чистые кадры, GC и повторную попытку. Это не сертификат всех native constructors.
+String/Boolean и другие фабрики требуют отдельной сверки; все стадии открыты.
+
+Проверка v0.471: Linux minimal 916/916, AGG 935/935; Linux-hosted NO_OS_PORTS
+и heap/global ASan+UBSan — по 4/4. Stack ASan/LeakSanitizer отключены.
