@@ -114,3 +114,20 @@ expose a public barrier opt-out or establish full concurrent collector safety.
 Validation v0.459: complete Linux minimal 902/902; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.460 — root named-constructor arguments before global lookup
+
+fvm_construct_bytes snapshots and roots caller arguments before resolving a
+constructor name. Global getters/resolvers can collect or mutate the caller's
+array before Function construction; registered C factories also receive the
+stable snapshot. The ordinary native barrier remains. Constructor output is
+still an Object pointer; no overlapping output-pointer contract is added.
+global_construct_arguments first failed after a native factory mutated the
+caller array. Host/SWF4–8 cover native/script/getter/resolver factories, counted
+NUL names/strings, cyclic unpinned arguments, mutation, collecting lookup/body,
+object results, plain errors/exceptions and root cleanup/reclamation. Host skips
+__resolve. Complete constructor/allocator/concurrency compatibility remains open.
+
+Validation v0.460: complete Linux minimal 903/903 and AGG 922/922; Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
