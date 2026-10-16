@@ -154,3 +154,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Фиксированная глубина super в виртуальных getter/setter: [v0.501](PROPERTY_CALLBACK_SUPER.md).
 
 Глубина super обработчика watch: [v0.502 и проверки](WATCH_CALLBACK_SUPER.md).
+
+Видимость oldValue watcher: [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).

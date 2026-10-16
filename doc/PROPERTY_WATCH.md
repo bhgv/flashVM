@@ -106,3 +106,5 @@ current-global behavior is documented in PRIMITIVE_GLOBAL_BOXING.md (v0.474).
 этапов роадмапа этим исправлением не заявляется.
 
 Loaded watcher depth is explicitly zero: [v0.502](WATCH_CALLBACK_SUPER.md).
+
+Version-hidden old-value storage is skipped in [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).

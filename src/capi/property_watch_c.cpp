@@ -56,6 +56,10 @@ FVM_Result stored_watch_value(FVM_Context *c, FVM_Object *object, const fvm_deta
     unsigned int depth = 0;
     for (FVM_Object *o = object; o && depth++ < FVM_PROTOTYPE_MAX_DEPTH; o = o->prototype)
     {
+        /* Hidden storage does not supply a watcher's old value; continue through prototypes
+         * without invoking getters or changing raw own-property membership. */
+        if (!fvm_property_available(c, o, name))
+            continue;
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property = fvm_property_find(c, o->properties, name);
         if (property != o->properties.end())
         {
