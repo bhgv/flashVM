@@ -59,12 +59,19 @@ FVM_Result invoke(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Va
                   FVM_Value *out, void *userdata)
 {
     FVM_Object *receiver = 0, *owner = 0, *start = 0;
-    FVM_Result result = unpack(c, (FVM_Object *)userdata, &receiver, &owner, &start);
+    unsigned int captured_depth = 0;
+    FVM_Result result = unpack(c, (FVM_Object *)userdata, &receiver, &owner, &start, &captured_depth);
     if (result != FVM_OK)
         return result;
     fvm_value_undefined(out);
     if (!owner)
         return FVM_OK;
+    if (c->swf_loaded && captured_depth >= FVM_PROTOTYPE_MAX_DEPTH)
+        return FVM_ERROR;
+    /* [GC:] A constructor getter may disconnect both the base and its parent before
+     * returning. Retain both pre-getter identities through lookup and invocation. */
+    FVM_ObjectRootScope base_roots(c, owner);
+    FVM_ObjectRootScope parent_roots(c, start);
     FVM_Value constructor;
     result = fvm_object_get_from(c, owner, owner, "__constructor__", &constructor, false);
     if (result != FVM_OK)
@@ -72,7 +79,9 @@ FVM_Result invoke(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Va
     if (constructor.type != FVM_VALUE_OBJECT || !fvm_is_class_constructor(constructor.object))
         return FVM_OK;
     /* [GC:] The selected parent prototype and constructor remain rooted across the call. */
-    FVM_CallScope scope(c, constructor.object, constructor.object, start);
+    FVM_CallScope scope(c, constructor.object, constructor.object, start,
+                        c->swf_loaded ? captured_depth + FVM_SUPER_CONSTRUCTOR_PARENT_OFFSET
+                                      : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
     return fvm_function_invoke(c, constructor.object, receiver, count, args, out);
 }
 /* Recognize the function in a private script accessor descriptor. */

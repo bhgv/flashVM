@@ -164,3 +164,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Глубина super обычного метода: [v0.506](MEMBER_CALL_SUPER_DEPTH.md).
 
 Глубина выбранного метода через super: [v0.507](SUPER_MEMBER_DEPTH.md).
+
+Глубина и корни конструктора через super: [v0.508](SUPER_CONSTRUCTOR_DEPTH.md).

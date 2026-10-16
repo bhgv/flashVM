@@ -3,4 +3,6 @@
 #define FVM_STANDARD_SUPER_CALL_CONSTANTS_H /* Explicit-super invocation constants guard. */
 /* Method lookup starts one level beyond the facade's captured base depth. */
 #define FVM_SUPER_METHOD_PARENT_OFFSET 1U
+/* A superclass constructor advances the facade base independently of property lookup. */
+#define FVM_SUPER_CONSTRUCTOR_PARENT_OFFSET 1U
 #endif

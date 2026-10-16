@@ -172,3 +172,5 @@ Resolver-returned method depth: [v0.505](RESOLVE_METHOD_SUPER.md).
 Named method superclass depth: [v0.506](MEMBER_CALL_SUPER_DEPTH.md).
 
 Explicit-super selected method depth: [v0.507](SUPER_MEMBER_DEPTH.md).
+
+Explicit-super constructor depth and roots: [v0.508](SUPER_CONSTRUCTOR_DEPTH.md).
