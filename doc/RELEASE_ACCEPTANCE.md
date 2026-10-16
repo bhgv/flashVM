@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.395
+# Условия окончательной приёмки / Final acceptance gates — v0.396
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1299,3 +1299,16 @@ AGG/Cairo/minimal and restricted heap/global ASan+UBSan. New font-enabled cases
 reject CRC-valid oversized native payloads with rollback and accept exact scalar,
 byte and UTF-16 boundaries. Font-disabled behavior remains unchanged; stack
 ASan and LeakSanitizer disabled. All stages remain open.
+
+
+v0.396: identical counted loaded TextField text assignment preserves current
+format/layout; changed text applies future format. RU: повторное присваивание
+сохраняет формат; host-политика прежняя. Стадии остаются открытыми.
+Validation v0.396: the full rebuilt Linux AGG Release suite passes 826/826 CTest
+checks directly. Sixteen focused AGG text/graph/layout checks and thirteen each
+in Cairo/minimal Release and restricted heap/global ASan+UBSan also pass.
+Font-disabled checks retain unavailable-font behavior. New loaded assignment
+cases cover empty/ordinary/NUL content, current/future formats, aliasing, GC and
+interpreted/explicit/automatic native SetMember/GetMember. Stack ASan and
+LeakSanitizer remain disabled; no foreign-platform or Flash Player oracle claim.
+All nine roadmap stages remain open.

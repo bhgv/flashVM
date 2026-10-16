@@ -139,3 +139,8 @@ host flow. tests/standard_textformat.c constructs/calls from AVM1;
 tests/standard_textfield.c uses AVM1 GetMember/SetMember and tests resource GC.
 Native constructor/accessor tests are in tests/native_properties.c.
 See STANDARD_TEXT_CHECKPOINT.md for build/test evidence and mirror status.
+
+v0.393–v0.396: counted NUL content now survives editing, layout and graph
+transport; formatting keywords use full counted values; restore enforces the
+native text envelope; identical loaded assignments preserve current formatting.
+See [counted text and checks](TEXTFIELD_COUNTED_TEXT.md).

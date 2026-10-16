@@ -47,3 +47,16 @@ allocation counters and imported fonts. The valid 4096-scalar and supplementary
 textfield_restore_limits grows a real serialized text payload, updates its
 length/envelope size and CRC, and verifies 4097-scalar and 16385-byte rejection
 with no publication or leftover state. Valid boundary records round-trip.
+
+## v0.396 identical loaded assignments
+
+Loaded text assignment now compares complete counted content and returns without
+resetting current format or invalidating layout when unchanged. A changed suffix
+after NUL is a real edit and applies the future format. Unloaded host reset
+behavior remains unchanged. This follows the pinned EditText.set_text equality
+guard above; it does not implement styled spans or general coercion rules.
+
+textfield_same_text checks empty, ordinary and NUL content in host/SWF4–8,
+current/future format separation, aliased snapshots, changed text and GC.
+jit_textfield_same_text checks SetMember/GetMember in interpreted, explicit and
+automatic native execution with identical and changed counted text.

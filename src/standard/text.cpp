@@ -769,6 +769,14 @@ static FVM_Result field_set(FVM_Context *c, FVM_Object *self, unsigned int n, co
             return FVM_INVALID_ARGUMENT;
         if (count > FVM_TEXT_FIELD_MAX_SCALARS)
             return FVM_UNSUPPORTED;
+        /* Loaded assignment of identical content preserves both current formatting and layout.
+         * Compare counted bytes so a different suffix after NUL still performs a real edit. */
+        if (c->swf_loaded && size == field->text_size &&
+            !std::memcmp(args[0].string, field->text, size))
+        {
+            fvm_value_undefined(out);
+            return FVM_OK;
+        }
         Style next = field->future;
         field->current.swap(next);
         field->text = args[0].string;

@@ -580,3 +580,8 @@ RU: скрытый NUL не обходит ограничения формати
 
 v0.395: TextField graph restore enforces native byte/scalar storage bounds
 before native/font allocation. RU: проверка повреждённых графов и отката. Стадии открыты.
+
+
+v0.396: identical counted loaded TextField text assignment preserves current
+format/layout; changed text applies future format. RU: повторное присваивание
+сохраняет формат; host-политика прежняя. Стадии остаются открытыми.

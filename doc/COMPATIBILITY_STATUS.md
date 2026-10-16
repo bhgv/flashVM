@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/4/7/8: identical TextField assignment | Проверено для сценариев v0.396 | Complete counted equality preserves loaded current formatting/layout; changed NUL suffix uses future format. Host policy retained; alias/GC and native SetMember/GetMember checks. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |
 | 4/6/7: TextField restore limits | Проверено для сценариев v0.395 | CRC-valid oversized graph payloads reject with object/allocation/font rollback; valid 4096-scalar and 16384-byte/8192-unit boundaries round-trip. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |
 | 1/4/7: counted formatting strings | Проверено для сценариев v0.394 | Full keyword length, NUL font rejection, true-empty URL/target validation; current/future style and extent rejection preserve field state. Supported formatting subset unchanged. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |
 | 1/4/6/7: counted TextField text | Проверено для сценариев v0.393 | Counted NUL storage/layout/length/range edit, extent, OOM/retry, traced GC, binary and queue transport. Strict scalar text and existing bounds retained; full TextField open. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |

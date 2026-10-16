@@ -131,3 +131,8 @@ examples/embedding/standard_text/main.c. Тесты конструктора/в�
 tests/standard_textformat.c; свойств AVM1 и GC: tests/standard_textfield.c;
 общих accessor/конструкторов: tests/native_properties.c.
 Подтверждающие проверки и состояние зеркала: STANDARD_TEXT_CHECKPOINT.ru.md.
+
+v0.393–v0.396: текст с NUL сохраняется при редактировании, раскладке и переносе;
+строки форматирования проверяются целиком; восстановление соблюдает пределы;
+присваивание прежнего текста в загруженной среде сохраняет текущий формат.
+Подробности и проверки: [текст с явной длиной](TEXTFIELD_COUNTED_TEXT.ru.md).
