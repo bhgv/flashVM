@@ -1184,6 +1184,8 @@ extern "C" FVM_Result fvm_function_construct(
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Value v;
+            /* A factory that leaves its output untouched has not constructed an Object. */
+            fvm_value_undefined(&v);
             /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
              */
             /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
@@ -1202,7 +1204,8 @@ extern "C" FVM_Result fvm_function_construct(
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return r;
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (v.type != FVM_VALUE_OBJECT)
+            /* Never publish null or foreign-context factory results to the caller. */
+            if (v.type != FVM_VALUE_OBJECT || !v.object || v.object->owner != c)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return FVM_ERROR;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

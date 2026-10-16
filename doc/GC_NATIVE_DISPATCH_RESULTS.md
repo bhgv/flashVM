@@ -149,3 +149,19 @@ Full constructor/allocator/concurrency compatibility and all stages remain open.
 Validation v0.462: complete Linux minimal 906/906; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.463 — validate direct native factory results
+
+Direct Function construction initializes the native factory result to undefined
+and publishes only a non-null Object belonging to the calling context. Untouched,
+scalar, null-Object and foreign-context results produce ERROR with a null output;
+actual callback errors/exceptions remain unchanged. This matches the existing
+named-factory object ownership boundary. function_construct_native_result first
+failed on an invalid Object and checks host/SWF4–8, valid/invalid output shapes,
+untouched output, callback errors, retained exception payloads and GC/root cleanup.
+This validates well-formed API pointers, not arbitrary invalid host addresses.
+All constructor, allocator, concurrency and foreign OS acceptance remains open.
+
+Validation v0.463: complete Linux minimal 907/907; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
