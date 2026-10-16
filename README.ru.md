@@ -1,4 +1,4 @@
-Версия разработки: **0.396** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.397** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -289,3 +289,5 @@ Large loaded Array mutations / большие загруженные масси�
 Large loaded sorting / сортировка больших массивов: [EN](doc/ARRAY_LOADED_LARGE_SORT.md) / [RU](doc/ARRAY_LOADED_LARGE_SORT.ru.md).
 
 Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIECLIP_UNICODE_PATHS.md) / [RU](doc/MOVIECLIP_UNICODE_PATHS.ru.md).
+
+[Интерфейсы оригинальных функций](doc/REMOTE_FUNCTIONS.ru.md) — v0.397.

@@ -1312,3 +1312,17 @@ cases cover empty/ordinary/NUL content, current/future formats, aliasing, GC and
 interpreted/explicit/automatic native SetMember/GetMember. Stack ASan and
 LeakSanitizer remain disabled; no foreign-platform or Flash Player oracle claim.
 All nine roadmap stages remain open.
+
+v0.397: opt-in live function interfaces call original C/AVM1 functions on the
+broker thread through the existing listener, with target/source/context/call
+correlation, returned values, counted exceptions and complete diagnostic fields.
+RU: интерфейсы оригинальных функций, включая C без кодека; эксклюзивная передача
+контекста потоку брокера. See REMOTE_FUNCTIONS.md / .ru.md for ownership/limits.
+Validation: full rebuilt Linux AGG Release CTest passes 829/829. Five focused
+checks each pass in AGG/Cairo/minimal Release and restricted heap/global
+ASan+UBSan with platform sockets enabled. This includes 100 calls from four
+independent clients, original capture roots, script globals, reply ID rejection,
+forwarding, stale targets and stop/source cleanup. Strict C89 public/protocol
+header syntax passes. Stack ASan and LeakSanitizer disabled. Persistent socket
+multiplexing, reentrant callback cycles and foreign-platform runtime acceptance
+remain open; all nine roadmap stages remain open.

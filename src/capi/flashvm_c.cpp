@@ -219,6 +219,10 @@ extern "C"
     void fvm_context_destroy(FVM_Context *context)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* [GC:] Reclaim an exported heap before reading mutable state or releasing its roots. */
+        if (fvm_function_context_quiesce(context) != FVM_OK)
+            return;
+
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         if (!context || context->destroying || context->gc_collecting || context->gc_native_depth)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -226,6 +230,7 @@ extern "C"
 
         /* Computation / Вычисление и обновление состояния. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+        fvm_function_context_cleanup(context);
         context->destroying = true;
         /* [GC:] Release the native drag root before finalization destroys the object graph. */
         context->drag_clip = 0;

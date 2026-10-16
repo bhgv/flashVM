@@ -133,7 +133,7 @@ struct Graph
 /* Compute and return known kind. */
 bool known_kind(unsigned long kind)
 {
-    return kind == FVM_GRAPH_REMOTE_CHANNEL || kind == FVM_GRAPH_REMOTE_MUTEX || kind == FVM_GRAPH_LOCAL_CHANNEL || kind == FVM_GRAPH_LOCAL_MUTEX || kind == FVM_RESOURCE_PLAIN_OBJECT ||
+    return kind == FVM_GRAPH_REMOTE_FUNCTION || kind == FVM_GRAPH_REMOTE_CHANNEL || kind == FVM_GRAPH_REMOTE_MUTEX || kind == FVM_GRAPH_LOCAL_CHANNEL || kind == FVM_GRAPH_LOCAL_MUTEX || kind == FVM_RESOURCE_PLAIN_OBJECT ||
            kind == FVM_RESOURCE_MATH_NAMESPACE || kind == FVM_RESOURCE_BOOLEAN || kind == FVM_RESOURCE_BOOLEAN_CLASS || kind == FVM_RESOURCE_ERROR || kind == FVM_RESOURCE_ERROR_CLASS || kind == FVM_RESOURCE_NUMBER ||
            kind == FVM_RESOURCE_NUMBER_CLASS || kind == FVM_RESOURCE_STRING || kind == FVM_RESOURCE_STRING_CLASS || kind == FVM_RESOURCE_ARRAY || kind == FVM_RESOURCE_ARRAY_CLASS || kind == FVM_RESOURCE_OBJECT ||
            kind == FVM_RESOURCE_OBJECT_CLASS || kind == FVM_RESOURCE_DATE || kind == FVM_RESOURCE_DATE_CLASS || kind == FVM_RESOURCE_SUPER || kind == FVM_RESOURCE_WITH_SCOPE || kind == FVM_RESOURCE_SCRIPT_FUNCTION || kind == FVM_RESOURCE_FUNCTION_CLASS ||
@@ -330,6 +330,18 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         FVM_Object *src = seen[i];
         charge(budget, 40);
         Object dst;
+        if (fvm_function_is_proxy(src) || (fvm_function_transfer_enabled(c) &&
+            (src->resource_kind == FVM_RESOURCE_NATIVE_FUNCTION ||
+             src->resource_kind == FVM_RESOURCE_SCRIPT_FUNCTION)))
+        {
+            dst.kind = FVM_GRAPH_REMOTE_FUNCTION;
+            dst.state.type = FVM_VALUE_STRING;
+            FVM_Result result = fvm_function_capability_export(c, src, dst.state.string);
+            require(result == FVM_OK, result);
+            charge(budget, dst.state.string.size());
+            graph.objects.push_back(dst);
+            continue;
+        }
         if (src->resource_kind == FVM_RESOURCE_CHANNEL || src->resource_kind == FVM_RESOURCE_MUTEX)
         {
             require(src->watchers.empty(), FVM_UNSUPPORTED);
@@ -1046,7 +1058,7 @@ Graph read_graph(Reader &r, unsigned int version)
         }
         if (o.kind == FVM_RESOURCE_BITMAP_DATA)
             require(o.state.type == FVM_VALUE_STRING && fvm_bitmap_snapshot_valid(o.state.string));
-        else if (o.kind == FVM_GRAPH_REMOTE_CHANNEL || o.kind == FVM_GRAPH_REMOTE_MUTEX)
+        else if (o.kind == FVM_GRAPH_REMOTE_FUNCTION || o.kind == FVM_GRAPH_REMOTE_CHANNEL || o.kind == FVM_GRAPH_REMOTE_MUTEX)
             require(o.state.type == FVM_VALUE_STRING && o.state.string.size() <= 512);
         else if (o.kind == FVM_RESOURCE_BOOLEAN || o.kind == FVM_RESOURCE_NUMBER || o.kind == FVM_RESOURCE_STRING || o.kind == FVM_RESOURCE_ARRAY || o.kind == FVM_RESOURCE_SCRIPT_FUNCTION ||
                  o.kind == FVM_RESOURCE_DATE || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_WITH_SCOPE || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM || o.kind == FVM_RESOURCE_TRANSFORM ||
@@ -1629,7 +1641,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             FVM_Object *o = 0;
             const Object &src = g.objects[i];
             FVM_Result r;
-            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
+            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_FUNCTION || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
             {
                 require(src.properties.empty() && src.indexed.empty() && src.methods.empty() &&
                         src.metamethods.empty() && src.accessors.empty() && src.prototype == none &&
@@ -1642,7 +1654,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             else
                 r = fvm_object_create(c, &o);
             require(r == FVM_OK, r);
-            if (src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
+            if (src.kind == FVM_GRAPH_REMOTE_FUNCTION || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
                 o->resource_path = c->resource_receive_path;
             objects.push_back(o);
         }
@@ -1656,7 +1668,7 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             FVM_Object *dst = objects[i];
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
+            if (src.kind == FVM_GRAPH_LOCAL_CHANNEL || src.kind == FVM_GRAPH_LOCAL_MUTEX || src.kind == FVM_GRAPH_REMOTE_FUNCTION || src.kind == FVM_GRAPH_REMOTE_CHANNEL || src.kind == FVM_GRAPH_REMOTE_MUTEX)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 continue;
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

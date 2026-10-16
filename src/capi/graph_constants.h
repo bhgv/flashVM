@@ -13,6 +13,8 @@
 #define FVM_GRAPH_REMOTE_CHANNEL 4001UL
 /* Remote mutex capability representation. */
 #define FVM_GRAPH_REMOTE_MUTEX 4008UL
+/* Live function reference; original closure remains in its authority heap. */
+#define FVM_GRAPH_REMOTE_FUNCTION 4009UL
 /* Newest accepted graph envelope/schema version; emit older compatible layouts when possible. */
 #define FVM_GRAPH_WIRE_VERSION 9UL
 /* Graphs without interface snapshots keep the previous byte-compatible schema. */

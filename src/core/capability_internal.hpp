@@ -8,6 +8,19 @@
 #include "runtime.hpp"
 #include "flashvm/mutex.h"
 #include "flashvm/channel.h"
+/* Query opt-in live function transfer and retain/proxy function authority references. */
+bool fvm_function_transfer_enabled(FVM_Context *);
+/* Recognize a callable remote interface independently of export policy. */
+bool fvm_function_is_proxy(FVM_Object *);
+/* [GC:] Retain the original function and publish its authority URI. */
+FVM_Result fvm_function_capability_export(FVM_Context *, FVM_Object *, fvm_detail::string &);
+/* [GC:] Allocate a local callable facade retaining its URI capture. */
+FVM_Result fvm_function_capability_import(FVM_Context *, const char *, FVM_Object **);
+/* [GC:] Stop calls before heap access/destruction; detach exported roots while heap is live. */
+FVM_Result fvm_function_context_quiesce(FVM_Context *);
+/* [GC:] Remove exported function roots before the source heap is freed. */
+void fvm_function_context_cleanup(FVM_Context *);
+
 /* Implement capability export for this subsystem. */
 FVM_Result fvm_capability_export(FVM_Context *, FVM_Object *, fvm_detail::string &);
 
