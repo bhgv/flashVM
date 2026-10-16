@@ -25,6 +25,7 @@
 #include "../core/property_lookup.hpp"
 #include "string_order.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/execution.h"
 #include "flashvm/table.h"
 #include "flashvm/callable.h"
 #include "flashvm/function.h"
@@ -484,6 +485,29 @@ FVM_Result object_constructor(FVM_Context *c, FVM_Object *, unsigned int n, cons
     }
     if (n && a[0].type != FVM_VALUE_NULL && a[0].type != FVM_VALUE_UNDEFINED)
     {
+        if (c->swf_loaded)
+        {
+            /* Loaded Object boxing follows the current global constructor, without
+             * falling back to the embedding registry when that global is absent. */
+            FVM_Value boxed;
+            FVM_Result result = fvm_exec_to_object(c, a, &boxed);
+            if (result != FVM_OK)
+                return result;
+            if (boxed.type == FVM_VALUE_OBJECT)
+            {
+                *out = boxed;
+                return FVM_OK;
+            }
+            FVM_Object *bare = 0;
+            result = fvm_object_create(c, &bare);
+            if (result == FVM_OK)
+            {
+                fvm_value_undefined(out);
+                out->type = FVM_VALUE_OBJECT;
+                out->object = bare;
+            }
+            return result;
+        }
         const char *name = a[0].type == FVM_VALUE_BOOLEAN  ? "Boolean"
                            : a[0].type == FVM_VALUE_NUMBER ? "Number"
                                                            : "String";

@@ -108,3 +108,13 @@ Foreign CPU/OS acceptance and all nine roadmap stages remain open.
 Проверка v0.473: полные Linux minimal 926/926, AGG 945/945; девять выбранных
 проверок heap/global ASan+UBSan прошли. Stack ASan/LeakSanitizer отключены.
 Три новых заголовка констант прошли C89. Приёмка других CPU/ОС и все стадии открыты.
+
+## v0.474 follow-up / Продолжение
+
+[Current-global primitive boxing](PRIMITIVE_GLOBAL_BOXING.md) replaces the stale
+registry/capture selection for loaded Object(value) and call/apply. The previous
+v0.473 boxing limitation above is historical; full primitive/native compatibility
+and other listed limitations remain open.
+
+Выбор актуального глобала для Object(value)/call/apply исправлен в v0.474;
+прежнее ограничение v0.473 выше относится к исторической точке.

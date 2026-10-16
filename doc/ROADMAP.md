@@ -1874,3 +1874,33 @@ Foreign CPU/OS acceptance and all nine roadmap stages remain open.
 Проверка v0.473: полные Linux minimal 926/926, AGG 945/945; девять выбранных
 проверок heap/global ASan+UBSan прошли. Stack ASan/LeakSanitizer отключены.
 Три новых заголовка констант прошли C89. Приёмка других CPU/ОС и все стадии открыты.
+
+## v0.474 — primitive boxing uses current global constructors
+
+Loaded Object(value), Function.call/apply share AVM1 current-global boxing instead
+of stale native-registry/captured constructors. Missing/unusable bindings return
+a bare Object for Object conversion and the global receiver for call/apply.
+Inherited/case-selected bindings work; resolver lookup stays excluded; getter and
+constructor errors/GC obey existing native/trusted barriers. Host behavior and
+wire IDs stay unchanged, including transferred host adapters in loaded contexts
+without destination standard installation. See [PRIMITIVE_GLOBAL_BOXING.md](PRIMITIVE_GLOBAL_BOXING.md).
+Four drivers reproduce failures on v0.473: host/SWF4–8 matrices, three primitive
+types/fourteen binding forms, all Action routes, real native entries, GC/exception
+lifetime, transfer and new/new[] allocation sweeps. Full compatibility remains open.
+
+Object(value) и call/apply в SWF используют текущие глобальные классы примитивов.
+Fallback — новый bare Object либо глобальный this; __resolve пропускается.
+Проверены подмены, getters, исключения, GC, перенос и OOM. Другие CPU/ОС и все
+девять стадий остаются открытыми.
+
+Validation v0.474: complete Linux minimal 930/930. AGG passed 935/949 in
+the full run; 14 binaries could not launch after executable-mode resets.
+After restoring their modes, the selected rerun passed 14/14: all 949 checks
+have passing evidence across these runs. Four selected heap/global ASan+UBSan
+checks passed, including the full allocation sweep. Stack ASan and LeakSanitizer
+remain disabled. Generated logs and baseline binaries stay outside committed
+source. No new foreign-OS/device or full foreign-CPU run is claimed.
+
+Проверка v0.474: Linux minimal 930/930; все 949 AGG-проверок прошли в полном
+прогоне и повторе 14 запусков после восстановления прав исполнения. Выбранные
+heap/global ASan+UBSan — 4/4. Stack ASan/LeakSanitizer отключены; все стадии открыты.

@@ -21,6 +21,7 @@
 #include "super.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
+#include "flashvm/execution.h"
 #include "flashvm/standard.h"
 #include "flashvm/table.h"
 #include "flashvm/avm1.h"
@@ -99,6 +100,16 @@ FVM_Result function_text(FVM_Context *, FVM_Object *, unsigned int, const FVM_Va
 FVM_Result box_receiver(FVM_Context *c, const FVM_Value *value, FVM_Object *bundle,
                         FVM_Object **out)
 {
+    if (c->swf_loaded)
+    {
+        /* Loaded call/apply select the active global boxing constructor. A missing
+         * or unusable constructor leaves their implicit receiver at the global. */
+        FVM_Value boxed;
+        FVM_Result result = fvm_exec_to_object(c, value, &boxed);
+        if (result == FVM_OK)
+            *out = boxed.type == FVM_VALUE_OBJECT ? boxed.object : c->global;
+        return result;
+    }
     const char *type = value->type == FVM_VALUE_STRING    ? "String"
                        : value->type == FVM_VALUE_BOOLEAN ? "Boolean"
                                                           : "Number";
