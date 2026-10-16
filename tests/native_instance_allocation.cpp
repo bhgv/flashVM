@@ -70,9 +70,9 @@ static FVM_Result native_instance_trap(FVM_Context *,FVM_Object *,unsigned,const
 int main()
 {
  FVM_Config config;FVM_Runtime *runtime=0;assert(fvm_config_init(&config)==FVM_OK && fvm_runtime_create(&config,&runtime)==FVM_OK);
- const char *classes[]={"Number","String","Boolean"};
- const int kinds[]={FVM_RESOURCE_NUMBER,FVM_RESOURCE_STRING,FVM_RESOURCE_BOOLEAN};
- for(unsigned type=0;type<3;++type)for(unsigned version=4;version<=8;++version){bool failed=false,success=false;
+ const char *classes[]={"Number","String","Boolean","Date","Error","Object","Array"};
+ const int kinds[]={FVM_RESOURCE_NUMBER,FVM_RESOURCE_STRING,FVM_RESOURCE_BOOLEAN,FVM_RESOURCE_DATE,FVM_RESOURCE_ERROR,FVM_RESOURCE_OBJECT,FVM_RESOURCE_ARRAY};
+ for(unsigned type=0;type<7;++type)for(unsigned version=4;version<=8;++version){bool failed=false,success=false;
   for(long boundary=0;boundary<512 && !success;++boundary){
    FVM_Context *c=0;assert(fvm_context_create(runtime,&c)==FVM_OK);unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};swf[3]=(unsigned char)version;
    assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK && fvm_standard_install(c)==FVM_OK);
@@ -84,9 +84,10 @@ int main()
    assert(!native_instance_calls && !c->gc_frames && !c->gc_native_depth && !c->exception_pending);
    if(status==FVM_OUT_OF_MEMORY){failed=true;assert(!instance && fvm_gc_collect(c,0)==FVM_OK);assert(fvm_function_construct(c,klass.object,0,0,&instance)==FVM_OK);}
    else{assert(status==FVM_OK);success=true;}
-   assert(instance && instance->resource_kind==kinds[type] && instance->resource_result_valid);
+   assert(instance && instance->resource_kind==kinds[type] && (type==4 || type==5 || instance->resource_result_valid));
    if(type==0)assert(instance->resource_result.type==FVM_VALUE_NUMBER && instance->resource_result.number==0);
    if(type==1){assert(instance->resource_result.type==FVM_VALUE_STRING && !fvm_string_size(instance->resource_result));assert(fvm_object_get(c,instance,"length",&value)==FVM_OK && value.number==0);}
+   if(type==3)assert(instance->resource_result.type==FVM_VALUE_NUMBER);
    if(type==2)assert(instance->resource_result.type==FVM_VALUE_BOOLEAN && !instance->resource_result.boolean);
    assert(instance && fvm_gc_pin(c,instance)==FVM_OK && fvm_object_get(c,klass.object,"prototype",&value)==FVM_OK && instance->prototype==value.object);
    assert(fvm_object_get(c,instance,"__constructor__",&value)==FVM_OK && value.object==klass.object);

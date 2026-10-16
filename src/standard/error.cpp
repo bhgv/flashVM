@@ -3,6 +3,9 @@
  */
 
 #include "error_state.hpp"
+#include "error_constants.h"
+#include "constructor_identity.hpp"
+#include "../core/object_root_scope.hpp"
 #include "flashvm/standard.h"
 #include <cstring>
 
@@ -23,6 +26,8 @@ FVM_Result error_string(FVM_Context *c, FVM_Object *self, unsigned int, const FV
     /* Initialization / Инициализация локального состояния. */
     /* AS2 Error.toString returns the message, without a name prefix. It is
      * intentionally generic: a borrowed method can inspect another receiver. */
+    if (c->swf_loaded)
+        return fvm_object_get(c, self, "message", out);
     FVM_Value message;
     FVM_Result result = fvm_object_get(c, self, "message", &message);
     return result == FVM_OK ? fvm_value_to_string(c, &message, out) : result;
@@ -35,22 +40,30 @@ FVM_Result error_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *klass = (FVM_Object *)userdata;
-    FVM_Value prototype;
-    FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
-    if (result != FVM_OK)
-        return result;
-    if (prototype.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
     FVM_Object *object = 0;
-    result = fvm_object_create(c, &object);
-    if (result != FVM_OK)
-        return result;
-
-    /* Computation / Вычисление и обновление состояния. */
-    object->resource_kind = ERROR_OBJECT;
-    object->prototype = prototype.object;
+    FVM_Result result = FVM_OK;
+    if (c->swf_loaded)
+    {
+        result = fvm_function_allocate_instance(c, klass, ERROR_OBJECT, &object);
+        if (result != FVM_OK)
+            return result;
+    }
+    else
+    {
+        FVM_Value prototype;
+        result = fvm_object_get(c, klass, "prototype", &prototype);
+        if (result != FVM_OK)
+            return result;
+        if (prototype.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        result = fvm_object_create(c, &object);
+        if (result != FVM_OK)
+            return result;
+        object->resource_kind = ERROR_OBJECT;
+        object->prototype = prototype.object;
+    }
+    /* [GC:] A message setter can detach the class or receiver before publication. */
+    FVM_ObjectRootScope object_root(c, object);
     /* Preserve the supplied value rather than coercing it at construction.
      * Omitted/undefined message inherits the prototype's default. */
     if (count && args[0].type != FVM_VALUE_UNDEFINED)
@@ -64,6 +77,19 @@ FVM_Result error_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
     out->object = object;
     return FVM_OK;
 }
+/* Error() is a script-style initializer on the calling receiver, returning undefined. */
+FVM_Result error_call(FVM_Context *c, FVM_Object *self, unsigned int count,
+                      const FVM_Value *args, FVM_Value *out, void *userdata)
+{
+    if (!c->swf_loaded)
+        return error_constructor(c, self, count, args, out, userdata);
+    FVM_Result result = FVM_OK;
+    if (count && args[0].type != FVM_VALUE_UNDEFINED)
+        result = fvm_object_set(c, self ? self : c->global, "message", args);
+    if (result == FVM_OK)
+        fvm_value_undefined(out);
+    return result;
+}
 } // namespace
 
 /* Build constructor and prototype for error. */
@@ -72,7 +98,8 @@ FVM_Result
 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 fvm_error_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors)
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
+                fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions)
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
 
@@ -145,6 +172,8 @@ fvm_error_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &
     constructor.root = klass;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     constructors["Error"] = constructor;
+    constructor.callback = error_call;
+    functions["Error"] = constructor;
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -238,11 +267,15 @@ void fvm_error_attach(FVM_Context *c, FVM_Object *error)
 /* Map a native error callback to its stable serialization identifier. */
 unsigned long fvm_error_callback_id(FVM_NativeFunction callback)
 {
-    return callback == error_string ? 301UL : callback == error_constructor ? 302UL : 0UL;
+    return callback == error_string ? FVM_ERROR_CALLBACK_STRING
+           : callback == error_constructor ? FVM_ERROR_CALLBACK_CONSTRUCTOR
+           : callback == error_call ? FVM_ERROR_CALLBACK_CALL : 0UL;
 }
 
 /* Restore a native error callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_error_callback_from_id(unsigned long id)
 {
-    return id == 301 ? error_string : id == 302 ? error_constructor : 0;
+    return id == FVM_ERROR_CALLBACK_STRING ? error_string
+           : id == FVM_ERROR_CALLBACK_CONSTRUCTOR ? error_constructor
+           : id == FVM_ERROR_CALLBACK_CALL ? error_call : 0;
 }

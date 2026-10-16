@@ -48,6 +48,10 @@ int main()
         /* A bare one-record Array graph keeps the reserved-index boundary independently testable. */
         fvm_value_string(&value, "first"); assert(fvm_construct(c, "Array", 1, &value, &array) == FVM_OK);
         array->prototype = 0; array->accessors.clear();
+        /* Normal arrays now retain their constructor identities. Remove those edges only
+         * from this deliberately one-record raw-wire fixture, leaving roundtrips above intact. */
+        array->properties.erase("__constructor__"); array->attributes.erase("__constructor__");
+        array->properties.erase("constructor"); array->attributes.erase("constructor");
         unsigned char *wire = 0; size_t wire_size = 0; value = object(array);
         assert(fvm_value_serialize(c, &value, &wire, &wire_size) == FVM_OK);
         assert(wire_size > 70 && wire[28] == 1 && wire[33] == FVM_VALUE_NUMBER && wire[65] == 1);

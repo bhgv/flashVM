@@ -11,6 +11,8 @@
 #include "../avm1/scope_keywords.hpp"
 #include "../swf/format_constants.h"
 #include "base_state.hpp"
+#include "base_constants.h"
+#include "constructor_identity.hpp"
 #include "class_registry_constants.h"
 #include "movieclip_state.hpp"
 #include "../core/prototype_data.hpp"
@@ -495,6 +497,20 @@ FVM_Result object_constructor(FVM_Context *c, FVM_Object *, unsigned int n, cons
         return FVM_OK;
     }
 
+    if (c->swf_loaded)
+    {
+        FVM_Object *object = 0;
+        FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)ud,
+                                                            OBJECT_OBJECT, &object);
+        if (result == FVM_OK)
+        {
+            fvm_value_undefined(out);
+            out->type = FVM_VALUE_OBJECT;
+            out->object = object;
+        }
+        return result;
+    }
+
     /* Initialization / Инициализация локального состояния. */
     FVM_Value proto;
     FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
@@ -524,34 +540,67 @@ FVM_Result object_constructor(FVM_Context *c, FVM_Object *, unsigned int n, cons
 FVM_Result object_call(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                        FVM_Value *out, void *ud)
 {
+    if (c->swf_loaded && (!n || a[0].type == FVM_VALUE_NULL ||
+                         a[0].type == FVM_VALUE_UNDEFINED))
+    {
+        /* A plain Object() allocates a bare object without constructor metadata. */
+        FVM_Object *object = 0;
+        FVM_Result result = fvm_object_create(c, &object);
+        if (result == FVM_OK)
+        {
+            fvm_value_undefined(out);
+            out->type = FVM_VALUE_OBJECT;
+            out->object = object;
+        }
+        return result;
+    }
     return object_constructor(c, o, n, a, out, ud);
 }
 
-/* Construct an Array from its length or supplied element values. */
-FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                             FVM_Value *out, void *ud)
+/* Build Array elements with constructor-specific or builtin function prototype selection. */
+FVM_Result array_build(FVM_Context *c, unsigned int n, const FVM_Value *a,
+                       FVM_Value *out, void *ud, bool function_call)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value proto;
-    FVM_Result r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
-    if (r != FVM_OK)
-        return r;
-    if (proto.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
+    FVM_Result r = FVM_OK;
+    if (!c->swf_loaded)
+    {
+        r = fvm_object_get(c, (FVM_Object *)ud, "prototype", &proto);
+        if (r != FVM_OK)
+            return r;
+        if (proto.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+    }
     unsigned long length = n;
     if (n == 1 && a[0].type == FVM_VALUE_NUMBER)
     {
         double v = a[0].number;
-        if (v < 0 || v > 4294967295.0 || v != std::floor(v))
+        if (v < 0 || v > FVM_UINT32_MAX_NUMBER || v != std::floor(v))
             return FVM_INVALID_ARGUMENT;
         length = (unsigned long)v;
     }
     FVM_Object *o = 0;
-    r = fvm_array_create_like(c, 0, length, &o, true);
-    if (r != FVM_OK)
-        return r;
-    o->prototype = proto.object;
+    if (c->swf_loaded && !function_call)
+    {
+        r = fvm_function_allocate_instance(c, (FVM_Object *)ud, ARRAY_OBJECT, &o);
+        if (r != FVM_OK)
+            return r;
+        o->resource_result_valid = true;
+        fvm_value_number(&o->resource_result, (double)length);
+        length_accessor(o);
+    }
+    else
+    {
+        r = fvm_array_create_like(c, 0, length, &o, true);
+        if (r != FVM_OK)
+            return r;
+        if (!c->swf_loaded)
+            o->prototype = proto.object;
+    }
+    /* [GC:] Retain both constructor identities and copied element values until publication. */
+    FVM_ObjectRootScope array_root(c, o);
     if (!(n == 1 && a[0].type == FVM_VALUE_NUMBER))
         for (unsigned int i = 0; i < n; ++i)
         {
@@ -567,6 +616,20 @@ FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n, const
     out->type = FVM_VALUE_OBJECT;
     out->object = o;
     return FVM_OK;
+}
+
+/* Construct an Array using the callee's own stored prototype when loaded. */
+FVM_Result array_constructor(FVM_Context *c, FVM_Object *, unsigned int n,
+                             const FVM_Value *a, FVM_Value *out, void *ud)
+{
+    return array_build(c, n, a, out, ud, false);
+}
+
+/* Calling Array() uses its retained builtin prototype without constructor identities. */
+FVM_Result array_call(FVM_Context *c, FVM_Object *, unsigned int n,
+                      const FVM_Value *a, FVM_Value *out, void *ud)
+{
+    return array_build(c, n, a, out, ud, true);
 }
 
 /* Push the current value. */
@@ -2505,6 +2568,7 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     entry.root = array_class;
     entry.userdata = array_class;
     constructors["Array"] = entry;
+    entry.callback = array_call;
     functions["Array"] = entry;
     FVM_AccessorEntry proto_accessor;
 
@@ -2594,73 +2658,77 @@ FVM_Result fvm_base_validate(FVM_Context *c)
 /* Map a native base callback to its stable serialization identifier. */
 unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == array_call)
+        return FVM_BASE_CALLBACK_ARRAY_CALL;
     if (callback == object_locale)
-        return 627;
+        return FVM_BASE_CALLBACK_OBJECT_LOCALE;
     if (callback == register_class)
-        return 626;
+        return FVM_BASE_CALLBACK_REGISTER_CLASS;
     if (callback == script_property_get)
-        return 608;
+        return FVM_BASE_CALLBACK_SCRIPT_PROPERTY_GET;
     if (callback == script_property_set)
-        return 609;
+        return FVM_BASE_CALLBACK_SCRIPT_PROPERTY_SET;
     if (callback == object_constructor)
-        return 605;
+        return FVM_BASE_CALLBACK_OBJECT_CONSTRUCTOR;
     if (callback == array_constructor)
-        return 606;
+        return FVM_BASE_CALLBACK_ARRAY_CONSTRUCTOR;
     if (callback == object_call)
-        return 607;
+        return FVM_BASE_CALLBACK_OBJECT_CALL;
     if (callback == set_flags)
-        return 604;
+        return FVM_BASE_CALLBACK_SET_FLAGS;
     if (callback == array_length)
-        return 600;
+        return FVM_BASE_CALLBACK_ARRAY_LENGTH;
     if (callback == array_resize)
-        return 601;
+        return FVM_BASE_CALLBACK_ARRAY_RESIZE;
     if (callback == prototype_get)
-        return 602;
+        return FVM_BASE_CALLBACK_PROTOTYPE_GET;
     if (callback == prototype_set)
-        return 603;
+        return FVM_BASE_CALLBACK_PROTOTYPE_SET;
     for (size_t i = 0; i < sizeof(object_methods) / sizeof(object_methods[0]); ++i)
         if (callback == object_methods[i].callback)
-            return 610 + (unsigned long)i;
+            return FVM_BASE_CALLBACK_OBJECT_METHOD_BASE + (unsigned long)i;
     for (size_t i = 0; i < sizeof(array_methods) / sizeof(array_methods[0]); ++i)
         if (callback == array_methods[i].callback)
-            return 630 + (unsigned long)i;
+            return FVM_BASE_CALLBACK_ARRAY_METHOD_BASE + (unsigned long)i;
     return 0;
 }
 
 /* Restore a native base callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
 {
-    if (id == 627)
+    if (id == FVM_BASE_CALLBACK_ARRAY_CALL)
+        return array_call;
+    if (id == FVM_BASE_CALLBACK_OBJECT_LOCALE)
         return object_locale;
     /* Legacy locale aliases used the ordinary string callback at this ID. */
-    if (id == 612)
+    if (id == FVM_BASE_CALLBACK_LEGACY_OBJECT_STRING)
         return object_string;
-    if (id == 626)
+    if (id == FVM_BASE_CALLBACK_REGISTER_CLASS)
         return register_class;
-    if (id == 608)
+    if (id == FVM_BASE_CALLBACK_SCRIPT_PROPERTY_GET)
         return script_property_get;
-    if (id == 609)
+    if (id == FVM_BASE_CALLBACK_SCRIPT_PROPERTY_SET)
         return script_property_set;
-    if (id == 605)
+    if (id == FVM_BASE_CALLBACK_OBJECT_CONSTRUCTOR)
         return object_constructor;
-    if (id == 606)
+    if (id == FVM_BASE_CALLBACK_ARRAY_CONSTRUCTOR)
         return array_constructor;
-    if (id == 607)
+    if (id == FVM_BASE_CALLBACK_OBJECT_CALL)
         return object_call;
-    if (id == 604)
+    if (id == FVM_BASE_CALLBACK_SET_FLAGS)
         return set_flags;
-    if (id == 600)
+    if (id == FVM_BASE_CALLBACK_ARRAY_LENGTH)
         return array_length;
-    if (id == 601)
+    if (id == FVM_BASE_CALLBACK_ARRAY_RESIZE)
         return array_resize;
-    if (id == 602)
+    if (id == FVM_BASE_CALLBACK_PROTOTYPE_GET)
         return prototype_get;
-    if (id == 603)
+    if (id == FVM_BASE_CALLBACK_PROTOTYPE_SET)
         return prototype_set;
-    if (id >= 610 && id < 610 + sizeof(object_methods) / sizeof(object_methods[0]))
-        return object_methods[id - 610].callback;
-    return id >= 630 && id < 630 + sizeof(array_methods) / sizeof(array_methods[0])
-               ? array_methods[id - 630].callback
+    if (id >= FVM_BASE_CALLBACK_OBJECT_METHOD_BASE && id < FVM_BASE_CALLBACK_OBJECT_METHOD_BASE + sizeof(object_methods) / sizeof(object_methods[0]))
+        return object_methods[id - FVM_BASE_CALLBACK_OBJECT_METHOD_BASE].callback;
+    return id >= FVM_BASE_CALLBACK_ARRAY_METHOD_BASE && id < FVM_BASE_CALLBACK_ARRAY_METHOD_BASE + sizeof(array_methods) / sizeof(array_methods[0])
+               ? array_methods[id - FVM_BASE_CALLBACK_ARRAY_METHOD_BASE].callback
                : 0;
 }
 

@@ -4037,3 +4037,34 @@ These are synthetic ABI checks, not full VM execution on foreign CPUs/OSes.
 The final Boolean callback-trap refinement was rerun in minimal, AGG and sanitizer
 profiles. Interrupted build outputs/executable permissions were repaired before
 the final complete native runs; no behavior failures remain in those runs.
+
+## v0.473 — loaded builtin construction and function-call semantics
+
+Date/Error/Object/Array prepare stored prototypes and hidden constructor identities
+before coercion/setters. Date snapshots its receiver before numeric projection;
+Error setters see complete metadata. Loaded Object() is bare for nullish inputs;
+Array() uses its retained builtin prototype; Error() initializes its caller and
+returns undefined, and Error.toString returns raw message data. Appended callback
+IDs preserve invocation distinctions across graph transfer. Internal Function
+metadata arrays no longer execute public Array.prototype getters.
+
+Nine targeted regressions reproduce failures on v0.472 and pass after the fixes;
+seven factories now have cold-wrapper allocation-failure sweeps. See
+[BUILTIN_CONSTRUCTION.md](BUILTIN_CONSTRUCTION.md) for tests, reference sources,
+callback/GC policy, transfer fallback and remaining numeric-length/boxing limits.
+Все стадии остаются открытыми: Date/Error/Object/Array получают prototype и
+метаданные до callbacks; разделены обычные вызовы, исправлен raw message Error
+и исключён getter Array.prototype из метаданных Function. Полная совместимость,
+другие фабрики и реальные запуски других CPU/ОС не заявлены.
+
+Validation v0.473: complete Linux minimal 926/926 and AGG 945/945; nine
+selected heap/global ASan+UBSan checks passed (eight together, then the new
+Function2 metadata check). Stack ASan and LeakSanitizer remain disabled.
+Three scoped constant headers passed a strict C89 syntax probe. Executable
+permissions were repaired before final native runs. A one-record malformed-wire
+fixture explicitly strips new constructor edges; normal roundtrip tests keep them.
+Foreign CPU/OS acceptance and all nine roadmap stages remain open.
+
+Проверка v0.473: полные Linux minimal 926/926, AGG 945/945; девять выбранных
+проверок heap/global ASan+UBSan прошли. Stack ASan/LeakSanitizer отключены.
+Три новых заголовка констант прошли C89. Приёмка других CPU/ОС и все стадии открыты.

@@ -11,7 +11,8 @@
  * remain editable, GC-traced and transferable as a graph. */
 /* Build constructor and prototype for error. */
 FVM_Result fvm_error_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
-                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors);
+                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
+                           fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions);
 
 /* Validate error. */
 FVM_Result fvm_error_validate(FVM_Context *);

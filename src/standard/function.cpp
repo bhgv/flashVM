@@ -677,13 +677,14 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    r = fvm_array_create_like(c, 0, (unsigned long)body.parameters.size(), &params);
+    /* Internal function metadata must not execute public Array.prototype accessors. */
+    r = fvm_array_create_like(c, 0, (unsigned long)body.parameters.size(), &params, true);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return r;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    r = fvm_array_create_like(c, 0, (unsigned long)body.constants.size(), &constants);
+    r = fvm_array_create_like(c, 0, (unsigned long)body.constants.size(), &constants, true);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (r != FVM_OK)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -798,7 +799,7 @@ FVM_Result fvm_function_make_script(FVM_Context *c, const FVM_ScriptFunction &bo
         if (body.parameter_registers.size() != body.parameters.size())
             return FVM_INVALID_ARGUMENT;
         FVM_Object *registers = 0;
-        r = fvm_array_create_like(c, 0, (unsigned long)body.parameter_registers.size(), &registers);
+        r = fvm_array_create_like(c, 0, (unsigned long)body.parameter_registers.size(), &registers, true);
         if (r != FVM_OK)
             return r;
         registers->prototype = 0;

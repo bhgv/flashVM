@@ -3,6 +3,9 @@
  */
 
 #include "date_state.hpp"
+#include "date_constants.h"
+#include "constructor_identity.hpp"
+#include "../core/object_root_scope.hpp"
 #include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
 #include "../../ports/clock_port.h"
@@ -53,7 +56,7 @@ double minute_component(double v)
 /* Compute and return clip. */
 double clip(double v)
 {
-    return !finite(v) || std::fabs(v) > 8640000000000000.0 ? invalid() : integer(v);
+    return !finite(v) || std::fabs(v) > FVM_DATE_TIME_CLIP_LIMIT ? invalid() : integer(v);
 }
 
 /* Compute and return days. */
@@ -218,7 +221,7 @@ GET(get_utc_month, 1, true) GET(get_utc_date, 2, true) GET(get_utc_hours, 3, tru
     FVM_Result normalized_utc(const Fields &input, double &out)
 {
     double local = make(input);
-    if (!finite(local) || std::fabs(local) > 8640000000000000.0)
+    if (!finite(local) || std::fabs(local) > FVM_DATE_TIME_CLIP_LIMIT)
     {
         out = invalid();
         return FVM_OK;
@@ -458,9 +461,9 @@ FVM_Result utc(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *ar
     return r;
 }
 
-/* Compute and return constructor. */
-FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
-                       FVM_Value *out, void *userdata)
+/* Initialize a prepared loaded receiver, or allocate using the historical host lookup. */
+FVM_Result constructor(FVM_Context *c, unsigned int n, const FVM_Value *a,
+                       FVM_Value *out, void *userdata, FVM_Object *prepared)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -477,31 +480,30 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
         r = fvm_value_to_number(c, a, &t);
         /* Loaded single-timestamp construction retains bounded fractional data.
          * Keep the existing range/nonfinite guard until the calendar engine is audited. */
-        if (!c->swf_loaded || !finite(t) || std::fabs(t) > 8640000000000000.0)
+        if (!c->swf_loaded || !finite(t) || std::fabs(t) > FVM_DATE_TIME_CLIP_LIMIT)
             t = clip(t);
     }
     else
         r = components(c, n, a, true, t);
     if (r != FVM_OK)
         return r;
-    FVM_Value proto;
-    r = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &proto);
-    if (r != FVM_OK)
-        return r;
-    if (proto.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *o = 0;
-    r = fvm_object_create(c, &o);
-    if (r != FVM_OK)
-        return r;
-
-    /* Computation / Вычисление и обновление состояния. */
-    o->resource_kind = DATE_OBJECT;
+    FVM_Object *o = prepared;
+    if (!o)
+    {
+        FVM_Value proto;
+        r = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &proto);
+        if (r != FVM_OK)
+            return r;
+        if (proto.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        r = fvm_object_create(c, &o);
+        if (r != FVM_OK)
+            return r;
+        o->resource_kind = DATE_OBJECT;
+        o->prototype = proto.object;
+    }
     o->resource_result_valid = true;
     fvm_value_number(&o->resource_result, t);
-    o->prototype = proto.object;
     fvm_value_undefined(out);
 
     /* Computation / Вычисление и обновление состояния. */
@@ -512,11 +514,11 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_V
 
 /* Loaded Date() returns current local time as text without coercing arguments.
  * The captured class retains the historical unloaded constructor fallback. */
-FVM_Result date_call(FVM_Context *c, FVM_Object *self, unsigned int count,
+FVM_Result date_call(FVM_Context *c, FVM_Object *, unsigned int count,
                      const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
-        return constructor(c, self, count, args, out, userdata);
+        return constructor(c, count, args, out, userdata, 0);
     double timestamp = 0;
     if (!fvm_port_clock_ms(&timestamp))
         return FVM_ERROR;
@@ -534,7 +536,7 @@ FVM_Result project_arguments(FVM_Context *c, unsigned int count, const FVM_Value
                              FVM_Value *numbers, unsigned int &used)
 {
     used = 0;
-    while (used < count && used < 7 && args[used].type != FVM_VALUE_UNDEFINED)
+    while (used < count && used < FVM_DATE_ARGUMENT_LIMIT && args[used].type != FVM_VALUE_UNDEFINED)
     {
         double number = 0;
         FVM_Result result = fvm_avm1_number(c, args + used, &number);
@@ -547,15 +549,22 @@ FVM_Result project_arguments(FVM_Context *c, unsigned int count, const FVM_Value
 }
 
 /* Project loaded constructor operands; unloaded construction keeps the host contract. */
-FVM_Result loaded_constructor(FVM_Context *c, FVM_Object *self, unsigned int count,
+FVM_Result loaded_constructor(FVM_Context *c, FVM_Object *, unsigned int count,
                               const FVM_Value *args, FVM_Value *out, void *userdata)
 {
     if (!c->swf_loaded)
-        return constructor(c, self, count, args, out, userdata);
-    FVM_Value numbers[7];
+        return constructor(c, count, args, out, userdata, 0);
+    FVM_Object *receiver = 0;
+    FVM_Result result = fvm_function_allocate_instance(c, (FVM_Object *)userdata,
+                                                        DATE_OBJECT, &receiver);
+    if (result != FVM_OK)
+        return result;
+    /* [GC:] Argument callbacks cannot replace or reclaim the selected Date receiver. */
+    FVM_ObjectRootScope receiver_root(c, receiver);
+    FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
     unsigned int used = 0;
-    FVM_Result result = project_arguments(c, count, args, numbers, used);
-    return result == FVM_OK ? constructor(c, self, used, numbers, out, userdata) : result;
+    result = project_arguments(c, count, args, numbers, used);
+    return result == FVM_OK ? constructor(c, used, numbers, out, userdata, receiver) : result;
 }
 
 /* Date.UTC uses the same operand prefix; fewer than two projected values return undefined. */
@@ -564,7 +573,7 @@ FVM_Result loaded_utc(FVM_Context *c, FVM_Object *self, unsigned int count,
 {
     if (!c->swf_loaded)
         return utc(c, self, count, args, out, userdata);
-    FVM_Value numbers[7];
+    FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
     unsigned int used = 0;
     FVM_Result result = project_arguments(c, count, args, numbers, used);
     if (result != FVM_OK)
@@ -587,7 +596,7 @@ FVM_Result loaded_method(FVM_Context *c, FVM_Object *self, unsigned int count,
         return callback(c, self, count, args, out, userdata);
     if (!self || self->owner != c)
         return FVM_INVALID_ARGUMENT;
-    FVM_Value numbers[7];
+    FVM_Value numbers[FVM_DATE_ARGUMENT_LIMIT];
     unsigned int used = 0;
     FVM_Result result = project_arguments(c, count, args, numbers, used);
     if (result != FVM_OK)

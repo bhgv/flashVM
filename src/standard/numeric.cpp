@@ -1048,7 +1048,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         prototype->methods["toString"] = method;
         if (c->swf_loaded)
             prototype->attributes["toString"] = 3;
-        result = fvm_error_stage(c, globals, constructors);
+        result = fvm_error_stage(c, globals, constructors, functions);
         if (result != FVM_OK)
             return result;
         result = fvm_number_stage(c, globals, constructors);
@@ -1121,7 +1121,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         {
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator g = globals.find(i->first);
             if ((i->first == "Number" || i->first == "Boolean" || i->first == "String" ||
-                 i->first == "Object" || i->first == "Array" || i->first == "Date") &&
+                 i->first == "Object" || i->first == "Array" || i->first == "Date" ||
+                 i->first == "Error") &&
                 g != globals.end() && g->second.type == FVM_VALUE_OBJECT &&
                 g->second.object->constructable.callback)
                 g->second.object->invocable = i->second;
