@@ -370,3 +370,28 @@ boundaries and all nine stages remain open.
 Validation v0.443: Linux minimal 878/878; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.444 — allocation-free invocation identity roots
+
+FVM_CallScope now retains saved/active constructor, function and owner through
+six inline root frames. Publishing the complete chain and restoring the
+previous identity no longer allocate a temporary vector. Nested calls and
+unwinding preserve the caller's root head. This is an implementation/GC
+change, not an expansion of SWF compatibility.
+
+super_conversion_allocation reproduced failure to enter a call scope with all
+new/new[] denied. It now enters/exits and unwinds a nested scope under that
+restriction, collects with all six identities live, and verifies reclamation
+after detachment. It also sweeps every new/new[] boundary up to first completed
+ToNumber/ToString/Add2 success or thrown value across SWF5–8, using fresh
+contexts. Failures preserve aliased output, reset recursion/invocation roots,
+retain any pending thrown payload and permit GC/retry. These are C++
+allocation boundaries, not every OS/C allocator or full concurrent GC proof.
+All nine stages remain open.
+
+Validation v0.444: Linux minimal 879/879; minimal/AGG/Linux-hosted NO_OS_PORTS/
+heap-global ASan+UBSan targeted checks 5/5 each after dependency-cache repair.
+The first sanitizer run exposed a stale function.cpp object using the old
+CallScope layout; regenerating dependency caches rebuilt it and the check
+passed. Executable-mode launchers applied; stack ASan/LeakSanitizer disabled.
+Foreign OS execution and all stages remain open.

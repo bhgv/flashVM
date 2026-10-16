@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/7/8: inline invocation roots/OOM | Проверено для v0.444 | Six live identities, all-new-denied entry/nested unwind, reclamation and fresh-context SWF5–8 conversion allocation sweeps with alias/error/GC/retry. PROPERTY_CASE.md / .ru.md; C/OS allocators, concurrent GC and stages open. |
 | 1/2/7/8: super special conversion identity | Проверено для v0.443 | Original receiver/defining owner, folded names, noncallables, collecting deletion/detachment, errors and native ToNumber/ToString/Add2; PROPERTY_CASE.md / .ru.md. General resolution/OOM and stages remain open. |
 | 1/2/7/8: super string fallback | Проверено для v0.442 | SWF5–8 non-string fallback, NUL/exception/callback counts, Function controls, GC and real native ToString; PROPERTY_CASE.md / .ru.md. Receiver/owner dispatch and full conversions remain open. |
 | 1/2/7/8: loaded super TypeOf | Проверено для v0.441 | object result for super, actual Function/instance controls, host, SWF5–8, in-place helper, GC and real native TypeOf. Direct parent invocation retained. PROPERTY_CASE.md / .ru.md; other reflection/conversion and stages remain open. |
