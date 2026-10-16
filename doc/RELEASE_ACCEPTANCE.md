@@ -2781,3 +2781,21 @@ tests passed together (3.00 seconds). Stack ASan/LeakSanitizer remain disabled.
 Registration retains its native GC barrier; actual post-registration GC and
 receiver-side collection after graph transfer are tested. No ABI/callback ID
 changes or non-Linux native execution are claimed. All nine stages remain open.
+
+### v0.479 — ASSetPropFlags target and flag conversions
+
+RU: `property_flags_global_boxing` проверяет host/SWF4–8, три типа и 14 вариантов
+глобала через C/saved function/три режима AVM1/JIT. `property_flags_conversion`
+проверяет порядок T/S/C/N, ошибки и циклические исключения на каждом шаге,
+побочные эффекты списка до снимка, NUL-ключи, дробные/отрицательные/NaN/бесконечные
+значения set/clear. `property_flags_allocation` перебирает отказы new/new[] без
+публикации частичной таблицы, затем выполняет GC и повторный вызов. Первые два
+теста падают на base.cpp из v0.478. Новый constants-header проходит C89 probe.
+
+EN: After repairing generated executable modes, the complete Linux minimal run
+passed 945/945 in one run (15.85 seconds). AGG passed the three focused tests;
+heap/global ASan+UBSan also passed all three together (7.81 seconds). Stack ASan
+and LeakSanitizer remain disabled. Conversion callbacks retain the native GC
+barrier; failed mutation is checked with collection before retry. The supported
+attribute mask remains 0–7; extended version flags, non-Linux runtime evidence
+and every roadmap stage remain open. No ABI or callback IDs changed.

@@ -1967,3 +1967,15 @@ name/factory ordering, exceptions and OOM replacement retries are checked.
 GC/перенос обработчика и отказы памяти. Нативный GC-барьер при регистрации и
 поведение host без SWF сохранены. Это работа этапов 1/2/6/7/8; этап 9 и остальные
 стадии остаются открытыми до полной приёмки.
+
+### v0.479: ASSetPropFlags conversion / преобразования ASSetPropFlags
+
+Loaded target boxing and AVM1 set/clear conversion now precede property-list
+conversion. Saturating UInt16 narrowing handles fractional/negative/NaN values;
+only supported attribute bits 0–7 are accepted. Extended version flags remain
+open. Target roots, conversion order/failures, atomic attribute publication and
+OOM retries are tested. Host behavior and ABI/callback identities are unchanged.
+
+В ASSetPropFlags исправлены преобразования объекта и числовых флагов, порядок
+побочных эффектов и случаи дробных/отрицательных/NaN значений. Дополнительные
+version-флаги ещё не реализованы. Проверки не закрывают ни один этап роадмапа.

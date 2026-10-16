@@ -4150,3 +4150,15 @@ the boxing global and GC, and travel with the watched graph. Tests cover 14 glob
 variants, C/saved-method/three AVM1/JIT routes, ordering and OOM replacement.
 Native registration keeps its collector barrier. Full version visibility,
 resource transport and roadmap acceptance remain open.
+
+### v0.479 — ASSetPropFlags projection and numeric operands
+
+RU: Проверены текущие boxing-глобалы для цели, AVM1-преобразования set/clear,
+порядок target→set→clear→names, ошибки, исключения, встроенный NUL и OOM без
+частичного изменения атрибутов. Насыщение UInt16 не добавляет поддержку битов >7.
+
+EN: ASSetPropFlags now projects loaded targets, evaluates set/clear through AVM1,
+then converts the property list. Fractional/negative/NaN narrowing follows the
+pinned reference within the supported mask. Extended version flags remain
+rejected. Tests: property_flags_global_boxing/conversion/allocation.
+See PROPERTY_FLAGS.md; all roadmap stages remain open.

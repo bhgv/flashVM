@@ -12,6 +12,7 @@
 #include "../swf/format_constants.h"
 #include "base_state.hpp"
 #include "base_constants.h"
+#include "property_flag_constants.h"
 #include "constructor_identity.hpp"
 #include "class_registry_constants.h"
 #include "movieclip_state.hpp"
@@ -358,6 +359,16 @@ FVM_Result prototype_set(FVM_Context *c, FVM_Object *o, unsigned int n, const FV
     return r;
 }
 
+/* Narrow a loaded flag Number using the reference's saturating UInt16 cast. */
+double property_flag_number(double value)
+{
+    if (!(value > 0))
+        return 0;
+    if (value >= FVM_AS_PROPERTY_FLAGS_UINT16_MAX_NUMBER)
+        return FVM_AS_PROPERTY_FLAGS_UINT16_MAX_NUMBER;
+    return std::floor(value);
+}
+
 /* Update flags. */
 FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *args,
                      FVM_Value *out, void *)
@@ -365,30 +376,58 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     fvm_value_undefined(out);
     if (!n)
         return FVM_OK;
-    if (args[0].type != FVM_VALUE_OBJECT)
+    FVM_Value target = args[FVM_AS_PROPERTY_FLAGS_TARGET_ARGUMENT];
+    if (c->swf_loaded)
+    {
+        FVM_Result status = fvm_exec_to_object(c, args, &target);
+        if (status != FVM_OK)
+            return status;
+        if (target.type != FVM_VALUE_OBJECT)
+        {
+            FVM_Object *bare = 0;
+            status = fvm_object_create(c, &bare);
+            if (status != FVM_OK)
+                return status;
+            target.type = FVM_VALUE_OBJECT;
+            target.object = bare;
+        }
+    }
+    if (target.type != FVM_VALUE_OBJECT)
         return FVM_INVALID_ARGUMENT;
+    /* [GC:] Retain a projected target while flag/name callbacks may remove its factory roots. */
+    FVM_ObjectRootScope target_root(c, target.object);
 
     /* Initialization / Инициализация локального состояния. */
     double set = 0, clear = 0;
-    FVM_Result r = n > 2 ? fvm_value_to_number(c, args + 2, &set) : FVM_OK;
+    FVM_Result r = n > FVM_AS_PROPERTY_FLAGS_SET_ARGUMENT ? (c->swf_loaded ? fvm_avm1_number(c, args + FVM_AS_PROPERTY_FLAGS_SET_ARGUMENT, &set)
+                                           : fvm_value_to_number(c, args + FVM_AS_PROPERTY_FLAGS_SET_ARGUMENT, &set)) : FVM_OK;
     if (r != FVM_OK)
         return r;
-    if (n > 3)
+    if (n > FVM_AS_PROPERTY_FLAGS_CLEAR_ARGUMENT)
     {
-        r = fvm_value_to_number(c, args + 3, &clear);
+        r = c->swf_loaded ? fvm_avm1_number(c, args + FVM_AS_PROPERTY_FLAGS_CLEAR_ARGUMENT, &clear)
+                          : fvm_value_to_number(c, args + FVM_AS_PROPERTY_FLAGS_CLEAR_ARGUMENT, &clear);
         if (r != FVM_OK)
             return r;
     }
-    if (set != set || clear != clear || set < 0 || clear < 0 || set > 7 || clear > 7 ||
+    if (c->swf_loaded)
+    {
+        /* Loaded flags use saturating UInt16 conversion, not wrapping ToUint32. */
+        set = property_flag_number(set);
+        clear = property_flag_number(clear);
+    }
+    /* Version/visibility flag bits beyond the supported public mask remain rejected. */
+    if (set != set || clear != clear || set < 0 || clear < 0 ||
+        set > FVM_PROPERTY_VALID_FLAGS || clear > FVM_PROPERTY_VALID_FLAGS ||
         set != std::floor(set) || clear != std::floor(clear))
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
-    if (n < 2)
+    if (n <= FVM_AS_PROPERTY_FLAGS_NAMES_ARGUMENT)
         return FVM_OK;
-    FVM_Object *o = args[0].object;
+    FVM_Object *o = target.object;
     fvm_detail::vector<fvm_detail::string> names;
-    if (args[1].type == FVM_VALUE_NULL)
+    if (args[FVM_AS_PROPERTY_FLAGS_NAMES_ARGUMENT].type == FVM_VALUE_NULL)
     {
         for (fvm_detail::map<fvm_detail::string, FVM_Value>::iterator i = o->properties.begin();
              i != o->properties.end(); ++i)
@@ -402,7 +441,7 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
             names.push_back(i->first);
         for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
         {
-            char key[32];
+            char key[FVM_AS_PROPERTY_FLAGS_INDEX_KEY_BYTES];
             std::sprintf(key, "%lu", i->first);
             names.push_back(fvm_detail::string(key));
         }
@@ -410,8 +449,8 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
     else
     {
         FVM_Value text;
-        r = c->swf_loaded ? fvm_avm1_string(c, args[1], &text)
-                          : fvm_value_to_string(c, args + 1, &text);
+        r = c->swf_loaded ? fvm_avm1_string(c, args[FVM_AS_PROPERTY_FLAGS_NAMES_ARGUMENT], &text)
+                          : fvm_value_to_string(c, args + FVM_AS_PROPERTY_FLAGS_NAMES_ARGUMENT, &text);
         if (r != FVM_OK)
             return r;
         size_t length = fvm_string_size(text), begin = 0;
