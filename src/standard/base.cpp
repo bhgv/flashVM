@@ -1754,7 +1754,8 @@ FVM_Result script_property_get(FVM_Context *c, FVM_Object *receiver, unsigned in
     if (r != FVM_OK)
         return r;
     /* A stored non-function Object is a valid descriptor but has no executable getter. */
-    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
+    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback ||
+        (c->swf_loaded && function.object->resource_kind == FVM_RESOURCE_SUPER))
     {
         fvm_value_undefined(out);
         /* A non-function getter falls back to retained stored data, initially undefined. */
@@ -1812,7 +1813,8 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
     if (r != FVM_OK)
         return r;
     /* A non-function setter has no executable side effect but stored data still updates. */
-    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback)
+    if (function.type != FVM_VALUE_OBJECT || !function.object->invocable.callback ||
+        (c->swf_loaded && function.object->resource_kind == FVM_RESOURCE_SUPER))
         fvm_value_undefined(out);
     else
     {

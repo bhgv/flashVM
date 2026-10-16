@@ -1958,3 +1958,26 @@ callback projection and all roadmap stages remain open.
 Validation v0.435: Linux minimal 862/862; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.
+
+## v0.436 — super is not a virtual Function callback
+
+Loaded script-property getter/setter dispatch now excludes super facades from
+ordinary Function callbacks. A non-function getter uses retained property data;
+a non-function setter has no executable side effect and writable data still
+updates. The facade remains valid as an Object argument to addProperty. Host
+behavior and explicit direct superclass invocation remain unchanged. Pinned
+script_object.rs call_getter/call_setter require as_function before execution;
+Property retains data independently of getter/setter objects.
+
+`object_super_accessors` first failed on v0.435's retained-data read. Across
+host/SWF5–8, a constructor side effect detects accidental parent execution during
+get/set, real GC checks descriptor-held facade graphs, direct super still executes
+the parent, and queue transfer to another context repeats the retained-data and
+side-effect checks after GC. `jit_object_super_accessors` executes GetMember and
+SetMember in interpreter, attached and automatic JIT, asserting native entries.
+This covers ordinary descriptor dispatch, not complete super/reflection or RPC
+semantics. Callback/resource equivalence and all nine stages remain open.
+
+Validation v0.436: Linux minimal 864/864; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.

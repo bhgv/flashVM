@@ -192,3 +192,24 @@ add_property_with_case/watch/unwatch, отказывающиеся менять 
 Проверено v0.435: Linux minimal 862/862; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 5/5. Использованы средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Другие ОС и общая приёмка открыты.
+
+## v0.436 — super не является Function callback virtual-свойства
+
+В загруженных script-свойствах getter/setter больше не вызывают фасад super как
+обычную Function. Нефункциональный getter возвращает сохранённые данные;
+нефункциональный setter не имеет исполняемого эффекта, но writable-данные
+обновляются. Super остаётся допустимым Object-аргументом addProperty. Host и
+явный прямой вызов родителя прежние. Закреплённые script_object.rs
+call_getter/call_setter требуют as_function; Property хранит данные отдельно.
+
+object_super_accessors воспроизвёл сбой v0.435. В host/SWF5–8 побочный эффект
+конструктора обнаруживает ошибочный вызов родителя при get/set. Проверены GC
+дескриптора с фасадом, сохранение прямого super, перенос через очередь в другой
+контекст с повторным GC и проверкой данных/побочных эффектов. jit_object_super_accessors
+повторяет GetMember/SetMember в интерпретаторе и двух режимах JIT с настоящими
+нативными входами. Полные super/рефлексия, RPC, эквивалентность всех ресурсов и
+все девять стадий остаются открытыми.
+
+Проверено v0.436: Linux minimal 864/864; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 6/6. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Другие ОС и общая приёмка открыты.

@@ -7,6 +7,8 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: watcher throw completion | Проверено для v0.432–434 | Deferred thrown graph survives collecting setters; own/inherited/readonly/numeric/Array order, getter-only, JIT entries and OOM recovery. WATCH_THROW.md / .ru.md. Other errors/resources/collisions remain open. |
+| 1/2/6/7/8: super callback identity | Проверено для v0.435–436 | Borrowed definition/watch no-op with coercion validation; no parent invocation from virtual get/set; host/direct calls retained, GC/queue/native paths. PROPERTY_CASE.md / .ru.md. Full super remains open. |
 | 1/2/7/8: watcher and definition names | Проверено для v0.427–431 | Requested watcher spelling, raw old values/Array length, replacement/unwatch, addProperty and rooted C definitions, NUL/GC/OOM and native SetMember. PROPERTY_CASE.md / .ru.md. Exceptions/collisions/budgets remain open. |
 | 1/6/7: native method cache roots | Проверено для v0.430 | Four owner mutations release obsolete wrappers/captures after successful publication; pinned Functions survive, identity and OOM rollback checked. METHOD_CACHE_GC.md / .ru.md. Other caches/finalizers/concurrency remain open. |
 | 1/2/7/8: property mutation/setter casing | Проверено для v0.424–425 | Selected own flags/delete/update, inherited setter stored identity and collecting failures, OOM sweeps and actual native SetMember entries; PROPERTY_CASE.md / .ru.md. Watch/definition/collision/budget rules remain open. |
@@ -3581,3 +3583,26 @@ callback projection and all roadmap stages remain open.
 Validation v0.435: Linux minimal 862/862; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.
+
+## v0.436 — super is not a virtual Function callback
+
+Loaded script-property getter/setter dispatch now excludes super facades from
+ordinary Function callbacks. A non-function getter uses retained property data;
+a non-function setter has no executable side effect and writable data still
+updates. The facade remains valid as an Object argument to addProperty. Host
+behavior and explicit direct superclass invocation remain unchanged. Pinned
+script_object.rs call_getter/call_setter require as_function before execution;
+Property retains data independently of getter/setter objects.
+
+`object_super_accessors` first failed on v0.435's retained-data read. Across
+host/SWF5–8, a constructor side effect detects accidental parent execution during
+get/set, real GC checks descriptor-held facade graphs, direct super still executes
+the parent, and queue transfer to another context repeats the retained-data and
+side-effect checks after GC. `jit_object_super_accessors` executes GetMember and
+SetMember in interpreter, attached and automatic JIT, asserting native entries.
+This covers ordinary descriptor dispatch, not complete super/reflection or RPC
+semantics. Callback/resource equivalence and all nine stages remain open.
+
+Validation v0.436: Linux minimal 864/864; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.
