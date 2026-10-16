@@ -4175,3 +4175,15 @@ names, preserving attributes across case-sensitive graph import. Host matching
 remains exact. Tests: property_flags_case and property_flags_case_allocation.
 Case-collision ordering and extended version flags remain unverified/unsupported;
 this does not close any roadmap stage.
+
+### v0.481 — Math property metadata
+
+RU: Методы/константы Math в SWF4–8 имеют атрибуты 7. Нетронутые host-поля
+переводятся атомарно при первой загрузке; замены, аксессоры, изменённые флаги,
+удалённые поля и заменённый Math не перезаписываются. Повторная загрузка
+сохраняет защиту, явно снятую через ASSetPropFlags. Числовые вычисления прежние.
+
+EN: Math metadata now protects all 26 loaded fields, with prepared first-load
+activation and preservation of custom host/reload state. Tests:
+math_loaded_attributes, math_custom_attributes, math_activation_allocation.
+Transport preserves flags; numerical exactness and all roadmap stages remain open.

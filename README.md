@@ -1,5 +1,5 @@
-Development version: **0.480** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.480 ` and an English description. Increase the subversion before each
+Development version: **0.481** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.481 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -536,3 +536,5 @@ callbacks with counted names, versioned lookup, GC roots and recursion bounds.
 Loaded Function calls and native construction values: [RU/EN contract](doc/FUNCTION_CONSTRUCTION.md).
 
 ASSetPropFlags conversion order and supported flags: [RU/EN](doc/PROPERTY_FLAGS.md).
+
+Loaded Math namespace attributes and host activation: [RU/EN](doc/MATH_ATTRIBUTES.md).

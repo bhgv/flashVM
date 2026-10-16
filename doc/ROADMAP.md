@@ -1992,3 +1992,15 @@ enumeration, transfer into SWF8, three execution modes and OOM retries.
 Унаследованные свойства не изменяются; getters не вызываются. При переносе
 в SWF8 атрибуты сохраняются. Конфликтующие собственные имена, version-флаги и
 приёмка всех стадий остаются открытыми.
+
+### v0.481: Math namespace metadata / атрибуты Math
+
+Loaded methods/constants are readonly, nonenumerable and nondeletable. First-load
+activation stages only unchanged canonical host fields, retaining custom state.
+Already loaded contexts preserve explicit flag clearing on reload. Tests cover
+26 fields, C/three AVM1/JIT write modes, enumeration/deletion, graph transport,
+GC and first-load OOM retries. Existing numeric values/operations are unchanged.
+
+Исправлены атрибуты Math и атомарная первая загрузка при предварительной установке
+библиотеки. Пользовательские изменения и снятая после загрузки защита сохраняются.
+Числовая точность и полная приёмка всех стадий остаются открытыми.

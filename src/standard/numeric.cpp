@@ -4,6 +4,7 @@
 
 #include "../core/string_internal.hpp"
 #include "primitive_state.hpp"
+#include "math_constants.h"
 #include "constructor_identity.hpp"
 #include "../core/object_root_scope.hpp"
 #include "movieclip_state.hpp"
@@ -478,6 +479,53 @@ const Method math_methods[] = {{"abs", math_abs},   {"acos", math_acos},     {"a
                                {"pow", math_pow},   {"random", math_random}, {"round", math_round},
                                {"sin", math_sin},   {"sqrt", math_sqrt},     {"tan", math_tan}};
 
+/* Native Math constant names shared by installation and first-load activation. */
+const char *const math_constant_names[FVM_MATH_CONSTANT_COUNT] = {
+    "E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"};
+
+/* Compute the existing host-derived values without changing numeric compatibility policy. */
+void math_constant_values(double *out)
+{
+    const double values[FVM_MATH_CONSTANT_COUNT] = {
+        std::exp(1.0), std::log(10.0), std::log(2.0),
+        1 / std::log(10.0), 1 / std::log(2.0), std::acos(-1.0),
+        std::sqrt(0.5), std::sqrt(2.0)};
+    for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
+        out[i] = values[i];
+}
+
+/* Prepare first-load defaults only; replaced globals/slots and custom metadata stay intact. */
+void math_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
+{
+    if (c->swf_loaded || c->global->accessors.find("Math") != c->global->accessors.end())
+        return;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator global = c->global->properties.find("Math");
+    if (global == c->global->properties.end() || global->second.type != FVM_VALUE_OBJECT ||
+        global->second.object->resource_kind != FVM_RESOURCE_MATH_NAMESPACE)
+        return;
+    FVM_Object *math = global->second.object;
+    out.attributes = math->attributes;
+    for (size_t i = 0; i < sizeof(math_methods) / sizeof(math_methods[0]); ++i)
+        fvm_stage_default_method_flags(math, math_methods[i].name, math_methods[i].callback,
+                                      FVM_MATH_LOADED_PROPERTY_FLAGS, out.attributes);
+    double values[FVM_MATH_CONSTANT_COUNT];
+    math_constant_values(values);
+    for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
+    {
+        const char *name = math_constant_names[i];
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator value = math->properties.find(name);
+        fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.attributes.find(name);
+        if (value != math->properties.end() && value->second.type == FVM_VALUE_NUMBER &&
+            value->second.number == values[i] && !value->second.metatable &&
+            (flags == out.attributes.end() || !flags->second) &&
+            math->accessors.find(name) == math->accessors.end() &&
+            math->methods.find(name) == math->methods.end())
+            out.attributes[name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
+    }
+    /* [GC:] The live global retains this namespace until allocation-free commit. */
+    out.prototype = math;
+}
+
 /* Convert Number() arguments with AVM1 rules, retaining unloaded host behavior. */
 FVM_Result number_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Value *a,
                        FVM_Value *o, void *)
@@ -634,6 +682,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         return FVM_OK;
     try
     {
+        FVM_MethodAttributeActivation math_attributes;
+        math_prepare_loaded(c, math_attributes);
         FVM_MethodAttributeActivation function_attributes, error_attributes;
         fvm_function_prepare_loaded(c, function_attributes);
         fvm_error_prepare_loaded(c, error_attributes);
@@ -680,6 +730,7 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
+        fvm_commit_method_attributes(math_attributes);
         fvm_commit_method_attributes(function_attributes);
         fvm_commit_method_attributes(error_attributes);
         fvm_base_commit_loaded(base);
@@ -978,16 +1029,18 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             FVM_NativeEntry entry;
             entry.callback = math_methods[i].callback;
             math->methods[math_methods[i].name] = entry;
+            if (c->swf_loaded)
+                math->attributes[math_methods[i].name] = FVM_MATH_LOADED_PROPERTY_FLAGS;
         }
-        const char *constants[] = {"E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"};
-        const double values[] = {std::exp(1.0),      std::log(10.0),    std::log(2.0),
-                                 1 / std::log(10.0), 1 / std::log(2.0), std::acos(-1.0),
-                                 std::sqrt(0.5),     std::sqrt(2.0)};
-        for (size_t i = 0; i < 8; ++i)
+        double values[FVM_MATH_CONSTANT_COUNT];
+        math_constant_values(values);
+        for (size_t i = 0; i < FVM_MATH_CONSTANT_COUNT; ++i)
         {
             FVM_Value value;
             fvm_value_number(&value, values[i]);
-            math->properties[constants[i]] = value;
+            math->properties[math_constant_names[i]] = value;
+            if (c->swf_loaded)
+                math->attributes[math_constant_names[i]] = FVM_MATH_LOADED_PROPERTY_FLAGS;
         }
         FVM_Value value;
         fvm_value_undefined(&value);

@@ -26,3 +26,11 @@ state. Reference: pinned Ruffle globals/math.rs method and parameters.rs get_f64
 commit 2372a4e148a67d68efd796f4477b3cddd4f880cd. Global isNaN/isFinite are unchanged.
 Random distribution, exact rounding/transcendental compatibility, Math property
 metadata and all roadmap stages remain open.
+
+v0.481 adds loaded Math method/constant attributes and transactional first-load
+activation; see [RU/EN rules](MATH_ATTRIBUTES.md). Numerical operations and the
+host-derived constant values above are unchanged. Exact numerical compatibility
+and all other acceptance work remain open.
+
+В v0.481 исправлены атрибуты Math и первая загрузка из host-контекста;
+порядок преобразования аргументов и числовые вычисления не менялись.

@@ -2819,3 +2819,25 @@ ASan+UBSan tests passed (2.22 seconds). Stack ASan/LeakSanitizer remain disabled
 No new ABI/callback IDs, non-Linux execution or full case-collision insertion
 ordering equivalence is claimed. Extended version flags and all nine roadmap
 stages remain open. Ordinary property lookup behavior is unchanged.
+
+### v0.481 — Math namespace attributes
+
+RU: `math_loaded_attributes` проверяет все 26 полей в host/SWF4–8, библиотеку
+до/после загрузки, C и три AVM1/JIT режима записи, удаление и перечисление,
+перенос namespace без standard install в приёмнике и GC. `math_custom_attributes`
+проверяет изменённые флаги/значения/primitive metatable, аксессоры, удалённые
+поля, заменённый/global-accessor Math; getters при загрузке не вызываются.
+Снятая через ASSetPropFlags защита сохраняется при повторной загрузке.
+`math_activation_allocation` перебирает отказы new/new[] первой загрузки:
+все host-флаги сохраняются при ошибке, затем GC и повтор успешно активируют
+все поля. Все три теста падают на numeric.cpp из v0.480. Новый header проходит
+C89 probe; исходные числовые значения и операции Math не менялись.
+
+EN: The complete Linux minimal run covered 950 tests: 937 passed initially and
+all 13 binaries that lacked executable permission passed after repair. Final
+focused Math tests passed in minimal and AGG (3/3 each), including custom primitive
+metadata. Heap/global ASan+UBSan passed loaded-layout/allocation checks plus the
+custom-state check after repairing that binary's executable mode. Stack ASan
+and LeakSanitizer remain disabled. Numeric exactness, other namespace semantics,
+non-Linux runtime acceptance and all nine roadmap stages remain open. No ABI,
+resource-kind or serialized callback identity changes.
