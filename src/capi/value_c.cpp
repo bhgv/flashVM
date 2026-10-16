@@ -849,6 +849,8 @@ extern "C"
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
                 return normalized;
+            if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_SUPER)
+                return fvm_super_has_own(c, o, key, out);
             unsigned long index;
             if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))

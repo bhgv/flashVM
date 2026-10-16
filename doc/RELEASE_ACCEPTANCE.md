@@ -1721,3 +1721,25 @@ Validation v0.425: Linux minimal 845/845; AGG, NO_OS_PORTS and heap/global
 ASan+UBSan 7/7 each. Native entry assertions run on available Linux x64; the
 NO_OS_PORTS configuration is a Linux-hosted build, not another OS run. Generated
 mode launchers used; stack ASan/LeakSanitizer disabled. All stages remain open.
+
+## v0.426 — own membership through super
+
+Loaded super facade own-membership now delegates to its retained receiver,
+matching pinned script_object.rs has_own_property. The query does not inspect
+private facade metadata or enumerate/read parent properties. It preserves the
+receiver's SWF casing. Host facade behavior remains unchanged. Nested/malformed
+receiver-facade chains have a bounded iterative traversal instead of recursive
+C++ calls; malformed cycles return FVM_ERROR.
+
+`object_super_membership` failed against v0.425 and covers loaded SWF5–8 plus
+host, direct C and borrowed Object.hasOwnProperty.call, counted NUL names,
+exact/folded spelling, inherited/missing properties and a throwing AVM1 getter
+which membership never invokes. Real GC, malformed-cycle rejection/recovery and
+queue transfer to another loaded context are checked. The destination repeats
+the queries after collecting. Full super enumeration/flags/deletion/definitions,
+independent Flash validation, other transports/platforms and all stages remain
+open. This is a query-only compatibility change.
+
+Validation v0.426: Linux minimal 846/846; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack
+ASan/LeakSanitizer disabled. No independent Flash or other OS certification.

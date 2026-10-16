@@ -5,6 +5,8 @@
 
 /* [GC:] Build a facade retaining the actual receiver and selected parent prototype. */
 FVM_Result fvm_super_create(FVM_Context *, FVM_Object *, FVM_Object *, FVM_Value *);
+/* Query own membership on the retained receiver without reading property values. */
+FVM_Result fvm_super_has_own(FVM_Context *, FVM_Object *, const fvm_detail::string &, int *);
 /* Read a parent property while binding accessors to the actual receiver. */
 FVM_Result fvm_super_get(FVM_Context *, FVM_Object *, const fvm_detail::string &, FVM_Value *);
 /* Write through parent setters while keeping the actual receiver. */

@@ -290,3 +290,22 @@ FVM_Result fvm_super_set(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
         return FVM_UNSUPPORTED;
     return fvm_object_set_from(c, receiver, start, name, value, false);
 }
+
+/* Loaded super membership follows its actual receiver, not the parent lookup
+ * chain or the private facade metadata. This path never executes a getter. */
+FVM_Result fvm_super_has_own(FVM_Context *c, FVM_Object *facade,
+                            const fvm_detail::string &name, int *out)
+{
+    /* Bound malformed/nested facade receiver graphs without recursive C++ calls. */
+    for (unsigned int depth = 0; depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
+    {
+        FVM_Object *receiver = 0, *owner = 0, *start = 0;
+        FVM_Result status = unpack(c, facade, &receiver, &owner, &start);
+        if (status != FVM_OK)
+            return status;
+        if (receiver->resource_kind != FVM_RESOURCE_SUPER)
+            return fvm_object_has_own_bytes(c, receiver, name.data(), name.size(), out);
+        facade = receiver;
+    }
+    return FVM_ERROR;
+}
