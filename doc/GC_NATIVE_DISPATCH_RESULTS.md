@@ -63,3 +63,20 @@ include failure injection and both-policy poison tests; invalid enum cases
 run under UBSan. Fonts execute in AGG/Cairo, TCP excluded from portable.
 Heap/global ASan and UBSan active; leak detection/stack ASan disabled.
 Linux profiles only; complete stage 7 remains open.
+
+## v0.457 — snapshot direct global-call arguments
+
+fvm_call_bytes copies arguments into a rooted vector before clearing the output
+or resolving a global Function. A result may alias an argument, and callbacks
+may mutate the caller's value array without changing the active invocation.
+Caller-owned external string buffers must still remain valid for the call.
+Registered native callbacks retain their normal GC barrier.
+global_call_arguments first failed after caller mutation; host/SWF4–8 check
+native/script/getter/resolver routes, counted NUL names and traced strings,
+cyclic unpinned arguments, aliased outputs, caller mutation, collecting callbacks,
+plain errors/exceptions and root/depth cleanup/reclamation. Host skips __resolve.
+This does not establish complete C embedding or concurrent-context safety.
+
+Validation v0.457: complete Linux minimal 899/899; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 3/3 targeted checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.

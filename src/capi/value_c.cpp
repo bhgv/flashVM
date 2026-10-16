@@ -1600,9 +1600,17 @@ extern "C"
         for (unsigned int i = 0; i < argc; ++i)
             if (fvm_validate_value(c, args + i) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        fvm_value_undefined(out);
         try
         {
+            /* [GC:] Snapshot inputs before an aliased output or a lookup callback can mutate
+               caller storage; retain the snapshot through native/script/resolver dispatch. */
+            fvm_detail::vector<FVM_Value> call_args;
+            FVM_ValueVectorRootScope call_argument_roots(c, call_args);
+            call_args.reserve(argc);
+            for (unsigned int i = 0; i < argc; ++i)
+                call_args.push_back(args[i]);
+            args = argc ? call_args.begin() : 0;
+            fvm_value_undefined(out);
             fvm_detail::string key;
             FVM_Result result = fvm_property_key(name, size, key);
             if (result != FVM_OK)
