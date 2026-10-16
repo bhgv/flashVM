@@ -45,3 +45,9 @@ callbacks, GC roots, counted exceptions, errors, diagnostics, forwarding and
 revocation. `function_remote_protocol` checks four reply routing identities.
 `function_remote_concurrent` runs 100 calls from four independent client heaps
 and checks stopped-broker/source cleanup. All nine roadmap stages remain open.
+
+In v0.398, malformed successful/thrown replies without a value graph and
+successful replies claiming a pending fault are rejected before decoding.
+Protocol coverage includes these cases and an invalid result code.
+`function_remote_graph` verifies cyclic arguments, receiver/argument aliases,
+copy isolation, a returned C function interface and rejection after heap reclaim.

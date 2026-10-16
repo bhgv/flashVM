@@ -182,7 +182,8 @@ void serve_function(FVM_ResourceBroker *b, FVM_PortSocket *socket, const unsigne
     FVM_Result status = FVM_INVALID_ARGUMENT;
     FVM_ExceptionInfo fault;
     bool has_fault = false;
-    if (h[FVM_FUNCTION_RPC_OPERATION_OFFSET] == FVM_FUNCTION_RPC_CALL && size <= limit)
+    if (h[FVM_FUNCTION_RPC_OPERATION_OFFSET] == FVM_FUNCTION_RPC_CALL &&
+        !h[FVM_FUNCTION_RPC_FLAGS_OFFSET] && size <= limit)
     {
         input = size ? (unsigned char *)std::malloc(size) : 0;
         if (size && !input)
@@ -270,7 +271,13 @@ FVM_Result function_request(Remote &remote, FVM_Context *c, const unsigned char 
              !std::memcmp(response + FVM_FUNCTION_RPC_REPLY_CALL, request, FVM_FUNCTION_RPC_ID_BYTES) &&
              get(response + FVM_FUNCTION_RPC_STATUS) <= FVM_FUNCTION_RPC_MAX_RESULT;
         length = (size_t)get(response + FVM_FUNCTION_RPC_LENGTH);
-        ok = ok && length <= limit;
+        unsigned long result_code = get(response + FVM_FUNCTION_RPC_STATUS);
+        /* Successful and thrown values require a graph, even for undefined. */
+        bool value_required = result_code == (unsigned long)(-FVM_OK) ||
+                              result_code == (unsigned long)(-FVM_EXCEPTION);
+        ok = ok && length <= limit && (!value_required || length != 0) &&
+             !(result_code == (unsigned long)(-FVM_OK) &&
+               response[FVM_FUNCTION_RPC_FLAGS_OFFSET]);
         if (ok && response[FVM_FUNCTION_RPC_FLAGS_OFFSET])
         {
             unsigned char record[FVM_FUNCTION_RPC_FAULT_SIZE];

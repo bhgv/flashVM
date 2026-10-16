@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 6/7: function reply/value graph | Проверено для сценариев v0.398 | Reject missing OK/EXCEPTION values and contradictory successful fault replies; cyclic receiver/argument aliases and returned C interfaces verified. No unrestricted shared heap or reentrant callback support. |
 | 6/7/9: original function RPC | Проверено для сценариев v0.397 | Opt-in callable interfaces retain original native/AVM1 state; one broker port with target/source/call IDs, exception diagnostics, forwarding and revocation. Exclusive idle-context handoff; serialized calls, no same-authority reentrancy. REMOTE_FUNCTIONS.md / .ru.md. |
 | 1/2/4/7/8: identical TextField assignment | Проверено для сценариев v0.396 | Complete counted equality preserves loaded current formatting/layout; changed NUL suffix uses future format. Host policy retained; alias/GC and native SetMember/GetMember checks. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |
 | 4/6/7: TextField restore limits | Проверено для сценариев v0.395 | CRC-valid oversized graph payloads reject with object/allocation/font rollback; valid 4096-scalar and 16384-byte/8192-unit boundaries round-trip. TEXTFIELD_COUNTED_TEXT.md / .ru.md. |

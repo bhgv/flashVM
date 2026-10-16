@@ -1326,3 +1326,14 @@ forwarding, stale targets and stop/source cleanup. Strict C89 public/protocol
 header syntax passes. Stack ASan and LeakSanitizer disabled. Persistent socket
 multiplexing, reentrant callback cycles and foreign-platform runtime acceptance
 remain open; all nine roadmap stages remain open.
+
+v0.398: function replies require value graphs for success/exception and reject
+contradictory successful fault flags. Request flags are validated before dispatch.
+RU: строгие ответы, циклы аргументов и возврат интерфейса C-функции.
+Six focused checks pass in Linux AGG/Cairo/minimal Release and restricted
+heap/global ASan+UBSan with sockets enabled. Expanded fake-peer protocol cases
+also pass in all four configurations: four wrong routing IDs, absent values,
+contradictory/unknown flags, invalid status and malformed diagnostic magic/text.
+The graph case preserves receiver/argument aliases and cycles while isolating
+copies, returns a codec-free C interface and rejects calls after source reclaim.
+Stack ASan and LeakSanitizer disabled; all roadmap stages remain open.
