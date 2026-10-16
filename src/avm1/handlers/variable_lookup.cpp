@@ -3,6 +3,7 @@
 #include "variable_lookup_constants.h"
 #include "../../core/property_key.hpp"
 #include "../scope_keywords.hpp"
+#include "../../standard/function_state.hpp"
 /* Preserve local/global this spelling rules across SWF5, SWF6 and case-sensitive SWF7+. */
 static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
 {
@@ -115,11 +116,44 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
             }
             if (!found)
             {
-                status = fvm_get_global_bytes(c, key.data(), key.size(), &result);
-                if (status == FVM_OK && result.type == FVM_VALUE_UNDEFINED)
-                    status = fvm_object_has_own_bytes(c, c->global, key.data(), key.size(), &found);
-                else if (status == FVM_OK)
-                    found = 1;
+                if (!c->swf_loaded)
+                {
+                    status = fvm_get_global_bytes(c, key.data(), key.size(), &result);
+                    if (status == FVM_OK && result.type == FVM_VALUE_UNDEFINED)
+                        status = fvm_object_has_own_bytes(c, c->global, key.data(), key.size(),
+                                                          &found);
+                    else if (status == FVM_OK)
+                        found = 1;
+                }
+                else
+                {
+                    /* Bare scope reads test presence before reading; missing names do not
+                       invoke __resolve. Preserve inherited undefined as an existing binding. */
+                    unsigned int depth = 0;
+                    for (FVM_Object *cursor = c->global; cursor; cursor = cursor->prototype)
+                    {
+                        if (++depth > FVM_PROTOTYPE_MAX_DEPTH)
+                            return FVM_ERROR;
+                        status = fvm_object_has_own_bytes(c, cursor, key.data(), key.size(),
+                                                          &found);
+                        if (status != FVM_OK || found)
+                            break;
+                    }
+                    if (status == FVM_OK && found)
+                        status = fvm_object_get_bytes(c, c->global, key.data(), key.size(),
+                                                       &result);
+                    if (status == FVM_OK && !found)
+                    {
+                        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator entry =
+                            c->functions.find(key);
+                        if (entry != c->functions.end())
+                        {
+                            status = fvm_function_wrap_entry(c, 0, key, entry->second, &result);
+                            if (status == FVM_OK)
+                                found = 1;
+                        }
+                    }
+                }
                 if (status != FVM_OK)
                     return status;
             }

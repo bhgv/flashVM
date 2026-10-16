@@ -118,3 +118,20 @@ Validation v0.453: complete Linux minimal 895/895; AGG, Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 7/7 selected checks each. The socket
 case is skipped in NO_OS_PORTS. Executable-mode launchers applied; stack ASan
 and LeakSanitizer disabled. Other OS runs and all stages remain open.
+
+## v0.454 — bare global scope excludes missing-property resolvers
+
+Loaded ordinary variable lookup checks global property presence before reading.
+Missing bare names no longer execute global __resolve; explicit C/global member
+reads retain resolver behavior. Registered native fallback remains available,
+while inherited undefined is an existing binding and suppresses that fallback.
+The unloaded host path is unchanged. Reference: Ruffle scope.rs resolve at
+[2372a4e](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/scope.rs).
+object_resolve_global_scope first failed on the previous callback invocation;
+it checks SWF4–8, direct lookup/GetVariable/CallFunction, explicit global reads,
+native fallback, inherited undefined and interpreter/attached/automatic JIT with
+actual native entries. This is scope exclusion, not full scope compatibility.
+
+Validation v0.454: Linux minimal 896/896; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 targeted checks each. Stack ASan/LeakSanitizer
+disabled; all stages and foreign OS acceptance remain open.
