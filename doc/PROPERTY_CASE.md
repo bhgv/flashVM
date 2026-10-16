@@ -123,3 +123,24 @@ exception policy is retained here; no complete stage is claimed.
 Validation v0.427: Linux minimal 847/847; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 5/5 each. Generated mode launchers used; stack ASan and
 LeakSanitizer disabled. Other OS execution and all-stage acceptance remain open.
+
+## v0.428 — case-aware virtual replacement
+
+Loaded SWF4–6 addProperty selects an existing own stored spelling before checking
+attributes and replacing its descriptor. Stored data and flags survive replacement;
+a variant does not create a second virtual property beside the original data.
+Host/SWF7–8 preserve distinct names. The existing null-setter and rollback rules
+are retained. This follows pinned script_object.rs add_property_with_case.
+
+`object_property_case_definition` first failed on v0.427. It checks SWF4–8/host,
+NUL names, retained flags/data, a collecting script getter, no premature getter
+execution and writable retained data with a null setter. An allocation sweep runs
+through failure to successful definition, checking previous values/flags and roots.
+`jit_property_case_watch` additionally checks requested watcher names, collecting
+self-removal and errors via interpreted/attached/automatic native SetMember, with
+actual native-entry assertions. Native C definitions, collisions, watcher throw
+writeback, complete property semantics and all stages remain open.
+
+Validation v0.428: Linux minimal 850/850; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 8/8 each. Generated mode launchers used; stack ASan and
+LeakSanitizer disabled. No other OS or complete-stage certification.

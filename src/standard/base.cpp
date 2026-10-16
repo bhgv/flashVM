@@ -1880,6 +1880,8 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     normalized = fvm_property_key(converted_name.string, fvm_string_size(converted_name), name);
     if (normalized != FVM_OK)
         return normalized;
+    /* Existing legacy-equivalent slots keep their stored name, data and attributes. */
+    fvm_property_select_own_name(c, receiver, name);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flag =
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
