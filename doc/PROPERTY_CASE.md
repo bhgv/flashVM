@@ -144,3 +144,23 @@ writeback, complete property semantics and all stages remain open.
 Validation v0.428: Linux minimal 850/850; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 8/8 each. Generated mode launchers used; stack ASan and
 LeakSanitizer disabled. No other OS or complete-stage certification.
+
+## v0.429 — rooted C definitions and stored names
+
+Rooted native method/accessor definition selects the existing own spelling in
+loaded SWF4–6 before applying the existing conflict policy. Replacing a method or
+accessor no longer introduces a hidden case-equivalent duplicate; a data/accessor
+conflict which fails for exact spelling also fails for its equivalent name.
+Host/SWF7–8 keep distinct names. C89 signatures and ABI are unchanged.
+
+`object_property_case_native` reproduced v0.428's duplicate-method failure. It
+checks SWF4–8/host, counted NUL names, replacement callbacks/capture roots, method
+and accessor table identity, rejected data conflicts, actual GC and invocation of
+a previously pinned Function which retains its old callback/capture. Native API
+policy is an embedding contract aligned with loaded lookup; it is not an Adobe C
+API claim. Stale unexported method caches, full callback lifetime/collision rules,
+watcher exception semantics and all stages remain open.
+
+Validation v0.429: Linux minimal 851/851; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Generated mode launchers used; stack ASan and
+LeakSanitizer disabled. Other OS and complete-stage acceptance remain open.

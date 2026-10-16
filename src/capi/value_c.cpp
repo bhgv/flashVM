@@ -1293,6 +1293,8 @@ extern "C"
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
                 return normalized;
+            /* Loaded definitions share the existing own spelling and conflict policy. */
+            fvm_property_select_own_name(c, object, key);
 
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
 
@@ -1372,6 +1374,8 @@ extern "C"
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
                 return normalized;
+            /* Loaded definitions share the existing own spelling and conflict policy. */
+            fvm_property_select_own_name(c, object, key);
 
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             if (object->properties.find(key) != object->properties.end())
