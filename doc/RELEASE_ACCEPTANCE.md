@@ -2979,3 +2979,21 @@ executable permissions; no functional failures remained. All three new signed
 Array tests passed heap/global ASan+UBSan. Stack ASan and LSan remain disabled.
 The constructor regression fails against the pre-change library. These are
 Linux-host results; no new foreign-OS or original-player run is claimed.
+
+
+### v0.490 — native Array operations on negative length
+
+Native push/pop/shift/unshift теперь используют знаковую длину, raw данные,
+рост до записи и последующее сокращение length с отдельными readonly/nondelete
+правилами. Проверяются virtual data, отсутствие getter/setter/watch вызовов,
+версионные флаги, GC/перенос, C/AVM1/JIT, OOM и бюджет. See the v0.490 section
+of [ARRAY_NEGATIVE_ENDS.md](ARRAY_NEGATIVE_ENDS.md). Negative native splice,
+signed overflow and all nine roadmap stages remain open.
+
+Validation v0.490: complete minimal Release run passed 966/977 initially,
+then 9/11 and 2/2 after restoring executable permissions. Complete AGG Release
+passed 976/996 initially and 20/20 after permission repair. No functional
+failures remained. Heap/global ASan+UBSan passed the four new tests plus the
+existing negative-end test and six shared splice/raw-flag regressions (11 total).
+Stack ASan/LSan remain disabled. The new native-end regression fails against
+the v0.489 library. No foreign-platform or original Flash Player run is claimed.

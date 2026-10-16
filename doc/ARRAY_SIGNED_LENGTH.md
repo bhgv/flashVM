@@ -42,3 +42,38 @@ All nine roadmap stages remain open.
 [Clamp](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/clamp.rs).
 The inspected clamp uses ordered range comparisons before the integer cast.
 Original-player and platform acceptance remain open.
+
+
+## v0.490 — negative native Array end operations / Native Array
+
+Загруженные native Array с отрицательной Int32-длиной поддерживают
+push/pop/shift/unshift. Push пишет знаковые ключи, увеличивая native length
+перед сохранением данных. Pop удаляет ключ length-1 и уменьшает длину;
+shift возвращает raw index 0 и уменьшает длину без перемещения индексов.
+Unshift пишет с индекса 0, затем задаёт captured length + argc: промежуточно
+увеличившаяся длина может привести к удалению только что записанных индексов.
+Readonly длина и readonly/nondelete данные сохраняют отдельные правила.
+
+A common signed raw length setter truncates native nonnegative tails before
+applying readonly protection to the length data itself. Raw signed element
+stores grow native length before checking the destination's readonly flag.
+Version flags clear only on successful writable replacements; protected data
+keeps them. Getter/setter/watch callbacks are bypassed, including hidden virtual
+properties. High unsigned raw lengths are interpreted through Int32 and can
+normalize to signed storage. Borrowed-object end-operation rules are retained.
+
+New coverage: array_native_negative_ends (C call, direct invocation, interpreter,
+explicit/automatic native JIT, flags, GC and restored graphs),
+array_native_negative_edges (zero crossing, argc 0–4, readonly/nondelete slots,
+raw unsigned input, budget errors/retry and Int32-underflow rejection),
+array_native_negative_virtual (retained descriptor data and callback bypass),
+array_native_negative_allocation (new/new[] boundaries, counted NUL strings,
+collection and retry after partial mutation). The direct regression fails
+against the v0.489 library. Existing array_negative_ends now covers native
+normalization instead of the removed blanket rejection.
+
+Int32-minimum pop/native shift still return UNSUPPORTED before mutation; signed
+addition overflow, negative native splice, arbitrary/virtual length assignment
+and complete platform/player compatibility remain open. Failed operations may
+retain completed earlier mutations. Public ABI and wire layout are unchanged.
+All nine roadmap stages remain open; only the native host JIT runs these cases.

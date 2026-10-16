@@ -164,8 +164,8 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
     return FVM_OK;
 }
 
-/* Update native Array stored length without callback dispatch, respecting its own readonly flag. */
-void legacy_native_length(FVM_Object *o, unsigned long count)
+/* Update signed native Array length without callbacks, respecting its own readonly flag. */
+void legacy_native_length(FVM_Object *o, double count)
 {
     if (o->resource_kind != FVM_RESOURCE_ARRAY)
         return;
@@ -205,8 +205,8 @@ FVM_Result legacy_splice_move(FVM_Context *c, FVM_Object *o, unsigned long from,
     return legacy_store_element(c, o, to, value);
 }
 
-/* Set raw splice length, deleting native Array tails while retaining borrowed tail properties. */
-FVM_Result legacy_splice_length(FVM_Context *c, FVM_Object *o, unsigned long count, FVM_ArrayWorkScope &work)
+/* Set signed raw length, deleting nonnegative native tails before readonly length handling. */
+FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_ArrayWorkScope &work)
 {
     if (o->resource_kind == FVM_RESOURCE_ARRAY)
     {
@@ -214,12 +214,12 @@ FVM_Result legacy_splice_length(FVM_Context *c, FVM_Object *o, unsigned long cou
         FVM_Result status = legacy_data_length(c, o, old);
         if (status != FVM_OK)
             return status;
-        for (unsigned long i = count; i < old; ++i)
+        for (unsigned long i = count > 0 ? (unsigned long)count : 0; i < old; ++i)
         {
             status = work.step();
             if (status != FVM_OK)
                 return status;
-            char key[32];
+            char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
             std::sprintf(key, "%lu", i);
             int removed = 0;
             status = fvm_object_delete(c, o, key, &removed);
@@ -232,6 +232,29 @@ FVM_Result legacy_splice_length(FVM_Context *c, FVM_Object *o, unsigned long cou
     FVM_Value value;
     fvm_value_number(&value, (double)count);
     return fvm_base_store_data(c, o, "length", value, false);
+}
+
+/* Store one signed own element, growing native length before readonly data handling. */
+FVM_Result legacy_store_signed_element(FVM_Context *c, FVM_Object *o, long index,
+                                        const FVM_Value &value, FVM_ArrayWorkScope &work)
+{
+    if (o->resource_kind == FVM_RESOURCE_ARRAY)
+    {
+        unsigned long ignored = 0;
+        long current = 0;
+        FVM_Result status = legacy_data_length(c, o, ignored, &current);
+        if (status != FVM_OK)
+            return status;
+        if (index >= current)
+        {
+            status = legacy_set_length(c, o, (double)index + 1, work);
+            if (status != FVM_OK)
+                return status;
+        }
+    }
+    char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
+    std::sprintf(key, "%ld", index);
+    return fvm_base_store_data(c, o, key, value, false);
 }
 
 /* Write the current value. */
@@ -578,13 +601,12 @@ FVM_Result negative_slice(FVM_Context *c, FVM_Object *o, long length,
     return FVM_OK;
 }
 
-/* Run signed borrowed end operations without widening native Array storage. */
+/* Run signed end operations with native length updates and borrowed length retention. */
 FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
                          long length, unsigned int n, const FVM_Value *a,
                          FVM_Value *out, FVM_ArrayWorkScope &work)
 {
-    if (o->resource_kind == FVM_RESOURCE_ARRAY)
-        return FVM_UNSUPPORTED;
+    const bool native = o->resource_kind == FVM_RESOURCE_ARRAY;
     bool pushing = !std::strcmp(method, "push");
     bool unshifting = !std::strcmp(method, "unshift");
     if (pushing || unshifting)
@@ -606,15 +628,14 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
                 status = fvm_object_delete(c, o, key, &removed);
             }
             if (status == FVM_OK)
-                status = fvm_base_store_data(c, o, key, a[i], false);
+                status = legacy_store_signed_element(c, o,
+                    (long)(pushing ? (double)length + i : i), a[i], work);
             if (status != FVM_OK)
                 return status;
         }
-        if (pushing)
+        if (pushing || native)
         {
-            FVM_Value value;
-            fvm_value_number(&value, total);
-            FVM_Result status = fvm_base_store_data(c, o, "length", value, false);
+            FVM_Result status = legacy_set_length(c, o, total, work);
             if (status != FVM_OK)
                 return status;
         }
@@ -623,8 +644,15 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
     }
     if (!std::strcmp(method, "shift"))
     {
-        legacy_data_element(o, 0, *out);
-        return FVM_OK;
+        if (native && (double)length == FVM_INT32_MIN_NUMBER)
+            return FVM_UNSUPPORTED;
+        /* [GC:] The native call barrier retains the raw result during length-tail deletion. */
+        FVM_Value value;
+        legacy_data_element(o, 0, value);
+        FVM_Result status = native ? legacy_set_length(c, o, (double)length - 1, work) : FVM_OK;
+        if (status == FVM_OK)
+            *out = value;
+        return status;
     }
     if ((double)length == FVM_INT32_MIN_NUMBER)
         return FVM_UNSUPPORTED;
@@ -635,6 +663,8 @@ FVM_Result negative_end(FVM_Context *c, FVM_Object *o, const char *method,
     /* [GC:] Native invocation defers collection while the deleted raw value is unpublished. */
     int removed = 0;
     FVM_Result status = fvm_object_delete(c, o, key, &removed);
+    if (status == FVM_OK && native)
+        status = legacy_set_length(c, o, (double)length - 1, work);
     if (status == FVM_OK)
         *out = value;
     return status;
@@ -1062,7 +1092,7 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
                     r = legacy_store_element(c, o, start + i, a[i + 2]);
             }
             if (r == FVM_OK)
-                r = legacy_splice_length(c, o, count - deleted + added, work);
+                r = legacy_set_length(c, o, count - deleted + added, work);
         }
         else if (splice)
         {

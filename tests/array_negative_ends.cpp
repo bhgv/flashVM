@@ -49,7 +49,13 @@ int main()
         rt->config.instruction_limit = old_limit; number(c, o, "length", -2);
         fvm_value_number(&value, 4294967295.0); assert(fvm_object_set(c, array, "length", &value) == FVM_OK);
         const char *methods[] = {"push", "pop", "shift", "unshift"};
-        for (unsigned i = 0; i < 4; ++i) assert(borrow(c, array, methods[i], array, 0, 0, &out) == FVM_UNSUPPORTED);
+        const double lengths[] = {-1, -2, -3, -3};
+        for (unsigned i = 0; i < 4; ++i) {
+            assert(borrow(c, array, methods[i], array, 0, 0, &out) == FVM_OK);
+            if (i == 0 || i == 3) assert(out.type == FVM_VALUE_NUMBER && out.number == lengths[i]);
+            else assert(out.type == FVM_VALUE_UNDEFINED);
+            number(c, array, "length", lengths[i]);
+        }
         assert(c->gc_frames == 0 && c->avm1_execution_depth == 0); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

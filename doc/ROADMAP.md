@@ -2077,3 +2077,13 @@ acceptance and the builtin version-annotation audit remain open.
 [ARRAY_SIGNED_LENGTH.md](ARRAY_SIGNED_LENGTH.md) for RU/EN contracts and limits.
 Raw unsigned length assignment remains distinct. Negative native end/splice
 operations, virtual length and all nine roadmap stages remain open.
+
+
+### v0.490 — native Array operations on negative length
+
+Native push/pop/shift/unshift теперь используют знаковую длину, raw данные,
+рост до записи и последующее сокращение length с отдельными readonly/nondelete
+правилами. Проверяются virtual data, отсутствие getter/setter/watch вызовов,
+версионные флаги, GC/перенос, C/AVM1/JIT, OOM и бюджет. See the v0.490 section
+of [ARRAY_NEGATIVE_ENDS.md](ARRAY_NEGATIVE_ENDS.md). Negative native splice,
+signed overflow and all nine roadmap stages remain open.
