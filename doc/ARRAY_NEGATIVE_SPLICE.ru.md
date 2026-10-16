@@ -25,3 +25,14 @@
 прошли после пересборки потребителей заголовка и исправления прав ELF
 с повторными запусками. Пять проверок splice прошли ограниченный
 heap/global ASan+UBSan; stack ASan и LSan отключены.
+
+
+### v0.491: native Array
+
+Отказ для native Array снят: используются captured знаковые границы, рост
+native length до raw записи и итоговое сокращение с readonly/nondelete.
+Даже при high-unsigned raw length или изменении длины внутри delete-count
+valueOf выполняется знаковый путь. Добавлены C/AVM1/JIT, GC/перенос, OOM,
+бюджет и virtual-data проверки. Подробности и ограничения:
+[ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md). Переполнение и полная
+совместимость ещё не закрыты; все девять стадий остаются открытыми.

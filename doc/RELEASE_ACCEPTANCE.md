@@ -2997,3 +2997,21 @@ failures remained. Heap/global ASan+UBSan passed the four new tests plus the
 existing negative-end test and six shared splice/raw-flag regressions (11 total).
 Stack ASan/LSan remain disabled. The new native-end regression fails against
 the v0.489 library. No foreign-platform or original Flash Player run is claimed.
+
+
+### v0.491 — native negative splice and captured-bound routing
+
+Native splice поддерживает отрицательную длину и знаковые ключи. Captured
+negative bounds принудительно выбирают generic путь даже после coercion,
+изменившего живую длину, или при unsigned raw storage. Проверяются readonly/
+nondelete, virtual data, version bits, C/AVM1/JIT, GC/перенос, OOM и бюджет.
+See [ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md). Signed overflow,
+arbitrary/virtual native length and all nine roadmap stages remain open.
+
+Validation v0.491: complete minimal Release passed 961/980 initially and 19/19
+after restoring executable permissions. Complete AGG Release passed 979/999
+initially and 20/20 after permission repair. All five focused splice/virtual-data
+checks passed heap/global ASan+UBSan, as did the signed constructor after its
+zero-sign assertion was made C++98-portable. Stack ASan/LSan remain disabled.
+The native splice regression fails against v0.490. These are current-host Linux
+results, not original Flash Player or foreign-platform acceptance evidence.

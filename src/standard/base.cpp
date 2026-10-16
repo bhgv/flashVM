@@ -925,7 +925,7 @@ FVM_Result splice(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value
         return FVM_OK;
     }
     /* Both conversions may install inherited indices; preserve captured inputs on fallback. */
-    if (splice_needs_generic(c, o))
+    if (bounds.negative_length < 0 || splice_needs_generic(c, o))
         return fvm_array_generic(c, o, "splice", n, a, out, splice, &bounds);
     if (!array(o))
         return FVM_INVALID_ARGUMENT;

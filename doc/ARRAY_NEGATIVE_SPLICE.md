@@ -25,3 +25,39 @@ success, collects after failure, retries partial mutations and verifies retained
 Validation v0.373: 769 AGG / 769 Cairo / 750 minimal Release checks pass after
 private-header rebuild and ELF permission repairs/reruns; five restricted
 heap/global ASan+UBSan splice checks pass (stack ASan/LSan disabled).
+
+
+## v0.491 — native negative-length splice / Native Array
+
+Загруженные native Array с отрицательной Int32-длиной теперь поддерживают
+splice по тем же captured bounds, что и заимствованные объекты. Вставки пишутся
+в знаковые ключи, native length растёт перед проверкой readonly данных, итоговая
+длина задаётся с учётом readonly/nondelete правил native Array. Удалённый массив
+пуст и удерживается корнем до завершения операции. Getter/setter/watch не
+вызываются для raw данных, в том числе для скрытых версионными битами descriptor.
+
+Negative prepared bounds now force property-aware splice even if the current
+native resource length is a high unsigned Number, or delete-count coercion has
+changed it to a positive length. This fixes a fast-path mismatch: the old fast
+path could ignore captured negative_length and insert at index zero instead of
+a signed key. The common signed raw setter observes current length for tail
+deletion, while insertion positions and final target length use captured bounds.
+A callback that changes length to 2 after capturing -3 therefore permits final
+shrink to -1 to delete current indices 0 and 1, except nondeletable entries.
+
+Tests: array_native_negative_splice covers SWF4–8, insertion counts 0–4,
+signed-constructor/high-unsigned raw storage, readonly length, C/direct invoke/
+interpreter/explicit/automatic native JIT, collection and graph restoration.
+array_native_negative_splice_coercion checks conversion side effects, negative/
+undefined/omitted arguments, nondelete tails, signed-addition rejection and
+budget errors/retry. array_native_negative_splice_allocation checks each new/
+new[] boundary until success, temporary root cleanup, counted NUL strings and
+retry after partial mutation. array_native_negative_virtual now includes splice
+for callback bypass, readonly/nondelete descriptor data and version flags.
+The native splice regression fails against the v0.490 library; the previous
+borrowed fixture now checks successful native operation and delete conversion.
+
+No public ABI or wire-layout change. Signed overflow, ordinary negative-index growth, arbitrary/virtual native
+length assignment, original-player comparison, foreign-platform execution and
+all nine roadmap stages remain open. Mutation is not transactional after an
+allocation/budget error; completed earlier writes may remain.

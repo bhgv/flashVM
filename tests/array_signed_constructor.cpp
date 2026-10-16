@@ -39,7 +39,11 @@ int main()
                 assert(out.type == FVM_VALUE_OBJECT && out.object && out.object->resource_kind == FVM_RESOURCE_ARRAY);
                 assert(fvm_object_get(c, out.object, "length", &length) == FVM_OK && length.type == FVM_VALUE_NUMBER);
                 const double want = version ? expected[i] : inputs[i];
-                assert(length.number == want && (!version || want || !std::signbit(length.number)));
+                assert(length.number == want);
+                if (version && !want) {
+                    const double positive_zero = 0;
+                    assert(!std::memcmp(&length.number, &positive_zero, sizeof(positive_zero)));
+                }
                 assert(out.object->indexed.empty());
                 assert(fvm_set_global(c, "signedArrayRoot", &out) == FVM_OK && fvm_gc_collect(c, 0) == FVM_OK);
                 if (version && !route) {

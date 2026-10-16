@@ -77,3 +77,10 @@ addition overflow, negative native splice, arbitrary/virtual length assignment
 and complete platform/player compatibility remain open. Failed operations may
 retain completed earlier mutations. Public ABI and wire layout are unchanged.
 All nine roadmap stages remain open; only the native host JIT runs these cases.
+
+
+## v0.491 — native splice
+
+Native negative-length splice is now implemented, including captured bounds
+when coercion changes the live length. See [ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md)
+for RU/EN semantics, coverage and remaining signed-overflow/virtual-length limits.

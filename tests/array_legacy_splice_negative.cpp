@@ -55,7 +55,9 @@ int main()
         number(c, o, "length", -3);
         fvm_value_number(&value, 4294967295.0); assert(fvm_object_set(c, array, "length", &value) == FVM_OK);
         args[1] = object(counter); conversions = 0;
-        assert(borrow(c, array, "splice", array, 3, args, &out) == FVM_UNSUPPORTED && conversions == 0);
+        assert(borrow(c, array, "splice", array, 3, args, &out) == FVM_OK && conversions == 1);
+        number(c, out.object, "length", 0); number(c, array, "length", 0);
+        number(c, array, "-1", 123); number(c, o, "length", 99);
         assert(c->gc_frames == 0 && c->avm1_execution_depth == 0);
         fvm_context_destroy(c);
     }

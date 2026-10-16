@@ -539,15 +539,13 @@ FVM_Result negative_splice(FVM_Context *c, FVM_Object *o, const FVM_Value *a,
         status = work.step();
         if (status != FVM_OK)
             return status;
-        char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
-        std::sprintf(key, "%ld", (long)((double)bounds.negative_length + i));
-        status = fvm_base_store_data(c, o, key, a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], false);
+        status = legacy_store_signed_element(c, o,
+            (long)((double)bounds.negative_length + i),
+            a[i + FVM_ARRAY_SPLICE_INSERT_ARGUMENT], work);
         if (status != FVM_OK)
             return status;
     }
-    FVM_Value value;
-    fvm_value_number(&value, (double)bounds.negative_length + bounds.added);
-    status = fvm_base_store_data(c, o, "length", value, false);
+    status = legacy_set_length(c, o, (double)bounds.negative_length + bounds.added, work);
     if (status == FVM_OK)
         object(out, result);
     return status;
@@ -1272,11 +1270,10 @@ FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int 
                               : length(c, o, out.length);
     if (status != FVM_OK)
         return status;
-    /* Borrowed objects retain signed keys; native arrays still need a signed storage model. */
+    /* Capture signed insertion bounds for native Arrays and borrowed objects alike. */
     if (c->swf_loaded && signed_length < 0)
     {
-        if (o->resource_kind == FVM_RESOURCE_ARRAY ||
-            (first < 0 && first + signed_length < FVM_INT32_MIN_NUMBER))
+        if (first < 0 && first + signed_length < FVM_INT32_MIN_NUMBER)
             return FVM_UNSUPPORTED;
         if (n > 1 && a[1].type == FVM_VALUE_UNDEFINED)
             return FVM_OK;

@@ -4270,3 +4270,13 @@ Native push/pop/shift/unshift теперь используют знаковую
 версионные флаги, GC/перенос, C/AVM1/JIT, OOM и бюджет. See the v0.490 section
 of [ARRAY_NEGATIVE_ENDS.md](ARRAY_NEGATIVE_ENDS.md). Negative native splice,
 signed overflow and all nine roadmap stages remain open.
+
+
+### v0.491 — native negative splice and captured-bound routing
+
+Native splice поддерживает отрицательную длину и знаковые ключи. Captured
+negative bounds принудительно выбирают generic путь даже после coercion,
+изменившего живую длину, или при unsigned raw storage. Проверяются readonly/
+nondelete, virtual data, version bits, C/AVM1/JIT, GC/перенос, OOM и бюджет.
+See [ARRAY_NEGATIVE_SPLICE.md](ARRAY_NEGATIVE_SPLICE.md). Signed overflow,
+arbitrary/virtual native length and all nine roadmap stages remain open.
