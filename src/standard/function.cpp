@@ -4,6 +4,10 @@
 
 #include "../core/string_internal.hpp"
 #include "function_state.hpp"
+#include "function_apply_constants.h"
+#include "../avm1/coercion.hpp"
+#include "../avm1/scope_keywords.hpp"
+#include "../core/numeric_constants.h"
 #include "../core/property_key.hpp"
 #include "../avm1/function_record.hpp"
 #include "../avm1/block.hpp"
@@ -22,6 +26,7 @@
 #include <cstring>
 #include <new>
 #include <cmath>
+#include <limits>
 #include <cstdio>
 
 namespace
@@ -123,6 +128,69 @@ FVM_Result call(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value 
     return fvm_function_invoke(c, fn, receiver, n ? n - 1 : 0, n ? a + 1 : 0, out);
 }
 
+/* Find an own stored length entry using loaded version casing, without invoking accessors. */
+template <class Entries>
+typename Entries::iterator apply_length_slot(FVM_Context *c, Entries &entries)
+{
+    typename Entries::iterator found = entries.find(FVM_FUNCTION_APPLY_LENGTH_NAME);
+    if (found != entries.end() || c->swf_info.version >= FVM_SWF_VERSION_7)
+        return found;
+    for (found = entries.begin(); found != entries.end(); ++found)
+        if (fvm_avm1_keyword_name(found->first, FVM_FUNCTION_APPLY_LENGTH_NAME,
+                                  FVM_FUNCTION_APPLY_LENGTH_UNITS, false))
+            return found;
+    return entries.end();
+}
+
+/* Capture own raw length (including retained script-property data), then coerce once.
+ * Negative or oversized wrapped lengths retain an explicit bounded-runtime rejection. */
+FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count)
+{
+    FVM_Value value;
+    fvm_value_undefined(&value);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property =
+        apply_length_slot(c, source->properties);
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+        apply_length_slot(c, source->accessors);
+    if (property != source->properties.end())
+        value = property->second;
+    else if (accessor != source->accessors.end())
+    {
+        if (!fvm_base_accessor_data(accessor->second, value) &&
+            fvm_base_array_length_accessor(accessor->second) && source->resource_result_valid)
+            value = source->resource_result;
+    }
+    else
+    {
+        fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+            apply_length_slot(c, source->methods);
+        if (method != source->methods.end())
+        {
+            FVM_Result status = fvm_function_wrap_entry(c, source, method->first, method->second, &value);
+            if (status != FVM_OK)
+                return status;
+        }
+        else if (source->resource_kind == FVM_RESOURCE_ARRAY && source->resource_result_valid)
+            value = source->resource_result;
+    }
+    /* [GC:] Length conversion may remove its own source slot and invoke collecting accessors. */
+    FVM_ObjectRootScope length_roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);
+    double number = 0;
+    FVM_Result status = fvm_avm1_number(c, &value, &number);
+    if (status != FVM_OK)
+        return status;
+    count = 0;
+    if (number != number || std::fabs(number) == std::numeric_limits<double>::infinity())
+        return FVM_OK;
+    number = std::fmod(number < 0 ? std::ceil(number) : std::floor(number), FVM_UINT32_MODULUS);
+    if (number < 0)
+        number += FVM_UINT32_MODULUS;
+    if (number >= FVM_UINT32_SIGN_BIT || number > FVM_FUNCTION_APPLY_LOADED_LIMIT)
+        return FVM_UNSUPPORTED;
+    count = number;
+    return FVM_OK;
+}
+
 /* Compute and return apply. */
 FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value *a, FVM_Value *out,
                  void *userdata)
@@ -141,17 +209,24 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
     if (n > 1 && a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED)
     {
         if (a[1].type != FVM_VALUE_OBJECT)
-            return FVM_INVALID_ARGUMENT;
-        FVM_Value length;
-        FVM_Result r = fvm_object_get(c, a[1].object, "length", &length);
-        if (r != FVM_OK)
-            return r;
+            return c->swf_loaded ? fvm_function_invoke(c, fn, receiver, 0, 0, out)
+                                  : FVM_INVALID_ARGUMENT;
         double count = 0;
-        r = fvm_value_to_number(c, &length, &count);
+        FVM_Result r = FVM_OK;
+        if (c->swf_loaded)
+            r = apply_loaded_count(c, a[1].object, count);
+        else
+        {
+            FVM_Value length;
+            r = fvm_object_get(c, a[1].object, FVM_FUNCTION_APPLY_LENGTH_NAME, &length);
+            if (r == FVM_OK)
+                r = fvm_value_to_number(c, &length, &count);
+            if (r == FVM_OK && (!(count >= 0 && count <= FVM_FUNCTION_APPLY_HOST_LIMIT) ||
+                                 count != std::floor(count)))
+                r = FVM_INVALID_ARGUMENT;
+        }
         if (r != FVM_OK)
             return r;
-        if (!(count >= 0 && count <= 65536) || count != std::floor(count))
-            return FVM_INVALID_ARGUMENT;
         fvm_detail::vector<FVM_Value> args((size_t)count);
         for (size_t i = 0; i < args.size(); ++i)
             fvm_value_undefined(&args[i]);

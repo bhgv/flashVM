@@ -23,3 +23,23 @@ Validation v0.417 / Проверка: minimal Release 833/833; AGG Release 2/2 a
 heap/global ASan+UBSan 2/2 apply/function tests. Generated native launchers restore
 workspace executable modes; stack ASan/LSan disabled. Foreign runtime acceptance
 and all nine stages remain open.
+
+## v0.418: собственная длина загруженного списка
+
+В SWF4–8 примитивный второй аргумент даёт пустой список. Для объекта берётся
+собственная сохранённая длина, без прототипов и вызова getter: учитываются данные
+addProperty и native Array. Имя length сопоставляется без учёта регистра в SWF4–6
+и точно в SWF7–8. Значение преобразуется один раз через AVM1 Number/Int32 с
+усечением и оборачиванием; undefined/NaN/бесконечность дают ноль. Объект длины
+удерживается при самоустранении и GC внутри valueOf. Упаковка this предшествует
+преобразованию длины. Host API сохраняет прежнюю политику.
+
+function_apply_loaded проверяет примитивы, дробные/обёрнутые длины, addProperty,
+наследование, регистр, Array, собирающий valueOf, исключения и восстановление.
+Отрицательная signed длина и длина выше 65536 пока дают UNSUPPORTED до выделений;
+это ограничение реализации, а не полное поведение Adobe для таких значений.
+Источники сравнения закреплены в [EN](FUNCTION_APPLY.md). Все стадии открыты.
+
+Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
+heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
+executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.

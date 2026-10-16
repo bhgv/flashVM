@@ -736,3 +736,14 @@ Validation v0.417 / Проверка: minimal Release 833/833; AGG Release 2/2 a
 heap/global ASan+UBSan 2/2 apply/function tests. Generated native launchers restore
 workspace executable modes; stack ASan/LSan disabled. Foreign runtime acceptance
 and all nine stages remain open.
+
+### v0.418 — loaded apply length / Длина загруженного apply
+
+Primitive lists supply zero arguments; own raw length uses version casing and
+AVM1 Int32 conversion, with rooted collecting callbacks. Loaded negative/large
+lengths remain explicitly bounded. [EN](FUNCTION_APPLY.md) / [RU](FUNCTION_APPLY.ru.md).
+All nine stages remain open.
+
+Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
+heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
+executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.

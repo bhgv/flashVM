@@ -26,3 +26,29 @@ Validation v0.417 / Проверка: minimal Release 833/833; AGG Release 2/2 a
 heap/global ASan+UBSan 2/2 apply/function tests. Generated native launchers restore
 workspace executable modes; stack ASan/LSan disabled. Foreign runtime acceptance
 and all nine stages remain open.
+
+## v0.418: loaded own length
+
+In SWF4–8 a primitive argument-list value supplies no arguments. Object lists
+capture own stored length without inherited lookup or getter dispatch, including
+retained data behind addProperty and the native Array length slot. SWF4–6 fold
+the length name; SWF7–8 use exact case. The captured value is converted once
+through AVM1 Number/Int32 truncation and wrapping; undefined/NaN/infinity become
+zero. A length object remains rooted through collecting conversion callbacks.
+Receiver boxing precedes length conversion. The unloaded host contract is retained.
+
+`function_apply_loaded` checks primitive lists, fractional/wrapped/invalid lengths,
+raw virtual/inherited/native Array length, versioned names, a self-unbinding
+collecting valueOf, errors/exceptions and retry. The primitive-list regression
+failed on v0.417. Current loaded negative signed lengths and lengths above 65536
+return UNSUPPORTED before allocation; this is a temporary runtime bound, not
+full Adobe negative/large-length compatibility. Host still rejects invalid lengths
+with INVALID_ARGUMENT. Mixed duplicate legacy key spellings remain uncertified.
+
+Comparison baseline: pinned [Function implementation](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/function.rs)
+and [own data length](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/script_object.rs).
+This is source comparison, not a fresh Adobe Player run. All stages remain open.
+
+Validation v0.418 / Проверка: minimal Release 834/834; AGG Release 3/3 and
+heap/global ASan+UBSan 3/3 apply/function tests. Native launchers restore workspace
+executable modes; stack ASan/LSan disabled. Other-platform acceptance remains open.
