@@ -3,21 +3,37 @@
 #define FVM_CLASS_PROTOTYPE_HPP /* Shared class prototype helper guard. */
 #include "../scope_keywords.hpp"
 #include "class_prototype_constants.h"
-#include "../../core/property_lookup.hpp"
 #include "../../standard/base_state.hpp"
-/* Read the own property's stored data; skip getters, inherited slots and resolver callbacks. */
-inline bool fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out)
+/* Select the prototype field under an explicit source-movie policy or the ambient context. */
+template <class T>
+inline typename fvm_detail::map<fvm_detail::string, T>::iterator fvm_avm1_prototype_slot(
+    FVM_Context *c, fvm_detail::map<fvm_detail::string, T> &entries, unsigned int movie_version)
 {
-    fvm_detail::string name(FVM_CLASS_PROTOTYPE_NAME);
+    typename fvm_detail::map<fvm_detail::string, T>::iterator found =
+        entries.find(FVM_CLASS_PROTOTYPE_NAME);
+    bool folded = movie_version ? movie_version < FVM_SWF_VERSION_7
+                                 : c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7;
+    if (found != entries.end() || !folded)
+        return found;
+    for (found = entries.begin(); found != entries.end(); ++found)
+        if (fvm_avm1_keyword_name(found->first, FVM_CLASS_PROTOTYPE_NAME,
+                                   FVM_CLASS_PROTOTYPE_UNITS, false))
+            return found;
+    return found;
+}
+/* Read stored own data; an explicit source version also works in an unloaded receiving context. */
+inline bool fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out,
+                                       unsigned int movie_version = 0)
+{
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data =
-        fvm_property_find(c, object->properties, name);
+        fvm_avm1_prototype_slot(c, object->properties, movie_version);
     if (data != object->properties.end())
     {
         out = data->second;
         return true;
     }
     fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
-        fvm_property_find(c, object->accessors, name);
+        fvm_avm1_prototype_slot(c, object->accessors, movie_version);
     if (accessor == object->accessors.end())
         return false;
     /* Script virtual properties retain the data overwritten by addProperty. Native

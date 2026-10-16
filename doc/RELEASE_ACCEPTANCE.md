@@ -2616,3 +2616,28 @@ full class compatibility remain open.
 Validation v0.468: complete Linux minimal 913/913; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 8/8 targeted checks each. Stack ASan/LeakSanitizer
 disabled; all stages and foreign OS acceptance remain open.
+
+## v0.469 — registered clip stored prototypes use source-movie policy
+
+Known-SWF registered clip construction reads the class's own stored prototype
+value, bypassing accessors/inherited fields/resolvers. Retained virtual Object
+data remains the live prototype; absent/primitive data yields no Object prototype
+instead of rejecting the attachment. The raw field selector accepts an explicit
+source-movie version, so SWF6 alternate spelling works under an ambient SWF8 and
+SWF8 remains exact under SWF6. Unknown-version unloaded host libraries retain
+ordinary lookup. Reference: post_instantiation's constructor.prototype call in
+pinned display_object/movie_clip.rs and ScriptObject::prototype/get_data.
+movieclip_constructor_stored_prototype reproduced the incorrect receiver chain.
+Source6/8 × ambient6/8 cover retained virtual Object/Number, native accessor,
+inherited/mixed/missing fields, direct primitive data and throwing getter/resolver
+traps across attach/duplicate/authored placement, callback counts, GC and clean
+state. Transfer to an opposite-version context without standard installation
+checks the new clip against the independently cloned existing clip's prototype;
+the custom C native accessor case is excluded from graph transfer. The original
+script attachment is dropped, as required by the existing graph contract.
+This does not certify primitive __proto__ reflection, native-method-backed
+prototype fields, all class lifecycle behavior or any foreign OS.
+
+Validation v0.469: complete Linux minimal 914/914 and AGG 933/933; Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 6/6 selected checks each. Stack
+ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.

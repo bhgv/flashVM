@@ -3,9 +3,9 @@
 #include "movieclip_storage.hpp"
 #include "base_state.hpp"
 #include "movieclip_state.hpp"
+#include "../avm1/handlers/class_prototype.hpp"
 using namespace fvm_movieclip_storage;
-/* [GC:] The caller retains the library/constructor and blocks collection through prototype getters.
- */
+/* [GC:] Caller retains library/constructor; only legacy host libraries can invoke prototype getters. */
 FVM_Result fvm_movieclip_sprite_class(FVM_Context *c, FVM_Object *library, const char *linkage,
                                       FVM_Object *&proto, FVM_Object *&constructor)
 {
@@ -35,12 +35,23 @@ FVM_Result fvm_movieclip_sprite_class(FVM_Context *c, FVM_Object *library, const
         if (constructor)
         {
             FVM_Value prototype;
-            r = fvm_object_get(c, constructor, "prototype", &prototype);
-            if (r != FVM_OK)
-                return r;
-            if (prototype.type != FVM_VALUE_OBJECT)
-                return FVM_INVALID_ARGUMENT;
-            proto = prototype.object;
+            if (version || c->swf_loaded)
+            {
+                /* Source SWF construction reads own stored data, never a getter or resolver. */
+                fvm_value_undefined(&prototype);
+                fvm_avm1_stored_prototype(c, constructor, prototype, version);
+                proto = prototype.type == FVM_VALUE_OBJECT ? prototype.object : 0;
+            }
+            else
+            {
+                /* Libraries without SWF provenance retain the unloaded embedding contract. */
+                r = fvm_object_get(c, constructor, "prototype", &prototype);
+                if (r != FVM_OK)
+                    return r;
+                if (prototype.type != FVM_VALUE_OBJECT)
+                    return FVM_INVALID_ARGUMENT;
+                proto = prototype.object;
+            }
         }
     }
     return FVM_OK;
