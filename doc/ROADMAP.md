@@ -497,3 +497,21 @@ snapshot allocation/transport, membership data/large-graph and collecting
 membership-callback regressions. Stack ASan and LeakSanitizer remain disabled.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+
+v0.384: loaded Number.toString nondecimal values follow pinned Int32 truncation
+and MIN-sentinel byte formatting without signed overflow. All 34 bases, fractions,
+range/NaN/Infinity inputs, captured radix coercion, OOM/GC/transfer and native/
+interpreted results are covered. Decimal and unloaded host formats remain.
+Historical player-specific behavior is not certified.
+[EN](NUMBER_LOADED_RADIX.md) / [RU](NUMBER_LOADED_RADIX.ru.md).
+Все стадии остаются открытыми.
+
+Validation v0.384: all 803 AGG / 803 Cairo / 784 minimal Linux Release checks
+have passing evidence after nine ELF execution-permission repairs and targeted
+reruns (four AGG, four Cairo, one minimal). Eight restricted heap/global
+ASan+UBSan checks pass: four new radix/callback/allocation/native cases plus
+legacy radix/conversion, C89 standard Number and native numeric regressions.
+Stack ASan and LeakSanitizer remain disabled. The new scoped radix constants
+header passes a strict C89 syntax probe. No original external SWF oracle or
+foreign-OS acceptance was added. All nine roadmap stages remain open.

@@ -3,6 +3,8 @@
  */
 
 #include "number_state.hpp"
+#include "number_radix_constants.h"
+#include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
 #include <cmath>
@@ -76,6 +78,41 @@ FVM_Result binary_radix(FVM_Context *c, double value, unsigned int radix, FVM_Va
     return result == FVM_OK ? fvm_value_to_string(c, &temporary, out) : result;
 }
 
+/* Reproduce loaded Int32/sentinel digit formatting without signed overflow or negative division.
+ * Out-of-range/NaN values select INT32_MIN; its wrapped negation remains negative,
+ * producing the pinned AVM1 policy's punctuation/control bytes rather than a magnitude. */
+FVM_Result loaded_radix(FVM_Context *c, double value, unsigned int radix, FVM_Value *out)
+{
+    double whole = FVM_INT32_MIN_NUMBER;
+    if (value >= FVM_INT32_MIN_NUMBER && value <= FVM_INT32_MAX_NUMBER)
+        whole = value < 0 ? std::ceil(value) : std::floor(value);
+    bool negative = whole < 0;
+    if (negative && whole != FVM_INT32_MIN_NUMBER)
+        whole = -whole;
+
+    const char *digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+    char buffer[FVM_NUMBER_RADIX_TEXT_CAPACITY];
+    size_t position = sizeof(buffer) - 1;
+    buffer[position] = 0;
+    do
+    {
+        double quotient = whole < 0 ? -std::floor(-whole / radix) : std::floor(whole / radix);
+        long remainder = (long)(whole - quotient * radix);
+        if (!position)
+            return FVM_ERROR;
+        buffer[--position] = remainder < 0 ? (char)(FVM_NUMBER_RADIX_ASCII_ZERO + remainder)
+                                          : digits[(unsigned int)remainder];
+        whole = quotient;
+    } while (whole != 0);
+    if (negative)
+        buffer[--position] = '-';
+
+    FVM_Value text;
+    FVM_Result status = fvm_value_string_bytes(&text, buffer + position,
+                                               sizeof(buffer) - position - 1);
+    return status == FVM_OK ? fvm_value_to_string(c, &text, out) : status;
+}
+
 /* Format stored Number data; loaded radix coercion defaults invalid values to decimal. */
 FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
                          const FVM_Value *args, FVM_Value *out, void *)
@@ -111,6 +148,8 @@ FVM_Result number_string(FVM_Context *c, FVM_Object *self, unsigned int count,
     if (radix == 10)
         return fvm_value_to_string(c, &primitive, out);
     double value = primitive.number;
+    if (c->swf_loaded)
+        return loaded_radix(c, value, (unsigned int)radix, out);
     if (value != value || value == std::numeric_limits<double>::infinity() ||
         value == -std::numeric_limits<double>::infinity())
         return fvm_value_to_string(c, &primitive, out);

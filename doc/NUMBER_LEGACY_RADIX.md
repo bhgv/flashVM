@@ -10,8 +10,7 @@ explicit undefined. После усечения положительного з�
 number_legacy_radix проверяет эти случаи, дробное основание, порядок callback
 и восстановление root/depth state. Эталон: Ruffle number.rs, commit
 2372a4e148a67d68efd796f4477b3cddd4f880cd, функция to_string.
-Полная совместимость недесятичного форматирования не заявляется: дробные
-периодические представления и исторические NaN/Infinity остаются открытыми.
+В v0.384 добавлена loaded Int32/sentinel-политика значений: [RU](NUMBER_LOADED_RADIX.ru.md). Исторические player-профили NaN/Infinity остаются открытыми.
 
 ## English
 
@@ -23,5 +22,4 @@ does not trigger host string fallback. Unloaded C API guards are unchanged.
 
 Tests cover fractional/invalid/overflow radices, version-dependent strings,
 callback counts/errors and restored root/depth state. The pinned Ruffle source
-above supplies the radix-selection reference. Recurring fractional formatting
-and historical nondecimal NaN/Infinity behavior remain open; no stage is closed.
+above supplies the radix-selection reference. Since v0.384 loaded values use the Int32/sentinel policy: [EN](NUMBER_LOADED_RADIX.md). Historical player-specific nondecimal NaN/Infinity behavior remains open; no stage is closed.
