@@ -7,4 +7,6 @@
 #define FVM_PROPERTY_RESOLVE_MAX_DEPTH 64U
 /* A resolver is a function callback, independent of the resolver property's owner. */
 #define FVM_PROPERTY_RESOLVE_SUPER_DEPTH 0U
+/* A resolver result used as a method starts one level beyond its receiver/facade base. */
+#define FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH 1U
 #endif

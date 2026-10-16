@@ -3,6 +3,7 @@
 #include "../core/property_lookup.hpp"
 #include "../core/property_write.hpp"
 #include "../core/property_resolve.hpp"
+#include "../core/property_resolve_constants.h"
 #include "../core/property_key.hpp"
 #include "inheritance.hpp"
 #include "base_state.hpp"
@@ -29,9 +30,9 @@ FVM_Result edge(FVM_Object *data, const char *key, FVM_Object **out)
     *out = it->second.object;
     return FVM_OK;
 }
-/* Resolve the live owner at the captured prototype depth and its parent chain. */
+/* Resolve the live owner/parent chain and optionally snapshot the facade's numeric depth. */
 FVM_Result unpack(FVM_Context *c, FVM_Object *facade, FVM_Object **receiver, FVM_Object **owner,
-                  FVM_Object **start)
+                  FVM_Object **start, unsigned int *captured_depth = 0)
 {
     if (!facade || facade->owner != c || facade->resource_kind != FVM_RESOURCE_SUPER ||
         !facade->resource_result_valid || facade->resource_result.type != FVM_VALUE_OBJECT)
@@ -45,6 +46,8 @@ FVM_Result unpack(FVM_Context *c, FVM_Object *facade, FVM_Object **receiver, FVM
         !(depth->second.number >= 0 && depth->second.number <= FVM_PROTOTYPE_MAX_DEPTH) ||
         depth->second.number != (unsigned int)depth->second.number)
         return FVM_INVALID_ARGUMENT;
+    if (captured_depth)
+        *captured_depth = (unsigned int)depth->second.number;
     *owner = *receiver;
     for (unsigned int i = 0; i < (unsigned int)depth->second.number && *owner; ++i)
         *owner = (*owner)->prototype;
@@ -273,7 +276,8 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
 {
     fvm_value_undefined(out);
     FVM_Object *receiver = 0, *current = 0, *start = 0;
-    FVM_Result result = unpack(c, facade, &receiver, &current, &start);
+    unsigned int captured_depth = 0;
+    FVM_Result result = unpack(c, facade, &receiver, &current, &start, &captured_depth);
     if (result != FVM_OK)
         return result;
     if (!start)
@@ -312,8 +316,16 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
     if (member.type != FVM_VALUE_OBJECT ||
         (optional && !member.object->invocable.callback))
         return optional ? FVM_OK : FVM_UNSUPPORTED;
-    /* [GC:] Root the selected owner and preserve it across recursive superclass calls. */
-    FVM_CallScope scope(c, 0, member.object, owner);
+    unsigned int invocation_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH;
+    if (c->swf_loaded && !owner)
+    {
+        if (captured_depth >= FVM_PROTOTYPE_MAX_DEPTH)
+            return FVM_ERROR;
+        invocation_depth = captured_depth + FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH;
+    }
+    /* [GC:] Preserve selected ownership; resolver results instead retain the depth captured
+     * before callback prototype mutations, relative to the original superclass facade. */
+    FVM_CallScope scope(c, 0, member.object, owner, invocation_depth);
     return fvm_function_invoke(c, member.object, receiver, count, args, out);
 }
 

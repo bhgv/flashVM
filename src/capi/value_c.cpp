@@ -7,6 +7,7 @@
 #include "../standard/base_state.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_resolve.hpp"
+#include "../core/property_resolve_constants.h"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
@@ -1273,8 +1274,10 @@ extern "C"
                     {
                         if (function.type != FVM_VALUE_OBJECT)
                             return FVM_UNSUPPORTED;
-                        /* [GC:] A resolver-returned Function has no defining property owner. */
-                        FVM_CallScope scope(c, 0, function.object, 0);
+                        /* [GC:] A resolver result has no defining owner but still executes as
+                         * a method with explicit depth one, even after prototype detachment. */
+                        FVM_CallScope scope(c, 0, function.object, 0,
+                                            FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH);
                         return fvm_function_invoke(c, function.object, self, argc, argv, out);
                     }
                 }

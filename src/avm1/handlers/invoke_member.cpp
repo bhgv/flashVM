@@ -3,6 +3,7 @@
 #include "../../standard/super.hpp"
 #include "../../core/property_key.hpp"
 #include "../../core/property_lookup.hpp"
+#include "../../core/property_resolve_constants.h"
 #include "invoke_member_constants.h"
 #include "../../core/call_scope.hpp"
 #include "flashvm/function.h"
@@ -80,7 +81,11 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
         FVM_Object *source = roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].type == FVM_VALUE_OBJECT
                                  ? roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].object
                                  : 0;
-        FVM_CallScope call(c, 0, function.object, source);
+        /* [GC:] A dynamically returned loaded method has no stored owner; keep its
+         * method depth explicit instead of losing super through owner inference. */
+        FVM_CallScope call(c, 0, function.object, source,
+                            c->swf_loaded && !source ? FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH
+                                                    : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
         FVM_Value result;
         fvm_value_undefined(&result);
         status = fvm_function_invoke(c, function.object, receiver, argc, args, &result);

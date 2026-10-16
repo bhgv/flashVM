@@ -158,3 +158,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Видимость oldValue watcher: [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).
 
 Глубина super обработчика __resolve: [v0.504](RESOLVE_CALLBACK_SUPER.md).
+
+Глубина метода, возвращённого __resolve: [v0.505](RESOLVE_METHOD_SUPER.md).

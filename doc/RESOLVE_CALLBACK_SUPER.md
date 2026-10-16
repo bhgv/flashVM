@@ -39,3 +39,5 @@ tests passed. Execute permissions were restored on 15/31/34 generated binaries;
 minimal was rerun in full because its initial log lacked a final summary, while
 AGG/Cairo failed launches were rerun. Five targeted ASan/UBSan tests and a strict
 C89 depth-header syntax probe passed. No foreign-OS acceptance is claimed.
+
+Returned-method depth is handled separately in [v0.505](RESOLVE_METHOD_SUPER.md).
