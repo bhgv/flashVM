@@ -46,3 +46,11 @@ plus legacy split/search/receiver and character-allocation checks. Stack ASan
 and LeakSanitizer remain disabled. The revised String constants header passes
 a strict C89 syntax probe. No new original external SWF oracle or foreign-OS
 run is claimed. All nine roadmap stages remain open.
+
+## v0.386 копирование диапазонов
+
+Загруженные slice/substring/substr разделяют бюджет с преобразованиями
+получателя и аргументов; каждая выходная единица UTF-16 учитывается отдельно.
+Пара суррогатов стоит две единицы, одиночные сохраняются в WTF-8. Вызов без
+аргументов остаётся вне бюджета. Ошибка не публикует частичную строку.
+Декодирование и индексы не получили поэлементного учёта; host-политика прежняя.

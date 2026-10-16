@@ -534,3 +534,8 @@ reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
 The revised MovieClip constants header passes a strict C89 syntax probe.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+
+v0.386: loaded String range copies charge each emitted UTF-16 unit with shared
+nested work, saturation/error atomicity and missing-argument noops.
+RU: учёт копирования slice/substring/substr; все девять стадий открыты.

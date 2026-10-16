@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.385
+# Условия окончательной приёмки / Final acceptance gates — v0.386
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1204,3 +1204,12 @@ v0.373: borrowed loaded negative-length splice uses signed own insertion keys,
 captured conversion bounds and rooted empty removals; native negative storage
 and signed overflow remain unsupported. Этапы остаются открытыми.
 See [EN](ARRAY_NEGATIVE_SPLICE.md) / [RU](ARRAY_NEGATIVE_SPLICE.ru.md).
+
+
+v0.386: loaded String range copies charge each emitted UTF-16 unit with shared
+nested work, saturation/error atomicity and missing-argument noops.
+RU: учёт копирования slice/substring/substr; все девять стадий открыты.
+Validation v0.386: 39 AGG String CTest checks pass. New range-copy and existing
+loaded-work checks pass in Cairo/minimal Release and restricted heap/global
+ASan+UBSan (stack ASan and LeakSanitizer disabled). These are targeted Linux
+checks; no new full-profile, external-oracle or foreign-platform claim.

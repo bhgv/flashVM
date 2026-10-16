@@ -243,7 +243,8 @@ FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const F
         return FVM_OK;
     }
 
-    /* Initialization / Инициализация локального состояния. */
+    /* Keep receiver and argument callbacks inside the same loaded execution budget. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units units;
     FVM_Result result = receiver(c, self, units);
     if (result != FVM_OK)
@@ -270,7 +271,7 @@ FVM_Result portion(FVM_Context *c, FVM_Object *self, unsigned int count, const F
     }
     if (end < start)
         end = start;
-    return encode(c, units, start, end, out);
+    return encode(c, units, start, end, out, &work);
 }
 
 /* Compute and return substring. */
@@ -280,7 +281,7 @@ FVM_Result substring(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Va
     return portion(c, s, n, a, o, 0);
 }
 
-/* Copy the selected Array range, preserving absent indexed properties. */
+/* Copy the selected String range using versioned UTF-16 indices. */
 FVM_Result slice(FVM_Context *c, FVM_Object *s, unsigned int n, const FVM_Value *a, FVM_Value *o,
                  void *)
 {

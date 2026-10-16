@@ -46,3 +46,11 @@ plus legacy split/search/receiver and character-allocation checks. Stack ASan
 and LeakSanitizer remain disabled. The revised String constants header passes
 a strict C89 syntax probe. No new original external SWF oracle or foreign-OS
 run is claimed. All nine roadmap stages remain open.
+
+## v0.386 range copies
+
+Loaded slice/substring/substr share work across receiver and argument coercion
+and charge each emitted UTF-16 unit. Supplementary pairs charge twice; lone
+surrogates retain counted WTF-8 storage. Missing-argument noops remain outside
+the scope. Failure publishes no partial result. Decoding and index conversion
+are not newly charged per unit; host behavior is unchanged.

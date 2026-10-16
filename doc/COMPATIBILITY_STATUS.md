@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7: String range copy budget | Проверено для сценариев v0.386 | string_portion_work: SWF4–8/host, paired/lone surrogates, exact budgets, nested/saturated counter, no partial output. Decode work remains open. STRING_LOADED_WORK.md / .ru.md. |
 | 2/3/4/7/8: indexed dimension writes | Проверено для сценариев v0.385 | SetProperty 8/9 coerces value and atomically publishes two scales from untransformed vector bounds using pinned rotation rules; degenerate/descendant/GC/OOM and native checks. Named/full geometry semantics open. MOVIECLIP_DIMENSION_WRITES.md / .ru.md. |
 | 1/2/6/7/8: loaded Number nondecimal values | Проверено для сценариев v0.384 | All 34 nondecimal bases use pinned Int32 truncation/MIN-sentinel digit policy; boundaries/fractions/NaN, counted control bytes, captured radix coercion, OOM/GC/transfer and native equivalence. Historical player profiles open. NUMBER_LOADED_RADIX.md / .ru.md. |
 | 1/2/7/8: budgeted interface declarations | Проверено для сценариев v0.383 | Loaded snapshot capture/inspection shares AVM1 work; atomic OOM/budget failure, validated allocation-free direct noops, full 65536 count and interpreter/native retry. Public count bound/host policy retained. IMPLEMENTS_WORK.md / .ru.md. |
