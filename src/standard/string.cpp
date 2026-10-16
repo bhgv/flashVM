@@ -610,7 +610,8 @@ template <size_t N> bool in_ranges(unsigned long cp, const FVM_CaseRange (&range
 }
 
 /* Compute and return case text. */
-FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper)
+FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool upper,
+                     FVM_ExecutionWorkScope *work = 0)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -626,6 +627,9 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
                              : sizeof(fvm_flash_lowercase) / sizeof(fvm_flash_lowercase[0]);
         for (size_t i = 0; i < units.size(); ++i)
         {
+            /* Public loaded methods charge each mapping, then each output unit. */
+            if (work && (r = work->step()) != FVM_OK)
+                return r;
             size_t first = 0, last = count;
             while (first < last)
             {
@@ -638,7 +642,7 @@ FVM_Result case_text(FVM_Context *c, const FVM_Value &text, FVM_Value *out, bool
             if (first < count && table[first][0] == units[i])
                 units[i] = table[first][1];
         }
-        return encode(c, units, 0, units.size(), out);
+        return encode(c, units, 0, units.size(), out, work);
     }
     fvm_detail::vector<unsigned long> scalars;
     for (size_t i = 0; i < units.size(); ++i)
@@ -709,12 +713,13 @@ FVM_Result lower_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Val
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units units;
     FVM_Result r = receiver(c, o, units);
     FVM_Value text;
     if (r == FVM_OK)
         r = encode(c, units, 0, units.size(), &text);
-    return r == FVM_OK ? case_text(c, text, out, false) : r;
+    return r == FVM_OK ? case_text(c, text, out, false, &work) : r;
 }
 
 /* Compute and return upper case. */
@@ -723,12 +728,13 @@ FVM_Result upper_case(FVM_Context *c, FVM_Object *o, unsigned int, const FVM_Val
 {
 
     /* Initialization / Инициализация локального состояния. */
+    FVM_ExecutionWorkScope work(c, c->swf_loaded);
     Units units;
     FVM_Result r = receiver(c, o, units);
     FVM_Value text;
     if (r == FVM_OK)
         r = encode(c, units, 0, units.size(), &text);
-    return r == FVM_OK ? case_text(c, text, out, true) : r;
+    return r == FVM_OK ? case_text(c, text, out, true, &work) : r;
 }
 
 /* Define Method struct and its representation. */

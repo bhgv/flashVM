@@ -543,3 +543,8 @@ RU: учёт копирования slice/substring/substr; все девять 
 
 v0.387: concat/fromCharCode charge argument visits and UTF-16 output, sharing
 work with callbacks. RU: общий бюджет построения строк; все стадии открыты.
+
+
+v0.388: public loaded String casing charges UCS2 mapping and UTF-16 output
+with shared work; internal property folding keeps its caller policy.
+RU: учёт публичного изменения регистра; все девять стадий открыты.

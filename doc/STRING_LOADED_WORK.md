@@ -63,3 +63,15 @@ unit. Conversion order stays left to right until an error; partial results are
 not published. Budget failure may stop before later callbacks. Decoding remains
 unaccounted per unit, and host accounting is unchanged. Native callbacks keep
 the existing GC barrier.
+
+## v0.388 public casing
+
+Loaded toLowerCase/toUpperCase share work before receiver coercion, charge each
+UCS2 mapping and each final UTF-16 output unit. Counted NUL and lone/paired
+surrogates retain their existing representation. Internal property-name folding
+uses its previous caller policy; host full-Unicode casing is unchanged. Receiver
+decoding and the intermediate representation conversion are not newly charged.
+
+v0.388 native coverage: jit_string_copy_work checks concat, slice, substring,
+substr, both casing methods and fromCharCode in interpreted, explicit-native
+and automatic-native execution, with budget failure/retry and post-call GC.

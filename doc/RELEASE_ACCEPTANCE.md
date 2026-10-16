@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.387
+# Условия окончательной приёмки / Final acceptance gates — v0.388
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1221,3 +1221,14 @@ Validation v0.387: 41 AGG String CTest checks pass. Builder, builder-callback an
 range-copy checks also pass in Cairo/minimal Release and restricted heap/global
 ASan+UBSan; stack ASan and LeakSanitizer disabled. No full-profile, new external
 oracle or non-Linux execution is claimed.
+
+
+v0.388: public loaded String casing charges UCS2 mapping and UTF-16 output
+with shared work; internal property folding keeps its caller policy.
+RU: учёт публичного изменения регистра; все девять стадий открыты.
+Validation v0.388: all 43 String executables are rebuilt against the current
+static library and pass in Linux AGG/Cairo/minimal Release. Six rebuilt checks
+pass in restricted heap/global ASan+UBSan: range copies, builders, callbacks,
+casing, interpreted/explicit/automatic native copies and existing loaded-work
+allocation failures. Stack ASan and LeakSanitizer remain disabled. Targeted
+checks do not certify full compatibility; all nine stages remain open.
