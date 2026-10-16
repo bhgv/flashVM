@@ -2256,3 +2256,17 @@ coverage and all stages remain open.
 Validation v0.449: complete Linux minimal 886/886; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
 applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.450 — loaded Object.__resolve
+
+Raw resolver lookup now handles ordinary/indexed/parent reads with versioned
+names, receiver/name arguments, raw virtual data, primitive skip/Object stop,
+GC/errors, special-conversion exclusion, bounded recursion and actual native
+GetMember. [EN](OBJECT_RESOLVE.md) / [RU](OBJECT_RESOLVE.ru.md). Direct C/super
+method fallback, scope, transport/OOM and all nine stages remain open.
+
+Validation v0.450: complete Linux minimal 890/890; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 6/6 targeted checks each. Added metatable precedence
+cases were then rerun in all four profiles. Dependency indexes were refreshed
+for the private context layout change. Executable-mode launchers applied;
+stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.

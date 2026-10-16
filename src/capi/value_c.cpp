@@ -6,6 +6,7 @@
 #include "flashvm/function.h"
 #include "../standard/base_state.hpp"
 #include "../core/property_watch.hpp"
+#include "../core/property_resolve.hpp"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
@@ -114,7 +115,7 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const fvm_detail::string
 
 /* Read a selected prototype chain with a separate accessor receiver. */
 FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiver,
-                               const fvm_detail::string &name, FVM_Value *out, bool allow_meta)
+                               const fvm_detail::string &name, FVM_Value *out, bool allow_meta, bool allow_resolve)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -122,6 +123,7 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
     if (!c || !o || o->owner != c || !receiver || receiver->owner != c || !out)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
+    FVM_Object *start = o;
     try
     {
         while (o && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
@@ -225,6 +227,12 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
         }
         if (o)
             return FVM_ERROR;
+        if (allow_resolve && c->swf_loaded)
+        {
+            FVM_Result status = fvm_property_resolve(c, start, receiver, name, out);
+            if (status != FVM_NOT_FOUND)
+                return status;
+        }
         if (!allow_meta)
             return FVM_OK;
         o = receiver;
@@ -915,6 +923,8 @@ extern "C"
         fvm_value_undefined(out);
         try
         {
+            /* [GC:] Delegated super/resolver callbacks retain the original API input as well. */
+            FVM_ObjectRootScope target_roots(c, o);
             fvm_detail::string key;
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)

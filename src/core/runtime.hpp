@@ -340,6 +340,7 @@ struct FVM_Context
     FVM_Object *script_this;      /* [GC:] Current object-valued implicit this, separate from call receiver. */
     unsigned int string_depth;    /* [GC:] Recursion guard for string coercion. */
     unsigned int primitive_depth; /* [GC:] Recursion guard for primitive coercion. */
+    unsigned int resolve_depth;   /* Nested legacy resolver callbacks, including native functions. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_detail::vector<FVM_Object *>
         joining_arrays; /* [GC:] Arrays currently being joined; prevents cycles. */

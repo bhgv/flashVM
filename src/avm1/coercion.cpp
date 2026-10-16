@@ -111,10 +111,9 @@ FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
             fvm_detail::string(date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME), &result);
     else
     {
-        status = fvm_object_get_bytes(
-            context, original.object,
-            date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME,
-            date_string ? FVM_COERCION_TO_STRING_BYTES : FVM_COERCION_VALUE_OF_BYTES, &method);
+        status = fvm_object_get_from(context, original.object, original.object,
+            fvm_detail::string(date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME),
+            &method, true, false);
         if (status != FVM_OK)
             return status;
         if (method.type == FVM_VALUE_OBJECT &&
@@ -222,8 +221,8 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
             status = fvm_super_special(context, value.object, fvm_detail::string(FVM_COERCION_TO_STRING_NAME), &result);
         else
         {
-            status = fvm_object_get_bytes(context, value.object, FVM_COERCION_TO_STRING_NAME,
-                                             FVM_COERCION_TO_STRING_BYTES, &method);
+            status = fvm_object_get_from(context, value.object, value.object,
+                fvm_detail::string(FVM_COERCION_TO_STRING_NAME), &method, true, false);
             if (status != FVM_OK)
                 return status;
             if (method.type == FVM_VALUE_OBJECT &&

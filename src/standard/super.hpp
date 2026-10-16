@@ -20,7 +20,7 @@ FVM_Result fvm_super_special(FVM_Context *, FVM_Object *, const fvm_detail::stri
 FVM_NativeFunction fvm_super_callback();
 /* Read from a selected prototype chain with a separate accessor receiver. */
 FVM_Result fvm_object_get_from(FVM_Context *, FVM_Object *, FVM_Object *, const fvm_detail::string &, FVM_Value *,
-                               bool);
+                               bool, bool allow_resolve = true);
 /* Write through a selected accessor chain; prepared_watch avoids repeating an indexed watcher. */
 FVM_Result fvm_object_set_from(FVM_Context *, FVM_Object *, FVM_Object *, const fvm_detail::string &,
                                const FVM_Value *, bool, bool prepared_watch = false);
