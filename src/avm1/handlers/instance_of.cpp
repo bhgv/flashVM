@@ -39,12 +39,14 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
         if (status != FVM_OK)
             return status;
         FVM_Value &prototype = roots.values[FVM_INSTANCE_OF_PROTOTYPE_ROOT];
-        if (klass.type != FVM_VALUE_OBJECT ||
-            !fvm_avm1_stored_prototype(c, klass.object, prototype))
+        if (klass.type != FVM_VALUE_OBJECT)
         {
             fvm_value_boolean(out, 0);
             return FVM_OK;
         }
+        status = fvm_avm1_stored_prototype(c, klass.object, prototype);
+        if (status != FVM_OK)
+            return status;
         status = fvm_exec_to_object(c, &prototype, &prototype);
         if (status != FVM_OK)
             return status;
@@ -96,10 +98,15 @@ extern "C" FVM_Result fvm_exec_instance_of(FVM_Context *c, const FVM_Value *valu
                     fvm_value_undefined(&interface_prototype);
                     if (current->interfaces_are_prototypes)
                         pending.push_back(current->implemented_interfaces[i]);
-                    else if (fvm_avm1_stored_prototype(c, current->implemented_interfaces[i],
-                                                       interface_prototype) &&
-                             interface_prototype.type == FVM_VALUE_OBJECT)
-                        pending.push_back(interface_prototype.object);
+                    else
+                    {
+                        status = fvm_avm1_stored_prototype(c, current->implemented_interfaces[i],
+                                                          interface_prototype);
+                        if (status != FVM_OK)
+                            return status;
+                        if (interface_prototype.type == FVM_VALUE_OBJECT)
+                            pending.push_back(interface_prototype.object);
+                    }
                 }
             }
         }

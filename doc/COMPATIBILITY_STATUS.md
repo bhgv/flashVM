@@ -3946,3 +3946,23 @@ prototype fields, all class lifecycle behavior or any foreign OS.
 Validation v0.469: complete Linux minimal 914/914 and AGG 933/933; Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 6/6 selected checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+### v0.470 — own native-method class prototype bridge
+
+Getter-free own prototype reads now materialize the same cached Function value
+as public member reads for native-method-backed fields, without invoking the
+callback. Data/accessor precedence, source-version spelling and own-only lookup
+remain unchanged. The helper returns FVM_Result so wrapper failures propagate
+through construction, InstanceOf, ImplementsOp and registered clip selection.
+Extended function_constructor_stored_prototype covers cold/warm caches, host
+and SWF4–8, GC, instanceof and three NewObject modes. Extended
+movieclip_constructor_stored_prototype covers source6/8 × ambient6/8,
+attach/duplicate/authored placement and zero callback invocations. This custom
+C method is excluded from graph-transfer assertions. Extends deliberately
+retains ordinary superclass.prototype reads, as pinned Ruffle action_extends
+requires. Primitive __proto__ reflection, all stages and foreign OS acceptance
+remain open.
+
+Validation v0.470: complete Linux minimal 914/914 and AGG 933/933; Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 4/4 selected checks each. Stack
+ASan/LeakSanitizer disabled.

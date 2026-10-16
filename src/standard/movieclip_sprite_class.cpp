@@ -39,7 +39,9 @@ FVM_Result fvm_movieclip_sprite_class(FVM_Context *c, FVM_Object *library, const
             {
                 /* Source SWF construction reads own stored data, never a getter or resolver. */
                 fvm_value_undefined(&prototype);
-                fvm_avm1_stored_prototype(c, constructor, prototype, version);
+                r = fvm_avm1_stored_prototype(c, constructor, prototype, version);
+                if (r != FVM_OK)
+                    return r;
                 proto = prototype.type == FVM_VALUE_OBJECT ? prototype.object : 0;
             }
             else

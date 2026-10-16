@@ -1754,3 +1754,22 @@ Object/Number в accessor, native accessor, наследуемые/смешан�
 Проверка v0.469: Linux minimal 914/914, AGG 933/933; Linux-hosted NO_OS_PORTS
 и heap/global ASan+UBSan — по 6/6. Stack ASan/LeakSanitizer отключены;
 все стадии и приёмка на других ОС остаются открытыми.
+
+## v0.470 — собственный prototype в виде C-метода
+
+Внутреннее чтение prototype теперь получает кэшированную Function-обёртку
+собственного native method, не вызывая callback. Сохраняются source-version
+регистр, приоритет data/accessor и отсутствие поиска по наследованию.
+Общий helper возвращает FVM_Result: ошибки создания обёртки передаются через
+конструкторы, instanceof, ImplementsOp и регистрацию MovieClip.
+Расширены function_constructor_stored_prototype (холодный и тёплый кэш,
+SWF4–8/host, GC, instanceof, три режима NewObject) и
+movieclip_constructor_stored_prototype (source6/8 × ambient6/8,
+attach/duplicate/размещение, отсутствие callback). C-метод исключён из
+переноса графа этим тестом; сетевые функции имеют отдельный контракт.
+Extends сохраняет обычное чтение superclass.prototype согласно pinned Ruffle
+activation.rs action_extends; это отличается от сырых чтений при construction.
+Все стадии, примитивный __proto__ и приёмка на других ОС остаются открытыми.
+
+Проверка v0.470: Linux minimal 914/914, AGG 933/933; Linux-hosted NO_OS_PORTS
+и heap/global ASan+UBSan — по 4/4. Stack ASan/LeakSanitizer отключены.

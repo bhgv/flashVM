@@ -48,15 +48,21 @@ extern "C" FVM_Result fvm_exec_implements(FVM_Context *c, const FVM_Value *const
             const FVM_Value &input = roots.values[FVM_IMPLEMENTS_ARGUMENT_BASE + i];
             FVM_Value prototype;
             fvm_value_undefined(&prototype);
-            if (input.type == FVM_VALUE_OBJECT &&
-                fvm_avm1_stored_prototype(c, input.object, prototype) &&
-                prototype.type == FVM_VALUE_OBJECT)
-                snapshots.push_back(prototype.object);
+            if (input.type == FVM_VALUE_OBJECT)
+            {
+                status = fvm_avm1_stored_prototype(c, input.object, prototype);
+                if (status != FVM_OK)
+                    return status;
+                if (prototype.type == FVM_VALUE_OBJECT)
+                    snapshots.push_back(prototype.object);
+            }
         }
         FVM_Value target;
         fvm_value_undefined(&target);
-        if (fvm_avm1_stored_prototype(c, constructor->object, target) &&
-            target.type == FVM_VALUE_OBJECT && !target.object->interfaces_are_prototypes)
+        status = fvm_avm1_stored_prototype(c, constructor->object, target);
+        if (status != FVM_OK)
+            return status;
+        if (target.type == FVM_VALUE_OBJECT && !target.object->interfaces_are_prototypes)
         {
             /* [GC:] Raw reads above invoke no callbacks. Publish retained prototype edges
              * only after all allocations succeed; an installed empty list remains installed. */

@@ -1252,8 +1252,7 @@ extern "C" FVM_Result fvm_function_construct(
         {
             /* AVM1 construction uses own stored data, not an ordinary property get. */
             fvm_value_undefined(&proto);
-            fvm_avm1_stored_prototype(c, fn, proto);
-            r = FVM_OK;
+            r = fvm_avm1_stored_prototype(c, fn, proto);
         }
         else
             r = fvm_object_get(c, fn, "prototype", &proto);
