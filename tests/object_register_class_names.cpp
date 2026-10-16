@@ -38,6 +38,9 @@ int main()
         FVM_Channel *ch = 0; assert(fvm_context_create(rt, &other) == FVM_OK); assert(fvm_channel_create(&ch) == FVM_OK);
         assert(fvm_channel_send_value(c, ch, &klass, 0) == FVM_OK); assert(fvm_channel_receive_value(other, ch, &copy, 0) == FVM_OK);
         assert(fvm_set_global(other, "Object", &copy) == FVM_OK); assert(fvm_gc_collect(other, 0) == FVM_OK);
+        /* Transport retains both environments; activate the sender's environment explicitly. */
+        if (version && version < 7) assert(fvm_registered_class_bytes(other, "n\0m", 3, &found) == FVM_NOT_FOUND);
+        if (version) { unsigned char swf[] = {'F','W','S',8,18,0,0,0,8,0,0,12,1,0,0x40,0,0,0}; swf[3] = (unsigned char)version; assert(fvm_load_memory(other, swf, sizeof(swf)) == FVM_OK); }
         assert(fvm_registered_class_bytes(other, "n\0m", 3, &found) == FVM_OK);
         assert(fvm_function_invoke(other, found, 0, 0, 0, &out) == FVM_OK && out.number == 11);
         if (version) { assert(fvm_registered_class_bytes(other, "", 0, &found) == FVM_OK); assert(fvm_function_invoke(other, found, 0, 0, 0, &out) == FVM_OK && out.number == 11); }

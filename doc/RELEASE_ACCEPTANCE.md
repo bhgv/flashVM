@@ -1,4 +1,4 @@
-# Условия окончательной приёмки / Final acceptance gates — v0.389
+# Условия окончательной приёмки / Final acceptance gates — v0.390
 
 Основание: [ROADMAP.md](ROADMAP.md). Все девять стадий остаются открытыми.
 Это состояние реализации и доказательств, а не оценка процента готовности.
@@ -1241,3 +1241,13 @@ AGG/Cairo/minimal Release. Seven rebuilt restricted heap/global ASan+UBSan
 checks pass, adding character callback/budget extraction to the six v0.388
 checks. Stack ASan and LeakSanitizer remain disabled. No full-suite, original
 external-oracle or foreign-platform acceptance is claimed for this checkpoint.
+
+
+v0.390: independent traced legacy/exact registerClass maps survive reload, GC,
+channel transport and replacement OOM. Старые плоские записи сохраняют прежнюю
+политику; полное разделение globals/base-clip provenance открыто. Все стадии открыты.
+Validation v0.390: nine rebuilt registry/base checks pass in Linux Release
+AGG/Cairo/minimal and in restricted heap/global ASan+UBSan (stack ASan and
+LeakSanitizer disabled). Existing transfer-name checks now explicitly activate
+the sender's version environment after verifying legacy entries are hidden in
+the unloaded destination. The new constants header passes strict C89 syntax.

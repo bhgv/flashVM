@@ -552,3 +552,8 @@ RU: учёт публичного изменения регистра; все д
 
 v0.389: loaded charAt/charCodeAt share receiver/index callback work and charge
 one extracted UTF-16 unit. RU: общий бюджет извлечения символа; стадии открыты.
+
+
+v0.390: independent traced legacy/exact registerClass maps survive reload, GC,
+channel transport and replacement OOM. Старые плоские записи сохраняют прежнюю
+политику; полное разделение globals/base-clip provenance открыто. Все стадии открыты.

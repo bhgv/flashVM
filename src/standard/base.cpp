@@ -11,6 +11,7 @@
 #include "../avm1/scope_keywords.hpp"
 #include "../swf/format_constants.h"
 #include "base_state.hpp"
+#include "class_registry_constants.h"
 #include "../core/prototype_data.hpp"
 #include "attribute_stage.hpp"
 #include "function_state.hpp"
@@ -1642,6 +1643,21 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
     return sort_impl(c, o, 0, 0, out, &spec);
 }
 
+/* Select the traced legacy environment without allocating or executing callbacks.
+ * Old transported flat registries retain their previous shared-map policy. */
+FVM_Object *registry_environment(FVM_Context *c, FVM_Object *registry)
+{
+    if (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_7)
+        return registry;
+    fvm_detail::map<unsigned long, FVM_Value>::iterator slot =
+        registry->indexed.find(FVM_CLASS_REGISTRY_LEGACY_SLOT);
+    if (slot == registry->indexed.end())
+        return registry;
+    const FVM_Value &value = slot->second;
+    return value.type == FVM_VALUE_OBJECT && value.object && value.object->owner == c
+               ? value.object : 0;
+}
+
 /* Select stored linkage spelling without script lookup or case-fold allocations. */
 fvm_detail::map<fvm_detail::string, FVM_Value>::iterator registered_entry(
     FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &entries,
@@ -1685,6 +1701,9 @@ FVM_Result register_class(FVM_Context *c, FVM_Object *, unsigned int n, const FV
     r = fvm_property_key(name.string, size, key);
     if (r != FVM_OK)
         return r;
+    registry = registry_environment(c, registry);
+    if (!registry)
+        return FVM_INVALID_ARGUMENT;
     bool remove = a[1].type == FVM_VALUE_NULL || a[1].type == FVM_VALUE_UNDEFINED;
     if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7)
     {
@@ -2344,6 +2363,17 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     r = fvm_object_create(c, &registry);
     if (r != FVM_OK)
         return r;
+    FVM_Object *legacy_registry = 0;
+    r = fvm_object_create(c, &legacy_registry);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value legacy_value;
+    fvm_value_undefined(&legacy_value);
+    legacy_value.type = FVM_VALUE_OBJECT;
+    legacy_value.object = legacy_registry;
+    /* [GC:] Standard staging defers collection; the captured registry traces both environments.
+     * Indexed storage cannot collide with any counted string linkage, including NUL. */
+    registry->indexed[FVM_CLASS_REGISTRY_LEGACY_SLOT] = legacy_value;
     FVM_NativeEntry registry_entry;
 
     /* Computation / Вычисление и обновление состояния. */
@@ -2672,6 +2702,9 @@ FVM_Result fvm_base_registered_class(FVM_Context *c, FVM_Object *registry,
                                      const fvm_detail::string &key, FVM_Object **out)
 {
     if (!c || !registry || registry->owner != c || !out)
+        return FVM_INVALID_ARGUMENT;
+    registry = registry_environment(c, registry);
+    if (!registry)
         return FVM_INVALID_ARGUMENT;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator entry =
         registered_entry(c, registry->properties, key);

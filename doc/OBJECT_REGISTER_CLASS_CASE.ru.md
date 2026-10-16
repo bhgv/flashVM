@@ -45,3 +45,20 @@ global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
 C89 registry, name/transfer, sprite resources and duplicate-version checks.
 Stack ASan and LeakSanitizer remain disabled. No new original external SWF
 oracle or foreign-OS run is claimed. All nine roadmap stages remain open.
+
+## v0.390 раздельные реестры конструкторов
+
+Новые реестры хранят точные регистрации host/SWF7–8 в захваченной записи, а
+SWF4–6 — в трассируемом дочернем объекте приватного индексного слота 0. Любые
+строковые имена, включая NUL и «0», с ним не пересекаются. Повторная загрузка
+контекста с другой группой версий не открывает и не заменяет чужие записи.
+Обе карты переносятся прежним кодеком графов и удерживаются замыканием
+registerClass, включая резервный реестр библиотеки. ABI и ID callback прежние.
+При OOM замена атомарна. Старые плоские записи без дочернего объекта сохраняют
+прежнее общее хранилище для совместимости.
+
+object_register_class_environments и _allocation проверяют реальные загрузки
+SWF4–8, активацию host, замену/удаление, NUL/числовые имена, GC, независимый
+перенос и OOM/retry. Полное разделение глобальных встроенных объектов и точная
+привязка к base clip при смешанных версиях остаются открытыми. Сравнение с
+указанными исходниками Ruffle не означает проверку оригинальным Flash Player.

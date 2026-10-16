@@ -63,6 +63,7 @@ void operator delete[](void *p, const std::nothrow_t &) throw()
 }
 #define FVM_CLASS_CASE_FIXTURE_ONLY
 #include "object_register_class_case.cpp"
+#ifndef FVM_CLASS_CASE_ALLOCATION_FIXTURE_ONLY
 int main()
 {
  FVM_Config cfg;FVM_Runtime *rt=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK);bool succeeded=false;
@@ -70,7 +71,8 @@ int main()
   FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);case_loaded(c,6);assert(fvm_standard_install(c)==FVM_OK);
   FVM_Value klass,args[2],out;assert(fvm_get_global(c,"Object",&klass)==FVM_OK);
   FVM_Object *one=case_ctor(c,11),*two=case_ctor(c,22),*found=0,*registry=0;case_register(c,klass.object,"Hero",4,one);
-  assert(fvm_base_class_registry(c,&registry)==FVM_OK);fvm_value_string(args,"hERO");args[1]=case_object(two);fvm_value_number(&out,77);
+  assert(fvm_base_class_registry(c,&registry)==FVM_OK);
+  if(c->swf_loaded && c->swf_info.version<7)registry=registry->indexed.find(0)->second.object;fvm_value_string(args,"hERO");args[1]=case_object(two);fvm_value_number(&out,77);
   allowance=failure;FVM_Result r=fvm_object_call(c,klass.object,"registerClass",2,args,&out);allowance=-1;
   assert(r==FVM_OK || r==FVM_OUT_OF_MEMORY);succeeded=r==FVM_OK;
   assert(!c->gc_frames && !c->gc_native_depth && !c->avm1_execution_depth);
@@ -82,3 +84,5 @@ int main()
  }
  assert(succeeded);fvm_runtime_destroy(rt);
 }
+
+#endif

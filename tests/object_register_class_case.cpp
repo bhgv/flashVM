@@ -35,6 +35,7 @@ int main()
   FVM_Context *c=0;assert(fvm_context_create(rt,&c)==FVM_OK);case_loaded(c,version);assert(fvm_standard_install(c)==FVM_OK);
   FVM_Value klass;assert(fvm_get_global(c,"Object",&klass)==FVM_OK);FVM_Object *one=case_ctor(c,11),*two=case_ctor(c,22),*found=0,*registry=0;
   assert(fvm_base_class_registry(c,&registry)==FVM_OK);
+  if(c->swf_loaded && c->swf_info.version<7)registry=registry->indexed.find(0)->second.object;
   for(unsigned i=0;i<8;++i) {
    size_t us=i==5?3:std::strlen(upper[i]),ls=i==5?3:std::strlen(lower[i]);
    case_register(c,klass.object,upper[i],us,one);

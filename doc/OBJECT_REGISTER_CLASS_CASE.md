@@ -47,3 +47,21 @@ global ASan+UBSan checks pass: four new registry/scene/JIT cases plus existing
 C89 registry, name/transfer, sprite resources and duplicate-version checks.
 Stack ASan and LeakSanitizer remain disabled. No new original external SWF
 oracle or foreign-OS run is claimed. All nine roadmap stages remain open.
+
+## v0.390 separate constructor environments
+
+New registries keep exact host/SWF7–8 registrations on the captured record and
+SWF4–6 registrations on a traced child at private indexed slot 0. Arbitrary
+counted linkage names cannot collide with this edge. Reloading a context from
+one version group to the other no longer exposes or replaces the other map.
+Both maps travel through the existing graph codec and remain rooted by the
+registerClass closure, including library fallback use. No callback IDs or public
+ABI change. Legacy replacement remains atomic under OOM. Old flat graph records
+without the edge retain their old shared-map behavior for compatibility.
+
+Tests object_register_class_environments and _allocation cover real SWF4–8
+reloads, host activation, removal/replacement, NUL/numeric names, GC, channel
+independence and OOM/retry without changing the other environment. Full separate
+global builtins and mixed-movie/base-clip provenance selection remain open.
+The pinned runtime GlobalEnv and Object.registerClass sources above are the
+implementation comparison; no original Flash Player oracle is claimed.
