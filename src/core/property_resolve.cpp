@@ -28,12 +28,15 @@ class ResolveScope
 
 /* Find the first Object-valued raw resolver; primitive entries do not shadow ancestors. */
 FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *receiver,
-                                const fvm_detail::string &name, FVM_Value *out)
+                                const fvm_detail::string &name, FVM_Value *out, bool *handled)
 {
+    if (!handled)
+        return FVM_INVALID_ARGUMENT;
+    *handled = false;
     if (!c || !receiver || receiver->owner != c || !out || (start && start->owner != c))
         return FVM_INVALID_ARGUMENT;
     if (!c->swf_loaded || !start)
-        return FVM_NOT_FOUND;
+        return FVM_OK;
     /* [GC:] Prototype mutation inside a resolver must not invalidate the original lookup graph. */
     FVM_ObjectRootScope lookup_roots(c, start);
     FVM_ObjectRootScope receiver_roots(c, receiver);
@@ -68,6 +71,7 @@ FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *r
         }
         if (resolver.type == FVM_VALUE_OBJECT)
         {
+            *handled = true;
             fvm_value_undefined(out);
             /* A non-Function Object stops resolver search but calling it produces undefined. */
             if (!resolver.object->invocable.callback)
@@ -91,5 +95,5 @@ FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *r
         }
         owner = owner->prototype;
     }
-    return owner ? FVM_ERROR : FVM_NOT_FOUND;
+    return owner ? FVM_ERROR : FVM_OK;
 }

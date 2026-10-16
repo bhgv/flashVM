@@ -14,7 +14,7 @@ static FVM_Result resolve_result(FVM_Context *c, FVM_Object *receiver, unsigned 
     ++resolve_calls; resolve_source = *(unsigned *)userdata;
     assert(receiver == resolve_receiver && n == 1 && fvm_value_string_size(args) == resolve_size && !std::memcmp(args[0].string, resolve_requested, resolve_size));
     assert(!c->gc_native_depth && fvm_gc_collect(c, 0) == FVM_OK);
-    if (resolve_fault) { fvm_value_number(out, 71); return resolve_fault == 1 ? fvm_exception_raise(c, out) : FVM_ERROR; }
+    if (resolve_fault) { fvm_value_number(out, 71); return resolve_fault == 1 ? fvm_exception_raise(c, out) : resolve_fault == 3 ? FVM_NOT_FOUND : FVM_ERROR; }
     *out = args[0]; return FVM_OK;
 }
 static FVM_Result resolve_body(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out, void *userdata)
@@ -43,7 +43,7 @@ int main()
     if (!fvm_jit_available()) { fvm_runtime_destroy(rt); return 0; }
     for (class_mode = 0; class_mode < 3; ++class_mode)
 #endif
-    for (unsigned version = 0; version <= 8; ++version) for (unsigned kind = 0; kind < 7; ++kind) for (unsigned spelling = 0; spelling < 2; ++spelling) for (unsigned query = 0; query < 3; ++query) for (resolve_fault = 0; resolve_fault < 3; ++resolve_fault) {
+    for (unsigned version = 0; version <= 8; ++version) for (unsigned kind = 0; kind < 7; ++kind) for (unsigned spelling = 0; spelling < 2; ++spelling) for (unsigned query = 0; query < 3; ++query) for (resolve_fault = 0; resolve_fault < 4; ++resolve_fault) {
         if (version && version < 4) continue;
 #ifdef FVM_RESOLVE_JIT
         if (!version) continue;
@@ -74,7 +74,7 @@ int main()
         bool active = version && (!spelling || version <= 6);
         unsigned source = kind == 1 ? (active ? 2 : 0) : kind == 2 || kind == 6 ? (version ? 2 : 0) : kind == 3 ? (version && !active ? 2 : 0) : active ? 1 : 0;
         resolve_calls = resolver_getters = resolve_source = 0;
-        FVM_Result expected = source && resolve_fault ? (resolve_fault == 1 ? FVM_EXCEPTION : FVM_ERROR) : FVM_OK;
+        FVM_Result expected = source && resolve_fault ? (resolve_fault == 1 ? FVM_EXCEPTION : resolve_fault == 3 ? FVM_NOT_FOUND : FVM_ERROR) : FVM_OK;
         resolve_expected = expected;
         FVM_Result status = resolve_read(c, resolve_receiver, query, &out);
         assert(status == expected && resolve_calls == (source ? 1U : 0U) && resolve_source == source && !resolver_getters);

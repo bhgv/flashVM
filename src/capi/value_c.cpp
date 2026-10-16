@@ -229,8 +229,9 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
             return FVM_ERROR;
         if (allow_resolve && c->swf_loaded)
         {
-            FVM_Result status = fvm_property_resolve(c, start, receiver, name, out);
-            if (status != FVM_NOT_FOUND)
+            bool handled = false;
+            FVM_Result status = fvm_property_resolve(c, start, receiver, name, out, &handled);
+            if (status != FVM_OK || handled)
                 return status;
         }
         if (!allow_meta)
@@ -1169,11 +1170,12 @@ extern "C"
                 if (c->swf_loaded)
                 {
                     FVM_Value function;
-                    FVM_Result status = fvm_property_resolve(c, self, self, key, &function);
-                    if (status != FVM_NOT_FOUND)
+                    bool handled = false;
+                    FVM_Result status = fvm_property_resolve(c, self, self, key, &function, &handled);
+                    if (status != FVM_OK)
+                        return status;
+                    if (handled)
                     {
-                        if (status != FVM_OK)
-                            return status;
                         if (function.type != FVM_VALUE_OBJECT)
                             return FVM_UNSUPPORTED;
                         /* [GC:] A resolver-returned Function has no defining property owner. */

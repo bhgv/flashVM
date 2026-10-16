@@ -22,7 +22,7 @@ static FVM_Result resolved_method(FVM_Context *c, const FVM_ScriptFrame *frame, 
     assert(fvm_gc_collect(c, 0) == FVM_OK && resolved_live(c, resolved_argument));
     FVM_Value marker; assert(fvm_object_get(c, resolved_argument, "marker", &marker) == FVM_OK && marker.number == 55);
     fvm_value_number(out, resolved_mode == 7 ? 77 : 55);
-    return resolved_mode == 6 ? FVM_UNSUPPORTED : resolved_mode == 7 ? fvm_exception_raise(c, out) : FVM_OK;
+    return resolved_mode == 10 ? FVM_NOT_FOUND : resolved_mode == 6 ? FVM_UNSUPPORTED : resolved_mode == 7 ? fvm_exception_raise(c, out) : FVM_OK;
 }
 static FVM_Result resolving_method(FVM_Context *c, const FVM_ScriptFrame *frame, FVM_Value *out, void *)
 {
@@ -33,6 +33,7 @@ static FVM_Result resolving_method(FVM_Context *c, const FVM_ScriptFrame *frame,
     assert(fvm_gc_collect(c, 0) == FVM_OK && resolved_live(c, resolved_argument));
     if (resolved_mode == 4) { fvm_value_number(out, 74); return fvm_exception_raise(c, out); }
     if (resolved_mode == 5) return FVM_UNSUPPORTED;
+    if (resolved_mode == 9) return FVM_NOT_FOUND;
     if (resolved_mode == 1) { fvm_value_number(out, 29); return FVM_OK; }
     if (resolved_mode == 8) { FVM_Object *plain = 0; assert(fvm_callable_create(c, resolved_stack_trap, 0, &plain) == FVM_OK); *out = resolved_value(plain); return FVM_OK; }
     if (resolved_mode == 2) { FVM_Object *plain = 0; assert(fvm_object_create(c, &plain) == FVM_OK); *out = resolved_value(plain); return FVM_OK; }
@@ -49,7 +50,7 @@ int main()
     if (!fvm_jit_available()) { fvm_runtime_destroy(rt); return 0; }
     for (class_mode = 0; class_mode < 3; ++class_mode)
 #endif
-    for (unsigned version = 0; version <= 8; ++version) for (unsigned parent = 0; parent < 2; ++parent) for (unsigned api = 0; api < 2; ++api) for (resolved_mode = 0; resolved_mode < 9; ++resolved_mode) {
+    for (unsigned version = 0; version <= 8; ++version) for (unsigned parent = 0; parent < 2; ++parent) for (unsigned api = 0; api < 2; ++api) for (resolved_mode = 0; resolved_mode < 11; ++resolved_mode) {
         if ((version && version < 4) || (parent && version == 4)) continue;
 #ifdef FVM_RESOLVE_CALL_JIT
         if (!version || !api) continue;
@@ -73,8 +74,8 @@ int main()
         assert(fvm_object_create(c, &resolved_argument) == FVM_OK); FVM_Value value = resolved_value(resolved_argument); assert(fvm_object_set(c, resolved_argument, "self", &value) == FVM_OK);
         fvm_value_number(&value, 55); assert(fvm_object_set(c, resolved_argument, "marker", &value) == FVM_OK); resolved_args[0] = resolved_value(resolved_argument);
         fvm_value_string_bytes(&value, "a\0b", 3); assert(fvm_value_to_string(c, &value, resolved_args + 1) == FVM_OK);
-        bool active = version && resolved_mode != 3, callable = active && (resolved_mode == 0 || resolved_mode == 6 || resolved_mode == 7);
-        FVM_Result expected = active && (resolved_mode == 4 || resolved_mode == 7) ? FVM_EXCEPTION : active && (resolved_mode == 5 || resolved_mode == 6) ? FVM_UNSUPPORTED : callable ? FVM_OK : !api || (!version && parent) ? FVM_UNSUPPORTED : FVM_OK;
+        bool active = version && resolved_mode != 3, callable = active && (resolved_mode == 0 || resolved_mode == 6 || resolved_mode == 7 || resolved_mode == 10);
+        FVM_Result expected = active && (resolved_mode == 9 || resolved_mode == 10) ? FVM_NOT_FOUND : active && (resolved_mode == 4 || resolved_mode == 7) ? FVM_EXCEPTION : active && (resolved_mode == 5 || resolved_mode == 6) ? FVM_UNSUPPORTED : callable ? FVM_OK : !api || (!version && parent) ? FVM_UNSUPPORTED : FVM_OK;
         resolved_calls = resolved_method_calls = 0; FVM_Value out, key; fvm_value_string_bytes(&key, "Missing\0Method", 14); FVM_Result status;
 #ifdef FVM_RESOLVE_CALL_JIT
         value = resolved_value(target); assert(fvm_set_global(c, "resolvedTarget", &value) == FVM_OK && fvm_set_global(c, "resolvedName", &key) == FVM_OK);

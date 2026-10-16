@@ -95,3 +95,26 @@ The first full AGG run found one old jit_array_sort_on_case object predating
 the private context layout. Removing that stale object forced recompilation;
 the full 912-case rerun passed. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.453 — resolver status and original native interfaces
+
+Resolver discovery now reports presence separately from callback status. An
+actual FVM_NOT_FOUND from a resolver, returned method or revoked RPC interface
+propagates unchanged; it cannot masquerade as an absent hook or trigger fallback.
+Existing interpreter/JIT tests cover resolver and callee NOT_FOUND, including
+super dispatch and callback counts. object_resolve_rpc checks SWF6/8 with two
+independent runtimes, source context served exclusively by the broker thread,
+original native callback/userdata, cyclic receivers, counted NUL/Unicode names,
+exceptions, unsupported/not-found errors, recovery and revocation over one port.
+NO_OS_PORTS skips the socket-specific test; it is not network evidence there.
+
+The C89 property_resolve embedding tutorial returns an original C Function for
+an absent sum method, checks GC capture ownership and prints sum = 42. Its RU/EN
+READMEs explain building/running and link the separate process/thread/LAN RPC
+tutorial. This does not establish full distributed graph or variable resolution
+semantics. All nine stages and foreign OS acceptance remain open.
+
+Validation v0.453: complete Linux minimal 895/895; AGG, Linux-hosted
+NO_OS_PORTS and heap/global ASan+UBSan 7/7 selected checks each. The socket
+case is skipped in NO_OS_PORTS. Executable-mode launchers applied; stack ASan
+and LeakSanitizer disabled. Other OS runs and all stages remain open.

@@ -280,8 +280,11 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
     {
         if (special)
             return FVM_OK;
-        result = fvm_property_resolve(c, start, receiver, name, &member);
-        if (result == FVM_NOT_FOUND)
+        bool handled = false;
+        result = fvm_property_resolve(c, start, receiver, name, &member, &handled);
+        if (result != FVM_OK)
+            return result;
+        if (!handled)
             return optional ? FVM_OK : FVM_UNSUPPORTED;
     }
     if (result != FVM_OK)
