@@ -725,3 +725,14 @@ Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12
 heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
 restore workspace executable modes; stack ASan/LSan disabled. No other-platform
 runtime acceptance or complete stage closure is claimed.
+
+### v0.417 — apply preparation roots / Корни подготовки apply
+
+Boxed receiver and partially captured arguments survive real script-getter GC.
+Counted strings, cycles, errors/exceptions and retry covered in host/SWF4–8.
+[EN](FUNCTION_APPLY.md) / [RU](FUNCTION_APPLY.ru.md). All stages remain open.
+
+Validation v0.417 / Проверка: minimal Release 833/833; AGG Release 2/2 and
+heap/global ASan+UBSan 2/2 apply/function tests. Generated native launchers restore
+workspace executable modes; stack ASan/LSan disabled. Foreign runtime acceptance
+and all nine stages remain open.

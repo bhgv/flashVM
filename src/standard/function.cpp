@@ -10,6 +10,7 @@
 #include "../avm1/encoding_constants.h"
 #include "../core/call_scope.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/value_vector_root_scope.hpp"
 #include "super.hpp"
 #include "base_state.hpp"
 #include "flashvm/function.h"
@@ -135,6 +136,8 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         if (r != FVM_OK)
             return r;
     }
+    /* [GC:] Boxing may create a receiver absent from the original call arguments. */
+    FVM_ObjectRootScope receiver_roots(c, receiver);
     if (n > 1 && a[1].type != FVM_VALUE_NULL && a[1].type != FVM_VALUE_UNDEFINED)
     {
         if (a[1].type != FVM_VALUE_OBJECT)
@@ -150,6 +153,10 @@ FVM_Result apply(FVM_Context *c, FVM_Object *fn, unsigned int n, const FVM_Value
         if (!(count >= 0 && count <= 65536) || count != std::floor(count))
             return FVM_INVALID_ARGUMENT;
         fvm_detail::vector<FVM_Value> args((size_t)count);
+        for (size_t i = 0; i < args.size(); ++i)
+            fvm_value_undefined(&args[i]);
+        /* [GC:] Later script getters may collect values returned by earlier getters. */
+        FVM_ValueVectorRootScope argument_roots(c, args);
         for (unsigned int i = 0; i < (unsigned int)count; ++i)
         {
             r = fvm_table_get_index(c, a[1].object, i, &args[i]);
