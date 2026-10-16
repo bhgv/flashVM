@@ -6,6 +6,7 @@
 /* Define FVM STANDARD ERROR STATE HPP constant or compilation switch. */
 #define FVM_STANDARD_ERROR_STATE_HPP
 #include "../core/runtime.hpp"
+#include "attribute_stage.hpp"
 
 /* Error has no opaque native state: ordinary properties and prototype edges
  * remain editable, GC-traced and transferable as a graph. */
@@ -13,6 +14,9 @@
 FVM_Result fvm_error_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &globals,
                            fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &constructors,
                            fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &functions);
+
+/* Prepare canonical host method flags for loaded SWF without mutating live objects. */
+void fvm_error_prepare_loaded(FVM_Context *, FVM_MethodAttributeActivation &);
 
 /* Validate error. */
 FVM_Result fvm_error_validate(FVM_Context *);

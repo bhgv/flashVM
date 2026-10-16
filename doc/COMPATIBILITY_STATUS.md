@@ -4112,3 +4112,16 @@ when absent. Empty construction uses the stored prototype and constructor
 metadata, without creating a callable script body. Unloaded host behavior is
 preserved. AVM1 native construction preserves primitive results; public object-only C
 construction still rejects them.
+
+### v0.476 — Function/Error prototype attributes
+
+RU: call/apply в загруженном SWF имеют флаги DONT_ENUM|DONT_DELETE;
+Error.toString — обычные флаги 0. Переход от host к SWF атомарно изменяет только
+канонические native-методы с исходными флагами; замены, удалённые свойства,
+аксессоры, изменённые атрибуты и заменённые прототипы сохраняются.
+
+EN: Loaded Function adapters use nonenumerable/nondeletable writable slots;
+Error.toString is enumerable, deletable and writable. Host installation defaults
+remain unchanged. Flag activation prepares copied maps before publication and
+preserves custom state. Prototype serialization retains the resulting attributes.
+This is focused compatibility evidence, not full standard-library acceptance.

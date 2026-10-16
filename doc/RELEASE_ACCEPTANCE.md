@@ -2722,3 +2722,21 @@ no new native non-Linux or foreign-ISA execution evidence is claimed.
 Two inheritance fixtures now create actual AVM1 functions instead of relying on
 the previously incorrect callable result of loaded `new Function()`.
 All nine roadmap stages remain open.
+
+### v0.476 — Function/Error method attributes and load activation
+
+RU: `function_error_attributes` проверяет SWF 4–8, установку до/после загрузки,
+исходные host-флаги, перечисление, запись и удаление; изменённые флаги, данные,
+аксессоры, удалённые методы и заменённые прототипы; сериализацию и GC в контексте
+без стандартной библиотеки. Аксессоры не вызываются при активации/перечислении.
+`function_error_activation_allocation` перебирает отказы new/new[] при загрузке
+SWF 6/8: до успеха таблицы Function и Error остаются прежними, повторная загрузка
+работает. Регрессионный тест падает на Function/Error/numeric из v0.475.
+
+EN: Linux minimal ran all 935 tests: 917 passed initially, 18 lacked executable
+permission; all 18 passed after repair. AGG ran all 954: 928 passed initially,
+26 lacked executable permission; all 26 passed after repair. The final attribute
+checks, including writable slots, passed in both profiles. The two new tests
+passed under heap/global ASan plus UBSan (2/2, 2.29 seconds). Stack ASan and
+LeakSanitizer remain disabled by the sandbox setup. No non-Linux native runtime
+acceptance is claimed; all nine stages remain open.

@@ -626,14 +626,17 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"parseFloat", fvm_builtin_parse_float},
                                    {"String", fvm_builtin_string}};
 } // namespace
-/* [GC:] Prepare Array/Number/Boolean/Date roots before String activation. No allocation or
- * callback occurs after String commits, so load failures preserve every prototype. */
+/* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
+ * No allocation or callback follows its commit, so load failures preserve every prototype. */
 FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 {
     if (!c->standard_library)
         return FVM_OK;
     try
     {
+        FVM_MethodAttributeActivation function_attributes, error_attributes;
+        fvm_function_prepare_loaded(c, function_attributes);
+        fvm_error_prepare_loaded(c, error_attributes);
         FVM_BasePrototypeActivation base;
         fvm_base_prepare_loaded(c, base);
         FVM_NumberPrototypeActivation number;
@@ -677,6 +680,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
         FVM_Result result = fvm_string_activate_loaded(c);
         if (result != FVM_OK)
             return result;
+        fvm_commit_method_attributes(function_attributes);
+        fvm_commit_method_attributes(error_attributes);
         fvm_base_commit_loaded(base);
         fvm_date_commit_loaded(date);
         fvm_number_commit_loaded(number);

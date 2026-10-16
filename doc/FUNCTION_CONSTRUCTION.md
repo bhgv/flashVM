@@ -37,3 +37,14 @@ SWF сохранено. ID 809 добавлен для обычного вызо
 Validation: `function_class_calls`, `native_constructor_values`,
 `construction_value_allocation`; see [release evidence](RELEASE_ACCEPTANCE.md).
 This change does not certify complete Flash compatibility or close a roadmap stage.
+
+v0.476 also corrects loaded Function adapter attributes: call/apply are writable,
+nonenumerable and nondeletable. Error.prototype.toString retains ordinary
+script-assignment flags (enumerable, deletable, writable). Preinstalled host
+prototypes are activated through prepared attribute maps, preserving replaced
+methods, accessors, deleted slots, customized flags and replacement prototypes.
+No getter runs during preparation, and a failed SWF load publishes neither map.
+
+В v0.476 уточнены флаги call/apply и Error.toString. Изменения host-прототипов
+при загрузке SWF публикуются атомарно и сохраняют пользовательские изменения.
+Проверки: function_error_attributes, function_error_activation_allocation.

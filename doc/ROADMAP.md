@@ -1920,3 +1920,23 @@ value-returning boundary; the public object-only C API retains its strict contra
 объект в первом аргументе возвращается неизменным. Поведение host API без SWF
 сохранено. NewObject/NewMethod сохраняют примитивные результаты через внутренний путь
 создания значений; публичный object-only C API сохраняет строгий контракт. Этапы остаются открытыми.
+
+### v0.476: Function/Error property attributes / атрибуты свойств
+
+SWF 4–8 Function.prototype.call/apply are nonenumerable and nondeletable but
+writable. Error.prototype.toString has ordinary script-assignment flags and is
+enumerable/deletable/writable. Installing before loading stages both flag tables
+before any publication, preserving modified slots and rolling back on allocation
+failure. Serialized prototypes retain their flags. Host defaults remain unchanged.
+These focused checks do not close any roadmap stage.
+
+В SWF 4–8 call/apply скрыты от перечисления и защищены от удаления, но доступны
+для записи. Error.prototype.toString имеет обычные атрибуты присваивания скрипта.
+При загрузке в host-контекст таблицы флагов сначала подготавливаются целиком;
+пользовательские изменения сохраняются, отказ памяти ничего не публикует.
+Перенос графа сохраняет атрибуты. Все этапы остаются открытыми.
+
+Evidence / Проверки v0.476: minimal 935 and AGG 954 tests passed across full runs
+and permission-repair retries (18/26 executable files respectively). Two focused
+heap/global ASan+UBSan checks passed. Native platform and full compatibility
+acceptance requirements remain unchanged.

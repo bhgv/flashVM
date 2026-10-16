@@ -144,6 +144,8 @@ fvm_error_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &
     method.callback = error_string;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     prototype->methods["toString"] = method;
+    if (c->swf_loaded)
+        prototype->attributes["toString"] = FVM_STANDARD_SCRIPT_METHOD_FLAGS;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_undefined(&value);
 
@@ -177,6 +179,25 @@ fvm_error_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FVM_Value> &
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* Stage the ordinary script-defined toString flags without replacing user state. */
+void fvm_error_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Error");
+    if (ctor == c->constructors.end() || ctor->second.callback != error_constructor || !ctor->second.root)
+        return;
+    FVM_Object *klass = ctor->second.root;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+    if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return;
+    FVM_Object *proto = stored->second.object;
+    if (proto->resource_kind != ERROR_OBJECT)
+        return;
+    out.attributes = proto->attributes;
+    fvm_stage_default_method_flags(proto, "toString", error_string,
+                                    FVM_STANDARD_SCRIPT_METHOD_FLAGS, out.attributes);
+    out.prototype = proto;
 }
 
 /* Validate error. */

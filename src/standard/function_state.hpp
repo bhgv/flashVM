@@ -6,6 +6,7 @@
 /* Define FVM STANDARD FUNCTION STATE HPP constant or compilation switch. */
 #define FVM_STANDARD_FUNCTION_STATE_HPP
 #include "../core/runtime.hpp"
+#include "attribute_stage.hpp"
 /* Build constructor and prototype for function. */
 FVM_Result fvm_function_stage(FVM_Context *, fvm_detail::map<fvm_detail::string, FVM_Value> &,
                               fvm_detail::map<fvm_detail::string, FVM_NativeEntry> &,
@@ -13,6 +14,9 @@ FVM_Result fvm_function_stage(FVM_Context *, fvm_detail::map<fvm_detail::string,
 /* [GC:] Install a parameter alias whose descriptor retains the activation object. */
 FVM_Result fvm_function_map_argument(FVM_Context *, FVM_Object *, unsigned long, FVM_Object *,
                                      const fvm_detail::string &);
+
+/* Prepare canonical host method flags for loaded SWF without mutating live objects. */
+void fvm_function_prepare_loaded(FVM_Context *, FVM_MethodAttributeActivation &);
 
 /* Validate function. */
 FVM_Result fvm_function_validate(FVM_Context *);

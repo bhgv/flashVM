@@ -624,6 +624,11 @@ fvm_function_stage(FVM_Context *c,
     e.callback = apply;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     proto->methods["apply"] = e;
+    if (c->swf_loaded)
+    {
+        proto->attributes["call"] = FVM_PROPERTY_BUILTIN_FLAGS;
+        proto->attributes["apply"] = FVM_PROPERTY_BUILTIN_FLAGS;
+    }
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     e.callback = function_text;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -643,6 +648,25 @@ fvm_function_stage(FVM_Context *c,
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return FVM_OK;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* Stage only unchanged canonical adapter slots; replacements and user flags survive. */
+void fvm_function_prepare_loaded(FVM_Context *c, FVM_MethodAttributeActivation &out)
+{
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator ctor = c->constructors.find("Function");
+    if (ctor == c->constructors.end() || ctor->second.callback != constructor || !ctor->second.root)
+        return;
+    FVM_Object *klass = ctor->second.root;
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
+    if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
+        return;
+    FVM_Object *proto = stored->second.object;
+    if (proto->resource_kind != NATIVE_FUNCTION || proto->invocable.callback != empty)
+        return;
+    out.attributes = proto->attributes;
+    fvm_stage_default_method_flags(proto, "call", call, FVM_PROPERTY_BUILTIN_FLAGS, out.attributes);
+    fvm_stage_default_method_flags(proto, "apply", apply, FVM_PROPERTY_BUILTIN_FLAGS, out.attributes);
+    out.prototype = proto;
 }
 
 /* Validate function. */
