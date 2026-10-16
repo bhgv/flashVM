@@ -10,6 +10,7 @@
 #define FVM_FUNCTION_RPC_CALL_ID 112U /* Request correlation identity offset. */
 #define FVM_FUNCTION_RPC_STATUS 108U /* Response unsigned magnitude of FVM_Result. */
 #define FVM_FUNCTION_RPC_LENGTH 112U /* Response payload byte length. */
+#define FVM_FUNCTION_RPC_MAX_DEPTH 32U /* Bound direct nested authority calls before C stack exhaustion. */
 #define FVM_FUNCTION_RPC_MAX_ARGS 65536UL /* Bounded argument frame entries, excluding receiver. */
 #define FVM_FUNCTION_RPC_TIMEOUT_MS 2000UL /* No retry: timeout leaves remote execution uncertain. */
 /* Routing offsets shared by request and response codecs. */

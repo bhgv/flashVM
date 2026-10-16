@@ -1,10 +1,10 @@
-# Live function interfaces (v0.397)
+# Live function interfaces (v0.400)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
 global object, userdata and managed capture stay in their original context.
 The broker executes calls on its existing service thread and listening TCP port,
-shared with channel/mutex capabilities. Each call currently opens its own TCP
+shared with channel/mutex capabilities. Each external call currently opens its own TCP
 connection. Requests and replies carry target, source process/context and random
 call IDs; replies with mismatched IDs are rejected.
 
@@ -31,10 +31,11 @@ restores that policy for new ordinary functions. Already imported interfaces
 continue to transfer as interfaces. This is a callable facade, not a clone of
 function properties/prototype or a certified transparent constructor.
 
-Calls execute serially across one broker. Nested calls back into the same
-function authority return `FVM_UNSUPPORTED`. Blocking broker resource operations
+Calls execute serially across one broker. Nested function calls within the same authority dispatch directly on its
+thread, preserving graph copies and original heap leases. The total nesting
+limit is 32 active calls; exceeding it returns `FVM_UNSUPPORTED`. Blocking broker resource operations
 from the service callback and cross-authority callback cycles are not supported
-as a reentrant execution model. Network calls have a two-second socket timeout;
+as an unrestricted reentrant execution model. Network calls have a two-second socket timeout;
 lost replies never trigger automatic retry because side effects may already
 have happened. Persistent connection multiplexing, cancellation, authentication,
 encryption and unrestricted concurrent use of one VM heap are not provided.
@@ -59,3 +60,13 @@ an entire graph's earlier exports or a public malloc-owned URI copy failure.
 The prepared-body GC case executes the original attachment, unbinds it during
 the call, collects with the active capture and cyclic arguments live, then
 verifies the next call uses original bytecode.
+
+In v0.400, same-authority callbacks can cross serving contexts and return to an
+already active original context without opening a connection back to their own
+listener. All source contexts still require exclusive serving handoff. Ordinary
+script/native call barriers and GC rules remain in force. The nesting bound is
+released on success, failure and exception, including argument/return encoding.
+Cross-authority callback cycles remain unsupported; resource operations do not
+use this function-only direct route. `function_remote_nested` covers independent
+original heaps, A→B→A, recursion bounds, counted exceptions, diagnostics, host
+reclaim and subsequent recovery.

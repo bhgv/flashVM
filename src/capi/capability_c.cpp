@@ -195,6 +195,7 @@ struct FVM_ResourceBroker
     fvm_detail::string host, session;
     fvm_detail::vector<Entry> entries;
     fvm_detail::vector<Peer> peers;
+    unsigned int function_depth; /* Bounded nested calls on the single authority thread. */
     fvm_detail::vector<FunctionOwner> function_owners; /* [GC:] Exclusive function service heaps. */
     FVM_Runtime *runtime;
     size_t adapter_contexts;        /* [GC:] Scoped graph-conversion contexts currently alive. */
@@ -889,6 +890,7 @@ extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsig
     b->runtime = 0;
     b->references = 1;
     b->stopped = false;
+    b->function_depth = 0;
     /* [GC:] Broker wire conversion starts without active scoped adapters. */
     b->adapter_contexts = 0;
     /* [GC:] Count successful adapter creation independently of persistent mutex peers. */

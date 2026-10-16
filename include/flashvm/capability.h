@@ -52,7 +52,7 @@ extern "C"
     /* Hand an idle context exclusively to the broker thread, or reclaim it after active calls.
      * While serving, the host must not access this VM heap. Disable before host use or destruction.
      * Calls execute serially on the original heap, retaining native callback/userdata/captures.
-     * Same-authority nested remote calls reject rather than deadlock. No automatic call retry. */
+     * Same-authority nested calls route directly on that thread with bounded depth. No automatic call retry. */
     FVM_API FVM_Result fvm_context_function_serve(FVM_Context *, int enabled);
     /* Open channel network. */
     FVM_API FVM_Result fvm_channel_open_network(FVM_Context *, const char *, FVM_Channel **);

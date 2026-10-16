@@ -98,6 +98,7 @@ struct FunctionCallScope
         Lock guard(broker->sync);
         FunctionOwner *owner = function_owner(broker, context);
         --owner->active;
+        --broker->function_depth;
         fvm_port_sync_signal_all(broker->sync);
     }
 };
@@ -113,6 +114,8 @@ FVM_Result dispatch_function(FVM_ResourceBroker *b, const unsigned char *h,
         Lock guard(b->sync);
         if (b->stopped || std::memcmp(h + FVM_FUNCTION_RPC_SESSION_OFFSET, b->session.c_str(), FVM_FUNCTION_RPC_ID_BYTES))
             return FVM_NOT_FOUND;
+        if (b->function_depth >= FVM_FUNCTION_RPC_MAX_DEPTH)
+            return FVM_UNSUPPORTED;
         for (size_t i = 0; i < b->entries.size(); ++i)
         {
             Entry &entry = b->entries[i];
@@ -123,6 +126,7 @@ FVM_Result dispatch_function(FVM_ResourceBroker *b, const unsigned char *h,
                 if (!owner || !owner->serving || owner->active == ULONG_MAX)
                     return FVM_NOT_FOUND;
                 ++owner->active;
+                ++b->function_depth;
                 call.context = entry.owner;
                 function = (FVM_Object *)entry.handle;
                 break;
@@ -222,13 +226,36 @@ void serve_function(FVM_ResourceBroker *b, FVM_PortSocket *socket, const unsigne
     std::free(output);
 }
 
+/* Decode one owned result graph and restore remote errors identically on socket/local paths. */
+FVM_Result function_complete(FVM_Context *c, FVM_Result status, unsigned char *data,
+    size_t length, const FVM_ExceptionInfo &fault, bool has_fault, FVM_Value *out)
+{
+    FVM_Value result;
+    fvm_value_undefined(&result);
+    FVM_Result decoded = length ? fvm_value_deserialize(c, data, length, &result) : FVM_OK;
+    std::free(data);
+    if (decoded != FVM_OK)
+        return decoded;
+    FVM_Result raised = status;
+    if (status == FVM_EXCEPTION)
+        raised = fvm_exception_raise(c, &result);
+    if (has_fault && (status != FVM_EXCEPTION || raised == FVM_EXCEPTION))
+    {
+        c->fault = fault;
+        c->fault.flags |= FVM_EXCEPTION_REMOTE_CONTEXT | FVM_EXCEPTION_NETWORK;
+        c->fault_pending = true;
+    }
+    if (status == FVM_EXCEPTION)
+        return raised;
+    if (status == FVM_OK)
+        *out = result;
+    return status;
+}
+
 /* Make one bounded call; lost replies never trigger an automatic re-execution. */
 FVM_Result function_request(Remote &remote, FVM_Context *c, const unsigned char *input,
     size_t size, FVM_Value *out)
 {
-    if (c->broker && c->broker->session == remote.session &&
-        fvm_port_thread_is_current(c->broker->thread))
-        return FVM_UNSUPPORTED;
     if (size > limit)
         return FVM_UNSUPPORTED;
     char source[FVM_FUNCTION_RPC_ID_STORAGE], request[FVM_FUNCTION_RPC_ID_STORAGE];
@@ -246,6 +273,19 @@ FVM_Result function_request(Remote &remote, FVM_Context *c, const unsigned char 
     put(h + FVM_FUNCTION_RPC_CONTEXT_OFFSET, c->identity);
     put(h + FVM_FUNCTION_RPC_REQUEST_LENGTH, (unsigned long)size);
     std::memcpy(h + FVM_FUNCTION_RPC_CALL_ID, request, FVM_FUNCTION_RPC_ID_BYTES);
+    if (c->broker && c->broker->session == remote.session &&
+        fvm_port_thread_is_current(c->broker->thread))
+    {
+        /* [GC:] Reenter only on the owning authority thread, with another bounded heap lease.
+         * Keep graph encoding/decoding: local routing must not expose foreign heap pointers. */
+        unsigned char *data = 0;
+        size_t length = 0;
+        FVM_ExceptionInfo fault;
+        bool has_fault = false;
+        FVM_Result status = dispatch_function(c->broker, h, input, size, &data, &length,
+                                             fault, has_fault);
+        return function_complete(c, status, data, length, fault, has_fault, out);
+    }
     FVM_PortSocket *socket = fvm_port_tcp_connect(remote.host.c_str(), remote.port);
     if (!socket)
     {
@@ -303,26 +343,7 @@ FVM_Result function_request(Remote &remote, FVM_Context *c, const unsigned char 
         fvm_resource_fault(c, FVM_RESOURCE_DISCONNECTED, 0, "function.reply", remote.uri.c_str());
         return FVM_ERROR;
     }
-    FVM_Value result;
-    fvm_value_undefined(&result);
-    FVM_Result decoded = length ? fvm_value_deserialize(c, data, length, &result) : FVM_OK;
-    std::free(data);
-    if (decoded != FVM_OK)
-        return decoded;
-    FVM_Result raised = status;
-    if (status == FVM_EXCEPTION)
-        raised = fvm_exception_raise(c, &result);
-    if (has_fault && (status != FVM_EXCEPTION || raised == FVM_EXCEPTION))
-    {
-        c->fault = fault;
-        c->fault.flags |= FVM_EXCEPTION_REMOTE_CONTEXT | FVM_EXCEPTION_NETWORK;
-        c->fault_pending = true;
-    }
-    if (status == FVM_EXCEPTION)
-        return raised;
-    if (status == FVM_OK)
-        *out = result;
-    return status;
+    return function_complete(c, status, data, length, fault, has_fault, out);
 }
 
 /* Serialize receiver/arguments into one graph, preserving aliases within this call. */

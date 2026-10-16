@@ -1351,3 +1351,18 @@ JIT checks pass individually after executable-mode repair, but both full CTest
 attempts encounter recurring permission-denied startup for these same binaries.
 This is not recorded as a clean 832/832 full CTest run. Stack ASan and
 LeakSanitizer disabled; all nine stages and foreign-platform acceptance remain open.
+
+v0.400: same-authority nested function interfaces dispatch on the existing owner
+thread while retaining copied argument/result graphs and original heap leases.
+A shared depth bound of 32 prevents unbounded direct recursion; success, status
+failure, exceptions and bad_alloc all release their active-depth leases.
+RU: вложенные вызовы A→B→A без ожидания собственного слушателя.
+Validation: fresh Linux minimal Release passes the full 813/813 CTest suite.
+Nine focused broker/function checks pass in minimal and AGG Release and in
+restricted heap/global ASan+UBSan. New cases cover two source heaps, return to an
+active original heap, bounded recursion, counted exception, diagnostic and OOM
+propagation, reclaim/re-enable and recovery. Strict C89 public/protocol headers
+pass. Stack ASan and LeakSanitizer disabled; restricted runner links explicit
+sanitizer defaults because environment-only options do not suppress unavailable
+/proc task enumeration. No cross-authority callback cycle, resource reentrancy
+or non-Linux runtime certification; all nine roadmap stages remain open.
