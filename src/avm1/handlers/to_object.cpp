@@ -47,7 +47,13 @@ extern "C" FVM_Result fvm_exec_to_object(FVM_Context *c, const FVM_Value *input,
             }
         }
         if (status == FVM_OK)
+        {
+            /* Boxing accepts only object results, even when NewObject legitimately
+             * returned a primitive from a native constructor. */
+            if (result.type != FVM_VALUE_OBJECT)
+                fvm_value_undefined(&result);
             *out = result;
+        }
         return status;
     }
     catch (const std::bad_alloc &)

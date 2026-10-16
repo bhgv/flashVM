@@ -2740,3 +2740,23 @@ checks, including writable slots, passed in both profiles. The two new tests
 passed under heap/global ASan plus UBSan (2/2, 2.29 seconds). Stack ASan and
 LeakSanitizer remain disabled by the sandbox setup. No non-Linux native runtime
 acceptance is claimed; all nine stages remain open.
+
+### v0.477 — isPrototypeOf boxing and native-result normalization
+
+RU: `object_prototype_global_boxing` проверяет host/SWF4–8, три примитива,
+14 вариантов глобального конструктора, C method/saved adapter и три режима
+AVM1/JIT; nullish/пропущенный аргумент, ошибки и циклические исключения.
+`to_object_native_primitive` проверяет undefined вместо примитивного результата
+нативного boxing-конструктора, включая in-place output и встроенный NUL.
+`object_prototype_boxing_allocation` перебирает отказы выделения памяти для
+обычного/custom/missing конструктора, проверяет очистку и успешный повтор.
+Первые два теста воспроизводят ошибки на base/to_object из v0.476.
+
+EN: Linux minimal ran 938 tests: 918 passed initially and all 20 unlaunchable
+binaries passed after executable-mode repair. AGG ran 957: 926 passed initially;
+29 binaries could not execute, also preventing two process-driver tests from
+launching their helper. All 29 direct checks and both process tests passed after
+permission repair. Three focused heap/global ASan+UBSan checks passed (4.50 s).
+Stack ASan and LeakSanitizer remain disabled. Native isPrototypeOf retains its
+GC barrier; getter-triggered collection is deliberately rejected and is not
+reported as actual GC execution. All roadmap stages remain open.

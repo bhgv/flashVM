@@ -450,13 +450,36 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
 }
 
 /* Test whether prototype. */
-FVM_Result is_prototype(FVM_Context *, FVM_Object *o, unsigned int n, const FVM_Value *a,
+FVM_Result is_prototype(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Value *a,
                         FVM_Value *out, void *)
 {
-    bool yes = false;
-    if (n && a[0].type == FVM_VALUE_OBJECT)
+    FVM_Value candidate;
+    fvm_value_undefined(&candidate);
+    if (n)
     {
-        FVM_Object *cursor = a[0].object->prototype;
+        candidate = a[0];
+        if (c->swf_loaded)
+        {
+            FVM_Result status = fvm_exec_to_object(c, a, &candidate);
+            if (status != FVM_OK)
+                return status;
+            if (candidate.type != FVM_VALUE_OBJECT)
+            {
+                FVM_Object *bare = 0;
+                status = fvm_object_create(c, &bare);
+                if (status != FVM_OK)
+                    return status;
+                candidate.type = FVM_VALUE_OBJECT;
+                candidate.object = bare;
+            }
+        }
+    }
+    bool yes = false;
+    if (candidate.type == FVM_VALUE_OBJECT)
+    {
+        /* [GC:] Retain the projected argument independently of the caller's storage. */
+        FVM_ObjectRootScope candidate_root(c, candidate.object);
+        FVM_Object *cursor = candidate.object->prototype;
         unsigned int depth = 0;
         while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         {

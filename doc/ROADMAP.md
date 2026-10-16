@@ -1940,3 +1940,16 @@ Evidence / Проверки v0.476: minimal 935 and AGG 954 tests passed across 
 and permission-repair retries (18/26 executable files respectively). Two focused
 heap/global ASan+UBSan checks passed. Native platform and full compatibility
 acceptance requirements remain unchanged.
+
+### v0.477: prototype argument boxing / преобразование аргумента isPrototypeOf
+
+Loaded isPrototypeOf now applies current-global primitive boxing before walking
+the chain; nullish/unavailable results get a bare fallback. ToObject collapses
+native constructor primitive results to undefined without changing NewObject's
+value-returning contract. Host behavior and bounded cycle traversal remain.
+Tests cover versioned globals, getters/errors, three execution modes and OOM.
+
+В isPrototypeOf загруженного SWF добавлено преобразование примитивного аргумента
+через текущий глобальный конструктор. ToObject принимает только объектный
+результат; NewObject по-прежнему сохраняет примитив нативного конструктора.
+Проверки затрагивают этапы 1/2/7/8, не закрывая их и не заменяя приёмку этапа 9.

@@ -83,3 +83,30 @@ source. No new foreign-OS/device or full foreign-CPU run is claimed.
 Проверка v0.474: Linux minimal 930/930; все 949 AGG-проверок прошли в полном
 прогоне и повторе 14 запусков после восстановления прав исполнения. Выбранные
 heap/global ASan+UBSan — 4/4. Stack ASan/LeakSanitizer отключены; все стадии открыты.
+
+## v0.477: prototype queries and native primitive results
+
+Loaded `Object.prototype.isPrototypeOf(value)` now boxes a supplied primitive
+through its current global constructor before traversing the resulting prototype
+chain. This preserves getter/factory side effects, failures and exceptions. A
+nullish or unavailable/nonobject result becomes a fresh bare object; omitted
+arguments still return false directly. Unloaded host queries retain their
+object-only behavior. The existing bounded prototype-cycle policy is unchanged.
+
+`fvm_exec_to_object` accepts only object results from a boxing constructor.
+Native NewObject/NewMethod may legitimately return primitives (v0.475), but
+ToObject maps those results to undefined, allowing each consumer's existing
+fallback policy. Native barriers remain active during isPrototypeOf; getter GC
+attempts are checked as rejected rather than claimed as collection coverage.
+
+В SWF `isPrototypeOf` преобразует примитивный аргумент через текущий глобальный
+конструктор, сохраняя побочные эффекты и ошибки. Если объекта нет, создаётся
+обычный объект без прототипа; без аргумента результат сразу false. Host без SWF
+сохраняет прежнее поведение. ToObject отбрасывает примитив, возвращённый нативным
+конструктором, хотя сам NewObject/NewMethod обязан сохранить такой результат.
+Ограничение обхода циклов и native-барьер GC не изменены.
+
+Tests / Проверки: object_prototype_global_boxing, to_object_native_primitive,
+object_prototype_boxing_allocation. Current-global name lookup, inherited getters,
+legacy spelling, resolver suppression, NUL strings, callback errors/exceptions,
+interpreter/explicit/automatic JIT and allocation retries are covered.

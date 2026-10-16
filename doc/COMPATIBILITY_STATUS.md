@@ -4125,3 +4125,15 @@ Error.toString is enumerable, deletable and writable. Host installation defaults
 remain unchanged. Flag activation prepares copied maps before publication and
 preserves custom state. Prototype serialization retains the resulting attributes.
 This is focused compatibility evidence, not full standard-library acceptance.
+
+### v0.477 — isPrototypeOf argument conversion and ToObject normalization
+
+RU: Проверяется преобразование аргумента isPrototypeOf через текущие глобалы,
+включая аксессоры, наследование, регистр SWF4–6 и ошибки. ToObject отбрасывает
+необъектные результаты нативных конструкторов. Без SWF поведение прежнее.
+
+EN: isPrototypeOf boxes supplied primitives using current globals, preserving
+side effects and failures. ToObject normalizes successful nonobject native
+constructor results to undefined; NewObject/NewMethod retain raw native values.
+Tests: object_prototype_global_boxing, to_object_native_primitive,
+object_prototype_boxing_allocation. All roadmap stages remain open.
