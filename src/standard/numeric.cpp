@@ -4,6 +4,8 @@
 
 #include "../core/string_internal.hpp"
 #include "primitive_state.hpp"
+#include "constructor_identity.hpp"
+#include "../core/object_root_scope.hpp"
 #include "movieclip_state.hpp"
 #include "geometry_state.hpp"
 #include "function_state.hpp"
@@ -548,31 +550,41 @@ FVM_Result boolean_constructor(FVM_Context *c, FVM_Object *, unsigned int n, con
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *klass = (FVM_Object *)userdata;
     FVM_Value prototype, value;
-    FVM_Result result = fvm_object_get(c, klass, "prototype", &prototype);
-    if (result != FVM_OK)
-        return result;
-    if (prototype.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
+    FVM_Object *object = 0;
+    FVM_Result result = FVM_OK;
+    if (c->swf_loaded)
+    {
+        result = fvm_function_allocate_instance(c, klass, BOOLEAN_OBJECT, &object);
+        if (result != FVM_OK)
+            return result;
+    }
+    else
+    {
+        result = fvm_object_get(c, klass, "prototype", &prototype);
+        if (result != FVM_OK)
+            return result;
+        if (prototype.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+    }
+    /* [GC:] Retain the prepared receiver throughout versioned Boolean conversion. */
+    FVM_ObjectRootScope object_root(c, object);
     /* A missing constructor argument stores false, unlike the global function. */
     bool truth = false;
     result = n ? fvm_avm1_boolean(c, args[0], &truth) : FVM_OK;
+    if (result != FVM_OK)
+        return result;
     fvm_value_boolean(&value, truth);
-    if (result != FVM_OK)
-        return result;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *object = 0;
-    result = fvm_object_create(c, &object);
-    if (result != FVM_OK)
-        return result;
-
-    /* Computation / Вычисление и обновление состояния. */
-    /* The wrapped primitive is inaccessible to ordinary property assignments.
-     * Prototype links and the constructor capture are traced by the existing GC. */
-    object->resource_kind = BOOLEAN_OBJECT;
+    if (!c->swf_loaded)
+    {
+        result = fvm_object_create(c, &object);
+        if (result != FVM_OK)
+            return result;
+        object->resource_kind = BOOLEAN_OBJECT;
+        object->prototype = prototype.object;
+    }
+    /* [GC:] The primitive and prototype are traced with the boxed receiver. */
     object->resource_result = value;
     object->resource_result_valid = true;
-    object->prototype = prototype.object;
     fvm_value_undefined(out);
 
     /* Computation / Вычисление и обновление состояния. */

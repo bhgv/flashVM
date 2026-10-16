@@ -3,6 +3,7 @@
  */
 
 #include "string_state.hpp"
+#include "constructor_identity.hpp"
 #include "string_constants.h"
 #include "../core/unicode_constants.h"
 #include "../core/numeric_constants.h"
@@ -764,14 +765,23 @@ void attach_length(FVM_Object *object)
     object->accessors["length"] = accessor;
 }
 
-/* Coerce the input before allocating a boxed String with the selected prototype. */
+/* Prepare a loaded String receiver before coercion; preserve host lookup order. */
 FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const FVM_Value *args,
                        FVM_Value *out, void *userdata)
 {
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value text, prototype;
+    FVM_Object *object = 0;
     FVM_Result result = FVM_OK;
+    if (c->swf_loaded)
+    {
+        result = fvm_function_allocate_instance(c, (FVM_Object *)userdata, STRING_OBJECT, &object);
+        if (result != FVM_OK)
+            return result;
+    }
+    /* [GC:] toString can detach the constructor while the selected receiver is pending. */
+    FVM_ObjectRootScope object_root(c, object);
     if (count)
         result = c->swf_loaded ? fvm_avm1_string(c, args[0], &text)
                                 : fvm_value_to_string(c, args, &text);
@@ -783,23 +793,21 @@ FVM_Result constructor(FVM_Context *c, FVM_Object *, unsigned int count, const F
     result = fvm_string_unit_count(text, unit_count);
     if (result != FVM_OK)
         return result;
-    result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
-    if (result != FVM_OK)
-        return result;
-    if (prototype.type != FVM_VALUE_OBJECT)
-        return FVM_INVALID_ARGUMENT;
-
-    /* Initialization / Инициализация локального состояния. */
-    FVM_Object *object = 0;
-    result = fvm_object_create(c, &object);
-    if (result != FVM_OK)
-        return result;
-
-    /* Computation / Вычисление и обновление состояния. */
-    object->resource_kind = STRING_OBJECT;
+    if (!c->swf_loaded)
+    {
+        result = fvm_object_get(c, (FVM_Object *)userdata, "prototype", &prototype);
+        if (result != FVM_OK)
+            return result;
+        if (prototype.type != FVM_VALUE_OBJECT)
+            return FVM_INVALID_ARGUMENT;
+        result = fvm_object_create(c, &object);
+        if (result != FVM_OK)
+            return result;
+        object->resource_kind = STRING_OBJECT;
+        object->prototype = prototype.object;
+    }
     object->resource_result_valid = true;
     object->resource_result = text;
-    object->prototype = prototype.object;
     if (c->swf_loaded)
     {
         /* Boxed String length is own data; changing it does not change stored text. */

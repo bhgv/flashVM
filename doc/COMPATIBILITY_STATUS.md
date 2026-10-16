@@ -3988,3 +3988,52 @@ separate validation; all stages remain open.
 Validation v0.471: complete Linux minimal 916/916 and AGG 935/935; Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 selected checks each. Stack
 ASan/LeakSanitizer disabled; foreign OS acceptance remains open.
+
+## v0.472 — loaded String and Boolean receiver preparation
+
+Loaded String and Boolean now use the same prepared-receiver allocator as Number:
+select own stored prototype data and define hidden constructor identities before
+conversion. Primitive/missing prototype data yields an empty Object chain;
+accessor callbacks and inherited lookup do not select the prototype. A String
+argument's toString mutation cannot change the already selected receiver chain.
+String keeps counted text and its own nonenumerable/nondelete length. Boolean
+keeps versioned truth conversion without invoking object coercion callbacks.
+Unloaded host constructor lookup order remains unchanged.
+
+Reference: Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd,
+FunctionObject::construct/define_constructor_props and globals/string.rs and
+boolean.rs constructors, which populate the preallocated receiver.
+string_constructor_stored_prototype and boolean_constructor_stored_prototype
+cover SWF4–8, direct/named C construction and NewObject/NewMethod in interpreter,
+explicit native and automatic JIT modes, native accessor/method, stored script-accessor
+data, inherited/missing/primitive/mixed-case prototype, skipped __resolve,
+identities and post-return GC. String additionally checks
+mutation during coercion, embedded NUL text/length, errors and exceptions.
+native_instance_allocation now sweeps new/new[] failure boundaries through actual
+Number/String/Boolean factories, including length publication, cold method
+wrappers, null failure output, clean root/native scopes, collection and retry.
+The native barrier still rejects collection inside native factories. Both new
+regressions fail against the original v0.471 implementation (missing constructor
+identity), and pass after the fix. This does not close constructor
+compatibility or any roadmap stage.
+
+### Русский
+
+Загруженные String/Boolean выбирают собственный сохранённый prototype и получают
+скрытые свойства конструктора до преобразования аргумента. Getter не вызывается;
+примитивное/отсутствующее значение даёт пустую Object-цепочку. Изменение prototype
+из toString не меняет выбранную цепь String; сохраняются NUL и собственный length.
+Boolean сохраняет правила truth по версии SWF и не вызывает методы объекта.
+Проверяются SWF4–8, C API, три режима NewObject/NewMethod, GC после возврата, ошибки и
+исключения String и отказы выделения памяти трёх фабрик. Полная совместимость
+конструкторов, другие ОС/CPU и все стадии остаются открытыми.
+
+Validation / Проверка v0.472: complete Linux minimal 918/918 and AGG 937/937;
+selected heap/global ASan+UBSan 4/4 (stack ASan and LeakSanitizer disabled).
+Unicorn 2.1.4: all 26 synthetic encoder success/error checks passed for x86,
+ARM/Thumb, ARM64, RV32 and RV64, including far branches and high helper addresses.
+These are synthetic ABI checks, not full VM execution on foreign CPUs/OSes.
+
+The final Boolean callback-trap refinement was rerun in minimal, AGG and sanitizer
+profiles. Interrupted build outputs/executable permissions were repaired before
+the final complete native runs; no behavior failures remain in those runs.
