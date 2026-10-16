@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from elf_dependencies import validate_elf_dependencies
 
 
 def cache_values(path):
@@ -121,6 +122,9 @@ def main():
     parser.add_argument('--jobs', type=int, default=2)
     parser.add_argument('--jit-emulator', action='store_true',
                         help='require optional Unicorn backend instruction/ABI execution')
+    parser.add_argument('--elf-dependencies', action='store_true',
+                        help='audit direct Linux ELF dependencies of CTest artifacts')
+    parser.add_argument('--readelf', default='readelf', help='GNU readelf executable for ELF audit')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
@@ -152,10 +156,14 @@ def main():
                 """Keep complete output per command; propagate any nonzero status."""
                 print(name + ': ' + label, flush=True)
                 entry = {'phase': label, 'argv': command, 'status': 'running'}
+                if label.startswith('elf-'):
+                    entry['environment'] = {'LC_ALL': 'C'}
                 record['commands'].append(entry)
                 try:
                     with (build / (label + '.log')).open('w', encoding='utf-8') as log:
-                        result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
+                        result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT,
+                                                env=dict(os.environ, LC_ALL='C')
+                                                if label.startswith('elf-') else None)
                 except (OSError, KeyboardInterrupt) as error:
                     entry.update(status='failed', error=str(error))
                     raise
@@ -189,6 +197,8 @@ def main():
                              '--output-on-failure', '--no-tests=error', '--parallel', str(args.jobs)])
             if args.jit_emulator:
                 validate_encoder(root, build, args.ctest, execute, record)
+            if args.elf_dependencies:
+                validate_elf_dependencies(build, args.ctest, args.readelf, execute, record)
             record['status'] = 'passed'
         report['status'] = 'passed'
         return 0

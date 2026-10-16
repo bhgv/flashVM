@@ -173,3 +173,35 @@ Cairo/fonts/codecs/SQLite remain statically linked. Release test flags include
 -std=c++98, -pedantic-errors and -UNDEBUG. Ten host orchestration tests pass.
 This is Linux evidence; Windows/macOS/Android and overall release acceptance
 remain open. No source/history archives were created.
+
+### Direct Linux ELF dependencies — v0.511
+
+Add `--elf-dependencies` (optionally `--readelf /path/to/readelf`) to the native
+runner to require a GNU readelf audit after CTest. It discovers executable/shared
+ELF arguments from the authoritative CTest JSON inside the build directory,
+deduplicates paths and records every artifact's direct DT_NEEDED entries and the
+actual GNU readelf version. ELF phases run with LC_ALL=C, recorded in command
+evidence. Static executables without a dynamic section are accepted.
+
+The audit rejects direct shared linkage of bundled FlashVM/AGG/Cairo/Freetype/
+FriBidi/GIF/HarfBuzz/JPEG/PNG/Unibreak/Pixman/SQLite/zlib families. System C/C++
+runtime dependencies remain allowed and visible. Missing/malformed discovery,
+missing dynamic-section evidence, forbidden libraries or tool failures prevent a
+passed record; a stale pass is replaced before execution. Non-Linux hosts reject
+this optional audit. Eight Python host tests cover discovery/header/path handling,
+soname policy, malformed output, phase failures and report state.
+
+This is direct-link evidence for discovered CTest ELF arguments. It does not
+inspect transitive dependencies, dlopen, libraries hidden by wrapper scripts or
+all possible shipped files. It does not certify other OSes, presentation, SWF
+compatibility or completion of roadmap stage 9.
+
+Validation v0.511: the native Linux x86-64 Cairo runner passed all 1067 CTest
+cases, 26 Unicorn ISA/ABI branch/error cases and the new audit of 1056 ELF files.
+GNU readelf 2.42 reported only libc.so.6, libgcc_s.so.1, libm.so.6 and
+libstdc++.so.6 as direct dependencies. After restoring execute permission on seven
+generated test binaries, the entire runner was repeated successfully. The report
+honestly records development version 0.511, parent 56bd1f8 and dirty=true.
+Minimal/AGG passed four targeted configuration/version/host checks each; Python
+suites passed 8 ELF-audit and 10 existing runner tests. These are Linux results;
+other OS acceptance, anonymous Undefined-this semantics and roadmap stages remain open.
