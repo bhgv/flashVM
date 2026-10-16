@@ -1827,14 +1827,17 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
     {
         if (c->calling_setter_name)
         {
+            /* The callback may recreate the own slot with another legacy-equivalent spelling. */
+            fvm_detail::string name = *c->calling_setter_name;
+            fvm_property_select_own_name(c, receiver, name);
             fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags =
-                receiver->attributes.find(*c->calling_setter_name);
+                receiver->attributes.find(name);
             if (flags != receiver->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
                 return FVM_OK;
             fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator current =
-                receiver->accessors.find(*c->calling_setter_name);
+                receiver->accessors.find(name);
             if (current == receiver->accessors.end())
-                return store_receiver_data(c, receiver, *c->calling_setter_name, args[0]);
+                return store_receiver_data(c, receiver, name, args[0]);
             if (current->second.getter != script_property_get || !current->second.root)
                 return FVM_UNSUPPORTED;
             /* [GC:] Re-resolve after callback replacement; the receiver roots the new descriptor graph. */

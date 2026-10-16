@@ -1981,3 +1981,24 @@ semantics. Callback/resource equivalence and all nine stages remain open.
 Validation v0.436: Linux minimal 864/864; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS and all-stage acceptance remain open.
+
+## v0.437 — setter replacement spelling
+
+After an own script setter returns, loaded SWF4–6 reselect the current own
+property spelling before checking readonly flags and committing stored data.
+A callback may delete `Slot` and recreate `sLOT` as ordinary data or a virtual
+property; the original input updates that replacement without invoking its
+setter again. A readonly replacement keeps its data. Host and SWF7–8 keep
+exact spelling. This follows pinned Ruffle script_object.rs set_local's
+case-aware property entry lookup after executing the setter.
+
+object_setter_case_replacement reproduced the old duplicate-slot write, then
+checks all three replacements, host/SWF4–8, a counted NUL string, collection
+inside the setter and traced-string collection after the write.
+jit_object_setter_case_replacement repeats loaded cases through interpreted,
+explicit and automatic JIT SetMember with actual native entries. Native
+accessor replacement, broader collisions and all nine stages remain open.
+
+Validation v0.437: Linux minimal 866/866; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. All nine stages and foreign OS execution remain open.
