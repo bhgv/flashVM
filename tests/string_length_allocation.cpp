@@ -94,5 +94,14 @@ int main()
     fvm_value_number(&value, 7);
     assert(fvm_value_get_utf16(&value, 0, 0, &count) == FVM_INVALID_ARGUMENT && count == 0);
     allowance = -1;
+    char large[257];
+    unsigned short decoded[257];
+    std::memset(large, 'x', sizeof(large));
+    assert(fvm_value_string_bytes(&value, large, sizeof(large)) == FVM_OK);
+    allowance = 1;
+    assert(fvm_value_get_utf16(&value, decoded, 257, &count) == FVM_OK && count == 257);
+    assert(allowance == 0);
+    for (unsigned i = 0; i < 257; ++i) assert(decoded[i] == 'x');
+    allowance = -1;
     return 0;
 }

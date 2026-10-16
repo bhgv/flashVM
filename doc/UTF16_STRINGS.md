@@ -138,3 +138,17 @@ Validation v0.410 / Проверка: Linux minimal Release 822/822; AGG Release
 4/4 focused string tests; heap/global ASan+UBSan 4/4. Generated native launchers
 restore workspace executable permissions; stack ASan and LSan remain disabled.
 No other-platform runtime or complete stage acceptance is claimed.
+
+### v0.411 — one UTF-16 snapshot allocation / Одно выделение снимка
+
+The sufficient-capacity C API copy reserves the measured UTF-16 size exactly,
+removing geometric reallocation and transient old/new decoded arrays. Snapshot
+semantics for overlapping input/output remain. A 257-unit regression allowing
+exactly one allocation fails on v0.410 and passes after this change.
+Копирование резервирует точный размер снимка одним выделением памяти; перекрытие
+буферов поддерживается. Все девять стадий остаются открытыми.
+
+Validation v0.411 / Проверка: minimal Release 822/822; AGG Release 4/4;
+heap/global ASan+UBSan 4/4 string tests. Strict C89 public-header syntax passed.
+Native test launchers restore executable modes; stack ASan/LSan are disabled.
+Other platforms and complete Flash compatibility remain unverified.

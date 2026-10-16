@@ -134,6 +134,8 @@ extern "C" FVM_Result fvm_value_get_utf16(const FVM_Value *value, unsigned short
         if (capacity < *length)
             return FVM_INVALID_ARGUMENT;
         fvm_detail::vector<unsigned int> units;
+        /* The validated size is exact: retain one overlap-safe snapshot allocation. */
+        units.reserve(*length);
         r = fvm_string_units(*value, units);
         if (r != FVM_OK)
             return r;
