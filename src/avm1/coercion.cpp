@@ -5,6 +5,7 @@
 #include "decimal.hpp"
 #include "../core/string_internal.hpp"
 #include "../standard/primitive_state.hpp"
+#include "../standard/super.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/function.h"
@@ -104,15 +105,22 @@ FVM_Result fvm_avm1_primitive(FVM_Context *context, const FVM_Value *value,
     fvm_value_undefined(&result);
     bool date_string = default_hint && original.object->resource_kind == FVM_RESOURCE_DATE &&
                        context->swf_info.version > FVM_SWF_VERSION_5;
-    FVM_Result status = fvm_object_get_bytes(
-        context, original.object,
-        date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME,
-        date_string ? FVM_COERCION_TO_STRING_BYTES : FVM_COERCION_VALUE_OF_BYTES, &method);
-    if (status != FVM_OK)
-        return status;
-    if (method.type == FVM_VALUE_OBJECT &&
-        (method.object->invocable.callback || method.object->callable.callback))
-        status = fvm_function_invoke(context, method.object, original.object, 0, 0, &result);
+    FVM_Result status = FVM_OK;
+    if (original.object->resource_kind == FVM_RESOURCE_SUPER)
+        status = fvm_super_special(context, original.object,
+            fvm_detail::string(date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME), &result);
+    else
+    {
+        status = fvm_object_get_bytes(
+            context, original.object,
+            date_string ? FVM_COERCION_TO_STRING_NAME : FVM_COERCION_VALUE_OF_NAME,
+            date_string ? FVM_COERCION_TO_STRING_BYTES : FVM_COERCION_VALUE_OF_BYTES, &method);
+        if (status != FVM_OK)
+            return status;
+        if (method.type == FVM_VALUE_OBJECT &&
+            (method.object->invocable.callback || method.object->callable.callback))
+            status = fvm_function_invoke(context, method.object, original.object, 0, 0, &result);
+    }
     if (status != FVM_OK)
         return status;
     *out = default_hint && result.type == FVM_VALUE_OBJECT ? original : result;
@@ -209,13 +217,19 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
         } coercion(context);
         FVM_Value method, result;
         fvm_value_undefined(&result);
-        FVM_Result status = fvm_object_get_bytes(context, value.object, FVM_COERCION_TO_STRING_NAME,
-                                                 FVM_COERCION_TO_STRING_BYTES, &method);
-        if (status != FVM_OK)
-            return status;
-        if (method.type == FVM_VALUE_OBJECT &&
-            (method.object->invocable.callback || method.object->callable.callback))
-            status = fvm_function_invoke(context, method.object, value.object, 0, 0, &result);
+        FVM_Result status = FVM_OK;
+        if (value.object->resource_kind == FVM_RESOURCE_SUPER)
+            status = fvm_super_special(context, value.object, fvm_detail::string(FVM_COERCION_TO_STRING_NAME), &result);
+        else
+        {
+            status = fvm_object_get_bytes(context, value.object, FVM_COERCION_TO_STRING_NAME,
+                                             FVM_COERCION_TO_STRING_BYTES, &method);
+            if (status != FVM_OK)
+                return status;
+            if (method.type == FVM_VALUE_OBJECT &&
+                (method.object->invocable.callback || method.object->callable.callback))
+                status = fvm_function_invoke(context, method.object, value.object, 0, 0, &result);
+        }
         if (status != FVM_OK)
             return status;
         if (result.type == FVM_VALUE_STRING)

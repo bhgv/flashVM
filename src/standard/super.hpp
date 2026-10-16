@@ -14,6 +14,8 @@ FVM_Result fvm_super_set(FVM_Context *, FVM_Object *, const fvm_detail::string &
 /* Call a parent method with the actual receiver and its defining prototype owner. */
 FVM_Result fvm_super_method(FVM_Context *, FVM_Object *, const fvm_detail::string &, unsigned int,
                             const FVM_Value *, FVM_Value *);
+/* Invoke an optional conversion member with the original receiver and defining owner. */
+FVM_Result fvm_super_special(FVM_Context *, FVM_Object *, const fvm_detail::string &, FVM_Value *);
 /* Recognize the native facade constructor callback for graph serialization. */
 FVM_NativeFunction fvm_super_callback();
 /* Read from a selected prototype chain with a separate accessor receiver. */

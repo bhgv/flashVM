@@ -2100,3 +2100,26 @@ with actual native entries. Full conversions and all stages remain open.
 Validation v0.442: Linux minimal 876/876; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.443 — special parent conversion receiver and owner
+
+Loaded numeric/default/string conversion of super now uses parent-method
+dispatch with the retained original receiver and the selected defining owner.
+Missing or noncallable conversion members yield undefined; real callee errors
+propagate. Owner selection uses versioned spelling and is rooted before a
+getter can detach it. Existing explicit-call error behavior and host conversion
+are retained. Pinned object.rs and super_object.rs call_method distinguish
+Special calls and execute against super.this(), with parent lookup depth.
+
+object_super_coercion_receiver reproduced the previous facade receiver. It
+checks ToNumber, ToString and default primitive conversion in SWF5–8, folded
+SWF5–6 names, primitive/noncallable Object members, number/NUL string results,
+exception/plain error, collection inside callbacks and self-deletion plus
+prototype detachment. Callback receiver/owner and cleanup are asserted.
+jit_object_super_coercion_receiver repeats ToNumber/ToString/Add2 in three
+modes with actual native entries. Broad resolution/owner mutation, failure
+boundaries and all nine stages remain open.
+
+Validation v0.443: Linux minimal 878/878; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
