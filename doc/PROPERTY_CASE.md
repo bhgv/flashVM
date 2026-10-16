@@ -462,3 +462,24 @@ Broader call inputs, resolver behavior and all stages remain open.
 Validation v0.447: complete Linux minimal 884/884; AGG, Linux-hosted NO_OS_PORTS
 and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
 applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
+
+## v0.448 — C call argument snapshot before getter
+
+The C method-call bridge copies argument values into a traced vector and roots
+the receiver before resolving a getter or clearing the output. A collecting
+getter can mutate the original argument array without changing the prepared
+call, and output may alias an argument. Managed string/Object/metatable edges
+remain live; external string bytes remain caller-owned. The same snapshot
+covers super and trusted native entries, replacing their redundant local
+argument copy/root boilerplate. Ordinary native barriers are retained.
+
+object_call_argument_snapshot reproduced collection of the pending cyclic
+Object inside a getter. It checks host/SWF4–8, traced counted NUL strings,
+cyclic object arguments, caller-array mutation, aliased output, getter/callee
+exceptions, callback counts, cleanup and reclamation after return. This is an
+embedding lifetime contract; argument cloning/external buffers, native capture
+lifetime, failure boundaries and all stages remain open.
+
+Validation v0.448: complete Linux minimal 885/885; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 4/4 targeted checks each. Executable-mode launchers
+applied; stack ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.

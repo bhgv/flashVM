@@ -11,6 +11,7 @@
 #include "flashvm/property.h"
 #include "../core/native_call_guard.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/value_vector_root_scope.hpp"
 #include "../core/runtime.hpp"
 #include "../core/prototype_data.hpp"
 #include "../core/exception_internal.hpp"
@@ -1079,14 +1080,25 @@ extern "C"
         for (i = 0; i < argc; ++i)
             if (fvm_validate_value(c, &argv[i]) != FVM_OK)
                 return FVM_INVALID_ARGUMENT;
-        fvm_value_undefined(out);
         try
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             fvm_detail::string key;
             FVM_Result normalized = fvm_property_key(name, size, key);
             if (normalized != FVM_OK)
+            {
+                fvm_value_undefined(out);
                 return normalized;
+            }
+            /* [GC:] Snapshot caller values before clearing an aliased output or running a getter. */
+            FVM_ObjectRootScope call_receiver_roots(c, self);
+            fvm_detail::vector<FVM_Value> call_args;
+            FVM_ValueVectorRootScope call_argument_roots(c, call_args);
+            call_args.reserve(argc);
+            for (i = 0; i < argc; ++i)
+                call_args.push_back(argv[i]);
+            argv = argc ? call_args.begin() : 0;
+            fvm_value_undefined(out);
 
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             if (self->resource_kind == FVM_RESOURCE_SUPER)
@@ -1161,80 +1173,12 @@ extern "C"
             fvm_value_undefined(out);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (entry.collector_entry)
-            /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_detail::vector<FVM_Value> args;
-                /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
-                for (i = 0; i < argc; ++i)
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    args.push_back(argv[i]);
-                /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
-                FVM_GCRootFrame frame;
-                /* [GC:] Сохраняем предыдущий корень для восстановления цепочки после выхода. */
-                frame.previous = c->gc_frames;
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                frame.stack = &args;
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                frame.locals = 0;
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                /* [GC:] Подключаем стек, локальные значения или получателя к активному корню
-                 * вызова. */
-                frame.receiver = self;
-                /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO.
-                 */
-                /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO.
-                 */
-                c->gc_frames = &frame;
-                /* Define Pop struct and its representation. */
-                /* [GC:] Объявляем представление состояния сборщика или корней. */
-                struct Pop
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-                {
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    FVM_Context *c;
-                    /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
-                    FVM_GCRootFrame *f;
-                    /* Release the resources owned by this Pop instance. */
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    ~Pop()
-                    /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
-                    {
-                        /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен
-                         * быть LIFO. */
-                        /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен
-                         * быть LIFO. */
-                        c->gc_frames = f->previous;
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                        /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней.
-                         */
-                    }
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                } pop;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                pop.c = c;
-                /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                pop.f = &frame;
-                /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
-                return fvm_exception_complete(
-                    /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c, self,
-                    fvm_native_result(c, entry.callback(c, self, argc, argv, out, entry.userdata),
-                                      out));
-                /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+                /* [GC:] Receiver and snapshot arguments remain linked through this trusted callback. */
+                return fvm_exception_complete(c, self,
+                    fvm_native_result(c, entry.callback(c, self, argc, argv, out, entry.userdata), out));
             }
-            /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
-             */
-            /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик.
-             */
+            /* [GC:] Ordinary native entries retain their existing collector barrier. */
             FVM_NativeCallGuard native_guard(c);
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return fvm_exception_complete(

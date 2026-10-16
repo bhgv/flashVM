@@ -118,6 +118,8 @@ extern "C"
         FVM_Object *root);
     /* Call a native or script function-valued method through the prototype chain,
        binding self to the original receiver. */
+    /* [GC:] Snapshot argument values and retain receiver/arguments across getter or script GC.
+       Output may alias an argument. External string buffers remain caller-owned. */
     /* Call object. */
     FVM_API FVM_Result fvm_object_call(FVM_Context *, FVM_Object *, const char *, unsigned int,
                                        const FVM_Value *, FVM_Value *);
