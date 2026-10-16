@@ -1231,3 +1231,23 @@ jit_object_super_typeof повторяет TypeOf в интерпретатор�
 Проверено v0.441: Linux minimal 874/874; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.
+
+## v0.442 — строковый fallback super
+
+Загруженный ToString возвращает `[type Object]` для super, если доступный через
+родителя toString вернул не строку. Общая вызываемость не делает фасад Function;
+настоящие Function сохраняют `[type Function]`. Строки с NUL и исключения
+передаются без изменения. Host прежний. Закреплённый avm1/value.rs
+coerce_to_string проверяет as_function после специального вызова toString.
+Привязка receiver/owner остаётся отдельным вопросом; здесь исправлена только
+классификация fallback.
+
+object_super_string воспроизвёл прежний Function fallback. Проверены SWF5–8,
+number/undefined/null/string/exception, число callback, C-helper с совпадением
+входа/выхода, Function/экземпляр, GC и прямой вызов родителя.
+jit_object_super_string повторяет ToString в трёх режимах с настоящими
+нативными входами. Полные преобразования и все стадии остаются открытыми.
+
+Проверено v0.442: Linux minimal 876/876; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.

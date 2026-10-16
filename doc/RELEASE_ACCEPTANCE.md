@@ -2080,3 +2080,23 @@ conversion and all nine stages remain open.
 Validation v0.441: Linux minimal 874/874; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.442 — super string fallback
+
+Loaded ToString now falls back to `[type Object]` for a super facade when its
+parent-visible toString returns a non-string. Generic call support does not
+make the facade a Function; actual Functions keep `[type Function]`. String
+returns (including NUL) and thrown values pass through unchanged. Host is
+unchanged. Pinned avm1/value.rs coerce_to_string checks as_function only after
+executing the special toString method. Receiver/owner dispatch is a separate
+remaining concern; this change only corrects the fallback classification.
+
+object_super_string reproduced the previous Function fallback. It checks
+SWF5–8, number/undefined/null/string/exception returns, callback count, in-place
+C helper, Function/instance controls, GC and repeatability of direct parent
+invocation. jit_object_super_string repeats ToString in three execution modes
+with actual native entries. Full conversions and all stages remain open.
+
+Validation v0.442: Linux minimal 876/876; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.

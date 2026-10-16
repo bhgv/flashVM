@@ -223,7 +223,9 @@ FVM_Result fvm_avm1_string(FVM_Context *context, const FVM_Value &value, FVM_Val
             *out = result;
             return FVM_OK;
         }
-        return fvm_value_string(out, value.object->invocable.callback || value.object->callable.callback
+        /* A super facade has call support but is not a Function for string fallback. */
+        return fvm_value_string(out, value.object->resource_kind != FVM_RESOURCE_SUPER &&
+                                        (value.object->invocable.callback || value.object->callable.callback)
                                         ? "[type Function]" : "[type Object]");
     }
     return fvm_value_to_string(context, &value, out);
