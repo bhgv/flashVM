@@ -84,3 +84,30 @@ Validation v0.412 / Проверка: Linux minimal Release 823/823 CTests; AGG 
 and heap/global ASan+UBSan each passed all three global-parsing executables.
 Native launchers restore workspace executable modes; stack ASan/LSan disabled.
 Other-platform runtime and all nine stage acceptance remain open.
+
+## Loaded parseFloat — v0.413
+
+Loaded SWF4–8 now use AVM1 ToString and return undefined for a missing argument.
+The parsed number is accumulated digit by digit using reference-ordered decimal
+scaling, rather than the host numeric conversion bridge. The pinned exact
+`.1499999 == 0.14999990000000005` result is checked. Infinity spellings yield NaN.
+An isolated decimal point produces zero; accumulation ignores later points,
+while exponent recognition occurs only after the first grammatical fraction.
+Exponent digit accumulation, sign, addition and per-digit powers wrap at 32 bits,
+including INT32_MIN without signed C++ overflow. Counted NUL stops accumulation;
+unterminated borrowed strings are bounded. Existing leading whitespace policy
+is retained; full whitespace/player-version and extreme rounding remain open.
+The unloaded host API continues to use its original prefix/Infinity behavior.
+
+Reference: pinned [AVM1 numeric implementation](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/value.rs)
+and [parseFloat trace](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/tests/tests/swfs/avm1/parse_float/output.txt).
+The loaded accumulation algorithm carries Ruffle's MIT attribution in source.
+`global_parse_float_loaded` checks SWF4–8, exact rounding, decimal/exponent quirks,
+NUL/surrogate/unterminated inputs, callback failure, native GC barrier and cleanup.
+The missing-argument regression failed against v0.412 before implementation.
+This does not certify every binary64 boundary or constitute a fresh Adobe run.
+
+Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
+heap/global ASan+UBSan each passed all four global-parsing executables.
+Native mode-restoring launchers used; stack ASan/LSan disabled.
+Other-platform runtime acceptance and all nine stages remain open.

@@ -3124,3 +3124,14 @@ Validation v0.412 / Проверка: Linux minimal Release 823/823 CTests; AGG 
 and heap/global ASan+UBSan each passed all three global-parsing executables.
 Native launchers restore workspace executable modes; stack ASan/LSan disabled.
 Other-platform runtime and all nine stage acceptance remain open.
+
+### v0.413 — loaded parseFloat / Загруженный parseFloat
+
+Separate SWF4–8 decimal accumulation now preserves pinned decimal rounding,
+multiple-dot, missing-argument and wrapped-exponent behavior with counted scans.
+[EN](GLOBAL_PARSING.md) / [RU](GLOBAL_PARSING.ru.md). All stages remain open.
+
+Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
+heap/global ASan+UBSan each passed all four global-parsing executables.
+Native mode-restoring launchers used; stack ASan/LSan disabled.
+Other-platform runtime acceptance and all nine stages remain open.

@@ -13,4 +13,6 @@
 #define FVM_PARSING_INT_SPACE_LF 10U /* Line feed. */
 #define FVM_PARSING_INT_SPACE_CR 13U /* Carriage return. */
 #define FVM_PARSING_INT_SPACE_ASCII 32U /* Ordinary space. */
+#define FVM_PARSING_POWER_SELECTED_BIT 1UL /* Lowest exponent bit selects multiplication/division. */
+#define FVM_PARSING_POWER_STEP_BITS 1U /* Each squaring consumes one binary exponent bit. */
 #endif

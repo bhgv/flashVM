@@ -78,3 +78,23 @@ Validation v0.412 / Проверка: Linux minimal Release 823/823 CTests; AGG 
 and heap/global ASan+UBSan each passed all three global-parsing executables.
 Native launchers restore workspace executable modes; stack ASan/LSan disabled.
 Other-platform runtime and all nine stage acceptance remain open.
+
+## Загруженный parseFloat — v0.413
+
+В SWF4–8 применяется AVM1 ToString; пропущенный аргумент даёт undefined.
+Цифры накапливаются отдельно с порядком десятичного масштабирования из эталона,
+вместо host-парсера: проверено точное значение .1499999. Infinity даёт NaN,
+одиночная точка — ноль; последующие точки пропускаются при накоплении, но
+экспонента распознаётся только после первой корректной дробной части.
+Экспонента, её знак и степени цифр явно оборачиваются в 32 бита без signed overflow,
+включая INT32_MIN. Все проходы учитывают длину, NUL останавливает накопление.
+Правила host API без загруженного SWF сохранены. Источники сравнения и MIT-атрибуция
+указаны в [EN](GLOBAL_PARSING.md). Тест global_parse_float_loaded покрывает SWF4–8,
+точное округление контрольного числа, точки, экспоненты, NUL, суррогат, незавершённый
+буфер, callbacks, исключения и native GC barrier. Полные числовые границы и набор
+пробелов всех версий Flash пока не подтверждены; все стадии остаются открытыми.
+
+Validation v0.413 / Проверка: minimal Release 824/824; AGG Release and
+heap/global ASan+UBSan each passed all four global-parsing executables.
+Native mode-restoring launchers used; stack ASan/LSan disabled.
+Other-platform runtime acceptance and all nine stages remain open.
