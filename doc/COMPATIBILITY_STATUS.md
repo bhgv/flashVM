@@ -4205,3 +4205,11 @@ first-load updates are transactional under OOM. Проверены побайт�
 C/AVM1/JIT, перенос графа, GC и повтор после отказа памяти.
 See [MATH_ATTRIBUTES.md](MATH_ATTRIBUTES.md). Exact Math functions, cross-platform
 runtime acceptance and all nine roadmap stages remain open.
+
+### v0.484 — class attributes independent of prototypes
+
+Number constants and Date.UTC now activate independently of customized public
+prototypes. Сохраняются изменённые поля/флаги, primitive metatable и прототипы;
+проверяются OOM, GC, перенос и C/AVM1/JIT. See
+[STATIC_CLASS_ACTIVATION.md](STATIC_CLASS_ACTIVATION.md). This is a first-load
+metadata fix, not completion of stage 1 or any other roadmap stage.

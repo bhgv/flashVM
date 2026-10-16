@@ -21,9 +21,9 @@ struct FVM_DatePrototypeActivation
     /* Start without a candidate; temporary maps own only names and numeric flags. */
     FVM_DatePrototypeActivation() : prototype(0), klass(0) {}
 };
-/* Prepare the invalid host layout and default attributes without mutation; may throw. */
+/* Prepare class flags independently, then any invalid host prototype; may throw. */
 void fvm_date_prepare_loaded(FVM_Context *, FVM_DatePrototypeActivation &);
-/* Commit prepared native state and attributes without allocating or invoking callbacks. */
+/* Commit class flags and any prepared native state without allocation or callbacks. */
 void fvm_date_commit_loaded(FVM_DatePrototypeActivation &);
 
 /* Validate date. */

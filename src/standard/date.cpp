@@ -8,6 +8,7 @@
 #include "../core/object_root_scope.hpp"
 #include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/property.h"
 #include "../../ports/clock_port.h"
 #include <cmath>
 #include <cstdio>
@@ -842,6 +843,16 @@ void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
     if (ctor == c->constructors.end() || ctor->second.callback != loaded_constructor || !ctor->second.root)
         return;
     FVM_Object *klass = ctor->second.root;
+    /* UTC belongs to the captured class, independent of its public prototype slot. */
+    out.class_attributes = klass->attributes;
+    fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator utc = klass->methods.find("UTC");
+    fvm_detail::map<fvm_detail::string, unsigned int>::iterator utc_flags = klass->attributes.find("UTC");
+    if (utc != klass->methods.end() && utc->second.callback == loaded_utc &&
+        utc_flags != klass->attributes.end() && utc_flags->second == FVM_PROPERTY_DONT_ENUM &&
+        klass->properties.find("UTC") == klass->properties.end() &&
+        klass->accessors.find("UTC") == klass->accessors.end())
+        out.class_attributes["UTC"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY;
+    out.klass = klass;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
         return;
@@ -852,24 +863,16 @@ void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
     if (method == proto->methods.end() || method->second.callback != loaded_value)
         return;
     out.prototype_attributes = proto->attributes;
-    out.class_attributes = klass->attributes;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
     {
         method = proto->methods.find(methods[i].name);
         fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(methods[i].name);
         if (method != proto->methods.end() && method->second.callback == methods[i].callback &&
-            flags != out.prototype_attributes.end() && flags->second == 1 &&
+            flags != out.prototype_attributes.end() && flags->second == FVM_PROPERTY_DONT_ENUM &&
             proto->properties.find(methods[i].name) == proto->properties.end() &&
             proto->accessors.find(methods[i].name) == proto->accessors.end())
-            flags->second = 3;
+            flags->second = FVM_PROPERTY_BUILTIN_FLAGS;
     }
-    method = klass->methods.find("UTC");
-    fvm_detail::map<fvm_detail::string, unsigned int>::iterator utc_flags = klass->attributes.find("UTC");
-    if (method != klass->methods.end() && method->second.callback == loaded_utc &&
-        utc_flags != klass->attributes.end() && utc_flags->second == 1 &&
-        klass->properties.find("UTC") == klass->properties.end() &&
-        klass->accessors.find("UTC") == klass->accessors.end())
-        out.class_attributes["UTC"] = 7;
     out.prototype = proto;
     out.klass = klass;
 }
@@ -877,13 +880,14 @@ void fvm_date_prepare_loaded(FVM_Context *c, FVM_DatePrototypeActivation &out)
 /* Publish the prepared Date layout and flag tables without a failing operation. */
 void fvm_date_commit_loaded(FVM_DatePrototypeActivation &prepared)
 {
+    if (prepared.klass)
+        prepared.klass->attributes.swap(prepared.class_attributes);
     if (!prepared.prototype)
         return;
     prepared.prototype->resource_kind = DATE_GENERIC_PROTOTYPE;
     prepared.prototype->resource_result_valid = false;
     fvm_value_undefined(&prepared.prototype->resource_result);
     prepared.prototype->attributes.swap(prepared.prototype_attributes);
-    prepared.klass->attributes.swap(prepared.class_attributes);
 }
 
 /* Map a native date callback to its stable serialization identifier. */

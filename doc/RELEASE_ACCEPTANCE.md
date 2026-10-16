@@ -2870,3 +2870,17 @@ The private constant header passes a strict C89 compile/run probe. No public ABI
 callback identity or wire format changes. Fixed constants do not establish exact
 transcendental behavior; all nine roadmap stages and non-Linux execution remain
 open. See MATH_ATTRIBUTES.md for pinned primary references and numeric scope.
+
+### v0.484 — independent Number/Date class activation
+
+RU: Linux minimal: 958 тестов, 945 прошли в полном прогоне; 13 не имели права
+исполнения и прошли после восстановления права. Все три новых теста прошли
+в AGG и heap/global ASan+UBSan (3/3 в каждом). Stack ASan/LSan отключены.
+
+EN: All three new regressions fail with v0.483 Number/Date implementations.
+Coverage includes SWF4–8, seven prototype shapes, C and three AVM1/JIT routes,
+protected writes/deletion, graph transfer without destination standard install,
+GC, reload, custom class fields/flags/metadata and new/new[] OOM rollback/retry.
+Prototype getters remain uncalled. No ABI, callback or graph format changes.
+The existing customized-prototype layout policy remains; all nine stages and
+non-Linux runtime acceptance remain open. See STATIC_CLASS_ACTIVATION.md.

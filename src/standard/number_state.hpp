@@ -20,9 +20,9 @@ struct FVM_NumberPrototypeActivation
     /* Start without a candidate; temporary maps own only names and numeric flags. */
     FVM_NumberPrototypeActivation() : prototype(0), klass(0) {}
 };
-/* Prepare the rooted host prototype and default flags without mutation; may throw. */
+/* Prepare class flags independently, then any unchanged host prototype; may throw. */
 void fvm_number_prepare_loaded(FVM_Context *, FVM_NumberPrototypeActivation &);
-/* Publish the prepared generic layout and flag maps without allocation or callbacks. */
+/* Publish class flags and any prepared generic layout without allocation or callbacks. */
 void fvm_number_commit_loaded(FVM_NumberPrototypeActivation &);
 
 /* Validate number. */

@@ -9,6 +9,7 @@
 #include "../core/numeric_constants.h"
 #include "../avm1/coercion.hpp"
 #include "flashvm/standard.h"
+#include "flashvm/property.h"
 #include <cmath>
 #include <limits>
 
@@ -398,6 +399,22 @@ void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &ou
     if (ctor == c->constructors.end() || ctor->second.callback != number_constructor || !ctor->second.root)
         return;
     FVM_Object *klass = ctor->second.root;
+    /* Class constants are independent of a replaced or edited prototype. */
+    out.class_attributes = klass->attributes;
+    const char *constant_names[] = {"MAX_VALUE", "MIN_VALUE", "NaN", "NEGATIVE_INFINITY", "POSITIVE_INFINITY"};
+    const double constants[] = {std::numeric_limits<double>::max(), std::numeric_limits<double>::denorm_min(),
+                               std::numeric_limits<double>::quiet_NaN(), -std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::infinity()};
+    for (unsigned int i = 0; i < sizeof(constant_names) / sizeof(constant_names[0]); ++i)
+    {
+        fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find(constant_names[i]);
+        if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_NUMBER && !stored->second.metatable &&
+            (stored->second.number == constants[i] || (stored->second.number != stored->second.number && constants[i] != constants[i])) &&
+            klass->attributes.find(constant_names[i]) == klass->attributes.end() &&
+            klass->accessors.find(constant_names[i]) == klass->accessors.end())
+            out.class_attributes[constant_names[i]] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_PROPERTY_READ_ONLY;
+    }
+    out.klass = klass;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator stored = klass->properties.find("prototype");
     if (stored == klass->properties.end() || stored->second.type != FVM_VALUE_OBJECT)
         return;
@@ -411,28 +428,14 @@ void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &ou
         text == proto->methods.end() || text->second.callback != number_string)
         return;
     out.prototype_attributes = proto->attributes;
-    out.class_attributes = klass->attributes;
     const char *method_names[] = {"valueOf", "toString"};
     for (unsigned int i = 0; i < 2; ++i)
     {
         fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = out.prototype_attributes.find(method_names[i]);
-        if (flags != out.prototype_attributes.end() && flags->second == 1 &&
+        if (flags != out.prototype_attributes.end() && flags->second == FVM_PROPERTY_DONT_ENUM &&
             proto->properties.find(method_names[i]) == proto->properties.end() &&
             proto->accessors.find(method_names[i]) == proto->accessors.end())
-            flags->second = 3;
-    }
-    const char *constant_names[] = {"MAX_VALUE", "MIN_VALUE", "NaN", "NEGATIVE_INFINITY", "POSITIVE_INFINITY"};
-    const double constants[] = {std::numeric_limits<double>::max(), std::numeric_limits<double>::denorm_min(),
-                               std::numeric_limits<double>::quiet_NaN(), -std::numeric_limits<double>::infinity(),
-                               std::numeric_limits<double>::infinity()};
-    for (unsigned int i = 0; i < 5; ++i)
-    {
-        stored = klass->properties.find(constant_names[i]);
-        if (stored != klass->properties.end() && stored->second.type == FVM_VALUE_NUMBER &&
-            (stored->second.number == constants[i] || (stored->second.number != stored->second.number && constants[i] != constants[i])) &&
-            klass->attributes.find(constant_names[i]) == klass->attributes.end() &&
-            klass->accessors.find(constant_names[i]) == klass->accessors.end())
-            out.class_attributes[constant_names[i]] = 7;
+            flags->second = FVM_PROPERTY_BUILTIN_FLAGS;
     }
     out.prototype = proto;
     out.klass = klass;
@@ -441,13 +444,14 @@ void fvm_number_prepare_loaded(FVM_Context *c, FVM_NumberPrototypeActivation &ou
 /* Commit the prepared Number native state and flag maps without a failing operation. */
 void fvm_number_commit_loaded(FVM_NumberPrototypeActivation &prepared)
 {
+    if (prepared.klass)
+        prepared.klass->attributes.swap(prepared.class_attributes);
     if (!prepared.prototype)
         return;
     prepared.prototype->resource_kind = NUMBER_GENERIC_PROTOTYPE;
     prepared.prototype->resource_result_valid = false;
     fvm_value_undefined(&prepared.prototype->resource_result);
     prepared.prototype->attributes.swap(prepared.prototype_attributes);
-    prepared.klass->attributes.swap(prepared.class_attributes);
 }
 
 /* Map a native number callback to its stable serialization identifier. */
