@@ -949,16 +949,10 @@ extern "C"
             if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
                 return fvm_table_set_index(c, o, index, v);
-            if (c->swf_loaded && c->swf_info.version < FVM_SWF_VERSION_7)
-            {
-                fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data = fvm_property_find(c, o->properties, key);
-                fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor = fvm_property_find(c, o->accessors, key);
-                fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method = fvm_property_find(c, o->methods, key);
-                if (data != o->properties.end()) key = data->first;
-                else if (accessor != o->accessors.end()) key = accessor->first;
-                else if (method != o->methods.end()) key = method->first;
-                else if (fvm_object_prototype_name(c, key) && fvm_object_intrinsic_prototype(c, o, &key)) key = "__proto__";
-            }
+            if (!fvm_property_select_own_name(c, o, key) &&
+                key != fvm_detail::string("__proto__") &&
+                fvm_object_prototype_name(c, key) && fvm_object_intrinsic_prototype(c, o, &key))
+                key = "__proto__";
             return fvm_object_set_no_index(c, o, key, v);
         }
         catch (const std::bad_alloc &)

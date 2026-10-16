@@ -3297,3 +3297,24 @@ of Super, which now correctly collides with the local implicit super name.
 Validation v0.423: Linux minimal 841/841; AGG 8/8; heap/global ASan+UBSan
 8/8. Generated native-mode launchers compensate for workspace mode resets.
 Stack ASan/LeakSanitizer remain disabled. Other platforms and all stages open.
+
+## v0.424 — mutate the selected own spelling
+
+Flag updates and deletion select the own stored spelling before mutation. A
+legacy alternate name now modifies/removes the same data, accessor or method
+as its read and membership query. DONT_DELETE is checked before erasure; successful
+deletion clears matching attributes, and inherited properties remain untouched.
+Selection snapshots the name before erasing tables and remains inside the C API
+allocation-failure boundary. Assignment shares the selector introduced here.
+Host/SWF7–8 exact spelling and the pre-existing flags-only API policy remain.
+
+`object_property_case_mutation` reproduced v0.423's mismatched flag update. It
+checks SWF4–8/host, data/accessors/methods, NUL/Unicode names, DONT_DELETE failure,
+clear/retry/delete, stale flags, inherited ownership, no callback execution and GC.
+Inherited setter/watch/definition/collision/budget and full super semantics are
+still open; this does not complete a roadmap stage.
+
+Validation v0.424: all 842 Linux minimal cases passed (840 initial successes;
+two process tests initially hit workspace child-executable PermissionError, then
+passed 2/2 after restoring mode). AGG 6/6; heap/global ASan+UBSan 6/6. Generated
+mode launchers used; stack ASan/LeakSanitizer disabled. Other OS/stages open.

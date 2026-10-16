@@ -57,6 +57,14 @@ extern "C" FVM_Result fvm_object_set_property_flags_bytes(FVM_Context *c, FVM_Ob
         FVM_Result normalized = fvm_property_key(name, size, key);
         if (normalized != FVM_OK)
             return normalized;
+        /* Resolve an own spelling before mutating flags or erasing its tables. */
+        if (!fvm_property_select_own_name(c, o, key))
+        {
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator attribute =
+                fvm_property_find(c, o->attributes, key);
+            if (attribute != o->attributes.end())
+                key = attribute->first;
+        }
         unsigned int old = 0;
         FVM_Result r = fvm_object_property_flags_bytes(c, o, key.data(), key.size(), &old);
         if (r != FVM_OK)
@@ -93,6 +101,14 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
         FVM_Result normalized = fvm_property_key(name, size, key);
         if (normalized != FVM_OK)
             return normalized;
+        /* Resolve an own spelling before mutating flags or erasing its tables. */
+        if (!fvm_property_select_own_name(c, o, key))
+        {
+            fvm_detail::map<fvm_detail::string, unsigned int>::iterator attribute =
+                fvm_property_find(c, o->attributes, key);
+            if (attribute != o->attributes.end())
+                key = attribute->first;
+        }
         unsigned int flags = 0;
         FVM_Result r = fvm_object_property_flags_bytes(c, o, key.data(), key.size(), &flags);
         if (r != FVM_OK)
