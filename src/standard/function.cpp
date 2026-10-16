@@ -7,6 +7,7 @@
 #include "constructor_identity.hpp"
 #include "function_apply_constants.h"
 #include "../avm1/coercion.hpp"
+#include "../avm1/handlers/class_prototype.hpp"
 #include "../avm1/scope_keywords.hpp"
 #include "../core/numeric_constants.h"
 #include "../core/property_key.hpp"
@@ -1239,7 +1240,7 @@ extern "C" FVM_Result fvm_function_construct(
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return r;
-        /* [GC:] A script prototype getter can collect before the constructor call
+        /* [GC:] An unloaded host prototype getter can collect before invocation
          * publishes this new instance as its receiver. Retain it across that gap. */
         FVM_ObjectRootScope instance_root(c, instance);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1247,7 +1248,15 @@ extern "C" FVM_Result fvm_function_construct(
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value proto;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        r = fvm_object_get(c, fn, "prototype", &proto);
+        if (c->swf_loaded)
+        {
+            /* AVM1 construction uses own stored data, not an ordinary property get. */
+            fvm_value_undefined(&proto);
+            fvm_avm1_stored_prototype(c, fn, proto);
+            r = FVM_OK;
+        }
+        else
+            r = fvm_object_get(c, fn, "prototype", &proto);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */

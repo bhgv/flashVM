@@ -1,26 +1,29 @@
-/* FlashVM: getter-free own class-prototype data lookup with versioned field spelling. */
+/* FlashVM: getter-free own class prototype data, including retained virtual-property values. */
 #ifndef FVM_CLASS_PROTOTYPE_HPP
 #define FVM_CLASS_PROTOTYPE_HPP /* Shared class prototype helper guard. */
 #include "../scope_keywords.hpp"
 #include "class_prototype_constants.h"
-/* Read only stored own prototype data; accessors and inherited fields do not participate. */
+#include "../../core/property_lookup.hpp"
+#include "../../standard/base_state.hpp"
+/* Read the own property's stored data; skip getters, inherited slots and resolver callbacks. */
 inline bool fvm_avm1_stored_prototype(FVM_Context *c, FVM_Object *object, FVM_Value &out)
 {
-    fvm_detail::map<fvm_detail::string, FVM_Value>::const_iterator i =
-        object->properties.find(FVM_CLASS_PROTOTYPE_NAME);
-    if (i != object->properties.end())
+    fvm_detail::string name(FVM_CLASS_PROTOTYPE_NAME);
+    fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data =
+        fvm_property_find(c, object->properties, name);
+    if (data != object->properties.end())
     {
-        out = i->second;
+        out = data->second;
         return true;
     }
-    if (c->swf_info.version < FVM_SWF_VERSION_7)
-        for (i = object->properties.begin(); i != object->properties.end(); ++i)
-            if (fvm_avm1_keyword_name(i->first, FVM_CLASS_PROTOTYPE_NAME, FVM_CLASS_PROTOTYPE_UNITS,
-                                      false))
-            {
-                out = i->second;
-                return true;
-            }
-    return false;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+        fvm_property_find(c, object->accessors, name);
+    if (accessor == object->accessors.end())
+        return false;
+    /* Script virtual properties retain the data overwritten by addProperty. Native
+       accessors without such stored data represent undefined here, never a getter call. */
+    fvm_value_undefined(&out);
+    fvm_base_accessor_data(accessor->second, out);
+    return true;
 }
 #endif

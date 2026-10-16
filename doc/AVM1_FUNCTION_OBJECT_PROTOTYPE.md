@@ -118,3 +118,26 @@ This is not full display lifecycle or all-allocator/concurrent acceptance.
 Validation v0.467: complete Linux minimal 912/912 and AGG 931/931; Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 6/6 selected checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+## v0.468 — stored script constructor prototypes
+
+Loaded Function construction reads own stored prototype data, skipping accessors,
+inherited fields and __resolve. The shared class-prototype reader now includes
+retained script-virtual data, so instanceof/Implements use the same raw value.
+A C native accessor without retained data yields undefined. Host construction
+keeps ordinary prototype lookup. Explicit fn.prototype still executes getters.
+Reference: ScriptObject::prototype/get_data in pinned Ruffle
+[script_object.rs](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/script_object.rs).
+function_constructor_stored_prototype reproduced the wrong constructed prototype.
+It checks host/SWF4–8, retained Object/primitive virtual data, throwing getters,
+native accessors, inheritance, legacy spelling, resolver exclusion, GC, instanceof
+and actual NewObject entries in three modes. The old NewObject fixture now checks
+that explicit reads invoke its getter while construction does not; all argument,
+GC and exception assertions remain. This supersedes earlier assumptions about
+loaded prototype-getter execution, while their argument snapshots remain needed.
+Native-method-backed prototype fields, registered clip prototype selection and
+full class compatibility remain open.
+
+Validation v0.468: complete Linux minimal 913/913; AGG, Linux-hosted NO_OS_PORTS
+and heap/global ASan+UBSan 8/8 targeted checks each. Stack ASan/LeakSanitizer
+disabled; all stages and foreign OS acceptance remain open.

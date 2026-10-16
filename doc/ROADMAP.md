@@ -1715,3 +1715,22 @@ Allocation-тест проверяет SWF4–8, data/accessor/native-method, OO
 Проверка v0.467: Linux minimal 912/912, AGG 931/931; Linux-hosted NO_OS_PORTS
 и heap/global ASan+UBSan — по 6/6. Stack ASan/LeakSanitizer отключены;
 все стадии и приёмка на других ОС остаются открытыми.
+
+## v0.468 — сохранённый prototype скриптового конструктора
+
+Загруженный конструктор читает собственное сохранённое значение prototype,
+обходя getter, наследование и __resolve. Общий reader для instanceof/Implements
+теперь учитывает сохранённые данные script-accessor. Нативный accessor без
+таких данных даёт undefined. Host сохраняет обычный поиск; явное fn.prototype
+продолжает вызывать getter. Эталон — prototype/get_data в Ruffle script_object.rs.
+Новый тест воспроизвёл ошибочный прототип; проверяет host/SWF4–8, Object/primitive
+данные accessor, throwing getters, native accessor, наследование, регистр,
+resolver, GC, instanceof и NewObject в трёх режимах. Старый NewObject-тест
+отличает явное чтение от построения, сохраняя аргументы/GC/исключения. Это
+уточняет прежние предположения о prototype getter; снимки аргументов необходимы.
+Prototype как native method, зарегистрированные клипы и полная совместимость
+остаются открытыми.
+
+Проверка v0.468: Linux minimal 913/913; AGG, Linux-hosted NO_OS_PORTS
+и heap/global ASan+UBSan — по 8/8. Stack ASan/LeakSanitizer отключены;
+все стадии и приёмка на других ОС остаются открытыми.
