@@ -201,7 +201,10 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
         if (r != FVM_OK)
             return r;
         if (!(flags & FVM_PROPERTY_READ_ONLY))
+        {
             o->resource_result.number = length;
+            fvm_property_clear_versions(c, o, "length");
+        }
         fvm_value_undefined(out);
         return FVM_OK;
     }
@@ -417,9 +420,9 @@ FVM_Result set_flags(FVM_Context *c, FVM_Object *, unsigned int n, const FVM_Val
         set = property_flag_number(set);
         clear = property_flag_number(clear);
     }
-    /* Version/visibility flag bits beyond the supported public mask remain rejected. */
+    /* Host embedding keeps its three-bit contract; loaded AVM1 retains UInt16 attributes. */
     if (set != set || clear != clear || set < 0 || clear < 0 ||
-        set > FVM_PROPERTY_VALID_FLAGS || clear > FVM_PROPERTY_VALID_FLAGS ||
+        (!c->swf_loaded && (set > FVM_PROPERTY_VALID_FLAGS || clear > FVM_PROPERTY_VALID_FLAGS)) ||
         set != std::floor(set) || clear != std::floor(clear))
         return FVM_INVALID_ARGUMENT;
 
@@ -1958,6 +1961,7 @@ FVM_Result store_receiver_data(FVM_Context *c, FVM_Object *receiver, const fvm_d
         receiver->properties[name] = stored;
     receiver->methods.erase(name);
     receiver->method_values.erase(name);
+    fvm_property_clear_versions(c, receiver, name);
     return FVM_OK;
 }
 
@@ -2016,6 +2020,8 @@ FVM_Result script_property_set(FVM_Context *c, FVM_Object *receiver, unsigned in
         }
         /* [GC:] Own copied string storage and managed edges before native argument roots unwind. */
         descriptor->properties["data"] = stored;
+        if (c->calling_setter_name)
+            fvm_property_clear_versions(c, receiver, *c->calling_setter_name);
     }
     return FVM_OK;
 }
@@ -2362,6 +2368,12 @@ void fvm_array_note_index(FVM_Object *o, unsigned long key)
             fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
             if (flags != o->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
                 return;
+            if (flags != o->attributes.end())
+            {
+                flags->second &= ~FVM_PROPERTY_AVM1_VERSION_MASK;
+                if (!flags->second)
+                    o->attributes.erase(flags->first);
+            }
         }
         o->resource_result.number = (double)key + 1;
     }
@@ -2407,6 +2419,7 @@ FVM_Result fvm_base_store_data(FVM_Context *c, FVM_Object *o, const fvm_detail::
         value.metatable = input.metatable;
     }
     descriptor->properties["data"] = value;
+    fvm_property_clear_versions(c, o, name);
     return FVM_OK;
 }
 

@@ -38,12 +38,13 @@ int main()
         args[0] = class_value(object); fvm_value_string(args + 1, "x");
         for (unsigned clear = 0; clear < 2; ++clear)
         for (unsigned i = 0; i < sizeof(numbers) / sizeof(numbers[0]); ++i) {
+            if (version) { fvm_value_number(args + 2, 0); fvm_value_number(args + 3, 65535); assert(fvm_call(c, "ASSetPropFlags", 4, args, &out) == FVM_OK); }
             assert(fvm_object_set_property_flags(c, object, "x", 0, 7) == FVM_OK && fvm_object_set_property_flags(c, object, "x", clear ? 7 : 0, 0) == FVM_OK);
             fvm_value_number(args + 2, clear ? 0 : numbers[i]); fvm_value_number(args + 3, clear ? numbers[i] : 0);
-            bool valid = version ? i != 6 && i != 7 && i != 10 : numbers[i] == 0;
+            bool valid = version || numbers[i] == 0;
             FVM_Result expected = valid ? FVM_OK : FVM_INVALID_ARGUMENT;
             assert(fvm_call(c, "ASSetPropFlags", 4, args, &out) == expected);
-            unsigned bits = i == 3 ? 1U : i == 4 ? 3U : i == 5 ? 7U : 0U, actual = 99;
+            unsigned bits = i == 3 ? 1U : i == 4 ? 3U : i == 5 ? 7U : i == 6 ? 8U : i == 7 || i == 10 ? 65535U : 0U, actual = 99;
             assert(fvm_object_property_flags(c, object, "x", &actual) == FVM_OK && actual == (valid ? clear ? 7U & ~bits : bits : clear ? 7U : 0U));
         }
         fvm_context_destroy(c);

@@ -2,6 +2,7 @@
 #include "support.hpp"
 #include "../../standard/super.hpp"
 #include "../../core/property_key.hpp"
+#include "../../core/property_lookup.hpp"
 #include "invoke_member_constants.h"
 #include "../../core/call_scope.hpp"
 #include "flashvm/function.h"
@@ -45,6 +46,10 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
                 *out = result;
             return status;
         }
+        fvm_detail::string stored_name;
+        FVM_Result normalized = fvm_property_key(key.string, fvm_string_size(key), stored_name);
+        if (normalized != FVM_OK)
+            return normalized;
         unsigned int depth = 0;
         for (FVM_Object *cursor = receiver; cursor; cursor = cursor->prototype)
         {
@@ -55,7 +60,7 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
                 fvm_object_has_own_bytes(c, cursor, key.string, fvm_string_size(key), &own);
             if (status != FVM_OK)
                 return status;
-            if (own)
+            if (own && fvm_property_available(c, cursor, stored_name))
             {
                 roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].type = FVM_VALUE_OBJECT;
                 roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].object = cursor;

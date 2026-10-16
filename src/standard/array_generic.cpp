@@ -171,7 +171,10 @@ void legacy_native_length(FVM_Object *o, unsigned long count)
         return;
     fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
     if (flags == o->attributes.end() || !(flags->second & FVM_PROPERTY_READ_ONLY))
+    {
         fvm_value_number(&o->resource_result, (double)count);
+        fvm_property_clear_versions(o->owner, o, "length");
+    }
 }
 
 /* Extend native Array length before raw own element storage without invoking accessors/watchers. */

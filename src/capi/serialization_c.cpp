@@ -3,6 +3,7 @@
  */
 
 #include "graph_constants.h"
+#include "../core/property_version_constants.h"
 #include "../core/string_internal.hpp"
 #include "../core/property_key.hpp"
 #include "../standard/movieclip_state.hpp"
@@ -409,7 +410,7 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                  dst.attributes.begin();
              flag != dst.attributes.end(); ++flag)
         {
-            require(flag->second <= 7);
+            require(flag->second <= FVM_PROPERTY_AVM1_FLAGS_MASK);
             charge(budget, flag->first.size() + 12);
             ++entries;
             require(entries <= max_entries, FVM_UNSUPPORTED);
@@ -1152,7 +1153,7 @@ Graph read_graph(Reader &r, unsigned int version)
             {
                 fvm_detail::string name = r.key();
                 unsigned long flags = r.u32();
-                require(flags <= 7 && o.attributes.find(name) == o.attributes.end());
+                require(flags <= FVM_PROPERTY_AVM1_FLAGS_MASK && o.attributes.find(name) == o.attributes.end());
                 o.attributes[name] = (unsigned int)flags;
             }
         }

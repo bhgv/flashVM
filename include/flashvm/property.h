@@ -16,11 +16,11 @@ extern "C"
 #define FVM_PROPERTY_DONT_DELETE 2
 /* Ignore writes through the ordinary property interface. */
 #define FVM_PROPERTY_READ_ONLY 4
-/* All supported attribute bits; reject flags outside this mask. */
+/* Embedding setters accept these three bits; loaded ASSetPropFlags may store UInt16 attributes. */
 #define FVM_PROPERTY_VALID_FLAGS (FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE | FVM_PROPERTY_READ_ONLY)
 /* Default attributes for built-in raw prototype slots. */
 #define FVM_PROPERTY_BUILTIN_FLAGS (FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE)
-    /* Implement object property flags for this subsystem. */
+    /* Query stored attributes, including UInt16 version bits set by loaded AVM1. */
     FVM_API FVM_Result fvm_object_property_flags(FVM_Context *, FVM_Object *, const char *,
                                                  unsigned int *);
     /* Update object property flags. */

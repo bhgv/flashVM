@@ -2047,3 +2047,12 @@ SWF attributes independently of optional prototype payload conversion.
 флаги/data/accessor, OOM, GC, перенос и C/AVM1/JIT. See
 [PROTOTYPE_METHOD_ACTIVATION.md](PROTOTYPE_METHOD_ACTIVATION.md). Customized
 payload/layout policy is preserved; all nine roadmap stages remain open.
+
+### v0.487 — UInt16 ASSetPropFlags and version visibility
+
+Реализованы UInt16-атрибуты и маски видимости SWF4–8 для обычных свойств,
+getter, нативных методов, __resolve и super; запись снимает версионные биты,
+перенос сохраняет их. Membership/enumeration и raw Array имеют отдельные правила.
+See [PROPERTY_VERSION_FLAGS.md](PROPERTY_VERSION_FLAGS.md) for tests, embedding
+contracts and old-reader limitations. The builtin version-annotation audit,
+intrinsic field interactions and all nine roadmap stages remain open.

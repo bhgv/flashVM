@@ -91,6 +91,11 @@ FVM_Result fvm_lookup_native_method(FVM_Object *object, const fvm_detail::string
         const fvm_detail::string &key = name;
         for (unsigned int depth = 0; object && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
+            if (!fvm_property_available(object->owner, object, key))
+            {
+                object = object->prototype;
+                continue;
+            }
             /* Function-valued data/accessor dispatch is still unsupported. A data
              * assignment must nevertheless shadow a previously registered method. */
             if (fvm_property_find(object->owner, object->properties, key) != object->properties.end() ||
@@ -129,6 +134,12 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
         while (o && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
+            /* Version-hidden own slots do not stop visible prototype lookup. */
+            if (!fvm_property_available(c, o, name))
+            {
+                o = o->prototype;
+                continue;
+            }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = fvm_property_find(c, o->properties, name);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
@@ -483,6 +494,12 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     while (cursor && accessor_depth++ < FVM_PROTOTYPE_MAX_DEPTH)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {
+        /* Own setters still run on hidden slots; hidden inherited virtuals are skipped. */
+        if (cursor != o && !fvm_property_available(c, cursor, name))
+        {
+            cursor = cursor->prototype;
+            continue;
+        }
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end())
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -660,6 +677,7 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     try
     {
         o->properties[name] = copy;
+        fvm_property_clear_versions(c, o, name);
         /* [GC:] Published own data replaces the hidden method and lazy wrapper roots. */
         o->methods.erase(name);
         o->method_values.erase(name);
@@ -1150,6 +1168,11 @@ extern "C"
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             {
                 /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
+                if (!fvm_property_available(c, cursor, key))
+                {
+                    cursor = cursor->prototype;
+                    continue;
+                }
                 if (fvm_property_find(c, cursor->properties, key) != cursor->properties.end() ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     fvm_property_find(c, cursor->accessors, key) != cursor->accessors.end())

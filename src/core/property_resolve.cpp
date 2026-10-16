@@ -44,6 +44,11 @@ FVM_Result fvm_property_resolve(FVM_Context *c, FVM_Object *start, FVM_Object *r
     FVM_Object *owner = start;
     for (unsigned int depth = 0; owner && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
+        if (!fvm_property_available(c, owner, key))
+        {
+            owner = owner->prototype;
+            continue;
+        }
         FVM_Value resolver;
         fvm_value_undefined(&resolver);
         fvm_detail::map<fvm_detail::string, FVM_Value>::iterator data =

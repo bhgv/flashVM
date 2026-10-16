@@ -1,5 +1,6 @@
 /* FlashVM: transactional raw __proto__ storage for loaded SWF objects. */
 #include "prototype_data.hpp"
+#include "property_lookup.hpp"
 #include <new>
 #include "flashvm/property.h"
 #include "../standard/base_state.hpp"
@@ -32,6 +33,7 @@ FVM_Result fvm_object_store_raw_prototype(FVM_Context *c, FVM_Object *object,
         object->properties.swap(properties);
         object->attributes.swap(attributes);
         object->prototype = prototype;
+        fvm_property_clear_versions(c, object, "__proto__");
         return FVM_OK;
     }
     catch (const std::bad_alloc &)

@@ -3,9 +3,11 @@
  */
 
 #include "../core/string_internal.hpp"
+#include "table_constants.h"
 #include "../standard/base_state.hpp"
 #include "../standard/super.hpp"
 #include "../core/property_watch.hpp"
+#include "../core/property_lookup.hpp"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
@@ -68,7 +70,7 @@ extern "C"
         {
             if (key > 0xffffffffUL)
                 return FVM_INVALID_ARGUMENT;
-            char name[32];
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
             std::sprintf(name, "%lu", key);
             if (key == 0xffffffffUL)
                 return fvm_object_set(c, o, name, v);
@@ -88,6 +90,10 @@ extern "C"
                 unsigned int depth = 0;
                 for (; cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH; cursor = cursor->prototype)
                 {
+                    if (cursor != o && !fvm_property_available(c, cursor, name))
+                    {
+                        continue;
+                    }
                     if (cursor->indexed.find(key) != cursor->indexed.end() ||
                         cursor->properties.find(name) != cursor->properties.end())
                         break;
@@ -125,12 +131,17 @@ extern "C"
         }
         if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
         {
-            char name[32];
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
             std::sprintf(name, "%lu", key);
             FVM_Object *cursor = o;
             unsigned int depth = 0;
             while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
             {
+                if (cursor != o && !fvm_property_available(c, cursor, name))
+                {
+                    cursor = cursor->prototype;
+                    continue;
+                }
                 if (cursor->indexed.find(key) != cursor->indexed.end() ||
                     cursor->properties.find(name) != cursor->properties.end())
                     break;
@@ -142,7 +153,7 @@ extern "C"
             if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
                 return FVM_ERROR;
         }
-        char watched_name[32];
+        char watched_name[FVM_TABLE_INDEX_KEY_BYTES];
         std::sprintf(watched_name, "%lu", key);
         if (!prepared_watch)
         {
@@ -156,6 +167,7 @@ extern "C"
         try
         {
             o->indexed[key] = x;
+            fvm_property_clear_versions(c, o, watched_name);
             fvm_array_note_index(o, key);
         }
         catch (...)
@@ -175,13 +187,13 @@ extern "C"
         bool standard_indices = o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT;
         if (standard_indices)
         {
-            char name[32];
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
             std::sprintf(name, "%lu", key);
             if (key > 0xffffffffUL)
                 return FVM_INVALID_ARGUMENT;
             if (key == 0xffffffffUL)
             {
-                char name[32];
+                char name[FVM_TABLE_INDEX_KEY_BYTES];
                 std::sprintf(name, "%lu", key);
                 return fvm_object_get(c, o, name, out);
             }
@@ -189,6 +201,11 @@ extern "C"
             unsigned int depth = 0;
             while (cursor && depth++ < FVM_PROTOTYPE_MAX_DEPTH)
             {
+                if (!fvm_property_available(c, cursor, name))
+                {
+                    cursor = cursor->prototype;
+                    continue;
+                }
                 fvm_detail::map<unsigned long, FVM_Value>::iterator i = cursor->indexed.find(key);
                 if (i != cursor->indexed.end())
                 {
@@ -206,6 +223,16 @@ extern "C"
         }
         for (unsigned int depth = 0; o && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
+            if (standard_indices)
+            {
+                char name[FVM_TABLE_INDEX_KEY_BYTES];
+                std::sprintf(name, "%lu", key);
+                if (!fvm_property_available(c, o, name))
+                {
+                    o = o->metatable;
+                    continue;
+                }
+            }
             fvm_detail::map<unsigned long, FVM_Value>::const_iterator it = o->indexed.find(key);
             if (it != o->indexed.end())
             {
@@ -216,7 +243,7 @@ extern "C"
         }
         if (standard_indices)
         {
-            char name[32];
+            char name[FVM_TABLE_INDEX_KEY_BYTES];
             std::sprintf(name, "%lu", key);
             return fvm_object_get_no_index(c, receiver, name, out);
         }

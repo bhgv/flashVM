@@ -2917,3 +2917,29 @@ attributes survive. Conservative native payload/length and host Array locale
 alias transitions remain unchanged. See PROTOTYPE_METHOD_ACTIVATION.md.
 No foreign-OS runtime or original Flash oracle acceptance is claimed;
 all nine roadmap stages remain open.
+
+### v0.487 — AVM1 property version attributes
+
+RU: Итоговый полный Linux minimal прогон: 968 тестов (960 сразу, 8 после
+восстановления права исполнения). Итоговый AGG: 987 (971 сразу, 16 после
+восстановления права). Девять целевых heap/global ASan+UBSan проверок прошли:
+8 сразу, transport после восстановления права. Stack ASan/LSan отключены.
+До итогового AGG-прогона расширенные флаги отвергались собранным base.cpp.o;
+после удаления этого сгенерированного объекта и пересборки расхождение исчезло.
+Причина исходного расхождения сборки не установлена; итоговый полный прогон
+проведён уже с пересобранным объектом. Оба новых private header прошли C89 probe.
+
+EN: The new visibility/update/inheritance/transport regressions fail with the
+v0.486 ordinary lookup/storage/codec objects linked alongside the current
+ASSetPropFlags setup, isolating lookup and transport from UInt16 acceptance.
+The super regression also failed before filtering the defining owner; it now
+checks exactly one parent execution in C/direct-invoke/interpreter/explicit/auto
+JIT modes. Eight new tests plus updated conversion checks cover UInt16 saturation,
+SWF4–8 masks, hidden members, readonly/setter rules, __resolve, coercion, raw Array
+operations, graph transfer to host/SWF contexts, counted names, cycles, GC,
+new/new[] rollback/retry and CRC-valid oversized attributes before allocation.
+The final minimal visibility check also passed after naming the unchanged index
+buffer bound. No public C89 signatures, callback IDs or graph layout changed;
+pre-v0.487 readers still reject attribute values above 7. Builtin declaration
+version annotations, intrinsic/display interactions, foreign-OS runtime checks
+and all nine roadmap stages remain open. See PROPERTY_VERSION_FLAGS.md.

@@ -226,6 +226,11 @@ FVM_Result fvm_super_get(FVM_Context *c, FVM_Object *facade, const fvm_detail::s
         FVM_Object *cursor = start;
         for (unsigned int depth = 0; cursor && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
         {
+            if (!fvm_property_available(c, cursor, name))
+            {
+                cursor = cursor->prototype;
+                continue;
+            }
             if (fvm_property_find(c, cursor->properties, name) != cursor->properties.end() ||
                 fvm_property_find(c, cursor->methods, name) != cursor->methods.end())
                 break;
@@ -265,6 +270,11 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
     FVM_Object *owner = start;
     for (unsigned int depth = 0; owner && depth < FVM_PROTOTYPE_MAX_DEPTH; ++depth)
     {
+        if (!fvm_property_available(c, owner, name))
+        {
+            owner = owner->prototype;
+            continue;
+        }
         if (fvm_property_find(c, owner->properties, name) != owner->properties.end() ||
             fvm_property_find(c, owner->accessors, name) != owner->accessors.end() ||
             fvm_property_find(c, owner->methods, name) != owner->methods.end())
