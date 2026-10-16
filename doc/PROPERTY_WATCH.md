@@ -104,3 +104,5 @@ Historical v0.14 call/apply boxing notes above describe host behavior; loaded
 current-global behavior is documented in PRIMITIVE_GLOBAL_BOXING.md (v0.474).
 Полная совместимость watch, version visibility, транспорта ресурсов и всех
 этапов роадмапа этим исправлением не заявляется.
+
+Loaded watcher depth is explicitly zero: [v0.502](WATCH_CALLBACK_SUPER.md).

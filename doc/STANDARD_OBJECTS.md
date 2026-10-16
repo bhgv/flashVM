@@ -160,3 +160,5 @@ Ordinary indexed member calls now agree between C and AVM1: [v0.499](OBJECT_INDE
 Loaded Function.call/apply use explicit superclass depth one: [v0.500](FUNCTION_ADAPTER_SUPER.md).
 
 Loaded virtual getters/setters use fixed superclass depth: [v0.501](PROPERTY_CALLBACK_SUPER.md).
+
+Loaded watcher superclass depth: [v0.502 details and tests](WATCH_CALLBACK_SUPER.md).

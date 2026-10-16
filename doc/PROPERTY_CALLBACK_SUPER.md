@@ -42,3 +42,5 @@ on 5/6/3 generated test binaries and rerunning those tests. Eight targeted
 ASan/UBSan tests passed, including all four new callback tests. The depth headers
 also passed a strict C89 syntax probe. These runs do not certify other operating
 systems or complete SWF compatibility.
+
+Watcher depth is separately fixed at zero in [v0.502](WATCH_CALLBACK_SUPER.md).

@@ -10,6 +10,7 @@
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
 #include "../core/property_watch_constants.h"
+#include "../core/call_scope.hpp"
 #include <new>
 /* Compute and return property watchable. */
 bool fvm_property_watchable(FVM_Object *object, const fvm_detail::string &name)
@@ -223,7 +224,15 @@ FVM_Result fvm_property_watch_prepare(
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return FVM_INVALID_ARGUMENT;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-        r = fvm_function_invoke(c, handler.object, object, 4, args, &result);
+        if (c->swf_loaded)
+        {
+            /* [GC:] Retain callback/receiver identities while fixing watcher super depth;
+             * the surrounding watcher frame separately retains its descriptor and values. */
+            FVM_CallScope scope(c, 0, handler.object, object, FVM_WATCH_CALLBACK_SUPER_DEPTH);
+            r = fvm_function_invoke(c, handler.object, object, 4, args, &result);
+        }
+        else
+            r = fvm_function_invoke(c, handler.object, object, 4, args, &result);
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
         if (r != FVM_OK)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
