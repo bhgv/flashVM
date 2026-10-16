@@ -1,4 +1,4 @@
-# Live function interfaces (v0.403)
+# Live function interfaces (v0.405)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -96,3 +96,9 @@ strings while releasing resources/roots. `function_remote_cleanup_allocation`
 checks these operations with every C++ allocation denied and mixed channel/
 function entries from two original heaps. This is not a promise that arbitrary
 user finalizers or full graph rollback require no memory.
+
+In v0.405, stopping an authority after mutex traffic releases persistent peer
+contexts without allocating identity strings. Peer keys use fixed nonce/context
+storage. A regression holds two remote mutexes and one original function export,
+denies all C++ allocations during stop, verifies released locks and retains the
+function's authority pin until source detachment.

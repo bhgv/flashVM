@@ -49,8 +49,13 @@ struct Entry
 /* Define Peer struct and its representation. */
 struct Peer
 {
-    fvm_detail::string key;
-    FVM_Context *context;
+    char key[FVM_CAPABILITY_PEER_KEY_STORAGE]; /* Inline source/process identity; stop never allocates keys. */
+    FVM_Context *context; /* [GC:] Authority-owned heap retaining this peer's mutex ownership. */
+    /* Begin without a peer identity or a heap to release. */
+    Peer() : context(0)
+    {
+        std::memset(key, 0, sizeof(key));
+    }
 };
 
 /* Exclusive ownership handoff for original function heaps, synchronized by the broker. */
@@ -473,16 +478,16 @@ FVM_Result dispatch(FVM_ResourceBroker *b, const unsigned char *h, const unsigne
         {
             if (!get(h + 104))
                 return FVM_ERROR;
-            char key[41];
-            std::memcpy(key, h + 72, 32);
-            std::sprintf(key + 32, "%08lx", get(h + 104));
+            char key[FVM_CAPABILITY_PEER_KEY_STORAGE];
+            std::memcpy(key, h + 72, FVM_CAPABILITY_PEER_SOURCE_BYTES);
+            std::sprintf(key + FVM_CAPABILITY_PEER_SOURCE_BYTES, FVM_CAPABILITY_PEER_CONTEXT_FORMAT, get(h + 104));
             for (size_t i = 0; i < b->peers.size(); ++i)
-                if (b->peers[i].key == key)
+                if (!std::strcmp(b->peers[i].key, key))
                     c = b->peers[i].context;
             if (!c)
             {
                 Peer peer;
-                peer.key = key;
+                std::memcpy(peer.key, key, sizeof(peer.key));
                 FVM_Result r = fvm_context_create(b->runtime, &peer.context);
                 if (r != FVM_OK)
                     return r;

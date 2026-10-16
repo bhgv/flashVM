@@ -1412,3 +1412,16 @@ embedding index. RU: назначение, требования, команды 
 находятся непосредственно в function_rpc. Documentation-only change; relative
 links and target/test names checked against source/CMake. No new runtime test
 result or stage completion claim.
+
+v0.405: retain mutex peer nonce/context keys inline so stop does not allocate
+strings while clearing destroyed client contexts. RU: остановка при нехватке
+памяти освобождает два удерживаемых удалённых мутекса и сохраняет корни функций.
+The new broker_peer_stop_allocation reproduced bad_alloc before the change;
+all-new-denied stop and subsequent source detachment now pass with two peer
+contexts and a live function export. Seven focused checks pass in AGG Release
+and restricted heap/global ASan+UBSan. Linux minimal passes 818/818 CTest checks;
+nine unchanged binaries require a generated, untracked mode-restoring launcher
+because the runner resets executable permission. Assertions/arguments are
+unchanged; the initial direct run passed 809 and could not start those nine.
+The expanded private constants pass strict C89 syntax. Stack ASan and
+LeakSanitizer disabled; no foreign OS/physical LAN claim and all stages remain open.
