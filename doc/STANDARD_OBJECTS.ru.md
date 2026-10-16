@@ -144,3 +144,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Запись ищет дальний virtual setter за промежуточными данными прототипов: [v0.495](DEEP_VIRTUAL_WRITE.md).
 
 Запись через super: числовые имена, watcher и отсутствие локального хранилища — [v0.497](SUPER_PROPERTY_WRITES.md).
+
+Чтение числовых свойств предков и владелец числового super-метода: [v0.498](SUPER_INDEXED_LOOKUP.md).

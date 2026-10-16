@@ -152,3 +152,5 @@ Signed literal property names and overflow growth: [v0.494](ARRAY_NAMED_INDEX.md
 Loaded writes search past intermediate prototype data for virtual setters: [v0.495](DEEP_VIRTUAL_WRITE.md).
 
 Loaded super property writes, numeric names and inert storage: [v0.497](SUPER_PROPERTY_WRITES.md).
+
+Selected indexed ancestor reads and numeric super-method owner identity: [v0.498](SUPER_INDEXED_LOOKUP.md).

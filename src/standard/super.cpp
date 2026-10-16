@@ -1,6 +1,7 @@
 /* FlashVM: retained superclass facades with receiver-preserving property/method dispatch. */
 #include "super.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/property_write.hpp"
 #include "../core/property_resolve.hpp"
 #include "../core/property_key.hpp"
 #include "inheritance.hpp"
@@ -275,9 +276,8 @@ static FVM_Result super_method_dispatch(FVM_Context *c, FVM_Object *facade, cons
             owner = owner->prototype;
             continue;
         }
-        if (fvm_property_find(c, owner->properties, name) != owner->properties.end() ||
-            fvm_property_find(c, owner->accessors, name) != owner->accessors.end() ||
-            fvm_property_find(c, owner->methods, name) != owner->methods.end())
+        if (fvm_property_own_write_data(c, owner, name) ||
+            fvm_property_find(c, owner->accessors, name) != owner->accessors.end())
             break;
         owner = owner->prototype;
     }

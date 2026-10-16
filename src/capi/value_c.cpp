@@ -129,6 +129,8 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
     if (!c || !o || o->owner != c || !receiver || receiver->owner != c || !out)
         return FVM_INVALID_ARGUMENT;
     fvm_value_undefined(out);
+    unsigned long index = 0;
+    const bool indexed_name = fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index);
     FVM_Object *start = o;
     try
     {
@@ -140,6 +142,16 @@ FVM_Result fvm_object_get_from(FVM_Context *c, FVM_Object *o, FVM_Object *receiv
             {
                 o = o->prototype;
                 continue;
+            }
+            /* Selected ancestor reads, including super, share ordinary indexed precedence. */
+            if (indexed_name && (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT))
+            {
+                fvm_detail::map<unsigned long, FVM_Value>::iterator slot = o->indexed.find(index);
+                if (slot != o->indexed.end())
+                {
+                    *out = slot->second;
+                    return FVM_OK;
+                }
             }
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             fvm_detail::map<fvm_detail::string, FVM_Value>::iterator it = fvm_property_find(c, o->properties, name);
