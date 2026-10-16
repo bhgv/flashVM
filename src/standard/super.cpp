@@ -138,7 +138,7 @@ FVM_NativeFunction fvm_super_callback()
     return invoke;
 }
 
-/* Build an activation's superclass reference using its actual constructor or method owner. */
+/* Build an activation's superclass reference from explicit depth or selected call ownership. */
 FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *receiver,
                             FVM_Value *out)
 {
@@ -147,28 +147,38 @@ FVM_Result fvm_super_create(FVM_Context *c, FVM_Object *callee, FVM_Object *rece
         return FVM_OK;
     try
     {
-        FVM_Object *owner = 0;
-        if (c->calling_constructor == callee)
-            owner = c->calling_owner ? c->calling_owner : receiver->prototype;
-        else if (c->calling_function == callee)
-            owner = c->calling_owner;
+        unsigned int depth = 0;
+        if (c->calling_function == callee &&
+            c->calling_super_depth != FVM_CALL_SCOPE_INFER_SUPER_DEPTH)
+        {
+            depth = c->calling_super_depth;
+            if (depth > FVM_PROTOTYPE_MAX_DEPTH)
+                return FVM_INVALID_ARGUMENT;
+        }
         else
         {
-            FVM_Result result = method_owner(receiver, callee, &owner);
-            if (result != FVM_OK)
-                return result;
+            FVM_Object *owner = 0;
+            if (c->calling_constructor == callee)
+                owner = c->calling_owner ? c->calling_owner : receiver->prototype;
+            else if (c->calling_function == callee)
+                owner = c->calling_owner;
+            else
+            {
+                FVM_Result result = method_owner(receiver, callee, &owner);
+                if (result != FVM_OK)
+                    return result;
+            }
+            if (!owner)
+                return FVM_OK;
+            FVM_Object *cursor = receiver;
+            while (cursor && cursor != owner && depth < FVM_PROTOTYPE_MAX_DEPTH)
+            {
+                cursor = cursor->prototype;
+                ++depth;
+            }
+            if (cursor != owner)
+                return FVM_OK;
         }
-        if (!owner)
-            return FVM_OK;
-        unsigned int depth = 0;
-        FVM_Object *cursor = receiver;
-        while (cursor && cursor != owner && depth < FVM_PROTOTYPE_MAX_DEPTH)
-        {
-            cursor = cursor->prototype;
-            ++depth;
-        }
-        if (cursor != owner)
-            return FVM_OK;
         FVM_Object *data = 0, *facade = 0;
         FVM_Result result = fvm_object_create(c, &data);
         if (result != FVM_OK)

@@ -148,3 +148,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Чтение числовых свойств предков и владелец числового super-метода: [v0.498](SUPER_INDEXED_LOOKUP.md).
 
 Вызовы числовых членов согласованы между C API и AVM1: [v0.499](OBJECT_INDEXED_CALL.md).
+
+Глубина super при Function.call/apply: [v0.500](FUNCTION_ADAPTER_SUPER.md).

@@ -234,6 +234,7 @@ struct FVM_Context
     FVM_Object *calling_constructor; /* [GC:] Constructor identity of the current call mode. */
     FVM_Object *calling_function;    /* [GC:] Function whose selected method owner is recorded. */
     FVM_Object *calling_owner; /* [GC:] Prototype or object that supplied the current method. */
+    unsigned int calling_super_depth; /* Explicit superclass depth, or the call-scope inference sentinel. */
     FVM_Object *calling_setter_owner; /* [GC:] Accessor lookup owner retained by the active setter scope. */
     const fvm_detail::string *calling_setter_name; /* Borrowed immutable key owned by the active setter scope. */
     bool exception_pending /* Whether an ActionScript exception is awaiting handling. */,

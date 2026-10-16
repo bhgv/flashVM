@@ -156,3 +156,5 @@ Loaded super property writes, numeric names and inert storage: [v0.497](SUPER_PR
 Selected indexed ancestor reads and numeric super-method owner identity: [v0.498](SUPER_INDEXED_LOOKUP.md).
 
 Ordinary indexed member calls now agree between C and AVM1: [v0.499](OBJECT_INDEXED_CALL.md).
+
+Loaded Function.call/apply use explicit superclass depth one: [v0.500](FUNCTION_ADAPTER_SUPER.md).

@@ -3,6 +3,7 @@
  */
 
 #include "../core/runtime.hpp"
+#include "../core/call_scope_constants.h"
 #include "../core/random_constants.h"
 #include "../core/timer.hpp"
 #include "../core/capability_internal.hpp"
@@ -159,6 +160,7 @@ extern "C"
         /* [GC:] Работаем с выбранным режимом планирования сборки. */
         /* [GC:] No constructor/method invocation is active in a new context. */
         context->calling_constructor = context->calling_function = context->calling_owner = 0;
+        context->calling_super_depth = FVM_CALL_SCOPE_INFER_SUPER_DEPTH;
         context->calling_setter_owner = 0;
         context->calling_setter_name = 0;
         /* [GC:] Start with the default collector scheduling mode. */

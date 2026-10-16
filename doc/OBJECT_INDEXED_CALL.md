@@ -44,3 +44,5 @@ and targeted reruns for 2/4 generated binaries. Six targeted restricted heap/glo
 ASan/UBSan checks pass: four new member-call tests and existing resolver/member
 callback controls. Stack ASan and LeakSanitizer remain disabled. No foreign OS
 runtime acceptance or original player oracle is added.
+
+Loaded call/apply superclass depth is addressed separately in [v0.500](FUNCTION_ADAPTER_SUPER.md).

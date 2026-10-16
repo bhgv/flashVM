@@ -7,6 +7,7 @@
 #include "constructor_identity.hpp"
 #include "function_apply_constants.h"
 #include "function_callback_constants.h"
+#include "function_super_constants.h"
 #include "../avm1/coercion.hpp"
 #include "../avm1/handlers/class_prototype.hpp"
 #include "../avm1/scope_keywords.hpp"
@@ -139,6 +140,14 @@ FVM_Result invoke_adapter(FVM_Context *c, FVM_Object *fn, FVM_Object *receiver,
     {
         fvm_value_undefined(out);
         return FVM_OK;
+    }
+    if (c->swf_loaded)
+    {
+        /* [GC:] Retain adapter target/owner while publishing a fixed superclass depth.
+         * The depth remains meaningful even when the receiver has no prototype. */
+        FVM_CallScope scope(c, 0, fn, receiver ? receiver->prototype : 0,
+                            FVM_FUNCTION_ADAPTER_SUPER_DEPTH);
+        return fvm_function_invoke(c, fn, receiver, n, args, out);
     }
     return fvm_function_invoke(c, fn, receiver, n, args, out);
 }
