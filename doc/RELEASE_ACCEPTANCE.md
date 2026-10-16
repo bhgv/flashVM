@@ -1425,3 +1425,14 @@ because the runner resets executable permission. Assertions/arguments are
 unchanged; the initial direct run passed 809 and could not start those nine.
 The expanded private constants pass strict C89 syntax. Stack ASan and
 LeakSanitizer disabled; no foreign OS/physical LAN claim and all stages remain open.
+
+v0.406: broker startup catches member-constructor failures within the public C
+boundary, returns OUT_OF_MEMORY/null for allocation failure and preserves explicit
+status failures while releasing initialized resources. RU: исключения строковых
+конструкторов не выходят из C API. broker_start_allocation reproduced escaped
+bad_alloc before the change; the allocation sweep, occupied-port failure and
+reuse after stop now pass. Eight focused checks pass in AGG Release and restricted
+heap/global ASan+UBSan. Minimal Release passes 819/819 with untracked generated
+mode-restoring native launchers (unchanged binaries/arguments/assertions) for the
+runner's permission-reset issue. Expanded private constants pass strict C89.
+Stack ASan and LeakSanitizer disabled; all stages and foreign runtime acceptance open.

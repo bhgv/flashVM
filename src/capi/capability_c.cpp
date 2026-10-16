@@ -905,66 +905,84 @@ FVM_Result fvm_function_capability_import(FVM_Context *c, const char *uri, FVM_O
     return status == FVM_OK ? fvm_function_create_native(c, function_proxy, capture, capture, out) : status;
 }
 
-/* Compute and return broker start. */
+/* Create an authority while containing constructor failures inside the public C ABI. */
 extern "C" FVM_Result fvm_broker_start(const char *bind, const char *host, unsigned short port,
                                        FVM_ResourceBroker **out)
 {
-    if (!bind || !host || !out || !host[0] || std::strlen(host) > 200 || std::strchr(host, ':') ||
+    if (!bind || !host || !out || !host[0] ||
+        std::strlen(host) > FVM_CAPABILITY_ADVERTISED_HOST_MAX || std::strchr(host, ':') ||
         std::strchr(host, '/'))
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    FVM_ResourceBroker *b = new (std::nothrow) FVM_ResourceBroker;
-    if (!b)
-        return FVM_OUT_OF_MEMORY;
-
-    /* Computation / Вычисление и обновление состояния. */
-    b->sync = 0;
-    b->listener = 0;
-    b->thread = 0;
-    b->runtime = 0;
-    b->references = 1;
-    b->stopped = false;
-    b->function_depth = 0;
-    /* [GC:] Broker wire conversion starts without active scoped adapters. */
-    b->adapter_contexts = 0;
-    /* [GC:] Count successful adapter creation independently of persistent mutex peers. */
-    b->adapter_requests = 0;
+    FVM_ResourceBroker *broker = 0;
+    FVM_Result failure = FVM_ERROR;
     try
     {
-        char id[FVM_FUNCTION_RPC_ID_STORAGE];
+        /* nothrow covers storage only: member string constructors can still throw. */
+        broker = new (std::nothrow) FVM_ResourceBroker;
+        if (!broker)
+            return FVM_OUT_OF_MEMORY;
+
+        /* Initialize every cleanup-visible handle before the first fallible operation. */
+        broker->sync = 0;
+        broker->listener = 0;
+        broker->thread = 0;
+        broker->runtime = 0;
+        broker->references = 1;
+        broker->stopped = false;
+        broker->function_depth = 0;
+        /* [GC:] Begin without borrowed graph adapters or persistent peer contexts. */
+        broker->adapter_contexts = 0;
+        broker->adapter_requests = 0;
+
+        char id[FVM_CAPABILITY_SESSION_STORAGE];
         if (!hex(id))
             throw FVM_ERROR;
-        b->host = host;
-        b->session = id;
-        b->sync = fvm_port_sync_create();
-        if (!b->sync)
+        broker->host = host;
+        broker->session = id;
+        broker->sync = fvm_port_sync_create();
+        if (!broker->sync)
             throw FVM_OUT_OF_MEMORY;
         FVM_Config config;
         fvm_config_init(&config);
         config.features = 0;
-        FVM_Result r = fvm_runtime_create(&config, &b->runtime);
-        if (r != FVM_OK)
-            throw r;
-        b->listener = fvm_port_tcp_listen(bind, port, &b->port);
-        if (!b->listener)
+        FVM_Result status = fvm_runtime_create(&config, &broker->runtime);
+        if (status != FVM_OK)
+            throw status;
+        broker->listener = fvm_port_tcp_listen(bind, port, &broker->port);
+        if (!broker->listener)
             throw FVM_ERROR;
-        b->thread = fvm_port_thread_start(serve, b);
-        if (!b->thread)
+        broker->thread = fvm_port_thread_start(serve, broker);
+        if (!broker->thread)
             throw FVM_ERROR;
-        *out = b;
+        *out = broker;
         return FVM_OK;
+    }
+    catch (FVM_Result status)
+    {
+        failure = status;
+    }
+    catch (const std::bad_alloc &)
+    {
+        failure = FVM_OUT_OF_MEMORY;
     }
     catch (...)
     {
-        if (b->listener)
-            fvm_port_socket_close(b->listener);
-        if (b->runtime)
-            fvm_runtime_destroy(b->runtime);
-        if (b->sync)
-            fvm_port_sync_destroy(b->sync);
-        delete b;
-        return FVM_ERROR;
+        failure = FVM_ERROR;
     }
+
+    /* [GC:] No service thread exists on failure; release only completely initialized handles. */
+    if (broker)
+    {
+        if (broker->listener)
+            fvm_port_socket_close(broker->listener);
+        if (broker->runtime)
+            fvm_runtime_destroy(broker->runtime);
+        if (broker->sync)
+            fvm_port_sync_destroy(broker->sync);
+        delete broker;
+    }
+    return failure;
 }
 
 /* Compute and return broker port. */

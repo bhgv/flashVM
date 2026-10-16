@@ -1,4 +1,4 @@
-# Live function interfaces (v0.405)
+# Live function interfaces (v0.406)
 
 A function can be transferred as a callable interface to the original function,
 including a C callback without a serialization codec. The original closure,
@@ -102,3 +102,9 @@ contexts without allocating identity strings. Peer keys use fixed nonce/context
 storage. A regression holds two remote mutexes and one original function export,
 denies all C++ allocations during stop, verifies released locks and retains the
 function's authority pin until source detachment.
+
+In v0.406, broker startup contains member-constructor allocation exceptions
+inside the C API and preserves explicit failure statuses. A failed valid startup
+returns a null handle; allocation failures report `FVM_OUT_OF_MEMORY`. The startup
+sweep covers constructor/runtime/string boundaries, occupied listener failure and
+successful reuse of the port after stopping the original listener.

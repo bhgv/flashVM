@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 6/7/9: authority startup C boundary | Проверено для v0.406 | Member constructor failures are contained as OUT_OF_MEMORY with null output; explicit errors retain status and initialized handles unwind. Allocation sweep, occupied listener and post-stop port reuse. broker_start_allocation. |
 | 6/7: persistent-peer stop under OOM | Проверено для v0.405 | Inline nonce/context keys avoid allocations while clearing mutex peer records. All-new-denied stop releases two acquired remote locks while preserving original-function/host pins until source detachment. broker_peer_stop_allocation. |
 | 6/7: individual function revocation/OOM cleanup | Проверено для v0.403 | Explicit revoke drops one authority root, stale interfaces reject, re-export changes target, host/other-owner pins survive. Inline fixed tokens avoid allocation in revoke/detach/entry removal at stop; mixed channel/function all-new-denied check. REMOTE_FUNCTIONS.md / .ru.md. |
 | 6/7/9: VM-thread and LAN examples | Проверено локально для v0.402 | Public Worker owns a second runtime/context; TCP interface reaches the original VM thread. Configurable bind/advertised host/port for LAN, IPv4/DNS/wildcard local process checks and strict port rejection. Two physical computers remain untested. FUNCTION_RPC_EXAMPLES.md / .ru.md. |
