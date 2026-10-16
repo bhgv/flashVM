@@ -2140,14 +2140,35 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
         if (status != FVM_OK)
             return status;
     }
+    FVM_Value callback;
+    fvm_value_undefined(&callback);
+    if (n > 1)
+        callback = a[1];
+    if (c->swf_loaded)
+    {
+        FVM_Result status = fvm_exec_to_object(c, &callback, &callback);
+        if (status != FVM_OK)
+            return status;
+        if (callback.type != FVM_VALUE_OBJECT)
+        {
+            FVM_Object *bare = 0;
+            status = fvm_object_create(c, &bare);
+            if (status != FVM_OK)
+                return status;
+            callback.type = FVM_VALUE_OBJECT;
+            callback.object = bare;
+        }
+    }
     if (n < 2 || name.type != FVM_VALUE_STRING || (!c->swf_loaded && !fvm_string_size(name)) ||
-        a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback)
+        callback.type != FVM_VALUE_OBJECT || !callback.object->invocable.callback)
         return FVM_OK;
 
     /* A super facade is not an ordinary Function callback in loaded AS. */
-    if (c->swf_loaded && a[1].object->resource_kind == FVM_RESOURCE_SUPER)
+    if (c->swf_loaded && callback.object->resource_kind == FVM_RESOURCE_SUPER)
         return FVM_OK;
 
+    /* [GC:] A native boxing factory may return an otherwise unretained Function. */
+    FVM_ObjectRootScope callback_root(c, callback.object);
     fvm_detail::string key;
     FVM_Result normalized = fvm_property_key(name.string, fvm_string_size(name), key);
     if (normalized != FVM_OK)
@@ -2166,7 +2187,7 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
     FVM_Result r = fvm_object_create(c, &descriptor);
     if (r != FVM_OK)
         return r;
-    r = fvm_object_set(c, descriptor, "handler", a + 1);
+    r = fvm_object_set(c, descriptor, "handler", &callback);
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Value undefined;

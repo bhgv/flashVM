@@ -2760,3 +2760,24 @@ permission repair. Three focused heap/global ASan+UBSan checks passed (4.50 s).
 Stack ASan and LeakSanitizer remain disabled. Native isPrototypeOf retains its
 GC barrier; getter-triggered collection is deliberately rejected and is not
 reported as actual GC execution. All roadmap stages remain open.
+
+### v0.478 — Object.watch callback projection
+
+RU: Добавлены `object_watch_global_boxing` (host/SWF4–8, три примитива,
+14 глобальных вариантов, C/saved method/три режима AVM1/JIT),
+`object_watch_projected_function` (Function/нефункция/примитив/ошибка/исключение,
+реальное срабатывание, userData, NUL-имя, удаление boxing-глобала, GC и перенос
+в контекст без standard install), `object_watch_boxing_order` (побочные эффекты
+преобразования имени определяют фабрику, ошибка имени не вызывает фабрику),
+`object_watch_boxing_allocation` (отказы new/new[], сохранение старого watcher,
+успешная повторная замена). Три первых поведенческих/OOM теста кроме отдельного
+order-теста воспроизводят ошибки на base.cpp из v0.477.
+
+EN: Linux minimal ran 942 tests: 917 passed initially; 23 executables lacked
+launch permission, also causing two process-driver failures. All 25 affected
+tests passed after repair. AGG ran 961: 935 passed initially and all 26
+unlaunchable binaries passed after repair. All four new heap/global ASan+UBSan
+tests passed together (3.00 seconds). Stack ASan/LeakSanitizer remain disabled.
+Registration retains its native GC barrier; actual post-registration GC and
+receiver-side collection after graph transfer are tested. No ABI/callback ID
+changes or non-Linux native execution are claimed. All nine stages remain open.

@@ -1953,3 +1953,17 @@ Tests cover versioned globals, getters/errors, three execution modes and OOM.
 через текущий глобальный конструктор. ToObject принимает только объектный
 результат; NewObject по-прежнему сохраняет примитив нативного конструктора.
 Проверки затрагивают этапы 1/2/7/8, не закрывая их и не заменяя приёмку этапа 9.
+
+### v0.478: watch callback boxing / преобразование callback в watch
+
+Loaded watch converts its callback through current global boxing constructors,
+after name conversion. A native factory may produce the actual installed
+Function; unsuccessful conversion preserves an existing watcher. Handler roots,
+GC after clearing the boxing global, graph transfer without standard installation,
+name/factory ordering, exceptions and OOM replacement retries are checked.
+
+В watch добавлено преобразование callback после преобразования имени.
+Проверены обычные и ошибочные глобалы, сохранение прежнего наблюдателя,
+GC/перенос обработчика и отказы памяти. Нативный GC-барьер при регистрации и
+поведение host без SWF сохранены. Это работа этапов 1/2/6/7/8; этап 9 и остальные
+стадии остаются открытыми до полной приёмки.

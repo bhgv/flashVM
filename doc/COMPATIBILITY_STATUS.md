@@ -4137,3 +4137,16 @@ side effects and failures. ToObject normalizes successful nonobject native
 constructor results to undefined; NewObject/NewMethod retain raw native values.
 Tests: object_prototype_global_boxing, to_object_native_primitive,
 object_prototype_boxing_allocation. All roadmap stages remain open.
+
+### v0.478 — watch callback object projection
+
+RU: watch в SWF преобразует callback через текущий глобальный конструктор после
+имени. Возвращённая Function становится наблюдателем; остальные результаты,
+ошибки и исключения не заменяют старый обработчик. Host-контракт прежний.
+
+EN: Loaded watch performs current-global callback boxing in name-first order.
+Actual Function results are rooted and installed with userData, survive clearing
+the boxing global and GC, and travel with the watched graph. Tests cover 14 global
+variants, C/saved-method/three AVM1/JIT routes, ordering and OOM replacement.
+Native registration keeps its collector barrier. Full version visibility,
+resource transport and roadmap acceptance remain open.

@@ -68,3 +68,39 @@ TextFormat стал переносимым конструктором-функц
 
 Перечисленные выше тесты проверяют эти возможности и отказы выделения памяти.
 Полная готовность Object/Array/Function/MovieClip этим этапом не заявляется.
+
+## v0.478 — callback argument projection / преобразование аргумента callback
+
+For loaded SWF 4–8, watch first converts its name to a string, then converts the
+callback to an object through the active global Number/Boolean/String constructor.
+An existing object is unchanged. Missing/nullish/unboxable callbacks get a fresh
+bare object and fail the Function test. A native boxing constructor can return an
+actual Function, which is installed as the handler with the original userData.
+Nonfunction results return false without replacing an existing watcher; errors
+and exceptions propagate before replacement. The unloaded host API still requires
+an already callable object. No-argument watch still returns false directly.
+
+The native watch barrier stays active during argument conversion. The projected
+Function is explicitly rooted until its descriptor owns it. Removing the boxing
+global and collecting afterwards preserves an installed handler; graph transfer
+to a loaded context without standard installation also preserves its behavior.
+Name conversion can change the selected global constructor. A failed name
+conversion must prevent callback conversion entirely. Native error output keeps
+the existing convention: undefined if entry was not reached, otherwise the
+initial false may remain; callers must use the result status.
+
+В SWF 4–8 watch сначала преобразует имя, затем callback через текущий глобальный
+конструктор. Если фабрика вернула Function, она устанавливается с исходным
+userData. Необъектный или невызываемый результат даёт false и сохраняет прежний
+watcher; ошибки и исключения также не заменяют его. Без SWF принимается только
+готовая вызываемая функция. Вызов без аргументов сразу возвращает false.
+Преобразованная функция защищена корнем до записи дескриптора. Проверяются
+порядок преобразований, удаление boxing-глобала и GC, перенос обработчика,
+сохранение старого watcher при каждом отказе памяти и успешный повтор.
+
+Tests: object_watch_global_boxing, object_watch_projected_function,
+object_watch_boxing_order, object_watch_boxing_allocation.
+Historical v0.14 call/apply boxing notes above describe host behavior; loaded
+current-global behavior is documented in PRIMITIVE_GLOBAL_BOXING.md (v0.474).
+Полная совместимость watch, version visibility, транспорта ресурсов и всех
+этапов роадмапа этим исправлением не заявляется.
