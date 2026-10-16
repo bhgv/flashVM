@@ -24,6 +24,12 @@ extern "C" FVM_Result fvm_exec_type_of(FVM_Context *c, const FVM_Value *value, F
         name = "string";
         break;
     case FVM_VALUE_OBJECT:
+        /* A callable parent facade is not an ordinary loaded Function value. */
+        if (c->swf_loaded && value->object->resource_kind == FVM_RESOURCE_SUPER)
+        {
+            name = "object";
+            break;
+        }
         name = value->object->invocable.callback || value->object->callable.callback ? "function"
                : value->object->resource_kind == FVM_RESOURCE_MOVIECLIP              ? "movieclip"
                                                                                      : "object";

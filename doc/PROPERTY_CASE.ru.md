@@ -294,3 +294,21 @@ jit_object_register_class_super повторяет регистрацию чер
 Проверено v0.440: Linux minimal 872/872; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.
+
+## v0.441 — TypeOf загруженного super
+
+Общий TypeOf возвращает `object` для загруженного фасада super, сохраняя прямой
+вызов родителя. Настоящие Function по-прежнему дают `function`, обычные экземпляры
+— `object`. Host-поведение сохранено. Классификация не выделяет память;
+закреплённый avm1/value.rs type_of проверяет as_function, а не общую вызываемость.
+
+object_super_typeof воспроизвёл прежний результат `function`, затем проверяет
+host/SWF5–8, запись C-helper в исходный FVM_Value, Function, экземпляры, GC и
+повтор, отсутствие вызова конструктора и сохранение прямого super.
+jit_object_super_typeof повторяет TypeOf в интерпретаторе и двух режимах JIT с
+настоящими нативными входами. Остальные рефлексия/преобразования super и все
+девять стадий остаются открытыми.
+
+Проверено v0.441: Linux minimal 874/874; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 4/4. Применены средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Все стадии остаются открытыми.

@@ -2061,3 +2061,22 @@ native entries. General constructor semantics and all stages remain open.
 Validation v0.440: Linux minimal 872/872; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
 ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
+
+## v0.441 — loaded super TypeOf
+
+The shared TypeOf helper reports `object` for a loaded super facade even though
+it supports explicit parent invocation. Real Function objects still report
+`function`; ordinary instances report `object`. Host behavior is retained.
+The allocation-free classification follows pinned avm1/value.rs type_of,
+which recognizes Functions through as_function rather than generic callability.
+
+object_super_typeof reproduces the previous `function` result, then checks
+host/SWF5–8, in-place C helper output, actual Functions, instances, collection
+and repeat, no constructor side effect, and preservation of direct super
+invocation. jit_object_super_typeof repeats TypeOf in interpreted, explicit
+and automatic JIT execution with real native entries. Other super reflection,
+conversion and all nine stages remain open.
+
+Validation v0.441: Linux minimal 874/874; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 4/4 each. Executable-mode launchers applied; stack
+ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.

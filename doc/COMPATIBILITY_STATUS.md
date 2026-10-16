@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 1/2/7/8: loaded super TypeOf | Проверено для v0.441 | object result for super, actual Function/instance controls, host, SWF5–8, in-place helper, GC and real native TypeOf. Direct parent invocation retained. PROPERTY_CASE.md / .ru.md; other reflection/conversion and stages remain open. |
 | 1/2/3/7/8: registerClass super validation | Проверено для v0.440 | Reject before name coercion, preserve prior constructor; host, SWF5–8, NUL, throwing conversion, retry/unregister, GC and actual native CallMethod. PROPERTY_CASE.md / .ru.md; full constructors and stages remain open. |
 | 1/2/7/8: borrowed Array super raw writes | Проверено для v0.439 | Seven methods run successively without facade/receiver mutation; SWF5–8, GC and actual native CallMethod entries. PROPERTY_CASE.md / .ru.md; complete super/Array and stages remain open. |
 | 1/2/7/8: borrowed Array raw length casing | Проверено для v0.438 | slice/push/splice resolve own LENGTH storage and flags in SWF4–6 without callbacks; SWF7–8 exact. Virtual/readonly/NUL and actual native CallMethod matrix. PROPERTY_CASE.md / .ru.md; full Array and stages remain open. |
