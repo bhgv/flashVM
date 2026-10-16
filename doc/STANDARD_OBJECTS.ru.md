@@ -160,3 +160,5 @@ objects_transfer_process.c, serialization_validation.c, error_allocation.cpp.
 Глубина super обработчика __resolve: [v0.504](RESOLVE_CALLBACK_SUPER.md).
 
 Глубина метода, возвращённого __resolve: [v0.505](RESOLVE_METHOD_SUPER.md).
+
+Глубина super обычного метода: [v0.506](MEMBER_CALL_SUPER_DEPTH.md).

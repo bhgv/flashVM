@@ -168,3 +168,5 @@ Watcher old-value visibility: [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).
 Resolver callback super depth: [v0.504](RESOLVE_CALLBACK_SUPER.md).
 
 Resolver-returned method depth: [v0.505](RESOLVE_METHOD_SUPER.md).
+
+Named method superclass depth: [v0.506](MEMBER_CALL_SUPER_DEPTH.md).

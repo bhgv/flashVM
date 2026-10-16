@@ -3,7 +3,7 @@
 #include "../../standard/super.hpp"
 #include "../../core/property_key.hpp"
 #include "../../core/property_lookup.hpp"
-#include "../../core/property_resolve_constants.h"
+#include "../../core/member_call_constants.h"
 #include "invoke_member_constants.h"
 #include "../../core/call_scope.hpp"
 #include "flashvm/function.h"
@@ -52,6 +52,7 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
         if (normalized != FVM_OK)
             return normalized;
         unsigned int depth = 0;
+        unsigned int super_depth = FVM_MEMBER_CALL_MIN_SUPER_DEPTH;
         for (FVM_Object *cursor = receiver; cursor; cursor = cursor->prototype)
         {
             if (++depth > FVM_PROTOTYPE_MAX_DEPTH)
@@ -65,6 +66,8 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
             {
                 roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].type = FVM_VALUE_OBJECT;
                 roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].object = cursor;
+                if (depth > FVM_MEMBER_CALL_MIN_SUPER_DEPTH)
+                    super_depth = depth - 1;
                 break;
             }
         }
@@ -81,11 +84,10 @@ extern "C" FVM_Result fvm_exec_invoke_member(FVM_Context *c, FVM_Object *receive
         FVM_Object *source = roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].type == FVM_VALUE_OBJECT
                                  ? roots.values[FVM_INVOKE_MEMBER_SOURCE_ROOT].object
                                  : 0;
-        /* [GC:] A dynamically returned loaded method has no stored owner; keep its
-         * method depth explicit instead of losing super through owner inference. */
+        /* [GC:] Keep the defining owner and pre-getter lookup depth independently;
+         * loaded own/dynamic methods use the same minimum superclass depth. */
         FVM_CallScope call(c, 0, function.object, source,
-                            c->swf_loaded && !source ? FVM_PROPERTY_RESOLVED_METHOD_SUPER_DEPTH
-                                                    : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
+                            c->swf_loaded ? super_depth : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
         FVM_Value result;
         fvm_value_undefined(&result);
         status = fvm_function_invoke(c, function.object, receiver, argc, args, &result);

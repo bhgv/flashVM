@@ -2,6 +2,7 @@
 #include "property_version_fixture.hpp"
 #include "../src/standard/super.hpp"
 #include "../src/standard/base_state.hpp"
+#include "../src/core/call_scope.hpp"
 static unsigned super_write_calls;
 static FVM_Object *super_write_receiver;
 static double super_write_length;
@@ -28,7 +29,9 @@ static FVM_Object *super_write_escape(FVM_Context *c, FVM_Object *receiver)
     Program escape; escape.variable("super"); escape.finish(); FVM_Object *function = 0; FVM_Value value, out;
     assert(fvm_function_create_avm1(c, escape.bytes.begin(), escape.bytes.size(), 0, 0, 0, &function) == FVM_OK);
     value = class_value(function); assert(fvm_object_set(c, receiver, "escape", &value) == FVM_OK);
-    assert(fvm_object_call(c, receiver, "escape", 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_OBJECT && out.object->resource_kind == FVM_RESOURCE_SUPER);
+    /* These property tests require a depth-zero facade independently of named-method rules. */
+    FVM_CallScope scope(c, 0, function, receiver, 0);
+    assert(fvm_function_invoke(c, function, receiver, 0, 0, &out) == FVM_OK && out.type == FVM_VALUE_OBJECT && out.object->resource_kind == FVM_RESOURCE_SUPER);
     return out.object;
 }
 #ifndef FVM_SUPER_WRITE_FIXTURE_ONLY

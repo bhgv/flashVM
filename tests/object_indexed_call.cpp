@@ -15,7 +15,8 @@ int main()
         FVM_Object *receiver = 0, *parent = 0, *far = 0, *method = 0;
         assert(fvm_construct(c, !inherited && array ? "Array" : "Object", 0, 0, &receiver) == FVM_OK && fvm_gc_pin(c, receiver) == FVM_OK);
         assert(fvm_construct(c, inherited && array ? "Array" : "Object", 0, 0, &parent) == FVM_OK && fvm_construct(c, "Object", 0, 0, &far) == FVM_OK);
-        FVM_Object *owner = inherited ? parent : receiver, *next = inherited ? far : parent;
+        /* Loaded own methods use depth one, just like immediate-prototype methods. */
+        FVM_Object *owner = inherited ? parent : receiver, *next = inherited || version ? far : parent;
         FVM_Value value = class_value(version_function(c, 91)), out, name;
         assert(fvm_object_set_bytes(c, next, keys[key], sizes[key], &value) == FVM_OK);
         Program body; body.variable("this"); body.text("calls"); body.variable("this"); body.text("calls"); body.op(0x4e); body.number(1); body.op(0x0a); body.op(0x4f);

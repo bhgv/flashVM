@@ -8,6 +8,7 @@
 #include "../core/property_watch.hpp"
 #include "../core/property_resolve.hpp"
 #include "../core/property_resolve_constants.h"
+#include "../core/member_call_constants.h"
 #include "../core/watch_write_scope.hpp"
 #include "flashvm/table.h"
 #include "flashvm/property.h"
@@ -1237,8 +1238,12 @@ extern "C"
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     if (member.type != FVM_VALUE_OBJECT)
                         return FVM_UNSUPPORTED;
-                    /* [GC:] Retain the selected method owner for nested superclass dispatch. */
-                    FVM_CallScope scope(c, 0, member.object, cursor);
+                    /* [GC:] Retain the actual owner separately from the lookup depth captured
+                     * before getter execution; own loaded methods have a minimum depth of one. */
+                    FVM_CallScope scope(c, 0, member.object, cursor,
+                                        c->swf_loaded ? (levels > FVM_MEMBER_CALL_MIN_SUPER_DEPTH
+                                            ? levels - 1 : FVM_MEMBER_CALL_MIN_SUPER_DEPTH)
+                                                      : FVM_CALL_SCOPE_INFER_SUPER_DEPTH);
                     return fvm_function_invoke(c, member.object, self, argc, argv, out);
                     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
                 }
