@@ -3559,3 +3559,25 @@ roadmap stages remain open. Native-accessor policy remains an embedding contract
 Validation v0.434: Linux minimal 861/861; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.
+
+## v0.435 — borrowed definitions on super
+
+Loaded borrowed Object.addProperty and Object.watch acknowledge valid arguments
+on a super facade without storing descriptors/watchers on it. Object.unwatch
+returns false for that facade. Name coercion and argument validation still run,
+including errors from a coercion callback. Loaded watch rejects a super facade
+as its callback: super has direct-call machinery, not ordinary Function identity.
+Host behavior is retained. Direct super.method calls still bind the underlying
+receiver; this change concerns explicitly borrowed methods with this = super.
+
+`object_super_definitions` reproduced v0.434's stored accessor. It checks SWF5–8
+and host, counted NUL names, accepted/rejected arguments, exact coercion counts,
+coercion exceptions, descriptor/watcher absence, callback rejection and GC.
+Primary references: pinned globals/object.rs add_property/watch/unwatch and
+script_object.rs add_property_with_case/watch/unwatch, which decline mutation
+of NativeObject::Super. Full facade reflection, native definition APIs, accessor
+callback projection and all roadmap stages remain open.
+
+Validation v0.435: Linux minimal 862/862; AGG, Linux-hosted NO_OS_PORTS and
+heap/global ASan+UBSan 5/5 each. Generated native-mode launchers used; stack ASan
+and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.

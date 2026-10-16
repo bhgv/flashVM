@@ -1090,3 +1090,24 @@ setter с цикличными объектами исключений и GC в 
 Проверено v0.434: Linux minimal 861/861; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 6/6. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Другие ОС и общая приёмка открыты.
+
+## v0.435 — заимствованное определение свойств super
+
+В загруженном режиме Object.addProperty и Object.watch с явно переданным this =
+super принимают корректные аргументы, но не сохраняют дескриптор/watcher на фасаде.
+Object.unwatch возвращает false. Преобразование имени и проверки выполняются,
+включая ошибки callback преобразования. Watch не принимает super как callback:
+внутренний прямой вызов родителя не делает его обычной Function. Host-поведение
+сохранено. Прямой super.method по-прежнему привязывает исходный объект; здесь
+исправлены явно заимствованные методы с this = super.
+
+object_super_definitions воспроизвёл запись аксессора v0.434. Проверены SWF5–8,
+host, NUL, допустимые/ошибочные аргументы, число преобразований, исключения
+преобразования, отсутствие дескрипторов/watcher, отказ callback и GC. Основание —
+закреплённые globals/object.rs add_property/watch/unwatch и script_object.rs
+add_property_with_case/watch/unwatch, отказывающиеся менять NativeObject::Super.
+Полная рефлексия фасада, native API, callback аксессора и стадии остаются открытыми.
+
+Проверено v0.435: Linux minimal 862/862; AGG, NO_OS_PORTS на Linux и
+heap/global ASan+UBSan — по 5/5. Использованы средства восстановления права
+запуска; stack ASan/LeakSanitizer отключены. Другие ОС и общая приёмка открыты.

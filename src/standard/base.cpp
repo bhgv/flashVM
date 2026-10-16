@@ -1880,6 +1880,12 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     normalized = fvm_property_key(converted_name.string, fvm_string_size(converted_name), name);
     if (normalized != FVM_OK)
         return normalized;
+    /* Valid definitions acknowledge super without storing private facade properties. */
+    if (c->swf_loaded && receiver->resource_kind == FVM_RESOURCE_SUPER)
+    {
+        fvm_value_boolean(out, 1);
+        return FVM_OK;
+    }
     /* Existing legacy-equivalent slots keep their stored name, data and attributes. */
     fvm_property_select_own_name(c, receiver, name);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -2016,10 +2022,20 @@ FVM_Result watch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM_V
         a[1].type != FVM_VALUE_OBJECT || !a[1].object->invocable.callback)
         return FVM_OK;
 
+    /* A super facade is not an ordinary Function callback in loaded AS. */
+    if (c->swf_loaded && a[1].object->resource_kind == FVM_RESOURCE_SUPER)
+        return FVM_OK;
+
     fvm_detail::string key;
     FVM_Result normalized = fvm_property_key(name.string, fvm_string_size(name), key);
     if (normalized != FVM_OK)
         return normalized;
+    /* The method succeeds for a valid callback, but super stores no watcher. */
+    if (c->swf_loaded && object->resource_kind == FVM_RESOURCE_SUPER)
+    {
+        fvm_value_boolean(out, 1);
+        return FVM_OK;
+    }
     if (!fvm_property_watchable(object, key))
         return FVM_OK;
 
@@ -2062,6 +2078,11 @@ FVM_Result unwatch(FVM_Context *c, FVM_Object *object, unsigned int n, const FVM
         result = fvm_property_key(name.string, fvm_string_size(name), key);
         if (result != FVM_OK)
             return result;
+        if (c->swf_loaded && object->resource_kind == FVM_RESOURCE_SUPER)
+        {
+            fvm_value_boolean(out, 0);
+            return FVM_OK;
+        }
         fvm_detail::map<fvm_detail::string, FVM_Object *>::iterator selected =
             fvm_property_find(c, object->watchers, key);
         present = selected != object->watchers.end();
