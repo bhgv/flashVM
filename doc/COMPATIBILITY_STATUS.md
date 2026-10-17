@@ -4380,6 +4380,23 @@ execution_mode_frame_replay; targeted ASan/UBSan. See
 are supported; asynchronous OS signals/SEH and native-PC unwinding remain open.
 SWF/SWD source import is the next user-requested debugger work. No roadmap stage
 is closed / все этапы остаются открытыми.
+### v0.549 — SWF ADPCM resource decoding
+
+Read/submit now decode format 1 with 2–5-bit codes, independent mono/stereo
+state, 4096-frame blocks and signed saturation. Full declared-stream validation
+precedes publication; no allocation or decoder cache is added. Metadata remains
+nominal. Other compressed codecs, eight-bit PCM, automatic timeline playback,
+mixing and native-platform acceptance remain open. No stage is closed.
+
+ADPCM format 1 реализован для явного чтения/отправки ресурса. Проверяется весь
+заявленный поток до записи; этапы роудмапа остаются открытыми.
+Validation v0.549: minimal suite 1142 passed plus one existing named-Unix-socket
+skip (1143 total). Three affected tests passed ASAN/UBSAN (LSAN disabled;
+external SDK/zlib uninstrumented). Eight independently packed FLV/SWF fixtures
+matched system FFmpeg byte-for-byte across widths 2–5 and mono/stereo, including
+saturation, adaptive indices and block transitions. Truncation leaves output
+unchanged; zero-length requests still reject truncated data. Catalog 90 entries
+and source/anchor links checked. This is not original Flash Player acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

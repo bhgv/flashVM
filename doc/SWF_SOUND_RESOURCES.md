@@ -23,12 +23,44 @@ this is not validation of the entire SWF character dictionary across all kinds.
 
 Wire layout reference: Adobe's [SWF specification, mirrored original PDF](https://open-flash.github.io/mirrors/swf-spec-19.pdf),
 DefineSound and audio coding formats. No original Flash Player acceptance is
-claimed. Decode support is deliberately limited to native-order legacy PCM
-format 0 and SWF4+ little-endian PCM format 3, both with 16-bit samples. Legacy
+claimed. Decode supports SWF ADPCM format 1 and native-order legacy PCM
+format 0 / SWF4+ little-endian PCM format 3 with 16-bit samples. Legacy
 format 0 preserves the original format's platform byte-order dependency.
 Format 3 converts little-endian bytes explicitly; signed limits are decoded
 without implementation-defined unsigned-to-signed narrowing. Rate code zero is
 represented as the nominal integer 5512 Hz, not a fractional resampling clock.
+
+## SWF ADPCM / дифференциальное аудио
+
+[`FVM_SWF_SOUND_ADPCM`](../include/flashvm/swf_sound.h#L10) identifies format 1. Read/submit decode two-, three-, four-
+and five-bit codes to signed-16 interleaved PCM. Each block contains its initial
+sample frame followed by up to 4095 differential frames. Channel state is
+independent; predictors saturate to signed-16 and step indices to 0..88. Blocks
+are not byte-aligned. The nominal header width does not change ADPCM output.
+
+Every read validates all declared sample frames before writing any destination
+value, including zero-length reads. Missing width/header/code bits return
+INVALID_ARGUMENT; a final partial block is permitted. Bytes/bits after the
+declared sample count are ignored (padding or extra encoded samples). Even an
+empty sound requires the two-bit code-width field. Metadata lookup alone does
+not validate the compressed body. No allocation or persistent decoder cache is
+introduced. Reads scan from the beginning twice when producing samples; repeated
+small slices are therefore not a real-time streaming interface. Submit adds its
+existing preflight validation and bounded PCM allocation.
+
+ADPCM format 1: 2–5 бит на код, независимые каналы, первый кадр блока хранится
+целиком; далее до 4095 дифференциальных кадров без выравнивания блоков на байт.
+Read сначала проверяет все заявленные кадры, затем публикует диапазон, поэтому
+ошибка в конце потока не меняет начало буфера. Нулевой диапазон тоже проверяет
+битстрим. Неполный последний блок допустим; лишние биты/байты после sample_count
+игнорируются. Даже пустому звуку нужны два бита ширины. Выход всегда S16,
+независимо от номинального header width. Память не выделяется, состояния между
+вызовами нет; повторные короткие чтения повторно обходят поток с начала.
+
+Independent oracle: `python3 scripts/check_swf_adpcm_ffmpeg.py
+build-crash/flashvm_examples_multimedia_swf_audio_main` uses system FFmpeg only
+as a test decoder through separately constructed FLV packets. Runtime ADPCM
+requires neither FFmpeg nor a multimedia SDK.
 
 ## Ownership, timing and collector rules
 
@@ -43,7 +75,7 @@ a caller destination overlapping canonical SWF storage.
 
 [GC:] Canonical SWF bytes are context-owned native storage, not a managed string
 or temporary root. Sound inspection introduces no managed graph edges or roots.
-[`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L37) converts to its own native PCM copy before host output.
+[`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L38) converts to its own native PCM copy before host output.
 The channel callback barrier blocks explicit GC and registry mutation; a callback
 which successfully reloads the context cannot invalidate that submitted copy.
 No VM locals, call arguments or per-frame debug snapshots are added by this API.
@@ -63,13 +95,13 @@ Zero-length supported ranges perform validation but never open/activate output.
 
 ## FVM_SWFSoundInfo and codec constants
 
-Set struct_size to sizeof([FVM_SWFSoundInfo](../include/flashvm/swf_sound.h#L12)) before info/at. Other fields are
+Set struct_size to sizeof([FVM_SWFSoundInfo](../include/flashvm/swf_sound.h#L13)) before info/at. Other fields are
 published only on success: sound_id is the UI16 key; format is the SoundFormat
 nibble; sample_rate is one of 5512/11025/22050/44100; bits_per_sample is the
 header 8/16 flag; channels is header mono/stereo; sample_count counts frames,
 not channel values; data/data_size are the complete borrowed SoundData range.
 For compressed codecs these header values can be ignored by the codec.
-[`FVM_SWF_SOUND_PCM_NATIVE`](../include/flashvm/swf_sound.h#L9) and [`FVM_SWF_SOUND_PCM_LE`](../include/flashvm/swf_sound.h#L10) identify the two uncompressed
+[`FVM_SWF_SOUND_PCM_NATIVE`](../include/flashvm/swf_sound.h#L9) and [`FVM_SWF_SOUND_PCM_LE`](../include/flashvm/swf_sound.h#L11) identify the two uncompressed
 formats; neither implies an eight-bit decoder is available. The struct is a
 borrowed view and is not graph-serializable device/resource ownership.
 
@@ -112,7 +144,7 @@ as many destination values as frames. A null PCM destination is accepted only
 for a zero-frame range; an empty range may start exactly at sample_count.
 
 **Results:** OK publishes written channel values and native signed-16 PCM.
-UNSUPPORTED rejects compressed/eight-bit data and incompatible host short
+UNSUPPORTED rejects other compressed codecs and eight-bit PCM and incompatible host short
 representation. INVALID_ARGUMENT rejects out-of-range intervals, insufficient
 capacity, nonempty null output and invalid lookup/lifecycle inputs. NOT_FOUND
 propagates a missing sound. A valid written pointer is set to zero before other
@@ -154,8 +186,8 @@ info ищет уникальный ненулевой UI16 ID. Все корне
 View содержит номинальные rate/channels/bits и borrowed SoundData, включая
 codec-specific префиксы. Данные живут до успешной перезагрузки/уничтожения
 контекста; обычный GC и неудачная загрузка view не инвалидируют. Read поддерживает
-только 16-bit PCM format 0 (native-endian) и format 3 (little-endian, SWF4+).
-8-bit и сжатые форматы пока UNSUPPORTED. Начало/размер диапазона — в sample frames,
+16-bit PCM format 0 (native-endian), format 3 (little-endian, SWF4+) и ADPCM format 1.
+8-bit PCM и остальные сжатые форматы пока UNSUPPORTED. Начало/размер диапазона — в sample frames,
 capacity/written — в short channel values. При ошибке PCM не пишется, written
 обнуляется; при ошибке count/info/at их назначения остаются прежними.
 
@@ -204,12 +236,13 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:28](../include/flashvm/swf_sound.h#L28) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:26](../include/flashvm/swf_sound.h#L26) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:30](../include/flashvm/swf_sound.h#L30) |
-| `FVM_SWF_SOUND_PCM_LE` | macro / define | [include/flashvm/swf_sound.h:10](../include/flashvm/swf_sound.h#L10) |
+| `FVM_SWF_SOUND_ADPCM` | macro / define | [include/flashvm/swf_sound.h:10](../include/flashvm/swf_sound.h#L10) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:27](../include/flashvm/swf_sound.h#L27) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:31](../include/flashvm/swf_sound.h#L31) |
+| `FVM_SWF_SOUND_PCM_LE` | macro / define | [include/flashvm/swf_sound.h:11](../include/flashvm/swf_sound.h#L11) |
 | `FVM_SWF_SOUND_PCM_NATIVE` | macro / define | [include/flashvm/swf_sound.h:9](../include/flashvm/swf_sound.h#L9) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:33](../include/flashvm/swf_sound.h#L33) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:37](../include/flashvm/swf_sound.h#L37) |
-| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:12](../include/flashvm/swf_sound.h#L12) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:34](../include/flashvm/swf_sound.h#L34) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:38](../include/flashvm/swf_sound.h#L38) |
+| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |
 <!-- source-links:end -->

@@ -14,9 +14,9 @@ cmake --build build-swf-audio --target flashvm_examples_multimedia_swf_audio_mai
 ./build-swf-audio/flashvm_examples_multimedia_swf_audio_main INPUT.swf 7 OUTPUT.pcm
 ```
 
-Нужен существующий SWF с **16-bit uncompressed DefineSound** ID 7; замените ID
+Нужен существующий SWF с **16-bit PCM или SWF ADPCM DefineSound** ID 7; замените ID
 на реально выбранный ненулевой UI16 key. Поддерживаются legacy native-order
-format 0 и SWF4+ little-endian format 3. Другие кодеки/8-bit печатают номинальные
+format 0, SWF4+ little-endian format 3 и ADPCM format 1 (2–5 бит на код). Другие кодеки/8-bit печатают номинальные
 метаданные, но submit возвращает UNSUPPORTED. Это не подтверждение их декодирования.
 Без аргументов — только usage, файлов/устройств нет. С аргументами вход читается,
 а output создаётся/перезаписывается только при первой поддерживаемой непустой
@@ -58,21 +58,21 @@ borrowed кадр, не меняет реестр каналов и не зап�
 ## Демонстрируемые API
 
 - [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical FWS/CWS storage: [область API](../../../doc/SWF_SOUND_RESOURCES.md#scope--область-реализации).
-- [`fvm_swf_sound_count`](../../../include/flashvm/swf_sound.h#L26), [`fvm_swf_sound_at`](../../../include/flashvm/swf_sound.h#L28) — подсчёт/порядок и ошибки дубликатов: [count](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_count), [at](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_at).
-- [`fvm_swf_sound_info`](../../../include/flashvm/swf_sound.h#L30) — borrowed metadata и уникальный ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_info).
-- [`fvm_swf_sound_submit`](../../../include/flashvm/swf_sound.h#L37) — явный диапазон и callback-independent PCM copy: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_submit).
+- [`fvm_swf_sound_count`](../../../include/flashvm/swf_sound.h#L27), [`fvm_swf_sound_at`](../../../include/flashvm/swf_sound.h#L29) — подсчёт/порядок и ошибки дубликатов: [count](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_count), [at](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_at).
+- [`fvm_swf_sound_info`](../../../include/flashvm/swf_sound.h#L31) — borrowed metadata и уникальный ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_info).
+- [`fvm_swf_sound_submit`](../../../include/flashvm/swf_sound.h#L38) — явный диапазон и callback-independent PCM copy: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_submit).
 - [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L80) — регистрация настоящего output callback: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий StopSounds, закрывающий sink: [семантика](../../../doc/AUDIO_CHANNELS.md#scope).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — VM ownership: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal channel cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
 Связанная функция, не вызываемая этим примером напрямую:
-[`fvm_swf_sound_read_pcm`](../../../include/flashvm/swf_sound.h#L33) — извлечение в caller-owned short buffer:
+[`fvm_swf_sound_read_pcm`](../../../include/flashvm/swf_sound.h#L34) — извлечение в caller-owned short buffer:
 [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_read_pcm).
 
 ## English
 
 A fully line-commented C89 executable enumerates root DefineSound resources from
-an explicit FWS/CWS and exports one selected 16-bit PCM sound through real stdio
+an explicit FWS/CWS and exports one selected PCM or SWF ADPCM sound through real stdio
 output. It opens no file/device without arguments, rejects invalid IDs and
 oversized input, and writes raw native-endian S16 in explicit 256-frame chunks.
 The named output is replaced when first used; an empty sound creates no file.
@@ -80,6 +80,9 @@ NO_MEDIA works without FFmpeg or ALSA. Unsupported codecs/8-bit remain inspectab
 metadata and return UNSUPPORTED for output. Host userdata outlives context teardown;
 StopSounds closes the actual FILE. This is explicit resource export, not an
 automatic timeline player, cached mixer or audible native-device acceptance.
+ADPCM produces native S16 output. Each chunk revalidates the declared stream;
+this export tutorial is not a cached real-time decoder. See the
+[ADPCM contract](../../../doc/SWF_SOUND_RESOURCES.md#swf-adpcm--дифференциальное-аудио).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -98,9 +101,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:28](../../../include/flashvm/swf_sound.h#L28) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:26](../../../include/flashvm/swf_sound.h#L26) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:30](../../../include/flashvm/swf_sound.h#L30) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:33](../../../include/flashvm/swf_sound.h#L33) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:37](../../../include/flashvm/swf_sound.h#L37) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:29](../../../include/flashvm/swf_sound.h#L29) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:27](../../../include/flashvm/swf_sound.h#L27) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:31](../../../include/flashvm/swf_sound.h#L31) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:34](../../../include/flashvm/swf_sound.h#L34) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:38](../../../include/flashvm/swf_sound.h#L38) |
 <!-- source-links:end -->

@@ -87,9 +87,9 @@ provide copied output tables, explicit ownership and shared StopSounds semantics
 Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia.h#L75), [`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L77) —
 [static ALSA provider contracts](ALSA_AUDIO_OUTPUT.md).
 
-Loaded SWF audio resource inspection and explicit PCM output: [`FVM_SWFSoundInfo`](../include/flashvm/swf_sound.h#L12),
-[`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L26), [`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L28), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L30),
-[`fvm_swf_sound_read_pcm`](../include/flashvm/swf_sound.h#L33), [`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L37) —
+Loaded SWF audio resource inspection and explicit PCM output: [`FVM_SWFSoundInfo`](../include/flashvm/swf_sound.h#L13),
+[`fvm_swf_sound_count`](../include/flashvm/swf_sound.h#L27), [`fvm_swf_sound_at`](../include/flashvm/swf_sound.h#L29), [`fvm_swf_sound_info`](../include/flashvm/swf_sound.h#L31),
+[`fvm_swf_sound_read_pcm`](../include/flashvm/swf_sound.h#L34), [`fvm_swf_sound_submit`](../include/flashvm/swf_sound.h#L38) —
 [SWF_SOUND_RESOURCES.md](SWF_SOUND_RESOURCES.md), [public header](../include/flashvm/swf_sound.h).
 
 ## Speech / Речевые службы
@@ -131,12 +131,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:28](../include/flashvm/swf_sound.h#L28) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:26](../include/flashvm/swf_sound.h#L26) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:30](../include/flashvm/swf_sound.h#L30) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:33](../include/flashvm/swf_sound.h#L33) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:37](../include/flashvm/swf_sound.h#L37) |
-| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:12](../include/flashvm/swf_sound.h#L12) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:27](../include/flashvm/swf_sound.h#L27) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:31](../include/flashvm/swf_sound.h#L31) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:34](../include/flashvm/swf_sound.h#L34) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:38](../include/flashvm/swf_sound.h#L38) |
+| `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |
 | `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 <!-- source-links:end -->

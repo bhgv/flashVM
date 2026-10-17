@@ -43,7 +43,7 @@ static int checked(FVM_Result result, const char *operation) /* Borrow the opera
     fprintf(stderr, "%s failed: %d\n", operation, (int)result); /* Keep unsupported codec/width and malformed data visible. */
     return 0; /* Preserve centralized cleanup. */
 } /* Finish error reporting. */
-/* Read an explicitly named file, enumerate root sounds and export a caller-selected 16-bit PCM sound. */
+/* Read an explicitly named file, enumerate root sounds and export a caller-selected PCM or ADPCM sound as S16. */
 int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertions. */
 { /* Begin input, VM and output ownership. */
     FVM_Config config; /* Initialize before creating the runtime. */
@@ -132,7 +132,7 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
         frames = info.sample_count - first; /* Determine remaining complete frames. */
         if (frames > TUTORIAL_SWF_PCM_CHUNK) /* Bound each temporary native PCM allocation. */
             frames = TUTORIAL_SWF_PCM_CHUNK; /* Let the host choose a small explicit chunk policy. */
-        if (!checked(fvm_swf_sound_submit(context, (unsigned int)sound_id, channel, first, frames), "sound_submit")) /* Convert supported S16 PCM and submit a callback-independent copy. */
+        if (!checked(fvm_swf_sound_submit(context, (unsigned int)sound_id, channel, first, frames), "sound_submit")) /* Decode supported PCM/ADPCM to S16 and submit a callback-independent copy. */
             goto cleanup; /* Unsupported codec/width never masquerades as decoded audio. */
         first += (unsigned long)frames; /* Advance by acknowledged sample frames without replay. */
     } while (first < info.sample_count); /* Finish only after the selected source range is exported. */

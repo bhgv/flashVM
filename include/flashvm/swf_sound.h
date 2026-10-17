@@ -7,6 +7,7 @@ extern "C"
 {
 #endif
 #define FVM_SWF_SOUND_PCM_NATIVE 0U /* Legacy uncompressed PCM follows the playback host byte order. */
+#define FVM_SWF_SOUND_ADPCM 1U /* SWF differential PCM with two through five bits per code. */
 #define FVM_SWF_SOUND_PCM_LE 3U /* SWF4+ uncompressed little-endian PCM. */
     /* Borrowed nominal metadata and complete SoundData for one root dictionary definition. */
     typedef struct FVM_SWFSoundInfo
@@ -28,7 +29,7 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_at(FVM_Context *, size_t, FVM_SWFSoundInfo *);
     /* Inspect a unique root DefineSound in canonical loaded bytes; no allocations or callbacks. */
     FVM_API FVM_Result fvm_swf_sound_info(FVM_Context *, unsigned int, FVM_SWFSoundInfo *);
-    /* Decode an explicit frame range of raw/native or little-endian 16-bit PCM into caller shorts.
+    /* Decode an explicit frame range of native/little-endian 16-bit PCM or SWF ADPCM into caller shorts.
      * capacity/written count channel values, not frames; failure writes no samples. */
     FVM_API FVM_Result fvm_swf_sound_read_pcm(FVM_Context *, unsigned int, unsigned long, size_t, short *, size_t,
                                               size_t *);

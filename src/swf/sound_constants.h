@@ -36,4 +36,10 @@
 #define FVM_SWF_SOUND_MOVIE_HEADER_BYTES 4U /* FrameRate and FrameCount follow RECT. */
 #define FVM_SWF_SOUND_MONO_CHANNELS 1U /* Header mono PCM frame geometry. */
 #define FVM_SWF_SOUND_STEREO_CHANNELS 2U /* Header stereo PCM frame geometry. */
+#define FVM_SWF_ADPCM_WIDTH_BITS 2U /* Encoded width-minus-two field. */
+#define FVM_SWF_ADPCM_MIN_WIDTH 2U /* Smallest differential code width. */
+#define FVM_SWF_ADPCM_INDEX_BITS 6U /* Initial step index width per channel. */
+#define FVM_SWF_ADPCM_BLOCK_FRAMES 4096UL /* Initial sample plus 4095 differential samples. */
+#define FVM_SWF_ADPCM_INDEX_MAX 88 /* Largest adaptive step-table index. */
+#define FVM_SWF_ADPCM_SAMPLE_MIN (-32768L) /* Saturated negative signed-16 limit. */
 #endif
