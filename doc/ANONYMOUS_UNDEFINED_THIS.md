@@ -36,11 +36,13 @@ retry with traced counted strings; transport checks destination caller cells.
 The v0.509 anonymous_call_super fixtures retain storage/deletion/GC/transport
 coverage but now expect Undefined rather than a fabricated superclass facade.
 
-Remaining limits: qualified path strings such as this.foo and native receiver
-coercion require separate compatibility work. No complete SWF or foreign-OS
+Follow-up v0.513 corrects qualified this paths; see
+[qualified path contract](ANONYMOUS_THIS_PATHS.md). Native receiver coercion and
+assignment of arbitrary values to the this cell require separate compatibility work. No complete SWF or foreign-OS
 acceptance is asserted. All nine roadmap stages remain open.
-Ограничения: составные строки путей вроде this.foo и преобразования получателя
-нативных функций требуют отдельной работы. Полная совместимость SWF и приёмка
+В v0.513 исправлены составные пути this; см. связанный документ. Преобразования
+получателя нативных функций и присваивание произвольных значений ячейке this
+требуют отдельной работы. Полная совместимость SWF и приёмка
 других ОС не заявляются; все девять этапов роадмапа остаются открытыми.
 
 Validation / Проверка: Linux x64 C++98 minimal 1051, AGG 1070 and Cairo 1071

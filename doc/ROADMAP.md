@@ -2130,3 +2130,12 @@ variants, and corrected anonymous_call_super regressions; interpreter and native
 JIT body bridges share the policy. See [RU/EN contract](ANONYMOUS_UNDEFINED_THIS.md).
 Qualified string paths, native receiver coercion, complete AVM1 compatibility
 and all nine roadmap stages remain open / остаются открытыми.
+
+### v0.513 — qualified Undefined this paths
+
+Implemented / реализовано: GetVariable, SetVariable and qualified Delete2 use
+Undefined this instead of the embedding receiver when selecting a path target.
+Tests / проверки: anonymous_this_paths (including transport and native JIT),
+its roots and allocation variants. See [RU/EN contract](ANONYMOUS_THIS_PATHS.md).
+Arbitrary this-cell assignment, native receiver coercion and all nine stages
+remain open / остаются открытыми.

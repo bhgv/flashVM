@@ -205,3 +205,9 @@ honestly records development version 0.511, parent 56bd1f8 and dirty=true.
 Minimal/AGG passed four targeted configuration/version/host checks each; Python
 suites passed 8 ELF-audit and 10 existing runner tests. These are Linux results;
 other OS acceptance, anonymous Undefined-this semantics and roadmap stages remain open.
+
+v0.513 checkpoint: after qualified-this runtime changes, the native Linux x64
+Cairo suite passed 1074 cases (permission repairs/reruns included). A fresh
+GNU readelf audit passed for 1063 CTest ELF arguments; only libc.so.6,
+libgcc_s.so.1, libm.so.6 and libstdc++.so.6 appeared in direct DT_NEEDED.
+No new foreign-OS or transitive/dlopen acceptance is implied.

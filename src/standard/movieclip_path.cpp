@@ -291,8 +291,12 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                 fvm_value_undefined(&value);
                 if (modern && path_this && name == fvm_detail::string("this"))
                 {
-                    value.type = FVM_VALUE_OBJECT;
-                    value.object = path_this;
+                    /* The embedding receiver cannot replace an Undefined script cell. */
+                    if (!c->script_this_undefined)
+                    {
+                        value.type = FVM_VALUE_OBJECT;
+                        value.object = path_this;
+                    }
                 }
                 else if (first && modern && cursor == c->global && fvm_avm1_global_keyword(c, name))
                 {

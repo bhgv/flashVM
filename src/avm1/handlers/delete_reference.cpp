@@ -61,8 +61,12 @@ extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scop
             if (modern && receiver && last == sizeof("this") - 1 &&
                 !std::memcmp(prefix.string, "this", sizeof("this") - 1))
             {
-                base.type = FVM_VALUE_OBJECT;
-                base.object = receiver;
+                /* A qualified Delete2 reads the this cell before selecting its member. */
+                if (!c->script_this_undefined)
+                {
+                    base.type = FVM_VALUE_OBJECT;
+                    base.object = receiver;
+                }
             }
             else
             {
