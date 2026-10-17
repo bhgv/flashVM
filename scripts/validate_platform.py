@@ -114,7 +114,7 @@ def validate_encoder(root, build, ctest, execute, record):
 def main():
     """Run selected profiles and always leave a pass/fail record, even on interruption."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profile', choices=['agg', 'cairo', 'minimal', 'all'], default='all')
+    parser.add_argument('--profile', choices=['agg', 'cairo', 'minimal', 'minimal-jit', 'all'], default='all')
     parser.add_argument('--build-root', type=Path)
     parser.add_argument('--cmake', default='cmake')
     parser.add_argument('--ctest', default='ctest')
@@ -146,7 +146,7 @@ def main():
             ['git', '-C', str(root), 'status', '--porcelain'], text=True).strip())
         report['tools'] = {name: tool_version(executable) for name, executable in
                            [('cmake', args.cmake), ('ctest', args.ctest)]}
-        for name in (['agg', 'cairo', 'minimal'] if args.profile == 'all' else [args.profile]):
+        for name in (['agg', 'cairo', 'minimal', 'minimal-jit'] if args.profile == 'all' else [args.profile]):
             build = output / name
             build.mkdir(exist_ok=True)
             record = {'name': name, 'commands': [], 'status': 'failed'}

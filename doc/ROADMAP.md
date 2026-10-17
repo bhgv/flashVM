@@ -2283,3 +2283,14 @@ Recorded v0.529 implementation evidence: minimal 1095; AGG/Cairo 1115 each;
 Nine targeted ASan/UBSan cases and 26 build-definition checks passed. См.
 [RU/EN checkpoint and limits](LINUX_CHECKPOINT_V529.md). No executable feature
 change. All nine completion stages remain open / остаются открытыми.
+
+### v0.531 — build-selected automatic JIT
+
+Implemented / реализовано: DEFS JIT seeds new contexts with automatic native
+compilation and interpreter fallback; INTERPRETER retains the manual default.
+Explicit options, independent contexts and destination graph policy remain
+available. Tests / проверки: execution_build_default and execution_modes;
+30 definition configurations. Native receiver frame metadata also fixes
+BitmapData.loadBitmap resource selection; its GC/transport scenarios run in
+three modes. See [RU/EN contract](JIT_BUILD_DEFAULT.md).
+Full backend/platform acceptance and all nine stages remain open.

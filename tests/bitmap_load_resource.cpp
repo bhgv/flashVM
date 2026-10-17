@@ -1,6 +1,7 @@
 #define FVM_BITMAP_SWF_FIXTURE_ONLY
 #include "swf_bitmap_fill.cpp"
 #include "flashvm/avm1.h"
+#include "flashvm/execution_mode.h"
 #include "../src/standard/bitmap_state.hpp"
 static inline FVM_Value bitmap_reference(FVM_Object *object){FVM_Value v;fvm_value_undefined(&v);v.type=FVM_VALUE_OBJECT;v.object=object;return v;}
 static inline FVM_Object *lookup_bitmap_class(FVM_Context *c)
@@ -34,10 +35,11 @@ static inline Bytes bitmap_load_action()
     push_text(code,"loadBitmap");code.push_back(0x52);code.push_back(0x4f);code.push_back(0);return code;
 }
 #ifndef FVM_BITMAP_LOAD_FIXTURE_ONLY
-int main()
+static void run(FVM_ExecutionMode mode)
 {
     FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0,*other=0;assert(fvm_config_init(&cfg)==FVM_OK);assert(fvm_runtime_create(&cfg,&rt)==FVM_OK);
-    assert(fvm_context_create(rt,&c)==FVM_OK);assert(fvm_context_create(rt,&other)==FVM_OK);assert(fvm_standard_install(c)==FVM_OK);
+    assert(fvm_context_create(rt,&c)==FVM_OK);assert(fvm_context_create(rt,&other)==FVM_OK);
+    assert(fvm_execution_set_mode(c,mode,0)==FVM_OK);assert(fvm_execution_set_mode(other,mode,0)==FVM_OK);assert(fvm_standard_install(c)==FVM_OK);
     FVM_Object *klass=lookup_bitmap_class(c);assert(loaded_bitmap(c,klass,"Tile").type==FVM_VALUE_NULL);
     Bytes swf=exported_bitmap_movie();FVM_Object *root=0;assert(fvm_movieclip_load_swf(c,swf.begin(),swf.size(),"root",&root)==FVM_OK);assert(fvm_gc_pin(c,root)==FVM_OK);
     FVM_Value root_value=bitmap_reference(root);assert(fvm_set_global(c,"_root",&root_value)==FVM_OK);
@@ -68,6 +70,13 @@ int main()
     assert(fvm_object_call(c,klass,"loadBitmap",1,&nul_name,&nul_out)==FVM_OK && nul_out.type==FVM_VALUE_NULL);
     FVM_Value evil;fvm_value_string(&evil,"invalid");FVM_Value prototype=get(c,klass,"prototype");assert(fvm_object_set(c,klass,"prototype",&evil)==FVM_OK);assert(fvm_set_global(c,"_root",&root_value)==FVM_OK);
     FVM_Value argument,out;fvm_value_string(&argument,"Tile");assert(fvm_object_call(c,klass,"loadBitmap",1,&argument,&out)==FVM_INVALID_ARGUMENT);assert(fvm_object_set(c,klass,"prototype",&prototype)==FVM_OK);
-    loaded_pixels(c,loaded_bitmap(c,klass,"Tile").object);fvm_context_destroy(other);fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;
+    loaded_pixels(c,loaded_bitmap(c,klass,"Tile").object);fvm_context_destroy(other);fvm_context_destroy(c);fvm_runtime_destroy(rt);
+}
+int main()
+{
+    run(FVM_EXECUTION_INTERPRETER);
+    run(FVM_EXECUTION_MANUAL);
+    run(FVM_EXECUTION_JIT);
+    return 0;
 }
 #endif

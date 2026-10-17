@@ -97,9 +97,9 @@ unbind **every** attachment before `fvm_jit_destroy`. Destruction during an acti
 invocation is rejected. The native-body graph codec already drops process-local
 attachments during transfer, preserving original bytecode. No generated code
 serialization or hotness policy exists. Runtime JIT mode now compiles/caches
-supported bodies automatically (EXECUTION_MODES.md). The `DEFS.txt` JIT build-default
-preset and `FVM_FEATURE_JIT` remain unavailable: runtime options work with the
-normal interpreter configuration. Other CPU/OS backends return unsupported.
+supported bodies automatically (EXECUTION_MODES.md). The `DEFS.txt` JIT preset starts new contexts in automatic JIT mode;
+INTERPRETER preserves the manual default. Both allow runtime overrides.
+`FVM_FEATURE_JIT` remains an unsupported runtime configuration bit. Other CPU/OS backends return unsupported.
 
 ## Lifetime, GC and failures
 
@@ -140,8 +140,9 @@ CPU execution, full Action coverage or Flash Player oracle equivalence is claime
 Пример `examples/embedding/jit/main.c` можно собрать и запустить командами выше.
 Одна функция исполняется интерпретатором и машинным кодом через общий ABI,
 получает одинаковые аргументы и возвращает 42. Исходный байткод сохранён.
-Неподдерживаемую функцию следует оставить интерпретатору; не надо включать
-зарезервированный ключ `JIT` или runtime-флаг `FVM_FEATURE_JIT`.
+Неподдерживаемые тела автоматически передаются интерпретатору. Ключ DEFS
+`JIT` включает автоматический режим для новых контекстов; `INTERPRETER`
+сохраняет прежний manual-режим. Runtime-флаг `FVM_FEATURE_JIT` не поддерживается.
 
 Код хранится в RW-памяти только при подготовке, затем память становится RX.
 Корни стека, лимит инструкций, GC и ошибки согласованы с общими службами VM.

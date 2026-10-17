@@ -10,7 +10,7 @@ extern "C"
     /* Manual preserves existing explicit native-body attachments; otherwise interprets. */
     typedef enum FVM_ExecutionMode
     {
-        FVM_EXECUTION_MANUAL = 0,      /* Default compatibility mode for embedding-owned bodies. */
+        FVM_EXECUTION_MANUAL = 0,      /* Compatibility mode; initial policy in INTERPRETER builds. */
         FVM_EXECUTION_INTERPRETER = 1, /* Bypass JIT bodies and automatic compilation. */
         FVM_EXECUTION_JIT = 2          /* Compile supported bodies; interpret unsupported ones. */
     } FVM_ExecutionMode;
@@ -62,7 +62,8 @@ extern "C"
     /* Change future entries; an active native frame finishes its selected body. Diagnostic
      * replay forces interpreter entries until it ends. Requested mode changes still persist. */
     FVM_API FVM_Result fvm_execution_set_mode(FVM_Context *, FVM_ExecutionMode, unsigned int flags);
-    /* Read requested mode/options without callbacks. */
+    /* Read requested mode/options without callbacks. New contexts start in JIT for
+     * DEFS JIT builds and MANUAL for DEFS INTERPRETER builds. */
     FVM_API FVM_Result fvm_execution_get_options(FVM_Context *, FVM_ExecutionOptions *);
     /* Register synchronous diagnostic logging, or restore the stderr logger with null/null. */
     FVM_API FVM_Result fvm_execution_set_logger(FVM_Context *, FVM_ExecutionLogger, void *);

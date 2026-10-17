@@ -13,7 +13,7 @@
 | База данных | SQLITE | NO_SQLITE |
 | Нативный ввод/TCP | OS_PORTS | NO_OS_PORTS |
 | Задания отрисовки | RENDER_JOBS | NO_RENDER_JOBS |
-| Исполнение | INTERPRETER | JIT — профиль по умолчанию зарезервирован; режимы API: EXECUTION_MODES.md |
+| Исполнение | INTERPRETER | JIT — автоматическая компиляция с fallback в интерпретатор; режимы API: EXECUTION_MODES.md |
 | Мультимедиа | NO_MEDIA | MEDIA — пока не реализован |
 
 `AUTO_PLATFORM` выбирает целевую ОС из toolchain CMake. Явный ключ ОС должен
@@ -61,7 +61,7 @@ FVM_ENABLE_RENDER дополнительно может потребовать �
 конфигурацию; `--cmake /путь/к/cmake` позволяет выбрать отдельную установку.
 `python3 scripts/check_vendor_sources.py` проверяет манифест встроенных исходников.
 
-Наличие ключей не означает завершение SWF-отрисовки, реализацию JIT или проверку
+Наличие ключей не означает завершение SWF-отрисовки, полноту JIT или проверку
 Windows/macOS/Android. Промежуточный premultiplied-буфер Cairo может округлять RGB
 при малой альфе иначе, чем AGG; отступы и нетронутые пиксели сохраняются.
 См. [подтверждающие проверки](DEPENDENCY_CHECKPOINT.ru.md).
@@ -75,3 +75,5 @@ FONTS (по умолчанию) / NO_FONTS — FreeType, HarfBuzz, libunibreak �
 адаптеры FreeType для выбранных AGG/Cairo, нативные API шрифтов/контуров.
 Все цели external статические независимо от BUILD_SHARED_LIBS. См.
 [подключение шрифтов](FONT_LIBRARIES.ru.md).
+
+See / см. [JIT build-default contract](JIT_BUILD_DEFAULT.md).

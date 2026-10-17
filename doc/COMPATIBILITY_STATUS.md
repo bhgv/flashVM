@@ -4340,3 +4340,14 @@ Tested / проверено: minimal 1095, AGG/Cairo 1115 each; fresh 26-case Un
 gates and direct ELF audits per profile; nine targeted ASan/UBSan cases. See
 [RU/EN evidence and scope](LINUX_CHECKPOINT_V529.md). Documentation-only version;
 full SWF compatibility and real foreign-OS acceptance remain open.
+
+### v0.531 — build-selected automatic JIT
+
+Implemented / реализовано: DEFS JIT seeds new contexts with automatic native
+compilation and interpreter fallback; INTERPRETER retains the manual default.
+Explicit options, independent contexts and destination graph policy remain
+available. Tests / проверки: execution_build_default and execution_modes;
+30 definition configurations. Native receiver frame metadata also fixes
+BitmapData.loadBitmap resource selection; its GC/transport scenarios run in
+three modes. See [RU/EN contract](JIT_BUILD_DEFAULT.md).
+Full backend/platform acceptance and all nine stages remain open.

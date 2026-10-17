@@ -29,6 +29,7 @@ static void execute(FVM_Context *c,const Program &p,FVM_Object *object,FVM_Value
     assert(fvm_function_create_avm1(c,p.bytes.begin(),p.bytes.size(),1,parameters,0,&function)==FVM_OK);
     assert(fvm_gc_pin(c,function)==FVM_OK);
     assert(fvm_jit_compile(p.bytes.begin(),p.bytes.size(),&native)==FVM_OK);
+    assert(fvm_execution_set_mode(c,FVM_EXECUTION_MANUAL,0)==FVM_OK);
     for(unsigned mode=0;mode<2;++mode)
     {
         fvm_value_number(&value,42);assert(fvm_object_set(c,object,"value",&value)==FVM_OK);
@@ -88,6 +89,7 @@ int main()
             for(unsigned mode=0;mode<2;++mode)
             {
                 assert(fvm_context_create(runtime,&contexts[mode])==FVM_OK);
+                assert(fvm_execution_set_mode(contexts[mode],FVM_EXECUTION_MANUAL,0)==FVM_OK);
                 if(version)assert(fvm_load_memory(contexts[mode],swf,sizeof(swf))==FVM_OK);
                 assert(fvm_standard_install(contexts[mode])==FVM_OK);
                 assert(fvm_function_create_avm1(contexts[mode],bytes,sizeof(bytes),0,0,0,&functions[mode])==FVM_OK);

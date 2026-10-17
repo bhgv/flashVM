@@ -94,8 +94,8 @@ and its required shared system libraries on the matching Linux target. Build
 third-party dependencies for that same target; do not link host libraries into a
 foreign executable. An installed riscv64 compiler can serve RV32 only if its
 multilib and Linux sysroot actually include the requested ILP32 ABI.
-The DEFS `INTERPRETER` selection includes the runtime JIT options; the reserved
-DEFS `JIT` build-default preset is still rejected. OS worker examples require OS
+The DEFS `INTERPRETER` selection includes the runtime JIT options; the
+DEFS `JIT` preset selects automatic compilation/fallback for new contexts. OS worker examples require OS
 ports; a minimal NO_OS_PORTS build prints an explicit unavailable message.
 
 ## Breakpoints and JIT / Точки останова

@@ -38,7 +38,9 @@ cases = [
     ('missing_graphics', base.replace('\nGRAPHICS_AGG\n', '\n# GRAPHICS_AGG\n'), 'requires exactly one key'),
     ('conflicting_graphics', base.replace('# GRAPHICS_CAIRO\n', 'GRAPHICS_CAIRO\n'), 'requires exactly one key'),
     ('wrong_platform', select(base, 'AUTO_PLATFORM', 'WINDOWS'), 'conflicts with target'),
-    ('jit', select(base, 'INTERPRETER', 'JIT'), 'not implemented'),
+    ('jit', select(base, 'INTERPRETER', 'JIT'), None),
+    ('missing_execution', base.replace('\nINTERPRETER\n', '\n# INTERPRETER\n'), 'requires exactly one key'),
+    ('conflicting_execution', base.replace('# JIT\n', 'JIT\n'), 'requires exactly one key'),
     ('media', select(base, 'NO_MEDIA', 'MEDIA'), 'not implemented'),
 ]
 for output in ('FB', 'GLES', 'OGL', 'DX', 'SDL1', 'SDL2', 'SDL3'):
@@ -75,6 +77,16 @@ with tempfile.TemporaryDirectory(prefix='flashvm-definitions-', dir=temporary_ro
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     assert conflict.returncode != 0 and 'conflicts with DEFS.txt' in conflict.stdout, conflict.stdout
     results.append({'case': 'cache_conflict', 'passed': True})
+    for name, text, switch in [('jit_cache_off', select(base, 'INTERPRETER', 'JIT'), 'OFF'),
+                               ('interpreter_cache_on', base, 'ON')]:
+        definitions = directory / (name + '.txt')
+        definitions.write_text(text)
+        conflict = subprocess.run([args.cmake, '-S', str(root), '-B', str(directory / name),
+                                   '-DFVM_DEFS_FILE=' + str(definitions),
+                                   '-DFVM_ENABLE_JIT=' + switch], text=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+        assert conflict.returncode != 0 and 'FVM_ENABLE_JIT conflicts with DEFS.txt' in conflict.stdout, conflict.stdout
+        results.append({'case': name, 'passed': True})
     # File changes trigger reconfiguration on a regular build, without -S/-B.
     definitions = directory / 'reconfigure.txt'
     definitions.write_text(base)

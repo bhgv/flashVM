@@ -15,7 +15,7 @@ rejects unknown keys, duplicates, empty groups and competing selections.
 | Database | SQLITE | NO_SQLITE |
 | Native input/TCP | OS_PORTS | NO_OS_PORTS |
 | Worker render jobs | RENDER_JOBS | NO_RENDER_JOBS |
-| Execution | INTERPRETER | JIT — build-default preset reserved; runtime modes: EXECUTION_MODES.md |
+| Execution | INTERPRETER | JIT — automatic compilation with interpreter fallback; runtime modes: EXECUTION_MODES.md |
 | Media | NO_MEDIA | MEDIA — not implemented |
 
 `AUTO_PLATFORM` resolves to the target OS reported by the CMake toolchain.
@@ -64,7 +64,7 @@ The standalone runner resolves only Linux; cross-platform builds use CMake.
 regeneration rules. `--cmake /path/to/cmake` selects a non-PATH installation.
 `python3 scripts/check_vendor_sources.py` verifies the bundled source manifest.
 
-The keys do not declare a complete SWF display engine, implemented JIT, or
+The keys do not declare a complete SWF display engine, complete JIT coverage, or
 validated Windows/macOS/Android runtime. Cairo's premultiplied intermediate
 buffer can round low-alpha RGB differently from AGG; padding and untouched
 pixels remain unchanged. See [checkpoint evidence](DEPENDENCY_CHECKPOINT.md).
@@ -73,3 +73,5 @@ FONTS builds static FreeType/HarfBuzz/libunibreak/FriBidi, enables the selected
 AGG/Cairo FreeType adapters and exposes native font/vector APIs. See
 [font integration](FONT_LIBRARIES.md). BUILD_SHARED_LIBS cannot override STATIC
 linkage of any selected external target.
+
+See / см. [JIT build-default contract](JIT_BUILD_DEFAULT.md).

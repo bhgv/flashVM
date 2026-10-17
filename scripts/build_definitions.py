@@ -34,8 +34,8 @@ def read_keys(path):
     for group in GROUPS:
         if sum(key in keys for key in group) != 1:
             raise ValueError('Exactly one DEFS.txt key required in: ' + ', '.join(group))
-    if 'HEADLESS' not in keys or 'JIT' in keys or 'MEDIA' in keys:
-        raise ValueError('Selected output/JIT/media adapter is not implemented')
+    if 'HEADLESS' not in keys or 'MEDIA' in keys:
+        raise ValueError('Selected output/media adapter is not implemented')
     if not sys.platform.startswith('linux'):
         raise ValueError('Standalone runner supports Linux; use CMake for other targets')
     if any(key in keys for key in ('WINDOWS', 'MAC', 'ANDROID')):

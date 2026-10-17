@@ -42,7 +42,8 @@ RENDER_JOBS
 # NO_RENDER_JOBS
 
 # Build-default execution: INTERPRETER includes runtime interpreter/JIT options (doc/JIT.md).
-# Ключ JIT пока не реализован как профиль по умолчанию; режим выбирается при вызове API.
+# JIT starts new contexts in automatic JIT mode with interpreter fallback.
+# JIT включает автоматическую компиляцию с fallback; API позволяет менять режим.
 INTERPRETER
 # JIT
 

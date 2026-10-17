@@ -26,10 +26,16 @@ struct FVM_ExecutionModeState
     size_t cache_bytes; /* Total emitted bytes owned by the automatic cache. */
     const fvm_detail::vector<fvm_detail::string> *native_pool;
         /* Borrowed prepared constant-pool snapshot during a native body; no GC edges. */
-    /* Preserve the previous manual native-body ABI unless options are explicitly selected. */
+    /* The build profile seeds each context; explicit entry/runtime options still take priority. */
     FVM_ExecutionModeState()
         : breakpoint_handler(0), breakpoint_data(0), breakpoint_busy(false),
-          mode(FVM_EXECUTION_MANUAL), flags(0), replay_depth(0), logger(0), logger_data(0),
+          mode(
+#if defined(JIT) && JIT
+              FVM_EXECUTION_JIT
+#else
+              FVM_EXECUTION_MANUAL
+#endif
+              ), flags(0), replay_depth(0), logger(0), logger_data(0),
           cache_bytes(0), native_pool(0)
     {
         std::memset(&stats, 0, sizeof(stats));

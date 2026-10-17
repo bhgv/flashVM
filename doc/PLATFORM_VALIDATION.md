@@ -17,9 +17,11 @@ repository root:
 python scripts/validate_platform.py --profile all --jobs 4
 ```
 
-The runner uses `cmake/profiles/agg.defs`, `cairo.defs` and `minimal.defs`, without
+The runner uses `cmake/profiles/agg.defs`, `cairo.defs`, `minimal.defs` and
+`minimal-jit.defs`, without
 editing DEFS.txt. AGG/Cairo enable fonts, codecs, SQLite, OS ports and render jobs;
-minimal disables graphics/fonts/codecs/SQLite but retains real workers/networking.
+The minimal profiles disable graphics/fonts/codecs/SQLite but retain real workers/networking;
+minimal-jit selects automatic JIT for new contexts.
 All profiles build tests, examples and the optional reference runner in Release.
 CTest retains assertions. Configure/build/test failures stop the run; zero tests
 is an error. Existing cross-build directories are rejected before execution.
@@ -265,3 +267,16 @@ The v0.529 implementation passed minimal (1095), AGG (1115) and Cairo (1115),
 plus fresh Unicorn/direct ELF gates. See [checkpoint](LINUX_CHECKPOINT_V529.md)
 for exact source/tool provenance, permission repairs and acceptance limits.
 This documentation checkpoint adds no runtime behavior or foreign-OS evidence.
+
+
+### Automatic-JIT release profile / профиль автоматического JIT
+
+`--profile minimal-jit` selects `cmake/profiles/minimal-jit.defs`; `--profile all`
+now also includes this fourth profile. It uses the same CTest, fresh optional
+Unicorn and direct ELF audit gates as other profiles. This checks the automatic
+context default across the full suite, including interpreter fallback, rather
+than only tests that explicitly enable JIT. See [RU/EN contract](JIT_BUILD_DEFAULT.md).
+
+Профиль `minimal-jit` проходит те же проверки, что остальные; `all` включает все
+четыре профиля. Проверяется начальный автоматический режим контекстов во всём
+наборе тестов. Это Linux-проверка; чужие ОС/CPU она не подтверждает.

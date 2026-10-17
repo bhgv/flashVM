@@ -76,8 +76,10 @@ On the tested Linux x86-64 backend it prints interpreter and JIT results 42.
 It then intentionally throws 111 in native execution, emits interpreter diagnostic
 steps to stderr, and reports one successful retry while preserving exception 111.
 On unsupported hosts the numerical path remains interpreted and the native
-exception demonstration is skipped. Build with the normal INTERPRETER profile;
-the DEFS JIT build-default preset/runtime feature bit remain reserved.
+exception demonstration is skipped. Both INTERPRETER and JIT build profiles support these runtime options.
+JIT seeds new contexts with automatic compilation/fallback; INTERPRETER retains
+the manual default. Explicit options initialization still selects interpreter.
+The runtime configuration feature bit remains reserved.
 
 The native compiler is still the subset in [JIT.md](JIT.md). Other instructions
 continue to work only to the extent supported by the interpreter; selecting JIT

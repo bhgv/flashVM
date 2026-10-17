@@ -52,6 +52,32 @@ FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry
         prepared_this = *this_value;
     /* [GC:] Retain current and suspended typed cells through all generated-body exits. */
     FVM_ThisCellScope identity(c, prepared_this);
+    /* [GC:] Resource callbacks inspect receiver frames as well as traced values.
+     * Publish physical and implicit receivers in interpreter order, including root JIT entries. */
+    struct ReceiverScope
+    {
+        FVM_Context *context; /* Context whose synchronous native activation is exposed. */
+        FVM_GCRootFrame physical; /* [GC:] Physical receiver and suspended root-chain link. */
+        FVM_GCRootFrame implicit; /* [GC:] Nearest implicit receiver, matching interpreter frames. */
+        /* [GC:] Link only initialized frames; neither frame owns operand/local storage. */
+        ReceiverScope(FVM_Context *c, FVM_Object *receiver) : context(c)
+        {
+            physical.previous = c->gc_frames;
+            physical.stack = 0;
+            physical.locals = 0;
+            physical.receiver = receiver;
+            implicit.previous = &physical;
+            implicit.stack = 0;
+            implicit.locals = 0;
+            implicit.receiver = c->script_this;
+            c->gc_frames = &implicit;
+        }
+        /* [GC:] Detach both frames before the typed-this scope restores the caller. */
+        ~ReceiverScope()
+        {
+            context->gc_frames = physical.previous;
+        }
+    } receivers(c, frame.receiver);
     /* The shared activation builder already selected its definition timeline. */
     FVM_AVM1TargetScope target(c, frame.receiver, true);
     FVM_Value ignored;

@@ -14,9 +14,10 @@
 python scripts/validate_platform.py --profile all --jobs 4
 ```
 
-Профили `cmake/profiles/{agg,cairo,minimal}.defs` не меняют DEFS.txt. AGG/Cairo
+Профили `cmake/profiles/{agg,cairo,minimal,minimal-jit}.defs` не меняют DEFS.txt. AGG/Cairo
 включают шрифты, кодеки, SQLite, OS ports и render jobs; minimal отключает графику,
-шрифты, кодеки и SQLite, сохраняя реальные потоки и сеть. Собираются Release,
+шрифты, кодеки и SQLite, сохраняя реальные потоки и сеть. minimal-jit включает
+автоматический JIT для новых контекстов. Собираются Release,
 все доступные тесты, примеры и reference runner. Assertions остаются включёнными.
 Ошибка любой фазы останавливает прогон; отсутствие тестов считается ошибкой.
 Существующая кросс-сборка не допускается к нативному запуску.
@@ -228,3 +229,16 @@ libstdc++. Код VM не менялся после полных прогоно�
 проверки Unicorn и прямых ELF-зависимостей. См. [результаты и ограничения](LINUX_CHECKPOINT_V529.md):
 коммит/инструменты, восстановление прав и область приёмки указаны явно.
 Эта версия документации не добавляет функций или доказательств запуска других ОС.
+
+
+### Automatic-JIT release profile / профиль автоматического JIT
+
+`--profile minimal-jit` selects `cmake/profiles/minimal-jit.defs`; `--profile all`
+now also includes this fourth profile. It uses the same CTest, fresh optional
+Unicorn and direct ELF audit gates as other profiles. This checks the automatic
+context default across the full suite, including interpreter fallback, rather
+than only tests that explicitly enable JIT. See [RU/EN contract](JIT_BUILD_DEFAULT.md).
+
+Профиль `minimal-jit` проходит те же проверки, что остальные; `all` включает все
+четыре профиля. Проверяется начальный автоматический режим контекстов во всём
+наборе тестов. Это Linux-проверка; чужие ОС/CPU она не подтверждает.
