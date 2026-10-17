@@ -11,6 +11,7 @@
 | --- | --- | --- |
 | x86 | i386 System V, cdecl, 32 бита | Исполнение машинных блоков в Unicorn |
 | x86-64 | Linux System V AMD64, 64 бита | Полная VM и примеры на текущей машине |
+| macOS x64 | Darwin C, цепочка RBP | Linux execution/AVM1 pipeline и SDK fixtures; нативная приёмка открыта |
 | Windows x64 | Microsoft x64, 64 бита | Реальные ms_abi-вызовы на Linux и SDK protocol fixtures; Windows OS/unwind приёмка ещё не выполнена |
 | ARM | ARMv7 A32, AAPCS32 | Unicorn, включая вызовы Thumb-обработчиков |
 | ARM64 | AArch64, AAPCS64, LP64 | Unicorn, включая адреса выше 4 ГБ |
@@ -173,7 +174,7 @@ CPU/ОС таким прогоном не проверяется.
 Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). v0.561 adds Windows x64 selection, W^X allocation and registered unwind metadata; native Windows execution is still unverified. / Добавлены выбор backend, W^X и unwind; нативный Windows запуск ещё не проверен.
 
 
-macOS Intel offline encoder and linked-frame validation / автономный генератор и цепочка кадров: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). v0.563 does not enable macOS runtime publication / публикация кода macOS пока не включена.
+macOS Intel offline encoder and linked-frame validation / автономный генератор и цепочка кадров: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). v0.564 adds classic desktop macOS x64 RW→RX publication and explicit signing preparation; native macOS acceptance remains pending / добавлены classic RW→RX и подготовка подписи, нативная приёмка ещё не выполнена.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

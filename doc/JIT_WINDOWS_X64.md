@@ -68,7 +68,7 @@ Windows target. Поэтому проверка доступности возв�
 
 ## Windows publication and ownership / Публикация и владение
 
-[`fvm_jit_host_target`](../src/jit/backend.cpp#L5) selects Microsoft x64 only for `_WIN32` with an ordinary
+[`fvm_jit_host_target`](../src/jit/backend.cpp#L6) selects Microsoft x64 only for `_WIN32` with an ordinary
 64-bit x86 ABI; 32-bit Windows, ARM64/ARM64EC and other unimplemented Windows ABIs
 remain unsupported. [`fvm_jit_backend_name`](../include/flashvm/jit.h#L15) reports `windows-x64`. Existing compile,
 function attachment, source/machine views, active-frame lifetime guards and
@@ -112,7 +112,7 @@ INVALID_ARGUMENT, известные ошибки нехватки памяти 
 копирования. Внутренний mapped служит cookie очистки, а не размером машинного
 кода; публичные размеры не включают unwind-таблицу, выравнивание и страницы ОС.
 
-[`fvm_port_code_release`](../ports/code_port.c#L73) unregisters using `RtlDeleteFunctionTable` **before**
+[`fvm_port_code_release`](../ports/code_port.c#L75) unregisters using `RtlDeleteFunctionTable` **before**
 `VirtualFree(MEM_RELEASE)`. A null/inactive mapping needs no work. Callers must
 ensure no active frame, debugger stack walk or other thread is using the mapping;
 existing host ownership rules do not permit release races. If OS unregistration
@@ -143,8 +143,8 @@ SDK; сам Windows SDK необходим. MSVC/multi-config использую
 `tests/jit_windows_unwind.cpp` is a Windows-only acceptance fixture: it queries the
 OS table with `RtlLookupFunctionEntry`, virtually unwinds synthetic frames with
 `RtlVirtualUnwind` at prologue offsets 0/4/6/10/13, checks r12/RSP/return recovery
-and checks table removal on destroy. Its body is omitted on Linux; a Linux CTest
-pass for that binary is not Windows unwind evidence.
+and checks table removal on destroy. Its body is omitted on Linux; since v0.564 CTest explicitly reports it as Skipped
+there. Earlier Linux passes for an empty body were not Windows unwind evidence.
 
 ## Validation / Проверки
 
@@ -193,7 +193,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
 | `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
 | `fvm_jit_encode` | function | [src/jit/backend.hpp:29](../src/jit/backend.hpp#L29) |
-| `fvm_jit_host_target` | function | [src/jit/backend.cpp:5](../src/jit/backend.cpp#L5) |
+| `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
 | `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
 | `FVM_JIT_TARGET_WINDOWS_X64` | enum constant | [src/jit/backend.hpp:16](../src/jit/backend.hpp#L16) |
 | `FVM_JIT_WIN64_ALLOC_END` | enum constant | [ports/windows/code.c:34](../ports/windows/code.c#L34) |
@@ -201,6 +201,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_JIT_WIN64_PUSH_END` | enum constant | [ports/windows/code.c:35](../ports/windows/code.c#L35) |
 | `FVM_JIT_WIN64_SHADOW_BYTES` | enum constant | [ports/windows/code.c:26](../ports/windows/code.c#L26) |
 | `FVM_JIT_WIN64_UNWIND_CODES` | enum constant | [ports/windows/code.c:33](../ports/windows/code.c#L33) |
-| `fvm_port_code_create` | function | [ports/code_port.c:30](../ports/code_port.c#L30) |
-| `fvm_port_code_release` | function | [ports/code_port.c:73](../ports/code_port.c#L73) |
+| `fvm_port_code_create` | function | [ports/code_port.c:32](../ports/code_port.c#L32) |
+| `fvm_port_code_release` | function | [ports/code_port.c:75](../ports/code_port.c#L75) |
 <!-- source-links:end -->

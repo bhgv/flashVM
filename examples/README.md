@@ -61,7 +61,7 @@
     - [input_queue](#example-embedding-input_queue) — <small><em>Очередь ввода и обработка на VM-потоке</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
-    - [jit](#example-embedding-jit) — <small><em>Компиляция AVM1 и подключение JIT-тела</em></small>
+    - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
     - [jit_debug](#example-embedding-jit_debug) — <small><em>Source map, breakpoint и статистика JIT</em></small>
     - [jit_instances](#example-embedding-jit_instances) — <small><em>Две VM с независимыми JIT-кэшами</em></small>
     - [jit_workers](#example-embedding-jit_workers) — <small><em>Два worker с отдельными VM и JIT</em></small>
@@ -724,7 +724,8 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 #### jit
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/jit/README.md](embedding/jit/README.md).
-Руководство также ссылается на macOS Intel offline encoder с проверенной на Linux цепочкой RBP.
+Показывает ABI сборки; MANUAL и счётчик native entries подтверждают интерпретацию до привязки и реальный JIT после неё.
+Руководство также описывает macOS Intel backend, RW→RX, цепочку RBP и необязательную подготовку подписи через entitlement plist.
 Руководство описывает Windows x64 backend, W^X/unwind и Linux ms_abi evidence, отдельно отмечая ещё не выполненную нативную Windows приёмку.
 
 Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../src/jit/internal.hpp#L59) и interpreter fallback.

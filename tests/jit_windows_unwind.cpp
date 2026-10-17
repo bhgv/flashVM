@@ -28,6 +28,8 @@ int main()
  }
  assert(fvm_jit_destroy(code)==FVM_OK);
  assert(!RtlLookupFunctionEntry((DWORD64)(ULONG_PTR)machine+13,&base,0));
+#else
+ return 77;
 #endif
  return 0;
 }

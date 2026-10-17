@@ -1,6 +1,8 @@
 /* FlashVM: OS-specific W^X executable mappings with instruction-cache synchronization. */
 #if defined(_WIN32)
 #include "windows/code.c"
+#elif defined(__APPLE__) && defined(__MACH__)
+#include "mac/code.c"
 #else
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* Request MAP_ANONYMOUS from the platform headers. */
@@ -81,4 +83,4 @@ void fvm_port_code_release(void *memory, size_t mapped)
 #endif
 }
 
-#endif /* Windows uses its own registered Microsoft x64 code mappings. */
+#endif /* Each supported OS owns its executable-memory policy. */

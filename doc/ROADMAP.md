@@ -2944,6 +2944,42 @@ conditional/backward flow, errors and a forward span above 1 MiB. Documentation,
 source links and the existing JIT tutorial catalog entry distinguish this from
 Apple SDK/macOS/Apple Silicon acceptance. Stages 8/9 remain open.
 
+### v0.564 — classic macOS Intel code publication and honest OS acceptance
+
+Implemented / реализовано: desktop macOS x64 selects the Darwin linked-frame
+encoder, with explicit process-ISA/LP64 width gating. A separate ports/mac code
+adapter rounds pages with overflow checks, creates private anonymous RW mappings,
+seals RX, synchronizes instruction cache and publishes only on success. Reported
+allocation/protection failures preserve outputs and clean acquired mappings.
+Classic unsigned-code signing preparation is explicit in the JIT tutorial/plist;
+the library does not change host policy or signatures. Apple Silicon, MAP_JIT,
+shared arenas/write callbacks and native signing/Rosetta acceptance remain open.
+
+The C89 tutorial now explicitly selects MANUAL: its unbound first call really
+interprets even in a JIT-default profile, and native-entry counters prove the
+later attached native invocation. It reports the compiled backend separately
+from actual execution, keeps ordinary error handling and explains every source
+line. Source/ABI documentation and the existing alphabetical catalog entry are
+updated. OS-only macOS/Windows unwind tests now return explicit CTest skip status
+on another host rather than counting an empty test body as foreign OS execution.
+
+Validation: recovered exact v0.561 from the mirror after workspace cleanup.
+The full Linux Release minimal-JIT suite passes 1176 checks with three skips
+(macOS native, Windows OS unwind and the existing speech SSIP endpoint), 1179
+total. Seven focused ASAN/UBSAN checks pass with LeakSanitizer disabled, covering
+real Darwin-framed instruction execution, actual adapter/SDK failure protocol,
+production selector/width checks, prior offline encoders and a real Linux
+mmap/mprotect AVM1 pipeline. That pipeline runs host/SWF4–8 collecting conversion
+callbacks, exceptions/recovery, active-code destruction rejection and activation/
+root cleanup. The final manual-mode tutorial separately passes Release and
+ASAN/UBSAN with exact backend/interpreter/native output checked. Controlled
+Darwin headers verify strict C89 adapter compilation, C++98 selection and exclusion
+of other Apple targets/arm64; the optional entitlement plist parses correctly.
+Source-link determinism/bounds, 93-entry catalog and annotated tutorial checks
+pass. None of these checks is a real Apple SDK/native macOS run. All roadmap
+stages remain open; native Windows/macOS/Android and full SWF conformance are
+still outstanding.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

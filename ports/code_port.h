@@ -10,7 +10,7 @@ extern "C"
     int fvm_port_code_supported(void);
     /* Copy bytes through RW storage, seal RX, then publish. Errors preserve outputs.
      * Windows x64 requires the fixed encoder frame and registers its unwind table.
-     * The size output is an opaque release cookie: Linux mapping length, Windows table offset. */
+     * The size output is an opaque release cookie: Linux/macOS mapping length, Windows table offset. */
     FVM_Result fvm_port_code_create(const void *, size_t, void **, size_t *);
     /* Release an inactive executable mapping created by this adapter. */
     void fvm_port_code_release(void *, size_t);

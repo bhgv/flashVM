@@ -16,6 +16,7 @@ AVM1 compiler. Unsupported operations still execute through the interpreter.
 | --- | --- | --- | --- |
 | x86 | Linux i386 System V cdecl | IA-32, 32 bits | Unicorn call/branch/ABI execution |
 | x86-64 | Linux System V AMD64 | x86-64, 64 bits | Full host VM tests and examples |
+| macOS x64 | Darwin ordinary C, linked RBP | x86-64, 64 bits | Linux instruction/AVM1 pipeline and SDK fixtures; native macOS policy acceptance pending |
 | Windows x64 | Microsoft x64 | x86-64, 64 bits | Real Linux ms_abi calls and SDK protocol fixtures; native Windows VM/unwind pending |
 | ARM | Linux AAPCS32 | ARMv7 A32, 32 bits; BLX permits Thumb helpers | Unicorn A32 call/branch/ABI execution |
 | ARM64 | Linux AAPCS64 | AArch64, 64 bits | Unicorn call/branch/ABI execution |
@@ -211,7 +212,7 @@ helpers; it remains distinct from running full FlashVM on a foreign CPU/OS.
 Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). v0.561 adds Windows x64 selection, W^X allocation and registered unwind metadata; native Windows execution is still unverified. / Добавлены выбор backend, W^X и unwind; нативный Windows запуск ещё не проверен.
 
 
-macOS Intel offline encoder and linked-frame validation / автономный генератор и цепочка кадров: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). v0.563 does not enable macOS runtime publication / публикация кода macOS пока не включена.
+macOS Intel offline encoder and linked-frame validation / автономный генератор и цепочка кадров: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). v0.564 adds classic desktop macOS x64 RW→RX publication and explicit signing preparation; native macOS acceptance remains pending / добавлены classic RW→RX и подготовка подписи, нативная приёмка ещё не выполнена.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

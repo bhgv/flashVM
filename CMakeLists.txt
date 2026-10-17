@@ -223,6 +223,11 @@ function(fvm_add_program source)
   if(FVM_BUILD_TESTS)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
+    if(target STREQUAL "flashvm_tests_jit_macos_native" OR
+       target STREQUAL "flashvm_tests_jit_windows_unwind")
+      # OS-only acceptance fixtures must not masquerade as successful execution on another host.
+      set_tests_properties(${target} PROPERTIES SKIP_RETURN_CODE 77)
+    endif()
     if(target STREQUAL "flashvm_tests_color_matrix_filter_allocation" OR
        target STREQUAL "flashvm_tests_convolution_filter_allocation" OR
        target STREQUAL "flashvm_tests_property_version_exhaustive" OR
