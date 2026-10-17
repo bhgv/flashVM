@@ -56,12 +56,12 @@ class ElfDependencyTests(unittest.TestCase):
         self.assertEqual(needed_libraries('0x1 (NEEDED) Shared library: [libzstd.so.1]\n0x0 (NULL) 0'), ['libzstd.so.1'])
 
     def test_bundled_sonames_are_rejected(self):
-        names = ['libflashvm.so', 'libfvm_zlib.so', 'libagg.so.2', 'libcairo.so.2',
+        names = ['libflashvm.so', 'libfvm_zlib.so', 'libagg.so.2', 'libnanosvg.so', 'libnanosvg.so.1', 'libcairo.so.2',
                  'libcairo-gobject.so.2', 'libfreetype.so.6', 'libfribidi.so.0',
                  'libgif.so.7', 'libharfbuzz-subset.so.0', 'libjpeg.so.8',
                  'libturbojpeg.so.0', 'libpng16.so.16', 'libunibreak.so.5',
                  'libpixman-1.so.0', 'libsqlite3.so.0', 'libz.so.1', 'libzlib.so',
-                 '/path with spaces/libcairo.so.2']
+                 '/path with spaces/libcairo.so.2', '/path with spaces/libnanosvg.so.2']
         for name in names:
             with self.subTest(name=name), self.assertRaises(ValueError):
                 needed_libraries('0x1 (NEEDED) Shared library: [' + name + ']\n0x0 (NULL) 0')
@@ -115,7 +115,8 @@ class ElfDependencyTests(unittest.TestCase):
                     self.exercise(directory, fail=phase)
         for kwargs in [{'version': ''}, {'version': 'LLVM tool\n'},
                        {'libraries': 'garbage'},
-                       {'libraries': '0x1 (NEEDED) Shared library: [libpng16.so.16]\n0x0 (NULL) 0'}]:
+                       {'libraries': '0x1 (NEEDED) Shared library: [libpng16.so.16]\n0x0 (NULL) 0'},
+                       {'libraries': '0x1 (NEEDED) Shared library: [libnanosvg.so.1]\n0x0 (NULL) 0'}]:
             with tempfile.TemporaryDirectory() as directory, self.subTest(kwargs=kwargs):
                 with self.assertRaises(ValueError):
                     self.exercise(directory, **kwargs)

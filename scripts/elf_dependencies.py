@@ -12,7 +12,7 @@ import re
 BUNDLED_SONAME = re.compile(
     r'lib(?:flashvm|fvm_[A-Za-z0-9_]+|agg|cairo(?:-[A-Za-z0-9-]+)?|'
     r'freetype[0-9]*|fribidi|gif|harfbuzz(?:-[A-Za-z0-9-]+)?|'
-    r'jpeg(?:-turbo)?|turbojpeg|png[0-9]*|unibreak|pixman(?:-[0-9]+)?|'
+    r'jpeg(?:-turbo)?|turbojpeg|png[0-9]*|nanosvg|unibreak|pixman(?:-[0-9]+)?|'
     r'sqlite[0-9]*|z|zlib)(?:-[0-9.]+)?\.so(?:\.[0-9.]+)?')
 
 

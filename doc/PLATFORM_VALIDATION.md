@@ -211,3 +211,14 @@ Cairo suite passed 1074 cases (permission repairs/reruns included). A fresh
 GNU readelf audit passed for 1063 CTest ELF arguments; only libc.so.6,
 libgcc_s.so.1, libm.so.6 and libstdc++.so.6 appeared in direct DT_NEEDED.
 No new foreign-OS or transitive/dlopen acceptance is implied.
+
+v0.514 extends the bundled-library DT_NEEDED policy to upstream NanoSVG sonames
+(libnanosvg.so and versioned names, including absolute paths). The fvm_* spelling
+was already covered; upstream spelling was missing despite the static bundled
+NanoSVG target. Regression cases also verify that this failure replaces stale
+passed audit evidence. Linux-only direct-dependency audit scope is unchanged.
+Validation: eight ELF and ten platform-encoder Python cases passed; four targeted
+configuration/version/host checks passed per minimal, AGG and Cairo profile.
+The revised policy passed again on 1063 Cairo ELF artifacts from the v0.513
+runtime baseline (plus refreshed build-config version), with the same four
+system sonames. No C++ runtime logic changed in v0.514.

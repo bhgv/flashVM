@@ -2139,3 +2139,11 @@ Tests / проверки: anonymous_this_paths (including transport and native J
 its roots and allocation variants. See [RU/EN contract](ANONYMOUS_THIS_PATHS.md).
 Arbitrary this-cell assignment, native receiver coercion and all nine stages
 remain open / остаются открытыми.
+
+### v0.514 — NanoSVG static-dependency audit
+
+Implemented / реализовано: ELF audit rejects upstream libnanosvg.so sonames as
+well as the existing fvm_* aliases. Regression fixtures demonstrate the former
+false pass and stale-evidence replacement. See [EN](PLATFORM_VALIDATION.md) /
+[RU](PLATFORM_VALIDATION.ru.md). Foreign OS execution, transitive/dlopen audits
+and all nine roadmap stages remain open / остаются открытыми.
