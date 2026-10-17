@@ -2929,6 +2929,21 @@ name and the linked production width needed by availability. The existing
 Microsoft-ABI instruction and SDK publication fixtures remain part of focused
 validation. Stages 8/9 remain open.
 
+### v0.563 — Darwin x64 linked-frame encoder
+
+Implemented / реализовано: separate offline macOS Intel integer-call lowering,
+with explicit eight-byte pointer width, linked RBP parent frame, preserved r12
+invocation, aligned C helpers and shared rel32 branches. No Swift/variadic ABI,
+DWARF/compact-unwind registration or native macOS activation is claimed.
+
+Validation: four focused Release checks pass: actual generated Darwin integer
+calls on Linux x64, all target widths, production Windows selector macros and
+existing offline architecture fixtures. The new execution check covers argument
+clobbers, stack alignment, r12 preservation, frame-chain/return addresses,
+conditional/backward flow, errors and a forward span above 1 MiB. Documentation,
+source links and the existing JIT tutorial catalog entry distinguish this from
+Apple SDK/macOS/Apple Silicon acceptance. Stages 8/9 remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

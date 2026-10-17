@@ -19,6 +19,9 @@ void fvm_jit_machine_x86(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
 /* Microsoft x64: RCX/EDX arguments, r12 state and caller-owned shadow space. */
 void fvm_jit_machine_windows_x64(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
                                 const unsigned char *, unsigned int);
+/* Darwin x86-64: System V integer arguments plus an explicit linked RBP frame. */
+void fvm_jit_machine_macos_x64(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
+                              const unsigned char *, unsigned int);
 /* ARMv7 A32 with AAPCS and interworking helper calls. */
 void fvm_jit_machine_arm(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
                          const unsigned char *, unsigned int);

@@ -13,7 +13,8 @@ enum FVM_JitTarget
     FVM_JIT_TARGET_RISCV,
     FVM_JIT_TARGET_RISCV64,
     FVM_JIT_TARGET_X64,
-    FVM_JIT_TARGET_WINDOWS_X64 /* Microsoft x64 integer ABI, separate from System V. */
+    FVM_JIT_TARGET_WINDOWS_X64, /* Microsoft x64 integer ABI, separate from System V. */
+    FVM_JIT_TARGET_MACOS_X64 /* Darwin x86-64 integer ABI with a linked RBP frame. */
 };
 struct FVM_JitCode;
 struct FVM_JitInvocation;

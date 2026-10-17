@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 8/9: macOS x64 offline encoder | Проверено на Linux v0.563 | Darwin integer-call blocks, linked RBP, saved r12, stack alignment, volatile arguments, native branches/errors and >1 MiB forward span. [JIT_MACOS_X64.md](JIT_MACOS_X64.md). macOS SDK/runtime/memory policy acceptance remains open. |
 | 8/9: Windows x64 availability correction | Проверено v0.562 в Linux fixtures | Windows ABI now reports eight-byte pointers instead of zero, fixing the v0.561 availability gate. Actual production selector compiled under Windows macros and all target widths checked. [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). Native Windows acceptance remains pending. |
 | 8/9: Windows x64 JIT publication | Реализовано v0.561; Linux ABI/protocol checked | Microsoft x64 host selection, VirtualAlloc RW→VirtualProtect RX, cache flush, RtlAdd/DeleteFunctionTable with fixed-frame unwind metadata. [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). Linux ms_abi execution, SDK failure/cleanup fixtures and strict C89 declaration fixture pass; real Windows VM/OS unwind and other Windows ABIs remain unverified. |
 | 8/9: Windows x64 offline encoder | Проверено для v0.560 на Linux GCC ms_abi | Separate Microsoft ABI, shadow space/alignment, volatile arguments, native branches/status and >1 MiB forward span. [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). Windows selection/memory/unwind registration and full native OS acceptance remain open. |

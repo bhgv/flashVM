@@ -37,6 +37,7 @@ size_t fvm_jit_target_width(FVM_JitTarget target)
         return FVM_JIT_POINTER32_BYTES;
     case FVM_JIT_TARGET_X64:
     case FVM_JIT_TARGET_WINDOWS_X64:
+    case FVM_JIT_TARGET_MACOS_X64:
     case FVM_JIT_TARGET_ARM64:
     case FVM_JIT_TARGET_RISCV64:
         return FVM_JIT_POINTER64_BYTES;
