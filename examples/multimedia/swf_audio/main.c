@@ -84,11 +84,13 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     unsigned long sound_id, first; /* Track the selected dictionary key and explicit sample offset. */
     size_t sounds, index, frames; /* Count root definitions and bounded sample-frame ranges. */
     const unsigned char stop[] = {0x09, 0x00}; /* Encode StopSounds followed by End. */
+    int event_mode = argc == 5 && strcmp(argv[4], "--event") == 0; /* Interpret the numeric selector as an event ordinal only when explicitly requested. */
+    FVM_SWFSoundEvent selected_event; /* Resolve event mode to its resource before output registration. */
     int exit_code = 1; /* Report success only after explicit export and stopping complete. */
     memset(&host, 0, sizeof(host)); /* Make cleanup safe after partial setup. */
-    if (argc != 4) /* Require explicit input, sound ID and output before file operations. */
+    if (argc != 4 && !event_mode) /* Require explicit input, sound ID and output before file operations. */
     { /* Explain observable side effects without opening anything. */
-        printf("Usage: %s INPUT.swf SOUND_ID OUTPUT.pcm\nExports raw native-endian S16; replaces the named output.\n", argv[0]); /* Describe output representation and replacement. */
+        printf("Usage: %s INPUT.swf SOUND_ID OUTPUT.pcm\n       %s INPUT.swf EVENT_ORDINAL OUTPUT.pcm --event\nExports raw native-endian S16; replaces the named output.\n", argv[0], argv[0]); /* Describe output representation and replacement. */
         return 0; /* Keep no-argument test runs free of file/device side effects. */
     } /* Finish the explicit input gate. */
     if (!*argv[2] || strspn(argv[2], "0123456789") != strlen(argv[2])) /* Accept digits only, avoiding signed strtoul wraparound and partial text. */
@@ -98,9 +100,9 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     } /* Finish lexical resource-key validation. */
     errno = 0; /* Detect strtoul overflow rather than silently truncating IDs. */
     sound_id = strtoul(argv[2], &end, 10); /* Parse a decimal root dictionary ID. */
-    if (errno || !sound_id || sound_id > TUTORIAL_SWF_SOUND_ID_MAX || *end) /* Reject partial, negative-wrapped and overflowing keys. */
+    if (errno || *end || (!event_mode && (!sound_id || sound_id > TUTORIAL_SWF_SOUND_ID_MAX)) || (event_mode && (unsigned long)(size_t)sound_id != sound_id)) /* Reject partial, negative-wrapped and overflowing keys. */
     { /* Explain the invalid caller-selected resource. */
-        fprintf(stderr, "SOUND_ID must be 1..65535.\n"); /* Avoid treating arbitrary text as a dictionary key. */
+        fprintf(stderr, "SOUND_ID must be 1..65535; EVENT_ORDINAL must fit size_t.\n"); /* Avoid treating arbitrary text as a dictionary key. */
         goto cleanup; /* No output has been opened. */
     } /* Finish resource-key validation. */
     input = fopen(argv[1], "rb"); /* Open the explicitly supplied SWF input through the real C library. */
@@ -142,8 +144,14 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     } /* Finish definition enumeration. */
     if (!show_events(context)) /* Inspect StartSound/SOUNDINFO without executing its playback controls. */
         goto cleanup; /* Reject malformed event metadata before creating output. */
+    if (event_mode) /* Resolve the zero-based event selector instead of interpreting it as a sound ID. */
+    { /* Inspect the event before output creation. */
+        selected_event.struct_size = sizeof(selected_event); /* Declare the copied-control ABI. */
+        if (!checked(fvm_swf_sound_event_at(context, (size_t)sound_id, &selected_event), "selected_event")) /* Resolve the current canonical event and resource. */
+            goto cleanup; /* Missing event/resource must not create output. */
+    } /* Finish event-mode resource resolution. */
     info.struct_size = sizeof(info); /* Reuse the exact inspection ABI for selected lookup. */
-    if (!checked(fvm_swf_sound_info(context, (unsigned int)sound_id, &info), "sound_info")) /* Resolve the caller's unique root sound. */
+    if (!checked(fvm_swf_sound_info(context, event_mode ? selected_event.sound_id : (unsigned int)sound_id, &info), "sound_info")) /* Resolve the caller's unique root sound. */
         goto cleanup; /* NOT_FOUND does not create output. */
     host.path = argv[3]; /* Borrow the explicitly named output path through cleanup. */
     output.struct_size = sizeof(output); /* Supply the complete host callback ABI. */
@@ -152,6 +160,16 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     output.stop = stop_pcm; /* Delegate StopSounds to synchronous fclose. */
     if (!checked(fvm_audio_channel_create(context, &output, &channel), "channel_create")) /* Copy the table into an inactive registration. */
         goto cleanup; /* Creation itself does not open output. */
+    if (event_mode) /* Render this explicit StartSound with its source range, repetitions and envelope. */
+    { /* Use one dedicated initially inactive voice channel. */
+        if (!checked(fvm_swf_sound_event_submit(context, (size_t)sound_id, channel), "sound_event_submit")) /* Prepare bounded styled PCM, then enter the real file-output callback once. */
+            goto cleanup; /* Codec/style/OOM failure leaves output unopened. */
+        if (!checked(fvm_avm1_execute(context, stop, sizeof(stop)), "StopSounds")) /* Close actual output after acknowledged event submission. */
+            goto cleanup; /* Keep userdata alive if stopping must be retried during teardown. */
+        printf("Submitted event %lu; styled raw S16, no audible playback.\n", sound_id); /* Stop/empty events create no output file. */
+        exit_code = 0; /* The explicit control and cleanup completed successfully. */
+        goto cleanup; /* Keep the raw-resource chunk path separate from event rendering. */
+    } /* Finish explicit styled-event export. */
     first = 0; /* Start at the first declared sample frame. */
     do /* Validate even a zero-frame sound's format once, without activating output. */
     { /* Submit one explicitly bounded sample-frame interval. */

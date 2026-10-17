@@ -7,6 +7,7 @@ struct FVM_AudioChannel /* Register one independently stoppable host output. */
 { /* Begin the context-owned registration. */
     FVM_Context *context; /* Borrow the owner until close or context destruction. */
     FVM_MediaOutput output; /* Copy the callback table; userdata remains host-owned. */
+    unsigned int swf_sound_id; /* Bind the first successful StartSound resource; zero means not yet bound. */
     bool active; /* Record successful submission until successful stop. */
 }; /* Finish the non-managed channel layout. */
 /* Accept VM-thread operations outside destruction, collection and callback mutation. */

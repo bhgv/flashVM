@@ -24,6 +24,7 @@ extern "C"
         size_t data_size; /* Exact SoundData byte count; codec-specific prefixes are retained. */
     } FVM_SWFSoundInfo;
 #define FVM_SWF_SOUND_ENVELOPE_UNITY 32768U /* Maximum envelope gain, representing unity amplitude. */
+#define FVM_SWF_SOUND_CONTROL_RATE 44100UL /* InPoint/OutPoint positions use this fixed control clock in Hz. */
 #define FVM_SWF_SOUND_ENVELOPE_RATE 44100UL /* Envelope positions use this fixed sample clock in Hz. */
 #define FVM_SWF_SOUND_EVENT_IN_POINT 1U /* SOUNDINFO contains an explicit input sample position. */
 #define FVM_SWF_SOUND_EVENT_OUT_POINT 2U /* SOUNDINFO contains an explicit last sample position. */
@@ -38,8 +39,8 @@ extern "C"
         unsigned int sound_id; /* Unique root DefineSound identifier, resolved by event_at. */
         unsigned int frame; /* One-based root timeline frame containing this control. */
         unsigned int flags; /* SOUNDINFO presence and synchronization bits, preserved verbatim. */
-        unsigned long in_point; /* Raw sample-frame start; zero when absent, presence distinguished by flags. */
-        unsigned long out_point; /* Raw last sample position; zero when absent, not an exclusive bound. */
+        unsigned long in_point; /* Raw 44100 Hz start position; zero when absent, presence distinguished by flags. */
+        unsigned long out_point; /* Raw 44100 Hz last-sample position; zero when absent, not an exclusive bound. */
         unsigned int loop_count; /* Raw UI16 count; zero when absent, without playback normalization. */
         unsigned int envelope_count; /* Raw UI8 number of envelope points, zero when absent. */
     } FVM_SWFSoundEvent;
@@ -67,6 +68,9 @@ extern "C"
      * capacity/written count channel values, not frames; failure writes no samples. */
     FVM_API FVM_Result fvm_swf_sound_read_pcm(FVM_Context *, unsigned int, unsigned long, size_t, short *, size_t,
                                               size_t *);
+    /* Apply one root StartSound to a dedicated single-voice channel; render bounded styles before output.
+     * Stops/no-multiple affect this channel only; an ordinary start requires an inactive channel. */
+    FVM_API FVM_Result fvm_swf_sound_event_submit(FVM_Context *, size_t, FVM_AudioChannel *);
     /* Copy/decode one bounded range and synchronously submit to a channel owned by this context.
      * Does not execute StartSound, schedule clocks, loop, mix or apply envelopes. */
     FVM_API FVM_Result fvm_swf_sound_submit(FVM_Context *, unsigned int, FVM_AudioChannel *, unsigned long, size_t);

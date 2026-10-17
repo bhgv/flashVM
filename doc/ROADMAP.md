@@ -2615,6 +2615,31 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 границы, повторы, огибающие. Повреждение не меняет назначения; каждый запрос
 проверяет текущий файл целиком, без кеша/выделения памяти. Полнота стадий не заявлена.
 
+### v0.552 — explicit styled StartSound voice output
+
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L73) renders PCM/ADPCM in/out
+ranges, repetitions and linear mono/stereo envelopes before one guarded output
+callback. Fixed-clock 44100 Hz positions convert without integer overflow;
+explicit zero loops produce no voice. Source/output/envelope storage share a
+checked temporary budget. Successful voices bind a dedicated channel resource;
+failed preparation/output cannot commit binding. SyncStop/no-multiple currently
+apply to that dedicated channel only. The C89 exporter has explicit --event mode.
+
+Validation: minimal full suite 1147 passed plus one existing named Unix endpoint
+skip (1148 total). Five focused checks passed in the native static ALSA null-PCM
+profile, five in JIT profile and five under ASAN/UBSAN (external SDK uninstrumented,
+LSAN disabled). SWF1–8 requested interpreter/JIT, gain/loop/range samples, 11025 Hz
+control positions, zero loops, OOM boundaries, failed native write/stop, reentry,
+GC barriers and callback reload are covered. The real tutorial exports expected
+styled bytes and rejects bad styles before file creation. Twelve raw PCM/ADPCM
+FFmpeg oracles remain byte-exact; source/tutorial/catalog links pass.
+
+Явный вывод одного StartSound реализован через реальный host callback с полной
+подготовкой до вывода; метаданные и данные не заимствуются через callback reload.
+Автоматический MovieClip clock, несколько голосов/смешивание, streaming, остальные
+кодеки, оригинальный Flash Player и foreign native acceptance ещё открыты.
+No roadmap stage is closed. См. SWF_SOUND_PLAYBACK.md.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -2632,6 +2657,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:73](../include/flashvm/swf_sound.h#L73) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
 <!-- source-links:end -->

@@ -29,11 +29,25 @@ def main():
         assert 'frame 1, ID 7, flags 63, in 1, last 2, loops 4, envelope 1' in result.stdout
         assert 'position44 44100, left 123, right 32768' in result.stdout
         assert (root/'output.pcm').read_bytes() == struct.pack('=hhh', -32768, 0, 32512)
+        # The same control with SyncStop must not create output in event mode.
+        subprocess.run([exporter, str(root/'input.swf'), '0', str(root/'stop.pcm'), '--event'], check=True, stdout=subprocess.DEVNULL)
+        assert not (root/'stop.pcm').exists()
+        # Independently packed fade-out applies across both repetitions.
+        styled = struct.pack('<HBIIHB', 7, 15, 0, 2, 2, 2)
+        styled += struct.pack('<IHH', 0, 32768, 32768) + struct.pack('<IHH', 2, 0, 0)
+        (root/'styled.swf').write_bytes(movie(styled))
+        subprocess.run([exporter, str(root/'styled.swf'), '0', str(root/'styled.pcm'), '--event'], check=True, stdout=subprocess.DEVNULL)
+        assert (root/'styled.pcm').read_bytes() == struct.pack('=hhhhhh', -32768, 0, 0, 0, 0, 0)
+        # Metadata accepts repeated positions, but styled rendering rejects them atomically.
+        duplicate = styled[:-8] + struct.pack('<IHH', 0, 0, 0)
+        (root/'duplicate.swf').write_bytes(movie(duplicate))
+        result = subprocess.run([exporter, str(root/'duplicate.swf'), '0', str(root/'duplicate.pcm'), '--event'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert result.returncode and not (root/'duplicate.pcm').exists()
         # A malformed event must fail before creating any output.
         (root/'bad.swf').write_bytes(movie(event[:-1]))
         result = subprocess.run([exporter, str(root/'bad.swf'), '7', str(root/'bad.pcm')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not (root/'bad.pcm').exists()
-    print('PASS real C89 event/envelope inspection and PCM export; malformed events create no output')
+    print('PASS real C89 raw/styled export, repeated fade, inactive stop and atomic malformed-style failures')
     return 0
 
 

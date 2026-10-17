@@ -1178,7 +1178,9 @@ DefineSound: обзор корневых ресурсов и явный эксп
 выбранный 8/16-bit PCM или ADPCM с преобразованием в S16 в настоящий stdio sink кусками по 256 sample frames.
 Показывает canonical ownership, borrowed views, bounded copy до host callback,
 ошибки кодеков/размеров и StopSounds, закрывающий FILE. Нужен явный вход/ID/выход;
-NO_MEDIA работает без SDK. Это экспорт raw PCM, не автоматический SWF-плеер.
+NO_MEDIA работает без SDK. Режим `--event` применяет диапазон/повторы/огибающую
+одного StartSound одним буфером; обычный режим сохраняет source chunks.
+Это экспорт raw PCM, не автоматический SWF-плеер.
 
 <a id="group-multimedia-devices"></a>
 ### devices

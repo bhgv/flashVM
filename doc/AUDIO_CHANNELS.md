@@ -173,6 +173,18 @@ The [audio_channels tutorial](../examples/multimedia/audio_channels/README.md)
 uses actual fwrite/fclose on an explicit PCM file; this is observable output
 control, not evidence of audible sound-card playback.
 
+## Dedicated SWF event voices
+
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L73) binds a channel to its first successful nonempty
+StartSound resource. Binding persists through stop/reload until close. A different
+ID is rejected by event submit and [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L76); generic writes remain
+host-managed. Ordinary starts require inactive channels; no-multiple suppresses
+this channel only. See [full contract](SWF_SOUND_PLAYBACK.md).
+
+Явный event submit закрепляет sound ID за каналом до close. Stop/reload привязку
+не снимают; другой ID требует другого канала. Raw host write остаётся под
+ответственность host. Подробности и ограничения — в контракте выше.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -193,4 +205,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../include/flashvm/multimedia.h#L36) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:73](../include/flashvm/swf_sound.h#L73) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:76](../include/flashvm/swf_sound.h#L76) |
 <!-- source-links:end -->

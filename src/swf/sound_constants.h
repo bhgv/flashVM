@@ -23,6 +23,7 @@
 #define FVM_SWF_SOUND_PCM_BYTES 2U /* Complete signed-16 PCM channel value. */
 #define FVM_SWF_SOUND_SIGN_BIT 32768UL /* Unsigned wire values at or above this encode negative S16. */
 #define FVM_SWF_SOUND_SIGN_RANGE 65536L /* Exact signed conversion without implementation-defined narrowing. */
+#define FVM_SWF_SOUND_SHORT_MIN (-32768L) /* Required signed-16 output minimum. */
 #define FVM_SWF_SOUND_SHORT_MAX 32767 /* Required host signed-short maximum. */
 #define FVM_SWF_SOUND_UI16_BYTES 2U /* Width of wire IDs and short tag headers. */
 #define FVM_SWF_SOUND_UI32_BYTES 4U /* Width of counts and extended tag lengths. */

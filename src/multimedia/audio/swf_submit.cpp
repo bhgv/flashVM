@@ -6,7 +6,7 @@
 /* Decode into native temporary storage before entering a host callback which may reload its context. */
 FVM_Result fvm_swf_sound_submit(FVM_Context *context, unsigned int id, FVM_AudioChannel *channel, unsigned long first, size_t frames) /* Borrow the live channel only during this call. */
 { /* Begin explicit SWF PCM submission. */
-    if (!channel || channel->context != context || !fvm_audio_context_valid(context)) /* Reject foreign owners and callback mutation. */
+    if (!channel || channel->context != context || !fvm_audio_context_valid(context) || (channel->swf_sound_id && channel->swf_sound_id != id)) /* Reject foreign owners and callback mutation. */
         return FVM_INVALID_ARGUMENT; /* Do not inspect or open output for an invalid channel. */
     FVM_SWFSoundInfo info; /* Borrow header metadata only before entering host output. */
     info.struct_size = sizeof(info); /* Declare the exact current inspection ABI. */

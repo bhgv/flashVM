@@ -15,6 +15,7 @@ FVM_Result fvm_audio_channel_create(FVM_Context *context, const FVM_MediaOutput 
         channel = new FVM_AudioChannel; /* Allocate native storage outside the managed object heap. */
         channel->context = context; /* Bind the registry owner before publication. */
         channel->output = *output; /* Copy callbacks, retaining only the borrowed host userdata pointer. */
+        channel->swf_sound_id = 0; /* Keep resource binding unset until successful event submission. */
         channel->active = false; /* Registration alone never opens or plays a device. */
         context->audio_channels.push_back(channel); /* Commit the new registration to its owner. */
         *out = channel; /* Publish only after insertion cannot fail. */

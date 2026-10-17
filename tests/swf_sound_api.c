@@ -8,6 +8,7 @@ int main(void)
  FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;FVM_SWFSoundInfo info;FVM_SWFSoundEvent event;FVM_SWFSoundEnvelope point;short pcm[2]={77,88};size_t written=99, sounds=99;
  assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
  memset(&info,0,sizeof(info));info.struct_size=sizeof(info);info.sound_id=99;
+ assert(fvm_swf_sound_event_submit(c,0,0)==FVM_INVALID_ARGUMENT);
  assert(fvm_swf_sound_info(c,7,&info)==FVM_UNSUPPORTED && info.sound_id==99);
  assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);
  event.struct_size=sizeof(event);point.struct_size=sizeof(point);

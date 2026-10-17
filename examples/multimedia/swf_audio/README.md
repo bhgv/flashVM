@@ -73,19 +73,19 @@ without applying stops, loops, in/out points or envelope gain.
 
 ## Демонстрируемые API
 
-- [`fvm_swf_sound_event_count`](../../../include/flashvm/swf_sound.h#L55) — число корневых StartSound: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_count).
-- [`fvm_swf_sound_event_at`](../../../include/flashvm/swf_sound.h#L57) — копия SOUNDINFO и разрешение ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_at).
-- [`fvm_swf_sound_event_envelope`](../../../include/flashvm/swf_sound.h#L59) — копия точки и независимый clock: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_envelope).
+- [`fvm_swf_sound_event_count`](../../../include/flashvm/swf_sound.h#L56) — число корневых StartSound: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_count).
+- [`fvm_swf_sound_event_at`](../../../include/flashvm/swf_sound.h#L58) — копия SOUNDINFO и разрешение ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_at).
+- [`fvm_swf_sound_event_envelope`](../../../include/flashvm/swf_sound.h#L60) — копия точки и независимый clock: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_event_envelope).
 - [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical FWS/CWS storage: [область API](../../../doc/SWF_SOUND_RESOURCES.md#scope--область-реализации).
-- [`fvm_swf_sound_count`](../../../include/flashvm/swf_sound.h#L61), [`fvm_swf_sound_at`](../../../include/flashvm/swf_sound.h#L63) — подсчёт/порядок и ошибки дубликатов: [count](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_count), [at](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_at).
-- [`fvm_swf_sound_info`](../../../include/flashvm/swf_sound.h#L65) — borrowed metadata и уникальный ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_info).
-- [`fvm_swf_sound_submit`](../../../include/flashvm/swf_sound.h#L72) — явный диапазон и callback-independent PCM copy: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_submit).
+- [`fvm_swf_sound_count`](../../../include/flashvm/swf_sound.h#L62), [`fvm_swf_sound_at`](../../../include/flashvm/swf_sound.h#L64) — подсчёт/порядок и ошибки дубликатов: [count](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_count), [at](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_at).
+- [`fvm_swf_sound_info`](../../../include/flashvm/swf_sound.h#L66) — borrowed metadata и уникальный ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_info).
+- [`fvm_swf_sound_submit`](../../../include/flashvm/swf_sound.h#L76) — явный диапазон и callback-independent PCM copy: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_submit).
 - [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L80) — регистрация настоящего output callback: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий StopSounds, закрывающий sink: [семантика](../../../doc/AUDIO_CHANNELS.md#scope).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — VM ownership: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal channel cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
 Связанная функция, не вызываемая этим примером напрямую:
-[`fvm_swf_sound_read_pcm`](../../../include/flashvm/swf_sound.h#L68) — извлечение в caller-owned short buffer:
+[`fvm_swf_sound_read_pcm`](../../../include/flashvm/swf_sound.h#L69) — извлечение в caller-owned short buffer:
 [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_read_pcm).
 
 ## English
@@ -104,6 +104,31 @@ this export tutorial is not a cached real-time decoder. See the
 [ADPCM contract](../../../doc/SWF_SOUND_RESOURCES.md#swf-adpcm--дифференциальное-аудио).
 Eight-bit PCM format 0/3 is converted by `(byte - 128) * 256` to S16.
 Восьмибитный PCM поддержан; итоговый файл по-прежнему содержит native S16.
+## Styled event export / экспорт с SOUNDINFO
+
+```sh
+./build-swf-audio/flashvm_examples_multimedia_swf_audio_main INPUT.swf 0 EVENT.pcm --event
+```
+
+The explicit `--event` mode interprets the numeric selector as a zero-based
+StartSound ordinal (parsed by strtoul, therefore bounded by unsigned long and
+size_t). It resolves the event resource, then calls
+[`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L73) on a fresh dedicated inactive channel. In/out points,
+loops and linear envelopes affect the file; SyncStop or an empty event creates
+no output. StopSounds closes accepted output. A full prepared event must fit
+the temporary memory limit; this mode is not chunked and may reject long loops.
+The ordinary three-argument SOUND_ID mode retains its raw chunked behavior.
+
+Режим `--event` использует ordinal с нуля вместо ID: применяет границы, повторы,
+огибающую и передаёт PCM реальному fwrite одним буфером. Это один выделенный
+голос, без автоматического MovieClip clock/mixing; stop/empty не создаёт файл.
+Ошибки диапазона, порядка точек, кодека/памяти возникают до callback. Пример
+показывает реальную запись файла, не слышимое воспроизведение и не полную
+эквивалентность Flash Player. Новые каналы не демонстрируют активный no-multiple;
+его жизненный цикл показан в [контракте](../../../doc/SWF_SOUND_PLAYBACK.md).
+
+- [`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L73) — отдельный готовый голос, ownership, ошибки,
+  стиль и ограничения: [SWF_SOUND_PLAYBACK.md](../../../doc/SWF_SOUND_PLAYBACK.md#fvm_swf_sound_event_submit).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -122,12 +147,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:63](../../../include/flashvm/swf_sound.h#L63) |
-| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:61](../../../include/flashvm/swf_sound.h#L61) |
-| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:57](../../../include/flashvm/swf_sound.h#L57) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:55](../../../include/flashvm/swf_sound.h#L55) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:59](../../../include/flashvm/swf_sound.h#L59) |
-| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:65](../../../include/flashvm/swf_sound.h#L65) |
-| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:68](../../../include/flashvm/swf_sound.h#L68) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:72](../../../include/flashvm/swf_sound.h#L72) |
+| `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:64](../../../include/flashvm/swf_sound.h#L64) |
+| `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:62](../../../include/flashvm/swf_sound.h#L62) |
+| `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../../../include/flashvm/swf_sound.h#L58) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:56](../../../include/flashvm/swf_sound.h#L56) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:60](../../../include/flashvm/swf_sound.h#L60) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:73](../../../include/flashvm/swf_sound.h#L73) |
+| `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:66](../../../include/flashvm/swf_sound.h#L66) |
+| `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:69](../../../include/flashvm/swf_sound.h#L69) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:76](../../../include/flashvm/swf_sound.h#L76) |
 <!-- source-links:end -->
