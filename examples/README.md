@@ -4,102 +4,102 @@
 
 - [actionscript](#group-actionscript)
   - [language](#group-actionscript-language)
-    - [error.as](#example-actionscript-error-as)
-    - [parsing.as](#example-actionscript-parsing-as)
-    - [string.as](#example-actionscript-string-as)
+    - [error.as](#example-actionscript-error-as) — <small><em>Error, catch и гарантированный finally</em></small>
+    - [parsing.as](#example-actionscript-parsing-as) — <small><em>Числа из строк и выбор основания</em></small>
+    - [string.as](#example-actionscript-string-as) — <small><em>UTF-16, поиск и подстроки с emoji</em></small>
   - [resources](#group-actionscript-resources)
-    - [file_channels.as](#example-actionscript-file_channels-as)
-    - [gc_workers_channels.as](#example-actionscript-gc_workers_channels-as)
-    - [resource_exceptions.as](#example-actionscript-resource_exceptions-as)
-    - [shared_mutex.as](#example-actionscript-shared_mutex-as)
-    - [sprite_resources.as](#example-actionscript-sprite_resources-as)
+    - [file_channels.as](#example-actionscript-file_channels-as) — <small><em>Сохранение графа в файл и чтение обратно</em></small>
+    - [gc_workers_channels.as](#example-actionscript-gc_workers_channels-as) — <small><em>Worker, канал и очистка через GC</em></small>
+    - [resource_exceptions.as](#example-actionscript-resource_exceptions-as) — <small><em>Ошибки ресурсов и освобождение mutex</em></small>
+    - [shared_mutex.as](#example-actionscript-shared_mutex-as) — <small><em>Общий mutex и канал между worker</em></small>
+    - [sprite_resources.as](#example-actionscript-sprite_resources-as) — <small><em>Экземпляры спрайта из ресурсов SWF</em></small>
 - [debugger](#group-debugger)
   - [inspection](#group-debugger-inspection)
-    - [channel_inspection](#example-debugger-channel_inspection)
-    - [resource_snapshots](#example-debugger-resource_snapshots)
+    - [channel_inspection](#example-debugger-channel_inspection) — <small><em>Заморозка очереди и просмотр сообщения</em></small>
+    - [resource_snapshots](#example-debugger-resource_snapshots) — <small><em>Объекты, функции и владельцы mutex</em></small>
   - [stops](#group-debugger-stops)
-    - [backtrace](#example-debugger-backtrace)
-    - [jit_dump](#example-debugger-jit_dump)
-    - [live_variables](#example-debugger-live_variables)
-    - [source_breakpoints](#example-debugger-source_breakpoints)
+    - [backtrace](#example-debugger-backtrace) — <small><em>JSON-бэктрейс после ошибки VM</em></small>
+    - [jit_dump](#example-debugger-jit_dump) — <small><em>ZIP-дамп VM с исходным и JIT-кодом</em></small>
+    - [live_variables](#example-debugger-live_variables) — <small><em>Живые аргументы, локальные и регистры</em></small>
+    - [source_breakpoints](#example-debugger-source_breakpoints) — <small><em>SWF/SWD, breakpoint и строка исходника</em></small>
 - [embedding](#group-embedding)
   - [channels](#group-embedding-channels)
-    - [channel_cpp98](#example-embedding-channel_cpp98)
-    - [channel_values](#example-embedding-channel_values)
-    - [channels](#example-embedding-channels)
-    - [file_channels](#example-embedding-file_channels)
-    - [resource_broker](#example-embedding-resource_broker)
-    - [shared_mutex](#example-embedding-shared_mutex)
+    - [channel_cpp98](#example-embedding-channel_cpp98) — <small><em>RAII-владение каналом в C++98</em></small>
+    - [channel_values](#example-embedding-channel_values) — <small><em>Копирование и освобождение channel handle</em></small>
+    - [channels](#example-embedding-channels) — <small><em>Отправка и получение через FIFO</em></small>
+    - [file_channels](#example-embedding-file_channels) — <small><em>Перенос графа через файловый канал</em></small>
+    - [resource_broker](#example-embedding-resource_broker) — <small><em>Живой ресурс через TCP-брокер</em></small>
+    - [shared_mutex](#example-embedding-shared_mutex) — <small><em>Общая блокировка из разных VM</em></small>
   - [functions](#group-embedding-functions)
-    - [cpp98_stack](#example-embedding-cpp98_stack)
-    - [function_parameters](#example-embedding-function_parameters)
-    - [function_rpc](#example-embedding-function_rpc)
-    - [object_methods](#example-embedding-object_methods)
-    - [script_functions](#example-embedding-script_functions)
-    - [script_methods](#example-embedding-script_methods)
+    - [cpp98_stack](#example-embedding-cpp98_stack) — <small><em>RAII-стек значений и индексы C++98</em></small>
+    - [function_parameters](#example-embedding-function_parameters) — <small><em>Параметры AVM1-функции — AS-исходник</em></small>
+    - [function_rpc](#example-embedding-function_rpc) — <small><em>Вызовы между потоками, процессами и LAN</em></small>
+    - [object_methods](#example-embedding-object_methods) — <small><em>Native-метод, receiver и аргументы</em></small>
+    - [script_functions](#example-embedding-script_functions) — <small><em>Объявление script-функции — AS-исходник</em></small>
+    - [script_methods](#example-embedding-script_methods) — <small><em>Метод объекта и this — AS-исходник</em></small>
   - [gc](#group-embedding-gc)
-    - [cycle_collection](#example-embedding-cycle_collection)
-    - [gc](#example-embedding-gc)
-    - [manual_collection](#example-embedding-manual_collection)
-    - [mode_tuning](#example-embedding-mode_tuning)
-    - [resurrection](#example-embedding-resurrection)
+    - [cycle_collection](#example-embedding-cycle_collection) — <small><em>Недостижимые циклы — заметка о GC</em></small>
+    - [gc](#example-embedding-gc) — <small><em>Pin/unpin объекта и ручная сборка</em></small>
+    - [manual_collection](#example-embedding-manual_collection) — <small><em>Безопасные точки ручной GC — заметка</em></small>
+    - [mode_tuning](#example-embedding-mode_tuning) — <small><em>Режим и порог сборщика — заметка</em></small>
+    - [resurrection](#example-embedding-resurrection) — <small><em>Возврат объекта из финализатора — заметка</em></small>
   - [graphics](#group-embedding-graphics)
-    - [bitmap_fill](#example-embedding-bitmap_fill)
-    - [color_matrix_filter](#example-embedding-color_matrix_filter)
-    - [drawing](#example-embedding-drawing)
-    - [geometry](#example-embedding-geometry)
-    - [gradients](#example-embedding-gradients)
-    - [image_codecs](#example-embedding-image_codecs)
-    - [media](#example-embedding-media)
-    - [movieclip](#example-embedding-movieclip)
-    - [parallel_render](#example-embedding-parallel_render)
+    - [bitmap_fill](#example-embedding-bitmap_fill) — <small><em>Живой BitmapData как заливка клипа</em></small>
+    - [color_matrix_filter](#example-embedding-color_matrix_filter) — <small><em>Изменение RGBA через матрицу цвета</em></small>
+    - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
+    - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
+    - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
+    - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
+    - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
+    - [movieclip](#example-embedding-movieclip) — <small><em>Управление MovieClip — AS-эскиз</em></small>
+    - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
   - [input](#group-embedding-input)
-    - [gesture_dispatch](#example-embedding-gesture_dispatch)
-    - [gesture_recognizer](#example-embedding-gesture_recognizer)
-    - [input](#example-embedding-input)
-    - [input_queue](#example-embedding-input_queue)
+    - [gesture_dispatch](#example-embedding-gesture_dispatch) — <small><em>Жест преобразуется в C callback мыши</em></small>
+    - [gesture_recognizer](#example-embedding-gesture_recognizer) — <small><em>Распознавание tap по событиям касания</em></small>
+    - [input](#example-embedding-input) — <small><em>Правила преобразования tap и swipe</em></small>
+    - [input_queue](#example-embedding-input_queue) — <small><em>Очередь ввода и обработка на VM-потоке</em></small>
   - [jit](#group-embedding-jit)
-    - [execution_modes](#example-embedding-execution_modes)
-    - [jit](#example-embedding-jit)
-    - [jit_debug](#example-embedding-jit_debug)
-    - [jit_instances](#example-embedding-jit_instances)
-    - [jit_workers](#example-embedding-jit_workers)
+    - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
+    - [jit](#example-embedding-jit) — <small><em>Компиляция AVM1 и подключение JIT-тела</em></small>
+    - [jit_debug](#example-embedding-jit_debug) — <small><em>Source map, breakpoint и статистика JIT</em></small>
+    - [jit_instances](#example-embedding-jit_instances) — <small><em>Две VM с независимыми JIT-кэшами</em></small>
+    - [jit_workers](#example-embedding-jit_workers) — <small><em>Два worker с отдельными VM и JIT</em></small>
   - [objects](#group-embedding-objects)
-    - [main](#example-embedding-main)
-    - [objects](#example-embedding-objects)
-    - [property_resolve](#example-embedding-property_resolve)
-    - [prototypes](#example-embedding-prototypes)
-    - [standard_boolean](#example-embedding-standard_boolean)
-    - [tables_debug](#example-embedding-tables_debug)
+    - [main](#example-embedding-main) — <small><em>Runtime, объект и nativeSum: базовый C-хост</em></small>
+    - [objects](#example-embedding-objects) — <small><em>Объекты, свойства и глобальные значения</em></small>
+    - [property_resolve](#example-embedding-property_resolve) — <small><em>Ленивое разрешение свойств через __resolve</em></small>
+    - [prototypes](#example-embedding-prototypes) — <small><em>Цепочка прототипов и унаследованные поля</em></small>
+    - [standard_boolean](#example-embedding-standard_boolean) — <small><em>Boolean как функция и boxed-объект</em></small>
+    - [tables_debug](#example-embedding-tables_debug) — <small><em>Именованные поля, индексы и инспекция</em></small>
   - [platform](#group-embedding-platform)
-    - [network](#example-embedding-network)
-    - [os_ports](#example-embedding-os_ports)
+    - [network](#example-embedding-network) — <small><em>Сетевой host bridge — AS-эскиз</em></small>
+    - [os_ports](#example-embedding-os_ports) — <small><em>Native-ввод и TCP connect/send/close</em></small>
   - [text](#group-embedding-text)
-    - [font_libraries](#example-embedding-font_libraries)
-    - [standard_text](#example-embedding-standard_text)
-    - [text](#example-embedding-text)
-    - [text_layout](#example-embedding-text_layout)
+    - [font_libraries](#example-embedding-font_libraries) — <small><em>Шрифты, shaping и редактируемые контуры</em></small>
+    - [standard_text](#example-embedding-standard_text) — <small><em>TextField, шрифты и векторный текст</em></small>
+    - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
+    - [text_layout](#example-embedding-text_layout) — <small><em>Строки, метрики и контуры text layout</em></small>
   - [workers](#group-embedding-workers)
-    - [worker_channels](#example-embedding-worker_channels)
-    - [worker_lifecycle](#example-embedding-worker_lifecycle)
-    - [worker_stop](#example-embedding-worker_stop)
-    - [workers](#example-embedding-workers)
+    - [worker_channels](#example-embedding-worker_channels) — <small><em>Обмен host↔worker по двум каналам</em></small>
+    - [worker_lifecycle](#example-embedding-worker_lifecycle) — <small><em>Отложенный запуск, state и join</em></small>
+    - [worker_stop](#example-embedding-worker_stop) — <small><em>Кооперативная остановка группы worker</em></small>
+    - [workers](#example-embedding-workers) — <small><em>Native callback в потоке со своей VM</em></small>
 - [extending](#group-extending)
   - [callbacks](#group-extending-callbacks)
-    - [callable_objects](#example-extending-callable_objects)
-    - [lua_style](#example-extending-lua_style)
-    - [main](#example-extending-main)
-    - [meta_call](#example-extending-meta_call)
-    - [native_functions](#example-extending-native_functions)
-    - [stack_c](#example-extending-stack_c)
+    - [callable_objects](#example-extending-callable_objects) — <small><em>Вызываемый объект со стеком аргументов</em></small>
+    - [lua_style](#example-extending-lua_style) — <small><em>Native add через Lua-подобный API</em></small>
+    - [main](#example-extending-main) — <small><em>Регистрация makePoint и возврат объекта</em></small>
+    - [meta_call](#example-extending-meta_call) — <small><em>Явный __call — описание тестового сценария</em></small>
+    - [native_functions](#example-extending-native_functions) — <small><em>Вызов функции хоста — AS-эскиз</em></small>
+    - [stack_c](#example-extending-stack_c) — <small><em>Стековый C callback и один результат</em></small>
   - [integration](#group-extending-integration)
-    - [channel_worker](#example-extending-channel_worker)
-    - [drawing](#example-extending-drawing)
-    - [media](#example-extending-media)
-    - [movieclip](#example-extending-movieclip)
-    - [network](#example-extending-network)
-    - [prototypes](#example-extending-prototypes)
-    - [sqlite](#example-extending-sqlite)
+    - [channel_worker](#example-extending-channel_worker) — <small><em>Worker с удерживаемым channel handle</em></small>
+    - [drawing](#example-extending-drawing) — <small><em>Drawing bridge расширения — AS-эскиз</em></small>
+    - [media](#example-extending-media) — <small><em>Медиа bridge расширения — AS-эскиз</em></small>
+    - [movieclip](#example-extending-movieclip) — <small><em>MovieClip в расширении — AS-эскиз</em></small>
+    - [network](#example-extending-network) — <small><em>Сетевое расширение — AS-эскиз</em></small>
+    - [prototypes](#example-extending-prototypes) — <small><em>Native-объекты на прототипах — заметка</em></small>
+    - [sqlite](#example-extending-sqlite) — <small><em>SQLite в памяти и целочисленный запрос</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 

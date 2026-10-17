@@ -2376,6 +2376,15 @@ Repeated refresh is stable; simulated source-line movement updates links while
 preserving headings and fenced examples. The existing isolated version-refresh
 check passed. Runtime code was unchanged and runtime suites were not rerun.
 
+
+### v0.537 — concise example descriptions in the catalog contents
+
+Documentation / документация: all 78 example links in the structured contents
+now have a short, smaller italic description on the same line. Alphabetical
+groups, description anchors and the final flat glossary are preserved. The
+format is recorded in the standing documentation rules. No runtime change;
+all nine stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

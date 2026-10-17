@@ -112,3 +112,8 @@
   and affected version metadata; do not claim unrelated runtime retesting.
 
 Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTATION_GUIDELINES.md).
+
+- In the examples catalog TOC, keep a concise description after every example
+  name, visually separated in smaller italic text (`<small><em>…</em></small>`),
+  with wording short enough for one or at most two display lines. Preserve
+  the example link, subgroup sorting and flat glossary.
