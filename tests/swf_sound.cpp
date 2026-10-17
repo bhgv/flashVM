@@ -34,9 +34,9 @@ int main()
  assert(fvm_audio_channel_close(channel)==FVM_OK && fvm_audio_channel_close(foreign)==FVM_OK);
  /* CWS canonical ownership does not borrow the compressed input storage. */
  if(version>=6){Bytes compressed;compressed.resize(8+compressBound((uLong)(swf.size()-8)));std::memcpy(compressed.begin(),swf.begin(),8);compressed[0]='C';uLongf size=compressed.size()-8;assert(compress2(compressed.begin()+8,&size,swf.begin()+8,(uLong)(swf.size()-8),Z_BEST_COMPRESSION)==Z_OK);compressed.resize(8+size);assert(fvm_load_memory(c,compressed.begin(),compressed.size())==FVM_OK);compressed.clear();assert(fvm_swf_sound_info(c,9,&info)==FVM_OK && info.data_size==sizeof(data));}
- /* Metadata admits opaque codecs and 8-bit PCM, but does not pretend to decode them. */
+ /* Metadata admits opaque codecs; eight-bit PCM decodes to signed-16. */
  definitions.clear();payload=sound(9,0x20,17,data,3);tag(definitions,14,payload);swf=movie(definitions,version);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);assert(fvm_swf_sound_info(c,9,&info)==FVM_OK && info.data_size==3);assert(fvm_swf_sound_read_pcm(c,9,0,0,0,0,&count)==FVM_UNSUPPORTED && !count);
- definitions.clear();payload=sound(9,0x0c,3,data,3);tag(definitions,14,payload);swf=movie(definitions,version);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);assert(fvm_swf_sound_info(c,9,&info)==FVM_OK && info.bits_per_sample==8);assert(fvm_swf_sound_read_pcm(c,9,0,1,pcm,8,&count)==FVM_UNSUPPORTED);
+ definitions.clear();payload=sound(9,0x0c,3,data,3);tag(definitions,14,payload);swf=movie(definitions,version);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);assert(fvm_swf_sound_info(c,9,&info)==FVM_OK && info.bits_per_sample==8);assert(fvm_swf_sound_read_pcm(c,9,0,1,pcm,8,&count)==FVM_OK && count==1 && pcm[0]==-32768);
  /* Declared PCM size mismatch, zero ID, short headers and selected duplicate IDs are rejected. */
  for(unsigned bad=0;bad<4;++bad){definitions.clear();payload=sound(bad==1?0:9,0x0e,bad==0?99:6,data,sizeof(data));if(bad==2)payload.resize(6);tag(definitions,14,payload);if(bad==3)tag(definitions,14,payload);swf=movie(definitions,version);assert(fvm_load_memory(c,swf.begin(),swf.size())==FVM_OK);info.sound_id=77;assert(fvm_swf_sound_info(c,9,&info)==FVM_INVALID_ARGUMENT && info.sound_id==77);}
  fvm_context_destroy(other);fvm_context_destroy(c);

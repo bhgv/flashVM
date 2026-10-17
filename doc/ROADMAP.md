@@ -2576,6 +2576,19 @@ saturation, adaptive indices and block transitions. Truncation leaves output
 unchanged; zero-length requests still reject truncated data. Catalog 90 entries
 and source/anchor links checked. This is not original Flash Player acceptance.
 
+### v0.550 — complete raw eight-bit sound conversion
+
+Implemented / реализовано: DefineSound PCM formats 0/3 now accept eight-bit
+unsigned input and expand it to native S16 using (byte - 128) * 256. Metadata
+retains its original width; range, memory and callback contracts are unchanged.
+All 256 values, mono/stereo, SWF1–8 (format 3 from SWF4), slices, invalid capacity,
+empty ranges and actual channel submission are covered by swf_sound_u8.cpp.
+Four independent raw-U8 FFmpeg oracle comparisons are byte-exact. Three affected
+tests pass ASAN/UBSAN (external SDK not instrumented; LSAN disabled). Original
+Flash amplitude matching, other codecs and timeline sound playback remain open.
+Minimal full suite: 1143 passed plus one existing Unix-endpoint skip (1144 total).
+No roadmap stage is closed. Восьмибитный PCM реализован, стадии остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

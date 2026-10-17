@@ -14,9 +14,9 @@ cmake --build build-swf-audio --target flashvm_examples_multimedia_swf_audio_mai
 ./build-swf-audio/flashvm_examples_multimedia_swf_audio_main INPUT.swf 7 OUTPUT.pcm
 ```
 
-Нужен существующий SWF с **16-bit PCM или SWF ADPCM DefineSound** ID 7; замените ID
+Нужен существующий SWF с **8/16-bit PCM или SWF ADPCM DefineSound** ID 7; замените ID
 на реально выбранный ненулевой UI16 key. Поддерживаются legacy native-order
-format 0, SWF4+ little-endian format 3 и ADPCM format 1 (2–5 бит на код). Другие кодеки/8-bit печатают номинальные
+format 0, SWF4+ little-endian format 3 и ADPCM format 1 (2–5 бит на код). Остальные сжатые кодеки печатают номинальные
 метаданные, но submit возвращает UNSUPPORTED. Это не подтверждение их декодирования.
 Без аргументов — только usage, файлов/устройств нет. С аргументами вход читается,
 а output создаётся/перезаписывается только при первой поддерживаемой непустой
@@ -76,13 +76,15 @@ an explicit FWS/CWS and exports one selected PCM or SWF ADPCM sound through real
 output. It opens no file/device without arguments, rejects invalid IDs and
 oversized input, and writes raw native-endian S16 in explicit 256-frame chunks.
 The named output is replaced when first used; an empty sound creates no file.
-NO_MEDIA works without FFmpeg or ALSA. Unsupported codecs/8-bit remain inspectable
+NO_MEDIA works without FFmpeg or ALSA. Other compressed codecs remain inspectable
 metadata and return UNSUPPORTED for output. Host userdata outlives context teardown;
 StopSounds closes the actual FILE. This is explicit resource export, not an
 automatic timeline player, cached mixer or audible native-device acceptance.
 ADPCM produces native S16 output. Each chunk revalidates the declared stream;
 this export tutorial is not a cached real-time decoder. See the
 [ADPCM contract](../../../doc/SWF_SOUND_RESOURCES.md#swf-adpcm--дифференциальное-аудио).
+Eight-bit PCM format 0/3 is converted by `(byte - 128) * 256` to S16.
+Восьмибитный PCM поддержан; итоговый файл по-прежнему содержит native S16.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

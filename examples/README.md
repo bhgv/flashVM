@@ -1174,7 +1174,7 @@ FFmpeg: декодирование файлов и явная камера. Ис
 DefineSound: обзор корневых ресурсов и явный экспорт PCM. Исполняемый C89 учебник:
 [README](multimedia/swf_audio/README.md), [main.c](multimedia/swf_audio/main.c).
 Загружает явно названный FWS/CWS, перечисляет звуковые ID/метаданные и отправляет
-выбранный 16-bit PCM в настоящий stdio sink кусками по 256 sample frames.
+выбранный 8/16-bit PCM или ADPCM с преобразованием в S16 в настоящий stdio sink кусками по 256 sample frames.
 Показывает canonical ownership, borrowed views, bounded copy до host callback,
 ошибки кодеков/размеров и StopSounds, закрывающий FILE. Нужен явный вход/ID/выход;
 NO_MEDIA работает без SDK. Это экспорт raw PCM, не автоматический SWF-плеер.

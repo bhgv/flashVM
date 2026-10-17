@@ -24,11 +24,29 @@ this is not validation of the entire SWF character dictionary across all kinds.
 Wire layout reference: Adobe's [SWF specification, mirrored original PDF](https://open-flash.github.io/mirrors/swf-spec-19.pdf),
 DefineSound and audio coding formats. No original Flash Player acceptance is
 claimed. Decode supports SWF ADPCM format 1 and native-order legacy PCM
-format 0 / SWF4+ little-endian PCM format 3 with 16-bit samples. Legacy
+format 0 / SWF4+ little-endian PCM format 3 with 8- or 16-bit samples. Legacy
 format 0 preserves the original format's platform byte-order dependency.
 Format 3 converts little-endian bytes explicitly; signed limits are decoded
 without implementation-defined unsigned-to-signed narrowing. Rate code zero is
 represented as the nominal integer 5512 Hz, not a fractional resampling clock.
+
+## Unsigned eight-bit PCM / восьмибитный PCM
+
+Formats 0 and 3 share the same unsigned eight-bit representation. Conversion
+uses `(byte - 128) * 256`, so 0 maps to -32768, 128 to silence and 255 to 32512.
+Stereo retains left/right interleaving. The same allocation-free, transactional
+range/capacity rules apply. Output always uses native S16; header metadata still
+reports the original eight-bit width. This explicit offset-binary conversion is
+verified against FFmpeg U8-to-S16, not certified against original Flash Player
+amplitude/volume behavior. No dithering, scaling policy or resampling is added.
+
+Восьмибитные форматы 0/3 совпадают; преобразование `(байт - 128) * 256` сохраняет
+все 256 значений в старших битах S16. 128 — тишина. Метаданные сохраняют исходную
+ширину 8 бит; выход — native S16. Проверка FFmpeg подтверждает преобразование,
+но не означает сверку громкости с оригинальным Flash Player.
+
+Run `python3 scripts/check_swf_u8_ffmpeg.py build-crash/flashvm_examples_multimedia_swf_audio_main`
+for the independent exhaustive conversion oracle.
 
 ## SWF ADPCM / дифференциальное аудио
 
@@ -144,7 +162,7 @@ as many destination values as frames. A null PCM destination is accepted only
 for a zero-frame range; an empty range may start exactly at sample_count.
 
 **Results:** OK publishes written channel values and native signed-16 PCM.
-UNSUPPORTED rejects other compressed codecs and eight-bit PCM and incompatible host short
+UNSUPPORTED rejects other compressed codecs and incompatible host short
 representation. INVALID_ARGUMENT rejects out-of-range intervals, insufficient
 capacity, nonempty null output and invalid lookup/lifecycle inputs. NOT_FOUND
 propagates a missing sound. A valid written pointer is set to zero before other
@@ -186,8 +204,8 @@ info ищет уникальный ненулевой UI16 ID. Все корне
 View содержит номинальные rate/channels/bits и borrowed SoundData, включая
 codec-specific префиксы. Данные живут до успешной перезагрузки/уничтожения
 контекста; обычный GC и неудачная загрузка view не инвалидируют. Read поддерживает
-16-bit PCM format 0 (native-endian), format 3 (little-endian, SWF4+) и ADPCM format 1.
-8-bit PCM и остальные сжатые форматы пока UNSUPPORTED. Начало/размер диапазона — в sample frames,
+8/16-bit PCM format 0 (native-endian), format 3 (little-endian, SWF4+) и ADPCM format 1.
+Остальные сжатые форматы пока UNSUPPORTED. Начало/размер диапазона — в sample frames,
 capacity/written — в short channel values. При ошибке PCM не пишется, written
 обнуляется; при ошибке count/info/at их назначения остаются прежними.
 

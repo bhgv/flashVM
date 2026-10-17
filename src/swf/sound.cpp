@@ -176,8 +176,7 @@ extern "C" FVM_Result fvm_swf_sound_read_pcm(FVM_Context *context, unsigned int 
     if (result != FVM_OK)
         return result;
     if ((info.format != FVM_SWF_SOUND_ADPCM &&
-         ((info.format != FVM_SWF_SOUND_FORMAT_NATIVE && info.format != FVM_SWF_SOUND_FORMAT_LE) ||
-          info.bits_per_sample != FVM_SWF_SOUND_BITS_16)) ||
+         (info.format != FVM_SWF_SOUND_FORMAT_NATIVE && info.format != FVM_SWF_SOUND_FORMAT_LE)) ||
         sizeof(short) != FVM_SWF_SOUND_PCM_BYTES || SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX)
         return FVM_UNSUPPORTED;
     if (first > info.sample_count || frames > info.sample_count - first || frames > capacity / info.channels ||
@@ -194,7 +193,16 @@ extern "C" FVM_Result fvm_swf_sound_read_pcm(FVM_Context *context, unsigned int 
         *written = values;
         return FVM_OK;
     }
-    const unsigned char *source = info.data + (size_t)first * info.channels * FVM_SWF_SOUND_PCM_BYTES;
+    size_t sample_bytes = info.bits_per_sample / FVM_SWF_SOUND_BYTE_BITS;
+    const unsigned char *source = info.data + (size_t)first * info.channels * sample_bytes;
+    if (info.bits_per_sample == FVM_SWF_SOUND_BITS_8)
+    {
+        /* Unsigned offset-binary PCM expands exactly into the high eight S16 bits. */
+        for (size_t i = 0; i < values; ++i)
+            destination[i] = (short)(((long)source[i] - FVM_SWF_SOUND_U8_BIAS) * FVM_SWF_SOUND_U8_SCALE);
+        *written = values;
+        return FVM_OK;
+    }
     for (size_t i = 0; i < values; ++i)
     {
         unsigned long value;

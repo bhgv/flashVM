@@ -18,6 +18,8 @@
 #define FVM_SWF_SOUND_RATE_44K 44100U /* Nominal 44 kHz rate code. */
 #define FVM_SWF_SOUND_BITS_8 8U /* Header eight-bit sample width. */
 #define FVM_SWF_SOUND_BITS_16 16U /* Supported native signed-short sample width. */
+#define FVM_SWF_SOUND_U8_BIAS 128L /* Offset-binary eight-bit PCM silence. */
+#define FVM_SWF_SOUND_U8_SCALE 256L /* Expand U8 into the high eight bits of signed-16 output. */
 #define FVM_SWF_SOUND_PCM_BYTES 2U /* Complete signed-16 PCM channel value. */
 #define FVM_SWF_SOUND_SIGN_BIT 32768UL /* Unsigned wire values at or above this encode negative S16. */
 #define FVM_SWF_SOUND_SIGN_RANGE 65536L /* Exact signed conversion without implementation-defined narrowing. */
