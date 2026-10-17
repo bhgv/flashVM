@@ -1,5 +1,6 @@
 /* Tutorial: read two native voice snapshots in bounded chunks and mix into a real host PCM file. */
 #include "flashvm/swf_sound.h" /* Import snapshot ownership and portable mixer/output APIs. */
+#include "flashvm/execution_mode.h" /* Select and observe real interpreter or automatic JIT execution. */
 #include "example_constants.h" /* Name independent voice count and bounded caller geometry. */
 #include <stdio.h> /* Implement actual fwrite/fclose output without a hidden device. */
 #include <string.h> /* Initialize copied metadata and host ownership safely. */
@@ -55,6 +56,11 @@ int main(int argc, char **argv) /* Keep the public integration valid C89. */
     FVM_Config config; /* Initialize before runtime creation. */
     FVM_Runtime *runtime = 0; /* Own the runtime after successful creation. */
     FVM_Context *context = 0; /* Own canonical SWF and the registered output channel. */
+    FVM_Object *stop_function = 0; /* Let the context own a bytecode function containing StopSounds. */
+    FVM_Value stop_result; /* Receive the ordinary function result after the actual output callback. */
+    FVM_ExecutionStats stats; /* Observe actual native entries rather than assuming compilation succeeded. */
+    const unsigned char stop_actions[] = {9, 0}; /* Keep an independent wire fixture: StopSounds then ActionEnd. */
+    int native; /* Select native execution only when this build and host support a backend. */
     FVM_AudioChannel *channel = 0; /* Borrow a context-owned mixed output registration. */
     FVM_SWFSoundVoice *voices[TUTORIAL_MIX_INPUT_COUNT]; /* Own native snapshots explicitly, outside managed GC. */
     FVM_SWFSoundVoiceInfo info[TUTORIAL_MIX_INPUT_COUNT]; /* Copy each snapshot's immutable output geometry. */
@@ -69,15 +75,28 @@ int main(int argc, char **argv) /* Keep the public integration valid C89. */
     memset(voices, 0, sizeof(voices)); /* Make native close safe after partial snapshot setup. */
     memset(inputs, 0, sizeof(inputs)); /* Clear unused video/timestamp fields before audio geometry is filled. */
     memset(&host, 0, sizeof(host)); /* Make fallback cleanup safe after any earlier failure. */
-    if (argc != TUTORIAL_MIX_ARGUMENT_COUNT) /* Require an explicit output path before any file/device operation. */
+    if (argc != TUTORIAL_MIX_ARGUMENT_COUNT && argc != TUTORIAL_MIX_MODE_ARGUMENT_COUNT) /* Require an explicit output path before any file/device operation. */
     { /* Describe the real file replacement side effect. */
-        printf("Usage: %s OUTPUT.pcm\nReplaces the named file with raw native S16 mixed output.\n", argv[0]); /* Keep no-argument smoke runs side-effect free. */
+        printf("Usage: %s OUTPUT.pcm [--interpreter|--jit]\nReplaces the named file with raw native S16 mixed output.\n", argv[0]); /* Keep no-argument smoke runs side-effect free. */
         return 0; /* No runtime, snapshot or host output has been acquired. */
     } /* Finish explicit output selection. */
+    native = fvm_jit_available(); /* Query explicit compiler availability independently of the build's initial execution policy. */
+    if (argc == TUTORIAL_MIX_MODE_ARGUMENT_COUNT) /* Let the caller select an exact observable path. */
+    { /* Validate the mode before acquiring VM or file ownership. */
+        if (strcmp(argv[2], "--interpreter") == 0) /* Explicitly bypass native compilation when requested. */
+            native = 0; /* Keep the same bytecode and host output callbacks. */
+        else if (strcmp(argv[2], "--jit") != 0 || !native) /* Require both a known flag and a real native backend. */
+        { /* Reject unknown flags or unavailable native execution. */
+            fprintf(stderr, "Choose --interpreter or an available --jit backend.\n"); /* Explain the mode requirement without opening output. */
+            return 1; /* No VM, snapshot or host file needs cleanup. */
+        } /* Finish explicit native-mode validation. */
+    } /* Finish caller-selected execution policy. */
     if (!checked(fvm_config_init(&config), "config_init") || !checked(fvm_runtime_create(&config, &runtime), "runtime_create")) /* Acquire VM ownership in dependency order. */
         goto cleanup; /* Release any acquired state normally. */
     if (!checked(fvm_context_create(runtime, &context), "context_create") || !checked(fvm_load_memory(context, swf, sizeof(swf)), "load_memory")) /* Retain canonical fixture bytes before preparation. */
         goto cleanup; /* No file has been opened. */
+    if (!checked(fvm_execution_set_mode(context, native ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER, 0), "execution_mode") || !checked(fvm_function_create_avm1(context, stop_actions, sizeof(stop_actions), 0, 0, 0, &stop_function), "stop_function")) /* Use ordinary managed activation and context-owned automatic code caching. */
+        goto cleanup; /* No output file or snapshot has been acquired. */
     for (i = 0; i < TUTORIAL_MIX_INPUT_COUNT; ++i) /* Prepare the fixture's two root controls independently. */
     { /* Each snapshot retains source PCM once regardless of its repetitions. */
         if (!checked(fvm_swf_sound_voice_open(context, i, &voices[i]), "voice_open")) /* Capture one source interval and envelope without activating output. */
@@ -123,8 +142,17 @@ int main(int argc, char **argv) /* Keep the public integration valid C89. */
             goto cleanup; /* Report native failure without replaying already advanced voices. */
         total += frames; /* Count accepted output frames rather than summing input durations. */
     } /* Finish all time-aligned blocks. */
-    if (!checked(fvm_audio_channel_stop(channel), "mixed_stop")) /* Close the actual output before reporting success. */
+    if (!checked(fvm_function_invoke(context, stop_function, 0, 0, 0, &stop_result), "StopSounds")) /* Execute bytecode or emitted machine code to close the real FILE output. */
         goto cleanup; /* Context teardown can retry a failed stop safely. */
+    stats.struct_size = sizeof(stats); /* Declare the exact execution-counter ABI. */
+    if (!checked(fvm_execution_get_stats(context, &stats), "execution_stats")) /* Query entries after successful StopSounds dispatch. */
+        goto cleanup; /* Preserve ordinary output/context cleanup on API failure. */
+    if (stats.native_entries != (native ? TUTORIAL_MIX_STOP_NATIVE_ENTRIES : 0)) /* Require exactly the selected native or interpreter dispatch. */
+    { /* Do not report interpreter fallback as native acceptance. */
+        fprintf(stderr, "Unexpected native StopSounds entry count.\n"); /* Explain an actual dispatch regression. */
+        goto cleanup; /* Report failure even if output bytes happened to match. */
+    } /* Finish actual native-entry verification. */
+    printf("StopSounds execution: %s\n", native ? "native" : "interpreter"); /* Make the actual selected path observable to integration tests. */
     printf("Mixed %lu frames; expected six native S16 frames, no audible playback.\n", (unsigned long)total); /* Expose observable file output and shared duration. */
     exit_code = 0; /* Every mixed block and real native stop succeeded. */
 cleanup: /* Preserve host userdata until all context callbacks finish. */

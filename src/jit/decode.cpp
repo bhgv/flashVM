@@ -491,6 +491,8 @@ FVM_Result fvm_jit_decode(const unsigned char *data, size_t size, FVM_JitCode &c
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_start_drag>, 0));
         else if (op == FVM_AVM1_ACTION_END_DRAG)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_end_drag>, 0));
+        else if (op == FVM_AVM1_ACTION_STOP_SOUNDS)
+            action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_stop_sounds>, 0));
         else if (op == FVM_AVM1_ACTION_TRACE)
             action.calls.push_back(FVM_JitCall(fvm_jit_safe<fvm_jit_trace>, 0));
         else if (op == FVM_AVM1_ACTION_THROW)

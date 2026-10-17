@@ -1,4 +1,6 @@
 Current architecture and debugger extension: [JIT_ARCHITECTURES.md](JIT_ARCHITECTURES.md)
+
+StopSounds native output stopping: [JIT_SOUND.md](JIT_SOUND.md) (v0.556).
 (v0.348). The x86-64-only limitations below describe the initial v0.346 checkpoint;
 five additional Linux ABI encoders are now implemented with separate test evidence.
 

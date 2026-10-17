@@ -21,7 +21,7 @@ mixer не двигает snapshots и не исполняет stop/no-multiple.
 ```sh
 cmake -S . -B build-mix -DFVM_DEFS_FILE=cmake/profiles/minimal.defs -DCMAKE_BUILD_TYPE=Release
 cmake --build build-mix --target flashvm_examples_multimedia_swf_mix_main --parallel
-./build-mix/flashvm_examples_multimedia_swf_mix_main MIXED.pcm
+./build-mix/flashvm_examples_multimedia_swf_mix_main MIXED.pcm --interpreter
 ```
 
 NO_MEDIA достаточен: внешние SDK, FFmpeg/ALSA, камера/микрофон и permissions не
@@ -33,8 +33,24 @@ macOS/Android paths используют стандартный stdio, но nati
 ## Результат и реализация
 
 ```text
+StopSounds execution: interpreter
 Mixed 6 frames; expected six native S16 frames, no audible playback.
 ```
+
+С ключом `--jit` первая строка — `StopSounds execution: native`; с
+`--interpreter` — `interpreter`. Без ключа пример выбирает режим по [fvm_jit_available](../../../include/flashvm/jit.h#L13), создаёт обычную AVM1 функцию `{StopSounds, End}` и
+вызывает её после последнего блока. StopSounds закрывает настоящий FILE через
+зарегистрированный callback. Native path дополнительно требует ровно один
+native_entries: скрытый fallback считается ошибкой. Для проверки этого пути
+можно собрать с `cmake/profiles/minimal-jit.defs` и передать `--jit`.
+Профиль INTERPRETER задаёт начальную политику, а не обязательно отсутствие
+явного compiler API: доступность проверяется через [fvm_jit_available](../../../include/flashvm/jit.h#L13). Ни стандартные
+AS объекты, ни отдельный аудиопоток для этого не требуются.
+
+[GC:] Function handle используется до первого вызова без intervening collecting
+callbacks; вызов устанавливает обычные activation roots. При расширении примера
+с collecting host calls удерживайте функцию явным корнем. Automatic code cache
+принадлежит context и уничтожается при его cleanup, отдельных JIT handles нет.
 
 Файл содержит 12 bytes native-endian S16: `[-256, 0, -256, 32512, 0, -32768]`.
 Длительность равна более длинному голосу (6), а не сумме длин (3+6).
@@ -65,7 +81,12 @@ teardown закрывает такой ресурс. Runtime освобожда�
 - [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L78), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L80),
   [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L84) — ownership,
   progression, EOF and cleanup: [SWF_SOUND_VOICES.md](../../../doc/SWF_SOUND_VOICES.md).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_stop`](../../../include/flashvm/multimedia.h#L85)
+- [`fvm_jit_available`](../../../include/flashvm/jit.h#L13), [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64),
+  [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71), [`fvm_function_create_avm1`](../../../include/flashvm/function.h#L52), [`fvm_function_invoke`](../../../include/flashvm/function.h#L65) —
+  выбор interpreter/automatic JIT, обычная активация StopSounds и проверка
+  фактического native entry: [JIT_SOUND.md](../../../doc/JIT_SOUND.md),
+  [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md).
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83)
   — copied host callbacks, actual synchronous output, retryable stop:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md).
 - [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical input before native preparation:
@@ -83,6 +104,21 @@ result through real stdio. The shorter voice becomes silence after EOF; the
 longer voice repeats independently. The output is exactly six frames
 [-256, 0, -256, 32512, 0, -32768], stored in native byte order.
 
+The final stop is an ordinary AVM1 function containing StopSounds and End.
+The tutorial selects automatic JIT when [fvm_jit_available](../../../include/flashvm/jit.h#L13) reports a working
+backend, otherwise interpreter mode. Pass `--interpreter` or `--jit` after the
+output path to select a specific path; unavailable JIT or an unknown switch is
+rejected before VM/file creation. A native run requires exactly one actual
+native entry from [fvm_execution_get_stats](../../../include/flashvm/execution_mode.h#L71); fallback fails the tutorial. Both
+paths close the real FILE through the same guarded registered stop callback.
+Build with minimal-jit.defs and pass `--jit` to exercise native execution.
+An INTERPRETER build sets the initial policy; it need not disable explicit
+compiler availability. The query, rather than the profile name, decides that. No standard objects
+are required. The managed function is invoked before any collecting host call;
+normal activation roots protect it during invocation. Add an explicit root if
+extending preparation with collecting callbacks. The context owns automatic
+compiled code and releases it at teardown.
+
 Supply one explicit writable output path; an existing file may be replaced.
 No-argument runs create no files or VM. NO_MEDIA needs no SDK/device. Source
 geometry must match; there is no resampling, scheduling, automatic event control
@@ -99,7 +135,8 @@ python3 scripts/check_swf_mix_example.py build-mix/flashvm_examples_multimedia_s
 python3 scripts/check_swf_mix_example.py build-mix/flashvm_examples_multimedia_swf_mix_main --ffmpeg
 ```
 
-The second command additionally requires the system ffmpeg executable with amix;
+Optional checker `--native` / `--interpreter` flags select and require that exact observed execution
+path. The second command additionally requires the system ffmpeg executable with amix;
 it compares unnormalized longest-voice output byte-for-byte. Runtime mixing and
 the tutorial need no FFmpeg. Проверка — отдельный oracle, не runtime dependency.
 
@@ -113,12 +150,16 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:85](../../../include/flashvm/multimedia.h#L85) |
 | `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
 | `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../../../include/flashvm/multimedia.h#L130) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../../../include/flashvm/execution_mode.h#L71) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
+| `fvm_function_create_avm1` | function | [include/flashvm/function.h:52](../../../include/flashvm/function.h#L52) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../../../include/flashvm/function.h#L65) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../../../include/flashvm/jit.h#L13) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |

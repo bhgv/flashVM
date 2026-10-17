@@ -1,7 +1,13 @@
-/* FlashVM: native tracing, exceptions, elapsed time and bounded random values. */
+/* FlashVM: native audio stopping, tracing, exceptions, elapsed time and bounded random values. */
 #include "internal.hpp"
 #include "../avm1/operand_stack.hpp"
 #include "flashvm/exception.h"
+#include "flashvm/multimedia.h"
+/* [GC:] The shared audio service stabilizes registrations and blocks collection during callbacks. */
+FVM_Result fvm_jit_stop_sounds(FVM_JitInvocation *s, unsigned int)
+{
+    return fvm_audio_stop_all(s->context);
+}
 /* [GC:] Keep the trace input rooted until conversion and the host sink finish. */
 FVM_Result fvm_jit_trace(FVM_JitInvocation *s, unsigned int)
 {

@@ -2723,6 +2723,44 @@ positions/bindings и не включает автоматический MovieCl
 частоты/layouts требуют отдельной конверсии; прочие кодеки и foreign native
 platform acceptance остаются открытыми. No roadmap stage is closed.
 
+### v0.556 — native StopSounds and observable tutorial execution modes
+
+Implemented / реализовано: StopSounds now emits a fixed semantic helper call
+through [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) and the same [fvm_audio_stop_all](../include/flashvm/multimedia.h#L91) service used by the
+interpreter. The action consumes no operands, preserves lower stack values and
+attempts every active context output in registration order, returning the first
+failure. Successful channels become inactive; failures remain retryable. The
+shared native barrier keeps registry/GC/lifecycle behavior identical. No new
+public ABI is introduced. See [JIT_SOUND.md](JIT_SOUND.md).
+
+The line-commented C89 swf_mix tutorial now stops its actual FILE through a
+normal AVM1 function, with optional --interpreter/--jit selection and observed
+native-entry counters. It rejects invalid/unavailable modes before VM or file
+creation. Compiler availability is queried independently of initial build policy;
+an INTERPRETER profile does not necessarily disable the explicit compiler API.
+RU/EN contracts, source links, API index, catalog and compatibility inventory
+are updated.
+
+Validation: full Linux minimal and automatic-JIT suites each pass 1158 checks
+plus one existing speech SSIP Unix-endpoint skip (1159 total). Both final full
+runs pass after generated-ELF permission repair; the first JIT run had one
+permission-denied BAD_COMMAND, whose focused retry passed before the final run.
+Eight focused ASAN/UBSAN checks pass with LeakSanitizer disabled. New cases cover
+host/SWF1–8 execution in all three modes, actual native entries, ordered multiple
+errors, retries, context isolation, callback GC/lifecycle barriers, script
+exception unwind, source-budget gating before/after delivery, and allocation
+failure restoration. Direct stopping succeeds with allocation denied. The actual
+C89 mixed FILE tutorial passes both explicit modes in minimal, JIT and sanitizer
+builds, plus invalid-mode/no-argument/file-failure cleanup; PCM is byte-exact
+against installed FFmpeg amix. Documentation/source/comment checks pass; the
+catalog remains at 92 examples.
+
+StopSounds no longer forces whole-body fallback, but other unsupported records
+still can. This does not schedule MovieClip sound controls, stop independent
+unregistered snapshots, add codecs or certify physical/foreign-OS playback.
+Автоматический audio timeline, полная семантика SWF/AS, оставшиеся JIT/platform
+проверки и все девять этапов остаются открытыми. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -2733,12 +2771,14 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
 | `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
 | `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
 | `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+| `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:7](../src/jit/effects.cpp#L7) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |

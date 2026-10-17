@@ -22,6 +22,15 @@ NO_MEDIA supports custom outputs without requiring FFmpeg.
 A native Linux provider can supply this table directly:
 [ALSA output](ALSA_AUDIO_OUTPUT.md). It remains separately host-owned.
 
+StopSounds also lowers directly to native code in v0.556; it no longer forces
+automatic interpreter fallback. Semantics, errors and callback barriers remain
+shared: [JIT_SOUND.md](JIT_SOUND.md). Native StopSounds does not schedule timeline
+sounds or mix/stop independent unregistered snapshots.
+
+StopSounds с v0.556 выполняется и в JIT с теми же callbacks, ошибками и GC
+barrier. Это не автоматическое исполнение звукового таймлайна; отдельные native
+voice snapshots не останавливаются. См. [JIT_SOUND.md](JIT_SOUND.md).
+
 ## Ownership, execution and callback contract
 
 The context owns each [`FVM_AudioChannel`](../src/multimedia/audio/channel.hpp#L6) wrapper and copies the complete output
@@ -131,9 +140,10 @@ callbacks must not call back into the VM being destroyed.
 
 ## JIT and transport
 
-A body containing StopSounds currently follows interpreter fallback when the
-native JIT compiler cannot compile it. It is never replaced with a successful
-no-op. `stopAllSounds` has a stable native callback identity in graph transport;
+Since v0.556 a body containing StopSounds can execute a direct native helper;
+this action no longer forces interpreter fallback. Compilation may still reject
+other unsupported operations in the same body. It is never a successful no-op
+when active outputs are registered. See [JIT_SOUND.md](JIT_SOUND.md). `stopAllSounds` has a stable native callback identity in graph transport;
 a transported function stops the destination context's outputs, not its source.
 Reaching 100/100 dispatch source references is an inventory gate, not complete
 AVM1, audio or platform conformance.

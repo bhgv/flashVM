@@ -71,7 +71,11 @@ int main(void)
  {const unsigned char body[]={0x96,5,0,7,42,0,0,0,9,0x3e,0};FVM_Object *function=0;
  assert(fvm_audio_channel_write(a.channel,&frame)==FVM_OK);
  assert(fvm_function_create_avm1(context,body,sizeof(body),0,0,0,&function)==FVM_OK);
- assert(fvm_function_invoke(context,function,0,0,0,&out)==FVM_OK && out.type==FVM_VALUE_NUMBER && out.number==42 && a.stops==4);}
+ {FVM_ExecutionStats before,after;before.struct_size=sizeof(before);after.struct_size=sizeof(after);
+ assert(fvm_execution_get_stats(context,&before)==FVM_OK);
+ assert(fvm_function_invoke(context,function,0,0,0,&out)==FVM_OK && out.type==FVM_VALUE_NUMBER && out.number==42 && a.stops==4);
+ assert(fvm_execution_get_stats(context,&after)==FVM_OK);
+ assert(after.native_entries==before.native_entries+(mode && fvm_jit_available()?1UL:0UL));}}
  assert(fvm_audio_channel_close(a.channel)==FVM_OK);assert(fvm_audio_channel_close(b.channel)==FVM_OK);
  /* Context destruction performs a final stop for still-active registrations. */
  peer.stop_result=FVM_ERROR;fvm_context_destroy(other);assert(peer.stops==1);

@@ -113,7 +113,7 @@
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
-    - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса: порционное смешивание в один PCM-файл</em></small>
+    - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [speech](#group-multimedia-speech)
     - [speech_android](#example-multimedia-speech_android) — <small><em>Android: Context, permissions, JNI и речевые службы</em></small>
@@ -1212,6 +1212,8 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 Исполняемый C89 учебник: [README](multimedia/swf_mix/README.md),
 [main.c](multimedia/swf_mix/main.c), [constants](multimedia/swf_mix/example_constants.h).
 После EOF короткого голоса его tail — тишина; второй голос продолжает повтор.
+Останавливает настоящий FILE через AVM1 StopSounds в interpreter либо automatic
+JIT; native path проверяет фактический вход в машинный код.
 Показывает native ownership, одинаковую geometry, caller buffers, точную сумму
 и final-only saturation. NO_MEDIA без SDK; явный output path может быть перезаписан.
 Это ручной block pipeline, без автоматического clock, resampling или audible output.

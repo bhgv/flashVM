@@ -14,6 +14,11 @@ StopSounds (0x09) stops active context-registered host outputs through the share
 [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md) operation. This does not implement SWF
 DefineSound/StartSound/streaming audio or certify complete sound playback.
 
+Since v0.556 StopSounds also has direct native lowering with ordered host
+callback/error semantics and actual-entry checks: [JIT_SOUND.md](JIT_SOUND.md).
+С v0.556 StopSounds проверен также в explicit/automatic JIT; source inventory
+по-прежнему не доказывает полноту AVM1.
+
 A source reference certifies neither operand decoding nor runtime semantics,
 SWF version conformance, GC safety or historical player equivalence. Selected
 behavioral evidence remains in COMPATIBILITY_STATUS.md and the service reports.
