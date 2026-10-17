@@ -4351,3 +4351,12 @@ available. Tests / проверки: execution_build_default and execution_modes
 BitmapData.loadBitmap resource selection; its GC/transport scenarios run in
 three modes. See [RU/EN contract](JIT_BUILD_DEFAULT.md).
 Full backend/platform acceptance and all nine stages remain open.
+
+
+### v0.532 — automatic-JIT Linux validation checkpoint
+
+Recorded / зафиксировано: clean v0.531 minimal-jit release-runner validation,
+1097 CTest cases, 26 fresh Unicorn cases and 1086 direct ELF artifacts;
+precommit minimal/JIT 1096 each, 30 definition cases and three ASan/UBSan cases.
+See [RU/EN evidence and limits](LINUX_JIT_CHECKPOINT_V531.md). Documentation
+only; real foreign OS/CPU acceptance and all nine stages remain open.
