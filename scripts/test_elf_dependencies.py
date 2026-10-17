@@ -36,6 +36,18 @@ class ElfDependencyTests(unittest.TestCase):
                              str(relocatable), str(outside), str(malformed), str(build)])
             self.assertEqual(elf_artifacts(doc, build), sorted([target, shared]))
 
+    def test_missing_command_cannot_hide_among_valid_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            build = Path(directory)
+            target = executable(build / 'valid')
+            for missing in [build / 'missing executable', build]:
+                doc = discovery([str(target)])
+                doc['tests'].append({'command': [str(missing)]})
+                with self.subTest(command=missing), self.assertRaises(ValueError):
+                    elf_artifacts(doc, build)
+            # Output arguments need not exist before CTest executes the command.
+            self.assertEqual(elf_artifacts(discovery([str(target), str(build / 'output')]), build), [target])
+
     def test_missing_or_malformed_discovery_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             build = Path(directory)
@@ -72,7 +84,7 @@ class ElfDependencyTests(unittest.TestCase):
             with self.subTest(output=output), self.assertRaises(ValueError):
                 needed_libraries(output)
 
-    def exercise(self, directory, fail=None, libraries=None, version=None):
+    def exercise(self, directory, fail=None, libraries=None, version=None, missing_command=False):
         build = Path(directory)
         binary = executable(build / 'artifact')
         record = {'elf_dependencies': {'status': 'passed'}}
@@ -85,7 +97,10 @@ class ElfDependencyTests(unittest.TestCase):
             if label == 'elf-tool':
                 output = 'GNU readelf 2.40\n' if version is None else version
             elif label == 'elf-discover':
-                output = json.dumps(discovery([str(binary)]))
+                document = discovery([str(binary)])
+                if missing_command:
+                    document['tests'].append({'command': [str(build / 'missing executable')]})
+                output = json.dumps(document)
             else:
                 output = ('0x1 (NEEDED) Shared library: [libc.so.6]\n0x0 (NULL) 0\n'
                           if libraries is None else libraries)
@@ -113,7 +128,7 @@ class ElfDependencyTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory, self.subTest(phase=phase):
                 with self.assertRaises(RuntimeError):
                     self.exercise(directory, fail=phase)
-        for kwargs in [{'version': ''}, {'version': 'LLVM tool\n'},
+        for kwargs in [{'missing_command': True}, {'version': ''}, {'version': 'LLVM tool\n'},
                        {'libraries': 'garbage'},
                        {'libraries': '0x1 (NEEDED) Shared library: [libpng16.so.16]\n0x0 (NULL) 0'},
                        {'libraries': '0x1 (NEEDED) Shared library: [libnanosvg.so.1]\n0x0 (NULL) 0'}]:

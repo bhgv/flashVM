@@ -2180,3 +2180,11 @@ property lookup in loaded paths; mixed-case spellings retain shadowing,
 getters and qualified call receivers. Tests / проверки: path_root_case and
 its roots/allocation variants. See [RU/EN contract](PATH_ROOT_CASE.md).
 General path compatibility and all nine stages remain open / остаются открытыми.
+
+### v0.519 — fail on missing CTest command artifacts
+
+Implemented / реализовано: native ELF discovery rejects missing/directory
+command files inside the build tree even alongside valid artifacts; output
+arguments remain optional. Tests / проверки: test_elf_dependencies includes
+false-pass and stale-status regressions. See PLATFORM_VALIDATION.md and
+PLATFORM_VALIDATION.ru.md. All nine stages remain open / остаются открытыми.

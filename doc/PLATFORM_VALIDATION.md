@@ -222,3 +222,23 @@ configuration/version/host checks passed per minimal, AGG and Cairo profile.
 The revised policy passed again on 1063 Cairo ELF artifacts from the v0.513
 runtime baseline (plus refreshed build-config version), with the same four
 system sonames. No C++ runtime logic changed in v0.514.
+
+### v0.519: missing executable discovery
+
+The ELF audit now rejects an absolute CTest command inside the build tree when
+it is missing or is a directory. Another valid ELF no longer masks the missing
+command or leaves a stale passing audit status. Ordinary output arguments may
+still be absent before execution. External launchers, relative commands and
+non-ELF scripts are not certified as ELF artifacts by this audit; successful
+full CTest execution remains a separate required phase.
+
+Regression coverage: test_elf_dependencies reproduces three false passes on
+v0.518, including stale successful evidence, then checks the corrected policy.
+This improves stage 9 evidence; it does not complete platform acceptance.
+
+Validation: nine ELF audit unit cases and ten encoder/host cases passed; all
+four configuration/version/audit-host checks passed in minimal, AGG and Cairo.
+Fresh GNU readelf audit passed for 1076 current Cairo ELF artifacts, with only
+libc, libgcc_s, libm and libstdc++ in direct DT_NEEDED. Runtime code is unchanged
+from the full v0.518 suites (1067/1086/1087); those suites are not claimed as new
+v0.519 full runs. Actual foreign-OS and transitive/dlopen acceptance remain open.

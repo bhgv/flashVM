@@ -29,7 +29,7 @@ def elf_artifacts(document, build):
         if (not isinstance(command, list) or not command
                 or any(not isinstance(part, str) or not part for part in command)):
             raise ValueError('missing or malformed CTest ELF command')
-        for part in command:
+        for argument_index, part in enumerate(command):
             path = Path(part)
             if not path.is_absolute():
                 continue
@@ -39,6 +39,8 @@ def elf_artifacts(document, build):
             except ValueError:
                 continue
             if not path.is_file():
+                if argument_index == 0:
+                    raise ValueError('missing CTest command file inside build tree: ' + str(path))
                 continue
             with path.open('rb') as stream:
                 header = stream.read(18)
