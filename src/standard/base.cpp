@@ -2404,13 +2404,13 @@ bool fvm_base_accessor_data(const FVM_AccessorEntry &entry, FVM_Value &out)
     return true;
 }
 
-/* Parse decimal property names with leading ASCII whitespace and Int32 wrapping.
+/* Parse decimal property names with leading Infra ASCII whitespace and Int32 wrapping.
  * Storage keys remain literal; this parser controls only native Array length. */
 static bool array_named_index(const fvm_detail::string &name, long &index)
 {
     size_t pos = 0;
     while (pos < name.size() && (name[pos] == ' ' || name[pos] == '\t' ||
-           name[pos] == '\n' || name[pos] == '\r' || name[pos] == '\v' || name[pos] == '\f'))
+           name[pos] == '\n' || name[pos] == '\r' || name[pos] == '\f'))
         ++pos;
     bool negative = false;
     if (pos < name.size() && (name[pos] == '+' || name[pos] == '-'))

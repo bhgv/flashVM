@@ -2164,3 +2164,11 @@ hint for this keyword folding; local functions with With closures retain local
 recognition. Tests / проверки: with_this_case (including transport and native JIT),
 its roots and allocation variants. See [RU/EN contract](WITH_THIS_CASE.md).
 Complete scope/SWF semantics and all nine stages remain open / остаются открытыми.
+
+### v0.517 — exact Array index whitespace
+
+Implemented / реализовано: vertical tab no longer classifies a literal Array
+property as an index or triggers overflow truncation. Tests / проверки:
+array_index_whitespace, array_index_whitespace_effects and corrected
+array_named_index expectation. See [RU/EN contract](ARRAY_NAMED_INDEX.md).
+Nonnumeric Array length and all nine stages remain open / остаются открытыми.

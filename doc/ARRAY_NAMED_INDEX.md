@@ -43,3 +43,43 @@ profiles. Unicorn checks pass for x86, ARM, ARM64, RISC-V and RISC-V64, includin
 branch/error, far-branch and applicable high-address/Thumb variants. The x64
 backend is exercised by native Linux JIT tests, not this Unicorn checker. These emulator checks
 do not establish Windows/macOS/Android runtime acceptance.
+
+## v0.517 whitespace correction / Уточнение пробелов
+
+Leading whitespace means exactly SPACE, TAB, LF, FF and CR. Vertical tab
+(U+000B) is a literal non-digit and prevents index classification, including
+after an otherwise accepted prefix. Previously it incorrectly triggered native
+length growth and could truncate existing elements on Int32 overflow. Literal
+property storage and accessors still execute normally; inherited setters keep
+their existing no-growth dispatch. Unloaded host canonical-index policy is unchanged.
+
+Пропускаются только SPACE, TAB, LF, FF и CR. Вертикальная табуляция U+000B
+остаётся частью имени и исключает его из индексов, в том числе после пробелов.
+Ранее она могла ошибочно менять length и удалять элементы при переполнении.
+Обычное свойство/сеттер сохраняет работу; наследуемый сеттер не растит length.
+
+Primary comparison: Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd,
+avm1/object/script_object.rs parse_array_index uses u8::is_ascii_whitespace.
+The Rust contract explicitly excludes vertical tab:
+https://doc.rust-lang.org/std/primitive.u8.html#method.is_ascii_whitespace
+This source comparison is not an original Flash Player oracle.
+Сравнение исходников не заменяет проверку оригинальным Flash Player.
+
+array_index_whitespace checks every ASCII control plus SPACE/DEL, Unicode
+whitespace, counted NUL, signs, Int32 wrapping and literal key identity. It
+uses C API, interpreter and explicit/automatic JIT across host and SWF4–8;
+roundtrips preserve noncanonical keys and length through GC.
+array_index_whitespace_effects checks own/inherited setters, readonly length,
+protected elements, overflow truncation, detached receiver roots, GC, throws
+and errors. array_named_index retains the former vertical-tab input as a
+negative regression. General nonnumeric length assignment remains open.
+Проверки охватывают C API, интерпретатор, JIT, перенос графа, GC и ошибки;
+полная семантика Array и ненумерическая length остаются открытыми.
+
+Validation / Проверено v0.517 on Linux x64 C++98: minimal 1064/1064,
+AGG 1083/1083 and Cairo 1084/1084 passed, including successful reruns after
+restoring executable permissions for 22/29/29 binaries. Five targeted
+ASan/UBSan cases passed. Direct DT_NEEDED audit passed for 1073 Cairo ELF
+artifacts, finding only libc, libgcc_s, libm and libstdc++; it does not inspect
+transitive or dynamically loaded dependencies. Windows/macOS/Android acceptance
+remains open / реальная приёмка остальных ОС остаётся открытой.

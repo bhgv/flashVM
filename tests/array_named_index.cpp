@@ -5,7 +5,7 @@ int main()
     FVM_Config cfg; FVM_Runtime *rt = 0;
     assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
     const char *names[] = {"01", "+1", " \t\r\n\v\f1", "-1", "4294967295", "4294967297", "18446744073709551617", "2147483647", "2147483648", "1 ", "1.0", "0x1", "+", "--1", "-0", "000"};
-    const double expected[] = {2,2,2,0,0,2,2,-2147483648.0,0,0,0,0,0,0,1,1};
+    const double expected[] = {2,2,0,0,0,2,2,-2147483648.0,0,0,0,0,0,0,1,1};
     for (unsigned version = 4; version <= 8; ++version)
     for (unsigned i = 0; i < sizeof(names)/sizeof(names[0]); ++i)
     for (unsigned route = 0; route < 4; ++route) {
