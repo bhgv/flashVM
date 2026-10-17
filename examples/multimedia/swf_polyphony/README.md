@@ -68,11 +68,11 @@ ALSA описана в [ALSA_AUDIO_OUTPUT.md](../../../doc/ALSA_AUDIO_OUTPUT.md)
 
 - [`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L97) — overlap, global no-multiple и stop-by-ID:
   [SWF_SOUND_PLAYBACK.md](../../../doc/SWF_SOUND_PLAYBACK.md#fvm_swf_sound_event_submit).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L80) — copied registration и host ownership:
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81) — copied registration и host ownership:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
-- [`fvm_audio_channel_active`](../../../include/flashvm/multimedia.h#L88) — copied state без host callback:
+- [`fvm_audio_channel_active`](../../../include/flashvm/multimedia.h#L89) — copied state без host callback:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_active).
-- [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L90) — оставшийся output и error/retry policy:
+- [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L91) — оставшийся output и error/retry policy:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_stop_all).
 - [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical SWF storage:
   [SWF_SOUND_RESOURCES.md](../../../doc/SWF_SOUND_RESOURCES.md#scope--область-реализации).
@@ -107,9 +107,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:88](../../../include/flashvm/multimedia.h#L88) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:80](../../../include/flashvm/multimedia.h#L80) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:90](../../../include/flashvm/multimedia.h#L90) |
+| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:89](../../../include/flashvm/multimedia.h#L89) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../../../include/flashvm/multimedia.h#L91) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |

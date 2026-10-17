@@ -49,9 +49,9 @@ Write использует nonblocking ALSA: short writes продвигаютс
 
 ## Демонстрируемые функции API
 
-- [`fvm_audio_linux_alsa_open`](../../../include/flashvm/multimedia.h#L75) — явное устройство/формат/латентность и callbacks: [контракт open](../../../doc/ALSA_AUDIO_OUTPUT.md#fvm_audio_linux_alsa_open).
-- [`fvm_audio_linux_alsa_close`](../../../include/flashvm/multimedia.h#L77) — terminal close после снятия каналов: [контракт close](../../../doc/ALSA_AUDIO_OUTPUT.md#fvm_audio_linux_alsa_close).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L80), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_close`](../../../include/flashvm/multimedia.h#L86) — регистрация, borrowed PCM, снятие: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
+- [`fvm_audio_linux_alsa_open`](../../../include/flashvm/multimedia.h#L76) — явное устройство/формат/латентность и callbacks: [контракт open](../../../doc/ALSA_AUDIO_OUTPUT.md#fvm_audio_linux_alsa_open).
+- [`fvm_audio_linux_alsa_close`](../../../include/flashvm/multimedia.h#L78) — terminal close после снятия каналов: [контракт close](../../../doc/ALSA_AUDIO_OUTPUT.md#fvm_audio_linux_alsa_close).
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_close`](../../../include/flashvm/multimedia.h#L87) — регистрация, borrowed PCM, снятие: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий StopSounds: [семантика](../../../doc/AUDIO_CHANNELS.md#scope).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — VM и порядок владения: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal channel cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
@@ -76,11 +76,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:86](../../../include/flashvm/multimedia.h#L86) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:80](../../../include/flashvm/multimedia.h#L80) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:77](../../../include/flashvm/multimedia.h#L77) |
-| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:75](../../../include/flashvm/multimedia.h#L75) |
+| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:87](../../../include/flashvm/multimedia.h#L87) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
+| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:78](../../../include/flashvm/multimedia.h#L78) |
+| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:76](../../../include/flashvm/multimedia.h#L76) |
 | `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../../../include/flashvm/avm1.h#L38) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |

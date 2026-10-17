@@ -15,6 +15,7 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
     1000000.0 /* Native evdev timestamp conversion factor.  \
                                                       */
 #define FVM_DEVICE_NANOSECONDS_PER_SECOND 1000000000.0 /* Native Android timestamp conversion factor. */
+#define FVM_MEDIA_AUDIO_MIX_MAX_INPUTS 1024U /* Keep summed S16 values inside a portable signed-long accumulator. */
 #define FVM_MEDIA_AUDIO 1 /* Decode an audio stream as native-endian signed 16-bit PCM. */
 #define FVM_MEDIA_VIDEO 2 /* Decode a video stream as tightly packed RGBA8. */
 #define FVM_MEDIA_CAMERA 3 /* Explicitly open a camera with a named FFmpeg device format. */
@@ -125,6 +126,10 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
     /* Send a valid audio buffer to a real host output callback; no buffering or conversion is
      * implicit. */
     FVM_API FVM_Result fvm_audio_write(const FVM_MediaOutput *, const FVM_MediaFrame *); /* OS: host callback. */
+    /* Sum equal-geometry native S16 inputs once, pad short tails with silence and saturate after the full sum. */
+    FVM_API FVM_Result fvm_audio_mix_s16(const FVM_MediaFrame *inputs, size_t input_count, /* OS: portable native PCM arithmetic; inputs are borrowed. */
+                                          unsigned int sample_rate, unsigned int channels, size_t frames, /* Select the complete destination block geometry. */
+                                          short *destination, size_t capacity_values, FVM_MediaFrame *out_frame); /* Borrow caller storage in the returned output view. */
     /* Stop only this standalone output; context channels use fvm_audio_stop_all. */
     FVM_API FVM_Result fvm_audio_stop(const FVM_MediaOutput *); /* OS: host callback. */
     /* Present a valid RGBA frame through the host's output callback. */

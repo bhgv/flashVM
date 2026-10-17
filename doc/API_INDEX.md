@@ -80,11 +80,11 @@ ToggleQuality transitions and renderer limits.
 [Bridge API and detailed contracts](MULTIMEDIA_BRIDGES.md); [public header](../include/flashvm/multimedia.h).
 Decoder/capture sessions, synchronous PCM/RGBA output, native input and future sensor providers.
 Context audio registration and script stopping: [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md).
-[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L80), [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_stop`](../include/flashvm/multimedia.h#L84),
-[`fvm_audio_channel_close`](../include/flashvm/multimedia.h#L86), [`fvm_audio_channel_active`](../include/flashvm/multimedia.h#L88) and [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L90)
+[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_stop`](../include/flashvm/multimedia.h#L85),
+[`fvm_audio_channel_close`](../include/flashvm/multimedia.h#L87), [`fvm_audio_channel_active`](../include/flashvm/multimedia.h#L89) and [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L91)
 provide copied output tables, explicit ownership and shared StopSounds semantics.
 
-Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia.h#L75), [`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L77) —
+Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia.h#L76), [`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L78) —
 [static ALSA provider contracts](ALSA_AUDIO_OUTPUT.md).
 
 Loaded SWF audio resource/StartSound inspection and explicit PCM output: [`FVM_SWFSoundInfo`](../include/flashvm/swf_sound.h#L13),
@@ -103,6 +103,10 @@ Prepared independent sequential voices: [`FVM_SWFSoundVoice`](../src/swf/sound_v
 [`fvm_swf_sound_voice_close`](../include/flashvm/swf_sound.h#L84) — [incremental voice contracts](SWF_SOUND_VOICES.md).
 Source PCM is retained once; snapshot reads allocate nothing and outlive the VM.
 
+Portable bounded S16 summing: [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L130), [`FVM_MEDIA_AUDIO_MIX_MAX_INPUTS`](../include/flashvm/multimedia.h#L18) —
+[AUDIO_MIXING.md](AUDIO_MIXING.md). Caller-aligned blocks, final-only saturation,
+short-tail silence and no allocation/implicit device or clock.
+
 ## Speech / Речевые службы
 
 [Detailed TTS/STT API and per-OS preparation](SPEECH_BRIDGES.md); [public speech.h](../include/flashvm/speech.h).
@@ -117,19 +121,21 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:88](../include/flashvm/multimedia.h#L88) |
-| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:86](../include/flashvm/multimedia.h#L86) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:80](../include/flashvm/multimedia.h#L80) |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:77](../include/flashvm/multimedia.h#L77) |
-| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:75](../include/flashvm/multimedia.h#L75) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:90](../include/flashvm/multimedia.h#L90) |
+| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:89](../include/flashvm/multimedia.h#L89) |
+| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:87](../include/flashvm/multimedia.h#L87) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:85](../include/flashvm/multimedia.h#L85) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
+| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:78](../include/flashvm/multimedia.h#L78) |
+| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:76](../include/flashvm/multimedia.h#L76) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
+| `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |

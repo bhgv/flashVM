@@ -80,7 +80,7 @@ without applying stops, loops, in/out points or envelope gain.
 - [`fvm_swf_sound_count`](../../../include/flashvm/swf_sound.h#L86), [`fvm_swf_sound_at`](../../../include/flashvm/swf_sound.h#L88) — подсчёт/порядок и ошибки дубликатов: [count](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_count), [at](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_at).
 - [`fvm_swf_sound_info`](../../../include/flashvm/swf_sound.h#L90) — borrowed metadata и уникальный ID: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_info).
 - [`fvm_swf_sound_submit`](../../../include/flashvm/swf_sound.h#L100) — явный диапазон и callback-independent PCM copy: [контракт](../../../doc/SWF_SOUND_RESOURCES.md#fvm_swf_sound_submit).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L80) — регистрация настоящего output callback: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81) — регистрация настоящего output callback: [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий StopSounds, закрывающий sink: [семантика](../../../doc/AUDIO_CHANNELS.md#scope).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — VM ownership: [API index](../../../doc/API_INDEX.md#runtime-and-context), [terminal channel cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
 
@@ -166,7 +166,7 @@ No automatic timeline, mixer or SoundStreamBlock decoding is introduced.
   [contract](../../../doc/SWF_SOUND_VOICES.md#fvm_swf_sound_voice_info).
 - [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L84) — explicit VM-independent native cleanup:
   [contract](../../../doc/SWF_SOUND_VOICES.md#fvm_swf_sound_voice_close).
-- [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L82) — synchronous ordinary output for each caller chunk:
+- [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83) — synchronous ordinary output for each caller chunk:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_write).
 
 <!-- source-links:start -->
@@ -178,8 +178,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:80](../../../include/flashvm/multimedia.h#L80) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
 | `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../../../include/flashvm/avm1.h#L38) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |

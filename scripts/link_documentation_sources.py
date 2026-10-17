@@ -182,7 +182,7 @@ def refresh(path, index):
                    'Source line links describe the current checkout, including in historical notes.\n\n'
                    '| Символ / Symbol | Вид / Kind | Исходник / Source |\n'
                    '| --- | --- | --- |\n')
-        for name in sorted(mentioned, key=str.casefold):
+        for name in sorted(mentioned, key=lambda name: (name.casefold(), name)):
             item = index[name]
             table += (f'| `{name}` | {item[3]} | '
                        f'[{item[1]}:{item[2]}]({source_target(path, item)}) |\n')

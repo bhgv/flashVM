@@ -1,0 +1,129 @@
+# swf_mix — bounded prepared voices into one mixed PCM output
+
+Sources: [main.c](main.c), [example_constants.h](example_constants.h).
+
+## Назначение
+
+Исполняемый C89-учебник готовит два native voice snapshots из встроенного FWS,
+читает по два sample frames и суммирует их в один caller buffer. Первый голос
+имеет три кадра, второй — три кадра и два повтора. После EOF короткого голоса
+его вклад становится тишиной. Готовый mix передаётся через настоящий
+fopen/fwrite/fclose output bridge, а не mock. Это пример собственного host mixer
+pipeline без большого буфера на всю длительность и без устройства.
+
+Часы задаёт host: одинаковый block offset, rate/channels обоих голосов. Сам
+mixer не двигает snapshots и не исполняет stop/no-multiple. Контроль голосов,
+реальное время, конверсия частоты/каналов и автоматическая MovieClip интеграция
+требуют отдельного планировщика. Пример не воспроизводит слышимый звук.
+
+## Подготовка, сборка, запуск
+
+```sh
+cmake -S . -B build-mix -DFVM_DEFS_FILE=cmake/profiles/minimal.defs -DCMAKE_BUILD_TYPE=Release
+cmake --build build-mix --target flashvm_examples_multimedia_swf_mix_main --parallel
+./build-mix/flashvm_examples_multimedia_swf_mix_main MIXED.pcm
+```
+
+NO_MEDIA достаточен: внешние SDK, FFmpeg/ALSA, камера/микрофон и permissions не
+нужны. Требуются C89/C++98 toolchain и writable output path. Названный файл может
+быть перезаписан; без аргументов только usage, без VM/файлов. Native Windows/
+macOS/Android paths используют стандартный stdio, но native platform acceptance
+этим Linux-checkpoint не заявляется.
+
+## Результат и реализация
+
+```text
+Mixed 6 frames; expected six native S16 frames, no audible playback.
+```
+
+Файл содержит 12 bytes native-endian S16: `[-256, 0, -256, 32512, 0, -32768]`.
+Длительность равна более длинному голосу (6), а не сумме длин (3+6).
+Три пары caller buffers намеренно маленькие: source A заканчивается внутри
+второго блока, source B продолжает второй проход. Все metadata проверяются до
+mix write; saturate выполняется после суммы всех входов, без промежуточного
+клиппинга, normalization или master gain.
+
+[GC:] Snapshot storage — native copies без managed roots/context pointer. Host
+владеет handles и закрывает их явно; VM не закрывает snapshots автоматически.
+Context owns только регистрацию output, callback table копируется. Userdata
+должна жить до возврата context_destroy. PCM borrowed только на время mix/write,
+буферы переиспользуются после синхронного fwrite. При failed host write snapshots
+уже продвинуты: пример сообщает ошибку, не повторяет chunk скрыто и делает cleanup.
+Failed write может оставить FILE вне active state; fallback fclose после context
+teardown закрывает такой ресурс. Runtime освобождается после context.
+
+Для настоящего устройства замените FILE callbacks системным output bridge и
+подавайте только совпадающую geometry. При разных rate/channel layouts сначала
+явно выполните конверсию; mixer её не делает. Невыровненные input bytes допустимы,
+выход — short-aligned. [ALSA preparation](../../../doc/ALSA_AUDIO_OUTPUT.md),
+[написание мостов](../../../doc/MULTIMEDIA_BRIDGES.md).
+
+## Демонстрируемые API
+
+- [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L130) — точная сумма, silence padding, лимиты/alias/ошибки:
+  [AUDIO_MIXING.md](../../../doc/AUDIO_MIXING.md#fvm_audio_mix_s16).
+- [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L78), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L80),
+  [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L84) — ownership,
+  progression, EOF and cleanup: [SWF_SOUND_VOICES.md](../../../doc/SWF_SOUND_VOICES.md).
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_stop`](../../../include/flashvm/multimedia.h#L85)
+  — copied host callbacks, actual synchronous output, retryable stop:
+  [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md).
+- [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical input before native preparation:
+  [SWF_SOUND_RESOURCES.md](../../../doc/SWF_SOUND_RESOURCES.md#scope--область-реализации).
+- [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68),
+  [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — dependency-ordered VM lifetime:
+  [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context),
+  [terminal cleanup](../../../doc/AUDIO_CHANNELS.md#context-teardown).
+
+## English
+
+This fully line-commented C89 tutorial opens two native event snapshots, reads
+small aligned blocks, sums them into a caller-owned S16 buffer and writes the
+result through real stdio. The shorter voice becomes silence after EOF; the
+longer voice repeats independently. The output is exactly six frames
+[-256, 0, -256, 32512, 0, -32768], stored in native byte order.
+
+Supply one explicit writable output path; an existing file may be replaced.
+No-argument runs create no files or VM. NO_MEDIA needs no SDK/device. Source
+geometry must match; there is no resampling, scheduling, automatic event control
+or audible-playback claim. Snapshots are explicitly host-owned; output buffers
+are synchronously borrowed and reused. After failed native output, already read
+positions cannot roll back automatically. Cleanup closes snapshots, destroys the
+context while userdata remains alive, recovers residual FILE ownership, then
+releases runtime. API/source contracts are linked above.
+
+Optional validation from the repository root:
+
+```sh
+python3 scripts/check_swf_mix_example.py build-mix/flashvm_examples_multimedia_swf_mix_main
+python3 scripts/check_swf_mix_example.py build-mix/flashvm_examples_multimedia_swf_mix_main --ffmpeg
+```
+
+The second command additionally requires the system ffmpeg executable with amix;
+it compares unnormalized longest-voice output byte-for-byte. Runtime mixing and
+the tutorial need no FFmpeg. Проверка — отдельный oracle, не runtime dependency.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:85](../../../include/flashvm/multimedia.h#L85) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../../../include/flashvm/multimedia.h#L130) |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:84](../../../include/flashvm/swf_sound.h#L84) |
+| `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:80](../../../include/flashvm/swf_sound.h#L80) |
+| `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:78](../../../include/flashvm/swf_sound.h#L78) |
+| `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:82](../../../include/flashvm/swf_sound.h#L82) |
+<!-- source-links:end -->

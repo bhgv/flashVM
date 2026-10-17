@@ -97,6 +97,21 @@ linked structured contents and final flat alphabetical glossary. Validate links,
 coverage, ordering and target requirements; scale runtime checks to actual code
 changes and report evidence accurately.
 
+## Deterministic source table order / стабильный порядок
+
+Generated declaration rows sort by casefolded name and then original spelling.
+The second key distinguishes a macro such as [FVM_SWF_SOUND_EVENT_ENVELOPE](../include/flashvm/swf_sound.h#L32) from
+[fvm_swf_sound_event_envelope](../include/flashvm/swf_sound.h#L60) without depending on Python hash iteration order.
+`scripts/test_documentation_source_links.py` checks six hash seeds and repeated
+refresh; it is registered in native CTest. The fixture stays in ignored build
+output on the source drive so Windows temporary-drive differences do not alter
+relative-source-link behavior. Continue running the normal linker's --check.
+
+Таблицы исходников сортируются по casefold и затем исходному написанию: одноимённые
+макрос/функция с разным регистром получают стабильный порядок. Регрессия проверяет
+шесть hash seeds и idempotence; проверка включена в CTest. Генерируемые fixtures
+живут в ignored build output, не в исходниках/истории. Обычный --check обязателен.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -111,4 +126,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_crash_configure` | function | [include/flashvm/crash.h:55](../include/flashvm/crash.h#L55) |
 | `FVM_CRASH_DEBUGGER` | enum constant | [include/flashvm/crash.h:16](../include/flashvm/crash.h#L16) |
 | `FVM_CrashFrame` | struct | [include/flashvm/crash.h:32](../include/flashvm/crash.h#L32) |
+| `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:32](../include/flashvm/swf_sound.h#L32) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 <!-- source-links:end -->

@@ -4515,6 +4515,36 @@ PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
 и не является SoundStreamBlock decoder. Автоматический MovieClip clock, mixer,
 прочие кодеки и foreign native acceptance остаются открытыми. No stage is closed.
 
+### v0.555 — allocation-free native S16 block mixing
+
+Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L130) validates every input before output,
+sums equal-rate/channel interleaved S16 exactly in a bounded signed-long
+accumulator and saturates once. Short/exhausted inputs become silence; a caller
+chooses output duration. No allocation, context, device, callbacks, resampling or
+implicit clock is involved. Exact-start in-place and unaligned source byte views
+are supported. The new swf_mix C89 tutorial reads two independent prepared voices
+in small blocks and writes one actual mixed FILE output. Multimedia examples now
+have an alphabetic mixing subgroup containing mix and polyphony tutorials.
+
+Validation: full minimal suite 1156 passed plus one existing named Unix endpoint
+skip (1157 total). Six focused checks passed in Release, JIT and ASAN/UBSAN profiles
+(LSAN disabled). C89 cases cover final-only clipping, input-order cancellation,
+stereo, empty/short tails, zero-input silence, byte/capacity overflow, unchanged
+output on malformed later inputs, exact-start aliasing, unaligned bytes and all
+1024 inputs. Allocation denial confirms no mixer allocation. The actual example
+passes in all three profiles, creates the exact six-frame mixed file and handles
+native output failure. An independent installed FFmpeg amix oracle is byte-exact;
+all twelve raw PCM/ADPCM oracles and chunked exporter checks still pass. A
+source-link sorting tie between uppercase macros and lowercase functions is fixed
+with a deterministic secondary key; a six-hash-seed idempotence regression test
+passes and demonstrably rejects the previous ordering. Catalog
+has 92 entries; source/anchor and line-comment/API checks pass.
+
+Mixing реализован как явный caller-driven block helper. Он не меняет snapshot
+positions/bindings и не включает автоматический MovieClip scheduler. Разные
+частоты/layouts требуют отдельной конверсии; прочие кодеки и foreign native
+platform acceptance остаются открытыми. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -4524,6 +4554,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
 | `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
 | `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |

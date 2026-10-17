@@ -182,6 +182,10 @@ full renderer and snapshots. Tests compare five chunk partitions over SWF1–8
 PCM and all four ADPCM code widths, including block transitions. Native allocation
 failure tests drain 65535 plays after VM destruction with allocations disabled.
 
+Prepared chunks can be summed through [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L130) without allocating:
+[block mixer contract](AUDIO_MIXING.md), [swf_mix tutorial](../examples/multimedia/swf_mix/README.md).
+This does not apply automatic event scheduling or synchronization to snapshots.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -191,6 +195,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_sound_gain` | function | [src/swf/sound_style.hpp:14](../src/swf/sound_style.hpp#L14) |

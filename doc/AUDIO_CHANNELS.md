@@ -2,10 +2,10 @@
 
 ## Scope
 
-A channel connects a VM context to an actual host [`FVM_MediaOutput`](../include/flashvm/multimedia.h#L66) write/stop
-pair. [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L82) submits already decoded native-endian signed-16
+A channel connects a VM context to an actual host [`FVM_MediaOutput`](../include/flashvm/multimedia.h#L67) write/stop
+pair. [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L83) submits already decoded native-endian signed-16
 interleaved PCM synchronously. AVM1 StopSounds (0x09) and installed global
-`stopAllSounds()` call [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L90). They consume no action operands and
+`stopAllSounds()` call [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L91). They consume no action operands and
 produce no action result; the global function ignores arguments and returns
 undefined on success. Host errors propagate without replaying the action.
 
@@ -14,7 +14,7 @@ DefineSound, StartSound, SoundStreamHead/Block, mixing, envelopes, looping,
 seek synchronization, AS Sound objects, natural-completion notifications and
 sound-card drivers are not implemented by this registration change. The optional
 ALSA provider is documented separately. Standalone
-[`fvm_audio_write`](../include/flashvm/multimedia.h#L127) / [`fvm_audio_stop`](../include/flashvm/multimedia.h#L129) do not register an output automatically.
+[`fvm_audio_write`](../include/flashvm/multimedia.h#L128) / [`fvm_audio_stop`](../include/flashvm/multimedia.h#L134) do not register an output automatically.
 FFmpeg-decoded frames can be submitted explicitly through a registered channel;
 no file/device is opened by channel creation or by an empty StopSounds call.
 NO_MEDIA supports custom outputs without requiring FFmpeg.
@@ -58,7 +58,7 @@ synchronous on the VM thread; there is no hidden output worker.
 ## fvm_audio_channel_create
 
 **Parameters:** required context, output table, and out-channel pointer. Table
-struct_size must exactly equal sizeof([FVM_MediaOutput](../include/flashvm/multimedia.h#L66)); write and stop are both
+struct_size must exactly equal sizeof([FVM_MediaOutput](../include/flashvm/multimedia.h#L67)); write and stop are both
 required; userdata may be null if the callbacks accept it. The table is copied,
 so its stack storage can disappear immediately after this call.
 
@@ -72,7 +72,7 @@ accounting, like existing multimedia sessions.
 
 ## fvm_audio_channel_write
 
-**Parameters:** required live channel and borrowed [FVM_MediaFrame](../include/flashvm/multimedia.h#L36). It must be
+**Parameters:** required live channel and borrowed [FVM_MediaFrame](../include/flashvm/multimedia.h#L37). It must be
 AUDIO with valid non-null data, nonzero sample rate/channel/sample-frame counts,
 complete S16 buffer size and overflow-safe bounds, following the existing media
 frame validator. Width/height/stride are not audio fields.
@@ -145,7 +145,7 @@ AVM1, audio or platform conformance.
 Успешная запись включает active, успешный stop выключает. Ошибка write не меняет
 старый флаг; backend обязан сам убрать частичные ресурсы или оставить их в своём
 состоянии для явного cleanup. Ошибка stop оставляет канал активным для повтора.
-[`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L90), Action 0x09 и `stopAllSounds()` пробуют все активные каналы
+[`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L91), Action 0x09 и `stopAllSounds()` пробуют все активные каналы
 по порядку, возвращая первую ошибку после остальных попыток. Чужие контексты,
 standalone output, декодеры, видео и речь не затрагиваются.
 
@@ -196,17 +196,17 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:88](../include/flashvm/multimedia.h#L88) |
-| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:86](../include/flashvm/multimedia.h#L86) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:80](../include/flashvm/multimedia.h#L80) |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
-| `fvm_audio_stop` | function | [include/flashvm/multimedia.h:129](../include/flashvm/multimedia.h#L129) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:90](../include/flashvm/multimedia.h#L90) |
-| `fvm_audio_write` | function | [include/flashvm/multimedia.h:127](../include/flashvm/multimedia.h#L127) |
+| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:89](../include/flashvm/multimedia.h#L89) |
+| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:87](../include/flashvm/multimedia.h#L87) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../include/flashvm/multimedia.h#L81) |
+| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:85](../include/flashvm/multimedia.h#L85) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
+| `fvm_audio_stop` | function | [include/flashvm/multimedia.h:134](../include/flashvm/multimedia.h#L134) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `fvm_audio_write` | function | [include/flashvm/multimedia.h:128](../include/flashvm/multimedia.h#L128) |
 | `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
-| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../include/flashvm/multimedia.h#L36) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
+| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:37](../include/flashvm/multimedia.h#L37) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../include/flashvm/multimedia.h#L67) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
 <!-- source-links:end -->

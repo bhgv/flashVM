@@ -110,9 +110,11 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
-    - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
+  - [mixing](#group-multimedia-mixing)
+    - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса: порционное смешивание в один PCM-файл</em></small>
+    - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [speech](#group-multimedia-speech)
     - [speech_android](#example-multimedia-speech_android) — <small><em>Android: Context, permissions, JNI и речевые службы</em></small>
     - [speech_macos](#example-multimedia-speech_macos) — <small><em>macOS: реальные speech и microphone permissions</em></small>
@@ -1147,8 +1149,8 @@ FILE и освобождает malloc. В session копируется табл�
 
 Свой вывод RGBA в реальный PPM файл. Исполняемый C89 учебник: [README](multimedia/custom_video_output/README.md), [main.c](multimedia/custom_video_output/main.c).
 
-Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L66).write поверх реальных fprintf/fwrite.
-Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L131)
+Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L67).write поверх реальных fprintf/fwrite.
+Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L136)
 проверяет размер/stride; callback пишет PPM P6 и отбрасывает alpha. Файл создаётся
 только по явному аргументу; существующий файл по этому пути заменяется. Временный
 буфер не сохраняется после возврата callback. FILE принадлежит main и закрывается
@@ -1185,6 +1187,35 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 порциями без новых аллокаций: [constants](multimedia/swf_audio/example_constants.h).
 Это экспорт raw PCM, не автоматический SWF-плеер.
 
+<a id="group-multimedia-devices"></a>
+### devices
+
+<a id="example-multimedia-system_devices"></a>
+#### system_devices
+
+Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
+
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L101).poll. Main явно
+открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
+его адрес через userdata. Callback не владеет fd и делегирует read нативному
+переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
+Нет ожидания, фонового потока, изменения прав или поиска устройств.
+
+<a id="group-multimedia-mixing"></a>
+### mixing
+
+<a id="example-multimedia-swf_mix"></a>
+#### swf_mix
+
+Два подготовленных голоса из встроенного SWF читаются малыми синхронными
+порциями и суммируются в один настоящий PCM файл через stdio bridge.
+Исполняемый C89 учебник: [README](multimedia/swf_mix/README.md),
+[main.c](multimedia/swf_mix/main.c), [constants](multimedia/swf_mix/example_constants.h).
+После EOF короткого голоса его tail — тишина; второй голос продолжает повтор.
+Показывает native ownership, одинаковую geometry, caller buffers, точную сумму
+и final-only saturation. NO_MEDIA без SDK; явный output path может быть перезаписан.
+Это ручной block pipeline, без автоматического clock, resampling или audible output.
+
 <a id="example-multimedia-swf_polyphony"></a>
 #### swf_polyphony
 
@@ -1196,20 +1227,6 @@ context-wide no-multiple и остановка всех голосов по soun
 открывает и не закрепляет пропущенный канал; затем тот принимает другой ID.
 Stop-by-ID закрывает два совпадения, stop_all закрывает оставшееся. NO_MEDIA
 достаточен; это stdio/синхронизация, не слышимое смешивание/автоматический clock.
-
-<a id="group-multimedia-devices"></a>
-### devices
-
-<a id="example-multimedia-system_devices"></a>
-#### system_devices
-
-Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
-
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L100).poll. Main явно
-открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
-его адрес через userdata. Callback не владеет fd и делегирует read нативному
-переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
-Нет ожидания, фонового потока, изменения прав или поиска устройств.
 
 <a id="group-multimedia-speech"></a>
 ### speech
@@ -1266,14 +1283,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:100](../include/flashvm/multimedia.h#L100) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:101](../include/flashvm/multimedia.h#L101) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../include/flashvm/multimedia.h#L67) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_video_present` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:136](../include/flashvm/multimedia.h#L136) |
 <!-- source-links:end -->
 
 <a id="glossary"></a>
@@ -1364,6 +1381,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
+- [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)

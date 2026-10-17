@@ -75,14 +75,14 @@ error numbers. There is no asynchronous error callback in this revision.
 
 ## Форматы и владение / Formats and ownership
 
-[FVM_MediaRequest](../include/flashvm/multimedia.h#L29) borrows a NUL-terminated filename/device URL during open only.
+[FVM_MediaRequest](../include/flashvm/multimedia.h#L30) borrows a NUL-terminated filename/device URL during open only.
 Builtin file opens probe a format; camera opens require an explicit registered
 video-input device format. Format is reserved for named-format custom bridges;
 the file convenience functions pass null. Each open selects one stream. Open the
 file separately for audio and video; packets from other streams are skipped.
 There is no shared A/V clock, resynchronization, mixing or subtitle extraction.
 
-[FVM_MediaFrame](../include/flashvm/multimedia.h#L36) is a borrowed view, invalidated by **any next read, seek or close**
+[FVM_MediaFrame](../include/flashvm/multimedia.h#L37) is a borrowed view, invalidated by **any next read, seek or close**
 on its session, including failed operations. Copy bytes before retaining them.
 PCM is native-endian signed 16-bit, interleaved, source rate/channel count and
 native channel order. `samples` counts sample frames, `size` counts bytes; no
@@ -101,13 +101,13 @@ must own its copied buffer and report its own completion/drain policy.
 
 1. Create native state holding the real library/device handles and reusable
    output buffers. Choose its allocation/cleanup rules explicitly.
-2. Fill [FVM_MediaBackend](../include/flashvm/multimedia.h#L55) with exact size/version, a stable os_name, userdata and
+2. Fill [FVM_MediaBackend](../include/flashvm/multimedia.h#L56) with exact size/version, a stable os_name, userdata and
    open/read/close. Seek is optional. The session copies this table at open;
    callback code and userdata must remain alive, even if the table goes away.
 3. Open validates request.kind and URL, creates native resources and writes one
    non-null private stream only on [FVM_OK](../include/flashvm/flashvm.h#L42). **A failing open must free its own
    partial allocations**; common code releases only its unpublished wrapper.
-4. Read writes a valid [FVM_MediaFrame](../include/flashvm/multimedia.h#L36). Do not return success with an empty buffer.
+4. Read writes a valid [FVM_MediaFrame](../include/flashvm/multimedia.h#L37). Do not return success with an empty buffer.
    Common read clears outputs, checks kind and overflow-safe geometry, and clears
    partial output on failure. Native state still owns the bytes.
 5. Seek flushes every compressed/decoded/resampler reference and resets EOF.
@@ -121,7 +121,7 @@ must own its copied buffer and report its own completion/drain policy.
 
 ## Вывод в систему / Writing a playback or presentation bridge
 
-Fill [FVM_MediaOutput](../include/flashvm/multimedia.h#L66) with exact size, borrowed userdata, synchronous write and
+Fill [FVM_MediaOutput](../include/flashvm/multimedia.h#L67) with exact size, borrowed userdata, synchronous write and
 optional stop. Audio/video entrypoints validate geometry before calling write.
 Use the real OS/library queue: negotiate sample rate/channels or pixel format,
 copy borrowed bytes if the queue is asynchronous, bound queue growth, and release
@@ -138,7 +138,7 @@ to the host contract; it does not implicitly close a source or stop every VM sou
 
 ### fvm_media_ffmpeg_backend
 
-`backend` must point to writable [FVM_MediaBackend](../include/flashvm/multimedia.h#L55) storage; no input initialization
+`backend` must point to writable [FVM_MediaBackend](../include/flashvm/multimedia.h#L56) storage; no input initialization
 is required. The function clears it, registers the target SDK's device formats
 and fills callbacks. Null gives [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); NO_MEDIA gives
 [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) with an empty table; MEDIA gives [FVM_OK](../include/flashvm/flashvm.h#L42). No resources need closing
@@ -148,7 +148,7 @@ Build instructions and exact codec/device scope: [static SDK](../external/ffmpeg
 ### fvm_audio_open
 
 Arguments: compatible backend, nonempty NUL-terminated filename/URL, writable
-out_session. Clears output before validation. Selects [FVM_MEDIA_AUDIO](../include/flashvm/multimedia.h#L18). Success
+out_session. Clears output before validation. Selects [FVM_MEDIA_AUDIO](../include/flashvm/multimedia.h#L19). Success
 transfers session ownership; close it once. Invalid arguments/table give
 [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); wrapper allocation gives [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44); other results
 come from open (FFmpeg uses [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for no matching stream/decoder,
@@ -156,14 +156,14 @@ come from open (FFmpeg uses [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) 
 
 ### fvm_video_open
 
-Same arguments, ownership, thread and error rules as [fvm_audio_open](../include/flashvm/multimedia.h#L110), selecting
-[FVM_MEDIA_VIDEO](../include/flashvm/multimedia.h#L19). Other stream packets are skipped. Output is RGBA, not a native
+Same arguments, ownership, thread and error rules as [fvm_audio_open](../include/flashvm/multimedia.h#L111), selecting
+[FVM_MEDIA_VIDEO](../include/flashvm/multimedia.h#L20). Other stream packets are skipped. Output is RGBA, not a native
 window or graphics resource. A file with only audio cannot produce video success.
 
 ### fvm_camera_open
 
 Arguments: backend, explicit device string, explicit nonempty format string,
-out_session. Selects [FVM_MEDIA_CAMERA](../include/flashvm/multimedia.h#L20); read produces [FVM_MEDIA_VIDEO](../include/flashvm/multimedia.h#L19) frames.
+out_session. Selects [FVM_MEDIA_CAMERA](../include/flashvm/multimedia.h#L21); read produces [FVM_MEDIA_VIDEO](../include/flashvm/multimedia.h#L20) frames.
 Invalid format strings give [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); unavailable/unregistered
 video-input formats give [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46); real device-open failures give
 [FVM_ERROR](../include/flashvm/flashvm.h#L43). Close releases the actual capture device. The host acquires required
@@ -202,7 +202,7 @@ No context or GC lifetime is implied.
 
 ### fvm_audio_write
 
-Arguments: exact-size [FVM_MediaOutput](../include/flashvm/multimedia.h#L66) with non-null write, valid AUDIO frame.
+Arguments: exact-size [FVM_MediaOutput](../include/flashvm/multimedia.h#L67) with non-null write, valid AUDIO frame.
 Checks non-null data, size, rate/channels/sample count and overflow-safe S16
 capacity. Invalid input gives [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) without invoking callbacks;
 otherwise returns write(userdata, frame) unchanged. Borrows both arguments only
@@ -210,7 +210,7 @@ during the call; the output provider owns native handles and any copied queue.
 
 ### fvm_video_present
 
-Same table/callback/lifetime rules as [fvm_audio_write](../include/flashvm/multimedia.h#L127), requiring VIDEO, positive
+Same table/callback/lifetime rules as [fvm_audio_write](../include/flashvm/multimedia.h#L128), requiring VIDEO, positive
 width/height, stride large enough for RGBA pixels and accessible complete rows.
 Bad geometry gives [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Presentation/window ownership and pacing
 belong to write; success is the host callback's accepted-work result.
@@ -224,8 +224,8 @@ system stop is synchronous and how previously copied buffers are reclaimed.
 
 ## Устройства и будущие датчики / Devices and future sensors
 
-[FVM_DeviceBridge](../include/flashvm/multimedia.h#L100) contains exact struct_size, userdata and poll. The table is
-borrowed for a call, not copied or registered globally. [FVM_DeviceEvent](../include/flashvm/multimedia.h#L91) has kind,
+[FVM_DeviceBridge](../include/flashvm/multimedia.h#L101) contains exact struct_size, userdata and poll. The table is
+borrowed for a call, not copied or registered globally. [FVM_DeviceEvent](../include/flashvm/multimedia.h#L92) has kind,
 native_code, x/y/z and native seconds. No strings or GC objects cross the ABI.
 Existing script input API remains separate; normalize codes/coordinates and call
 it from the VM thread deliberately. See [input API](../include/flashvm/input.h).
@@ -332,39 +332,39 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ABI_VERSION` | macro / define | [include/flashvm/flashvm.h:25](../include/flashvm/flashvm.h#L25) |
-| `fvm_audio_open` | function | [include/flashvm/multimedia.h:110](../include/flashvm/multimedia.h#L110) |
-| `fvm_audio_stop` | function | [include/flashvm/multimedia.h:129](../include/flashvm/multimedia.h#L129) |
-| `fvm_audio_write` | function | [include/flashvm/multimedia.h:127](../include/flashvm/multimedia.h#L127) |
-| `fvm_camera_open` | function | [include/flashvm/multimedia.h:116](../include/flashvm/multimedia.h#L116) |
+| `fvm_audio_open` | function | [include/flashvm/multimedia.h:111](../include/flashvm/multimedia.h#L111) |
+| `fvm_audio_stop` | function | [include/flashvm/multimedia.h:134](../include/flashvm/multimedia.h#L134) |
+| `fvm_audio_write` | function | [include/flashvm/multimedia.h:128](../include/flashvm/multimedia.h#L128) |
+| `fvm_camera_open` | function | [include/flashvm/multimedia.h:117](../include/flashvm/multimedia.h#L117) |
 | `FVM_Context` | struct | [src/core/runtime.hpp:238](../src/core/runtime.hpp#L238) |
-| `fvm_device_poll` | function | [include/flashvm/multimedia.h:134](../include/flashvm/multimedia.h#L134) |
+| `fvm_device_poll` | function | [include/flashvm/multimedia.h:139](../include/flashvm/multimedia.h#L139) |
 | `FVM_DEVICE_WINDOWS_VK_MAX` | macro / define | [include/flashvm/multimedia.h:11](../include/flashvm/multimedia.h#L11) |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:100](../include/flashvm/multimedia.h#L100) |
-| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:101](../include/flashvm/multimedia.h#L101) |
+| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_android_motion` | function | [include/flashvm/multimedia.h:149](../include/flashvm/multimedia.h#L149) |
-| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:137](../include/flashvm/multimedia.h#L137) |
-| `fvm_input_macos_pointer` | function | [include/flashvm/multimedia.h:147](../include/flashvm/multimedia.h#L147) |
-| `fvm_input_windows_key` | function | [include/flashvm/multimedia.h:144](../include/flashvm/multimedia.h#L144) |
-| `fvm_input_windows_pointer` | function | [include/flashvm/multimedia.h:141](../include/flashvm/multimedia.h#L141) |
+| `fvm_input_android_motion` | function | [include/flashvm/multimedia.h:154](../include/flashvm/multimedia.h#L154) |
+| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:142](../include/flashvm/multimedia.h#L142) |
+| `fvm_input_macos_pointer` | function | [include/flashvm/multimedia.h:152](../include/flashvm/multimedia.h#L152) |
+| `fvm_input_windows_key` | function | [include/flashvm/multimedia.h:149](../include/flashvm/multimedia.h#L149) |
+| `fvm_input_windows_pointer` | function | [include/flashvm/multimedia.h:146](../include/flashvm/multimedia.h#L146) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MEDIA_ABI_VERSION` | macro / define | [include/flashvm/multimedia.h:9](../include/flashvm/multimedia.h#L9) |
-| `FVM_MEDIA_AUDIO` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
-| `FVM_MEDIA_CAMERA` | macro / define | [include/flashvm/multimedia.h:20](../include/flashvm/multimedia.h#L20) |
-| `fvm_media_close` | function | [include/flashvm/multimedia.h:124](../include/flashvm/multimedia.h#L124) |
-| `fvm_media_ffmpeg_backend` | function | [include/flashvm/multimedia.h:107](../include/flashvm/multimedia.h#L107) |
-| `fvm_media_read` | function | [include/flashvm/multimedia.h:119](../include/flashvm/multimedia.h#L119) |
-| `fvm_media_seek` | function | [include/flashvm/multimedia.h:122](../include/flashvm/multimedia.h#L122) |
-| `FVM_MEDIA_VIDEO` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
-| `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:55](../include/flashvm/multimedia.h#L55) |
-| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../include/flashvm/multimedia.h#L36) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
-| `FVM_MediaRequest` | struct | [include/flashvm/multimedia.h:29](../include/flashvm/multimedia.h#L29) |
+| `FVM_MEDIA_AUDIO` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
+| `FVM_MEDIA_CAMERA` | macro / define | [include/flashvm/multimedia.h:21](../include/flashvm/multimedia.h#L21) |
+| `fvm_media_close` | function | [include/flashvm/multimedia.h:125](../include/flashvm/multimedia.h#L125) |
+| `fvm_media_ffmpeg_backend` | function | [include/flashvm/multimedia.h:108](../include/flashvm/multimedia.h#L108) |
+| `fvm_media_read` | function | [include/flashvm/multimedia.h:120](../include/flashvm/multimedia.h#L120) |
+| `fvm_media_seek` | function | [include/flashvm/multimedia.h:123](../include/flashvm/multimedia.h#L123) |
+| `FVM_MEDIA_VIDEO` | macro / define | [include/flashvm/multimedia.h:20](../include/flashvm/multimedia.h#L20) |
+| `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:56](../include/flashvm/multimedia.h#L56) |
+| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:37](../include/flashvm/multimedia.h#L37) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../include/flashvm/multimedia.h#L67) |
+| `FVM_MediaRequest` | struct | [include/flashvm/multimedia.h:30](../include/flashvm/multimedia.h#L30) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_video_open` | function | [include/flashvm/multimedia.h:113](../include/flashvm/multimedia.h#L113) |
-| `fvm_video_present` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_video_open` | function | [include/flashvm/multimedia.h:114](../include/flashvm/multimedia.h#L114) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:136](../include/flashvm/multimedia.h#L136) |
 <!-- source-links:end -->
