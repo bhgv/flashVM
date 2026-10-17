@@ -109,7 +109,7 @@
     - [custom_video_output](#example-multimedia-custom_video_output) — <small><em>Свой вывод RGBA в реальный PPM файл</em></small>
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
-    - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound: обзор ресурсов и явный экспорт PCM</em></small>
+    - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [speech](#group-multimedia-speech)
@@ -1173,7 +1173,8 @@ FFmpeg: декодирование файлов и явная камера. Ис
 
 DefineSound: обзор корневых ресурсов и явный экспорт PCM. Исполняемый C89 учебник:
 [README](multimedia/swf_audio/README.md), [main.c](multimedia/swf_audio/main.c).
-Загружает явно названный FWS/CWS, перечисляет звуковые ID/метаданные и отправляет
+Загружает явно названный FWS/CWS, перечисляет звуковые ID/метаданные, StartSound
+с SOUNDINFO/огибающими (без исполнения), затем отправляет
 выбранный 8/16-bit PCM или ADPCM с преобразованием в S16 в настоящий stdio sink кусками по 256 sample frames.
 Показывает canonical ownership, borrowed views, bounded copy до host callback,
 ошибки кодеков/размеров и StopSounds, закрывающий FILE. Нужен явный вход/ID/выход;

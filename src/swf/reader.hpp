@@ -94,6 +94,11 @@ class FVM_SWFReader
         ++position_;
         return true;
     }
+    /* Report the current byte offset without aligning partial bits; validate good() before using fields. */
+    size_t position() const
+    {
+        return position_;
+    }
     /* Test whether the record remains valid after any sequence of reads. */
     bool good() const
     {

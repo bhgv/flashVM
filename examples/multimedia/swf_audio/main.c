@@ -43,6 +43,30 @@ static int checked(FVM_Result result, const char *operation) /* Borrow the opera
     fprintf(stderr, "%s failed: %d\n", operation, (int)result); /* Keep unsupported codec/width and malformed data visible. */
     return 0; /* Preserve centralized cleanup. */
 } /* Finish error reporting. */
+/* Inspect copied root StartSound controls before exporting any PCM. */
+static int show_events(FVM_Context *context) /* Keep timeline inspection independent of playback policy. */
+{ /* Begin allocation-free event enumeration. */
+    size_t count, index, point; /* Use independent zero-based event and envelope ordinals. */
+    FVM_SWFSoundEvent event; /* Receive copied control fields without retaining source pointers. */
+    FVM_SWFSoundEnvelope envelope; /* Receive one copied gain/time point at a time. */
+    if (!checked(fvm_swf_sound_event_count(context, &count), "sound_event_count")) /* Validate every root control and frame boundary. */
+        return 0; /* Keep malformed timelines visible before output creation. */
+    for (index = 0; index < count; ++index) /* Preserve wire order, including controls sharing a frame. */
+    { /* Inspect one event and resolve its unique DefineSound. */
+        event.struct_size = sizeof(event); /* Declare the exact copied-event ABI. */
+        if (!checked(fvm_swf_sound_event_at(context, index, &event), "sound_event_at")) /* Reject missing or duplicate selected resources. */
+            return 0; /* Do not invent a resource for a malformed event reference. */
+        printf("Event %lu: frame %u, ID %u, flags %u, in %lu, last %lu, loops %u, envelope %u\n", (unsigned long)index, event.frame, event.sound_id, event.flags, event.in_point, event.out_point, event.loop_count, event.envelope_count); /* Print raw fields; flags distinguish omitted values from explicit zero. */
+        for (point = 0; point < event.envelope_count; ++point) /* Inspect every point without allocating an array. */
+        { /* Preserve the envelope's independent 44100 Hz time base. */
+            envelope.struct_size = sizeof(envelope); /* Declare the exact copied-envelope ABI. */
+            if (!checked(fvm_swf_sound_event_envelope(context, index, point, &envelope), "sound_event_envelope")) /* Re-query current canonical bytes safely. */
+                return 0; /* Keep malformed or missing points visible. */
+            printf("  Point %lu: position44 %lu, left %u, right %u\n", (unsigned long)point, envelope.position_44, envelope.left_level, envelope.right_level); /* Show gain values in 0..32768 units without applying them. */
+        } /* Finish one event's envelope inspection. */
+    } /* Finish root event enumeration. */
+    return 1; /* Inspection succeeded without playing, stopping or scheduling sound. */
+} /* Finish copied StartSound inspection. */
 /* Read an explicitly named file, enumerate root sounds and export a caller-selected PCM or ADPCM sound as S16. */
 int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertions. */
 { /* Begin input, VM and output ownership. */
@@ -116,6 +140,8 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
             goto cleanup; /* Never silently select one duplicate resource. */
         printf("ID %u: format %u, %u Hz, %u channels, %u bits, %lu frames\n", info.sound_id, info.format, info.sample_rate, info.channels, info.bits_per_sample, info.sample_count); /* Show nominal header data, not a compressed-codec probe. */
     } /* Finish definition enumeration. */
+    if (!show_events(context)) /* Inspect StartSound/SOUNDINFO without executing its playback controls. */
+        goto cleanup; /* Reject malformed event metadata before creating output. */
     info.struct_size = sizeof(info); /* Reuse the exact inspection ABI for selected lookup. */
     if (!checked(fvm_swf_sound_info(context, (unsigned int)sound_id, &info), "sound_info")) /* Resolve the caller's unique root sound. */
         goto cleanup; /* NOT_FOUND does not create output. */

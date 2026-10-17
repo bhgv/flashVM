@@ -23,6 +23,40 @@ extern "C"
             *data; /* Borrowed complete SoundData bytes, valid until successful reload or context destruction. */
         size_t data_size; /* Exact SoundData byte count; codec-specific prefixes are retained. */
     } FVM_SWFSoundInfo;
+#define FVM_SWF_SOUND_ENVELOPE_UNITY 32768U /* Maximum envelope gain, representing unity amplitude. */
+#define FVM_SWF_SOUND_ENVELOPE_RATE 44100UL /* Envelope positions use this fixed sample clock in Hz. */
+#define FVM_SWF_SOUND_EVENT_IN_POINT 1U /* SOUNDINFO contains an explicit input sample position. */
+#define FVM_SWF_SOUND_EVENT_OUT_POINT 2U /* SOUNDINFO contains an explicit last sample position. */
+#define FVM_SWF_SOUND_EVENT_LOOPS 4U /* SOUNDINFO contains an explicit loop count. */
+#define FVM_SWF_SOUND_EVENT_ENVELOPE 8U /* SOUNDINFO contains an explicit envelope array, possibly empty. */
+#define FVM_SWF_SOUND_EVENT_NO_MULTIPLE 16U /* Request starting only if this sound is not already playing. */
+#define FVM_SWF_SOUND_EVENT_STOP 32U /* Request stopping this sound rather than starting it. */
+    /* Copied root StartSound control metadata, without scheduling or borrowing storage. */
+    typedef struct FVM_SWFSoundEvent
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFSoundEvent). */
+        unsigned int sound_id; /* Unique root DefineSound identifier, resolved by event_at. */
+        unsigned int frame; /* One-based root timeline frame containing this control. */
+        unsigned int flags; /* SOUNDINFO presence and synchronization bits, preserved verbatim. */
+        unsigned long in_point; /* Raw sample-frame start; zero when absent, presence distinguished by flags. */
+        unsigned long out_point; /* Raw last sample position; zero when absent, not an exclusive bound. */
+        unsigned int loop_count; /* Raw UI16 count; zero when absent, without playback normalization. */
+        unsigned int envelope_count; /* Raw UI8 number of envelope points, zero when absent. */
+    } FVM_SWFSoundEvent;
+    /* Copied envelope point with its own 44.1 kHz time base. */
+    typedef struct FVM_SWFSoundEnvelope
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFSoundEnvelope). */
+        unsigned long position_44; /* Position measured in 44100 Hz sample units, independent of sound rate. */
+        unsigned int left_level; /* Left gain, 0..32768 inclusive. */
+        unsigned int right_level; /* Right gain, 0..32768 inclusive; mono playback averages both gains. */
+    } FVM_SWFSoundEnvelope;
+    /* Count syntactically valid root StartSound occurrences; no resource resolution or playback. */
+    FVM_API FVM_Result fvm_swf_sound_event_count(FVM_Context *, size_t *);
+    /* Copy a zero-based StartSound occurrence after resolving its unique sound definition. */
+    FVM_API FVM_Result fvm_swf_sound_event_at(FVM_Context *, size_t, FVM_SWFSoundEvent *);
+    /* Re-resolve a root event and copy one zero-based envelope point; no borrowed pointers escape. */
+    FVM_API FVM_Result fvm_swf_sound_event_envelope(FVM_Context *, size_t, size_t, FVM_SWFSoundEnvelope *);
     /* Count validated root DefineSound occurrences, without allocating or opening output. */
     FVM_API FVM_Result fvm_swf_sound_count(FVM_Context *, size_t *);
     /* Inspect a zero-based root occurrence; reject an ambiguous duplicate selected sound ID. */

@@ -2589,6 +2589,32 @@ Flash amplitude matching, other codecs and timeline sound playback remain open.
 Minimal full suite: 1143 passed plus one existing Unix-endpoint skip (1144 total).
 No roadmap stage is closed. Восьмибитный PCM реализован, стадии остаются открытыми.
 
+### v0.551 — copied root StartSound/SOUNDINFO inspection
+
+Implemented / реализовано: C89 event count/ordinal/envelope APIs; copied
+one-based frame, flags, in/out positions, loop count and independent 44100 Hz
+envelope points. All controls, reserved bits, gain bounds, exact record endings
+and root frame structure validate before publication. Selected events resolve
+unique DefineSound IDs; count deliberately performs syntax-only reference
+inspection. No allocation, borrowed output pointers, playback or scheduling.
+The line-commented exporter now prints controls before explicit PCM output.
+
+Validation covers all 64 flags in SWF1–8, every truncated prefix, absent/duplicate
+IDs, forward references, multiple frames, CWS, 255-point/long-tag envelopes,
+wrong gain/ABI sizes and unchanged outputs. Allocation denial verifies all three
+queries are allocation-free. Four focused tests passed ASAN/UBSAN (LSAN disabled,
+external SDK not instrumented) and the JIT build profile. The actual C89 tutorial
+prints independent event/envelope bytes, exports expected U8 PCM and rejects
+truncated controls before creating output. Twelve ADPCM/U8 FFmpeg oracle cases
+still match exactly. These are metadata APIs, not automatic timeline playback.
+Minimal full suite: 1144 passed and one existing Unix-endpoint skip (1145 total).
+StartSound2/buttons/streaming, applying loops/envelopes, mixing and final native
+platform acceptance remain open. No roadmap stage is closed.
+
+API StartSound/SOUNDINFO копирует метаданные без проигрывания: кадры, флаги,
+границы, повторы, огибающие. Повреждение не меняет назначения; каждый запрос
+проверяет текущий файл целиком, без кеша/выделения памяти. Полнота стадий не заявлена.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
