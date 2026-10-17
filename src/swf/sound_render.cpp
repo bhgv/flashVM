@@ -3,51 +3,19 @@
 #include "sound_render.hpp"
 #include "sound_constants.h"
 #include "sound_event_constants.h"
+#include "sound_style.hpp"
 #include <new>
-
-namespace
-{
-/* Convert fixed-clock UI32 control positions without overflowing a 32-bit unsigned long. */
-unsigned long source_position(unsigned long position, unsigned int rate)
-{
-    return (position / FVM_SWF_SOUND_CONTROL_RATE) * rate +
-           ((position % FVM_SWF_SOUND_CONTROL_RATE) * rate) / FVM_SWF_SOUND_CONTROL_RATE;
-}
-
-/* Interpolate one channel's unity-scaled gain at elapsed voice time in the fixed envelope clock. */
-double sound_gain(const fvm_detail::vector<FVM_SWFSoundEnvelope> &points, size_t &segment, double position,
-                  unsigned int channel, unsigned int channels)
-{
-    if (points.empty())
-        return FVM_SWF_SOUND_ENVELOPE_UNITY;
-    while (segment + 1 < points.size() && position >= points[segment + 1].position_44)
-        ++segment;
-    const FVM_SWFSoundEnvelope &left = points[segment];
-    double gain = channels == FVM_SWF_SOUND_MONO_CHANNELS
-                      ? ((double)left.left_level + left.right_level) / FVM_SWF_SOUND_STEREO_CHANNELS
-                      : (channel ? left.right_level : left.left_level);
-    if (position > left.position_44 && segment + 1 < points.size())
-    {
-        const FVM_SWFSoundEnvelope &right = points[segment + 1];
-        double end = channels == FVM_SWF_SOUND_MONO_CHANNELS
-                         ? ((double)right.left_level + right.right_level) / FVM_SWF_SOUND_STEREO_CHANNELS
-                         : (channel ? right.right_level : right.left_level);
-        gain += (end - gain) * ((position - left.position_44) / (double)(right.position_44 - left.position_44));
-    }
-    return gain;
-}
-} // namespace
 
 /* Decode the selected source interval once, then repeat it with an elapsed-time envelope. */
 FVM_Result fvm_swf_sound_render(FVM_Context *context, size_t ordinal, const FVM_SWFSoundEvent &event,
                                 const FVM_SWFSoundInfo &info, fvm_detail::vector<short> &output)
 {
     unsigned long first =
-        event.flags & FVM_SWF_SOUND_EVENT_IN_POINT ? source_position(event.in_point, info.sample_rate) : 0;
+        event.flags & FVM_SWF_SOUND_EVENT_IN_POINT ? fvm_swf_sound_position(event.in_point, info.sample_rate) : 0;
     unsigned long end = info.sample_count;
     if (event.flags & FVM_SWF_SOUND_EVENT_OUT_POINT)
     {
-        unsigned long last = source_position(event.out_point, info.sample_rate);
+        unsigned long last = fvm_swf_sound_position(event.out_point, info.sample_rate);
         if (last >= info.sample_count)
             return FVM_INVALID_ARGUMENT;
         end = last + 1;
@@ -94,7 +62,7 @@ FVM_Result fvm_swf_sound_render(FVM_Context *context, size_t ordinal, const FVM_
             double position = (double)frame * FVM_SWF_SOUND_ENVELOPE_RATE / info.sample_rate;
             for (unsigned int channel = 0; channel < info.channels; ++channel)
             {
-                double gain = sound_gain(points, segment, position, channel, info.channels);
+                double gain = fvm_swf_sound_gain(points, segment, position, channel, info.channels);
                 double value = source[(frame % frames) * info.channels + channel] * gain / FVM_SWF_SOUND_ENVELOPE_UNITY;
                 if (value < FVM_SWF_SOUND_SHORT_MIN)
                     value = FVM_SWF_SOUND_SHORT_MIN;

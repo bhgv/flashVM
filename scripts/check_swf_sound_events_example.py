@@ -38,6 +38,20 @@ def main():
         (root/'styled.swf').write_bytes(movie(styled))
         subprocess.run([exporter, str(root/'styled.swf'), '0', str(root/'styled.pcm'), '--event'], check=True, stdout=subprocess.DEVNULL)
         assert (root/'styled.pcm').read_bytes() == struct.pack('=hhhhhh', -32768, 0, 0, 0, 0, 0)
+        # Snapshot chunks preserve the full renderer's envelope across many buffer boundaries.
+        repeated = struct.pack('<HBHB', 7, 12, 257, 2)
+        repeated += struct.pack('<IHH', 0, 32768, 32768) + struct.pack('<IHH', 700, 0, 0)
+        (root/'repeated.swf').write_bytes(movie(repeated))
+        subprocess.run([exporter, str(root/'repeated.swf'), '0', str(root/'whole.pcm'), '--event'], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([exporter, str(root/'repeated.swf'), '0', str(root/'chunked.pcm'), '--stream-event'], check=True, stdout=subprocess.DEVNULL)
+        assert (root/'chunked.pcm').read_bytes() == (root/'whole.pcm').read_bytes()
+        assert (root/'chunked.pcm').stat().st_size == 3 * 257 * 2
+        zero_plays = repeated[:3] + bytes(2) + repeated[5:]
+        (root/'zero.swf').write_bytes(movie(zero_plays))
+        subprocess.run([exporter, str(root/'zero.swf'), '0', str(root/'zero.pcm'), '--stream-event'], check=True, stdout=subprocess.DEVNULL)
+        assert not (root/'zero.pcm').exists()
+        stopped = subprocess.run([exporter, str(root/'input.swf'), '0', str(root/'snapshot-stop.pcm'), '--stream-event'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert stopped.returncode and not (root/'snapshot-stop.pcm').exists()
         # Metadata accepts repeated positions, but styled rendering rejects them atomically.
         duplicate = styled[:-8] + struct.pack('<IHH', 0, 0, 0)
         (root/'duplicate.swf').write_bytes(movie(duplicate))
@@ -47,7 +61,7 @@ def main():
         (root/'bad.swf').write_bytes(movie(event[:-1]))
         result = subprocess.run([exporter, str(root/'bad.swf'), '7', str(root/'bad.pcm')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         assert result.returncode and not (root/'bad.pcm').exists()
-    print('PASS real C89 raw/styled export, repeated fade, inactive stop and atomic malformed-style failures')
+    print('PASS real C89 raw/styled/chunked export, repeated fade, stop/zero gates and atomic malformed-style failures')
     return 0
 
 

@@ -1181,6 +1181,8 @@ DefineSound: обзор корневых ресурсов и явный эксп
 ошибки кодеков/размеров и StopSounds, закрывающий FILE. Нужен явный вход/ID/выход;
 NO_MEDIA работает без SDK. Режим `--event` применяет диапазон/повторы/огибающую
 одного StartSound одним буфером; обычный режим сохраняет source chunks.
+Режим `--stream-event` хранит источник/огибающую один раз и читает повторы
+порциями без новых аллокаций: [constants](multimedia/swf_audio/example_constants.h).
 Это экспорт raw PCM, не автоматический SWF-плеер.
 
 <a id="example-multimedia-swf_polyphony"></a>

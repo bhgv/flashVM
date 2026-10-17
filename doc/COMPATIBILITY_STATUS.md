@@ -4439,7 +4439,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L73) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L97) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -4489,6 +4489,32 @@ scripts and all twelve raw PCM/ADPCM FFmpeg oracle cases pass. Catalog now has
 прочие кодеки, original-player equivalence и native foreign-platform acceptance
 остаются открытыми. No roadmap stage is closed.
 
+### v0.554 — prepared incremental sound voice snapshots
+
+Implemented / реализовано: four C89 snapshot APIs capture one decoded source
+interval/envelope, read bounded styled S16 chunks, inspect progress and explicitly
+close native storage. Snapshots contain no VM/managed references and survive
+GC/reload/context/runtime destruction. Read/info/close allocate nothing; play
+counts do not expand source storage. Shared style arithmetic preserves full-render
+output. The existing exporter adds --stream-event and explicit native cleanup.
+
+Validation: recovered the exact v0.553 mirror after workspace cleanup and rebuilt
+from source. Minimal full suite 1152 passed plus one existing named Unix endpoint
+skip (1153 total). Six focused checks passed in JIT profile and six ASAN/UBSAN
+(LSAN disabled). Five chunk partitions match full rendering for SWF1–8 U8/S16 and
+all ADPCM widths, including block transitions. Allocation-denied reads drain
+65535 plays after VM destruction with six source-PCM bytes. OOM publication,
+fixed-clock cropped ranges, EOF/empty/zero plays, malformed controls/points, C89
+calls, copied geometry and unchanged state on argument failure are covered.
+Actual chunked tutorial output equals complete styled output across 257 repeats;
+stop/zero-play/file failure gates behave as documented. All twelve FFmpeg raw
+PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
+
+Подготовленный голос читается без повторных аллокаций/разбора SWF; полный source
+всё ещё должен поместиться в native budget. Snapshot не исполняет stop/no-multiple
+и не является SoundStreamBlock decoder. Автоматический MovieClip clock, mixer,
+прочие кодеки и foreign native acceptance остаются открытыми. No stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -4511,7 +4537,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:73](../include/flashvm/swf_sound.h#L73) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
 <!-- source-links:end -->

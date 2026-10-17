@@ -175,9 +175,9 @@ control, not evidence of audible sound-card playback.
 
 ## Dedicated SWF event voices
 
-[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L73) binds a channel to its first successful nonempty
+[`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L97) binds a channel to its first successful nonempty
 StartSound resource. Binding persists through stop/reload until close. A different
-ID is rejected by event submit and [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L76); generic writes remain
+ID is rejected by event submit and [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L100); generic writes remain
 host-managed. Ordinary starts require inactive channels; no-multiple suppresses
 when any bound same-ID voice is active in this context. Resource SyncStop attempts
 all matching voices, preserving other IDs/unbound output/contexts and the first
@@ -207,6 +207,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../include/flashvm/multimedia.h#L36) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:73](../include/flashvm/swf_sound.h#L73) |
-| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:76](../include/flashvm/swf_sound.h#L76) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
+| `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
 <!-- source-links:end -->

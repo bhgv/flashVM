@@ -58,6 +58,30 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_event_at(FVM_Context *, size_t, FVM_SWFSoundEvent *);
     /* Re-resolve a root event and copy one zero-based envelope point; no borrowed pointers escape. */
     FVM_API FVM_Result fvm_swf_sound_event_envelope(FVM_Context *, size_t, size_t, FVM_SWFSoundEnvelope *);
+    typedef struct FVM_SWFSoundVoice FVM_SWFSoundVoice; /* Host-owned native snapshot; close independently of VM lifetime. */
+    /* Copied immutable geometry and current incremental position for one prepared event voice. */
+    typedef struct FVM_SWFSoundVoiceInfo
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFSoundVoiceInfo). */
+        unsigned int sound_id; /* Copied root resource identity; not a live VM reference. */
+        unsigned int flags; /* Copied SOUNDINFO flags; synchronization is not executed by snapshot reads. */
+        unsigned int sample_rate; /* Native PCM rate retained from the resource header. */
+        unsigned int channels; /* Native interleaved mono/stereo channel count. */
+        unsigned long source_first; /* First decoded source frame after fixed-clock range conversion. */
+        size_t frames_per_play; /* Frames in one selected source interval; repetitions do not expand storage. */
+        unsigned int play_count; /* Total requested plays, including explicit zero. */
+        unsigned int play_index; /* Current zero-based play; equals play_count after nonempty exhaustion. */
+        size_t frame_in_play; /* Next source-relative frame in the current play; zero after final exhaustion. */
+        int finished; /* Nonzero for zero plays, empty intervals or exhausted repetitions. */
+    } FVM_SWFSoundVoiceInfo;
+    /* Snapshot one root event's decoded interval and envelope; publish null on failure, reject stop controls. */
+    FVM_API FVM_Result fvm_swf_sound_voice_open(FVM_Context *, size_t, FVM_SWFSoundVoice **);
+    /* Copy geometry/progress without allocations, callbacks or VM access. */
+    FVM_API FVM_Result fvm_swf_sound_voice_info(const FVM_SWFSoundVoice *, FVM_SWFSoundVoiceInfo *);
+    /* Read at most requested frames as native S16, advancing only after argument validation; EOF is NOT_FOUND. */
+    FVM_API FVM_Result fvm_swf_sound_voice_read(FVM_SWFSoundVoice *, size_t, short *, size_t, size_t *);
+    /* Release native snapshot storage; null is accepted, no VM/host output callback is entered. */
+    FVM_API FVM_Result fvm_swf_sound_voice_close(FVM_SWFSoundVoice *);
     /* Count validated root DefineSound occurrences, without allocating or opening output. */
     FVM_API FVM_Result fvm_swf_sound_count(FVM_Context *, size_t *);
     /* Inspect a zero-based root occurrence; reject an ambiguous duplicate selected sound ID. */

@@ -1,13 +1,11 @@
 /* Tutorial: enumerate loaded SWF DefineSound resources and explicitly export one PCM sound through a channel. */
 #include "flashvm/swf_sound.h" /* Declare root sound inspection, bounded PCM decoding and explicit submission. */
+#include "example_constants.h" /* Name input limits, output geometry and explicit chunk size. */
 #include "flashvm/avm1.h" /* Stop the registered host output through real AVM1 StopSounds. */
 #include <stdio.h> /* Read the explicitly supplied SWF and implement real PCM file output. */
 #include <stdlib.h> /* Allocate bounded input storage and parse the requested numeric sound ID. */
 #include <string.h> /* Initialize native host state before partial setup. */
 #include <errno.h> /* Reject malformed or overflowing numeric sound IDs. */
-#define TUTORIAL_SWF_INPUT_LIMIT (64UL * 1024UL * 1024UL) /* Bound the explicit input-file allocation. */
-#define TUTORIAL_SWF_SOUND_ID_MAX 65535UL /* Sound IDs are nonzero unsigned sixteen-bit dictionary keys. */
-#define TUTORIAL_SWF_PCM_CHUNK 256U /* Submit small explicit sample-frame ranges instead of allocating an entire song. */
 typedef struct PcmFile /* Keep real native output ownership outside the VM collector. */
 { /* Begin host-owned file state. */
     const char *path; /* Borrow argv storage until all context callbacks finish. */
@@ -84,13 +82,20 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     unsigned long sound_id, first; /* Track the selected dictionary key and explicit sample offset. */
     size_t sounds, index, frames; /* Count root definitions and bounded sample-frame ranges. */
     const unsigned char stop[] = {0x09, 0x00}; /* Encode StopSounds followed by End. */
-    int event_mode = argc == 5 && strcmp(argv[4], "--event") == 0; /* Interpret the numeric selector as an event ordinal only when explicitly requested. */
+    int stream_mode = argc == 5 && strcmp(argv[4], "--stream-event") == 0; /* Read a prepared event voice incrementally only when explicitly requested. */
+    int event_mode = stream_mode || (argc == 5 && strcmp(argv[4], "--event") == 0); /* Interpret the numeric selector as an event ordinal only when explicitly requested. */
+    FVM_SWFSoundVoice *voice = 0; /* Own an optional native snapshot independently of context lifetime. */
+    FVM_SWFSoundVoiceInfo voice_info; /* Copy source geometry and incremental progress. */
+    short voice_pcm[TUTORIAL_SWF_PCM_CHUNK * TUTORIAL_SWF_MAX_CHANNELS]; /* Bound each caller-owned output buffer. */
+    FVM_MediaFrame voice_frame; /* Borrow the caller PCM only during synchronous channel writes. */
+    FVM_Result voice_result; /* Distinguish snapshot EOF from preparation or output errors. */
+    size_t voice_written; /* Count initialized S16 channel values rather than frames. */
     FVM_SWFSoundEvent selected_event; /* Resolve event mode to its resource before output registration. */
     int exit_code = 1; /* Report success only after explicit export and stopping complete. */
     memset(&host, 0, sizeof(host)); /* Make cleanup safe after partial setup. */
     if (argc != 4 && !event_mode) /* Require explicit input, sound ID and output before file operations. */
     { /* Explain observable side effects without opening anything. */
-        printf("Usage: %s INPUT.swf SOUND_ID OUTPUT.pcm\n       %s INPUT.swf EVENT_ORDINAL OUTPUT.pcm --event\nExports raw native-endian S16; replaces the named output.\n", argv[0], argv[0]); /* Describe output representation and replacement. */
+        printf("Usage: %s INPUT.swf SOUND_ID OUTPUT.pcm\n       %s INPUT.swf EVENT_ORDINAL OUTPUT.pcm --event\n       %s INPUT.swf EVENT_ORDINAL OUTPUT.pcm --stream-event\nExports raw native-endian S16; replaces the named output.\n", argv[0], argv[0], argv[0]); /* Describe output representation and replacement. */
         return 0; /* Keep no-argument test runs free of file/device side effects. */
     } /* Finish the explicit input gate. */
     if (!*argv[2] || strspn(argv[2], "0123456789") != strlen(argv[2])) /* Accept digits only, avoiding signed strtoul wraparound and partial text. */
@@ -160,6 +165,36 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     output.stop = stop_pcm; /* Delegate StopSounds to synchronous fclose. */
     if (!checked(fvm_audio_channel_create(context, &output, &channel), "channel_create")) /* Copy the table into an inactive registration. */
         goto cleanup; /* Creation itself does not open output. */
+    if (stream_mode) /* Prepare one native snapshot instead of allocating every repetition at once. */
+    { /* Open does not apply stop/no-multiple or register a resource binding. */
+        if (!checked(fvm_swf_sound_voice_open(context, (size_t)sound_id, &voice), "sound_voice_open")) /* Copy the decoded range and envelope while the VM owns canonical input. */
+            goto cleanup; /* Stop controls and unsupported/malformed voices do not open output. */
+        voice_info.struct_size = sizeof(voice_info); /* Declare the exact copied-progress ABI. */
+        if (!checked(fvm_swf_sound_voice_info(voice, &voice_info), "sound_voice_info")) /* Read stable PCM geometry without callbacks. */
+            goto cleanup; /* Preserve ownership for centralized native close. */
+        memset(&voice_frame, 0, sizeof(voice_frame)); /* Clear unused media geometry and timestamp fields. */
+        voice_frame.kind = FVM_MEDIA_AUDIO; /* Select the host bridge's native interleaved S16 format. */
+        voice_frame.sample_rate = voice_info.sample_rate; /* Keep the captured nominal source rate. */
+        voice_frame.channels = voice_info.channels; /* Keep the captured mono/stereo layout. */
+        voice_frame.data = (const unsigned char *)voice_pcm; /* Borrow only this caller-owned chunk during output. */
+        for (;;) /* Consume repetitions and envelope progression without further VM source scans. */
+        { /* Read at most one explicitly bounded caller buffer. */
+            voice_result = fvm_swf_sound_voice_read(voice, TUTORIAL_SWF_PCM_CHUNK, voice_pcm, sizeof(voice_pcm) / sizeof(voice_pcm[0]), &voice_written); /* Native snapshot reads allocate nothing and can return a final short chunk. */
+            if (voice_result == FVM_NOT_FOUND) /* End only after all requested plays are exhausted. */
+                break; /* EOF submits no empty output callback. */
+            if (!checked(voice_result, "sound_voice_read")) /* Preserve malformed caller/state errors without hidden retries. */
+                goto cleanup; /* Already written chunks cannot be rolled back. */
+            voice_frame.size = voice_written * sizeof(short); /* Publish only initialized channel values. */
+            voice_frame.samples = voice_written / voice_info.channels; /* Convert channel values back to sample frames. */
+            if (!checked(fvm_audio_channel_write(channel, &voice_frame), "voice_chunk_write")) /* Copy or consume the native chunk synchronously through the real file sink. */
+                goto cleanup; /* A failed native write is not automatically replayed. */
+        } /* Finish bounded sequential voice output. */
+        if (!checked(fvm_avm1_execute(context, stop, sizeof(stop)), "StopSounds")) /* Close accepted PCM output through the actual stop callback. */
+            goto cleanup; /* Preserve userdata until terminal context cleanup returns. */
+        printf("Streamed event %lu; bounded native S16 chunks, no audible playback.\n", sound_id); /* Describe explicit host output rather than automatic timeline execution. */
+        exit_code = 0; /* Every prepared chunk and stop completed. */
+        goto cleanup; /* Release the native snapshot and VM through the shared path. */
+    } /* Finish incremental event snapshot mode. */
     if (event_mode) /* Render this explicit StartSound with its source range, repetitions and envelope. */
     { /* Use one dedicated initially inactive voice channel. */
         if (!checked(fvm_swf_sound_event_submit(context, (size_t)sound_id, channel), "sound_event_submit")) /* Prepare bounded styled PCM, then enter the real file-output callback once. */
@@ -185,6 +220,7 @@ int main(int argc, char **argv) /* Keep the tutorial valid C89 without assertion
     printf("Exported %lu sample frames; raw PCM only, no audible playback.\n", first); /* Report observable export rather than a sound-card claim. */
     exit_code = 0; /* All demonstrated operations completed. */
 cleanup: /* Keep native userdata valid until the context has finished callbacks. */
+    fvm_swf_sound_voice_close(voice); /* Release only native copied samples; null and VM-independent close are safe. */
     if (context) /* Destroy only a successfully acquired context. */
         fvm_context_destroy(context); /* Release registrations and canonical bytes after terminal stopping. */
     if (host.file) /* A failed write can retain a host resource outside acknowledged channel state. */
