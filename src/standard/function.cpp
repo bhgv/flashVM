@@ -225,8 +225,7 @@ FVM_Result apply_loaded_count(FVM_Context *c, FVM_Object *source, double &count,
             if (status != FVM_OK)
                 return status;
         }
-        else if (source->resource_kind == FVM_RESOURCE_ARRAY && source->resource_result_valid)
-            value = source->resource_result;
+        /* A deleted Array length has no own data; stale native storage cannot replace it. */
     }
     /* [GC:] Length conversion may remove its own source slot and invoke collecting accessors. */
     FVM_ObjectRootScope length_roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);

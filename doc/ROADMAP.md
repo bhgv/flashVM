@@ -2188,3 +2188,11 @@ command files inside the build tree even alongside valid artifacts; output
 arguments remain optional. Tests / проверки: test_elf_dependencies includes
 false-pass and stale-status regressions. See PLATFORM_VALIDATION.md and
 PLATFORM_VALIDATION.ru.md. All nine stages remain open / остаются открытыми.
+
+### v0.520 — apply respects deleted Array length
+
+Implemented / реализовано: loaded Function.apply uses zero arguments when an
+Array list lacks own length data, instead of reviving cached native length.
+Tests / проверки: function_apply_deleted_length and roots/allocation variants.
+See FUNCTION_APPLY.md and FUNCTION_APPLY.ru.md. Other native Array deletion
+semantics and all nine stages remain open / остаются открытыми.

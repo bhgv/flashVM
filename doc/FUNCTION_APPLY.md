@@ -145,3 +145,33 @@ Validation v0.422: Linux minimal 840/840; AGG 13/13; heap/global ASan+UBSan
 13/13, including direct super/owner/prototype and remote-function regressions.
 Generated executable-mode launchers were used. Stack ASan/LeakSanitizer remain
 disabled; no additional operating system or complete-stage acceptance is claimed.
+
+## v0.520: deleted native Array length
+
+Loaded apply no longer falls back to an Array's cached native length when its
+own length property has been deleted. Missing own data converts from Undefined
+to zero, so no indexed getters run and the target receives zero arguments.
+Inherited length data/getters remain ignored. Existing builtin length accessors,
+recreated own data and SWF4–6 mixed-case own spelling retain their previous
+behavior. Counted NUL suffixes are ordinary distinct properties. Host policy
+and public ABI/graph format are unchanged.
+
+Primary comparison: Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd,
+avm1/globals/function.rs apply and avm1/object/script_object.rs length use own
+get_data("length").unwrap_or(Undefined). This is source comparison, not an
+original Flash Player oracle. General native Array length deletion/virtual
+property semantics outside apply and nonnumeric length assignment remain open.
+
+function_apply_deleted_length covers SWF4–8, own/inherited/missing/mixed/NUL
+lengths, C API, interpreter, explicit/automatic JIT and graph roundtrips. Its
+roots variant proves indexed getters are skipped and a target that deletes
+bindings can collect, throw or fail without losing its captured list. The
+allocation variant sweeps failures, checks cleanup, GC/retry and preserved
+length absence/elements. The corrected matrix fails with the v0.519 handler.
+
+Validation / v0.520 Linux x64 C++98: minimal 1070/1070, AGG 1089/1089 and
+Cairo 1090/1090 passed, including successful reruns after restoring executable
+permissions for 20/18/26 binaries. Six targeted ASan/UBSan cases passed. A fresh
+strict GNU readelf audit passed for 1079 Cairo ELF artifacts, with only libc,
+libgcc_s, libm and libstdc++ as direct dependencies. This does not certify
+transitive/dlopen dependencies or Windows/macOS/Android runtime acceptance.
