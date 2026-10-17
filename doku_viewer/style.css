@@ -1,0 +1,19 @@
+/* Responsive documentation layout; all assets remain local. */
+:root { color-scheme: light; font-family: system-ui, sans-serif; color: #183044; background: #f5f7fa; }
+body { margin: 0; display: grid; grid-template-columns: 290px minmax(0,1fr); }
+aside { position: sticky; top: 0; height: 100vh; overflow: auto; box-sizing: border-box; padding: 20px; background: #152d40; color: #e5edf5; }
+a { color: #0867a1; text-decoration: none; } a:hover { text-decoration: underline; }
+aside a { color: #cbe8fc; overflow-wrap: anywhere; } .brand { display: block; font-size: 23px; font-weight: bold; margin-bottom: 18px; }
+input { box-sizing: border-box; width: 100%; padding: 10px; margin-bottom: 18px; border: 1px solid #a8b8c5; border-radius: 5px; }
+summary { cursor: pointer; font-weight: bold; padding: 8px 0; } aside ul { padding-left: 14px; list-style: none; } aside li { margin: 8px 0; font-size: 13px; }
+main { padding: 24px 35px; min-width: 0; } header { display: flex; gap: 20px; justify-content: space-between; color: #536b7d; overflow-wrap: anywhere; }
+article { background: white; padding: 25px; margin-top: 20px; border: 1px solid #dce3e8; border-radius: 8px; line-height: 1.65; overflow-wrap: anywhere; }
+h1,h2,h3 { line-height: 1.25; } h2 { margin-top: 1.8em; border-bottom: 1px solid #dce3e8; padding-bottom: 8px; }
+pre { overflow: auto; background: #f2f5f8; padding: 14px; line-height: 1.5; } code { font-family: Consolas, monospace; font-size: 13px; }
+.source { padding: 12px 0; } .source-line { display: inline-block; min-width: 100%; scroll-margin-top: 30px; }
+.line-number { display: inline-block; width: 4em; padding-right: 1em; text-align: right; color: #708595; user-select: none; }
+.source-line:target { background: #ffe696; outline: 1px solid #e0b845; }
+table { border-collapse: collapse; display: block; overflow-x: auto; } th,td { border: 1px solid #cad5de; padding: 8px 12px; } th { background: #eaf1f7; }
+img { max-width: 100%; } blockquote { border-left: 4px solid #90b4cc; margin-left: 0; padding-left: 18px; color: #536b7d; }
+.k,.kt,.kn,.kd { color: #7842a0; font-weight: bold; } .s,.s1,.s2,.sc { color: #23743c; } .c,.c1,.cm,.cp { color: #647684; } .nf,.nc { color: #005e9a; } .m,.mi,.mf,.mh { color: #a64218; }
+@media(max-width:800px) { body { display: block; } aside { position: relative; height: auto; max-height: 35vh; } main { padding: 14px; } article { padding: 16px; } }

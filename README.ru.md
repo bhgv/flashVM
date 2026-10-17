@@ -1,4 +1,4 @@
-Версия разработки: **0.543** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.544** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -322,6 +322,11 @@ Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_Q
 лицензии: корневая MIT их не заменяет. См. уведомления в
 [external/](external/README.md), каталогах соответствующих зависимостей и
 отмеченных сторонних фрагментах исходников проекта.
+## Локальный просмотр документации
+
+Установите `python -m pip install -r doku_viewer/requirements.txt`, затем
+запустите `python view_docs.py`. Python 2.7.9/3, навигация по Markdown и
+подсвеченные исходники с переходом к строке: [руководство](doku_viewer/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

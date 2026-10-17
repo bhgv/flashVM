@@ -1,5 +1,5 @@
-Development version: **0.543** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.543 ` and an English description. Increase the subversion before each
+Development version: **0.544** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.544 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.543** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.543 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.544** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.544 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -556,6 +556,11 @@ Third-party code, data and dependencies retain their own copyright notices and
 licenses; the root MIT license does not replace them. See notices in
 [external/](external/README.md) and the relevant dependency directories,
 including any third-party material identified within project sources.
+## Browse documentation locally
+
+Run `python -m pip install -r doku_viewer/requirements.txt`, then
+`python view_docs.py`. Python 2.7.9/3 server, browser Markdown navigation and
+Pygments source-line links: [viewer guide](doku_viewer/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

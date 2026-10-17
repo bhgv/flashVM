@@ -10,7 +10,7 @@ v0.15 не означает появления новых возможносте
 внешние библиотеки в external/, статическое подключение; читаемый код и
 комментарии, тесты, документация на русском и английском.
 
-## Запрошено на последующий блок: просмотрщик документации
+## Просмотрщик документации (реализован в v0.544)
 
 Пользователь 2026-10-17 запросил отдельный браузерный просмотрщик после текущих
 работ. Запускаемый Python-файл разместить в корне репозитория; остальные файлы
@@ -27,7 +27,8 @@ v0.15 не означает появления новых возможносте
 Deferred documentation viewer: root Python launcher, engine in `doku_viewer/`,
 Python 2.7.9/3 compatibility, browser Markdown navigation across README/docs/
 examples, and syntax-highlighted source links with exact line navigation.
-This is a recorded requirement, not an implemented or validated viewer.
+Implemented in v0.544: see [viewer guide](../doku_viewer/README.md).
+Implementation does not close the remaining roadmap stages.
 
 ## Этапы
 
@@ -2480,6 +2481,19 @@ properties; RU/EN contracts and compatibility inventory are updated. Pinned
 Ruffle source is a semantic cross-check, not original Flash Player acceptance.
 Historic quality sampling grids, StopSounds, native platform runs and the other
 roadmap acceptance requirements remain open. No stage is closed.
+
+### v0.544 — browser documentation viewer
+
+Implemented / реализовано: root `view_docs.py`, engine in `doku_viewer/`,
+loopback HTTP server, searchable Markdown navigation for project/docs/examples,
+tables/fences/Unicode heading anchors, sanitized HTML, Pygments source lines,
+`#L<number>` selection and scrolling, local CSS/JS and raw text views.
+Pinned dependencies run on Python 2.7.9 and Python 3; no VM build is needed.
+Validation: five actual HTTP/render/confinement tests pass separately on exact
+CPython 2.7.9 and CPython 3.12. All 676 documentation/example/entry Markdown pages
+render on 3.12. Links and all 87 example catalog entries pass. Chromium was
+unavailable and its download failed, so browser screenshot/layout acceptance
+and native Windows/macOS execution are not claimed. No roadmap stage is closed.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
