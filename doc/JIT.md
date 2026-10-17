@@ -1,3 +1,5 @@
+Windows x64 selection, W^X and unwind publication: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md) (v0.561; native Windows acceptance pending).
+
 Current architecture and debugger extension: [JIT_ARCHITECTURES.md](JIT_ARCHITECTURES.md)
 
 Native ToggleQuality: [STAGE_QUALITY.md](STAGE_QUALITY.md) (v0.557).

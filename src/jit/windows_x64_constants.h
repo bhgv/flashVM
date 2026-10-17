@@ -16,5 +16,8 @@
 #define FVM_JIT_WIN64_UNWIND_CODES 2U /* One allocation record and one saved-register record. */
 #define FVM_JIT_WIN64_UNWIND_ALLOC 0x32U /* UWOP_ALLOC_SMALL with 32-byte allocation. */
 #define FVM_JIT_WIN64_UNWIND_PUSH 0xc0U /* UWOP_PUSH_NONVOL for r12. */
+#define FVM_JIT_WIN64_UNWIND_FRAME 0U /* No frame-pointer register or scaled frame offset. */
+#define FVM_JIT_WIN64_UNWIND_ALIGNMENT 4U /* DWORD alignment required by Windows unwind RVAs. */
+#define FVM_JIT_WIN64_FUNCTION_ENTRIES 1U /* One native function range per independently owned mapping. */
 #define FVM_JIT_WIN64_UNWIND_BYTES 8U /* Four-byte header plus two two-byte unwind codes. */
 #endif

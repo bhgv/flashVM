@@ -6,9 +6,11 @@
 extern "C"
 {
 #endif
-    /* Report support for the Linux x86-64 System V emitter and memory policy. */
+    /* Report support for the selected native ABI and executable-memory policy. */
     int fvm_port_code_supported(void);
-    /* Copy bytes through RW storage, seal RX, then publish. Errors preserve outputs. */
+    /* Copy bytes through RW storage, seal RX, then publish. Errors preserve outputs.
+     * Windows x64 requires the fixed encoder frame and registers its unwind table.
+     * The size output is an opaque release cookie: Linux mapping length, Windows table offset. */
     FVM_Result fvm_port_code_create(const void *, size_t, void **, size_t *);
     /* Release an inactive executable mapping created by this adapter. */
     void fvm_port_code_release(void *, size_t);

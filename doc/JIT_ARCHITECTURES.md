@@ -16,6 +16,7 @@ AVM1 compiler. Unsupported operations still execute through the interpreter.
 | --- | --- | --- | --- |
 | x86 | Linux i386 System V cdecl | IA-32, 32 bits | Unicorn call/branch/ABI execution |
 | x86-64 | Linux System V AMD64 | x86-64, 64 bits | Full host VM tests and examples |
+| Windows x64 | Microsoft x64 | x86-64, 64 bits | Real Linux ms_abi calls and SDK protocol fixtures; native Windows VM/unwind pending |
 | ARM | Linux AAPCS32 | ARMv7 A32, 32 bits; BLX permits Thumb helpers | Unicorn A32 call/branch/ABI execution |
 | ARM64 | Linux AAPCS64 | AArch64, 64 bits | Unicorn call/branch/ABI execution |
 | RISC-V | Linux standard ILP32-family psABI | RV32I, 32 bits | Unicorn call/branch/ABI execution |
@@ -31,8 +32,10 @@ fit within the compiler's bounded code allocation.
 
 Linux mappings are RW while filled, RX before publication, never RWX. Compiler
 instruction-cache synchronization runs before the mapping is returned, including
-on ARM/RISC-V. There is no Windows, macOS, Android runtime acceptance claim here;
-those executable-memory, ABI and hardened-runtime paths need separate work.
+on ARM/RISC-V. Windows x64 additionally has RW→RX allocation, cache synchronization and registered
+unwind metadata (v0.561), documented in [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md).
+There is no Windows, macOS or Android runtime acceptance claim here; real Windows
+execution and the remaining OS ABI/hardened-runtime paths need separate work.
 No real foreign-CPU OS build/run was available in this workspace. Emulated
 encoder execution is evidence about instructions/ABI, not a full cross-platform
 VM run, GC test or performance measurement.
@@ -205,7 +208,7 @@ by the current minimal Release executable, then checked by
 helpers; it remains distinct from running full FlashVM on a foreign CPU/OS.
 
 
-Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). This checkpoint does not enable a Windows VM backend. / Windows VM backend пока не включён.
+Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). v0.561 adds Windows x64 selection, W^X allocation and registered unwind metadata; native Windows execution is still unverified. / Добавлены выбор backend, W^X и unwind; нативный Windows запуск ещё не проверен.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

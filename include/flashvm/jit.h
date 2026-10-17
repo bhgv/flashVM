@@ -11,7 +11,7 @@ extern "C"
     typedef struct FVM_JitCode FVM_JitCode;
     /* Report whether this build/host can emit and execute the current native backend. */
     FVM_API int fvm_jit_available(void);
-    /* Static Linux ABI name for diagnostics, or "unsupported"; no allocation or ownership. */
+    /* Static native ABI name for diagnostics, or "unsupported"; no allocation or ownership. */
     FVM_API const char *fvm_jit_backend_name(void);
     /* Compile an action body without changing any function. Unsupported operations return
      * UNSUPPORTED; malformed supported records return INVALID_ARGUMENT. Errors preserve out.

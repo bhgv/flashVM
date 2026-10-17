@@ -1,10 +1,13 @@
-/* FlashVM: Linux ABI selection and W^X publication for architecture-specific encoders. */
+/* FlashVM: native ABI selection and W^X publication for architecture-specific encoders. */
 #include "internal.hpp"
 #include <cstring>
 /* Reject big-endian, x32, AArch64 ILP32, RV32E and pre-ARMv7 configurations explicitly. */
 FVM_JitTarget fvm_jit_host_target(void)
 {
-#if !defined(__linux__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#if defined(_WIN32) && (defined(_M_X64) || defined(__x86_64__)) && !defined(__ILP32__) && \
+    !defined(_M_ARM64EC) && !defined(__arm64ec__)
+    return FVM_JIT_TARGET_WINDOWS_X64;
+#elif !defined(__linux__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
     return FVM_JIT_TARGET_NONE;
 #elif defined(__x86_64__) && !defined(__ILP32__)
     return FVM_JIT_TARGET_X64;
@@ -73,6 +76,8 @@ extern "C" const char *fvm_jit_backend_name(void)
 {
     switch (fvm_jit_host_target())
     {
+    case FVM_JIT_TARGET_WINDOWS_X64:
+        return "windows-x64";
     case FVM_JIT_TARGET_X86:
         return "x86";
     case FVM_JIT_TARGET_X64:

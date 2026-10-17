@@ -1,4 +1,7 @@
-/* FlashVM: Linux W^X executable mappings with instruction-cache synchronization. */
+/* FlashVM: OS-specific W^X executable mappings with instruction-cache synchronization. */
+#if defined(_WIN32)
+#include "windows/code.c"
+#else
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE /* Request MAP_ANONYMOUS from the platform headers. */
 #endif
@@ -77,3 +80,5 @@ void fvm_port_code_release(void *memory, size_t mapped)
     (void)mapped;
 #endif
 }
+
+#endif /* Windows uses its own registered Microsoft x64 code mappings. */

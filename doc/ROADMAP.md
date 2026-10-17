@@ -2884,6 +2884,39 @@ output unchanged. Existing five offline architecture encoder fixtures also pass.
 This is actual instruction/ABI execution on Linux, not Windows OS/SEH acceptance.
 Documentation and example guide identify that boundary. Stages 8/9 remain open.
 
+### v0.561 — Windows x64 W^X publication and unwind registration
+
+Implemented / реализовано: ordinary Windows x64 builds select the new Microsoft
+ABI backend and report windows-x64. The Windows code adapter validates the fixed
+frame, reserves/commits RW storage, copies code and DWORD-aligned native unwind
+records, seals RX, flushes instructions and registers one RUNTIME_FUNCTION before
+publishing output. UNWIND_INFO covers the saved r12 and 32-byte shadow area;
+release unregisters before VirtualFree. Failed publication cleans up without
+changing outputs. The private release cookie is distinct from public code size.
+ARM64EC and other unimplemented Windows ABIs remain excluded. Nested mappings each
+register their own frame; original code/source lifetime and GC contracts remain.
+
+Validation: full Linux Release minimal-JIT suite passes 1171 checks with the
+existing speech SSIP endpoint test skipped (1172 total). Three focused ASAN/UBSAN
+checks pass, with LeakSanitizer disabled: real Linux Microsoft-ABI code execution,
+actual Windows adapter against controlled SDK functions and the previous five
+foreign architecture encoder fixtures. ABI checks explicitly preserve r12 on
+normal/error exits. The SDK fixture checks publication order, all four metadata
+alignment cases with actual encoder output, exact unwind bytes/RVAs, failures
+at allocation/protection/cache/registration, unchanged outputs and unregister
+rejection safety. Production Windows C code compiles as strict C89 with controlled
+SDK declarations; backend Windows selection also compiles in C++98. These are not
+real Windows SDK/link/runtime evidence.
+
+A separate native Windows-only RtlLookupFunctionEntry/RtlVirtualUnwind fixture
+checks table registration/removal and synthetic stack recovery at offsets
+0/4/6/10/13, including partially executed prologues. Its test body does not run
+on Linux; the Linux suite does not certify native Windows unwinding. Guides,
+source links, API indexes, compatibility inventory and the existing JIT example
+catalog entry describe both the new behavior and this outstanding acceptance.
+Stages 8/9 and the other roadmap stages remain open. / Нативная приёмка Windows,
+macOS/Android и полнота SWF/AS ещё не завершены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

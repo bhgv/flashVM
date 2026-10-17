@@ -51,7 +51,11 @@ int main()
  for(unsigned failure=0;failure<2;++failure)
  {
   State state;std::memset(&state,0,sizeof(state));state.fail=failure!=0;
-  assert(entry(&state)==(failure?FVM_ERROR:FVM_OK));
+  register size_t preserved __asm__("r12")=(size_t)0x76543210U;
+  __asm__ __volatile__("" : "+r"(preserved));
+  FVM_Result status=entry(&state);
+  __asm__ __volatile__("" : "+r"(preserved));
+  assert(status==(failure?FVM_ERROR:FVM_OK) && preserved==(size_t)0x76543210U);
   const unsigned expected[]={0xffffffffU,0x80000000U,1,2,1,3};
   assert(state.calls==(failure?4U:6U));
   for(unsigned i=0;i<state.calls;++i)assert(state.operands[i]==expected[i]);

@@ -3,7 +3,7 @@
 #define FVM_JIT_BACKEND_HPP /* Private cross-emission interface. */
 #include "flashvm/jit.h"
 #include "../details/vector.hpp"
-/* Each target names an instruction set and its supported Linux calling convention. */
+/* Each target names an instruction set and its explicit OS calling convention. */
 enum FVM_JitTarget
 {
     FVM_JIT_TARGET_NONE,

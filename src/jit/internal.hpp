@@ -66,7 +66,7 @@ struct FVM_JitCode
     size_t pool_entries; /* Bounded aggregate pool entry count, independent of literal records. */
     fvm_detail::vector<FVM_JitAction> actions;     /* Source map and compile-time call plan. */
     void *memory;                                  /* RX-only native instruction mapping. */
-    size_t mapped;                                 /* Complete OS mapping length. */
+    size_t mapped;                                 /* Opaque OS release cookie, not the public machine-code byte count. */
     size_t bytes;                                  /* Actual emitted instruction byte count. */
     unsigned int active; /* Reentrant same-thread invocation count; prevents active release. */
     /* No executable mapping is owned until the compiler publishes one. */
