@@ -101,6 +101,14 @@
     - [network](#example-extending-network) — <small><em>Сетевое расширение — AS-эскиз</em></small>
     - [prototypes](#example-extending-prototypes) — <small><em>Native-объекты на прототипах — заметка</em></small>
     - [sqlite](#example-extending-sqlite) — <small><em>SQLite в памяти и целочисленный запрос</em></small>
+- [multimedia](#group-multimedia)
+  - [bridges](#group-multimedia-bridges)
+    - [custom_audio_bridge](#example-multimedia-custom_audio_bridge) — <small><em>Свой источник PCM через stdio</em></small>
+    - [custom_video_output](#example-multimedia-custom_video_output) — <small><em>Свой вывод RGBA в реальный PPM файл</em></small>
+  - [decoding](#group-multimedia-decoding)
+    - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
+  - [devices](#group-multimedia-devices)
+    - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 
@@ -1081,6 +1089,66 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 
 [К оглавлению](#оглавление).
 
+<a id="group-multimedia"></a>
+## multimedia
+
+<a id="group-multimedia-bridges"></a>
+### bridges
+
+<a id="example-multimedia-custom_audio_bridge"></a>
+#### custom_audio_bridge
+
+Свой источник PCM через stdio. Исполняемый C89 учебник: [README](multimedia/custom_audio_bridge/README.md), [main.c](multimedia/custom_audio_bridge/main.c).
+
+Реальный custom backend читает явно заданный raw PCM файл через fopen/fread.
+Это пример замены FFmpeg на собственную библиотеку/системный источник, а не
+воспроизведение на звуковую карту. Формат: mono, 8000 Hz, native-endian signed
+16-bit; заголовка нет. Неполный последний sample считается ошибкой. Backend
+реализует open/read/close, оставляет seek null. У каждого session собственный FILE
+и буфер. Ошибка open освобождает частичное состояние сама; успешный close закрывает
+FILE и освобождает malloc. В session копируется таблица, не userdata.
+
+<a id="example-multimedia-custom_video_output"></a>
+#### custom_video_output
+
+Свой вывод RGBA в реальный PPM файл. Исполняемый C89 учебник: [README](multimedia/custom_video_output/README.md), [main.c](multimedia/custom_video_output/main.c).
+
+Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L66).write поверх реальных fprintf/fwrite.
+Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L113)
+проверяет размер/stride; callback пишет PPM P6 и отбрасывает alpha. Файл создаётся
+только по явному аргументу; существующий файл по этому пути заменяется. Временный
+буфер не сохраняется после возврата callback. FILE принадлежит main и закрывается
+даже при неуспешной записи; проверяется также ошибка flush/close.
+
+<a id="group-multimedia-decoding"></a>
+### decoding
+
+<a id="example-multimedia-ffmpeg_decode"></a>
+#### ffmpeg_decode
+
+FFmpeg: декодирование файлов и явная камера. Исполняемый C89 учебник: [README](multimedia/ffmpeg_decode/README.md), [main.c](multimedia/ffmpeg_decode/main.c).
+
+Исполняемый пример вызывает настоящий backend из статических библиотек FFmpeg.
+Режим audio выбирает один аудиопоток и возвращает S16 PCM; video — один видеопоток
+и RGBA. Другие потоки пропускаются, временная шкала/синхронизация A/V не реализованы.
+При первом буфере печатаются реальные формат/размер; в конце число буферов.
+Воспроизведение/окно не создаются. Без MEDIA явный запуск сообщает UNSUPPORTED и
+показывает настройку SDK; без аргументов выводится usage с успешным smoke exit.
+
+<a id="group-multimedia-devices"></a>
+### devices
+
+<a id="example-multimedia-system_devices"></a>
+#### system_devices
+
+Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
+
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L82).poll. Main явно
+открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
+его адрес через userdata. Callback не владеет fd и делегирует read нативному
+переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
+Нет ожидания, фонового потока, изменения прав или поиска устройств.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -1090,11 +1158,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:113](../include/flashvm/multimedia.h#L113) |
 <!-- source-links:end -->
 
 <a id="glossary"></a>
@@ -1113,11 +1184,14 @@ Source line links describe the current checkout, including in historical notes.
 - [channels — embedding/channels](#example-embedding-channels)
 - [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
 - [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)
+- [custom_audio_bridge — multimedia/custom_audio_bridge](#example-multimedia-custom_audio_bridge)
+- [custom_video_output — multimedia/custom_video_output](#example-multimedia-custom_video_output)
 - [cycle_collection — embedding/cycle_collection](#example-embedding-cycle_collection)
 - [drawing — embedding/drawing](#example-embedding-drawing)
 - [drawing — extending/drawing](#example-extending-drawing)
 - [error.as — actionscript/error.as](#example-actionscript-error-as)
 - [execution_modes — embedding/execution_modes](#example-embedding-execution_modes)
+- [ffmpeg_decode — multimedia/ffmpeg_decode](#example-multimedia-ffmpeg_decode)
 - [file_channels — embedding/file_channels](#example-embedding-file_channels)
 - [file_channels.as — actionscript/file_channels.as](#example-actionscript-file_channels-as)
 - [font_libraries — embedding/font_libraries](#example-embedding-font_libraries)
@@ -1175,6 +1249,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
+- [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)
 - [text_layout — embedding/text_layout](#example-embedding-text_layout)

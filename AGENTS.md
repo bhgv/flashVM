@@ -117,3 +117,9 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   name, visually separated in smaller italic text (`<small><em>…</em></small>`),
   with wording short enough for one or at most two display lines. Preserve
   the example link, subgroup sorting and flat glossary.
+
+- Multimedia/device/speech bridges live in src/multimedia/{audio,video,camera,input,common,speech/tts,speech/stt}.
+  Keep operations in separate human-readable files, label target OS and explain every source line.
+  Use real system/library functions; expose missing target capabilities as UNSUPPORTED.
+  Preserve explicit host ownership/permissions and a replaceable C89 callback ABI.
+  Document custom bridge construction, units/clocks and native validation limits; maintain examples.

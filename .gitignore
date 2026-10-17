@@ -22,3 +22,7 @@ __pycache__/
 *.log
 /doc/validation/
 /validation-artifacts/
+
+# Explicit optional FFmpeg dependency build outputs.
+/external/ffmpeg/work/
+/external/ffmpeg/install/

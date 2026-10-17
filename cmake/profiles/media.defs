@@ -1,0 +1,11 @@
+# FFmpeg decoding/capture plus host multimedia/device bridges.
+NO_GRAPHICS
+AUTO_PLATFORM
+HEADLESS
+NO_SQLITE
+OS_PORTS
+RENDER_JOBS
+INTERPRETER
+MEDIA
+NO_IMAGE_CODECS
+NO_FONTS

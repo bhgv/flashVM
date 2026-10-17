@@ -75,6 +75,10 @@ Documentation maintenance / Ведение документации: [rules and 
 Stage policy: [`fvm_stage_get_quality`](../include/flashvm/stage.h#L19), [`fvm_stage_set_quality`](../include/flashvm/stage.h#L22), [`fvm_stage_toggle_quality`](../include/flashvm/stage.h#L25)
 — [STAGE_QUALITY.md](STAGE_QUALITY.md), including parameters, statuses, lifetime,
 ToggleQuality transitions and renderer limits.
+## Multimedia and devices / Мультимедиа и устройства
+
+[Bridge API and detailed contracts](MULTIMEDIA_BRIDGES.md); [public header](../include/flashvm/multimedia.h).
+Decoder/capture sessions, synchronous PCM/RGBA output, native input and future sensor providers.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

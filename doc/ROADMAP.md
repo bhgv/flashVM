@@ -2401,6 +2401,22 @@ See [RU/EN API contract](STAGE_QUALITY.md). Historic sampling grids, bitmap
 quality differences, script quality properties, StopSounds and foreign-platform
 acceptance remain open. No completion stage is closed.
 
+### v0.539 — replaceable multimedia/device bridges and real FFmpeg backend
+
+Implemented / реализовано: src/multimedia audio/video/camera/input/common,
+C89 callback/session ABI, borrowed S16/RGBA buffers, explicit capture formats,
+real FFmpeg demux/decode/drain/seek/convert/cleanup and pinned explicit static SDK.
+Custom bridges remain available with NO_MEDIA. Native input adapters call Linux
+evdev, Win32, Core Graphics and Android NDK functions behind target guards.
+Added four annotated executable tutorials, source-linked guide and catalog.
+Validation: MEDIA full suite 1120/1120; NO_MEDIA bridge tests 3/3; three
+affected tests passed ASAN/UBSAN (upstream SDK not instrumented, LeakSanitizer
+unavailable under the runner). Real-file tutorial fixture checks passed with
+and without FFmpeg; static SDK recipe and source/catalog/API links verified.
+Speech/TTS/STT is the next related bridge increment. Physical audio output,
+SWF/AS multimedia integration, camera hardware and foreign OS runs remain open.
+No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

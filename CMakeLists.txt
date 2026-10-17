@@ -24,7 +24,8 @@ if(FVM_ENABLE_RENDER AND NOT FVM_ENABLE_AGG AND NOT FVM_ENABLE_CAIRO)
 endif()
 
 file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
-                                 src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp src/jit/*.cpp)
+                                 src/avm1/*.cpp src/swf/*.cpp src/standard/*.cpp src/jit/*.cpp
+                                 src/multimedia/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
   ports/code_port.c ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
@@ -52,6 +53,24 @@ if(FVM_ENABLE_OS_PORTS)
     endif()
     target_link_libraries(flashvm PUBLIC ${FVM_APPLICATION_SERVICES})
   endif()
+endif()
+
+# Native multimedia input wrappers are available independently of FFmpeg/OS_PORTS.
+if(WIN32)
+  target_link_libraries(flashvm PUBLIC user32)
+elseif(ANDROID)
+  target_link_libraries(flashvm PUBLIC android)
+elseif(APPLE)
+  find_library(FVM_MULTIMEDIA_APPLICATION_SERVICES ApplicationServices)
+  if(NOT FVM_MULTIMEDIA_APPLICATION_SERVICES)
+    message(FATAL_ERROR "Multimedia input requires ApplicationServices on macOS")
+  endif()
+  target_link_libraries(flashvm PUBLIC ${FVM_MULTIMEDIA_APPLICATION_SERVICES})
+endif()
+if(FVM_ENABLE_MEDIA)
+  add_subdirectory(external/ffmpeg)
+  target_include_directories(flashvm SYSTEM PRIVATE "${FVM_FFMPEG_ROOT}/include")
+  target_link_libraries(flashvm PUBLIC fvm_ffmpeg)
 endif()
 
 # Compile real pinned dependency sources; no downloads during configuration.

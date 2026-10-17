@@ -47,7 +47,7 @@ RENDER_JOBS
 INTERPRETER
 # JIT
 
-# Media / Мультимедиа: MEDIA is not implemented / MEDIA ещё не реализован.
+# Media / Мультимедиа: MEDIA requires FVM_FFMPEG_ROOT / MEDIA требует статический FFmpeg SDK.
 NO_MEDIA
 # MEDIA
 
