@@ -69,7 +69,7 @@ extern "C"
     FVM_API FVM_Result fvm_swf_sound_read_pcm(FVM_Context *, unsigned int, unsigned long, size_t, short *, size_t,
                                               size_t *);
     /* Apply one root StartSound to a dedicated single-voice channel; render bounded styles before output.
-     * Stops/no-multiple affect this channel only; an ordinary start requires an inactive channel. */
+     * Stops/no-multiple affect all bound same-ID voices in this context; an ordinary start requires an inactive channel. */
     FVM_API FVM_Result fvm_swf_sound_event_submit(FVM_Context *, size_t, FVM_AudioChannel *);
     /* Copy/decode one bounded range and synchronously submit to a channel owned by this context.
      * Does not execute StartSound, schedule clocks, loop, mix or apply envelopes. */

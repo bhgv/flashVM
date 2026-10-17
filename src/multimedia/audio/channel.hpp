@@ -32,6 +32,8 @@ class FVM_AudioCallbackGuard /* [GC:] Block collection and registry mutation dur
         context_->audio_busy = false; /* [GC:] The member barrier is released immediately after this destructor body. */
     } /* Finish callback scope cleanup. */
 }; /* Finish the callback guard. */
+/* Stop every bound voice for one resource, attempting all matches after failures. */
+FVM_Result fvm_swf_sound_stop_bound(FVM_Context *, unsigned int); /* OS: guarded host callbacks; other resource IDs remain active. */
 /* Stop active outputs once and release registrations during context destruction. */
 void fvm_audio_context_cleanup(FVM_Context *); /* OS: host callbacks; errors cannot escape void context destruction. */
 #endif /* Finish the private header guard. */

@@ -370,8 +370,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWF_SOUND_ENVELOPE_UNITY` | macro / define | [include/flashvm/swf_sound.h:26](../include/flashvm/swf_sound.h#L26) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:56](../include/flashvm/swf_sound.h#L56) |
-| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 | `FVM_SWF_SOUND_EVENT_ENVELOPE` | macro / define | [include/flashvm/swf_sound.h:32](../include/flashvm/swf_sound.h#L32) |
+| `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 | `FVM_SWF_SOUND_EVENT_IN_POINT` | macro / define | [include/flashvm/swf_sound.h:29](../include/flashvm/swf_sound.h#L29) |
 | `FVM_SWF_SOUND_EVENT_LOOPS` | macro / define | [include/flashvm/swf_sound.h:31](../include/flashvm/swf_sound.h#L31) |
 | `FVM_SWF_SOUND_EVENT_NO_MULTIPLE` | macro / define | [include/flashvm/swf_sound.h:33](../include/flashvm/swf_sound.h#L33) |

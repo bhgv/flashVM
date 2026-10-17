@@ -179,7 +179,9 @@ control, not evidence of audible sound-card playback.
 StartSound resource. Binding persists through stop/reload until close. A different
 ID is rejected by event submit and [fvm_swf_sound_submit](../include/flashvm/swf_sound.h#L76); generic writes remain
 host-managed. Ordinary starts require inactive channels; no-multiple suppresses
-this channel only. See [full contract](SWF_SOUND_PLAYBACK.md).
+when any bound same-ID voice is active in this context. Resource SyncStop attempts
+all matching voices, preserving other IDs/unbound output/contexts and the first
+error. See [full contract](SWF_SOUND_PLAYBACK.md).
 
 Явный event submit закрепляет sound ID за каналом до close. Stop/reload привязку
 не снимают; другой ID требует другого канала. Raw host write остаётся под

@@ -2,7 +2,7 @@
 #include "channel.hpp" /* Reuse channel lifecycle, ownership and guarded real output callbacks. */
 #include "../../swf/sound_render.hpp" /* Prepare copied looped/enveloped PCM before host callbacks. */
 #include <cstring> /* Initialize unused output geometry without exposing uninitialized fields. */
-/* Apply synchronization to this channel only; hosts allocate separate channels for overlapping voices. */
+/* Synchronize matching bound voices across the context; hosts choose separate channels for overlap. */
 FVM_Result fvm_swf_sound_event_submit(FVM_Context *context, size_t ordinal, FVM_AudioChannel *channel) /* Borrow the channel until the synchronous operation returns. */
 { /* Begin explicit StartSound application. */
     if (!channel || channel->context != context || !fvm_audio_context_valid(context)) /* Reject foreign owners, terminal phases and callback mutation. */
@@ -15,9 +15,18 @@ FVM_Result fvm_swf_sound_event_submit(FVM_Context *context, size_t ordinal, FVM_
     if ((channel->swf_sound_id && channel->swf_sound_id != event.sound_id) || (!channel->swf_sound_id && channel->active)) /* Never stop or suppress a foreign or unbound active voice. */
         return FVM_INVALID_ARGUMENT; /* Require a dedicated channel for the selected resource. */
     if (event.flags & FVM_SWF_SOUND_EVENT_STOP) /* Give an explicit stop priority over all playback styles. */
-        return fvm_audio_channel_stop(channel); /* [GC:] Use the ordinary retryable, guarded native stop callback. */
-    if (channel->active) /* Acknowledged output remains active until the host explicitly stops it. */
-        return event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE ? FVM_OK : FVM_INVALID_ARGUMENT; /* Suppress a duplicate or require a separate channel for overlap. */
+        return fvm_swf_sound_stop_bound(context, event.sound_id); /* [GC:] Attempt all matching voices through one stable native barrier. */
+    if (event.flags & FVM_SWF_SOUND_EVENT_NO_MULTIPLE) /* Suppress a new voice if this resource already has any acknowledged active instance. */
+    { /* Inspect only this context's resource-bound channels without entering host code. */
+        for (size_t i = 0; i < context->audio_channels.size(); ++i) /* Preserve independent contexts and unrelated host output. */
+        { /* Inspect one stable registration on the VM thread. */
+            FVM_AudioChannel *voice = context->audio_channels[i]; /* Borrow the context-owned wrapper for this query only. */
+            if (voice->active && voice->swf_sound_id == event.sound_id) /* Match resource identity as well as acknowledged activity. */
+                return FVM_OK; /* Keep the selected inactive channel unbound and avoid decoding/allocation. */
+        } /* Finish matching registered voices. */
+    } /* Finish context-wide no-multiple handling. */
+    if (channel->active) /* A normal new voice still needs its own inactive output channel. */
+        return FVM_INVALID_ARGUMENT; /* Hosts use a separate channel for overlap or explicitly stop this voice. */
     FVM_SWFSoundInfo info; /* Receive source rate/channel metadata before any host callback. */
     info.struct_size = sizeof(info); /* Declare the exact resource inspection ABI. */
     result = fvm_swf_sound_info(context, event.sound_id, &info); /* Resolve nominal geometry without opening a device. */

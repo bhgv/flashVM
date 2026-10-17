@@ -125,7 +125,8 @@ The ordinary three-argument SOUND_ID mode retains its raw chunked behavior.
 Ошибки диапазона, порядка точек, кодека/памяти возникают до callback. Пример
 показывает реальную запись файла, не слышимое воспроизведение и не полную
 эквивалентность Flash Player. Новые каналы не демонстрируют активный no-multiple;
-его жизненный цикл показан в [контракте](../../../doc/SWF_SOUND_PLAYBACK.md).
+несколько голосов показаны в [swf_polyphony](../swf_polyphony/README.md),
+его жизненный цикл — в [контракте](../../../doc/SWF_SOUND_PLAYBACK.md).
 
 - [`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L73) — отдельный готовый голос, ownership, ошибки,
   стиль и ограничения: [SWF_SOUND_PLAYBACK.md](../../../doc/SWF_SOUND_PLAYBACK.md#fvm_swf_sound_event_submit).

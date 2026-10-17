@@ -2640,6 +2640,33 @@ FFmpeg oracles remain byte-exact; source/tutorial/catalog links pass.
 кодеки, оригинальный Flash Player и foreign native acceptance ещё открыты.
 No roadmap stage is closed. См. SWF_SOUND_PLAYBACK.md.
 
+### v0.553 — synchronize every bound voice of a resource
+
+Implemented / реализовано: StartSound no-multiple checks all active bound
+same-ID voices in the context before allocation/output. A suppressed unbound
+target remains reusable. SyncStop attempts every matching voice in registration
+order, returns the first error after all attempts and retains only failed voices
+as active. Other IDs, unbound host output and other contexts are preserved.
+A single native barrier keeps registrations stable across callback reload and
+rejects nested audio mutation/GC. Ordinary starts use separate inactive channels
+for overlapping instances; source binding remains until close.
+
+Validation: minimal full suite 1149 passed and one existing Unix-endpoint skip
+(1150 total). Six focused checks passed in native static ALSA null output,
+ASAN/UBSAN and JIT profiles (external SDK uninstrumented, LSAN disabled). Tests
+cover overlap, suppression without binding, first-error/retry, independent IDs/
+contexts, reload before a later matching stop, callback barriers and allocation-
+free synchronization. The new fully annotated C89 swf_polyphony tutorial writes
+three real four-byte PCM files and reports expected write/stop/active counts;
+its no-argument/identical-path gates create no files. Both actual exporter
+scripts and all twelve raw PCM/ADPCM FFmpeg oracle cases pass. Catalog now has
+91 documented examples; source/anchor/line-comment checks pass.
+
+Глобальная синхронизация относится к связанным StartSound voices текущего context;
+смешивание PCM и автоматический MovieClip clock ещё не реализованы. Стриминг,
+прочие кодеки, original-player equivalence и native foreign-platform acceptance
+остаются открытыми. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

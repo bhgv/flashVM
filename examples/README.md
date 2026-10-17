@@ -110,6 +110,7 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
+    - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [speech](#group-multimedia-speech)
@@ -1182,6 +1183,18 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 одного StartSound одним буфером; обычный режим сохраняет source chunks.
 Это экспорт raw PCM, не автоматический SWF-плеер.
 
+<a id="example-multimedia-swf_polyphony"></a>
+#### swf_polyphony
+
+Несколько голосов одного DefineSound: независимые реальные FILE sinks,
+context-wide no-multiple и остановка всех голосов по sound ID при сохранении
+другого ресурса. Исполняемый C89 учебник: [README](multimedia/swf_polyphony/README.md),
+[main.c](multimedia/swf_polyphony/main.c), [constants](multimedia/swf_polyphony/example_constants.h).
+Явно выбираются три output path, каждый может быть перезаписан. No-multiple не
+открывает и не закрепляет пропущенный канал; затем тот принимает другой ID.
+Stop-by-ID закрывает два совпадения, stop_all закрывает оставшееся. NO_MEDIA
+достаточен; это stdio/синхронизация, не слышимое смешивание/автоматический clock.
+
 <a id="group-multimedia-devices"></a>
 ### devices
 
@@ -1349,6 +1362,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
+- [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)

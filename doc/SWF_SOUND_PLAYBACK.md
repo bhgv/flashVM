@@ -5,7 +5,7 @@
 [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L73) connects one root StartSound control to a dedicated
 [`FVM_AudioChannel`](../src/multimedia/audio/channel.hpp#L6). It renders supported PCM/ADPCM, source boundaries, repetitions
 and linear envelopes, then calls the real registered output once. Stop and
-no-multiple use that channel's acknowledged active state. This is an explicit
+no-multiple inspect all same-ID bound voices in the owning context. This is an explicit
 single-voice building block: hosts select events and channels, schedule time and
 allocate separate channels for overlapping voices. MovieClip frame advancement
 does not invoke it automatically. StartSound2, button/streaming audio, mixing,
@@ -35,13 +35,18 @@ Processing order:
 
 1. Validate the complete root event stream and resolve the selected unique
    DefineSound using [fvm_swf_sound_event_at](../include/flashvm/swf_sound.h#L58). Preserve missing/malformed errors.
-2. Validate resource/channel identity. If SyncStop is set, call
-   [fvm_audio_channel_stop](../include/flashvm/multimedia.h#L84); it wins over no-multiple and rendering styles.
-   It does not decode or allocate PCM. Inactive stop succeeds without a callback.
-3. For an active channel, SyncNoMultiple returns OK without allocation/output.
-   An ordinary start on an active channel returns INVALID_ARGUMENT: hosts must
-   stop/restart explicitly or use another channel for overlap. This channel-local
-   check is not a global search across every voice with the same resource ID.
+2. Validate resource/channel identity. If SyncStop is set, stop every active
+   bound same-ID voice in this context; stop wins over no-multiple and rendering
+   styles. Attempt all matches in registration order, preserving the first host
+   error and retaining only failed voices as active. No PCM is decoded/allocated.
+   No matching active voice means OK without a callback; the chosen unbound
+   target is not bound by a stop.
+3. SyncNoMultiple returns OK without allocation/output if any registered bound
+   same-ID voice in this context is active. The chosen target keeps its state
+   and an unbound target is not bound by suppression. Other IDs, unbound raw
+   outputs and other contexts do not participate. An ordinary new start still
+   requires an inactive target: otherwise INVALID_ARGUMENT. Hosts allocate
+   separate channels for overlapping instances.
 4. For an inactive channel, validate/render the full styled voice before any host
    callback. Empty valid voices return OK without activation or binding. A
    nonempty voice is submitted once; success commits the binding/active state.
@@ -62,8 +67,8 @@ records or non-increasing envelope positions; OUT_OF_MEMORY covers native
 preparation failure or configured temporary size limit. A host write/stop error
 is returned unchanged. Failed preparation performs no callback and preserves
 channel identity/active state. A failed write does not commit a new binding;
-its native side effects cannot be rolled back. A failed stop retains active
-state/binding for retry. Successful output remains logically active until
+its native side effects cannot be rolled back. A failed resource stop retains failed voices as active
+for retry; successfully stopped peers remain inactive with their bindings. Successful output remains logically active until
 explicit stop/close/StopSounds, even if physical playback has already completed.
 
 ## Rendering policy and limits
@@ -116,10 +121,12 @@ canonical FWS/CWS. Первый успешный непустой event write з
 ответственность host: этот канал должен обслуживать только выделенный ресурс.
 
 Сначала полностью проверяются события и ссылка на ресурс. SyncStop имеет
-приоритет, использует обычный retryable stop и не декодирует PCM. Активный канал
-с no-multiple пропускает запуск с OK; обычный start на active возвращает
-INVALID_ARGUMENT. Для нескольких голосов нужны отдельные каналы. Это локальная
-проверка канала, не глобальный поиск всех голосов ресурса.
+приоритет, пытается остановить все active bound same-ID голоса контекста без декодирования
+PCM. После ошибки продолжает, возвращает первую в порядке регистрации; только
+неудачно остановленные остаются active для retry. No-multiple пропускает запуск
+с OK при любом active bound same-ID голосе этого контекста, не закрепляя пустой
+target. Другие ID, unbound host outputs и контексты не участвуют. Обычный start
+требует inactive target, иначе INVALID_ARGUMENT. Для overlap нужны разные каналы.
 
 InPoint/OutPoint используют clock 44100 Hz и переводятся в кадры источника как
 floor(position * nominal_rate / 44100), без переполнения. InPoint — начало либо 0,
@@ -162,6 +169,9 @@ MovieClip, смешивание, планировщик, stream/button/StartSoun
 not audible output. The ordinary SOUND_ID mode still exports unstyled source
 chunks. See the [resource/metadata contracts](SWF_SOUND_RESOURCES.md),
 [channels](AUDIO_CHANNELS.md) and [ALSA bridge](ALSA_AUDIO_OUTPUT.md).
+[swf_polyphony](../examples/multimedia/swf_polyphony/README.md) demonstrates
+two overlapping resource voices, global no-multiple, stop-by-ID and preservation
+of a different resource through real independent stdio outputs.
 Implementation is split between [`fvm_swf_sound_event_submit`](../include/flashvm/swf_sound.h#L73) (guarded native
 output) and [`fvm_swf_sound_render`](../src/swf/sound_render.cpp#L42) (bounded preparation).
 
@@ -174,7 +184,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
 | `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
