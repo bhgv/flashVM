@@ -5,9 +5,11 @@
 C89 API в [multimedia.h](../include/flashvm/multimedia.h) отделяет хост от VM:
 декодирование аудио/видео, явный захват камеры, вывод PCM/RGBA и опрос устройств.
 FFmpeg backend вызывает библиотеки напрямую. Воспроизведение и окно принадлежат
-приложению: таблица вывода подключается к реальной библиотеке ОС. Этот слой пока
-не соединён с SWF DefineSound/streaming audio/Video, Sound, Camera, Microphone или
-полной загрузкой AS Sound. StopSounds теперь управляет явно зарегистрированными
+приложению: таблица вывода подключается к реальной библиотеке ОС. Явные
+DefineSound/StartSound и root streaming PCM теперь можно направлять в
+зарегистрированный output: [SWF_SOUND_RESOURCES.md](SWF_SOUND_RESOURCES.md),
+[SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md). Автоматическая MovieClip audio/video
+интеграция и полный AS Sound/Camera/Microphone остаются открытыми. StopSounds теперь управляет явно зарегистрированными
 контекстными выходами: [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md). Это не является заявлением о завершении мультимедиа Flash.
 
 The C ABI separates decoding/capture, host playback/presentation and native
@@ -16,6 +18,10 @@ FFmpeg decoder. No process invocation, hidden device open, background thread,
 implicit network connection or automatic input ActionScript dispatch is performed.
 Context output registration and AVM1/global stopping are documented in
 [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md).
+
+Explicit root SWF streaming PCM inspection and caller-buffer conversion feed
+the same output ABI: [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md). This does not
+add progressive network decoding or automatic MovieClip sound scheduling.
 
 Explicit native Linux PCM output is available with a supplied static ALSA SDK:
 [ALSA_AUDIO_OUTPUT.md](ALSA_AUDIO_OUTPUT.md). Disabled builds remain dependency-free.

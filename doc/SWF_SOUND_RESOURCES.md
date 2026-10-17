@@ -13,7 +13,12 @@ FFmpeg or sound device for inspection/conversion. A separately enabled
 This is an explicit host resource API, not automatic SWF audio playback.
 MovieClip timeline import still rejects unsupported sound tags; loading an
 independent clip/resource graph is not a substitute for [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) here.
-Automatic StartSound/StartSound2 execution, streaming tags, Sound objects, linkage
+Root streaming header/block inspection and bounded PCM reads are a separate
+API added in v0.558: [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md).
+Корневые streaming PCM blocks доступны через отдельный allocation-free API;
+это не автоматический MovieClip clock.
+
+Automatic StartSound/StartSound2 execution, streaming playback, Sound objects, linkage
 names, automatic application of loops/envelopes/in-out controls, mixing and scheduled clocks
 remain open. PCM 8/16 and ADPCM decode to S16; other compressed codecs remain
 inspectable but return UNSUPPORTED from this decoder. The view reports their nominal header flags, not actual

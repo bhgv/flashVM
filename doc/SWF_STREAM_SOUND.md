@@ -1,0 +1,223 @@
+# Root SWF streaming PCM / Потоковый PCM корневого SWF — v0.558
+
+## Scope / Область реализации
+
+The C89 API in `include/flashvm/swf_stream_sound.h` inspects canonical FWS/CWS
+bytes loaded by [fvm_load_memory](../include/flashvm/flashvm.h#L72). Each root SoundStreamHead/Head2 occurrence
+starts a numbered segment; subsequent SoundStreamBlock tags belong to it until
+another header. Only root tags are examined; nested DefineSprite bodies are
+opaque. This is explicit inspection and decoding, not progressive network
+loading or automatic MovieClip playback, seeking, synchronization or silence
+insertion. NO_MEDIA requires no FFmpeg/device SDK.
+
+The wire reference is Adobe's [SWF 19 specification, streaming sound chapter](https://open-flash.github.io/mirrors/swf-spec-19.pdf#page=183),
+with the original [Adobe URL](https://www.adobe.com/content/dam/acom/en/devnet/pdf/swf-file-format-spec.pdf).
+The implemented profile accepts original headers for ADPCM/MP3 metadata and
+Head2 from SWF3; PCM format 3 and MP3 require SWF4. Compressed blocks remain
+opaque and cannot be decoded by this API, even for a zero-frame request.
+
+Each header/block has its one-based movie frame. Average sample count and
+playback geometry are advisory. Actual PCM frame count comes from complete
+payload bytes divided by source channel count and sample width. Blocks can have
+unequal lengths or zero bytes; a missing frame creates no block. At most one
+block is accepted per root movie frame, including across header changes.
+
+All five operations scan the complete root tag stream before publishing results.
+They validate outer record bounds, header fields, PCM alignment, header-before-
+block ordering, one-block-per-frame, exact ShowFrame count and terminal End.
+Unrelated tag bodies and compressed payload contents are not certified by this
+validation. Earlier selected results are rejected if a later relevant control
+is malformed. There is no parser cache or heap allocation.
+
+## Ownership and execution / Владение и исполнение
+
+Call on the owning VM thread. Null contexts and destruction/collection/release
+phases return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); an unloaded context returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46).
+The parser and decoder allocate nothing, invoke no host or script callbacks and
+perform no GC or playback. Stream ordinals and views refer to the **current**
+loaded movie; successful reload replaces their meaning. Failed load preserves
+the previous canonical movie. No live decoder state is retained between calls.
+
+[GC:] Header records contain only copied scalars. Block metadata is copied but
+`data` borrows canonical native bytes until successful reload/context destruction;
+ordinary GC alone does not invalidate them. Never retain this pointer across
+reentrant host operations that can reload. PCM reads re-resolve their ordinals
+and copy into caller storage before returning, with no intervening callback.
+The written counter must not overlap PCM output or canonical source bytes.
+Output shorts are owned by the caller and can survive VM destruction. Metadata
+and destination storage must not alias canonical SWF bytes or each other.
+Serialized graph transport does not transfer these native views/ordinals.
+
+## FVM_SWFStreamSoundInfo
+
+Set `struct_size` to its exact sizeof. `stream_index` is the zero-based root
+header occurrence, `header_tag` is 18/45 and `frame` is one-based. `format`,
+`sample_rate`, `bits_per_sample`, `channels` describe the source header;
+`playback_sample_rate`, `playback_bits_per_sample`, `playback_channels` copy
+advice without causing conversion. Rates use the existing nominal integer
+5512/11025/22050/44100 convention, not a new fractional clock. `average_samples`
+is the UI16 average, including zero; it never truncates/pads PCM. `latency_seek`
+is copied as a signed MP3 value or zero for other formats. Opaque codec geometry
+is header metadata, not proof of decoded compressed output geometry.
+
+## FVM_SWFStreamSoundBlock
+
+Set exact `struct_size`. `stream_index` and `block_index` identify a segment and
+its zero-based encoded block; `frame` retains its movie position. `data` and
+`data_size` cover the complete payload without codec-prefix removal. For PCM
+formats 0/3, `sample_count_known` is 1 and `sample_count` is the actual number of
+complete sample frames (stereo pairs). An explicit empty PCM block has known
+zero frames. Compressed blocks have unknown count (flag 0 and count 0), including
+MP3 blocks that require a separate codec-specific parser. The borrowed payload
+lifetime follows the ownership section above.
+
+## fvm_swf_stream_sound_count
+
+**Arguments:** owning context and required `size_t *out`. **Success:** [FVM_OK](../include/flashvm/flashvm.h#L42)
+copies the number of root header segments; zero is valid. **Errors:** common
+context errors above, [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) for null output or malformed relevant
+controls. The old count remains unchanged on failure. No resource handle is
+created. This count does not enumerate nested sprites.
+
+## fvm_swf_stream_sound_at
+
+**Arguments:** context, zero-based segment ordinal, required correctly sized
+[FVM_SWFStreamSoundInfo](../include/flashvm/swf_stream_sound.h#L10) output. **Success:** [FVM_OK](../include/flashvm/flashvm.h#L42) publishes the copied record.
+**Errors:** [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) for an absent ordinal after root validation; common
+context/validation errors; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) for null/wrong-size output.
+All fields remain unchanged on error. No owned or borrowed byte pointer escapes.
+
+## fvm_swf_stream_sound_block_count
+
+**Arguments:** context, segment ordinal and required `size_t *out`.
+**Success:** [FVM_OK](../include/flashvm/flashvm.h#L42) publishes encoded block occurrences in that segment, including
+empty blocks. A header with no blocks returns zero; missing frames are excluded.
+**Errors:** [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) for an absent segment; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) for null
+output/malformed controls and common context errors. Failure preserves the count.
+
+## fvm_swf_stream_sound_block_at
+
+**Arguments:** context, segment ordinal, segment-relative block ordinal and
+required correctly sized [FVM_SWFStreamSoundBlock](../include/flashvm/swf_stream_sound.h#L27) output. **Success:** [FVM_OK](../include/flashvm/flashvm.h#L42)
+copies metadata plus the borrowed payload span. **Errors:** [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) if the
+segment or block is absent; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) for null/wrong-size output or
+malformed controls, plus common context errors. Failure preserves every field.
+Do not use a previously borrowed payload after successful reload.
+
+## fvm_swf_stream_sound_read_pcm
+
+**Arguments:** context, segment/block ordinals, zero-based first frame within
+that block, requested frame count, caller `short *destination`, capacity in
+**channel values**, required `size_t *written_values`.
+
+`written_values` is cleared before context/record validation. [FVM_OK](../include/flashvm/flashvm.h#L42) copies
+exactly the requested range and reports frames × channels. Zero-frame requests
+allow null destination, but still resolve/validate a supported PCM block and
+require first ≤ actual sample_count. End-of-block is not an implicit short read;
+requesting beyond it returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Null written output is invalid.
+Capacity and multiplication bounds are checked before any PCM write. On every
+error PCM remains unchanged and written is zero.
+
+Formats 0/3, U8 and S16, mono/stereo are supported. U8 expands (byte−128)×256;
+format 0 follows host byte order and format 3 is little-endian. Returned native
+shorts require octet-based signed-16 representation; incompatible hosts return
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Missing segment/block returns [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47). Compressed codecs
+return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). All other context/header/range/capacity errors follow
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) as described above. There is no state advancement, source
+resampling, advisory playback conversion, gain, timestamp or output registration.
+
+The implementation shares [fvm_swf_sound_decode_pcm](../src/swf/sound_pcm.hpp#L8) with DefineSound, including
+its complete-range preflight. DefineSound ADPCM support is unchanged; it does
+not imply ADPCM streaming support. Use bounded reads followed by
+[fvm_audio_channel_write](../include/flashvm/multimedia.h#L83) to your explicitly owned output; handle real-time clock,
+gaps, segment geometry changes, seeking and underruns in the host.
+
+## Русский контракт
+
+API читает корневые SoundStreamHead/Head2 и блоки SoundStreamBlock из текущих
+canonical FWS/CWS. Каждый заголовок начинает новый segment с индексом от нуля;
+блоки внутри него также нумеруются от нуля. Поле frame — настоящий номер кадра
+от единицы. Заголовок содержит среднее количество samples и рекомендации
+playback; они не определяют длину PCM блока и не вызывают конверсию. Пропущенные
+кадры не превращаются в тишину; явный пустой блок сохраняется. Несколько блоков
+в одном movie frame запрещены, включая смену заголовка внутри кадра.
+
+[FVM_SWFStreamSoundInfo](../include/flashvm/swf_stream_sound.h#L10) копирует source/playback geometry, среднее и signed MP3
+latency. [FVM_SWFStreamSoundBlock](../include/flashvm/swf_stream_sound.h#L27) копирует frame/индексы и borrowed data/data_size.
+Для PCM sample_count_known=1, sample_count — фактические sample frames по длине
+payload; для compressed это 0/0 и bytes остаются opaque. Nominal rates совпадают
+с DefineSound (5512/11025/22050/44100), дробные часы не вводятся.
+
+Все выходные структуры требуют точного struct_size. Функции count/at/block_count/
+block_at сохраняют выходы при любой ошибке; отсутствующий segment/block даёт
+[FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47). Count без заголовков успешно возвращает ноль. Заголовок без блоков
+имеет block_count=0. Проверка всего корневого потока выполняется до публикации,
+включая поздние malformed controls, ShowFrame count, End и PCM alignment; она
+не проверяет содержимое посторонних тегов или compressed payload.
+
+read_pcm принимает segment, block, first, frames и caller short buffer; capacity
+и written измеряются channel values, first/frames — sample frames. Written
+обязателен и обнуляется сразу. Успех выдаёт весь запрошенный диапазон, а не
+короткий EOF-read. Zero frames допускает null buffer, но всё равно проверяет
+поддерживаемый блок и first. За границей, при малом capacity/null destination
+для ненулевого запроса возвращается [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без изменений PCM.
+Поддержаны native/LE U8/S16 mono/stereo; compressed stream, включая ADPCM/MP3,
+возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) даже для zero-read. Пропавшие ordinals дают [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47).
+
+[GC:] Ни parser, ни read не выделяют память, не вызывают callbacks/скрипт/GC и
+не сохраняют скрытое состояние. Вызовы только на VM thread вне destruction,
+collection/release; нарушение — [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45), незагруженный context —
+[FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Borrowed payload живёт до успешного reload/context_destroy;
+обычная GC не меняет canonical bytes. Счётчик written также не должен перекрывать PCM buffer или canonical source.
+Не используйте views после reentrant
+reload и не перекрывайте output с source. Caller PCM независим от VM после
+копирования. Ordinals после reload относятся к новому файлу, а не к старому.
+
+Head2 разрешён с SWF3, LE PCM/MP3 — с SWF4; оригинальный Head принимает только
+ADPCM/MP3 metadata с 16-bit flags. Advisory playback не меняет source geometry.
+Планировщик, MovieClip/sprite integration, progressive loading, resampling,
+seek/gap sync и compressed decoder здесь не реализованы. Для host pipeline
+используйте bounded read → [fvm_audio_channel_write](../include/flashvm/multimedia.h#L83) и явную остановку output.
+
+## Example and evidence / Пример и проверки
+
+[swf_stream](../examples/multimedia/swf_stream/README.md) exports literal variable
+stereo PCM blocks through real stdio, with a frame gap and explicit empty block.
+It uses caller-sized source slices and actual registered stopping. See its README
+for setup, expected bytes, API links and ownership/error cleanup.
+
+`swf_stream_sound` covers SWF versions, source widths/layouts, header changes,
+unequal/empty blocks, gaps, opaque codecs, signed latency, malformed later tags,
+range/capacity transactionality and missing ordinals. `swf_stream_sound_api`
+compiles strict C89 and compares FWS6/CWS6 results. `swf_stream_sound_allocation`
+denies allocation for all five APIs and exercises GC/reload/lifecycle limits.
+`swf_stream_sound_bounds` checks extended-length payloads, every truncated
+canonical span, oversized lengths/ranges and failed-load preservation. The
+canonical truncation fixture deliberately injects internal storage faults that
+the outer loader normally rejects first. These are parser/PCM tests, not full
+audio playback or foreign-platform acceptance.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `fvm_swf_sound_decode_pcm` | function | [src/swf/sound_pcm.hpp:8](../src/swf/sound_pcm.hpp#L8) |
+| `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:41](../include/flashvm/swf_stream_sound.h#L41) |
+| `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:45](../include/flashvm/swf_stream_sound.h#L45) |
+| `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:43](../include/flashvm/swf_stream_sound.h#L43) |
+| `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
+| `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:47](../include/flashvm/swf_stream_sound.h#L47) |
+| `FVM_SWFStreamSoundBlock` | struct | [include/flashvm/swf_stream_sound.h:27](../include/flashvm/swf_stream_sound.h#L27) |
+| `FVM_SWFStreamSoundInfo` | struct | [include/flashvm/swf_stream_sound.h:10](../include/flashvm/swf_stream_sound.h#L10) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

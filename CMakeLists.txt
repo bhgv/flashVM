@@ -369,6 +369,12 @@ if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND
 endif()
 
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  if(FVM_BUILD_EXAMPLES)
+    add_test(NAME flashvm_swf_stream_tutorial_host
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_stream_example.py
+              $<TARGET_FILE:flashvm_examples_multimedia_swf_stream_main>)
+    set_tests_properties(flashvm_swf_stream_tutorial_host PROPERTIES TIMEOUT 30)
+  endif()
   add_test(NAME flashvm_documentation_source_link_order
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_documentation_source_links.py)
   add_test(NAME flashvm_multimedia_tutorial_contract

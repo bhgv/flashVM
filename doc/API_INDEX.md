@@ -81,6 +81,9 @@ ToggleQuality transitions and renderer limits.
 Decoder/capture sessions, synchronous PCM/RGBA output, native input and future sensor providers.
 Native/interpreter StopSounds equivalence: [JIT_SOUND.md](JIT_SOUND.md).
 
+Root streaming-sound segments, frame blocks and bounded PCM reads:
+[SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md), [swf_stream_sound.h](../include/flashvm/swf_stream_sound.h).
+
 Context audio registration and script stopping: [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md).
 [`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_stop`](../include/flashvm/multimedia.h#L85),
 [`fvm_audio_channel_close`](../include/flashvm/multimedia.h#L87), [`fvm_audio_channel_active`](../include/flashvm/multimedia.h#L89) and [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L91)

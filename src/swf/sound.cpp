@@ -2,7 +2,7 @@
  * Parsing is independent of MovieClip timeline import and never opens an output. */
 #include "../core/runtime.hpp"
 #include "flashvm/swf_sound.h"
-#include "sound_adpcm.hpp"
+#include "sound_pcm.hpp"
 #include "sound_constants.h"
 #include <climits>
 #include <cstring>
@@ -175,48 +175,5 @@ extern "C" FVM_Result fvm_swf_sound_read_pcm(FVM_Context *context, unsigned int 
     FVM_Result result = fvm_swf_sound_info(context, id, &info);
     if (result != FVM_OK)
         return result;
-    if ((info.format != FVM_SWF_SOUND_ADPCM &&
-         (info.format != FVM_SWF_SOUND_FORMAT_NATIVE && info.format != FVM_SWF_SOUND_FORMAT_LE)) ||
-        sizeof(short) != FVM_SWF_SOUND_PCM_BYTES || SHRT_MAX != FVM_SWF_SOUND_SHORT_MAX)
-        return FVM_UNSUPPORTED;
-    if (first > info.sample_count || frames > info.sample_count - first || frames > capacity / info.channels ||
-        (frames && !destination))
-        return FVM_INVALID_ARGUMENT;
-    size_t values = frames * info.channels;
-    if (info.format == FVM_SWF_SOUND_ADPCM)
-    {
-        /* Validate the entire declared stream before publishing any caller samples. */
-        if (!fvm_sound_adpcm(info, first, frames, 0))
-            return FVM_INVALID_ARGUMENT;
-        if (frames)
-            fvm_sound_adpcm(info, first, frames, destination);
-        *written = values;
-        return FVM_OK;
-    }
-    size_t sample_bytes = info.bits_per_sample / FVM_SWF_SOUND_BYTE_BITS;
-    const unsigned char *source = info.data + (size_t)first * info.channels * sample_bytes;
-    if (info.bits_per_sample == FVM_SWF_SOUND_BITS_8)
-    {
-        /* Unsigned offset-binary PCM expands exactly into the high eight S16 bits. */
-        for (size_t i = 0; i < values; ++i)
-            destination[i] = (short)(((long)source[i] - FVM_SWF_SOUND_U8_BIAS) * FVM_SWF_SOUND_U8_SCALE);
-        *written = values;
-        return FVM_OK;
-    }
-    for (size_t i = 0; i < values; ++i)
-    {
-        unsigned long value;
-        if (info.format == FVM_SWF_SOUND_FORMAT_NATIVE)
-        {
-            unsigned short native;
-            std::memcpy(&native, source + i * FVM_SWF_SOUND_PCM_BYTES, sizeof(native));
-            value = native;
-        }
-        else
-            value = sound_integer(source + i * FVM_SWF_SOUND_PCM_BYTES, FVM_SWF_SOUND_PCM_BYTES);
-        destination[i] =
-            (short)(value >= FVM_SWF_SOUND_SIGN_BIT ? (long)value - FVM_SWF_SOUND_SIGN_RANGE : (long)value);
-    }
-    *written = values;
-    return FVM_OK;
+    return fvm_swf_sound_decode_pcm(info, first, frames, destination, capacity, written);
 }

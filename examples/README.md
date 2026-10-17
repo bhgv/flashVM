@@ -110,6 +110,7 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
+    - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, пропуски кадров и native FILE</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
@@ -1187,6 +1188,20 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 порциями без новых аллокаций: [constants](multimedia/swf_audio/example_constants.h).
 Это экспорт raw PCM, не автоматический SWF-плеер.
 
+<a id="example-multimedia-swf_stream"></a>
+#### swf_stream
+
+Исполняемый C89 учебник: [README](multimedia/swf_stream/README.md),
+[main.c](multimedia/swf_stream/main.c), [constants](multimedia/swf_stream/example_constants.h).
+Читает встроенный SoundStreamHead2 и блоки с фактическими номерами кадров,
+variable-length stereo PCM, пропуском и явным empty block. Показывает отличие
+source geometry от advisory playback и среднего числа samples. Порционные
+копии caller buffer уходят в настоящий fopen/fwrite/fclose bridge; stop-all
+закрывает output. Файл задаётся явно, без аргументов только usage. NO_MEDIA
+работает без SDK; пример не вставляет тишину, не синхронизирует clock, не
+декодирует compressed streams и не исполняет MovieClip timeline. Контракты:
+[SWF_STREAM_SOUND.md](../doc/SWF_STREAM_SOUND.md).
+
 <a id="group-multimedia-devices"></a>
 ### devices
 
@@ -1385,6 +1400,7 @@ Source line links describe the current checkout, including in historical notes.
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
+- [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)

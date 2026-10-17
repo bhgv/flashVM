@@ -2792,6 +2792,47 @@ No new renderer sampling grid, bitmap downsampling or foreign-platform run is
 claimed. Полнота SWF/AS, звуковой MovieClip timeline, оставшаяся JIT семантика,
 GC/debugger/concurrency acceptance и все девять этапов остаются открытыми.
 
+### v0.558 — root streaming PCM segments and frame-addressed blocks
+
+Implemented / реализовано: the new C89 swf_stream_sound API inspects root
+SoundStreamHead/Head2 segments and SoundStreamBlock records in canonical FWS/CWS.
+It preserves actual movie frames, source/advisory playback geometry, signed MP3
+latency and explicit empty blocks. PCM lengths are inferred from actual payload
+bytes, independently of average samples. Range reads allocate nothing and use
+the same native-S16 decoder as DefineSound. Full relevant root validation precedes
+publication, including malformed later controls, block ordering, per-frame
+uniqueness, ShowFrame/End and PCM alignment. Compressed stream bytes remain opaque.
+See [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md).
+
+The annotated C89 swf_stream tutorial exports variable stereo blocks through
+real stdio callbacks using a one-frame caller buffer. It shows a frame gap,
+explicit empty block and differing playback advice without creating hidden
+silence or clock state. Its actual output/error-cleanup harness is registered
+in native CTest and omitted for cross builds. Documentation/source links,
+API index, compatibility inventory and the alphabetic 93-example catalog are
+updated. No new external SDK dependency is introduced.
+
+Validation: recovered the exact v0.557 mirror after workspace maintenance.
+The full Linux minimal-JIT suite passes 1166 checks plus one existing speech
+SSIP Unix-endpoint skip (1167 total). Four new API/C89/allocation/bounds tests
+cover SWF1–8 header subsets, PCM widths/layouts, variable/empty blocks, header
+changes, gaps, opaque codecs/latency, late malformed records, every truncated
+canonical span, extended lengths, overflow/capacity and failed-load preservation.
+All five APIs succeed with allocation denied and reject terminal GC phases.
+Fourteen focused checks pass in Release minimal and ASAN/UBSAN (LeakSanitizer
+disabled), including previous PCM/ADPCM/voice/mixer paths after decoder factoring.
+The actual tutorial passes in all three builds, with byte-exact independent
+installed FFmpeg raw PCM conversion and native file failure cleanup. Eight
+existing FFmpeg ADPCM comparisons and actual raw/styled/chunked exporters also
+pass after shared-decoder factoring. Source/comment/
+API/link checks pass, including 93 catalog entries and local Markdown anchors.
+
+This is bounded loaded-file streaming PCM inspection/output plumbing, not
+progressive loading, compressed stream decoding, nested sprite/MovieClip clock
+integration, automatic seek/gap synchronization or native sound-card acceptance.
+Полнота SWF/AS, оставшиеся JIT/GC/отладка/потоки и реальные foreign-platform
+запуски остаются открытыми. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
