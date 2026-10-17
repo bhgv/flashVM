@@ -1,18 +1,18 @@
 # Build-selected automatic JIT / JIT по умолчанию при сборке
 
-The `JIT` execution key in DEFS selects `FVM_EXECUTION_JIT` for every newly
+The [`JIT`](../cmake/BuildDefinitions.cmake#L13) execution key in DEFS selects [`FVM_EXECUTION_JIT`](../include/flashvm/execution_mode.h#L15) for every newly
 created context. Supported bodies compile/cache on entry; unsupported bodies or
 hosts without a native backend use the existing interpreter fallback. The key
 changes initial policy, not native instruction coverage or platform support.
-`INTERPRETER` preserves the previous `FVM_EXECUTION_MANUAL` context default:
+[`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) preserves the previous [`FVM_EXECUTION_MANUAL`](../include/flashvm/execution_mode.h#L13) context default:
 explicit native body attachments work, otherwise source is interpreted.
 
-Both profiles include runtime mode switching. `fvm_execution_options_init`
-continues to select `FVM_EXECUTION_INTERPRETER`; passing initialized options
+Both profiles include runtime mode switching. [`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L61)
+continues to select [`FVM_EXECUTION_INTERPRETER`](../include/flashvm/execution_mode.h#L14); passing initialized options
 therefore explicitly overrides the build default. Null options preserve current
 context policy. Changing one context never changes another. Graph transport
 moves source, not generated code, caches or the sender's execution policy.
-`FVM_Config.features` is unchanged; `FVM_FEATURE_JIT` remains unsupported.
+`FVM_Config.features` is unchanged; [`FVM_FEATURE_JIT`](../include/flashvm/flashvm.h#L27) remains unsupported.
 
 Use `cmake/profiles/minimal-jit.defs` with `-DFVM_DEFS_FILE=/absolute/path` for
 a minimal automatic-JIT build. Default `DEFS.txt` still selects INTERPRETER.
@@ -26,16 +26,16 @@ use where available, unsupported-body fallback, explicit interpretation,
 independent contexts and graph transfer. `execution_modes` covers explicit
 options. Real foreign CPU/OS runs and all nine roadmap stages remain open.
 
-Ключ `JIT` задаёт новым контекстам автоматическую компиляцию поддерживаемых тел
+Ключ [`JIT`](../cmake/BuildDefinitions.cmake#L13) задаёт новым контекстам автоматическую компиляцию поддерживаемых тел
 и fallback в интерпретатор. На машине без native backend исполнение остаётся
-интерпретируемым. Ключ `INTERPRETER` сохраняет прежний manual-режим: явно
+интерпретируемым. Ключ [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) сохраняет прежний manual-режим: явно
 подключённые native тела работают, остальные исполняются интерпретатором.
 
 API переключения доступен в обеих сборках. Инициализированные через
-`fvm_execution_options_init` опции по-прежнему явно выбирают интерпретатор;
+[`fvm_execution_options_init`](../include/flashvm/execution_mode.h#L61) опции по-прежнему явно выбирают интерпретатор;
 нулевой указатель сохраняет текущую политику контекста. Контексты независимы,
 перенос графа не переносит режим отправителя и кеш машинного кода. Runtime-бит
-`FVM_FEATURE_JIT` остаётся неподдерживаемым. Профиль не расширяет инструкции
+[`FVM_FEATURE_JIT`](../include/flashvm/flashvm.h#L27) остаётся неподдерживаемым. Профиль не расширяет инструкции
 backend и не подтверждает запуск на других ОС/CPU. Ошибки выделения памяти
 при компиляции остаются наблюдаемыми. Все девять этапов роудмапа открыты.
 
@@ -68,3 +68,22 @@ host results, not foreign-platform or complete SWF conformance evidence.
 ASan/UBSan. У сгенерированных ELF восстанавливались потерянные execute-биты;
 итоговые полные прогоны успешны. LeakSanitizer отключён. Результаты не заменяют
 приёмку на Windows/macOS/Android и всех остальных CPU.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
+| `FVM_EXECUTION_INTERPRETER` | enum constant | [include/flashvm/execution_mode.h:14](../include/flashvm/execution_mode.h#L14) |
+| `FVM_EXECUTION_JIT` | enum constant | [include/flashvm/execution_mode.h:15](../include/flashvm/execution_mode.h#L15) |
+| `FVM_EXECUTION_MANUAL` | enum constant | [include/flashvm/execution_mode.h:13](../include/flashvm/execution_mode.h#L13) |
+| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:61](../include/flashvm/execution_mode.h#L61) |
+| `FVM_FEATURE_JIT` | macro / define | [include/flashvm/flashvm.h:27](../include/flashvm/flashvm.h#L27) |
+| `INTERPRETER` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+| `JIT` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+<!-- source-links:end -->

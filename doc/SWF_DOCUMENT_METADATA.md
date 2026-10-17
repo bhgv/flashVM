@@ -15,7 +15,7 @@ UseNetwork, AVM2 и аппаратные флаги возвращают UNSUPPO
 [pinned primary types](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/swf/src/types.rs).
 
 Атрибуты и строка сохраняются в приватном графе кадров MovieClip и передаются
-в другие контексты. C89 API `fvm_movieclip_swf_document_info` читает данные без
+в другие контексты. C89 API [`fvm_movieclip_swf_document_info`](../include/flashvm/movieclip.h#L25) читает данные без
 пользовательских getter и сохраняет выход при ошибке. `struct_size` обязателен;
 metadata — undefined при отсутствии, counted string при наличии. Для чтения
 после GC нужен корень клипа или удержанное значение. Замена загруженных байтов
@@ -46,3 +46,15 @@ loaded SWF bytes does not replace graph-owned metadata. Tests above cover graph
 transport, real collection, empty payloads, C89, malformed inputs and exhaustive
 allocation-failure retries. Newly retrieved oracle probes still expose other
 Array/Object/InitArray and host-command gaps. No roadmap stage is closed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
+<!-- source-links:end -->

@@ -1,7 +1,7 @@
 # Named call names / Имена именованных вызовов
 
 v0.245 converts loaded CallFunction and NewObject names using the version-aware
-C89 service `fvm_exec_to_string`. Conversion runs before the argument-count
+C89 service [`fvm_exec_to_string`](../include/flashvm/execution.h#L478). Conversion runs before the argument-count
 callback, and the resulting text replaces the rooted stack operand before count
 conversion can collect. Numeric and object names now participate in ordinary
 counted name lookup. Unloaded hosts retain their string-only action contract.
@@ -34,3 +34,15 @@ Evidence: 452 Linux AGG/Cairo tests pass per profile after execute-bit recovery
 for one AGG and five Cairo launch failures. Nine focused heap/global ASan+UBSan
 checks pass; stack/leak instrumentation is unavailable. All 23 unchanged original
 SWF traces remain byte-exact per profile. No JIT/non-Linux completion is claimed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_to_string` | function | [include/flashvm/execution.h:478](../include/flashvm/execution.h#L478) |
+<!-- source-links:end -->

@@ -2,7 +2,7 @@
 
 Ранее temporary fvm_detail::string("__gc") выделял память после установки
 finalized flag. OOM оставлял финализатор непозванным, но retry его пропускал.
-Та же ошибка могла выйти C++ exception через C fvm_context_destroy и прервать
+Та же ошибка могла выйти C++ exception через C [fvm_context_destroy](../include/flashvm/flashvm.h#L70) и прервать
 cleanup. Regression сначала воспроизводит потерянный native callback.
 
 Lookup теперь перебирает уже существующие native/property entries и сравнивает
@@ -51,3 +51,15 @@ ASan disabled. Linux profiles only; complete stage 7 remains open.
 
 Script pre-entry OOM дополнительно проверен и исправлен в v0.75. Invocation entry
 markers, once-only boundary и retry: [GC_FINALIZER_PREPARATION.md](GC_FINALIZER_PREPARATION.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
+<!-- source-links:end -->

@@ -27,7 +27,7 @@ RGBA pixel, прибавляется offset, результат ограничи
 к ближайшему целому. Opaque destination сохраняет alpha=255; при alpha=0 RGB
 результата очищается. Нет новых callbacks/allocations после snapshot, поэтому
 перекрытие source/destination и отказ памяти не дают частичных записей.
-Неподдерживаемые фильтры возвращают FVM_UNSUPPORTED, а не identity fallback.
+Неподдерживаемые фильтры возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46), а не identity fallback.
 
 generateFilterRect(rect, colorMatrixFilter) возвращает независимый Rectangle
 без расширения границ: color matrix не увеличивает геометрию. Фабрики Array,
@@ -67,7 +67,7 @@ The v0.58 BitmapData.applyFilter supported ColorMatrixFilter only. It snapshots
 the aligned source ROI before writing, computes straight RGBA dot products plus
 offsets, clamps to bytes and rounds to the nearest integer. Opaque alpha stays
 255 and zero alpha clears output RGB. No callbacks/allocations occur after the
-snapshot. Unsupported filters return FVM_UNSUPPORTED. generateFilterRect returns
+snapshot. Unsupported filters return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). generateFilterRect returns
 an independent Rectangle with unchanged color matrix bounds.
 
 Captured filter/Array/Rectangle factories survive queue/file/network graph transport
@@ -84,3 +84,15 @@ conformance, other filters, MovieClip filter rendering, SWF filter records and
 remaining text/media keep stage 4 open.
 
 API reference: [Adobe AS2 ColorMatrixFilter mirror](https://open-flash.github.io/mirrors/as2-language-reference/flash/filters/ColorMatrixFilter.html).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

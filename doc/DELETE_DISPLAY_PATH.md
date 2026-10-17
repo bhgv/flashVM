@@ -1,6 +1,6 @@
 # Explicit-base display deletion / Удаление по пути от заданного объекта
 
-v0.255 extends the existing C89 `fvm_exec_delete_path` service. If a slash occurs
+v0.255 extends the existing C89 [`fvm_exec_delete_path`](../include/flashvm/execution.h#L371) service. If a slash occurs
 before the final dot/colon separator, the preceding counted prefix uses the
 MovieClip path resolver. Resolution starts at the explicit base, follows children
 before dynamic properties and honors its existing absolute/parent/version rules.
@@ -33,3 +33,15 @@ paths, dotted clip names, counted NUL/literal slash members, getter GC/exception
 outer native barriers and allocation failures before deletion/root restoration.
 Проверено по 468 тестов AGG/Cairo, четыре выбранных проверки памяти и 25 эталонов
 в каждом профиле; ограничения инструментов и оставшаяся семантика указаны выше.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:371](../include/flashvm/execution.h#L371) |
+<!-- source-links:end -->

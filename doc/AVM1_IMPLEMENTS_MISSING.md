@@ -19,7 +19,7 @@ count conversion and declaration services retain their own operands and exceptio
 containment; successful execution and allocation failures restore the caller's
 root/execution chains. The failure fixture covers empty/single-value bytecode in
 SWF4–8, with GC between attempts. Current zero-count service preparation can
-allocate and report FVM_OUT_OF_MEMORY; no allocation-free guarantee is introduced.
+allocate and report [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44); no allocation-free guarantee is introduced.
 
 avm1_implements_missing covers host mode and SWF4–8 with raw Action bytes;
 avm1_implements_missing_allocation injects every execution preparation allocation.
@@ -46,3 +46,15 @@ restored and passed on retry, while Cairo completed directly. Three targeted
 heap/global ASan+UBSan fixtures passed (no stack/leak coverage). All 26 accepted
 original SWFs matched the pinned oracle in each profile. The Action-reference
 audit remains 94/100 and all stage-completion gates remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+<!-- source-links:end -->

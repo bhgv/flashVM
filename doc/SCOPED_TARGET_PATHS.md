@@ -1,6 +1,6 @@
 # Scoped target paths / Поиск путей в областях видимости
 
-v0.256 adds the C89 `fvm_exec_scope_target` value service. Callers supply a managed
+v0.256 adds the C89 [`fvm_exec_scope_target`](../include/flashvm/execution.h#L378) value service. Callers supply a managed
 activation/With chain, selected fallback target, optional explicit this object and
 counted path. Each scope retries the complete object path after a partial miss;
 then target/global are tried. Missing paths return undefined, errors preserve out,
@@ -41,3 +41,15 @@ unchanged reference SWFs matched in each profile. Upstream target_path is SWF15,
 so it remains outside the SWF<=8 acceptance corpus without changing its header.
 Проверено по 472 теста двух профилей, 11 выбранных проверок памяти и 25 исходных
 эталонов в каждом профиле. Тест target_path версии SWF15 исключён по версии.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_scope_target` | function | [include/flashvm/execution.h:378](../include/flashvm/execution.h#L378) |
+<!-- source-links:end -->

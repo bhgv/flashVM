@@ -7,7 +7,7 @@ SWF DoAction допускает отсутствие ActionEnd ровно на �
 допустим, внутрь записи или за пределы блока — недопустим. Обрезанные payload и
 лишние байты после явного ActionEnd по-прежнему отклоняются.
 
-Публичный fvm_avm1_inspect остаётся строгим: требует явного ActionEnd. Execute
+Публичный [fvm_avm1_inspect](../include/flashvm/avm1.h#L34) остаётся строгим: требует явного ActionEnd. Execute
 и execute_receiver допускают неявный конец в контексте с загруженным SWF.
 Сохранённые кадры используют структурную границу независимо от загрузки SWF
 в принимающем контексте; перенос MovieClip проверен через очередь и после GC.
@@ -45,3 +45,15 @@ synthetic terminal, while inspector instruction counts describe encoded records.
 Original pinned init_array_invalid SWF8 now completes in --timeline 1 mode,
 matching all 16 expected bytes without editing input or expected output.
 Fourteen selected original probes are rechecked under documented host policies.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_inspect` | function | [include/flashvm/avm1.h:34](../include/flashvm/avm1.h#L34) |
+<!-- source-links:end -->

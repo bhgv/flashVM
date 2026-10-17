@@ -6,8 +6,8 @@ stage a true marker in the same copied property map as the cleared parent and
 stopped playback. No marker is published before the existing transaction commits;
 allocation failure must preserve the original marker and ownership graph.
 
-The C89 fvm_exec_clip_detached(context, clip, out) returns this instance's marker
-as an FVM_Value boolean. It bypasses public properties, accepts native instances
+The C89 [fvm_exec_clip_detached](../include/flashvm/execution.h#L241)(context, clip, out) returns this instance's marker
+as an [FVM_Value](../include/flashvm/value.h#L24) boolean. It bypasses public properties, accepts native instances
 only, rejects foreign/plain/prototype objects and preserves output on error.
 Legacy private state without the marker reads false; malformed marker types or
 numbers are rejected. Named uppercase macros document the two stored states.
@@ -44,3 +44,16 @@ launch failures; all passed after restoring permissions. Cairo completed directl
 Three targeted heap/global ASan+UBSan tests passed (no stack/leak instrumentation).
 All 26 accepted original SWFs matched the pinned oracle in each profile.
 Action-reference coverage remains 94/100; no absent Action was claimed implemented.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_detached` | function | [include/flashvm/execution.h:241](../include/flashvm/execution.h#L241) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->

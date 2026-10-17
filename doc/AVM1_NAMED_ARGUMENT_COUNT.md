@@ -1,7 +1,7 @@
 # Named call counts / Число аргументов именованных вызовов
 
 v0.244 connects CallFunction and loaded NewObject to the same value-based
-`fvm_exec_argument_count` service already used by CallMethod/NewMethod. Loaded
+[`fvm_exec_argument_count`](../include/flashvm/execution.h#L482) service already used by CallMethod/NewMethod. Loaded
 SWF4–8 calls convert text/object/numeric counts, truncate/wrap to unsigned 32 bits,
 and consume at most available values. The actual vector remains resource bounded.
 
@@ -27,3 +27,15 @@ Evidence: Linux AGG/Cairo each pass 451 tests; seven focused heap/global
 ASan+UBSan checks pass (stack/leak instrumentation unavailable). All 23 unchanged
 original SWF traces remain exact in each graphics profile. Non-Linux execution
 and machine-code JIT remain unverified/unimplemented respectively.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:482](../include/flashvm/execution.h#L482) |
+<!-- source-links:end -->

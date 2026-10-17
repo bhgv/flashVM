@@ -1,7 +1,7 @@
 # Bundled image libraries
 
-`IMAGE_CODECS` is enabled by default in the root `DEFS.txt`. Select
-`NO_IMAGE_CODECS` instead to omit these libraries and examples. CMake compiles
+[`IMAGE_CODECS`](../cmake/BuildDefinitions.cmake#L16) is enabled by default in the root `DEFS.txt`. Select
+[`NO_IMAGE_CODECS`](../cmake/BuildDefinitions.cmake#L16) instead to omit these libraries and examples. CMake compiles
 all sources from `external/`, without downloads or system-library lookup, and
 publishes the required include paths and link dependencies through `flashvm`.
 An embedding CMake application links its target to `flashvm`.
@@ -63,3 +63,16 @@ Cairo: LGPL-2.1-only OR MPL-1.1; Pixman: MIT-style; libpng: libpng license;
 giflib: MIT; NanoSVG: zlib license; IJG: its README license and attribution.
 This software is based in part on the work of the Independent JPEG Group.
 See [validation](IMAGE_LIBRARIES_CHECKPOINT.md) for tested platforms and results.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `IMAGE_CODECS` | DEFS switch | [cmake/BuildDefinitions.cmake:16](../cmake/BuildDefinitions.cmake#L16) |
+| `NO_IMAGE_CODECS` | DEFS switch | [cmake/BuildDefinitions.cmake:16](../cmake/BuildDefinitions.cmake#L16) |
+<!-- source-links:end -->

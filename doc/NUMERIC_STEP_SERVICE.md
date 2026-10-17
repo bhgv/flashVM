@@ -25,3 +25,15 @@ checks failure atomicity with an aliased input and root-chain restoration.
 Интерпретатор вызывает тот же обработчик, который доступен будущему JIT.
 Существующая политика числовых преобразований сохранена; эта декомпозиция не
 означает появления машинного JIT или завершения стадий роудмапа.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_step` | function | [include/flashvm/execution.h:175](../include/flashvm/execution.h#L175) |
+<!-- source-links:end -->

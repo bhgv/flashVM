@@ -1,6 +1,6 @@
 # Clip-local pointer queries / Координаты указателя в клипе — v0.327
 
-C89 fvm_exec_clip_pointer(context, clip, &x, &y) snapshots the world pointer and
+C89 [fvm_exec_clip_pointer](../include/flashvm/execution.h#L286)(context, clip, &x, &y) snapshots the world pointer and
 projects it through the inverse physical native world matrix. It returns two
 Number values; distinct non-NULL outputs are required. Context ownership,
 instance type, singular/nonfinite transforms and output aliases are validated.
@@ -10,7 +10,7 @@ so a getter changing pointer state cannot mix two different input positions.
 The clip is rooted and the existing geometry native barrier blocks collection
 through transform getters. Allocation failures and script exceptions restore
 root/native state. The physical ancestry walk now uses the separately documented
-FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS macro instead of a numeric literal.
+[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L86) macro instead of a numeric literal.
 
 MovieClip._xmouse and _ymouse use separate one-function adapters. The prototype
 returns undefined; instances read the shared query. Stable callback IDs 1008 and
@@ -79,3 +79,16 @@ Primary comparison: Ruffle `core/src/display_object.rs::local_mouse_position`,
 commit `2372a4e148a67d68efd796f4477b3cddd4f880cd`. This is a source comparison,
 not a Flash Player oracle. Stage view scaling/device-pixel ratios other than one
 and full display-list integration remain open; no roadmap stage is closed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_pointer` | function | [include/flashvm/execution.h:286](../include/flashvm/execution.h#L286) |
+| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:86](../src/standard/movieclip_constants.h#L86) |
+<!-- source-links:end -->

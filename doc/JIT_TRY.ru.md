@@ -33,7 +33,7 @@ finally. Записи callbacks и отказы памяти не имеют т�
 Выбор корневого JIT-пути теперь целиком внутри обработчика отказов памяти.
 Раньше создание пустого ключа breakpoint могло выбросить `std::bad_alloc` до
 защитного блока и вывести C++-исключение через корневой C API. Регрессия
-воспроизвела аварийное завершение; теперь возвращается `FVM_OUT_OF_MEMORY` с
+воспроизвела аварийное завершение; теперь возвращается [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) с
 корректно установленным признаком обработанного входа.
 
 | Тест | Проверки |
@@ -52,3 +52,15 @@ Linux Release: успешные результаты всех 767 AGG, 767 Cairo
 ASan+UBSan; stack ASan и LeakSanitizer отключены. Расширенный OOM-перебор прогретого
 кэша прошёл все профили и санитайзер. Свежие backend fixtures прошли 26
 синтетических сценариев Unicorn ISA/ABI.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+<!-- source-links:end -->

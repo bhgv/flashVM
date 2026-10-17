@@ -1,15 +1,15 @@
 # Intrinsic hit geometry / Общая геометрия hitTest — v0.320
 
-C89 callers and generated bodies can invoke fvm_exec_clip_hit_object(context,
+C89 callers and generated bodies can invoke [fvm_exec_clip_hit_object](../include/flashvm/execution.h#L311)(context,
 clip, target, out) to compare stroked native world bounds, or
-fvm_exec_clip_hit_point(context, clip, world_x, world_y, shape, out) to test an
+[fvm_exec_clip_hit_point](../include/flashvm/execution.h#L313)(context, clip, world_x, world_y, shape, out) to test an
 explicit world-space point against bounds or painted geometry. Each service has
 its own implementation file under src/avm1/handlers. Neither accepts bytecode,
 operand stacks, activation scopes or script method names. The output is a
 Boolean value on success; errors preserve it. Empty geometry yields false.
 Nonfinite point coordinates yield false. The existing painted-point coordinate
 limit remains in effect; native bounds/paint recursion now has a documented
-FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH macro.
+[FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH](../src/standard/movieclip_constants.h#L74) macro.
 
 Both services validate context ownership and reject ordinary objects and the
 MovieClip class prototype. They root their native inputs and use the existing
@@ -51,3 +51,17 @@ interface; no machine-code JIT backend is introduced.
 нативный запрет повторного входа в сборщик. Тесты охватывают host/SWF4–8,
 подмену методов скриптом и отказы памяти. Ограничение рекурсии обозначено
 смысловым макросом. Полная геометрическая совместимость и JIT остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_hit_object` | function | [include/flashvm/execution.h:311](../include/flashvm/execution.h#L311) |
+| `fvm_exec_clip_hit_point` | function | [include/flashvm/execution.h:313](../include/flashvm/execution.h#L313) |
+| `FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:74](../src/standard/movieclip_constants.h#L74) |
+<!-- source-links:end -->

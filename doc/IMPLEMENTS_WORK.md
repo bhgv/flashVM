@@ -1,11 +1,11 @@
 # Budgeted interface declarations — v0.383
 
-Loaded SWF7–8 fvm_exec_implements now shares native execution work with AVM1.
+Loaded SWF7–8 [fvm_exec_implements](../include/flashvm/execution.h#L222) now shares native execution work with AVM1.
 It charges entry, each captured interface input and each inspected input before
 building the snapshot list. A complete count-N capture/inspection uses 2N+1
 units, in addition to caller bytecode work. Nested calls retain the enclosing
 counter; outer direct calls reset it. Budget exhaustion, counter saturation and
-worker cancellation return FVM_ERROR. Zero instruction limit remains unlimited.
+worker cancellation return [FVM_ERROR](../include/flashvm/flashvm.h#L43). Zero instruction limit remains unlimited.
 Unloaded host declaration accounting and its constructor-reference policy stay
 unchanged.
 
@@ -50,3 +50,16 @@ snapshot allocation/transport, membership data/large-graph and collecting
 membership-callback regressions. Stack ASan and LeakSanitizer remain disabled.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_implements` | function | [include/flashvm/execution.h:222](../include/flashvm/execution.h#L222) |
+<!-- source-links:end -->

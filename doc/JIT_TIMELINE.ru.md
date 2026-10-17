@@ -6,7 +6,7 @@ NextFrame, PreviousFrame, Play, Stop, GotoFrame, GotoLabel и GotoFrame2 исп�
 из нативных помощников общий встроенный сервис кадров, обходя подменяемые методы
 скрипта. Фиксированные команды работают с активным display target. Отсутствующий
 выбранный клип при существующем базовом таймлайне означает отсутствие действия;
-без базового таймлайна возвращается FVM_UNSUPPORTED. Отсутствующая метка
+без базового таймлайна возвращается [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Отсутствующая метка
 игнорируется, как в интерпретаторе.
 
 GotoFrame сохраняет UI16 с нулевой базой как числовую константу с базой один.
@@ -40,3 +40,15 @@ ASan+UBSan; stack ASan и LeakSanitizer отключены. Запуск дру�
 
 С v0.367 WaitForFrame нативный; автоматический fallback использует невызываемый
 анонимный DefineFunction. См. JIT_WAIT_FRAMES.ru.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

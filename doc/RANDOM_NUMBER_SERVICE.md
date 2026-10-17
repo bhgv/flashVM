@@ -39,3 +39,15 @@ collecting/throwing callbacks and allocation failures.
 Побочные эффекты valueOf сохраняются при исключениях, выход обработчика при
 ошибке не меняется. Совпадение случайных последовательностей с историческими
 плеерами и завершение стадий 1–9 не заявляются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_random_number` | function | [include/flashvm/execution.h:172](../include/flashvm/execution.h#L172) |
+<!-- source-links:end -->

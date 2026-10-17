@@ -1,13 +1,13 @@
 # Method argument counts / Число аргументов метода
 
-v0.243 adds `fvm_exec_argument_count`, a C89 value service used by CallMethod and
+v0.243 adds [`fvm_exec_argument_count`](../include/flashvm/execution.h#L482), a C89 value service used by CallMethod and
 NewMethod. Loaded counts follow existing version-aware number conversion, then
 unsigned 32-bit truncation/modulo. NaN and either infinity become zero. Calls
 consume the minimum of that count and the available operand values. The supplied
 argument vector, rather than the requested count, determines the callee's argc.
 
-The actual argument count remains bounded by FVM_EXEC_MAX_METHOD_ARGUMENTS;
-exceeding that resource bound reports FVM_ERROR. A huge requested count with
+The actual argument count remains bounded by [FVM_EXEC_MAX_METHOD_ARGUMENTS](../include/flashvm/execution.h#L12);
+exceeding that resource bound reports [FVM_ERROR](../include/flashvm/flashvm.h#L43). A huge requested count with
 few available values does not allocate a huge vector. Unloaded host execution
 retains its strict integral-number/sufficient-operands contract. The available
 count is a value-vector length supplied by a caller, not a VM-stack pointer.
@@ -36,3 +36,17 @@ extended constructor fixture and updating the synthetic shortage expectation.
 Two Cairo execute-bit launch failures pass after restoring permissions. Eight
 focused heap/global ASan+UBSan checks pass; stack/leak coverage is unavailable.
 All 23 unchanged original SWF oracles still match in each graphics profile.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_argument_count` | function | [include/flashvm/execution.h:482](../include/flashvm/execution.h#L482) |
+| `FVM_EXEC_MAX_METHOD_ARGUMENTS` | macro / define | [include/flashvm/execution.h:12](../include/flashvm/execution.h#L12) |
+<!-- source-links:end -->

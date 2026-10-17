@@ -42,3 +42,15 @@ MovieClip. Display list и рендерер Cairo/AGG ещё не готовы. 
 Память вывода заданий не должна пересекаться без синхронизации.
 Данные должны оставаться действительными до возврата функции.
 Пример: `examples/embedding/parallel_render/`.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:21](../include/flashvm/render_jobs.h#L21) |
+<!-- source-links:end -->

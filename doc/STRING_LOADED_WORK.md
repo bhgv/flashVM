@@ -10,7 +10,7 @@ before receiver/argument coercion, so nested callbacks use the enclosing AVM1
 budget. Split charges each scan position, delimiter comparison and emitted
 UTF-16 unit. Encoding a supplementary character charges both units. Search
 charges each candidate position and compared unit, including failed long-prefix
-comparisons. Finite instruction limits and counter saturation return FVM_ERROR; zero remains
+comparisons. Finite instruction limits and counter saturation return [FVM_ERROR](../include/flashvm/flashvm.h#L43); zero remains
 unlimited. Worker cancellation retains the shared periodic polling policy.
 Unloaded host traversals retain their previous accounting policy.
 
@@ -83,3 +83,15 @@ charge one successfully extracted UTF-16 unit. Out-of-range results perform no
 extraction charge. Index callbacks can no longer reset an outer native budget.
 Exceptions preserve unwinding; charAt keeps lone-surrogate WTF-8 output.
 Receiver decoding is still not charged per unit; unloaded host policy remains.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+<!-- source-links:end -->

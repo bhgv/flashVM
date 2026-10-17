@@ -43,3 +43,15 @@ root chains or object counts.
 [GC:] Обработчик не выделяет память и не требует временных корней.
 Адаптер Linux проверен реально; Windows/macOS/Android пока представлены исходниками,
 поэтому завершение платформенной стадии и всех стадий 1–9 не заявляется.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_get_time` | function | [include/flashvm/execution.h:168](../include/flashvm/execution.h#L168) |
+<!-- source-links:end -->

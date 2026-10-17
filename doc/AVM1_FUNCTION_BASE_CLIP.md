@@ -13,7 +13,7 @@ Targets are restored after normal completion, exceptions and preparation failure
 через канал. Старые переданные функции без этого поля используют прежний fallback.
 
 The managed edge is included in the existing private function graph without a
-wire-layout or public FVM_ScriptFrame ABI change. Native attachment is still
+wire-layout or public [FVM_ScriptFrame](../include/flashvm/function.h#L16) ABI change. Native attachment is still
 context-local and omitted from transfer. The fixture creates a closure on one
 child and calls it on another, checks writes and STOP, attaches a native body,
 collects, transfers the closure and verifies the interpreted fallback in a second
@@ -31,3 +31,15 @@ receiving-context setup), Cairo Release 438 tests, and all 23 unchanged original
 SWFs match byte for byte in each profile. Eight selected heap/global ASan+UBSan
 checks pass; stack and leak instrumentation remain disabled. Non-Linux runtime
 verification and all JIT backends remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:16](../include/flashvm/function.h#L16) |
+<!-- source-links:end -->

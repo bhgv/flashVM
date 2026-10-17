@@ -1,6 +1,6 @@
 # Named member calls / Вызовы именованных членов — v0.281
 
-C89 `fvm_exec_invoke_member` accepts an explicit receiver, an already converted
+C89 [`fvm_exec_invoke_member`](../include/flashvm/execution.h#L211) accepts an explicit receiver, an already converted
 counted name and positional values. It reads the member once and invokes that
 value with the original receiver. Missing, scalar and noncallable values return
 undefined. Ordinary member lookup retains the selected defining prototype before
@@ -41,3 +41,15 @@ and reruns for 1/4 BAD_COMMAND binaries respectively. Eight affected heap/global
 ASan+UBSan checks pass (no stack/leak coverage). The getter fixture uses a null
 absent setter, as required by addProperty; its initial undefined setter was
 rejected before invocation. All 26 unchanged original SWFs match in both profiles.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_invoke_member` | function | [include/flashvm/execution.h:211](../include/flashvm/execution.h#L211) |
+<!-- source-links:end -->

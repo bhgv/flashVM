@@ -13,18 +13,18 @@ status = fvm_avm1_execute_options(context, actions, size, &options);
 fvm_execution_set_mode(context, FVM_EXECUTION_INTERPRETER, 0);
 ```
 
-`fvm_function_invoke_options` provides the same options for a first-class function.
+[`fvm_function_invoke_options`](../include/flashvm/execution_mode.h#L76) provides the same options for a first-class function.
 Both wrappers use normal framing, argument/this/super/locals/register setup and
 GC roots. Null options retain the context's current policy. Options persist;
-they are not silently restored after a call. `fvm_execution_get_options` reports
+they are not silently restored after a call. [`fvm_execution_get_options`](../include/flashvm/execution_mode.h#L67) reports
 requested policy. Each context owns its own policy/cache/counters.
 
-- `FVM_EXECUTION_INTERPRETER` executes bytecode and bypasses attached JIT bodies.
-- `FVM_EXECUTION_JIT` compiles supported root/function bodies on entry and uses
+- [`FVM_EXECUTION_INTERPRETER`](../include/flashvm/execution_mode.h#L14) executes bytecode and bypasses attached JIT bodies.
+- [`FVM_EXECUTION_JIT`](../include/flashvm/execution_mode.h#L15) compiles supported root/function bodies on entry and uses
   a bounded context-owned cache. Unsupported bodies/hosts/cache exhaustion fall
   back to the interpreter. Unsupported bodies are negatively cached. Compilation
   OOM remains an error; it does not enter partially generated code.
-- `FVM_EXECUTION_MANUAL` preserves the previous embedding ABI: ordinary functions
+- [`FVM_EXECUTION_MANUAL`](../include/flashvm/execution_mode.h#L13) preserves the previous embedding ABI: ordinary functions
   interpret, explicit native-body attachments execute. Fresh contexts use this
   compatibility mode; `options_init` explicitly selects the interpreter.
 
@@ -39,8 +39,8 @@ No cross-thread mode changes are supported without external synchronization.
 
 ## Replay, logs and counters
 
-Replay is disabled by default. With `FVM_EXEC_REPLAY_ON_EXCEPTION`, an emitted
-body returning **FVM_EXCEPTION** is retried once in the interpreter with fresh
+Replay is disabled by default. With [`FVM_EXEC_REPLAY_ON_EXCEPTION`](../include/flashvm/execution_mode.h#L17), an emitted
+body returning **[FVM_EXCEPTION](../include/flashvm/flashvm.h#L48)** is retried once in the interpreter with fresh
 activation setup and the original arguments/source snapshot. This is diagnostic
 re-execution, not rollback: globals, objects, I/O and other effects can happen
 again. It does not catch CPU faults, recover from arbitrary process crashes,
@@ -54,12 +54,12 @@ succeeds or raises a different exception. A retry cannot recursively replay.
 Preparation OOM leaves the original exception intact; retry OOM is logged as the
 retry result without replacing the original throw.
 
-`fvm_execution_set_logger` installs a synchronous host-owned logger; null/null
+[`fvm_execution_set_logger`](../include/flashvm/execution_mode.h#L69) installs a synchronous host-owned logger; null/null
 uses stderr. Events are original exception, retry start, interpreted checkpoint
 (original byte offset/counted function label), and retry completion/status.
 The logger must not reenter execution, collect, throw or destroy the context.
 It can query counters or change requested policy. Ordinary native execution
-emits no instruction trace. `fvm_execution_get_stats` reports native/interpreter
+emits no instruction trace. [`fvm_execution_get_stats`](../include/flashvm/execution_mode.h#L71) reports native/interpreter
 entries, successful automatic compilations, cache hits/fallbacks, retries,
 retry checkpoints and the last retry status. Counters are context-local unsigned
 values, not timing/performance measurements or proof of compiler coverage.
@@ -102,15 +102,15 @@ execution claim is made.
 
 ## Русский
 
-Добавлены опции головного вызова `fvm_avm1_execute_options` и вызова функции
-`fvm_function_invoke_options`. Режим можно изменить через
-`fvm_execution_set_mode` прямо из выполняемого callback: новые/вложенные вызовы
+Добавлены опции головного вызова [`fvm_avm1_execute_options`](../include/flashvm/execution_mode.h#L73) и вызова функции
+[`fvm_function_invoke_options`](../include/flashvm/execution_mode.h#L76). Режим можно изменить через
+[`fvm_execution_set_mode`](../include/flashvm/execution_mode.h#L64) прямо из выполняемого callback: новые/вложенные вызовы
 увидят переключение, активный машинный кадр завершится в прежнем режиме.
 В режиме JIT поддерживаемые тела компилируются и кешируются автоматически;
 остальные исполняются интерпретатором. Кеш принадлежит контексту и освобождается
 при его уничтожении. Настройки сохраняются между вызовами.
 
-Повтор после исключения включается только флагом `FVM_EXEC_REPLAY_ON_EXCEPTION`.
+Повтор после исключения включается только флагом [`FVM_EXEC_REPLAY_ON_EXCEPTION`](../include/flashvm/execution_mode.h#L17).
 Функция/корневой блок выполняется заново в интерпретаторе с логом шагов и
 статистикой. Создаётся свежая активация, но состояние приложения не откатывается:
 побочные эффекты могут повториться. Возвращается исходное исключение JIT;
@@ -137,3 +137,27 @@ implicit-End acceptance as their original entry; ordinary roots keep their norma
 framing checks. / Диагностический повтор сохранённого кадра сохраняет допустимый
 неявный End; обычные корневые входы сохраняют прежнюю проверку границ.
 See `execution_mode_frame_replay` and [dispatch contracts](JIT_DISPATCH.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_execute_options` | function | [include/flashvm/execution_mode.h:73](../include/flashvm/execution_mode.h#L73) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `FVM_EXEC_REPLAY_ON_EXCEPTION` | macro / define | [include/flashvm/execution_mode.h:17](../include/flashvm/execution_mode.h#L17) |
+| `fvm_execution_get_options` | function | [include/flashvm/execution_mode.h:67](../include/flashvm/execution_mode.h#L67) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../include/flashvm/execution_mode.h#L71) |
+| `FVM_EXECUTION_INTERPRETER` | enum constant | [include/flashvm/execution_mode.h:14](../include/flashvm/execution_mode.h#L14) |
+| `FVM_EXECUTION_JIT` | enum constant | [include/flashvm/execution_mode.h:15](../include/flashvm/execution_mode.h#L15) |
+| `FVM_EXECUTION_MANUAL` | enum constant | [include/flashvm/execution_mode.h:13](../include/flashvm/execution_mode.h#L13) |
+| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:61](../include/flashvm/execution_mode.h#L61) |
+| `fvm_execution_set_logger` | function | [include/flashvm/execution_mode.h:69](../include/flashvm/execution_mode.h#L69) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../include/flashvm/execution_mode.h#L64) |
+| `FVM_ExecutionOptions` | struct | [include/flashvm/execution_mode.h:20](../include/flashvm/execution_mode.h#L20) |
+| `fvm_function_invoke_options` | function | [include/flashvm/execution_mode.h:76](../include/flashvm/execution_mode.h#L76) |
+<!-- source-links:end -->

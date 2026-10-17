@@ -15,7 +15,7 @@ Implemented/tested indices: 0 _x, 1 _y, 2 _xscale, 3 _yscale, 4 _currentframe,
 clip-local pointer query (CLIP_POINTER.md). v0.379 adds indexed vector dimension
 reads 8/9 (MOVIECLIP_INDEXED_SIZE.md); v0.385 adds vector dimension writes
 (MOVIECLIP_DIMENSION_WRITES.md). System/media
-fields 14–19 explicitly return FVM_UNSUPPORTED for a valid target. Pointer reads
+fields 14–19 explicitly return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for a valid target. Pointer reads
 project the context position through the inverse world matrix; other scalar reads use stored intrinsic fields;
 frame counts and slash target use native state. Visibility reads a boolean.
 Position writes truncate to twips with Int32 saturation; coordinate infinities
@@ -30,7 +30,7 @@ not certified by these indexed actions.
 script coercion. A regression detaches the selected child during valueOf,
 actually collects, then safely publishes its scalar through the request root.
 
-`fvm_avm1_get_target_info` exposes struct-size-checked borrowed base/current
+[`fvm_avm1_get_target_info`](../include/flashvm/avm1.h#L31) exposes struct-size-checked borrowed base/current
 clips and active state to C89 hosts, including URL/trace callbacks. Invalid
 arguments leave output unchanged. Outside activation the fields are inactive/
 null. Hosts must retain borrowed clips before using them after scope exit or
@@ -52,3 +52,16 @@ execute-bit failures were restored and rerun. Four focused tests pass in each
 portable and restricted ASan/UBSan profile. Ten original external SWF probes
 still complete and match exactly. No roadmap stage is closed.
 Primary cross-check: [pinned Ruffle intrinsic property map](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/stage_object.rs).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_get_target_info` | function | [include/flashvm/avm1.h:31](../include/flashvm/avm1.h#L31) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

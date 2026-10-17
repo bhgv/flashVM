@@ -5,7 +5,7 @@ once with the version-aware AVM1 string policy. Already counted strings avoid
 an additional conversion and retain embedded NUL. Host-only C calls retain the
 existing requirement for a String name. Empty names remain ignored.
 
-The common `fvm_exec_variable_set` service owns conversion, path parsing and
+The common [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408) service owns conversion, path parsing and
 binding selection; interpreter dispatch only adapts stack operands. No bytecode,
 program counter or operand stack enters the C interface. The additional named
 root slot retains converted text separately from its original input. Scope,
@@ -34,3 +34,15 @@ Validation: GCC13.3 Linux AGG/Cairo each pass 529 tests. Execute-bit restoration
 and successful reruns were required for 7/5 binaries respectively (BAD_COMMAND).
 Seven affected heap/global ASan+UBSan checks pass, without stack/leak coverage.
 All 26 unchanged original SWF traces match exactly in both profiles.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+<!-- source-links:end -->

@@ -1,7 +1,7 @@
 # Binary32 scene point arithmetic / Арифметика точки матрицы сцены
 
 v0.338 adds two context-free C89 services in flashvm/matrix.h:
-fvm_matrix_point_twips and fvm_matrix_inverse_twips. FVM_TwipMatrix has binary32
+[fvm_matrix_point_twips](../include/flashvm/matrix.h#L26) and [fvm_matrix_inverse_twips](../include/flashvm/matrix.h#L37). [FVM_TwipMatrix](../include/flashvm/matrix.h#L10) has binary32
 coefficients and signed 32-bit integer twip translations. These are distinct
 from the raw SWF signed 16.16 coefficients in flashvm/fixed.h. Public long fields
 carry signed32 values even on wider-long hosts; the struct is not a wire format.
@@ -42,8 +42,8 @@ model is not a full raw native scene storage policy. Drag, xmouse/ymouse, hit
 queries and raster paths are not migrated here. No complete Flash Player,
 scene/JIT/platform compatibility or roadmap-stage completion is claimed.
 
-В v0.338 добавлены независимые C89-функции fvm_matrix_point_twips и
-fvm_matrix_inverse_twips. Коэффициенты FVM_TwipMatrix имеют binary32, переносы
+В v0.338 добавлены независимые C89-функции [fvm_matrix_point_twips](../include/flashvm/matrix.h#L26) и
+[fvm_matrix_inverse_twips](../include/flashvm/matrix.h#L37). Коэффициенты [FVM_TwipMatrix](../include/flashvm/matrix.h#L10) имеют binary32, переносы
 и координаты — signed 32-bit twips. Это другая модель, чем сырые 16.16 данные
 SWF: сверка core/prelude.rs и render/src/matrix.rs уточнила различие.
 Функции v0.337 не заменяют матрицу сцены автоматически.
@@ -102,3 +102,17 @@ subsystems listed above remain open.
 В v0.339 композиция предков загруженной точки переведена на binary32 с
 округлением каждого уровня; оставшаяся double-граница — локальные snapshots.
 Хостовый путь не изменён. См. CLIP_WORLD_MATRIX.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_matrix_inverse_twips` | function | [include/flashvm/matrix.h:37](../include/flashvm/matrix.h#L37) |
+| `fvm_matrix_point_twips` | function | [include/flashvm/matrix.h:26](../include/flashvm/matrix.h#L26) |
+| `FVM_TwipMatrix` | struct | [include/flashvm/matrix.h:10](../include/flashvm/matrix.h#L10) |
+<!-- source-links:end -->

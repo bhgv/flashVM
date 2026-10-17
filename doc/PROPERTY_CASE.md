@@ -87,7 +87,7 @@ matching pinned script_object.rs has_own_property. The query does not inspect
 private facade metadata or enumerate/read parent properties. It preserves the
 receiver's SWF casing. Host facade behavior remains unchanged. Nested/malformed
 receiver-facade chains have a bounded iterative traversal instead of recursive
-C++ calls; malformed cycles return FVM_ERROR.
+C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L43).
 
 `object_super_membership` failed against v0.425 and covers loaded SWF5–8 plus
 host, direct C and borrowed Object.hasOwnProperty.call, counted NUL names,
@@ -373,7 +373,7 @@ ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
 
 ## v0.444 — allocation-free invocation identity roots
 
-FVM_CallScope now retains saved/active constructor, function and owner through
+[FVM_CallScope](../src/core/call_scope.hpp#L8) now retains saved/active constructor, function and owner through
 six inline root frames. Publishing the complete chain and restoring the
 previous identity no longer allocate a temporary vector. Nested calls and
 unwinding preserve the caller's root head. This is an implementation/GC
@@ -556,3 +556,16 @@ PermissionError after an executable-mode reset. Restoring that mode and rerunnin
 the driver passed 1/1, covering all 924 cases across these runs. Linux-hosted
 NO_OS_PORTS and heap/global ASan+UBSan 4/4 targeted checks each. Stack
 ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+<!-- source-links:end -->

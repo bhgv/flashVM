@@ -1,10 +1,10 @@
 # Native drag execution / Нативное перетаскивание — v0.328
 
-The C89 services fvm_exec_drag_begin, fvm_exec_drag_update, fvm_exec_drag_end and
-fvm_exec_drag_target provide explicit context-wide native dragging without Action
+The C89 services [fvm_exec_drag_begin](../include/flashvm/execution.h#L270), [fvm_exec_drag_update](../include/flashvm/execution.h#L274), [fvm_exec_drag_end](../include/flashvm/execution.h#L277) and
+[fvm_exec_drag_target](../include/flashvm/execution.h#L279) provide explicit context-wide native dragging without Action
 codes, operand stacks or script method lookup. Each implementation has its own
 file. Begin accepts a native instance, semantic center flag and optional
-parent-space FVM_ExecutionDragBounds. It selects the target and captures the
+parent-space [FVM_ExecutionDragBounds](../include/flashvm/execution.h#L253). It selects the target and captures the
 world pointer without moving immediately. End flushes pending motion first.
 
 Centered mode projects the world pointer through the inverse parent world
@@ -70,6 +70,23 @@ Action-аdаптеры подключены в v0.329; скриптовые ме
 
 ### v0.330 script integration / Скриптовые методы
 
-MovieClip.startDrag/stopDrag now share this engine through fvm_exec_drag_values;
+MovieClip.startDrag/stopDrag now share this engine through [fvm_exec_drag_values](../include/flashvm/execution.h#L264);
 see MOVIECLIP_DRAG.md. The original v0.328 C-only checkpoint above is historical.
 Скриптовые методы подключены; прежнее описание C-only относится к точке v0.328.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_drag_begin` | function | [include/flashvm/execution.h:270](../include/flashvm/execution.h#L270) |
+| `fvm_exec_drag_end` | function | [include/flashvm/execution.h:277](../include/flashvm/execution.h#L277) |
+| `fvm_exec_drag_target` | function | [include/flashvm/execution.h:279](../include/flashvm/execution.h#L279) |
+| `fvm_exec_drag_update` | function | [include/flashvm/execution.h:274](../include/flashvm/execution.h#L274) |
+| `fvm_exec_drag_values` | function | [include/flashvm/execution.h:264](../include/flashvm/execution.h#L264) |
+| `FVM_ExecutionDragBounds` | struct | [include/flashvm/execution.h:253](../include/flashvm/execution.h#L253) |
+<!-- source-links:end -->

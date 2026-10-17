@@ -2,11 +2,11 @@
 
 ## English
 
-ABI 3 appends string_size to FVM_Value. Rebuild native clients; initialize values
-through the public helpers. Legacy fvm_value_string counts bytes up to NUL;
-fvm_value_string_bytes borrows counted UTF-8/WTF-8 and requires no terminator.
-fvm_value_string_utf16 copies UTF-16 into context-owned storage. Query/copy code
-units with fvm_value_get_utf16; an insufficient buffer is left unchanged.
+ABI 3 appends string_size to [FVM_Value](../include/flashvm/value.h#L24). Rebuild native clients; initialize values
+through the public helpers. Legacy [fvm_value_string](../include/flashvm/value.h#L46) counts bytes up to NUL;
+[fvm_value_string_bytes](../include/flashvm/value.h#L49) borrows counted UTF-8/WTF-8 and requires no terminator.
+[fvm_value_string_utf16](../include/flashvm/value.h#L55) copies UTF-16 into context-owned storage. Query/copy code
+units with [fvm_value_get_utf16](../include/flashvm/value.h#L60); an insufficient buffer is left unchanged.
 Returned byte storage is terminated for convenience, but string_size is required
 for embedded NUL. Strict utf8.h scalar functions remain strict. VM strings can
 also retain unpaired surrogates through the WTF-8 representation.
@@ -46,11 +46,11 @@ error_allocation.cpp. No full stage completion is claimed.
 
 ## Русский
 
-ABI повышен до 3: FVM_Value содержит длину строкового буфера string_size.
+ABI повышен до 3: [FVM_Value](../include/flashvm/value.h#L24) содержит длину строкового буфера string_size.
 Нативные клиенты нужно пересобрать, значения инициализировать публичными
-функциями. fvm_value_string работает с привычной строкой до NUL; новый
-fvm_value_string_bytes принимает буфер с явной длиной без требования терминатора.
-fvm_value_string_utf16 копирует UTF-16 в память контекста. fvm_value_get_utf16
+функциями. [fvm_value_string](../include/flashvm/value.h#L46) работает с привычной строкой до NUL; новый
+[fvm_value_string_bytes](../include/flashvm/value.h#L49) принимает буфер с явной длиной без требования терминатора.
+[fvm_value_string_utf16](../include/flashvm/value.h#L55) копирует UTF-16 в память контекста. [fvm_value_get_utf16](../include/flashvm/value.h#L60)
 позволяет запросить размер и получить единицы; слишком короткий буфер не меняется.
 
 Методы String сохраняют NUL и одиночные суррогаты, включая charAt и split внутри
@@ -110,7 +110,7 @@ The copy-to-buffer path retains its existing behavior. Full Flash string oracle
 and all roadmap stage acceptance remain open.
 
 `String.length`, проверка при создании String и запрос только длины через
-`fvm_value_get_utf16` считают UTF-16 непосредственно, без временного массива.
+[`fvm_value_get_utf16`](../include/flashvm/value.h#L60) считают UTF-16 непосредственно, без временного массива.
 Дополнительный символ занимает две единицы, NUL и одиночный суррогат — одну.
 Повреждённый хвост отклоняется, публичная длина остаётся нулевой. Создание объекта
 и его свойств по-прежнему требует памяти. Полная совместимость Flash не заявлена.
@@ -120,8 +120,8 @@ while checking supplementary/NUL/lone-surrogate, empty and malformed queries.
 
 ## v0.410: short UTF-16 buffers / Короткие буферы UTF-16
 
-`fvm_value_get_utf16` validates and measures before allocating copy storage.
-A valid string and insufficient capacity return `FVM_INVALID_ARGUMENT`, publish
+[`fvm_value_get_utf16`](../include/flashvm/value.h#L60) validates and measures before allocating copy storage.
+A valid string and insufficient capacity return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), publish
 its required unit count and leave output untouched even when allocations fail.
 Malformed input still returns a zero count before checking capacity. Sufficient
 buffers retain the decoded snapshot, including overlapping input/output; that
@@ -152,3 +152,20 @@ Validation v0.411 / Проверка: minimal Release 822/822; AGG Release 4/4;
 heap/global ASan+UBSan 4/4 string tests. Strict C89 public-header syntax passed.
 Native test launchers restore executable modes; stack ASan/LSan are disabled.
 Other platforms and complete Flash compatibility remain unverified.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `fvm_value_get_utf16` | function | [include/flashvm/value.h:60](../include/flashvm/value.h#L60) |
+| `fvm_value_string` | function | [include/flashvm/value.h:46](../include/flashvm/value.h#L46) |
+| `fvm_value_string_bytes` | function | [include/flashvm/value.h:49](../include/flashvm/value.h#L49) |
+| `fvm_value_string_utf16` | function | [include/flashvm/value.h:55](../include/flashvm/value.h#L55) |
+<!-- source-links:end -->

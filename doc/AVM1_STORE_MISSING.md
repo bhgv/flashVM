@@ -5,9 +5,9 @@ it on the active operand stack before storing through the existing register
 policy. In-range global or private registers receive undefined; out-of-range
 loaded stores remain ignored. Host-only empty stacks remain errors. Payload
 validation precedes preparation and bank writes. The one-byte register selector
-width is documented by FVM_AVM1_STORE_REGISTER_BYTES in encoding_constants.h.
+width is documented by [FVM_AVM1_STORE_REGISTER_BYTES](../src/avm1/encoding_constants.h#L135) in encoding_constants.h.
 
-The shared C89 fvm_exec_global_register service is unchanged: callers supply
+The shared C89 [fvm_exec_global_register](../include/flashvm/execution.h#L461) service is unchanged: callers supply
 explicit values, with no interpreter or Action dependency. Register-bank sizes,
 private/global selection, persistent string ownership and the public ABI are
 unchanged. Undefined publication itself invokes no callbacks and allocates no
@@ -36,3 +36,16 @@ Validation: Linux AGG/Cairo each passed 599 tests; three AGG executable-permissi
 launch failures passed after restoring permissions. Three targeted heap/global
 ASan+UBSan tests passed (no stack/leak coverage). All 26 accepted original SWFs
 matched the pinned oracle in each profile. The Action-reference audit is 94/100.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_AVM1_STORE_REGISTER_BYTES` | macro / define | [src/avm1/encoding_constants.h:135](../src/avm1/encoding_constants.h#L135) |
+| `fvm_exec_global_register` | function | [include/flashvm/execution.h:461](../include/flashvm/execution.h#L461) |
+<!-- source-links:end -->

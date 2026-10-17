@@ -1,6 +1,6 @@
 # Interface snapshots / Зафиксированные прототипы интерфейсов — v0.284
 
-C89 `fvm_exec_implements` installs interface prototype references in loaded SWF7–8.
+C89 [`fvm_exec_implements`](../include/flashvm/execution.h#L222) installs interface prototype references in loaded SWF7–8.
 It reads own stored prototype data without getters, ignores primitive/invalid
 interface entries and does not require callable class objects. The first list is
 retained, including an empty list produced by invalid entries. A zero input count
@@ -8,7 +8,7 @@ is a noop. SWF4–6 leave interface state unchanged. Replacing a constructor's
 prototype afterwards does not retarget existing interface edges. Host-only calls
 keep the previous replaceable constructor-reference policy.
 
-`fvm_exec_interface_count` handles ImplementsOp count conversion independently
+[`fvm_exec_interface_count`](../include/flashvm/execution.h#L218) handles ImplementsOp count conversion independently
 of bytecode: loaded objects yield zero without valueOf; primitives wrap to Int32
 and clamp to available values. Hosts keep integral bounded numeric validation.
 The interpreter adapts class/count/interface operands to these C services. This
@@ -57,3 +57,16 @@ OS_PORTS profiles; the limited sanitizer profile checks memory/file transport.
 All 26 unchanged original SWFs match exactly in each profile.
 
 Since v0.383 capture/inspection shares native execution work and validated loaded noops avoid root allocation: [EN](IMPLEMENTS_WORK.md) / [RU](IMPLEMENTS_WORK.ru.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_implements` | function | [include/flashvm/execution.h:222](../include/flashvm/execution.h#L222) |
+| `fvm_exec_interface_count` | function | [include/flashvm/execution.h:218](../include/flashvm/execution.h#L218) |
+<!-- source-links:end -->

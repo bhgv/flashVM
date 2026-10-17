@@ -1,12 +1,12 @@
 # Сборка строк v0.72 / Traced strings
 
 `fvm_gc_string_mode(ctx, FVM_GC_STRINGS_TRACED)` явно включает освобождение
-недостижимых context string buffers. Default FVM_GC_STRINGS_ARENA сохраняет
-старое время жизни до context destruction. `fvm_gc_string_state` читает политику.
+недостижимых context string buffers. Default [FVM_GC_STRINGS_ARENA](../include/flashvm/gc.h#L27) сохраняет
+старое время жизни до context destruction. [`fvm_gc_string_state`](../include/flashvm/gc.h#L33) читает политику.
 Смена режима допускается только в owning VM thread вне collection/native calls;
 включение не запускает GC. Отключение не восстанавливает уже освобождённые строки.
-FVM_Value/FVM_Config layout не изменены. Object reclaimed count по-прежнему
-считает объекты; размеры строк отдельно показывает fvm_gc_string_stats.
+[FVM_Value](../include/flashvm/value.h#L24)/FVM_Config layout не изменены. Object reclaimed count по-прежнему
+считает объекты; размеры строк отдельно показывает [fvm_gc_string_stats](../include/flashvm/gc.h#L102).
 
 В traced mode сырой C pointer строки не является корнем. Хост должен хранить
 значение в reachable property/index, GC root scope или зарегистрированном stack.
@@ -60,11 +60,11 @@ text library получателя; TCP — OS_PORTS.
 
 ## English
 
-Opt in with fvm_gc_string_mode(ctx, FVM_GC_STRINGS_TRACED). The default ARENA
+Opt in with [fvm_gc_string_mode](../include/flashvm/gc.h#L31)(ctx, [FVM_GC_STRINGS_TRACED](../include/flashvm/gc.h#L28)). The default ARENA
 policy preserves context-long borrowed string lifetime. Policy query does not
 allocate; policy changes are rejected during collection/native callbacks and
 do not trigger collection or restore previously reclaimed buffers. Public
-FVM_Value/FVM_Config layouts are unchanged; object reclaimed counts still count
+[FVM_Value](../include/flashvm/value.h#L24)/FVM_Config layouts are unchanged; object reclaimed counts still count
 objects, and string byte accounting is separate.
 
 Raw borrowed string pointers are not roots in traced mode. Keep values in
@@ -116,3 +116,21 @@ graph traversal после native release callbacks. Он сохраняет т�
 
 The v0.72 string-only late pass is superseded by a full late graph traversal
 covering object roots and edges added to previous survivors. See GC_RELEASE_GRAPH.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
+| `fvm_gc_string_mode` | function | [include/flashvm/gc.h:31](../include/flashvm/gc.h#L31) |
+| `fvm_gc_string_state` | function | [include/flashvm/gc.h:33](../include/flashvm/gc.h#L33) |
+| `fvm_gc_string_stats` | function | [include/flashvm/gc.h:102](../include/flashvm/gc.h#L102) |
+| `FVM_GC_STRINGS_ARENA` | macro / define | [include/flashvm/gc.h:27](../include/flashvm/gc.h#L27) |
+| `FVM_GC_STRINGS_TRACED` | macro / define | [include/flashvm/gc.h:28](../include/flashvm/gc.h#L28) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->

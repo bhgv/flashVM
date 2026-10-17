@@ -11,7 +11,7 @@ execution, the retained parent when physically detached. Parent/root preloads,
 native _parent/_root accessors and display-path ancestry use that helper.
 Absolute paths and target-or-root fallback therefore reach the original root
 from a removed clip or its still-parented descendant. Root ancestry has a named
-FVM_MOVIECLIP_ROOT_MAX_ANCESTORS bound independent from prototype lookup.
+[FVM_MOVIECLIP_ROOT_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L64) bound independent from prototype lookup.
 
 [GC:] The retained edge is an ordinary managed object value in the native private
 state, reached through resource_result. Generic graph marking and transport
@@ -50,3 +50,15 @@ executable-permission launch failures passed after restoring permissions. Four
 targeted heap/global ASan+UBSan fixtures passed (no stack/leak coverage). All 26
 accepted original SWFs matched the pinned oracle in each profile. The bounded
 Action-reference audit remains 95/100.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_MOVIECLIP_ROOT_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:64](../src/standard/movieclip_constants.h#L64) |
+<!-- source-links:end -->

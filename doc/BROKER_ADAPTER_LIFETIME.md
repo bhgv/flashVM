@@ -20,7 +20,7 @@ Mutex set/reset сохраняют stable peer context identity: owned locks д�
 не означает bounded total service RSS при неограниченном числе distinct clients/
 exports. Request graph work всё ещё ограничивается существующими record budgets.
 
-fvm_broker_stats возвращает coherent lock snapshot peer_contexts, exported_resources,
+[fvm_broker_stats](../include/flashvm/capability.h#L34) возвращает coherent lock snapshot peer_contexts, exported_resources,
 adapter_contexts и saturating adapter_requests. Это counts, не byte accounting;
 запрос не читает меняющиеся VM heaps, не выделяет память и не выполняет RPC.
 После stopped возвращается ERROR без изменения output; invalid arguments также
@@ -48,7 +48,7 @@ canonical exported native handles remain until stop. Repeated export reuses entr
 This is not an ownership-lease protocol or bounded total RSS across unlimited
 clients/exports; those lifetimes remain separate acceptance work.
 
-fvm_broker_stats copies synchronized peer/export/active-adapter counts and a
+[fvm_broker_stats](../include/flashvm/capability.h#L34) copies synchronized peer/export/active-adapter counts and a
 saturating adapter creation counter without allocation, RPC or concurrent VM-heap
 inspection. Stopped/invalid queries preserve caller output; callers must hold a
 live broker reference. Counters are not memory byte totals.
@@ -63,3 +63,15 @@ channel/resource/mutex/GC/serialization tests 73/73 in AGG, Cairo, portable
 and ASan/UBSan. Live fonts in AGG/Cairo only, TCP omitted in portable.
 Heap/global ASan and UBSan active; leak detection/stack ASan disabled.
 Linux profiles only; full GC/debugger acceptance remains open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_broker_stats` | function | [include/flashvm/capability.h:34](../include/flashvm/capability.h#L34) |
+<!-- source-links:end -->

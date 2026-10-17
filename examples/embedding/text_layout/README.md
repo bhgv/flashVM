@@ -27,17 +27,39 @@ cmake --build build-examples --target flashvm_examples_embedding_text_layout_mai
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_font_destroy`](../../../include/flashvm/font.h) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
-| [`fvm_font_read`](../../../include/flashvm/font.h) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
-| [`fvm_path_destroy`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_draw`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_transform`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_text_layout_create`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
-| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_font_destroy`](../../../include/flashvm/font.h#L47) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
+| [`fvm_font_read`](../../../include/flashvm/font.h#L44) | [FONT_LIBRARIES.md#flashvm-c89-embedding-api](../../../doc/FONT_LIBRARIES.md#flashvm-c89-embedding-api) — Шрифты, shaping и редактируемые контуры. |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_draw`](../../../include/flashvm/path.h#L81) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_transform`](../../../include/flashvm/path.h#L65) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_text_layout_create`](../../../include/flashvm/text_layout.h#L72) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_text_layout_destroy`](../../../include/flashvm/text_layout.h#L75) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_text_layout_glyph_path`](../../../include/flashvm/text_layout.h#L87) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_text_layout_line`](../../../include/flashvm/text_layout.h#L79) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_text_layout_metrics`](../../../include/flashvm/text_layout.h#L77) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
+| [`fvm_text_layout_path`](../../../include/flashvm/text_layout.h#L85) | [TEXT_LAYOUT.md#layout-and-measurement](../../../doc/TEXT_LAYOUT.md#layout-and-measurement) — Строки, метрики и контуры раскладки. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-text_layout).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_font_destroy` | function | [include/flashvm/font.h:47](../../../include/flashvm/font.h#L47) |
+| `fvm_font_read` | function | [include/flashvm/font.h:44](../../../include/flashvm/font.h#L44) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
+| `fvm_path_draw` | function | [include/flashvm/path.h:81](../../../include/flashvm/path.h#L81) |
+| `fvm_path_transform` | function | [include/flashvm/path.h:65](../../../include/flashvm/path.h#L65) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../../../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:75](../../../include/flashvm/text_layout.h#L75) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:87](../../../include/flashvm/text_layout.h#L87) |
+| `fvm_text_layout_line` | function | [include/flashvm/text_layout.h:79](../../../include/flashvm/text_layout.h#L79) |
+| `fvm_text_layout_metrics` | function | [include/flashvm/text_layout.h:77](../../../include/flashvm/text_layout.h#L77) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:85](../../../include/flashvm/text_layout.h#L85) |
+<!-- source-links:end -->

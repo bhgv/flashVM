@@ -1,6 +1,6 @@
 # file_channels.as
 
-Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через fvm_extensions_install.
+Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../../include/flashvm/extensions.h#L17).
 
 ## Запуск и особенности
 
@@ -18,3 +18,15 @@ FlashVM не компилирует этот текст самостоятель
 - `close` — [FILE_CHANNELS.md](../../doc/FILE_CHANNELS.md).
 
 [Описание в общем каталоге](../README.md#example-actionscript-file_channels-as).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../../include/flashvm/extensions.h#L17) |
+<!-- source-links:end -->

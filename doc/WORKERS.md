@@ -13,3 +13,17 @@ Only undefined, null, boolean, number, and NUL-terminated UTF-8 strings are supp
 **Limitations:** no cancellation or suspended start, no ActionScript thread object, no function serialization, no automatic channel cloning, and no multi-worker `join` selector yet. On the tested host, the POSIX port uses pthreads. Windows/macOS/Android ports exist but are not verified here. The current API does not provide timeouts; a blocked callback can make `join` wait indefinitely.
 
 Example: `examples/embedding/workers/main.c`.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:71](../include/flashvm/worker.h#L71) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:45](../include/flashvm/worker.h#L45) |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+<!-- source-links:end -->

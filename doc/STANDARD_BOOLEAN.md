@@ -1,9 +1,9 @@
 # Boolean wrappers and native prototype methods
 
-`fvm_standard_install` now installs global Boolean class metadata and a dedicated
+[`fvm_standard_install`](../include/flashvm/standard.h#L18) now installs global Boolean class metadata and a dedicated
 Boolean constructor alongside the existing numeric functions. `Boolean(value)`
-through fvm_call/AVM1 CallFunction still returns a primitive; `new Boolean(value)`
-through fvm_construct/AVM1 NewObject returns a GC-owned object. Fixed-arity
+through [fvm_call](../include/flashvm/value.h#L138)/AVM1 CallFunction still returns a primitive; `new Boolean(value)`
+through [fvm_construct](../include/flashvm/value.h#L158)/AVM1 NewObject returns a GC-owned object. Fixed-arity
 conversion and methods ignore extra valid arguments. Installation remains opt-in,
 rejects conflicting names, and publishes globals/functions/constructors together.
 Repeated installation verifies the class, prototype methods and constructor
@@ -34,9 +34,9 @@ unsupported. Boolean(wrapperFalse) is true because the input is an object.
 defines/replaces an own native callback. Root must be null or belong to the same
 context; arbitrary userdata memory is not scanned. Existing own data/accessor
 bindings reject registration. Replacing a callback releases its previous capture
-root. fvm_object_has_own includes own native methods; inherited ones are not own.
+root. [fvm_object_has_own](../include/flashvm/value.h#L70) includes own native methods; inherited ones are not own.
 
-Both fvm_object_call and AVM1 CallMethod search at most 1024 objects in the
+Both [fvm_object_call](../include/flashvm/value.h#L126) and AVM1 CallMethod search at most 1024 objects in the
 prototype chain and bind the original receiver, not the object storing the
 method. Own callbacks override inherited ones. Data/accessor bindings encountered
 first block native invocation, returning UNSUPPORTED: callable property values
@@ -51,7 +51,7 @@ existing named-function bridge fallback. In AVM1, a native method anywhere in
 the supported prototype chain takes precedence over a same-name script function.
 Missing methods beyond the chain budget return ERROR rather than falling back.
 This is a bounded native bridge, not a complete first-class Function implementation.
-Method values are not exposed as function-valued properties by fvm_object_get.
+Method values are not exposed as function-valued properties by [fvm_object_get](../include/flashvm/value.h#L72).
 
 ## GC, workers and examples
 
@@ -78,3 +78,21 @@ of primitive receivers, generic ToPrimitive, complete operator coercion,
 SWF-version gating and boxed Number/String remain unfinished. No full Boolean
 or SWF 8 compatibility is claimed. No Windows/macOS/Android execution is verified.
 See STANDARD_BOOLEAN_CHECKPOINT.md for build/test evidence and mirror status.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../include/flashvm/value.h#L115) |
+| `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
+| `fvm_object_has_own` | function | [include/flashvm/value.h:70](../include/flashvm/value.h#L70) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+<!-- source-links:end -->

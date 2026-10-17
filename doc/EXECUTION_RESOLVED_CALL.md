@@ -1,6 +1,6 @@
 # Resolved calls / Вызовы найденных значений
 
-v0.246 moves named call/constructor dispatch into `fvm_exec_resolved_call` in a
+v0.246 moves named call/constructor dispatch into [`fvm_exec_resolved_call`](../include/flashvm/execution.h#L494) in a
 separate handler file. Its C89 interface receives a counted name, resolved value,
 found/missing flag, explicit receiver and ordered argument values. Scope lookup,
 name/count operand decoding and stack movement remain in the interpreter adapter.
@@ -33,3 +33,15 @@ root-chain restoration. Existing original SWF traces remain unmodified.
 Evidence: 454 tests pass in each Linux AGG/Cairo profile. Seven focused heap/global
 ASan+UBSan checks pass; stack/leak instrumentation is unavailable. All 23 unchanged
 original SWF traces remain byte-exact in both profiles. All roadmap stages stay open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_resolved_call` | function | [include/flashvm/execution.h:494](../include/flashvm/execution.h#L494) |
+<!-- source-links:end -->

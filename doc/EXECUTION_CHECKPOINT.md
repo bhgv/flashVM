@@ -1,10 +1,10 @@
 # Shared execution checkpoints / Общие контрольные точки исполнения
 
-v0.228: `fvm_exec_checkpoint` is a C89 execution service used by the interpreter
+v0.228: [`fvm_exec_checkpoint`](../include/flashvm/execution.h#L81) is a C89 execution service used by the interpreter
 and available to generated script bodies. It accounts semantic instruction units,
 updates a debugger mapping token and optionally polls cooperative worker stop
 requests and scheduled GC. No Action code, bytecode buffer, operand stack or
-machine-code format is part of the signature. `FVM_EXEC_POLL` requests polling;
+machine-code format is part of the signature. [`FVM_EXEC_POLL`](../include/flashvm/execution.h#L74) requests polling;
 flags 0 only account/update. Zero units permit polling without additional work.
 
 Общий C-сервис учитывает смысловые единицы исполнения, обновляет отладочную
@@ -14,9 +14,9 @@ flags 0 only account/update. Zero units permit polling without additional work.
 Единицы — стоимость семантики программы, а не число инструкций процессора.
 
 Top-level entry resets the counter; nested generated/interpreted calls share it.
-Overflow returns FVM_ERROR without wrapping. Exceeding a nonzero configured limit
-returns FVM_ERROR after accounting the rejected work. Invalid flags or use outside
-an active script/execution entry return FVM_INVALID_ARGUMENT. Generated code must
+Overflow returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) without wrapping. Exceeding a nonzero configured limit
+returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) after accounting the rejected work. Invalid flags or use outside
+an active script/execution entry return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Generated code must
 propagate failure immediately and report costs corresponding to interpreter work.
 This establishes the bridge, not correctness of a backend's chosen accounting.
 
@@ -71,3 +71,18 @@ not removed or treated as passing. All nine roadmap stages remain open.
 как конкретные ошибки/расхождения. Нельзя переносить общий статус «совместимо»
 на основании этих проб. Платформы Windows/macOS/Android пока не проверены
 реальным запуском; общая приёмка пункта 9 остаётся открытой.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_checkpoint` | function | [include/flashvm/execution.h:81](../include/flashvm/execution.h#L81) |
+| `FVM_EXEC_POLL` | macro / define | [include/flashvm/execution.h:74](../include/flashvm/execution.h#L74) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+<!-- source-links:end -->

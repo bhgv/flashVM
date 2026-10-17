@@ -32,10 +32,10 @@
 Cairo и soft-light compositing Pixman, смешивание straight-alpha, сохранение
 отступов и скрытых RGB. Также выполнены существующие тесты VM/GC/потоков/каналов.
 
-Подтверждение: [сводка](validation/dependencies-summary.json),
-[ключи](validation/dependencies-definitions.json),
-[строгая сборка](validation/dependencies-strict-linux.json),
-[sanitizer](validation/dependencies-sanitizers-cairo-linux.json),
+Подтверждение: сводка (`validation/dependencies-summary.json`),
+ключи (`validation/dependencies-definitions.json`),
+строгая сборка (`validation/dependencies-strict-linux.json`),
+sanitizer (`validation/dependencies-sanitizers-cairo-linux.json`),
 логи CMake configure/build/test: validation/dependencies-*-<профиль>.log.
 Команды Linux: python3 scripts/check.py; python3 scripts/check.py --sanitize
 --defs /путь/cairo-defs.txt. Конфигурация: python3 scripts/check_definitions.py;
@@ -54,3 +54,6 @@ Pixman выключены. Промежуточный premultiplied-буфер C
 RGB при малой альфе. FB/GLES/OGL/DX/SDL1/SDL2/SDL3, JIT и мультимедиа пока не
 реализованы. Полный проигрыватель SWF <= 8 и все стандартные объекты ActionScript
 не объявляются завершёнными.
+
+Указанные выше имена исторических отчётов — метки, а не ссылки на файлы этого
+checkout: сгенерированные отчёты проверок не хранятся в исходном репозитории.

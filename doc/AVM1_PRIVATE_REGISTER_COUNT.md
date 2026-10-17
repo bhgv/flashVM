@@ -14,7 +14,7 @@ while private preload/parameter assignments remain discarded.
 Prepared native bodies receive that exact private span, or the live four-value
 global span when appropriate. Unloaded compatibility frames retain their old
 highest-index contract, with the extra slot described by
-FVM_AVM1_HOST_REGISTER_EXTRA_SLOT. No public struct or wire-layout change is made.
+[FVM_AVM1_HOST_REGISTER_EXTRA_SLOT](../src/avm1/encoding_constants.h#L127). No public struct or wire-layout change is made.
 
 The new fixture crosses SWF4–8, counts 0/1/2/255, the last valid and first invalid
 parameter destination, global fallback suppression and native frame sizes.
@@ -34,3 +34,15 @@ Validation: Linux AGG 443/443 and Cairo Release 443/443, plus six focused
 heap/global ASan+UBSan checks with stack/leak instrumentation disabled. The 23
 unchanged original SWFs retain exact output, zero exit and empty stderr in each
 profile. Non-Linux acceptance remains open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_AVM1_HOST_REGISTER_EXTRA_SLOT` | macro / define | [src/avm1/encoding_constants.h:127](../src/avm1/encoding_constants.h#L127) |
+<!-- source-links:end -->

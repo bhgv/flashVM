@@ -1,6 +1,6 @@
 # Frame availability / Проверка доступности кадра — v0.293
 
-WaitForFrame and WaitForFrame2 now call C89 `fvm_exec_frame_loaded` with semantic
+WaitForFrame and WaitForFrame2 now call C89 [`fvm_exec_frame_loaded`](../include/flashvm/execution.h#L161) with semantic
 DIRECT or VALUE policies. The service accepts values and returns Boolean without
 bytecode or an interpreter stack. The interpreter decodes the direct frame/skip
 fields and skips complete Action records when the result is false. Variable-size
@@ -43,3 +43,15 @@ Action, а не в байтах; выход за конец блока заве�
 GC внутри toString, исключения, отказы памяти и восстановление области цели.
 Текущие SWF загружаются целиком: потоковая загрузка и её события не реализованы
 этим изменением. Все стадии 1–9 остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_frame_loaded` | function | [include/flashvm/execution.h:161](../include/flashvm/execution.h#L161) |
+<!-- source-links:end -->

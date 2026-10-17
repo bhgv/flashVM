@@ -5,9 +5,9 @@ FWS/CWS до SWF8, GC, прототипы, метатаблицы, нативн�
 скриптовые функции доступны. Полная совместимость Flash8, таймлайн и JIT ещё
 не реализованы.
 
-fvm_avm1_execute проверяет поток с завершающим End и запускает его в контексте.
-fvm_swf_execute_actions запускает верхние DoAction загруженного SWF, но не
-реализует полный цикл кадров и событий спрайтов. fvm_avm1_call вызывает функцию
+[fvm_avm1_execute](../include/flashvm/avm1.h#L38) проверяет поток с завершающим End и запускает его в контексте.
+[fvm_swf_execute_actions](../include/flashvm/avm1.h#L73) запускает верхние DoAction загруженного SWF, но не
+реализует полный цикл кадров и событий спрайтов. [fvm_avm1_call](../include/flashvm/avm1.h#L66) вызывает функцию
 с корнями GC для аргументов и получателя. Нативные функции и глобальные
 переменные работают в том же контексте.
 
@@ -26,3 +26,17 @@ ActionTry/ActionThrow SWF7–8 поддерживают catch по имени/р
 ранее изменённые глобальные переменные не откатываются. Ошибки памяти и
 неподдерживаемый байткод возвращают статусы, а не AS-исключения. Данный этап
 не подтверждает полную совместимость или безопасность произвольного SWF.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_call` | function | [include/flashvm/avm1.h:66](../include/flashvm/avm1.h#L66) |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../include/flashvm/avm1.h#L38) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](../include/flashvm/avm1.h#L73) |
+<!-- source-links:end -->

@@ -13,3 +13,17 @@
 **Ограничения:** пока нет отмены, отложенного запуска, объекта `thread` в ActionScript, сериализации функций, автоматического копирования каналов и ожидания группы потоков. На Linux используется pthread. Переходники Windows/macOS/Android присутствуют, но здесь не проверялись. Таймаутов нет: `join` может ждать бесконечно.
 
 Пример: `examples/embedding/workers/main.c`.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:71](../include/flashvm/worker.h#L71) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:45](../include/flashvm/worker.h#L45) |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+<!-- source-links:end -->

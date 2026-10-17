@@ -1,6 +1,6 @@
 # String/character services / Строки и символы — v0.265
 
-`fvm_exec_string_length`, `fvm_exec_char_code` and `fvm_exec_char_from_code`
+[`fvm_exec_string_length`](../include/flashvm/execution.h#L192), [`fvm_exec_char_code`](../include/flashvm/execution.h#L194) and [`fvm_exec_char_from_code`](../include/flashvm/execution.h#L196)
 provide C89 value interfaces for the ordinary/multibyte action pairs. Each
 operation has its own handler file, covering the supported SWF versions without
 interpreter stacks, register banks or bytecode access. StringExtract retains its
@@ -49,3 +49,17 @@ SWF<=8 traces match in both profiles. The excluded string_ops_swf6 file has an
 unmodified CWS/SWF15 header, size 1189 and SHA256
 4736047901af80560705ae16048eafb0a7b89faa22f8d9a5003f1be1ac1c97bc;
 it supplies no SWF<=8 acceptance evidence.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_char_code` | function | [include/flashvm/execution.h:194](../include/flashvm/execution.h#L194) |
+| `fvm_exec_char_from_code` | function | [include/flashvm/execution.h:196](../include/flashvm/execution.h#L196) |
+| `fvm_exec_string_length` | function | [include/flashvm/execution.h:192](../include/flashvm/execution.h#L192) |
+<!-- source-links:end -->

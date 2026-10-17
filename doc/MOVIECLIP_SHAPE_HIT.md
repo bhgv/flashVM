@@ -7,7 +7,7 @@ hitTest(x, y, true) проверяет заливки и обводки собс
 квадратичные/кубические кривые, круглые окончания/соединения обводок и текущие
 матрицы отображения. Флаг shapeFlag использует truthiness AS, включая строки.
 
-Новый C89 API fvm_path_hit_test работает с той же редактируемой векторной
+Новый C89 API [fvm_path_hit_test](../include/flashvm/path.h#L75) работает с той же редактируемой векторной
 моделью. Для кривых используются адаптивные хорды с допуском 0.0001 единицы
 координат и глубиной не более 20. Граница заливки проверяется с допуском
 0.000001. Это численное приближение, не обещание точного поведения Flash
@@ -30,3 +30,15 @@ subdivision depth and current stroke-scale approximation are explicit limits.
 Bitmap/text/filter and masked hit testing remain open. The named suites cover
 geometry, reflected/nested transforms, truthiness, transport and GC; this does
 not certify full MovieClip or historical Flash conformance.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_path_hit_test` | function | [include/flashvm/path.h:75](../include/flashvm/path.h#L75) |
+<!-- source-links:end -->

@@ -100,7 +100,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 **Lifetime / время жизни.** Handler/userdata remain host-owned until replaced or context destruction. The location and its strings are callback-only views.
 
-**Behavior / поведение.** The handler returns OK to continue interpretation, another status to stop this VM call. It may change breakpoints or future execution mode; it must not execute script, collect or destroy the context. Callbacks are recursion-suppressed. A source-aware stop can call fvm_debug_current_source. Host callbacks that throw C++ exceptions are converted to OOM/ERROR.
+**Behavior / поведение.** The handler returns OK to continue interpretation, another status to stop this VM call. It may change breakpoints or future execution mode; it must not execute script, collect or destroy the context. Callbacks are recursion-suppressed. A source-aware stop can call [fvm_debug_current_source](../include/flashvm/source_debug.h#L39). Host callbacks that throw C++ exceptions are converted to OOM/ERROR.
 
 
 ## fvm_debug_set_location
@@ -115,7 +115,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 **Lifetime / время жизни.** The source label is copied. This creates no file loader or source-content ownership.
 
-**Behavior / поведение.** This changes current host location metadata; it does not add an action map or a breakpoint. Use fvm_debug_map_action for persistent body-offset mappings and load_swd for actual source contents.
+**Behavior / поведение.** This changes current host location metadata; it does not add an action map or a breakpoint. Use [fvm_debug_map_action](../include/flashvm/debug.h#L63) for persistent body-offset mappings and load_swd for actual source contents.
 
 
 ## fvm_debug_map_action
@@ -139,7 +139,7 @@ Copy coherent process-local mutex owner/waiter rows.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned FVM_DebugMutex array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutex](../include/flashvm/debug.h#L67) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count is still set, rows unchanged); `INVALID_ARGUMENT` for missing count or null array with nonzero capacity.
 
@@ -154,7 +154,7 @@ Copy coherent process-local mutex owner/waiter rows with endpoint metadata.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned FVM_DebugMutexDetail array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugMutexDetail](../include/flashvm/debug.h#L90) array, or null only with capacity zero. `capacity`: row capacity. `count`: required nonnull output for total needed rows.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count is still set, rows unchanged); `INVALID_ARGUMENT` for missing count or null array with nonzero capacity.
 
@@ -184,7 +184,7 @@ Copy queue/file/remote delivery metadata without consuming a message.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `channel`: retained endpoint. `out`: required FVM_DebugChannel output struct (identity, pending, capacity, closed, frozen).
+**Parameters / параметры.** `channel`: retained endpoint. `out`: required [FVM_DebugChannel](../include/flashvm/debug.h#L100) output struct (identity, pending, capacity, closed, frozen).
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null inputs; transport, malformed framing, scan-budget or file-position errors otherwise. Failed scans leave output unchanged.
 
@@ -214,7 +214,7 @@ Copy active ActionScript channel wait rows.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned FVM_DebugChannelWait rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugChannelWait](../include/flashvm/debug.h#L127) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count updated, rows and queue unchanged); `INVALID_ARGUMENT` for invalid array/count arguments.
 
@@ -229,13 +229,13 @@ Copy the bounded oldest-to-newest diagnostic event queue.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `out`: caller-owned FVM_DebugResourceError rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
+**Parameters / параметры.** `out`: caller-owned [FVM_DebugResourceError](../include/flashvm/debug.h#L143) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count updated, rows and queue unchanged); `INVALID_ARGUMENT` for invalid array/count arguments.
 
 **Lifetime / время жизни.** Copied rows contain bounded source/function/address strings and numeric identities; no live VM/handle ownership is transferred.
 
-**Behavior / поведение.** The process-wide queue retains at most 64 events and drops the oldest on overflow. Probe/allocate/copy may need retry if new events arrive. clear=0 is nondestructive. Resource events are coarse intercept records (result can be FVM_ERROR); inspect structured exception info for richer fault codes.
+**Behavior / поведение.** The process-wide queue retains at most 64 events and drops the oldest on overflow. Probe/allocate/copy may need retry if new events arrive. clear=0 is nondestructive. Resource events are coarse intercept records (result can be [FVM_ERROR](../include/flashvm/flashvm.h#L43)); inspect structured exception info for richer fault codes.
 
 
 ## fvm_debug_exception_events
@@ -244,7 +244,7 @@ Copy the bounded oldest-to-newest diagnostic event queue.
 
 Declaration / декларация: [`flashvm/exception.h`](../include/flashvm/exception.h).
 
-**Parameters / параметры.** `out`: caller-owned FVM_ExceptionInfo rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
+**Parameters / параметры.** `out`: caller-owned [FVM_ExceptionInfo](../include/flashvm/exception.h#L41) rows, nullable only with capacity zero. `capacity`: maximum rows. `count`: required needed-row output. `clear`: nonzero removes the copied batch only after successful full copying.
 
 **Results / результаты.** `OK` if all rows fit; `NOT_FOUND` if capacity is insufficient (count updated, rows and queue unchanged); `INVALID_ARGUMENT` for invalid array/count arguments.
 
@@ -274,7 +274,7 @@ Borrow one managed heap objects row by zero-based index.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `context`: owning VM. `index`: zero-based row below its current count. `out`: required FVM_Object ** object output.
+**Parameters / параметры.** `context`: owning VM. `index`: zero-based row below its current count. `out`: required [FVM_Object](../src/core/runtime.hpp#L118) ** object output.
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null arguments or an out-of-range index (legacy APIs do not use NOT_FOUND for end).
 
@@ -415,7 +415,7 @@ Declaration / декларация: [`flashvm/crash.h`](../include/flashvm/crash
 
 **Lifetime / время жизни.** All previously borrowed frame/JSON/ZIP/source-line views become invalid immediately.
 
-**Behavior / поведение.** This does not clear an ActionScript pending exception and does not delete an output file. Use fvm_exception_clear for exception handling and host file APIs for deliberate file removal.
+**Behavior / поведение.** This does not clear an ActionScript pending exception and does not delete an output file. Use [fvm_exception_clear](../include/flashvm/exception.h#L65) for exception handling and host file APIs for deliberate file removal.
 
 
 ## fvm_crash_info
@@ -439,7 +439,7 @@ Borrow one copied postmortem activation, innermost first.
 
 Declaration / декларация: [`flashvm/crash.h`](../include/flashvm/crash.h).
 
-**Parameters / параметры.** `context`: owning VM. `index`: retained frame index. `out`: required FVM_CrashFrame output struct.
+**Parameters / параметры.** `context`: owning VM. `index`: retained frame index. `out`: required [FVM_CrashFrame](../include/flashvm/crash.h#L32) output struct.
 
 **Results / результаты.** `OK`; `NOT_FOUND` if no report or index is beyond retained frames; `INVALID_ARGUMENT` for null context/output. Failed lookup leaves out unchanged.
 
@@ -454,13 +454,13 @@ Classify interpreted, emitted JIT or embedding-owned native execution.
 
 Declaration / декларация: [`flashvm/crash.h`](../include/flashvm/crash.h).
 
-**Parameters / параметры.** `context`: owning VM. `index`: retained frame. `out`: required FVM_CrashEngine output.
+**Parameters / параметры.** `context`: owning VM. `index`: retained frame. `out`: required [FVM_CrashEngine](../include/flashvm/crash.h#L25) output.
 
 **Results / результаты.** `OK`; `NOT_FOUND` for an absent report/frame; `INVALID_ARGUMENT` for null inputs.
 
 **Lifetime / время жизни.** The returned enum is a copied scalar.
 
-**Behavior / поведение.** An arbitrary FVM_ScriptBody attachment is NATIVE, while fvm_jit_body is JIT. Ordinary C stack frames/native callbacks are not a platform stack-unwind result. Native host bodies may have no exposed machine-byte view.
+**Behavior / поведение.** An arbitrary [FVM_ScriptBody](../include/flashvm/function.h#L36) attachment is NATIVE, while [fvm_jit_body](../include/flashvm/jit.h#L24) is JIT. Ordinary C stack frames/native callbacks are not a platform stack-unwind result. Native host bodies may have no exposed machine-byte view.
 
 
 ## fvm_crash_source_line
@@ -604,7 +604,7 @@ Resolve a copied action body and relative offset to source text.
 
 Declaration / декларация: [`flashvm/source_debug.h`](../include/flashvm/source_debug.h).
 
-**Parameters / параметры.** `context`: owning VM. `body`/`body_size`: exact AVM1 body bytes (original, JIT view or crash copy). `offset`: relative byte offset below body size. `out`: required FVM_DebugSourcePosition.
+**Parameters / параметры.** `context`: owning VM. `body`/`body_size`: exact AVM1 body bytes (original, JIT view or crash copy). `offset`: relative byte offset below body size. `out`: required [FVM_DebugSourcePosition](../include/flashvm/source_debug.h#L10).
 
 **Results / результаты.** `OK`; `NOT_FOUND` for missing/unmapped/ambiguous source; `INVALID_ARGUMENT` for invalid spans/output/offset; `UNSUPPORTED` when bounded candidate/work limits are exceeded. Failed lookup leaves out unchanged.
 
@@ -619,7 +619,7 @@ Resolve the currently active VM action for a debugger callback.
 
 Declaration / декларация: [`flashvm/source_debug.h`](../include/flashvm/source_debug.h).
 
-**Parameters / параметры.** `context`: owning VM during a breakpoint/debugger/native host callback. `out`: required FVM_DebugSourcePosition.
+**Parameters / параметры.** `context`: owning VM during a breakpoint/debugger/native host callback. `out`: required [FVM_DebugSourcePosition](../include/flashvm/source_debug.h#L10).
 
 **Results / результаты.** `OK`; `NOT_FOUND` without an active source-bearing frame/bundle; lookup INVALID_ARGUMENT/UNSUPPORTED outcomes otherwise.
 
@@ -649,11 +649,11 @@ Borrow the immutable original AVM1 source for one native handle.
 
 Declaration / декларация: [`flashvm/jit.h`](../include/flashvm/jit.h).
 
-**Parameters / параметры.** `code`: valid unreleased FVM_JitCode. `out`: required const void **. `size`: required byte-count output.
+**Parameters / параметры.** `code`: valid unreleased [FVM_JitCode](../src/jit/internal.hpp#L59). `out`: required const void **. `size`: required byte-count output.
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null handle/outputs. An invalid freed handle is a host ownership violation, not safely detectable input.
 
-**Lifetime / время жизни.** Borrowed bytes live until fvm_jit_destroy and must not be written or freed. Source views are separate from copied report views.
+**Lifetime / время жизни.** Borrowed bytes live until [fvm_jit_destroy](../include/flashvm/jit.h#L28) and must not be written or freed. Source views are separate from copied report views.
 
 **Behavior / поведение.** Source is the exact owned copy used for compilation; use it with source_position or host disassembly tooling.
 
@@ -664,11 +664,11 @@ Borrow the immutable RX mapping payload for one native handle.
 
 Declaration / декларация: [`flashvm/jit.h`](../include/flashvm/jit.h).
 
-**Parameters / параметры.** `code`: valid unreleased FVM_JitCode. `out`: required const void **. `size`: required byte-count output.
+**Parameters / параметры.** `code`: valid unreleased [FVM_JitCode](../src/jit/internal.hpp#L59). `out`: required const void **. `size`: required byte-count output.
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null handle/outputs. An invalid freed handle is a host ownership violation, not safely detectable input.
 
-**Lifetime / время жизни.** Borrowed bytes live until fvm_jit_destroy and must not be written or freed. Source views are separate from copied report views.
+**Lifetime / время жизни.** Borrowed bytes live until [fvm_jit_destroy](../include/flashvm/jit.h#L28) and must not be written or freed. Source views are separate from copied report views.
 
 **Behavior / поведение.** Mapping view excludes page padding and nested mappings. It identifies emitted bytes, not source-line/native-PC relocation tables. Active structured ZIP_CODE reports capture the actual failing child mapping.
 
@@ -745,7 +745,7 @@ Declaration / декларация: [`flashvm/execution_mode.h`](../include/flas
 
 **Lifetime / время жизни.** No new ownership transfer beyond the ordinary owning-context API; callbacks/userdata are borrowed and scalar outputs are copied.
 
-**Behavior / поведение.** Active native code is not patched. Interpreter bypasses fvm_jit_body attachments; arbitrary host bodies retain their own ABI. Replay can repeat side effects and is not rollback. See [execution modes](EXECUTION_MODES.md).
+**Behavior / поведение.** Active native code is not patched. Interpreter bypasses [fvm_jit_body](../include/flashvm/jit.h#L24) attachments; arbitrary host bodies retain their own ABI. Replay can repeat side effects and is not rollback. See [execution modes](EXECUTION_MODES.md).
 
 
 ## fvm_execution_get_options
@@ -844,7 +844,7 @@ Borrow one live function frame without constructing a report.
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `context`: owning VM inside a breakpoint or fault debugger callback. `index`: innermost-first frame. `out`: required FVM_DebugFrame view.
+**Parameters / параметры.** `context`: owning VM inside a breakpoint or fault debugger callback. `index`: innermost-first frame. `out`: required [FVM_DebugFrame](../include/flashvm/debug.h#L16) view.
 
 **Results / результаты.** `OK`; `NOT_FOUND` outside a stop or beyond the live/capped frame range; `INVALID_ARGUMENT` for null arguments.
 
@@ -852,3 +852,82 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 **Behavior / поведение.** Fields expose actual engine, supplied argc, existing register count, current/suspended action offset, forced-entry success and preservation_status. Use source_position on its body/offset for caller source lines. Inspection adds no local spill and invokes no script. The native mapping is protected while active; do not destroy or mutate VM/code during the callback.
 
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_execute_options` | function | [include/flashvm/execution_mode.h:73](../include/flashvm/execution_mode.h#L73) |
+| `fvm_crash_argument` | function | [include/flashvm/crash.h:77](../include/flashvm/crash.h#L77) |
+| `fvm_crash_clear` | function | [include/flashvm/crash.h:62](../include/flashvm/crash.h#L62) |
+| `fvm_crash_configure` | function | [include/flashvm/crash.h:55](../include/flashvm/crash.h#L55) |
+| `fvm_crash_data` | function | [include/flashvm/crash.h:74](../include/flashvm/crash.h#L74) |
+| `fvm_crash_frame` | function | [include/flashvm/crash.h:68](../include/flashvm/crash.h#L68) |
+| `fvm_crash_frame_engine` | function | [include/flashvm/crash.h:70](../include/flashvm/crash.h#L70) |
+| `fvm_crash_info` | function | [include/flashvm/crash.h:65](../include/flashvm/crash.h#L65) |
+| `fvm_crash_local` | function | [include/flashvm/crash.h:79](../include/flashvm/crash.h#L79) |
+| `fvm_crash_register` | function | [include/flashvm/crash.h:82](../include/flashvm/crash.h#L82) |
+| `fvm_crash_set_detail` | function | [include/flashvm/crash.h:60](../include/flashvm/crash.h#L60) |
+| `fvm_crash_source_line` | function | [include/flashvm/crash.h:72](../include/flashvm/crash.h#L72) |
+| `FVM_CrashEngine` | enum | [include/flashvm/crash.h:25](../include/flashvm/crash.h#L25) |
+| `FVM_CrashFrame` | struct | [include/flashvm/crash.h:32](../include/flashvm/crash.h#L32) |
+| `fvm_debug_channel_freeze` | function | [include/flashvm/debug.h:114](../include/flashvm/debug.h#L114) |
+| `fvm_debug_channel_message` | function | [include/flashvm/debug.h:125](../include/flashvm/debug.h#L125) |
+| `fvm_debug_channel_state` | function | [include/flashvm/debug.h:118](../include/flashvm/debug.h#L118) |
+| `fvm_debug_channel_wait_snapshot` | function | [include/flashvm/debug.h:139](../include/flashvm/debug.h#L139) |
+| `fvm_debug_clear_symbols` | function | [include/flashvm/source_debug.h:25](../include/flashvm/source_debug.h#L25) |
+| `fvm_debug_current_source` | function | [include/flashvm/source_debug.h:39](../include/flashvm/source_debug.h#L39) |
+| `fvm_debug_exception_events` | function | [include/flashvm/exception.h:70](../include/flashvm/exception.h#L70) |
+| `fvm_debug_frame_at` | function | [include/flashvm/debug.h:34](../include/flashvm/debug.h#L34) |
+| `fvm_debug_frame_count` | function | [include/flashvm/debug.h:32](../include/flashvm/debug.h#L32) |
+| `fvm_debug_load_swd` | function | [include/flashvm/source_debug.h:22](../include/flashvm/source_debug.h#L22) |
+| `fvm_debug_map_action` | function | [include/flashvm/debug.h:63](../include/flashvm/debug.h#L63) |
+| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:98](../include/flashvm/debug.h#L98) |
+| `fvm_debug_mutex_snapshot` | function | [include/flashvm/debug.h:87](../include/flashvm/debug.h#L87) |
+| `fvm_debug_native_function_at` | function | [include/flashvm/debug.h:166](../include/flashvm/debug.h#L166) |
+| `fvm_debug_native_function_at_bytes` | function | [include/flashvm/debug.h:172](../include/flashvm/debug.h#L172) |
+| `fvm_debug_native_function_count` | function | [include/flashvm/debug.h:164](../include/flashvm/debug.h#L164) |
+| `fvm_debug_object_at` | function | [include/flashvm/debug.h:162](../include/flashvm/debug.h#L162) |
+| `fvm_debug_object_count` | function | [include/flashvm/debug.h:160](../include/flashvm/debug.h#L160) |
+| `fvm_debug_register_name` | function | [include/flashvm/source_debug.h:41](../include/flashvm/source_debug.h#L41) |
+| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:156](../include/flashvm/debug.h#L156) |
+| `fvm_debug_script_function_at` | function | [include/flashvm/debug.h:170](../include/flashvm/debug.h#L170) |
+| `fvm_debug_script_function_at_bytes` | function | [include/flashvm/debug.h:175](../include/flashvm/debug.h#L175) |
+| `fvm_debug_script_function_count` | function | [include/flashvm/debug.h:168](../include/flashvm/debug.h#L168) |
+| `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:51](../include/flashvm/debug.h#L51) |
+| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
+| `fvm_debug_set_location` | function | [include/flashvm/debug.h:59](../include/flashvm/debug.h#L59) |
+| `fvm_debug_source_at` | function | [include/flashvm/source_debug.h:29](../include/flashvm/source_debug.h#L29) |
+| `fvm_debug_source_count` | function | [include/flashvm/source_debug.h:27](../include/flashvm/source_debug.h#L27) |
+| `fvm_debug_source_position` | function | [include/flashvm/source_debug.h:35](../include/flashvm/source_debug.h#L35) |
+| `FVM_DebugChannel` | struct | [include/flashvm/debug.h:100](../include/flashvm/debug.h#L100) |
+| `FVM_DebugChannelWait` | struct | [include/flashvm/debug.h:127](../include/flashvm/debug.h#L127) |
+| `FVM_DebugFrame` | struct | [include/flashvm/debug.h:16](../include/flashvm/debug.h#L16) |
+| `FVM_DebugMutex` | struct | [include/flashvm/debug.h:67](../include/flashvm/debug.h#L67) |
+| `FVM_DebugMutexDetail` | struct | [include/flashvm/debug.h:90](../include/flashvm/debug.h#L90) |
+| `FVM_DebugResourceError` | struct | [include/flashvm/debug.h:143](../include/flashvm/debug.h#L143) |
+| `FVM_DebugSourcePosition` | struct | [include/flashvm/source_debug.h:10](../include/flashvm/source_debug.h#L10) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../include/flashvm/exception.h#L65) |
+| `FVM_ExceptionInfo` | struct | [include/flashvm/exception.h:41](../include/flashvm/exception.h#L41) |
+| `fvm_execution_get_options` | function | [include/flashvm/execution_mode.h:67](../include/flashvm/execution_mode.h#L67) |
+| `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../include/flashvm/execution_mode.h#L71) |
+| `fvm_execution_options_init` | function | [include/flashvm/execution_mode.h:61](../include/flashvm/execution_mode.h#L61) |
+| `fvm_execution_set_logger` | function | [include/flashvm/execution_mode.h:69](../include/flashvm/execution_mode.h#L69) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../include/flashvm/execution_mode.h#L64) |
+| `fvm_function_invoke_options` | function | [include/flashvm/execution_mode.h:76](../include/flashvm/execution_mode.h#L76) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
+| `fvm_jit_body` | function | [include/flashvm/jit.h:24](../include/flashvm/jit.h#L24) |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
+| `fvm_jit_destroy` | function | [include/flashvm/jit.h:28](../include/flashvm/jit.h#L28) |
+| `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
+| `fvm_jit_source` | function | [include/flashvm/jit.h:31](../include/flashvm/jit.h#L31) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+| `FVM_ScriptBody` | callback typedef | [include/flashvm/function.h:36](../include/flashvm/function.h#L36) |
+<!-- source-links:end -->

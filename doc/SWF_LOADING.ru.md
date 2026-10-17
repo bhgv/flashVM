@@ -6,7 +6,7 @@
 также заменяется только при успехе.
 
 FileLength проверяется до выделения памяти. По умолчанию предел — 64 МиБ
-(FVM_SWF_DEFAULT_LIMIT). Ненулевой FVM_Config.memory_limit_bytes ограничивает
+([FVM_SWF_DEFAULT_LIMIT](../include/flashvm/swf.h#L15)). Ненулевой [FVM_Config](../include/flashvm/flashvm.h#L51).memory_limit_bytes ограничивает
 буфер распакованного фильма; **общий учёт всей памяти VM пока отсутствует**.
 Превышение возвращает OUT_OF_MEMORY. CWS должен содержать один полный поток
 zlib, без лишних входных байтов, с ровно FileLength-8 выходными байтами.
@@ -14,11 +14,11 @@ zlib, без лишних входных байтов, с ровно FileLength-
 Проверяются границы тегов, расширенная длина, ненулевая разрядность RECT,
 пустые End и ShowFrame; End должен завершать файл.
 
-`fvm_swf_execute_actions` выполняет верхнеуровневые DoAction нормализованного
+[`fvm_swf_execute_actions`](../include/flashvm/avm1.h#L73) выполняет верхнеуровневые DoAction нормализованного
 FWS, включая исходный CWS. Это пока не проигрыватель временной шкалы: спрайты,
 события, display list и декодирование фигур не реализованы этой функцией.
 Структурно корректный неизвестный тег может быть не реализован.
-`fvm_advance` пока возвращает UNSUPPORTED.
+[`fvm_advance`](../include/flashvm/flashvm.h#L74) пока возвращает UNSUPPORTED.
 
 ## Значения AVM1
 
@@ -42,3 +42,18 @@ ActionStoreRegister работает с четырьмя регистрами, �
 Они проверяют повреждённые потоки, лимиты, сохранение фильма при ошибке,
 float/double, индексы пула, захват пула функцией, регистры через GC и время
 жизни строк после перезаписи исходного буфера.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:74](../include/flashvm/flashvm.h#L74) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
+| `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](../include/flashvm/avm1.h#L73) |
+<!-- source-links:end -->

@@ -15,7 +15,7 @@ jumps. They do not invoke the AVM1 interpreter or dispatch a decoded instruction
 loop at runtime. This is a call-based first tier, without arithmetic inlining or
 a performance claim. It is not a complete JIT or completion of roadmap stage 8.
 
-The normal `INTERPRETER` build includes the explicit API in `flashvm/jit.h`.
+The normal [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) build includes the explicit API in `flashvm/jit.h`.
 Build and run the C89 interpreter/native demonstration:
 
 ```
@@ -25,14 +25,14 @@ cmake --build build --target flashvm_examples_embedding_jit_main
 ```
 
 It runs `x*2+2` with x=20 through the interpreter, compiles the same body, attaches
-it with `fvm_function_set_body`, invokes through the same prepared activation ABI,
+it with [`fvm_function_set_body`](../include/flashvm/function.h#L43), invokes through the same prepared activation ABI,
 checks result 42, unbinds, then frees the code. Unsupported hosts keep interpreting.
 No external compiler or assembler is needed at runtime.
 
 ## Contract and supported subset
 
-`fvm_jit_compile` copies primitive literals and lowers a body into immutable code.
-It changes no function. Attach only after success; on `FVM_UNSUPPORTED`, leave the
+[`fvm_jit_compile`](../include/flashvm/jit.h#L21) copies primitive literals and lowers a body into immutable code.
+It changes no function. Attach only after success; on [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), leave the
 original function interpreted. Compile the same bytes used to create the function.
 The compiler currently accepts:
 
@@ -85,21 +85,21 @@ The compiler currently accepts:
 - Jump and If, with target validation and native forward/backward relocation.
 
 All other operations, including function definitions and exception blocks, return
-`FVM_UNSUPPORTED` at compile time. Support in the interpreter does not imply
+[`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) at compile time. Support in the interpreter does not imply
 support in this compiler. Invalid supported record layouts/branch targets return
-`FVM_INVALID_ARGUMENT`. Some unreachable unsupported operations can conservatively
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45). Some unreachable unsupported operations can conservatively
 reject a body. Source/action/constant/operand/native-code bounds are named in
 `src/jit/constants.h`; bounds are implementation limits rather than SWF promises.
 
 Code handles own no managed values and can be reused sequentially across contexts.
 They are not thread-safe. Keep a handle alive while attached to any function;
-unbind **every** attachment before `fvm_jit_destroy`. Destruction during an active
+unbind **every** attachment before [`fvm_jit_destroy`](../include/flashvm/jit.h#L28). Destruction during an active
 invocation is rejected. The native-body graph codec already drops process-local
 attachments during transfer, preserving original bytecode. No generated code
 serialization or hotness policy exists. Runtime JIT mode now compiles/caches
 supported bodies automatically (EXECUTION_MODES.md). The `DEFS.txt` JIT preset starts new contexts in automatic JIT mode;
 INTERPRETER preserves the manual default. Both allow runtime overrides.
-`FVM_FEATURE_JIT` remains an unsupported runtime configuration bit. Other CPU/OS backends return unsupported.
+[`FVM_FEATURE_JIT`](../include/flashvm/flashvm.h#L27) remains an unsupported runtime configuration bit. Other CPU/OS backends return unsupported.
 
 ## Lifetime, GC and failures
 
@@ -141,8 +141,8 @@ CPU execution, full Action coverage or Flash Player oracle equivalence is claime
 Одна функция исполняется интерпретатором и машинным кодом через общий ABI,
 получает одинаковые аргументы и возвращает 42. Исходный байткод сохранён.
 Неподдерживаемые тела автоматически передаются интерпретатору. Ключ DEFS
-`JIT` включает автоматический режим для новых контекстов; `INTERPRETER`
-сохраняет прежний manual-режим. Runtime-флаг `FVM_FEATURE_JIT` не поддерживается.
+[`JIT`](../cmake/BuildDefinitions.cmake#L13) включает автоматический режим для новых контекстов; [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13)
+сохраняет прежний manual-режим. Runtime-флаг [`FVM_FEATURE_JIT`](../include/flashvm/flashvm.h#L27) не поддерживается.
 
 Код хранится в RW-памяти только при подготовке, затем память становится RX.
 Корни стека, лимит инструкций, GC и ошибки согласованы с общими службами VM.
@@ -151,3 +151,22 @@ CPU execution, full Action coverage or Flash Player oracle equivalence is claime
 (EXECUTION_MODES.md). Нет переноса кода между процессами и backend для остальных ОС/архитектур.
 Полный интерпретатор, JIT всех требуемых архитектур и стадии roadmap остаются
 открытыми; тесты выше подтверждают только перечисленные сценарии.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_FEATURE_JIT` | macro / define | [include/flashvm/flashvm.h:27](../include/flashvm/flashvm.h#L27) |
+| `fvm_function_set_body` | function | [include/flashvm/function.h:43](../include/flashvm/function.h#L43) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_jit_compile` | function | [include/flashvm/jit.h:21](../include/flashvm/jit.h#L21) |
+| `fvm_jit_destroy` | function | [include/flashvm/jit.h:28](../include/flashvm/jit.h#L28) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `INTERPRETER` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+| `JIT` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+<!-- source-links:end -->

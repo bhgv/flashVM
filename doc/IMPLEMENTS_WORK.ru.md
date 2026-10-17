@@ -1,11 +1,11 @@
 # Бюджет объявления интерфейсов — v0.383
 
-Загруженный fvm_exec_implements для SWF7–8 теперь использует общий бюджет AVM1.
+Загруженный [fvm_exec_implements](../include/flashvm/execution.h#L222) для SWF7–8 теперь использует общий бюджет AVM1.
 До работы оплачиваются вход, каждое захватываемое значение интерфейса и каждое
 проверяемое значение при подготовке snapshot. Полная обработка N аргументов
 расходует 2N+1 единиц дополнительно к байткоду вызывающей стороны. Вложенный
 вызов сохраняет счётчик; внешний прямой вызов сбрасывает его. Исчерпание бюджета,
-насыщение счётчика и остановка worker дают FVM_ERROR. Нулевой instruction_limit
+насыщение счётчика и остановка worker дают [FVM_ERROR](../include/flashvm/flashvm.h#L43). Нулевой instruction_limit
 остаётся неограниченным. Host-учёт и его constructor-reference модель не меняются.
 
 [GC:] Аргументы удерживаются корнями при подготовке списка. Полный список
@@ -46,3 +46,16 @@ snapshot allocation/transport, membership data/large-graph and collecting
 membership-callback regressions. Stack ASan and LeakSanitizer remain disabled.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_implements` | function | [include/flashvm/execution.h:222](../include/flashvm/execution.h#L222) |
+<!-- source-links:end -->

@@ -1,7 +1,7 @@
 # Qualified Delete2 / Составные имена при удалении
 
 v0.251 adds dot/colon member paths to Delete2. The interpreter resolves the first
-binding, then `fvm_exec_delete_path` traverses the remaining counted path from
+binding, then [`fvm_exec_delete_path`](../include/flashvm/execution.h#L371) traverses the remaining counted path from
 that base value. Intermediate object getters may run; the final member is deleted
 without being read. Missing/primitive prefixes report false. DONT_DELETE and
 inherited-final-member behavior remain those of the shared delete-member service.
@@ -46,3 +46,15 @@ stack/leak instrumentation remains unavailable. All 23 prior original probes sta
 exact. The new SWF7 delete probe matches using its declared three-frame policy.
 The expanded 25-probe set is 24/25: SWF8 prototype_delete still formats MovieClip's
 prototype as a display path; this trace mismatch remains recorded as open work.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_delete_path` | function | [include/flashvm/execution.h:371](../include/flashvm/execution.h#L371) |
+<!-- source-links:end -->

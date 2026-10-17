@@ -5,7 +5,7 @@ including qualified CallFunction names. The selected this receiver is preserved;
 property storage no longer supplies method lookup depth. The C global function
 fallback uses the same rule after lookup, including getters/resolvers which
 remove bindings. Native registration priority, construction, named CallMethod
-and unloaded host inference are unchanged. Public direct fvm_function_invoke
+and unloaded host inference are unchanged. Public direct [fvm_function_invoke](../include/flashvm/function.h#L65)
 retains its existing embedding contract.
 
 [GC:] Qualified lookup owners remain in caller root scopes independently of
@@ -48,3 +48,15 @@ see [current contract](ANONYMOUS_UNDEFINED_THIS.md). Earlier object/facade
 expectations above describe the historical implementation and are superseded.
 Уточнение v0.512: ожидания объекта this/super в старых проверках исправлены;
 актуальная семантика описана в связанном документе.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+<!-- source-links:end -->

@@ -69,3 +69,46 @@
 - If validation artifacts need preserving, deliver them in a separate versioned
   ZIP for download. Keep generated test results, copied profiles and logs out of
   both the source tree and committed Git history.
+
+
+## Standing documentation and example requirements (2026-10-17)
+
+- User instruction: keep documentation linked to the source and keep examples
+  documented and indexed for every subsequent change, not only this checkpoint.
+- In user-facing documentation, link described functions, callback types,
+  structs/classes/enums, macros, defines and named constants to their real
+  declaration/definition in first-party source. Prefer the public declaration
+  for C ABI functions and the complete definition for aggregate types. Include
+  the current source line where supported; never guess locations or resolve an
+  ambiguous local name to an unrelated symbol. Keep existing manual/TOC links.
+- Use [scripts/link_documentation_sources.py](scripts/link_documentation_sources.py)
+  after changing documented source or Markdown, then run its `--check` mode.
+  It refreshes source links and per-page source tables without editing fenced
+  code or section headings. Review links for newly introduced/renamed symbols;
+  unrecognized or historical symbols require an explicit explanation, not a
+  fabricated link. Recheck relative files, Markdown anchors and source lines.
+- Document each public API function in detail: purpose, arguments, return/error
+  statuses, ownership/lifetime, execution/thread/GC restrictions and meaningful
+  limitations. Link the exact API declaration and relevant implementation where
+  useful. Keep Russian and English contracts consistent with actual behavior.
+- Every example needs a Markdown README: purpose and use cases, requirements,
+  implementation details, ownership/cleanup, build/run commands, expected
+  results and limitations. List demonstrated C or script APIs with comments
+  naming the guide file and links to relevant guide sections and source
+  declarations. Mark sketches/conceptual notes explicitly; do not present them
+  as executable examples or compatibility acceptance evidence.
+- For new/edited example code, retain human formatting and explain every
+  nonempty source/header/ActionScript line. Use ordinary error handling rather
+  than assertions in tutorials. Keep helper ownership and side effects clear.
+- Maintain [examples/README.md](examples/README.md) when adding, removing or
+  changing an example: folder groups, logical thematic subgroups, alphabetical
+  subgroup/example order, structured linked contents, detailed descriptions and
+  a final flat alphabetical glossary linking every example to its description.
+  Keep per-example README/source links current. Companion headers/AS sources
+  belong to their example; identify documentation-only entries separately.
+- Verify catalog completeness/sorting, API coverage, documented build target
+  names/feature prerequisites and links. Run the existing debugger tutorial
+  checker when relevant. For documentation-only changes, validate documentation
+  and affected version metadata; do not claim unrelated runtime retesting.
+
+Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTATION_GUIDELINES.md).

@@ -1,6 +1,6 @@
 # Scoped function calls / Вызовы функций по путям — v0.263
 
-`fvm_exec_call_function` resolves an already-coerced counted name using explicit
+[`fvm_exec_call_function`](../include/flashvm/execution.h#L437) resolves an already-coerced counted name using explicit
 lexical scope, target, this and default receiver inputs. It accepts ordered value
 arguments, without bytecode or interpreter-stack access. The interpreter retains
 name coercion before argument-count coercion.
@@ -43,3 +43,15 @@ original SWFs match exact traces in both profiles. The selected 17-test
 ASan/UBSan run passes; this environment covers heap/global checks, without
 stack or leak instrumentation. No non-Linux or generated-machine-code result
 is claimed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_call_function` | function | [include/flashvm/execution.h:437](../include/flashvm/execution.h#L437) |
+<!-- source-links:end -->

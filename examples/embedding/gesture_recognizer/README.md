@@ -29,15 +29,35 @@ Build / Сборка: enable `FVM_BUILD_EXAMPLES=ON` in CMake.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_config_init`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_create`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_gesture_recognizer_feed`](../../../include/flashvm/gesture_recognizer.h) | [INPUT_EVENTS.md](../../../doc/INPUT_EVENTS.md) — Распознавание и передача жестов. |
-| [`fvm_gesture_recognizer_init`](../../../include/flashvm/gesture_recognizer.h) | [INPUT_EVENTS.md](../../../doc/INPUT_EVENTS.md) — Распознавание и передача жестов. |
-| [`fvm_input_set_callback`](../../../include/flashvm/input.h) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
-| [`fvm_input_set_rule`](../../../include/flashvm/input.h) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
-| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_gesture_recognizer_feed`](../../../include/flashvm/gesture_recognizer.h#L42) | [INPUT_EVENTS.md](../../../doc/INPUT_EVENTS.md) — Распознавание и передача жестов. |
+| [`fvm_gesture_recognizer_init`](../../../include/flashvm/gesture_recognizer.h#L38) | [INPUT_EVENTS.md](../../../doc/INPUT_EVENTS.md) — Распознавание и передача жестов. |
+| [`fvm_input_set_callback`](../../../include/flashvm/input.h#L69) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
+| [`fvm_input_set_rule`](../../../include/flashvm/input.h#L52) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-gesture_recognizer).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_gesture_recognizer_feed` | function | [include/flashvm/gesture_recognizer.h:42](../../../include/flashvm/gesture_recognizer.h#L42) |
+| `fvm_gesture_recognizer_init` | function | [include/flashvm/gesture_recognizer.h:38](../../../include/flashvm/gesture_recognizer.h#L38) |
+| `fvm_input_set_callback` | function | [include/flashvm/input.h:69](../../../include/flashvm/input.h#L69) |
+| `fvm_input_set_rule` | function | [include/flashvm/input.h:52](../../../include/flashvm/input.h#L52) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+<!-- source-links:end -->

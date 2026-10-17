@@ -1,9 +1,9 @@
 # Объектные оболочки Boolean и нативные методы прототипов
 
-fvm_standard_install теперь устанавливает метаданные глобального класса Boolean
+[fvm_standard_install](../include/flashvm/standard.h#L18) теперь устанавливает метаданные глобального класса Boolean
 и отдельный конструктор вместе с прежними числовыми функциями. Boolean(value)
-через fvm_call/AVM1 CallFunction возвращает примитив; new Boolean(value) через
-fvm_construct/AVM1 NewObject — объект под управлением GC. Лишние корректные
+через [fvm_call](../include/flashvm/value.h#L138)/AVM1 CallFunction возвращает примитив; new Boolean(value) через
+[fvm_construct](../include/flashvm/value.h#L158)/AVM1 NewObject — объект под управлением GC. Лишние корректные
 аргументы игнорируются. Установка остаётся явной, отклоняет конфликты и публикует
 глобальные значения, функции и конструкторы вместе. Повторная установка проверяет
 класс, методы прототипа и захват конструктора; замена проверяемой привязки даёт
@@ -29,13 +29,13 @@ ToPrimitive ещё не готово. Boolean(оболочкаFalse) даёт tr
 
 ## Поиск методов и API расширений
 
-fvm_object_define_method_rooted(context,object,name,callback,userdata,root)
+[fvm_object_define_method_rooted](../include/flashvm/value.h#L115)(context,object,name,callback,userdata,root)
 создаёт либо заменяет собственный нативный метод. root — null либо объект того же
 контекста; произвольная память userdata не сканируется. Собственные данные/accessor
 с тем же именем мешают регистрации. Замена callback освобождает прежний корень
-захвата. fvm_object_has_own учитывает собственные методы, но не унаследованные.
+захвата. [fvm_object_has_own](../include/flashvm/value.h#L70) учитывает собственные методы, но не унаследованные.
 
-fvm_object_call и AVM1 CallMethod ищут метод по цепочке максимум из 1024 объектов.
+[fvm_object_call](../include/flashvm/value.h#L126) и AVM1 CallMethod ищут метод по цепочке максимум из 1024 объектов.
 Receiver остаётся исходным объектом, а не прототипом, хранящим callback.
 Собственный метод перекрывает унаследованный. Первое свойство-данные/accessor
 блокирует вызов нативного метода и даёт UNSUPPORTED: вызов function-valued свойств
@@ -48,7 +48,7 @@ Receiver остаётся исходным объектом, а не прото�
 receiver/прототипов. Прежний мост именованных функций применяется только при
 отсутствии метода. Нативный метод прототипа в AVM1 имеет приоритет перед
 одноимённой скриптовой функцией. Превышение бюджета цепочки даёт ERROR без fallback.
-Это ограниченный нативный мост, а не полный Function. fvm_object_get пока не
+Это ограниченный нативный мост, а не полный Function. [fvm_object_get](../include/flashvm/value.h#L72) пока не
 выдаёт нативный метод как значение-функцию.
 
 ## GC, потоки и примеры
@@ -75,3 +75,21 @@ toString родителя. C89-пример examples/embedding/standard_boolean/
 операторов, различия SWF-версий и оболочки Number/String ещё не завершены.
 Полная готовность Boolean/SWF 8 не заявлена; Windows/macOS/Android не проверены.
 Проверки и состояние зеркала: STANDARD_BOOLEAN_CHECKPOINT.ru.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../include/flashvm/value.h#L115) |
+| `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
+| `fvm_object_has_own` | function | [include/flashvm/value.h:70](../include/flashvm/value.h#L70) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+<!-- source-links:end -->

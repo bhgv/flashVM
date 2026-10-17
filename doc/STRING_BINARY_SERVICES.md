@@ -1,6 +1,6 @@
 # Binary string services / Двухместные строковые операции — v0.267
 
-`fvm_exec_string_add` and `fvm_exec_string_compare` provide C89 interfaces over
+[`fvm_exec_string_add`](../include/flashvm/execution.h#L185) and [`fvm_exec_string_compare`](../include/flashvm/execution.h#L189) provide C89 interfaces over
 two values. Each has a separate implementation file. No service receives action
 codes, bytecode offsets, interpreter stacks or register banks. String comparison
 accepts the existing semantic EQUAL/LESS/GREATER identifiers; other modes fail
@@ -46,3 +46,16 @@ Validation: GCC13.3 Linux AGG/Cairo each pass 510 tests after successful reruns
 for one AGG/five Cairo executables whose execute bits were lost. Six selected
 ASan/UBSan fixtures pass with heap/global coverage; stack/leak checks are absent.
 All 26 unchanged external SWFs match exact traces in both profiles.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_string_add` | function | [include/flashvm/execution.h:185](../include/flashvm/execution.h#L185) |
+| `fvm_exec_string_compare` | function | [include/flashvm/execution.h:189](../include/flashvm/execution.h#L189) |
+<!-- source-links:end -->

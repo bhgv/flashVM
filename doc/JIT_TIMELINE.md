@@ -6,7 +6,7 @@ NextFrame, PreviousFrame, Play, Stop, GotoFrame, GotoLabel and GotoFrame2 lower 
 native helpers using the shared intrinsic frame service, bypassing replaceable
 script methods. Fixed commands use the active display target. A missing selection
 inside an existing timeline is a no-op; execution without a native base timeline
-returns FVM_UNSUPPORTED. A missing label is ignored, matching interpretation.
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). A missing label is ignored, matching interpretation.
 
 GotoFrame snapshots its zero-based UI16 request as a one-based numeric constant.
 GotoLabel validates the complete terminated record and copies its text into code
@@ -40,3 +40,15 @@ ASan and LeakSanitizer are disabled. No foreign OS/VM execution is claimed.
 
 As of v0.367 WaitForFrame is native; automatic fallback uses an unused anonymous
 DefineFunction. See JIT_WAIT_FRAMES.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

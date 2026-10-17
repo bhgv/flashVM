@@ -10,9 +10,9 @@ Native resource errors получают файл failed file channel из его
 если carrier path ещё не установлен. Кодек использует explicit big-endian Uint32
 и fixed terminated arrays, не memcpy host structure. IDs/origin > Uint32 исключают
 optional record, сохраняя status-only reply. Все данные копируются до удаления
-scoped adapter context. Flags bit 8 FVM_EXCEPTION_REMOTE_CONTEXT обозначает,
+scoped adapter context. Flags bit 8 [FVM_EXCEPTION_REMOTE_CONTEXT](../include/flashvm/exception.h#L38) обозначает,
 что resource/origin/path относятся к удалённой стороне, а не local proxy handle.
-Existing FVM_ExceptionInfo layout не меняется.
+Existing [FVM_ExceptionInfo](../include/flashvm/exception.h#L41) layout не меняется.
 
 Клиент проверяет полный размер/magic/version/flags, termination каждого string и
 known resource kind до изменения metadata. Некорректный/неизвестный optional record
@@ -42,7 +42,7 @@ It transports kind/resource/origin/flags/path/operation/message/authority addres
 with explicit big-endian Uint32 fields and fixed terminated byte arrays. Status
 remains the primary code; OK/NOT_FOUND/OOM are unchanged. Details are best-effort
 on allocation failure and omitted if IDs do not fit Uint32. Metadata is copied
-before scoped adapter destruction. FVM_EXCEPTION_REMOTE_CONTEXT marks remote
+before scoped adapter destruction. [FVM_EXCEPTION_REMOTE_CONTEXT](../include/flashvm/exception.h#L38) marks remote
 resource identifiers without changing the existing exception-info ABI.
 
 Complete record validation precedes all mutation. Malformed/unknown details are
@@ -64,3 +64,16 @@ broker/channel/resource/mutex/GC/serialization checks 74/74 in AGG, Cairo,
 portable and ASan/UBSan. Portable codec runs without networking; live TCP
 excluded with OS_PORTS off. Heap/global ASan and UBSan active, LSAN/stack
 ASan disabled. Linux only; full distributed debugger acceptance remains open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_EXCEPTION_REMOTE_CONTEXT` | macro / define | [include/flashvm/exception.h:38](../include/flashvm/exception.h#L38) |
+| `FVM_ExceptionInfo` | struct | [include/flashvm/exception.h:41](../include/flashvm/exception.h#L41) |
+<!-- source-links:end -->

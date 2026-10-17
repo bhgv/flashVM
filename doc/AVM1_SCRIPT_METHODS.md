@@ -9,8 +9,8 @@ bytecode. Each invocation has independent parameter/local bindings and a
 64-level recursion limit. `GetVariable("this")` returns the current receiver
 when no local variable shadows it. `Return` propagates the top stack value.
 
-The host can create objects with `fvm_object_create`, set their properties with
-`fvm_object_set`, and expose them to bytecode via `fvm_set_global`. See
+The host can create objects with [`fvm_object_create`](../include/flashvm/value.h#L62), set their properties with
+[`fvm_object_set`](../include/flashvm/value.h#L74), and expose them to bytecode via [`fvm_set_global`](../include/flashvm/value.h#L87). See
 `examples/embedding/script_methods/` and `tests/avm1_script_method.c`.
 
 **Not implemented:** lookup of script-function values in object properties,
@@ -28,8 +28,8 @@ interpret this as complete ActionScript method semantics.
 `GetVariable("this")` возвращает текущий объект, если имя не перекрыто локальной
 переменной. `Return` возвращает верхнее значение стека.
 
-Приложение создаёт объекты через `fvm_object_create`, задаёт свойства через
-`fvm_object_set` и публикует объект через `fvm_set_global`. Рабочий тест на
+Приложение создаёт объекты через [`fvm_object_create`](../include/flashvm/value.h#L62), задаёт свойства через
+[`fvm_object_set`](../include/flashvm/value.h#L74) и публикует объект через [`fvm_set_global`](../include/flashvm/value.h#L87). Рабочий тест на
 C89 находится в `tests/avm1_script_method.c`, пример AS — в
 `examples/embedding/script_methods/`.
 
@@ -38,3 +38,17 @@ C89 находится в `tests/avm1_script_method.c`, пример AS — в
 видимости и автоматическая доставка событий мыши/касаний в AVM1. Поиск
 именованного метода пока производится по общему реестру функций, а не по
 объекту. Это ограниченное промежуточное решение.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_object_create` | function | [include/flashvm/value.h:62](../include/flashvm/value.h#L62) |
+| `fvm_object_set` | function | [include/flashvm/value.h:74](../include/flashvm/value.h#L74) |
+| `fvm_set_global` | function | [include/flashvm/value.h:87](../include/flashvm/value.h#L87) |
+<!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Value-based casts / Общий обработчик приведений — v0.282
 
-C89 `fvm_exec_cast` returns the original matching value or null. In loaded SWFs,
+C89 [`fvm_exec_cast`](../include/flashvm/execution.h#L230) returns the original matching value or null. In loaded SWFs,
 primitive inputs invoke the common object-conversion service for its constructor
 side effects before returning null. A wrapper never replaces the original input
 in the membership test. Null/undefined conversion does not call a constructor.
@@ -34,3 +34,15 @@ Validation: both Linux AGG/Cairo profiles pass 546 tests after execute-bit repai
 and reruns for 6/8 BAD_COMMAND binaries respectively. Four affected heap/global
 ASan+UBSan checks pass (no stack/leak coverage). All 26 unchanged original SWFs
 match exactly in each profile. This does not complete general InstanceOf semantics.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_cast` | function | [include/flashvm/execution.h:230](../include/flashvm/execution.h#L230) |
+<!-- source-links:end -->

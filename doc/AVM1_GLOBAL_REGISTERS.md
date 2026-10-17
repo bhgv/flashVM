@@ -12,7 +12,7 @@ owns its own bank.
 Частные наборы Function2 остаются отдельными. GC сохраняет объекты, метатаблицы
 и строки в общих регистрах до перезаписи; новый контекст начинает с undefined.
 
-`fvm_exec_global_register` is a C89 value-based service for generated bodies and
+[`fvm_exec_global_register`](../include/flashvm/execution.h#L461) is a C89 value-based service for generated bodies and
 host code. Scalar/object stores require no allocation. String stores adopt the
 bytes before publishing the retained value, preserve metatables, and leave the
 old slot and output untouched on allocation failure. Input/output aliasing is
@@ -22,7 +22,7 @@ A prepared native frame exposes the live bank for these loaded activations.
 Direct register writes must respect context ownership and retained-value
 lifetimes; use the execution service to adopt borrowed string bytes. The public
 frame layout and graph layout are unchanged. Slot count uses the documented
-FVM_EXEC_GLOBAL_REGISTER_COUNT macro. Context initialization and GC root marking
+[FVM_EXEC_GLOBAL_REGISTER_COUNT](../include/flashvm/execution.h#L8) macro. Context initialization and GC root marking
 include every slot.
 
 Tests cross loaded SWF4–8 and unloaded host contexts, ordinary/zero/private
@@ -37,3 +37,16 @@ eight execute-bit launch retries, which passed after restoring permissions.
 Six focused heap/global ASan+UBSan checks pass with stack/leak instrumentation
 disabled. All 23 original unchanged SWFs match byte for byte with zero exit and
 empty stderr in each graphics profile. The added C fixture compiles as C89.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_global_register` | function | [include/flashvm/execution.h:461](../include/flashvm/execution.h#L461) |
+| `FVM_EXEC_GLOBAL_REGISTER_COUNT` | macro / define | [include/flashvm/execution.h:8](../include/flashvm/execution.h#L8) |
+<!-- source-links:end -->

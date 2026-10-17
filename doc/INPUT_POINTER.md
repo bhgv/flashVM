@@ -1,7 +1,7 @@
 # World pointer state / Мировая позиция указателя — v0.326
 
-C89 fvm_input_set_pointer(context, x, y) publishes a finite native world/stage
-pixel position without delivering an event. fvm_input_get_pointer(context, &x,
+C89 [fvm_input_set_pointer](../include/flashvm/input.h#L72)(context, x, y) publishes a finite native world/stage
+pixel position without delivering an event. [fvm_input_get_pointer](../include/flashvm/input.h#L75)(context, &x,
 &y) reads the last accepted pair, initially (0,0). Read outputs must be non-NULL
 and distinct. Invalid operations preserve the coordinate pair or both outputs.
 Each context owns independent state; these APIs are owning-thread only.
@@ -37,3 +37,16 @@ Existing input, queue and recognizer scenarios remain enabled.
 Тест C89 проверяет изоляцию контекстов, ошибки, конечные пределы, NaN/бесконечности,
 разницу между очередью и доставкой и видимость координат в callback. Состояние
 содержит только числа и не требует новых корней GC.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
+| `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
+<!-- source-links:end -->

@@ -19,7 +19,7 @@ its frame actions once while its children and onEnterFrame continue to advance.
 Replacing its current frame with the host API schedules that frame once again.
 
 Matrices retain skew, reflection and zero scale. The new C89 functions
-`fvm_movieclip_get_matrix` and `fvm_movieclip_set_matrix` access the local transform
+[`fvm_movieclip_get_matrix`](../include/flashvm/movieclip.h#L38) and [`fvm_movieclip_set_matrix`](../include/flashvm/movieclip.h#L40) access the local transform
 in pixels. Setting a finite representable transform publishes all components
 atomically, including under allocation failure. SWF translations convert twips
 to pixels; rotation/skew fields use signed 16.16 values. Color transforms compose
@@ -98,3 +98,16 @@ disabled for the workspace unwind environment, LeakSanitizer was disabled becaus
 The first-party comment audit covers 236 files with no missing function/member
 or tutorial-line comments; the direct-GC audit found no missing tagged comments.
 This evidence does not close any roadmap stage.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_movieclip_get_matrix` | function | [include/flashvm/movieclip.h:38](../include/flashvm/movieclip.h#L38) |
+| `fvm_movieclip_set_matrix` | function | [include/flashvm/movieclip.h:40](../include/flashvm/movieclip.h#L40) |
+<!-- source-links:end -->

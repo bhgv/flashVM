@@ -862,7 +862,7 @@ Full rename semantics, RemoveSprite and all roadmap stages remain open.
 
 ### v0.297 — explicit forced clip detachment / Явное отсоединение клипа
 
-The C89 fvm_exec_detach_clip service exposes native forced scene removal without
+The C89 [fvm_exec_detach_clip](../include/flashvm/execution.h#L237) service exposes native forced scene removal without
 bytecode or script method lookup. Host/SWF4–8 and positive/negative-depth fixtures
 cover override bypass, invalid objects and repeated calls; allocation injection
 checks link/root preservation through this public entry. See CLIP_DETACH_SERVICE.md.
@@ -932,7 +932,7 @@ named; an unused URL root is removed. See AVM1_DISPLAY_URL_WITH_MISSING.md.
 
 ### v0.306 — shared frame-request preparation / Общая подготовка кадра
 
-GotoFrame2 conversion now uses the C89 fvm_exec_frame_request service with rooted
+GotoFrame2 conversion now uses the C89 [fvm_exec_frame_request](../include/flashvm/execution.h#L336) service with rooted
 coercion, alias/error preservation and separate scene-bias policy. Timeline wire
 widths/root layouts use named macros. Raw Call/GotoFrame2 underflow fixtures cover
 SWF4–8 alongside direct C, collecting/throwing callbacks and allocation injection.
@@ -1729,7 +1729,7 @@ matching pinned script_object.rs has_own_property. The query does not inspect
 private facade metadata or enumerate/read parent properties. It preserves the
 receiver's SWF casing. Host facade behavior remains unchanged. Nested/malformed
 receiver-facade chains have a bounded iterative traversal instead of recursive
-C++ calls; malformed cycles return FVM_ERROR.
+C++ calls; malformed cycles return [FVM_ERROR](../include/flashvm/flashvm.h#L43).
 
 `object_super_membership` failed against v0.425 and covers loaded SWF5–8 plus
 host, direct C and borrowed Object.hasOwnProperty.call, counted NUL names,
@@ -1871,7 +1871,7 @@ and [script_object.rs call_watcher](https://github.com/ruffle-rs/ruffle/blob/237
 The latter changes a thrown watch value to undefined; set_internal continues
 assignment and treats inherited setters separately from own set_local.
 
-[GC:] FVM_WatchWriteScope saves the thrown graph before clearing pending state.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) saves the thrown graph before clearing pending state.
 Its explicit root frame protects counted strings, objects and cycles through
 setter execution and collection. Destruction restores pending ownership before
 unlinking the saved frame. It unwinds before the enclosing lookup-owner root.
@@ -1883,7 +1883,7 @@ Object/Array numeric slots, readonly data, own/inherited script accessors, sette
 success/throw and error priority. A self-cyclic object thrown by the watcher
 survives a real collecting setter; pending state is suspended inside that setter.
 Existing counted-string/interpreter/native watch fixtures now expect undefined
-writeback for loaded throws. Raw runtime FVM_ERROR and allocation failures retain
+writeback for loaded throws. Raw runtime [FVM_ERROR](../include/flashvm/flashvm.h#L43) and allocation failures retain
 fail-fast handling; their equivalence to reference errors is not certified.
 Custom native length/resource setters, metatables, recursion limits and complete
 watcher/SWF compatibility require further checks. All nine stages remain open.
@@ -2126,7 +2126,7 @@ ASan/LeakSanitizer disabled. Foreign OS execution and all stages remain open.
 
 ## v0.444 — allocation-free invocation identity roots
 
-FVM_CallScope now retains saved/active constructor, function and owner through
+[FVM_CallScope](../src/core/call_scope.hpp#L8) now retains saved/active constructor, function and owner through
 six inline root frames. Publishing the complete chain and restoring the
 previous identity no longer allocate a temporary vector. Nested calls and
 unwinding preserve the caller's root head. This is an implementation/GC
@@ -2321,7 +2321,7 @@ ASan/LeakSanitizer disabled. All stages/foreign OS runs remain open.
 ## v0.453 — resolver status and original native interfaces
 
 Resolver discovery now reports presence separately from callback status. An
-actual FVM_NOT_FOUND from a resolver, returned method or revoked RPC interface
+actual [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) from a resolver, returned method or revoked RPC interface
 propagates unchanged; it cannot masquerade as an absent hook or trigger fallback.
 Existing interpreter/JIT tests cover resolver and callee NOT_FOUND, including
 super dispatch and callback counts. object_resolve_rpc checks SWF6/8 with two
@@ -2389,7 +2389,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.457 — snapshot direct global-call arguments
 
-fvm_call_bytes copies arguments into a rooted vector before clearing the output
+[fvm_call_bytes](../include/flashvm/value.h#L98) copies arguments into a rooted vector before clearing the output
 or resolving a global Function. A result may alias an argument, and callbacks
 may mutate the caller's value array without changing the active invocation.
 Caller-owned external string buffers must still remain valid for the call.
@@ -2440,7 +2440,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.460 — root named-constructor arguments before global lookup
 
-fvm_construct_bytes snapshots and roots caller arguments before resolving a
+[fvm_construct_bytes](../include/flashvm/value.h#L155) snapshots and roots caller arguments before resolving a
 constructor name. Global getters/resolvers can collect or mutate the caller's
 array before Function construction; registered C factories also receive the
 stable snapshot. The ordinary native barrier remains. Constructor output is
@@ -2477,7 +2477,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.462 — direct Function construction snapshots arguments
 
-fvm_function_construct retains an unpinned input Function and snapshots/roots
+[fvm_function_construct](../include/flashvm/function.h#L69) retains an unpinned input Function and snapshots/roots
 arguments before native factory dispatch or script prototype access. A prototype
 getter may collect or mutate the caller's array before constructor invocation.
 External borrowed string buffers remain caller-owned for the complete call;
@@ -2511,7 +2511,7 @@ ASan/LeakSanitizer disabled; all stages and foreign OS acceptance remain open.
 
 ## v0.464 — invoke the retained Function argument snapshot
 
-Direct fvm_function_invoke now passes its retained copy to the callback, rather
+Direct [fvm_function_invoke](../include/flashvm/function.h#L65) now passes its retained copy to the callback, rather
 than the caller's mutable array. The output is cleared after copying, so it may
 alias any argument. Validation/OOM errors still clear the output; external string
 buffers remain caller-owned. Existing single-frame root layout and native barrier
@@ -3054,3 +3054,24 @@ Ten actual Linux worker threads exercise cooperative stop in the two added
 staging phases, with the instruction limit disabled. Stack ASan/LSan remain
 disabled. The direct budget regression fails against v0.492. Foreign-platform
 runtime validation and all nine roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:237](../include/flashvm/execution.h#L237) |
+| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:336](../include/flashvm/execution.h#L336) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+<!-- source-links:end -->

@@ -2,7 +2,7 @@
 
 v0.240 extracts the shared CallMethod/NewMethod operation into
 `src/avm1/handlers/call_method.cpp`. The interpreter retains operand decoding
-and stack movement. C89 callers use `fvm_exec_call_method` with owner/name values,
+and stack movement. C89 callers use [`fvm_exec_call_method`](../include/flashvm/execution.h#L503) with owner/name values,
 explicit anonymous receiver, ordered arguments and a construction flag. No
 instruction address, opcode or interpreter stack crosses this interface.
 
@@ -37,3 +37,15 @@ Validation: 445/445 tests in both AGG and Cairo profiles; 23/23 unchanged SWF
 oracles in each profile. Five selected heap/global ASan+UBSan checks passed.
 The local sanitizer environment does not provide stack/leak instrumentation.
 Windows, macOS and Android were not executed here.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_call_method` | function | [include/flashvm/execution.h:503](../include/flashvm/execution.h#L503) |
+<!-- source-links:end -->

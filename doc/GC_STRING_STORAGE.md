@@ -6,7 +6,7 @@
 перед rollback/free, поэтому повторное использование адреса не создаёт
 ложное владение. Context destruction освобождает каждый buffer один раз.
 
-`fvm_gc_string_stats` возвращает buffers, payload_bytes и allocated_bytes.
+[`fvm_gc_string_stats`](../include/flashvm/gc.h#L102) возвращает buffers, payload_bytes и allocated_bytes.
 Последнее включает payload + final terminator для каждого buffer. Метаданные
 контейнеров, allocator overhead, строки внешних payloads/ресурсов и process RSS
 в эти числа не входят. UTF-8/WTF-8 хранится в байтах: embedded NUL и одиночные
@@ -43,7 +43,7 @@ Descriptor/address-index registration is atomic. Failed adoption retains caller
 cleanup responsibility; decoding rollback erases ownership indexes before
 freeing buffers, and context teardown frees registered allocations exactly once.
 
-fvm_gc_string_stats reports buffer count, payload bytes and payload-plus-
+[fvm_gc_string_stats](../include/flashvm/gc.h#L102) reports buffer count, payload bytes and payload-plus-
 terminator allocated bytes. It excludes container/allocator overhead, external
 resource strings and process RSS. Stored byte counts preserve embedded NUL and
 WTF-8 surrogate payloads. Query neither allocates nor invokes callbacks and
@@ -75,3 +75,15 @@ regressions.
 
 The historical arena lifetime remains the default. v0.72 adds opt-in tracing;
 see GC_TRACED_STRINGS.md for rooting contracts, verification and remaining limits.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_gc_string_stats` | function | [include/flashvm/gc.h:102](../include/flashvm/gc.h#L102) |
+<!-- source-links:end -->

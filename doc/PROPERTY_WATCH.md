@@ -18,7 +18,7 @@ cannot consume version 3. Capability objects with attached watches are rejected
 as unsupported instead of silently dropping the watch; resource annotations
 remain an outstanding transport task.
 
-fvm_object_enumerate produces an Array snapshot of enumerable own properties,
+[fvm_object_enumerate](../include/flashvm/property.h#L41) produces an Array snapshot of enumerable own properties,
 optionally including prototypes. Nonenumerable own names shadow inherited names;
 getters are not invoked. Numeric slots precede named entries. AVM1 Enumerate and
 Enumerate2 use this snapshot with a null stack sentinel. Default native meta
@@ -55,7 +55,7 @@ watch. Корни GC удерживаются даже при unwatch и сбо�
 объектов. Watches на ресурсных capability-объектах пока отклоняются с UNSUPPORTED,
 чтобы не терять данные. Перенос таких аннотаций ещё предстоит реализовать.
 
-fvm_object_enumerate возвращает снимок перечислимых имён Array, по выбору с
+[fvm_object_enumerate](../include/flashvm/property.h#L41) возвращает снимок перечислимых имён Array, по выбору с
 прототипами. Собственное неперечислимое имя скрывает унаследованное, getters не
 вызываются. Enumerate/Enumerate2 используют снимок и null-маркер в стеке.
 Порядок определён реализацией и не заявляется идентичным старым Flash.
@@ -108,3 +108,15 @@ current-global behavior is documented in PRIMITIVE_GLOBAL_BOXING.md (v0.474).
 Loaded watcher depth is explicitly zero: [v0.502](WATCH_CALLBACK_SUPER.md).
 
 Version-hidden old-value storage is skipped in [v0.503](WATCH_OLD_VALUE_VISIBILITY.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_object_enumerate` | function | [include/flashvm/property.h:41](../include/flashvm/property.h#L41) |
+<!-- source-links:end -->

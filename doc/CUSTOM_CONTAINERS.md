@@ -16,7 +16,7 @@ remains an internal dependency; no STL types appear in the public C ABI.
 ### Metatable semantics currently implemented
 
 - `fvm_table_set_metatable(ctx, object, meta)` attaches a *reference* to a
-  shared table; `NULL` removes it. `fvm_table_get_metatable` returns that same
+  shared table; `NULL` removes it. [`fvm_table_get_metatable`](../include/flashvm/table.h#L26) returns that same
   object pointer, not a copy. Both operations require objects owned by `ctx`.
 - `__index` may hold an object/table: when a named property is absent from
   the receiver and its AVM1 prototype chain, lookup continues in that table.
@@ -49,8 +49,8 @@ removes the metatable.
 
 ### Метатаблицы
 
-- `fvm_table_set_metatable` назначает ссылку на обычную таблицу; `NULL`
-  удаляет метатаблицу. `fvm_table_get_metatable` возвращает указатель на
+- [`fvm_table_set_metatable`](../include/flashvm/table.h#L24) назначает ссылку на обычную таблицу; `NULL`
+  удаляет метатаблицу. [`fvm_table_get_metatable`](../include/flashvm/table.h#L26) возвращает указатель на
   оригинальную таблицу, а не её копию.
 - `__index` со значением-таблицей используется при отсутствии именованного
   свойства после поиска по цепочке прототипов AVM1.
@@ -63,3 +63,16 @@ removes the metatable.
 
 Компилируемый пример C89 с `__index` и `__newindex`:
 `tests/metamethod_tables.c`.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_table_get_metatable` | function | [include/flashvm/table.h:26](../include/flashvm/table.h#L26) |
+| `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
+<!-- source-links:end -->

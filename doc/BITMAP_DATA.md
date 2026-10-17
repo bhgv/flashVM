@@ -41,7 +41,7 @@ colorTransform применяет восемь нативных каналов �
 error_allocation. Они проверяют независимость clone, dispose/GC, чтение/запись,
 цвета, отсечение, readonly-поля, знаковость getPixel32, перекрытие scroll,
 colorTransform, очередь/файл, повреждённый заголовок и отказы выделения памяти.
-Файловая проверка пропускается только при явном FVM_UNSUPPORTED профиля.
+Файловая проверка пропускается только при явном [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) профиля.
 
 Это частичная реализация, а не завершение BitmapData или этапа 4. Буфер пока
 хранит straight RGBA; точное округление premultiplied alpha Flash не подтверждено.
@@ -114,3 +114,15 @@ source-over composition are supported; opaque destinations remain opaque.
 The named suites cover overlapping source/mask aliases, transported callbacks,
 GC and OOM. Straight RGBA with nearest integer rounding remains an explicit
 Flash-conformance limitation; drawing, resources, fills and filters are open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

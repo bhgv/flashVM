@@ -5,11 +5,11 @@ The v0.25 extension adds sprite/linkage resources: [RU/EN](SWF_SPRITE_RESOURCES.
 
 ## English
 
-`fvm_movieclip_load_swf` imports the root timeline into a new managed MovieClip.
+[`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L35) imports the root timeline into a new managed MovieClip.
 It accepts bounded FWS SWF 1–8 and CWS SWF 6–8 using the bundled zlib decoder.
 The supported root tags are End, ShowFrame, DoAction and FrameLabel. All other
-tags return `FVM_UNSUPPORTED`; this API does not silently omit display objects.
-The original `fvm_load_memory` and whole-file action API retain their behavior.
+tags return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46); this API does not silently omit display objects.
+The original [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) and whole-file action API retain their behavior.
 
 Loading runs no script. Every tag boundary, frame count and action stream is
 validated before constructing the clip. The number of ShowFrame tags must match
@@ -49,9 +49,9 @@ Only Linux host builds have been run; target-platform acceptance remains open.
 
 ## Русский
 
-Новый API `fvm_movieclip_load_swf` создаёт MovieClip из корневых DoAction,
+Новый API [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L35) создаёт MovieClip из корневых DoAction,
 ShowFrame и FrameLabel файлов FWS/CWS. End завершает файл. Загрузка не исполняет
-скрипты; остальные теги возвращают `FVM_UNSUPPORTED`. Старые API загрузки файла
+скрипты; остальные теги возвращают [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Старые API загрузки файла
 и исполнения всех действий сохраняют своё поведение.
 
 Число кадров проверяется до создания клипа. Метки должны завершаться NUL;
@@ -91,3 +91,17 @@ Error file processes. Heap/global ASan and UBSan were enabled. ASan stack checks
 were explicitly disabled because of the workspace's exception/unwind environment;
 LeakSanitizer was disabled because /proc is unavailable. Container exception tests
 use UBSan only. These results do not certify full SWF compatibility or other OSes.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:35](../include/flashvm/movieclip.h#L35) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

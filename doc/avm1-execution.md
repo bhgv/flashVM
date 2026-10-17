@@ -5,17 +5,17 @@ It is not a complete Flash 8 runtime. FWS/CWS loading through SWF8, GC,
 prototypes, metatables, registered native methods and named script functions
 are available; display/timeline and JIT coverage remains incomplete.
 
-`fvm_avm1_execute` validates a complete action stream ending in End and executes
-it in the context. `fvm_swf_execute_actions` executes top-level DoAction tags of
+[`fvm_avm1_execute`](../include/flashvm/avm1.h#L38) validates a complete action stream ending in End and executes
+it in the context. [`fvm_swf_execute_actions`](../include/flashvm/avm1.h#L73) executes top-level DoAction tags of
 the loaded canonical FWS, not a full timeline/sprite event loop.
-`fvm_avm1_call` invokes a named function with rooted parameters and receiver.
+[`fvm_avm1_call`](../include/flashvm/avm1.h#L66) invokes a named function with rooted parameters and receiver.
 Native CallFunction callbacks, globals and AS properties share the context.
 
 Tests under `tests/avm1*`, `tests/interpreter.c`, `tests/swf_execute.c` and
 `tests/actionscript*` describe supported operands and instructions: primitive
 Push values and constants, stack operations, variables, local definitions,
 properties, arithmetic, branches, native/script calls and returns. Unsupported
-instructions return FVM_UNSUPPORTED. Branches stay within the current action
+instructions return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Branches stay within the current action
 block and must target parsed instruction boundaries. Each function has its own
 instruction budget; nested try/catch/finally blocks share that budget.
 
@@ -28,3 +28,18 @@ The context and host APIs must not execute concurrently on one context. VM
 failure does not roll back globals already changed. Native allocation failures
 and unsupported bytecode are statuses, not AS exceptions. This checkpoint does
 not establish conformance or safety for arbitrary untrusted SWF.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_call` | function | [include/flashvm/avm1.h:66](../include/flashvm/avm1.h#L66) |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../include/flashvm/avm1.h#L38) |
+| `fvm_swf_execute_actions` | function | [include/flashvm/avm1.h:73](../include/flashvm/avm1.h#L73) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

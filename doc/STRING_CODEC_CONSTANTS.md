@@ -3,7 +3,7 @@
 The internal WTF-8/UTF-16 bridge now uses documented uppercase macros for
 sequence sizes, surrogate ranges, supplementary offsets, payload widths/masks
 and continuation-byte bounds. The terminated borrowed-string size marker is
-named `FVM_STRING_TERMINATED_SIZE` in `src/core/string_constants.h`. Unicode
+named [`FVM_STRING_TERMINATED_SIZE`](../src/core/string_constants.h#L6) in `src/core/string_constants.h`. Unicode
 representation constants live in `src/core/unicode_constants.h`.
 
 No representation, wire format, Unicode mapping or decoding policy changes.
@@ -51,3 +51,15 @@ Linux AGG/Cairo each pass 526 tests after execute-bit repair and successful
 reruns for 1/8 binaries respectively. Six affected heap/global ASan+UBSan checks
 pass (no stack/leak coverage). All 26 original SWFs match in both profiles.
 The remaining standard library and roadmap acceptance gates stay open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_STRING_TERMINATED_SIZE` | macro / define | [src/core/string_constants.h:6](../src/core/string_constants.h#L6) |
+<!-- source-links:end -->

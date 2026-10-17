@@ -43,12 +43,12 @@ through the libraries' native APIs.
 
 | Operation | API / behavior |
 | --- | --- |
-| Font metrics and character mapping | fvm_font_metrics / fvm_font_char; missing mapping returns glyph 0 |
-| Independent glyph geometry | fvm_font_glyph copies lines/quadratic/cubic curves and closes contours |
-| OpenType shaping | fvm_font_shape returns glyph IDs, advances, offsets and UTF-8 byte clusters |
-| Positioned text contours | fvm_text_run_path combines positioned glyph contours in a new path |
-| Allowed Unicode breaks | fvm_text_breaks outputs native libunibreak classifications per input byte |
-| One-line bidi resolution | fvm_text_bidi returns resolved direction, logical levels and visual→logical map |
+| Font metrics and character mapping | [fvm_font_metrics](../include/flashvm/font.h#L49) / [fvm_font_char](../include/flashvm/font.h#L51); missing mapping returns glyph 0 |
+| Independent glyph geometry | [fvm_font_glyph](../include/flashvm/font.h#L55) copies lines/quadratic/cubic curves and closes contours |
+| OpenType shaping | [fvm_font_shape](../include/flashvm/font.h#L61) returns glyph IDs, advances, offsets and UTF-8 byte clusters |
+| Positioned text contours | [fvm_text_run_path](../include/flashvm/font.h#L73) combines positioned glyph contours in a new path |
+| Allowed Unicode breaks | [fvm_text_breaks](../include/flashvm/font.h#L79) outputs native libunibreak classifications per input byte |
+| One-line bidi resolution | [fvm_text_bidi](../include/flashvm/font.h#L87) returns resolved direction, logical levels and visual→logical map |
 
 Positions are pixels, x right/y down. FreeType's scaled unhinted outlines use 26.6
 precision; exported double coordinates do not add precision that was absent in
@@ -57,7 +57,7 @@ including its rounding. FreeType clamps character-size requests below one
 pixel; transform exported vectors for smaller geometry. Logical advances differ
 from geometric ink bounds.
 
-fvm_font_shape accepts one homogeneous script/direction run of valid UTF-8,
+[fvm_font_shape](../include/flashvm/font.h#L61) accepts one homogeneous script/direction run of valid UTF-8,
 bounded to 4 MiB. AUTO guesses run properties; it does not lay out a multilingual
 paragraph. Bidi takes UTF-32 Unicode scalar values, at most 1,000,000 entries;
 its visual output reorders code points without mirroring or Arabic presentation
@@ -89,18 +89,18 @@ Transform and append are transactional, reject nonfinite/out-of-range results,
 and append copies contours. Keep per-glyph/per-word paths to transform groups
 independently; combine copies for a line/block. Arbitrary point edits allow
 shape distortion, but a nonlinear warp is not implemented as a separate API.
-fvm_path_bounds computes Bezier extrema, not the control-point rectangle, using
+[fvm_path_bounds](../include/flashvm/path.h#L71) computes Bezier extrema, not the control-point rectangle, using
 double arithmetic. It includes MOVE positions and excludes stroke thickness.
 Coordinates are bounded to +/-1,000,000 and command count to 1,000,000.
 
-fvm_path_draw renders curves through the selected AGG/Cairo backend: nonzero or
+[fvm_path_draw](../include/flashvm/path.h#L81) renders curves through the selected AGG/Cairo backend: nonzero or
 even/odd fill, or a positive-width stroke with round joins/caps. Quadratic curves
 are converted exactly to cubic control points for Cairo, and retained natively
 for AGG. Rendering shares raster.h's 4096-pixel surface/coordinate bounds. Both
 backends approximate curves for rasterization; low-alpha rounding can differ.
 NO_GRAPHICS still supports vector/font geometry but drawing returns UNSUPPORTED.
 
-fvm_path_mask uses filled contours as an antialiased coverage mask for an equally
+[fvm_path_mask](../include/flashvm/path.h#L86) uses filled contours as an antialiased coverage mask for an equally
 sized RGBA8 image, compositing source-over the destination. Render a vector scene
 into that source image to use it as a vector-content mask. Source/destination can
 have identical pixel mappings; other overlapping buffer mappings are unsupported.
@@ -127,3 +127,24 @@ facilities remain necessary for upstream internals. See
 [checkpoint validation](FONT_LIBRARIES_CHECKPOINT.md).
 
 Native owned paragraph/line layout: [TEXT_LAYOUT.md](TEXT_LAYOUT.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_font_char` | function | [include/flashvm/font.h:51](../include/flashvm/font.h#L51) |
+| `fvm_font_glyph` | function | [include/flashvm/font.h:55](../include/flashvm/font.h#L55) |
+| `fvm_font_metrics` | function | [include/flashvm/font.h:49](../include/flashvm/font.h#L49) |
+| `fvm_font_shape` | function | [include/flashvm/font.h:61](../include/flashvm/font.h#L61) |
+| `fvm_path_bounds` | function | [include/flashvm/path.h:71](../include/flashvm/path.h#L71) |
+| `fvm_path_draw` | function | [include/flashvm/path.h:81](../include/flashvm/path.h#L81) |
+| `fvm_path_mask` | function | [include/flashvm/path.h:86](../include/flashvm/path.h#L86) |
+| `fvm_text_bidi` | function | [include/flashvm/font.h:87](../include/flashvm/font.h#L87) |
+| `fvm_text_breaks` | function | [include/flashvm/font.h:79](../include/flashvm/font.h#L79) |
+| `fvm_text_run_path` | function | [include/flashvm/font.h:73](../include/flashvm/font.h#L73) |
+<!-- source-links:end -->

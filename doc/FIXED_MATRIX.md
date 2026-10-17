@@ -1,11 +1,11 @@
 # Context-free fixed matrix arithmetic / Независимая fixed-point арифметика матриц
 
 v0.337 adds include/flashvm/fixed.h with two C89 services:
-fvm_fixed_matrix_point and fvm_fixed_matrix_multiply. No context, values,
+[fvm_fixed_matrix_point](../include/flashvm/fixed.h#L28) and [fvm_fixed_matrix_multiply](../include/flashvm/fixed.h#L33). No context, values,
 bytecode, operand stack, GC, callbacks or allocation are needed. Generated code
 and future scene implementations can call the same exported C functions.
 
-FVM_FixedMatrix carries raw signed 16.16 a/b/c/d coefficients and signed 32-bit
+[FVM_FixedMatrix](../include/flashvm/fixed.h#L15) carries raw signed 16.16 a/b/c/d coefficients and signed 32-bit
 tx/ty translations in twips. Point inputs and outputs are signed integer twips.
 long carries these values on both 32-bit and wider-long hosts; values outside
 the signed 32-bit range are rejected. This struct is a native C descriptor,
@@ -37,9 +37,9 @@ native double scene matrix, point conversion, drag or raster paths. Full scene
 fixed-point storage/composition, inverse policy, JIT backends and all roadmap
 stages remain open.
 
-В v0.337 добавлены два C89-сервиса fvm_fixed_matrix_point и
-fvm_fixed_matrix_multiply. Они не требуют VM-контекста, байткода, стека,
-FVM_Value, GC или выделения памяти и доступны будущему JIT через обычный C ABI.
+В v0.337 добавлены два C89-сервиса [fvm_fixed_matrix_point](../include/flashvm/fixed.h#L28) и
+[fvm_fixed_matrix_multiply](../include/flashvm/fixed.h#L33). Они не требуют VM-контекста, байткода, стека,
+[FVM_Value](../include/flashvm/value.h#L24), GC или выделения памяти и доступны будущему JIT через обычный C ABI.
 Коэффициенты — raw signed 16.16, координаты и переносы — signed 32-bit twips.
 Тип long служит переносчиком; на широких хостах значения вне 32-битного
 диапазона отклоняются. Структура не является форматом сетевой сериализации.
@@ -96,3 +96,18 @@ that purpose. Future scene work should preserve this representation distinction.
 В v0.338 уточнено различие сырых SWF 16.16 и binary32 матрицы сцены.
 Для точек сцены добавлены отдельные C-функции; механическая подмена их
 16.16-функциями v0.337 не выполняется. См. SCENE_MATRIX.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_fixed_matrix_multiply` | function | [include/flashvm/fixed.h:33](../include/flashvm/fixed.h#L33) |
+| `fvm_fixed_matrix_point` | function | [include/flashvm/fixed.h:28](../include/flashvm/fixed.h#L28) |
+| `FVM_FixedMatrix` | struct | [include/flashvm/fixed.h:15](../include/flashvm/fixed.h#L15) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->

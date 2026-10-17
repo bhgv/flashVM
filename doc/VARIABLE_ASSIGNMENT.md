@@ -1,7 +1,7 @@
 # Common variable assignment / Общий обработчик присваивания
 
 v0.259 moves SetVariable destination selection and writing to the C89 value
-service `fvm_exec_variable_set`. Managed scope/target/this, a counted string name
+service [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408). Managed scope/target/this, a counted string name
 and a value are explicit operands. The interpreter only validates/moves stack
 operands and chooses its existing timeline/global fallback. Script activation
 bindings are accessed through the managed chain rather than a raw local map.
@@ -47,3 +47,15 @@ UBSan checks passed; stack/leak coverage remains disabled. All 25 unchanged
 reference SWFs matched in each profile. No SWF header or reference output changed.
 Проверено по 485 тестов AGG/Cairo, 15 выбранных проверок памяти и 25 эталонов
 в каждом профиле. Полнота совместимости этим не утверждается.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+<!-- source-links:end -->

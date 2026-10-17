@@ -1,11 +1,31 @@
 # Worker/channel integration (C89 API)
 
-Each `FVM_Worker` creates an independent Runtime and Context on a native OS thread. Its callback receives that context as the first argument. Ordinary AVM1 object pointers must never cross the context boundary. Host code may instead pass pointers to separately created `FVM_Channel` instances in the callback's `userdata`; that pointer must remain valid until `join` completes.
+Each [`FVM_Worker`](../src/capi/worker_c.c#L12) creates an independent Runtime and Context on a native OS thread. Its callback receives that context as the first argument. Ordinary AVM1 object pointers must never cross the context boundary. Host code may instead pass pointers to separately created [`FVM_Channel`](../src/capi/channel_c.c#L26) instances in the callback's `userdata`; that pointer must remain valid until `join` completes.
 
 ## Message lifetime and errors
 
-`fvm_channel_send` copies primitive values and NUL-terminated UTF-8 strings. It rejects object values. `fvm_channel_receive` waits until a message arrives or the channel is closed. `fvm_channel_try_receive` never waits: `FVM_OK` means a message was consumed, `FVM_NOT_FOUND` means open and empty, and `FVM_ERROR` means closed and empty. Both receive functions return borrowed string pointers, valid until the next successful receive on the same channel or channel destruction. A single channel is a FIFO queue, **not** a paired endpoint; use two channels for independent request and response directions.
+[`fvm_channel_send`](../include/flashvm/channel.h#L53) copies primitive values and NUL-terminated UTF-8 strings. It rejects object values. [`fvm_channel_receive`](../include/flashvm/channel.h#L55) waits until a message arrives or the channel is closed. [`fvm_channel_try_receive`](../include/flashvm/channel.h#L70) never waits: [`FVM_OK`](../include/flashvm/flashvm.h#L42) means a message was consumed, [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L47) means open and empty, and [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) means closed and empty. Both receive functions return borrowed string pointers, valid until the next successful receive on the same channel or channel destruction. A single channel is a FIFO queue, **not** a paired endpoint; use two channels for independent request and response directions.
 
-`fvm_worker_stop` is cooperative and does not interrupt a blocked `receive`. The owner should close the appropriate channel to wake a blocked worker before joining it. The host must ensure no thread is accessing a channel when it is destroyed. Channel ownership and reference counting across contexts are not implemented yet.
+[`fvm_worker_stop`](../include/flashvm/worker.h#L52) is cooperative and does not interrupt a blocked `receive`. The owner should close the appropriate channel to wake a blocked worker before joining it. The host must ensure no thread is accessing a channel when it is destroyed. Channel ownership and reference counting across contexts are not implemented yet.
 
 See `examples/embedding/worker_channels/` for a complete tested C89 program. This is a host/native API; ActionScript thread/channel syntax remains planned.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Channel` | struct | [src/capi/channel_c.c:26](../src/capi/channel_c.c#L26) |
+| `fvm_channel_receive` | function | [include/flashvm/channel.h:55](../include/flashvm/channel.h#L55) |
+| `fvm_channel_send` | function | [include/flashvm/channel.h:53](../include/flashvm/channel.h#L53) |
+| `fvm_channel_try_receive` | function | [include/flashvm/channel.h:70](../include/flashvm/channel.h#L70) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `FVM_Worker` | struct | [src/capi/worker_c.c:12](../src/capi/worker_c.c#L12) |
+| `fvm_worker_stop` | function | [include/flashvm/worker.h:52](../include/flashvm/worker.h#L52) |
+<!-- source-links:end -->

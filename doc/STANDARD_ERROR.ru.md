@@ -1,7 +1,7 @@
 # Error и преобразование в строку — v0.9
 
-`fvm_standard_install` атомарно устанавливает метаданные конструктора AS2 Error
-вместе с Math и Boolean. `fvm_construct` с именем Error и AVM1 NewObject создают
+[`fvm_standard_install`](../include/flashvm/standard.h#L18) атомарно устанавливает метаданные конструктора AS2 Error
+вместе с Math и Boolean. [`fvm_construct`](../include/flashvm/value.h#L158) с именем Error и AVM1 NewObject создают
 объект с обычным изменяемым прототипом. Поля Error.prototype.name и message
 по умолчанию равны строке «Error». Пропущенный аргумент и undefined оставляют
 унаследованное сообщение; остальные значения сохраняются без преобразования.
@@ -14,8 +14,8 @@ Error.toString преобразует message в строку и не добав
 
 ## API и AVM1
 
-В C89-заголовке `flashvm/standard.h` добавлены `fvm_value_to_string` и
-`fvm_value_instance_of`. Преобразование копирует входные строки в память контекста,
+В C89-заголовке `flashvm/standard.h` добавлены [`fvm_value_to_string`](../include/flashvm/standard.h#L28) и
+[`fvm_value_instance_of`](../include/flashvm/standard.h#L32). Преобразование копирует входные строки в память контекста,
 допускает совпадение входа и выхода, форматирует примитивы и вызывает нативные
 методы toString/valueOf объектов. Глубина рекурсии ограничена 64 вызовами.
 Для конечного числа подбирается до 17 значащих цифр с проверкой обратного
@@ -65,3 +65,18 @@ GC отслеживает захваченный конструктор, про�
 Function2, строковые API, все стандартные объекты, JIT и экранные адаптеры остаются
 в работе. Компилятора исходного ActionScript нет: пример .as описывает API,
 а исполняемые тесты самостоятельно формируют записи AVM1.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_value_instance_of` | function | [include/flashvm/standard.h:32](../include/flashvm/standard.h#L32) |
+| `fvm_value_to_string` | function | [include/flashvm/standard.h:28](../include/flashvm/standard.h#L28) |
+<!-- source-links:end -->

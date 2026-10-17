@@ -1,6 +1,6 @@
 # AVM1 With scopes
 
-v0.233 introduces `fvm_exec_with_scope` and `fvm_exec_scope_lookup` in
+v0.233 introduces [`fvm_exec_with_scope`](../include/flashvm/execution.h#L346) and [`fvm_exec_scope_lookup`](../include/flashvm/execution.h#L350) in
 `flashvm/execution.h`. Their C89 interfaces accept managed objects and values;
 they neither decode Actions nor access an interpreter operand stack. Generated
 code can create the same scopes, resolve names and retain them as ordinary GC
@@ -35,3 +35,16 @@ separate compatibility work.
 Validation: Linux AGG 435/435; Cairo Release 434/434 before adding the independent
 allocation fixture (that fixture passed in AGG); five focused heap/global
 ASan+UBSan tests passed. Stack and leak instrumentation remain disabled.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_scope_lookup` | function | [include/flashvm/execution.h:350](../include/flashvm/execution.h#L350) |
+| `fvm_exec_with_scope` | function | [include/flashvm/execution.h:346](../include/flashvm/execution.h#L346) |
+<!-- source-links:end -->

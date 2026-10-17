@@ -4,7 +4,7 @@ API `flashvm/text_layout.h` строит блок текста из провер
 шрифтом. Используются статические FreeType/HarfBuzz/libunibreak/FriBidi,
 включаемые ключом FONTS в DEFS.txt. Поиск системных шрифтов не выполняется.
 
-Создайте шрифт через fvm_font_read, затем вызовите fvm_text_layout_create.
+Создайте шрифт через [fvm_font_read](../include/flashvm/font.h#L44), затем вызовите [fvm_text_layout_create](../include/flashvm/text_layout.h#L72).
 При NULL options выбираются неограниченная ширина, естественный межстрочный
 интервал, AUTO-направление абзаца и выравнивание START. Пример
 examples/embedding/text_layout/main.c показывает переносы, смешанный текст
@@ -63,8 +63,8 @@ FriBidi разрешает уровни всего абзаца до перен�
 чтение при отсутствии одновременного уничтожения; создание требует обычной
 сериализации доступа к конкретному шрифтовому дескриптору.
 
-fvm_text_layout_path возвращает независимый контур блока,
-fvm_text_layout_glyph_path — независимый контур глифа в итоговой позиции.
+[fvm_text_layout_path](../include/flashvm/text_layout.h#L85) возвращает независимый контур блока,
+[fvm_text_layout_glyph_path](../include/flashvm/text_layout.h#L87) — независимый контур глифа в итоговой позиции.
 Изменение контрольных точек и преобразования не затрагивают исходную компоновку
 или другие копии. Для слова выберите глифы по исходному диапазону кластеров и
 объедините их контуры. Лигатура — один неделимый контур: выделение отдельных
@@ -95,3 +95,18 @@ shaping, выключка по ширине, табуляция, условны�
 Запуск на Windows/macOS/Android не подтверждается тестами Linux.
 NO_FONTS сохраняет доступный API создания с UNSUPPORTED и NULL-результатом.
 Подтверждающие проверки: TEXT_LAYOUT_CHECKPOINT.ru.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_font_read` | function | [include/flashvm/font.h:44](../include/flashvm/font.h#L44) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:85](../include/flashvm/text_layout.h#L85) |
+<!-- source-links:end -->

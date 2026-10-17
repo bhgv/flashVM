@@ -1,7 +1,7 @@
 # Stage background / Фон сцены
 
 `flashvm/stage.h` exposes a context-wide RGBA background selection. Querying
-an unset selection returns FVM_NOT_FOUND without changing the output. The host
+an unset selection returns [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) without changing the output. The host
 can set any RGBA color or clear the selection. MovieClip import preserves valid
 SetBackgroundColor (tag 9, exactly three RGB bytes) as frame controls. Execution
 selects an opaque color only while the context has no selection; subsequent
@@ -31,3 +31,15 @@ disabled as documented by the validation profiles.
 В v0.105 прошли 267 тестов каждой графической сборки и по три профильных
 теста переносимой и санитарной сборок. Ограничения инструментов проверки
 памяти сохранены; эти результаты не закрывают этапы роудмапа.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+<!-- source-links:end -->

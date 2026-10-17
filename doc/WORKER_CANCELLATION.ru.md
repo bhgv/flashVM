@@ -1,6 +1,6 @@
 # Кооперативная остановка потоков и ожидание нескольких потоков
 
-В переносимый C89 API добавлены `fvm_worker_stop`, `fvm_worker_stop_requested` и `fvm_worker_join_all`.
+В переносимый C89 API добавлены [`fvm_worker_stop`](../include/flashvm/worker.h#L52), [`fvm_worker_stop_requested`](../include/flashvm/worker.h#L54) и [`fvm_worker_join_all`](../include/flashvm/worker.h#L60).
 
 `stop` **не завершает поток принудительно**: он устанавливает защищённый синхронизацией флаг отмены и пробуждает поток с отложенным запуском. Функция потока должна сама проверять флаг через `stop_requested` и корректно возвращаться. Блокирующий ввод-вывод или ожидание данных в канале автоматически не прерываются. Перед уничтожением дескриптора обязательно выполнить `join`. `join_all` ожидает все потоки, даже если один завершился с ошибкой; возвращает первую ошибку, отклоняет повторяющиеся и нулевые дескрипторы. Строковые результаты принадлежат дескрипторам потоков до их уничтожения.
 
@@ -9,3 +9,17 @@
 Рабочий пример C89: `examples/embedding/worker_stop/main.c`.
 
 **Ограничения:** объект `thread` в ActionScript пока отсутствует. Автоматического прерывания VM, отмены блокирующих каналов и итератора завершения нескольких потоков пока нет. В этой среде проверяется сборка Linux; другие платформы требуют отдельной проверки.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_join_all` | function | [include/flashvm/worker.h:60](../include/flashvm/worker.h#L60) |
+| `fvm_worker_stop` | function | [include/flashvm/worker.h:52](../include/flashvm/worker.h#L52) |
+| `fvm_worker_stop_requested` | function | [include/flashvm/worker.h:54](../include/flashvm/worker.h#L54) |
+<!-- source-links:end -->

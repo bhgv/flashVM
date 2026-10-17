@@ -2,9 +2,9 @@
 
 `flashvm/text_layout.h` builds a single-font text block from validated UTF-8.
 It uses the static FreeType/HarfBuzz/libunibreak/FriBidi targets selected by
-`FONTS` in DEFS.txt. No platform font lookup or downloaded dependency is used.
+[`FONTS`](../cmake/BuildDefinitions.cmake#L15) in DEFS.txt. No platform font lookup or downloaded dependency is used.
 
-Create a font with `fvm_font_read`, then call `fvm_text_layout_create`. NULL
+Create a font with [`fvm_font_read`](../include/flashvm/font.h#L44), then call [`fvm_text_layout_create`](../include/flashvm/text_layout.h#L72). NULL
 options select unlimited width, the font's natural line height, AUTO paragraph
 direction and START alignment. The example in
 `examples/embedding/text_layout/main.c` shows wrapping, mixed Latin/Hebrew/Arabic,
@@ -63,8 +63,8 @@ successful call. Neither metrics nor path export uses those resources again.
 The resulting layout can be queried concurrently while no thread destroys it;
 font use during construction still follows the per-handle serialization rule.
 
-`fvm_text_layout_path` returns an independent block path;
-`fvm_text_layout_glyph_path` returns an independent glyph path at its final
+[`fvm_text_layout_path`](../include/flashvm/text_layout.h#L85) returns an independent block path;
+[`fvm_text_layout_glyph_path`](../include/flashvm/text_layout.h#L87) returns an independent glyph path at its final
 position. Editing either cannot change the layout or another exported path.
 Select words using original cluster byte ranges and append selected glyph
 paths. A ligature is one indivisible outline: splitting its component letters
@@ -94,3 +94,19 @@ Inherited font/data-version limitations are in FONT_LIBRARIES.md. Windows,
 macOS and Android execution is not established by the Linux tests. NO_FONTS
 retains linkable layout creation with UNSUPPORTED and null output.
 See TEXT_LAYOUT_CHECKPOINT.md for recorded acceptance evidence.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FONTS` | DEFS switch | [cmake/BuildDefinitions.cmake:15](../cmake/BuildDefinitions.cmake#L15) |
+| `fvm_font_read` | function | [include/flashvm/font.h:44](../include/flashvm/font.h#L44) |
+| `fvm_text_layout_create` | function | [include/flashvm/text_layout.h:72](../include/flashvm/text_layout.h#L72) |
+| `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:87](../include/flashvm/text_layout.h#L87) |
+| `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:85](../include/flashvm/text_layout.h#L85) |
+<!-- source-links:end -->

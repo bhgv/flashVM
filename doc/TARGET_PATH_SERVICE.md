@@ -31,3 +31,15 @@ path tests retain cycle and transport coverage.
 преобразования в строку, для обычного объекта результат — undefined. Проверены
 имена со встроенным NUL и сохранение входа/выхода при отказе памяти. Другие типы
 отображаемых объектов, удалённые клипы и полная совместимость остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_target_path` | function | [include/flashvm/execution.h:165](../include/flashvm/execution.h#L165) |
+<!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Loaded point fields / Поля точки в загруженном SWF
 
-v0.334 refines fvm_exec_clip_point and the two MovieClip point methods for loaded
+v0.334 refines [fvm_exec_clip_point](../include/flashvm/execution.h#L65) and the two MovieClip point methods for loaded
 SWF4–8. It reads stored own numeric x/y fields without getters, inherited lookup
 or numeric coercion. A primitive/missing point or an absent/nonnumeric field is
 an undefined-returning no-op, before geometry callbacks. A singular inverse
@@ -65,3 +65,15 @@ AVM1_POINT_CASE.md for evidence and remaining duplicate/callback-name limits.
 В v0.336 исправлен регистр собственных координат SWF4–6 с сохранением написания
 при записи. SWF7–8 остаются чувствительными к регистру. Остальные ограничения
 и границы неоднозначных дубликатов перечислены в AVM1_POINT_CASE.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_point` | function | [include/flashvm/execution.h:65](../include/flashvm/execution.h#L65) |
+<!-- source-links:end -->

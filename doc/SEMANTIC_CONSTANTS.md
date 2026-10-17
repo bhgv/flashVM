@@ -7,9 +7,9 @@ separate namespaces even when their numeric values match. Wire values, execution
 command ABI, graph schema and existing behavior are preserved.
 
 Значимые коды и границы вынесены в заголовки. В коде теперь, например,
-`FVM_AVM1_ACTION_INCREMENT`, `FVM_AVM1_ACTION_GET_MEMBER`,
-`FVM_AVM1_F2_PRELOAD_ARGUMENTS`, `FVM_RESOURCE_MOVIECLIP` и
-`FVM_UINT32_SHIFT_MASK`. Комментарий у каждого определения объясняет назначение.
+[`FVM_AVM1_ACTION_INCREMENT`](../src/avm1/action_codes.h#L133), [`FVM_AVM1_ACTION_GET_MEMBER`](../src/avm1/action_codes.h#L129),
+[`FVM_AVM1_F2_PRELOAD_ARGUMENTS`](../src/avm1/encoding_constants.h#L9), [`FVM_RESOURCE_MOVIECLIP`](../src/core/resource_kinds.h#L59) и
+[`FVM_UINT32_SHIFT_MASK`](../src/core/numeric_constants.h#L23). Комментарий у каждого определения объясняет назначение.
 Политика добавлена в AGENTS.md и применяется к дальнейшей разработке.
 
 | Header | Purpose / Назначение |
@@ -47,3 +47,19 @@ change is presented as new SWF semantics or completion of a roadmap stage.
 Windows/macOS/Android и генераторов JIT для шести архитектур ещё нет; пункт 9
 и остальные общие стадии не закрыты. Эти макросы сохраняют значения и ABI,
 поэтому состояние совместимости не повышается от одного переименования.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_AVM1_ACTION_GET_MEMBER` | macro / define | [src/avm1/action_codes.h:129](../src/avm1/action_codes.h#L129) |
+| `FVM_AVM1_ACTION_INCREMENT` | macro / define | [src/avm1/action_codes.h:133](../src/avm1/action_codes.h#L133) |
+| `FVM_AVM1_F2_PRELOAD_ARGUMENTS` | macro / define | [src/avm1/encoding_constants.h:9](../src/avm1/encoding_constants.h#L9) |
+| `FVM_RESOURCE_MOVIECLIP` | macro / define | [src/core/resource_kinds.h:59](../src/core/resource_kinds.h#L59) |
+| `FVM_UINT32_SHIFT_MASK` | macro / define | [src/core/numeric_constants.h:23](../src/core/numeric_constants.h#L23) |
+<!-- source-links:end -->

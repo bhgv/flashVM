@@ -13,7 +13,7 @@ Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd; ссылки в WATCH_THROW.md.
 Первый продолжает присваивание и отдельно обрабатывает наследуемый setter;
 второй заменяет присваиваемое значение на undefined при script-исключении.
 
-[GC:] FVM_WatchWriteScope сохраняет граф исключения до очистки pending-состояния.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) сохраняет граф исключения до очистки pending-состояния.
 Явный корень защищает строки, объекты и циклы во время setter/GC. Деструктор
 восстанавливает владение pending-значением до снятия корня и выполняется раньше
 окружающего корня владельца поиска. Отказ выделения до приостановки сохраняет
@@ -24,7 +24,7 @@ object_watch_throw воспроизвёл ошибку v0.431. Проверен�
 успех/исключение setter и приоритет ошибок. Самоцикличный объект исключения
 переживает настоящий GC внутри setter, где pending-состояние приостановлено.
 Прежние тесты строк с NUL и JIT теперь ожидают запись undefined при loaded throw.
-FVM_ERROR и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
+[FVM_ERROR](../include/flashvm/flashvm.h#L43) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
 эталона не заявляется. Нативная длина/ресурсы, метатаблицы, пределы рекурсии и
 полная совместимость требуют проверок. Все девять стадий остаются открытыми.
 
@@ -75,3 +75,16 @@ setter с цикличными объектами исключений и GC в 
 Проверено v0.434: Linux minimal 861/861; AGG, NO_OS_PORTS на Linux и
 heap/global ASan+UBSan — по 6/6. Применены средства восстановления права
 запуска; stack ASan/LeakSanitizer отключены. Другие ОС и общая приёмка открыты.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+<!-- source-links:end -->

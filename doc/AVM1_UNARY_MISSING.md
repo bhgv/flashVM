@@ -2,7 +2,7 @@
 
 Loaded AVM1 bytecode now supplies undefined when an audited unary operation reads
 an empty operand stack. The existing versioned C execution service then performs
-the operation. Previously these dispatch branches returned FVM_ERROR before
+the operation. Previously these dispatch branches returned [FVM_ERROR](../include/flashvm/flashvm.h#L43) before
 reaching that service. Host-only execution without a loaded SWF retains its
 strict missing-operand error; explicit C service input pointers remain mandatory.
 
@@ -56,3 +56,15 @@ first assertion failures are retained in validation logs; their raw Action bytes
 are unchanged. Both new heap/global ASan+UBSan fixtures passed (no stack/leak
 coverage). All 26 accepted original SWFs matched the oracle in each profile.
 Dispatch references remain 94/100 in the bounded pinned catalog.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+<!-- source-links:end -->

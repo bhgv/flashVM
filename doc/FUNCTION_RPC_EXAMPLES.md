@@ -22,7 +22,7 @@ selected generator creates one; arguments are the same.
 ```
 
 The source runtime hands its context exclusively to the broker service thread.
-`fvm_worker_run` creates a second independent runtime and context on a worker
+[`fvm_worker_run`](../include/flashvm/worker.h#L21) creates a second independent runtime and context on a worker
 thread. Only a primitive URI string is copied into the worker. It imports the
 interface and invokes the original over TCP, even in one process. A VM object,
 function address or userdata pointer is never passed to the recipient VM.
@@ -83,3 +83,15 @@ not certify execution on two physical computers or on foreign operating systems.
 See [ownership and limitations](REMOTE_FUNCTIONS.md); cross-authority callback
 cycles, persistent socket multiplexing and unrestricted concurrent heap access
 remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+<!-- source-links:end -->

@@ -9,11 +9,11 @@ it does not run an interpreter dispatch loop inside generated blocks.
 
 | Operation | Shared service | Verification |
 | --- | --- | --- |
-| SetVariable | `fvm_exec_variable_set` | Plain/global writes, local lookup, qualified setter callbacks |
-| DefineLocal / DefineLocal2 | `fvm_exec_variable_declare` | Prepared activation, retained initial value, undefined declaration |
-| GetMember / SetMember | `fvm_exec_member` | Explicit object, loaded primitive boxing, collecting/throwing setter |
-| Delete | `fvm_exec_delete_member` | Own member deletion and returned Boolean |
-| Delete2 | `fvm_exec_delete_reference` | Binding/qualified deletion and versioned missing operands |
+| SetVariable | [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408) | Plain/global writes, local lookup, qualified setter callbacks |
+| DefineLocal / DefineLocal2 | [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L428) | Prepared activation, retained initial value, undefined declaration |
+| GetMember / SetMember | [`fvm_exec_member`](../include/flashvm/execution.h#L206) | Explicit object, loaded primitive boxing, collecting/throwing setter |
+| Delete | [`fvm_exec_delete_member`](../include/flashvm/execution.h#L135) | Own member deletion and returned Boolean |
+| Delete2 | [`fvm_exec_delete_reference`](../include/flashvm/execution.h#L391) | Binding/qualified deletion and versioned missing operands |
 
 Native writes/declarations retain the interpreter's MovieClip-target/global
 fallback, script-this and managed activation selection. Member and deletion
@@ -48,3 +48,19 @@ have passing evidence. Final suite runs needed focused reruns after restoring
 execute permission on one AGG, two Cairo and seven minimal generated ELF files.
 Those were launch failures, not behavior retries. Earlier development runs also
 exposed and corrected the differential fixture's shared-state error described above.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:135](../include/flashvm/execution.h#L135) |
+| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:391](../include/flashvm/execution.h#L391) |
+| `fvm_exec_member` | function | [include/flashvm/execution.h:206](../include/flashvm/execution.h#L206) |
+| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:428](../include/flashvm/execution.h#L428) |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+<!-- source-links:end -->

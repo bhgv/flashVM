@@ -41,13 +41,13 @@ NATURAL/FORCE — политика VM, независимая от CMake Release
 
 ## Используемые функции
 
-- [`fvm_avm1_execute`](../../../include/flashvm/avm1.h) — декларация и контракт общего VM API.
+- [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — декларация и контракт общего VM API.
 - [`fvm_debug_clear_symbols`](../../../doc/DEBUG_API.md#fvm_debug_clear_symbols) — подробный debugger/runtime-контракт.
 - [`fvm_debug_current_source`](../../../doc/DEBUG_API.md#fvm_debug_current_source) — подробный debugger/runtime-контракт.
 - [`fvm_debug_load_swd`](../../../doc/DEBUG_API.md#fvm_debug_load_swd) — подробный debugger/runtime-контракт.
 - [`fvm_debug_set_breakpoint`](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint) — подробный debugger/runtime-контракт.
 - [`fvm_debug_set_breakpoint_handler`](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint_handler) — подробный debugger/runtime-контракт.
-- [`fvm_exception_clear`](../../../include/flashvm/exception.h) — декларация и контракт общего VM API.
+- [`fvm_exception_clear`](../../../include/flashvm/exception.h#L65) — декларация и контракт общего VM API.
 - [`fvm_execution_set_mode`](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — подробный debugger/runtime-контракт.
 
 [Полный справочник EN](../../../doc/DEBUG_API.md) ·
@@ -78,14 +78,33 @@ function links to its detailed reference or public ownership contract.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_avm1_execute`](../../../include/flashvm/avm1.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — AVM1-вызовы и связь с host API. |
-| [`fvm_debug_clear_symbols`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_clear_symbols](../../../doc/DEBUG_API.md#fvm_debug_clear_symbols) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_current_source`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_current_source](../../../doc/DEBUG_API.md#fvm_debug_current_source) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_load_swd`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_load_swd](../../../doc/DEBUG_API.md#fvm_debug_load_swd) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_set_breakpoint`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_set_breakpoint](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_set_breakpoint_handler`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_set_breakpoint_handler](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint_handler) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_exception_clear`](../../../include/flashvm/exception.h) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
-| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — AVM1-вызовы и связь с host API. |
+| [`fvm_debug_clear_symbols`](../../../include/flashvm/source_debug.h#L25) | [DEBUG_API.md#fvm_debug_clear_symbols](../../../doc/DEBUG_API.md#fvm_debug_clear_symbols) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_current_source`](../../../include/flashvm/source_debug.h#L39) | [DEBUG_API.md#fvm_debug_current_source](../../../doc/DEBUG_API.md#fvm_debug_current_source) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_load_swd`](../../../include/flashvm/source_debug.h#L22) | [DEBUG_API.md#fvm_debug_load_swd](../../../doc/DEBUG_API.md#fvm_debug_load_swd) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_set_breakpoint`](../../../include/flashvm/debug.h#L51) | [DEBUG_API.md#fvm_debug_set_breakpoint](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_set_breakpoint_handler`](../../../include/flashvm/debug.h#L54) | [DEBUG_API.md#fvm_debug_set_breakpoint_handler](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint_handler) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h#L65) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
 
 [Описание в общем каталоге](../../README.md#example-debugger-source_breakpoints).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_execute` | function | [include/flashvm/avm1.h:38](../../../include/flashvm/avm1.h#L38) |
+| `fvm_debug_clear_symbols` | function | [include/flashvm/source_debug.h:25](../../../include/flashvm/source_debug.h#L25) |
+| `fvm_debug_current_source` | function | [include/flashvm/source_debug.h:39](../../../include/flashvm/source_debug.h#L39) |
+| `fvm_debug_load_swd` | function | [include/flashvm/source_debug.h:22](../../../include/flashvm/source_debug.h#L22) |
+| `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:51](../../../include/flashvm/debug.h#L51) |
+| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../../../include/flashvm/debug.h#L54) |
+| `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../../../include/flashvm/exception.h#L65) |
+| `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |
+<!-- source-links:end -->

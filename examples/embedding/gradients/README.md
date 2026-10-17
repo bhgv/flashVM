@@ -8,7 +8,7 @@ Build the ordinary project with GRAPHICS_AGG or GRAPHICS_CAIRO enabled in DEFS.t
 and run `flashvm_examples_embedding_gradients_main`. NO_GRAPHICS is supported
 as a demonstration mode and prints how to enable a raster backend.
 
-Call `fvm_gradient_init` before setting the borrowed stop array. Stop ratios run
+Call [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L33) before setting the borrowed stop array. Stop ratios run
 from 0 to 1 in nondecreasing order. The gradient matrix maps the normalized square
 (-1,-1)..(1,1) to pixels, independently of the path. For a horizontal ramp covering
 a surface of width W, set xx=W/2 and x0=W/2; set a nonzero yy so the transform stays
@@ -56,11 +56,27 @@ The annotated AS2 example_as2.as demonstrates MovieClip.beginGradientFill with a
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_gradient_init`](../../../include/flashvm/gradient.h) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
-| [`fvm_path_add`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_create`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_destroy`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
-| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_gradient_init`](../../../include/flashvm/gradient.h#L33) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_path_add`](../../../include/flashvm/path.h#L54) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_create`](../../../include/flashvm/path.h#L50) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h#L52) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h#L37) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-gradients).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_gradient_init` | function | [include/flashvm/gradient.h:33](../../../include/flashvm/gradient.h#L33) |
+| `fvm_path_add` | function | [include/flashvm/path.h:54](../../../include/flashvm/path.h#L54) |
+| `fvm_path_create` | function | [include/flashvm/path.h:50](../../../include/flashvm/path.h#L50) |
+| `fvm_path_destroy` | function | [include/flashvm/path.h:52](../../../include/flashvm/path.h#L52) |
+| `fvm_path_draw_gradient` | function | [include/flashvm/gradient.h:37](../../../include/flashvm/gradient.h#L37) |
+<!-- source-links:end -->

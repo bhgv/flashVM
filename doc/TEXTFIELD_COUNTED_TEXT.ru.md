@@ -34,7 +34,7 @@ align сравнивается по полной длине. Имя шрифта
 Восстановление графа отклоняет текст больше 16384 байт или 4096 проверенных
 символов Unicode до выделения Field и импорта шрифтов. Прежде проверялась
 корректность UTF-8, но можно было обойти пределы редактирования. Повреждённый
-нативный payload возвращает FVM_INVALID_ARGUMENT; объекты, счётчики выделений
+нативный payload возвращает [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); объекты, счётчики выделений
 и шрифты откатываются. Допустимые границы 4096 символов / 16384 байта / 8192
 единицы UTF-16 по-прежнему восстанавливаются. textfield_restore_limits изменяет
 настоящую сериализацию, пересчитывает длины и CRC, проверяет отказы и откат.
@@ -50,3 +50,15 @@ align сравнивается по полной длине. Имя шрифта
 textfield_same_text проверяет пустой/обычный/NUL текст, host/SWF4–8, разделение
 форматов, алиасы, изменение и GC. jit_textfield_same_text сравнивает
 SetMember/GetMember в интерпретаторе, явном и автоматическом JIT.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+<!-- source-links:end -->

@@ -18,7 +18,7 @@ non-enumerable ещё предстоит реализовать.
 
 Math: abs, acos, asin, atan, atan2, ceil, cos, exp, floor, log, max, min,
 pow, random, round, sin, sqrt, tan. Константы: E, LN10, LN2, LOG10E,
-LOG2E, PI, SQRT1_2, SQRT2. Вызов: fvm_object_call и AVM1 ActionCallMethod.
+LOG2E, PI, SQRT1_2, SQRT2. Вызов: [fvm_object_call](../include/flashvm/value.h#L126) и AVM1 ActionCallMethod.
 Недостающие аргументы дают NaN; лишние игнорируются методами фиксированной арности.
 min/max принимают любое число аргументов, возвращают +/-Infinity без аргументов,
 распространяют NaN и выбирают правильный знак нуля. round при равенстве выбирает
@@ -31,7 +31,7 @@ Math.random использует независимый для контекст�
 Потоки не разделяют libc rand или состояние генератора. Это не криптографический
 генератор и не точная копия PRNG Flash Player.
 
-`fvm_value_to_number`: undefined → NaN, null → +0, boolean → 0/1; числа
+[`fvm_value_to_number`](../include/flashvm/standard.h#L23): undefined → NaN, null → +0, boolean → 0/1; числа
 сохраняются. Строки разбираются независимо от locale: ASCII-пробелы, десятичные
 числа с дробью/экспонентой, беззнаковый 0x hex, Infinity и пустая строка → 0.
 Неверный синтаксис даёт NaN; отрицательный ноль сохраняется. Оболочка Boolean
@@ -54,3 +54,17 @@ https://262.ecma-international.org/5.1/#sec-15.8 . Это образец для 
 при конфликте, GC и настоящий AVM1 CallMethod. Интеграционный тест расширений
 проверяет Math.pow в отдельном script worker. Остальные стандартные/системные
 объекты остаются в SWF8_ROADMAP.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:23](../include/flashvm/standard.h#L23) |
+<!-- source-links:end -->

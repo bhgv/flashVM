@@ -16,21 +16,21 @@
 | Исполнение | INTERPRETER | JIT — автоматическая компиляция с fallback в интерпретатор; режимы API: EXECUTION_MODES.md |
 | Мультимедиа | NO_MEDIA | MEDIA — пока не реализован |
 
-`AUTO_PLATFORM` выбирает целевую ОС из toolchain CMake. Явный ключ ОС должен
+[`AUTO_PLATFORM`](../cmake/BuildDefinitions.cmake#L8) выбирает целевую ОС из toolchain CMake. Явный ключ ОС должен
 совпадать с целью: замена LINUX на WINDOWS не превращает Linux-компилятор в
 кросс-компилятор Windows. Android распознаётся до общего Linux-варианта.
 Адаптеры FlashVM берутся из `ports/<платформа>/`.
 
-`HEADLESS` означает работу с буфером RGBA8 приложения. Окно и подключение к экрану
+[`HEADLESS`](../cmake/BuildDefinitions.cmake#L9) означает работу с буфером RGBA8 приложения. Окно и подключение к экрану
 не создаются; вывод выполняет встраивающее приложение. Зарезервированные экранные
 ключи при выборе завершают конфигурацию явной ошибкой. Наличие GL/Win32-кода
 в исходниках Cairo не означает наличие экранного адаптера FlashVM.
 
-`GRAPHICS_CAIRO` собирает встроенные Cairo/Pixman и включает Cairo в API
-растеризации FlashVM. `GRAPHICS_AGG` выбирает встроенный AGG. `NO_GRAPHICS`
+[`GRAPHICS_CAIRO`](../cmake/BuildDefinitions.cmake#L7) собирает встроенные Cairo/Pixman и включает Cairo в API
+растеризации FlashVM. [`GRAPHICS_AGG`](../cmake/BuildDefinitions.cmake#L7) выбирает встроенный AGG. [`NO_GRAPHICS`](../cmake/BuildDefinitions.cmake#L7)
 не собирает ни одну графическую библиотеку; корректный вызов растеризации
-возвращает FVM_UNSUPPORTED. zlib и mini_regex включены во всех вариантах.
-`SQLITE` собирает amalgamation, C-адаптер и SQLite-программы; поиск или подмена
+возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). zlib и mini_regex включены во всех вариантах.
+[`SQLITE`](../cmake/BuildDefinitions.cmake#L10) собирает amalgamation, C-адаптер и SQLite-программы; поиск или подмена
 системной библиотекой отсутствует.
 
 После выбора ключей создайте новую сборку:
@@ -77,3 +77,21 @@ FONTS (по умолчанию) / NO_FONTS — FreeType, HarfBuzz, libunibreak �
 [подключение шрифтов](FONT_LIBRARIES.ru.md).
 
 See / см. [JIT build-default contract](JIT_BUILD_DEFAULT.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `AUTO_PLATFORM` | DEFS switch | [cmake/BuildDefinitions.cmake:8](../cmake/BuildDefinitions.cmake#L8) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `GRAPHICS_AGG` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `GRAPHICS_CAIRO` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `HEADLESS` | DEFS switch | [cmake/BuildDefinitions.cmake:9](../cmake/BuildDefinitions.cmake#L9) |
+| `NO_GRAPHICS` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `SQLITE` | DEFS switch | [cmake/BuildDefinitions.cmake:10](../cmake/BuildDefinitions.cmake#L10) |
+<!-- source-links:end -->

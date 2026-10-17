@@ -14,7 +14,7 @@ source: a million-element logical array with two stored entries and no removal
 needs two units for source staging. Rejected overloads retain their previous
 behavior; unloaded native staging remains unmetered by this loaded-SWF scope.
 
-Instruction exhaustion or worker stop during staging returns FVM_ERROR before
+Instruction exhaustion or worker stop during staging returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) before
 publishing the staged index table. The temporary removed array is rooted through
 staging and released on failure. Native call/frame/execution depth is restored;
 GC reclaims unpublished objects and retry with sufficient budget succeeds.
@@ -42,3 +42,15 @@ normal shared polling mechanism even with instruction_limit disabled.
 учёта работы/кооперативной остановки FlashVM, а не измерение времени Flash Player.
 Полная приёмка worker/GC/debugger, остальные операции, другие ОС/архитектуры
 и все девять стадий роудмапа остаются открытыми. ABI/wire не меняются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+<!-- source-links:end -->

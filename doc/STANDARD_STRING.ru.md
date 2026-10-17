@@ -4,7 +4,7 @@
 
 Стандартная библиотека теперь устанавливает метаданные конструктора и прототипа
 String. Функция String(value) сохраняет возврат примитивной строки; new String
-через `fvm_construct` или AVM1 NewObject создаёт обёртку. Без аргумента получается
+через [`fvm_construct`](../include/flashvm/value.h#L158) или AVM1 NewObject создаёт обёртку. Без аргумента получается
 пустая строка, явный undefined даёт «undefined». Внутреннее содержимое независимо
 от изменяемых обычных свойств. Вход должен быть корректным UTF-8.
 
@@ -32,7 +32,7 @@ API сверяется со [справочником AS2 String](https://open-f
 **Ограничение представления:** C ABI хранит строки как UTF-8 скалярных символов
 с завершающим NUL. Встроенный NUL и одиночный суррогат UTF-16 не представимы.
 fromCharCode, создающий их, charAt на одной половине пары и диапазон, разрезающий
-пару, возвращают FVM_UNSUPPORTED без замены или усечения. charCodeAt сообщает
+пару, возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) без замены или усечения. charCodeAt сообщает
 эти кодовые единицы. Для полного String нужна строковая модель с явной длиной
 и полным UTF-16.
 
@@ -60,7 +60,7 @@ valueOf/toString используют общий идентификатор фу
 
 Инъекция отказов памяти проверяет атомарную установку, создание Error/Number/String,
 методы String и чтение length. Мосты нативного вызова и чтения свойств теперь
-перехватывают отказ памяти при поиске, getter и callback: FVM_OUT_OF_MEMORY
+перехватывают отказ памяти при поиске, getter и callback: [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44)
 с undefined на выходе вместо выхода C++-исключения за C ABI.
 
 Тесты: standard_string.c, standard_string_avm1.cpp, string_edges.c, string_wire.c,
@@ -71,3 +71,17 @@ API; исполняемые тесты формируют записи AVM1 на
 Остаются split и Array, Unicode-преобразование регистра, полные Object/Function,
 методы примитивных строк, семантика версий, полное строковое представление и
 реальные запуски Windows/macOS/Android. Завершённость String или SWF 8 не заявляется.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

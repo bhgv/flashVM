@@ -14,7 +14,7 @@ fields does not invoke inherited setters. Final subclass.prototype assignment
 uses ordinary property dispatch, including its setter. Self-extension and
 noncallable class objects are accepted. Primitive prototype data, including
 counted strings with embedded NUL, is preserved without creating an object link.
-Host-only use retains the existing strict `fvm_class_extend` policy.
+Host-only use retains the existing strict [`fvm_class_extend`](../src/standard/inheritance.cpp#L85) policy.
 
 [GC:] Original operands, boxed receivers, getter results and the new prototype
 stay rooted through callbacks. Exceptions propagate with roots restored; user
@@ -35,3 +35,16 @@ subclass.prototype сохраняет обычный setter. Корни GC уд�
 обработчиков не откатываются. Отдельные проверки охватывают SWF 4–8, прямой вызов
 C, Action Extends, упаковку, скалярные прототипы, исключения и отказы памяти.
 Машинный JIT и завершение стадий 1–9 этим изменением не заявляются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_class_extend` | function | [src/standard/inheritance.cpp:85](../src/standard/inheritance.cpp#L85) |
+| `fvm_exec_extends` | function | [include/flashvm/execution.h:215](../include/flashvm/execution.h#L215) |
+<!-- source-links:end -->

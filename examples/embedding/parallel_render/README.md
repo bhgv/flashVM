@@ -35,7 +35,19 @@ ActionScript не управляет потоками напрямую. Скри
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h) | [RENDER_THREADS.md#русский](../../../doc/RENDER_THREADS.md#русский) — Параллельные задания рендеринга. |
+| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L21) | [RENDER_THREADS.md#русский](../../../doc/RENDER_THREADS.md#русский) — Параллельные задания рендеринга. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-parallel_render).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:21](../../../include/flashvm/render_jobs.h#L21) |
+<!-- source-links:end -->

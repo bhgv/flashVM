@@ -2,7 +2,7 @@
 
 Реализована управляемая модель `flash.geom.Point` и `flash.geom.Matrix` для
 AS2: классы доступны через `flash.geom`, а C API использует полные имена
-`flash.geom.Point` и `flash.geom.Matrix` в `fvm_construct`.
+`flash.geom.Point` и `flash.geom.Matrix` в [`fvm_construct`](../include/flashvm/value.h#L158).
 
 Point предоставляет x/y, вычисляемую length, add, subtract, clone, equals,
 normalize, offset, toString и статические distance, interpolate, polar.
@@ -97,3 +97,15 @@ Point.add while retaining the original coordinates on failure.
 v0.33 validation passed 188 headless cases (four permission-related launch
 failures passed on retry), 198 per graphical profile, 179 portable and 185
 strict-language/sanitizer programs. The v0.32 instrumentation limitations apply.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+<!-- source-links:end -->

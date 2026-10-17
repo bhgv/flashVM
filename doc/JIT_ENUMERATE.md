@@ -13,8 +13,8 @@ The input/converted name, resolved value and dense key snapshot have separate
 GC roots through lookup, snapshot creation and operand-vector reservation.
 After success, the input is replaced by the host null or loaded undefined
 sentinel, then snapshot keys are pushed in reverse order. Storage is reserved
-before publication; the total must fit FVM_JIT_MAX_STACK. A stack-bound failure
-returns FVM_UNSUPPORTED without replacing the input. Allocation exceptions leave
+before publication; the total must fit [FVM_JIT_MAX_STACK](../src/jit/constants.h#L8). A stack-bound failure
+returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) without replacing the input. Allocation exceptions leave
 root chains and active native code restored by the existing execution guards.
 
 | Test | Coverage |
@@ -36,3 +36,16 @@ after generated ELF execute-permission repairs and reruns. Three enumeration
 checks pass restricted heap/global ASan+UBSan; stack ASan and LeakSanitizer remain
 disabled. The MovieClip test adds a visible custom property so SWF4 suppression
 would produce an observably different result.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_JIT_MAX_STACK` | macro / define | [src/jit/constants.h:8](../src/jit/constants.h#L8) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

@@ -4,7 +4,7 @@ The existing native removeMovieClip implementation and forced scene removal now
 prepare replacement maps before changing the live graph. Child-table removal,
 current-name binding cleanup, clearing the parent edge and stopping playback
 are published only after every allocation succeeds. Allocation errors return
-FVM_OUT_OF_MEMORY and preserve both sides of ownership. Root chains are unchanged.
+[FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and preserve both sides of ownership. Root chains are unchanged.
 
 [GC:] Source maps retain all managed edges during preparation. Publication uses
 only nonallocating swaps; no script or collection occurs after its first swap.
@@ -80,3 +80,15 @@ expansion of historical Flash depth support or a RemoveSprite implementation.
 Validation for v0.296: Linux AGG and Cairo each passed 580 tests after repairing
 launch permissions for four and ten executables respectively. All 26 original
 SWFs matched the oracle in each profile. No semantic assertion failures occurred.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+<!-- source-links:end -->

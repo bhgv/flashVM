@@ -29,7 +29,7 @@ Interpreter and generated-body scopes restore the caller on all exits.
 вызывающего независимо от actual receiver/preload. With/Catch копируют ячейку,
 Try/Finally используют родительскую. Состояние восстанавливается при любом выходе.
 
-The public ABI and graph format are unchanged. FVM_ScriptFrame.implicit_this is
+The public ABI and graph format are unchanged. [FVM_ScriptFrame](../include/flashvm/function.h#L16).implicit_this is
 an object-valued entry snapshot, null for primitive cells; live reads/writes use
 execution helpers. Active stack cells are not serialized; transported pure AVM1
 functions create destination-local cells. Super/preload values still derive from
@@ -65,3 +65,15 @@ transitive/dlopen dependencies and complete roadmap acceptance remain open.
 Follow-up v0.516: With-sensitive SWF5 keyword folding is corrected separately;
 see [RU/EN contract](WITH_THIS_CASE.md). Уточнение регистра this внутри With
 описано в связанном документе.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ScriptFrame` | struct | [include/flashvm/function.h:16](../include/flashvm/function.h#L16) |
+<!-- source-links:end -->

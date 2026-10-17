@@ -1,6 +1,6 @@
 # Frame request preparation / Подготовка запроса кадра — v0.306
 
-The C89 execution API exposes fvm_exec_frame_request(context, input, with_bias,
+The C89 execution API exposes [fvm_exec_frame_request](../include/flashvm/execution.h#L336)(context, input, with_bias,
 scene_bias, output). It prepares a Number or counted String without moving a
 timeline, selecting a target or reading bytecode. GotoFrame2 now delegates its
 previous conversion block to this single-operation handler; decoding remains in
@@ -21,7 +21,7 @@ whitespace and exponent strings remain labels. Full historical GotoFrame2 parsin
 label/path/scene behavior and clip lifecycle semantics still require independent
 compatibility work. This extraction does not certify their completeness.
 
-The scene offset is bounded by FVM_EXEC_MAX_SCENE_FRAME_BIAS. It is validated
+The scene offset is bounded by [FVM_EXEC_MAX_SCENE_FRAME_BIAS](../include/flashvm/execution.h#L14). It is validated
 before callbacks. with_bias is independent of the offset's numeric value: enabled
 zero bias performs the existing addition and can change negative zero to positive
 zero; disabled bias preserves negative zero. No target or playback state is
@@ -70,3 +70,16 @@ passed (no stack/leak coverage). All 26 accepted original SWFs matched the pinne
 oracle in both profiles. An initial compile failure identified a missing standard
 API declaration include; the build was corrected before any tests were accepted.
 The bounded Action-reference audit remains 94/100, with no stage-completion claim.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_frame_request` | function | [include/flashvm/execution.h:336](../include/flashvm/execution.h#L336) |
+| `FVM_EXEC_MAX_SCENE_FRAME_BIAS` | macro / define | [include/flashvm/execution.h:14](../include/flashvm/execution.h#L14) |
+<!-- source-links:end -->

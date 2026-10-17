@@ -4,7 +4,7 @@ The C89 execution API now exposes
 `fvm_exec_detach_clip(FVM_Context *context, FVM_Object *clip)`.
 The operation accepts a native MovieClip instance from the supplied context.
 Null operands, foreign objects, ordinary objects and the builtin class prototype
-return FVM_INVALID_ARGUMENT. Destroying/releasing contexts are rejected.
+return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Destroying/releasing contexts are rejected.
 
 This is the existing forced scene-removal policy: it accepts authored negative
 and dynamic nonnegative depths, stops the detached instance and clears its native
@@ -57,7 +57,7 @@ renderer profile. Dispatch coverage remains 94 references out of the pinned
 
 The complete transactional detachment body now lives in the single-operation
 movieclip_remove.cpp file. The stable removeMovieClip native callback and the C
-execution service both delegate to fvm_movieclip_scene_remove. Native callback
+execution service both delegate to [fvm_movieclip_scene_remove](../src/standard/movieclip_remove.cpp#L7). Native callback
 serialization identifiers and the graph schema remain unchanged.
 
 movieclip_storage.hpp contains the shared raw field/state/depth helpers used by
@@ -83,3 +83,19 @@ included in regression coverage; full removal/event semantics remain open.
 Follow-up v0.315: physical detachment remains unchanged, while loaded AVM1 reads
 retain a separate original parent edge for _parent/_root/path provenance. Unloaded
 host reads stay parentless. See MOVIECLIP_REMOVED_ANCESTRY.md.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Context` | struct | [src/core/runtime.hpp:237](../src/core/runtime.hpp#L237) |
+| `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:237](../include/flashvm/execution.h#L237) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_movieclip_scene_remove` | function | [src/standard/movieclip_remove.cpp:7](../src/standard/movieclip_remove.cpp#L7) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+<!-- source-links:end -->

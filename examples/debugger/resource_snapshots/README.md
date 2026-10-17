@@ -46,10 +46,10 @@ NATURAL/FORCE — политика VM, независимая от CMake Release
 - [`fvm_debug_native_function_count`](../../../doc/DEBUG_API.md#fvm_debug_native_function_count) — подробный debugger/runtime-контракт.
 - [`fvm_debug_object_count`](../../../doc/DEBUG_API.md#fvm_debug_object_count) — подробный debugger/runtime-контракт.
 - [`fvm_debug_script_function_count`](../../../doc/DEBUG_API.md#fvm_debug_script_function_count) — подробный debugger/runtime-контракт.
-- [`fvm_mutex_create`](../../../include/flashvm/mutex.h) — декларация и контракт общего VM API.
-- [`fvm_mutex_release`](../../../include/flashvm/mutex.h) — декларация и контракт общего VM API.
-- [`fvm_mutex_reset`](../../../include/flashvm/mutex.h) — декларация и контракт общего VM API.
-- [`fvm_mutex_set`](../../../include/flashvm/mutex.h) — декларация и контракт общего VM API.
+- [`fvm_mutex_create`](../../../include/flashvm/mutex.h#L18) — декларация и контракт общего VM API.
+- [`fvm_mutex_release`](../../../include/flashvm/mutex.h#L22) — декларация и контракт общего VM API.
+- [`fvm_mutex_reset`](../../../include/flashvm/mutex.h#L28) — декларация и контракт общего VM API.
+- [`fvm_mutex_set`](../../../include/flashvm/mutex.h#L26) — декларация и контракт общего VM API.
 
 [Полный справочник EN](../../../doc/DEBUG_API.md) ·
 [Справочник RU](../../../doc/DEBUG_API.ru.md) ·
@@ -79,15 +79,35 @@ function links to its detailed reference or public ownership contract.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_debug_mutex_detail_snapshot`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_mutex_detail_snapshot](../../../doc/DEBUG_API.md#fvm_debug_mutex_detail_snapshot) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_native_function_at_bytes`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_native_function_at_bytes](../../../doc/DEBUG_API.md#fvm_debug_native_function_at_bytes) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_native_function_count`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_native_function_count](../../../doc/DEBUG_API.md#fvm_debug_native_function_count) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_object_count`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_object_count](../../../doc/DEBUG_API.md#fvm_debug_object_count) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_debug_script_function_count`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_script_function_count](../../../doc/DEBUG_API.md#fvm_debug_script_function_count) — Параметры, статусы, время жизни и ограничения вызова. |
-| [`fvm_mutex_create`](../../../include/flashvm/mutex.h) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
-| [`fvm_mutex_release`](../../../include/flashvm/mutex.h) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
-| [`fvm_mutex_reset`](../../../include/flashvm/mutex.h) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
-| [`fvm_mutex_set`](../../../include/flashvm/mutex.h) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
+| [`fvm_debug_mutex_detail_snapshot`](../../../include/flashvm/debug.h#L98) | [DEBUG_API.md#fvm_debug_mutex_detail_snapshot](../../../doc/DEBUG_API.md#fvm_debug_mutex_detail_snapshot) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_native_function_at_bytes`](../../../include/flashvm/debug.h#L172) | [DEBUG_API.md#fvm_debug_native_function_at_bytes](../../../doc/DEBUG_API.md#fvm_debug_native_function_at_bytes) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_native_function_count`](../../../include/flashvm/debug.h#L164) | [DEBUG_API.md#fvm_debug_native_function_count](../../../doc/DEBUG_API.md#fvm_debug_native_function_count) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_object_count`](../../../include/flashvm/debug.h#L160) | [DEBUG_API.md#fvm_debug_object_count](../../../doc/DEBUG_API.md#fvm_debug_object_count) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_script_function_count`](../../../include/flashvm/debug.h#L168) | [DEBUG_API.md#fvm_debug_script_function_count](../../../doc/DEBUG_API.md#fvm_debug_script_function_count) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_mutex_create`](../../../include/flashvm/mutex.h#L18) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
+| [`fvm_mutex_release`](../../../include/flashvm/mutex.h#L22) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
+| [`fvm_mutex_reset`](../../../include/flashvm/mutex.h#L28) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
+| [`fvm_mutex_set`](../../../include/flashvm/mutex.h#L26) | [MUTEX_CHECKPOINT.md](../../../doc/MUTEX_CHECKPOINT.md) — Идентичность mutex, захват и освобождение. |
 
 [Описание в общем каталоге](../../README.md#example-debugger-resource_snapshots).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_debug_mutex_detail_snapshot` | function | [include/flashvm/debug.h:98](../../../include/flashvm/debug.h#L98) |
+| `fvm_debug_native_function_at_bytes` | function | [include/flashvm/debug.h:172](../../../include/flashvm/debug.h#L172) |
+| `fvm_debug_native_function_count` | function | [include/flashvm/debug.h:164](../../../include/flashvm/debug.h#L164) |
+| `fvm_debug_object_count` | function | [include/flashvm/debug.h:160](../../../include/flashvm/debug.h#L160) |
+| `fvm_debug_script_function_count` | function | [include/flashvm/debug.h:168](../../../include/flashvm/debug.h#L168) |
+| `fvm_mutex_create` | function | [include/flashvm/mutex.h:18](../../../include/flashvm/mutex.h#L18) |
+| `fvm_mutex_release` | function | [include/flashvm/mutex.h:22](../../../include/flashvm/mutex.h#L22) |
+| `fvm_mutex_reset` | function | [include/flashvm/mutex.h:28](../../../include/flashvm/mutex.h#L28) |
+| `fvm_mutex_set` | function | [include/flashvm/mutex.h:26](../../../include/flashvm/mutex.h#L26) |
+<!-- source-links:end -->

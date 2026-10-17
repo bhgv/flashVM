@@ -7,7 +7,7 @@ conversion: loaded pre-SWF7 strings use numeric truth, SWF7+ strings use length,
 and objects are true without valueOf/toString callbacks. No version visibility
 mask is imposed, matching the pinned native property declaration.
 
-The C89 fvm_exec_clip_lock_root(context, write, clip, input, out) reads or writes
+The C89 [fvm_exec_clip_lock_root](../include/flashvm/execution.h#L245)(context, write, clip, input, out) reads or writes
 that intrinsic state using an explicit native instance. Read ignores input;
 write requires a valid value, supports input/output aliasing, and publishes a
 copied private-state map only after preparation succeeds. Errors preserve stored
@@ -69,3 +69,15 @@ The bounded Action-reference audit remains 95/100.
 Follow-up v0.318: the loaded numeric hitTest point path now explicitly uses
 unlocked root coordinates, independently of _lockroot. See
 MOVIECLIP_HIT_ROOT_COORDINATES.md for bounded geometric evidence and remaining gaps.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_lock_root` | function | [include/flashvm/execution.h:245](../include/flashvm/execution.h#L245) |
+<!-- source-links:end -->

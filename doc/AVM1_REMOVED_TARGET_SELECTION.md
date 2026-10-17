@@ -1,6 +1,6 @@
 # Selecting removed targets / Выбор удалённой цели — v0.316
 
-Loaded fvm_exec_select_target now checks effective native detachment before
+Loaded [fvm_exec_select_target](../include/flashvm/execution.h#L198) now checks effective native detachment before
 publishing a selected clip. An empty path or pre-SWF7 undefined reset cannot
 reselect a detached base clip. A path resolving through an ordinary alias to a
 still-parented descendant of a detached clip also becomes an invalid/null target.
@@ -40,3 +40,15 @@ executable-permission launch failures passed after restoring permissions. Three
 targeted heap/global ASan+UBSan fixtures passed (no stack/leak instrumentation).
 All 26 accepted original SWFs matched the pinned oracle in both profiles.
 The source Action-reference audit remains 95/100; all stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_select_target` | function | [include/flashvm/execution.h:198](../include/flashvm/execution.h#L198) |
+<!-- source-links:end -->

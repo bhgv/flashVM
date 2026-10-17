@@ -40,7 +40,7 @@ exact valid keywords and zero-count borrowed strings with nonempty backing data.
 Graph restoration now rejects native text beyond 16384 bytes or 4096 validated
 Unicode scalars before allocating a Field or importing its fonts. Previously
 restoration checked UTF-8 but could bypass the editing envelope. Invalid native
-payloads return FVM_INVALID_ARGUMENT and graph restoration rolls back objects,
+payloads return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) and graph restoration rolls back objects,
 allocation counters and imported fonts. The valid 4096-scalar and supplementary
 16384-byte/8192-unit boundaries remain accepted.
 
@@ -60,3 +60,15 @@ textfield_same_text checks empty, ordinary and NUL content in host/SWF4–8,
 current/future format separation, aliased snapshots, changed text and GC.
 jit_textfield_same_text checks SetMember/GetMember in interpreted, explicit and
 automatic native execution with identical and changed counted text.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+<!-- source-links:end -->

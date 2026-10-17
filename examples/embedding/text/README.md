@@ -23,8 +23,21 @@ comparison, **not** an automatically registered native API.
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_regex_search`](../../../include/flashvm/regex.h) | [TEXT_API.md](../../../doc/TEXT_API.md) — Регулярные выражения. |
-| [`fvm_utf8_validate`](../../../include/flashvm/utf8.h) | [TEXT_API.md](../../../doc/TEXT_API.md) — Проверка и обработка UTF-8. |
+| [`fvm_regex_search`](../../../include/flashvm/regex.h#L15) | [TEXT_API.md](../../../doc/TEXT_API.md) — Регулярные выражения. |
+| [`fvm_utf8_validate`](../../../include/flashvm/utf8.h#L24) | [TEXT_API.md](../../../doc/TEXT_API.md) — Проверка и обработка UTF-8. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-text).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_regex_search` | function | [include/flashvm/regex.h:15](../../../include/flashvm/regex.h#L15) |
+| `fvm_utf8_validate` | function | [include/flashvm/utf8.h:24](../../../include/flashvm/utf8.h#L24) |
+<!-- source-links:end -->

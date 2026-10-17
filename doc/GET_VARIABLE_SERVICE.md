@@ -1,6 +1,6 @@
 # GetVariable service / Общий GetVariable — v0.268
 
-`fvm_exec_get_variable` accepts explicit managed scope, target and this inputs,
+[`fvm_exec_get_variable`](../include/flashvm/execution.h#L446) accepts explicit managed scope, target and this inputs,
 a local-scope indicator and a value name. Loaded names undergo string coercion;
 already-string names retain their complete count. Unloaded host names must be
 strings. Qualified/slash and plain phases reuse the existing common services.
@@ -52,3 +52,15 @@ SWF4, 472 bytes, SHA256 e39a55e70b2a719ac2b03cfb78b58e55f1ed76220ac39cdf3754d547
 Its upstream test.toml also declares known_failure=true. It exposes remaining
 _global/parent/system-property behavior and is excluded from the passing corpus.
 The get_variable_in_scope candidate has a SWF15 header and supplies no SWF<=8 evidence.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_get_variable` | function | [include/flashvm/execution.h:446](../include/flashvm/execution.h#L446) |
+<!-- source-links:end -->

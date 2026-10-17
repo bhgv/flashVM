@@ -33,7 +33,7 @@ exits before finally. Callback writes and allocation failures are not transactio
 Root JIT policy selection is now inside its allocation guard. Previously, creating
 the empty breakpoint-name key could throw `std::bad_alloc` before the guard, escaping
 a root C API call. The allocation regression reproduced that termination; root
-entries now return `FVM_OUT_OF_MEMORY`, with the handled result published correctly.
+entries now return [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44), with the handled result published correctly.
 
 | Test | Coverage |
 | --- | --- |
@@ -52,3 +52,15 @@ after ELF permission repairs/reruns. Eight targeted checks pass restricted
 heap/global ASan+UBSan; stack ASan and LeakSanitizer are disabled. The expanded
 warm-cache allocation sweep passes all profiles and sanitizer. Fresh backend
 fixtures pass 26 synthetic Unicorn instruction/ABI cases.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+<!-- source-links:end -->

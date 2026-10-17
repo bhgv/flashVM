@@ -27,3 +27,20 @@ Flash-объекты и функции не передаются. `userdata` н�
 завершение не реализуется из соображений безопасности состояния VM.
 
 Пример: `examples/embedding/worker_lifecycle/main.c`.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:71](../include/flashvm/worker.h#L71) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:45](../include/flashvm/worker.h#L45) |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:26](../include/flashvm/worker.h#L26) |
+| `fvm_worker_start` | function | [include/flashvm/worker.h:30](../include/flashvm/worker.h#L30) |
+| `fvm_worker_state` | function | [include/flashvm/worker.h:41](../include/flashvm/worker.h#L41) |
+<!-- source-links:end -->

@@ -1,4 +1,4 @@
-Версия разработки: **0.535** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.536** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -70,7 +70,7 @@ FlashVM — экспериментальная библиотека C++98 с п�
 
 ## Состав API
 
-- `flashvm/flashvm.h`: конфигурация, Runtime, Context, загрузка SWF из памяти. `fvm_advance` пока возвращает `FVM_UNSUPPORTED`.
+- `flashvm/flashvm.h`: конфигурация, Runtime, Context, загрузка SWF из памяти. [`fvm_advance`](include/flashvm/flashvm.h#L74) пока возвращает [`FVM_UNSUPPORTED`](include/flashvm/flashvm.h#L46).
 - `flashvm/value.h`: значения, объекты, глобальные переменные, нативные функции; объекты принадлежат контексту, указатели не сохранять после его уничтожения.
 - `flashvm/swf.h`: анализ FWS/CWS до SWF 8, без ZWS.
 - `flashvm/avm1.h`: анализ и частичное выполнение AVM1; JIT отсутствует.
@@ -173,15 +173,15 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 ## Нативный `__call` (этап 26)
 
-`include/flashvm/meta_call.h` предоставляет `fvm_meta_call`: обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Опциональные объекты потоков и каналов ActionScript реализованы через `fvm_extensions_install`; проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
+`include/flashvm/meta_call.h` предоставляет [`fvm_meta_call`](include/flashvm/meta_call.h#L20): обработчик получает исходный объект, метатаблицу и отдельную индексированную таблицу аргументов. Рабочий тест — `tests/meta_call.c`. Опциональные объекты потоков и каналов ActionScript реализованы через [`fvm_extensions_install`](include/flashvm/extensions.h#L17); проектный контракт описан в `doc/THREADS_CHANNELS.ru.md`.
 
 ### Внутренние каналы (этап 27)
 
-См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Потоки VM и методы каналов ActionScript доступны через `fvm_extensions_install`; нестандартные операторы языка пока отсутствуют.
+См. [описание API каналов](doc/CHANNELS.ru.md) и [пример C89](examples/embedding/channels/README.md). Добавлена переносимая синхронизированная FIFO-очередь для C/C++. Потоки VM и методы каналов ActionScript доступны через [`fvm_extensions_install`](include/flashvm/extensions.h#L17); нестандартные операторы языка пока отсутствуют.
 
 ### Нативные рабочие потоки
 
-См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` доступен после `fvm_extensions_install`; см. `doc/ACTIONSCRIPT_EXTENSIONS.ru.md`.
+См. [API потоков](doc/WORKERS.ru.md) и [пример C89](examples/embedding/workers/). Потоки создают независимые контексты интерпретатора через переходники `ports/`. ActionScript `thread.run` доступен после [`fvm_extensions_install`](include/flashvm/extensions.h#L17); см. `doc/ACTIONSCRIPT_EXTENSIONS.ru.md`.
 
 Управление жизненным циклом потоков (отложенный запуск, состояния, ожидание):
 [doc/WORKER_LIFECYCLE.ru.md](doc/WORKER_LIFECYCLE.ru.md).
@@ -190,7 +190,7 @@ Lua-подобный интерфейс описан [по-русски](doc/STA
 
 Переносимый C89 API поддерживает запрос остановки потока и ожидание массива
 потоков. См. [документацию](doc/WORKER_CANCELLATION.ru.md) и
-`examples/embedding/worker_stop/`. Объект ActionScript `thread` доступен через `fvm_extensions_install`.
+`examples/embedding/worker_stop/`. Объект ActionScript `thread` доступен через [`fvm_extensions_install`](include/flashvm/extensions.h#L17).
 
 ## Обмен сообщениями между потоками
 
@@ -310,3 +310,19 @@ Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG
 [SWF/SWD source mapping](doc/SWD_DEBUGGING.md).
 
 Полный каталог примеров / Complete example catalog: [examples/README.md](examples/README.md).
+Documentation source links and maintenance / Правила документации: [RU/EN](doc/DOCUMENTATION_GUIDELINES.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_advance` | function | [include/flashvm/flashvm.h:74](include/flashvm/flashvm.h#L74) |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](include/flashvm/extensions.h#L17) |
+| `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](include/flashvm/meta_call.h#L20) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

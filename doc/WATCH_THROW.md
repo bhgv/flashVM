@@ -14,7 +14,7 @@ and [script_object.rs call_watcher](https://github.com/ruffle-rs/ruffle/blob/237
 The latter changes a thrown watch value to undefined; set_internal continues
 assignment and treats inherited setters separately from own set_local.
 
-[GC:] FVM_WatchWriteScope saves the thrown graph before clearing pending state.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) saves the thrown graph before clearing pending state.
 Its explicit root frame protects counted strings, objects and cycles through
 setter execution and collection. Destruction restores pending ownership before
 unlinking the saved frame. It unwinds before the enclosing lookup-owner root.
@@ -26,7 +26,7 @@ Object/Array numeric slots, readonly data, own/inherited script accessors, sette
 success/throw and error priority. A self-cyclic object thrown by the watcher
 survives a real collecting setter; pending state is suspended inside that setter.
 Existing counted-string/interpreter/native watch fixtures now expect undefined
-writeback for loaded throws. Raw runtime FVM_ERROR and allocation failures retain
+writeback for loaded throws. Raw runtime [FVM_ERROR](../include/flashvm/flashvm.h#L43) and allocation failures retain
 fail-fast handling; their equivalence to reference errors is not certified.
 Custom native length/resource setters, metatables, recursion limits and complete
 watcher/SWF compatibility require further checks. All nine stages remain open.
@@ -79,3 +79,16 @@ roadmap stages remain open. Native-accessor policy remains an embedding contract
 Validation v0.434: Linux minimal 861/861; AGG, Linux-hosted NO_OS_PORTS and
 heap/global ASan+UBSan 6/6 each. Generated native-mode launchers used; stack ASan
 and LeakSanitizer disabled. Other OS execution and all-stage acceptance open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+<!-- source-links:end -->

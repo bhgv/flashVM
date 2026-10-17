@@ -1,18 +1,18 @@
 # Binary32 world matrix query / Запрос мировой матрицы binary32
 
-v0.339 adds fvm_matrix_multiply_twips, a context-free C89 composition service
+v0.339 adds [fvm_matrix_multiply_twips](../include/flashvm/matrix.h#L31), a context-free C89 composition service
 using separately rounded binary32 coefficient products/sums and nearest/even
 translation twips followed by signed32 modular addition. Both input translations
 must fit signed32; output can alias either input and is preserved on errors.
 No VM, bytecode, callbacks, GC or allocation is involved in this numeric service.
 
-fvm_exec_clip_world_matrix(context, clip, out) exposes a rooted value-based world
+[fvm_exec_clip_world_matrix](../include/flashvm/execution.h#L55)(context, clip, out) exposes a rooted value-based world
 query for native clip instances. It reads native local geometry in physical
 ancestor order, converts each local snapshot to binary32/twips and composes at
 each level. The first local matrix is copied before ancestor multiplication;
 the final scene-local identity composition is retained, including nonfinite
 coefficient propagation. Cyclic/excessive ancestry is bounded by the existing
-FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS (1024). Errors preserve the output descriptor.
+[FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L86) (1024). Errors preserve the output descriptor.
 A temporary receiver root and native barrier protect old/mutated parent graphs
 through getters; the result contains only copied numbers, no managed edges.
 _lockroot does not shorten physical projection. The explicit query returns this
@@ -21,7 +21,7 @@ binary32 model even in an unloaded host context.
 Loaded point conversion now calls this query, so ancestry, inverse and final
 point application use the separate scene C services. Native host point conversion
 retains its old double path. Point entry snapshots the loaded/host choice before
-callbacks: a geometry getter can call public fvm_load_memory, but cannot switch
+callbacks: a geometry getter can call public [fvm_load_memory](../include/flashvm/flashvm.h#L72), but cannot switch
 mid-call to a different, uninitialized matrix representation. Input twip/float
 preparation is shared in core/scene_numeric.hpp; units live in scoped matrix
 constants rather than duplicated point-handler constants.
@@ -39,8 +39,8 @@ model; they do not become raw renderer records. Scroll rectangles/Stage-specific
 transforms, other display types, drag, mouse-property and raster migration remain
 open. No full Flash Player equivalence, JIT or roadmap-stage completion is claimed.
 
-В v0.339 добавлены независимое C89-умножение матриц fvm_matrix_multiply_twips
-и общий запрос fvm_exec_clip_world_matrix. Коэффициенты считаются в binary32,
+В v0.339 добавлены независимое C89-умножение матриц [fvm_matrix_multiply_twips](../include/flashvm/matrix.h#L31)
+и общий запрос [fvm_exec_clip_world_matrix](../include/flashvm/execution.h#L55). Коэффициенты считаются в binary32,
 перенос округляется до чётного twip на каждом уровне и складывается по модулю
 signed32. Числовой сервис не требует VM/байткода/GC/памяти; запрос мировой
 матрицы удерживает клип корнем и защищает изменяемые графы нативным барьером.
@@ -66,7 +66,7 @@ execution_clip_world_matrix_callbacks checks bounded parent cycles, unchanged
 outputs on errors, getter throws/recovery and GC/root/native/script restoration.
 execution_clip_world_matrix_allocation injects every query allocation failure;
 the existing loaded point OOM sweeps exercise its nested C/native paths.
-execution_clip_point_reload invokes real public fvm_load_memory from a geometry
+execution_clip_point_reload invokes real public [fvm_load_memory](../include/flashvm/flashvm.h#L72) from a geometry
 getter through both entries and verifies stable host arithmetic and restored state.
 
 matrix_twips and fixed_matrix_no_alloc now also check context-free composition,
@@ -85,3 +85,18 @@ ASan heap/global + UBSan. Проверены C89, host/SWF4–8, нативны�
 матрица с перекрёстными коэффициентами повторно проверена в обоих профилях.
 Три числовые единицы реализации собраны и выполнены с C89 caller без VM.
 Стек ASan, утечки, другие платформы, Cairo и Flash Player не заявляются.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_clip_world_matrix` | function | [include/flashvm/execution.h:55](../include/flashvm/execution.h#L55) |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
+| `fvm_matrix_multiply_twips` | function | [include/flashvm/matrix.h:31](../include/flashvm/matrix.h#L31) |
+| `FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:86](../src/standard/movieclip_constants.h#L86) |
+<!-- source-links:end -->

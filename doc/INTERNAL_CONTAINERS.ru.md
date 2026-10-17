@@ -10,7 +10,7 @@
 | `std::vector<T>` | `fvm_detail::vector<T>` | `src/details/vector.hpp` |
 | `std::map<string,T>` | `fvm_detail::map<fvm_detail::string,T>` | `src/details/hash_table.hpp` |
 
-Это **внутренние реализации**, не часть стабильного публичного C ABI. Для встраивания и расширений используются непрозрачные `FVM_Context`, `FVM_Object` и `FVM_Value` из `include/flashvm/`.
+Это **внутренние реализации**, не часть стабильного публичного C ABI. Для встраивания и расширений используются непрозрачные [`FVM_Context`](../src/core/runtime.hpp#L237), [`FVM_Object`](../src/core/runtime.hpp#L118) и [`FVM_Value`](../include/flashvm/value.h#L24) из `include/flashvm/`.
 
 ### Строка
 
@@ -24,10 +24,24 @@
 
 ### Гибридная таблица и метатаблицы: фактическое состояние
 
-Сейчас `FVM_Object` содержит **два контейнера**: `properties` для строковых ключей и `indexed` для беззнаковых числовых ключей. Это **пока не** единая гибридная таблица Lua (массив + хэш + очередь). Запланированы плотная массивная часть, разреженная хэш-часть и операции очереди с определённым порядком.
+Сейчас [`FVM_Object`](../src/core/runtime.hpp#L118) содержит **два контейнера**: `properties` для строковых ключей и `indexed` для беззнаковых числовых ключей. Это **пока не** единая гибридная таблица Lua (массив + хэш + очередь). Запланированы плотная массивная часть, разреженная хэш-часть и операции очереди с определённым порядком.
 
 `FVM_Object::metatable` — ссылка на обычный объект-таблицу; копия не создаётся. Подстановка через `__index` и `__newindex` пока ограничена табличными значениями. Функциональные метаметоды, метатаблицы примитивных типов, общая диспетчеризация метаметодов и полноценные `setmetatable`/`getmetatable` ещё не реализованы. Прототипы AVM1 и метатаблицы — разные механизмы.
 
 ### Пример и тестирование
 
 См. `tests/detail_string.cpp`: владение строками, бинарные ключи, копирование и поиск в хэше. После сборки запускайте `ctest --output-on-failure`. Примеры поддерживаемого публичного API: `examples/embedding/tables_debug/`. Расширения не должны включать внутренние заголовки.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_Context` | struct | [src/core/runtime.hpp:237](../src/core/runtime.hpp#L237) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->

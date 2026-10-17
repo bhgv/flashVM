@@ -1,7 +1,7 @@
 # Global conversions and numeric prefix parsing — v0.11
 
-`fvm_standard_install` installs native parseInt, parseFloat and String functions
-alongside the earlier numeric functions. Call them by name through `fvm_call`
+[`fvm_standard_install`](../include/flashvm/standard.h#L18) installs native parseInt, parseFloat and String functions
+alongside the earlier numeric functions. Call them by name through [`fvm_call`](../include/flashvm/value.h#L138)
 or AVM1 CallFunction. Installation preflights conflicting names, stages all
 entries and validates these callbacks on repeated installation.
 
@@ -37,7 +37,7 @@ text, incomplete exponents, Unicode leading whitespace, native conversion throws
 installation conflicts and injected allocation failures in every new function.
 See tests/global_parsing.c, tests/global_parsing_avm1.cpp and error_allocation.cpp.
 The C call bridge now catches allocation failure during name lookup and callback
-execution and returns FVM_OUT_OF_MEMORY instead of escaping std::bad_alloc.
+execution and returns [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) instead of escaping std::bad_alloc.
 
 Decimal prefix conversion reuses the existing locale-independent numeric parser;
 correct rounding for every binary64 boundary is not certified. Repeated radix
@@ -185,3 +185,17 @@ Validation v0.416 / Проверка: minimal Release 832/832; AGG Release 12/12
 heap/global ASan+UBSan 12/12 parsing/decimal/whitespace/JIT tests. Native launchers
 restore workspace executable modes; stack ASan/LSan disabled. No other-platform
 runtime acceptance or complete stage closure is claimed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
+| `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+<!-- source-links:end -->

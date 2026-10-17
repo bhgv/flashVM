@@ -94,7 +94,7 @@ AGG/NO_OS_PORTS на Linux/heap-global ASan+UBSan — по 6/6. Первый п�
 
 ## v0.453 — статусы resolver и исходные нативные интерфейсы
 
-Наличие resolver отделено от статуса callback. Реальный FVM_NOT_FOUND от
+Наличие resolver отделено от статуса callback. Реальный [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) от
 обработчика, возвращённого метода или отозванного RPC-интерфейса передаётся
 без маскировки под отсутствие hook и без повторного вызова через fallback.
 Проверки интерпретатора/JIT включают эти ошибки, super и счётчики вызовов.
@@ -147,7 +147,7 @@ host/SWF4–8, данные, getters, наследование, удаление
 
 ## v0.457 — снимок аргументов прямого глобального вызова
 
-fvm_call_bytes копирует аргументы в вектор с GC-корнем до очистки результата
+[fvm_call_bytes](../include/flashvm/value.h#L98) копирует аргументы в вектор с GC-корнем до очистки результата
 и поиска Function. Результат может совпадать с аргументом; изменение исходного
 массива callback не меняет активный вызов. Внешние строковые буферы по-прежнему
 должны жить до конца вызова. Обычный GC-барьер нативных callbacks сохранён.
@@ -177,7 +177,7 @@ host/SWF4–8, глобальные и методные обёртки, изме
 
 ## v0.460 — корни аргументов конструктора до поиска глобального имени
 
-fvm_construct_bytes создаёт снимок аргументов с GC-корнем до поиска конструктора.
+[fvm_construct_bytes](../include/flashvm/value.h#L155) создаёт снимок аргументов с GC-корнем до поиска конструктора.
 Getter/resolver может изменить исходный массив или вызвать GC до начала
 построения Function; зарегистрированная C-фабрика также получает стабильный
 снимок. Обычный нативный барьер сохранён. Выход остаётся указателем на Object;
@@ -191,3 +191,17 @@ global_construct_arguments воспроизвёл порчу после изме
 Проверка v0.460: полные Linux minimal 903/903 и AGG 922/922; Linux-hosted
 NO_OS_PORTS и heap/global ASan+UBSan — по 4/4. Stack ASan/LeakSanitizer
 отключены; все стадии и приёмка на других ОС остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+<!-- source-links:end -->

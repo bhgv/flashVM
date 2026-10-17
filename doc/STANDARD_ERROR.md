@@ -1,6 +1,6 @@
 # Error and native string conversion — v0.9
 
-`fvm_standard_install` now atomically installs the AS2 Error constructor metadata
+[`fvm_standard_install`](../include/flashvm/standard.h#L18) now atomically installs the AS2 Error constructor metadata
 alongside Math and Boolean. `fvm_construct(..., "Error", ...)` and AVM1 NewObject
 create an Error with an ordinary, editable prototype. Error.prototype.name and
 message default to `"Error"`. Omitted or undefined arguments inherit that message;
@@ -14,8 +14,8 @@ can throw a pending exception, which AVM1 try/catch handles.
 
 ## Native APIs and AVM1
 
-The C89 API in `flashvm/standard.h` provides `fvm_value_to_string` and
-`fvm_value_instance_of`. The former copies string arguments into context-owned
+The C89 API in `flashvm/standard.h` provides [`fvm_value_to_string`](../include/flashvm/standard.h#L28) and
+[`fvm_value_instance_of`](../include/flashvm/standard.h#L32). The former copies string arguments into context-owned
 storage, supports in-place conversion, formats primitives and invokes native
 object toString/valueOf methods. Conversion recursion is limited to 64 calls.
 Finite numeric formatting searches up to 17 significant digits for a libc
@@ -67,3 +67,18 @@ Object/Function constructors, version-dependent attributes/coercion, Function2,
 full text/string semantics, complete standard objects, JIT and screen adapters
 remain unfinished. The .as example documents the API; there is no AS source
 compiler in this repository. AVM1 tests construct executable action records.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_value_instance_of` | function | [include/flashvm/standard.h:32](../include/flashvm/standard.h#L32) |
+| `fvm_value_to_string` | function | [include/flashvm/standard.h:28](../include/flashvm/standard.h#L28) |
+<!-- source-links:end -->

@@ -15,7 +15,7 @@ StringEquals, StringLess и StringGreater компилируются в прям
 перед правым. Ошибка передаётся через существующую безопасную границу без
 записи результата.
 
-Сохранены ограничения общих сервисов: SWF4–5 возвращают FVM_UNSUPPORTED для
+Сохранены ограничения общих сервисов: SWF4–5 возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) для
 не-ASCII в длине, извлечении и символьных операциях; создание символа из нуля
 даёт пустую строку, из суррогата — символ замены. MB и обычные варианты разделяют
 политику интерпретатора. Полная совместимость исторических многобайтовых кодировок
@@ -36,3 +36,15 @@ StringLength уже поддерживается, значение времен�
 Linux Release: прошли все 723 проверки AGG, 723 Cairo и 704 минимального
 профиля после восстановления прав запуска ELF. Три строковых теста и
 execution_modes прошли heap/global ASan+UBSan; stack ASan и LSan отключены.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

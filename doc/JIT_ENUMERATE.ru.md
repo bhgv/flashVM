@@ -14,7 +14,7 @@ MovieClip в SWF4 GetVariable. Выбранный физический target о
 корни GC до завершения поиска, создания снимка и резервирования стека. При успехе
 вход заменяется маркером null в host либо undefined в загруженном SWF; затем
 имена помещаются в обратном порядке снимка. Место резервируется до публикации.
-Превышение FVM_JIT_MAX_STACK возвращает FVM_UNSUPPORTED без замены входа.
+Превышение [FVM_JIT_MAX_STACK](../src/jit/constants.h#L8) возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) без замены входа.
 Защита исполнения восстанавливает цепочку корней, глубины и активность кода
 при отказах памяти.
 
@@ -35,3 +35,16 @@ minimal после восстановления прав ELF и повторны
 перечисления проходят ограниченный heap/global ASan+UBSan; stack ASan и
 LeakSanitizer отключены. У MovieClip явно добавлено видимое поле: скрытие
 результата в SWF4 приводило бы к другому, пустому списку.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_JIT_MAX_STACK` | macro / define | [src/jit/constants.h:8](../src/jit/constants.h#L8) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

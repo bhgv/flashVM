@@ -22,7 +22,7 @@ cmake --build build-rpc --target flashvm_examples_embedding_function_rpc_main
 ```
 
 Первая среда выполнения передаёт свой контекст исключительно потоку брокера.
-`fvm_worker_run` создаёт вторую независимую среду и контекст на рабочем потоке.
+[`fvm_worker_run`](../include/flashvm/worker.h#L21) создаёт вторую независимую среду и контекст на рабочем потоке.
 В него копируется только примитивная строка URI. Вторая VM импортирует интерфейс
 и вызывает оригинал через TCP, хотя обе работают в одном процессе. Объекты VM,
 адрес функции и указатель userdata в VM-получатель не передаются.
@@ -83,3 +83,15 @@ URI даёт право вызова: передавайте его только
 [Владение и ограничения](REMOTE_FUNCTIONS.ru.md): циклы вызовов разных брокеров,
 постоянное мультиплексированное соединение и произвольный параллельный доступ
 к одной куче остаются открытыми.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../include/flashvm/worker.h#L21) |
+<!-- source-links:end -->

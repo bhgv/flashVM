@@ -5,14 +5,14 @@ as C89 value services in separate handler files. The interpreter retains only
 operand movement and operation selection. Generated bodies can use the same
 interfaces without instruction IDs, bytecode or an interpreter stack.
 
-`fvm_exec_to_number` uses loaded-version conversion and optionally signed Int32
+[`fvm_exec_to_number`](../include/flashvm/execution.h#L466) uses loaded-version conversion and optionally signed Int32
 truncation/wrapping. NaN/infinity map to zero in integer mode; integer zero has no
 negative sign, as in the previous bit-conversion implementation. Ordinary Number
 conversion preserves its current version-specific NaN/null/string policies.
 
-`fvm_exec_to_boolean` preserves pre-SWF7 numeric-string truth and newer nonempty
+[`fvm_exec_to_boolean`](../include/flashvm/execution.h#L469) preserves pre-SWF7 numeric-string truth and newer nonempty
 string truth. It executes no user callbacks and introduces no root allocation.
-`fvm_exec_type_of` returns immutable borrowed labels without callbacks/allocation.
+[`fvm_exec_type_of`](../include/flashvm/execution.h#L471) returns immutable borrowed labels without callbacks/allocation.
 It preserves current callable/resource classification, including the still-open
 builtin-prototype/type distinctions; this is not a full typeof compatibility fix.
 
@@ -35,3 +35,17 @@ heap/global ASan + UBSan checks passed (stack/leak coverage disabled in this
 host). All 25 unchanged reference SWFs matched their oracles in both profiles.
 Проверка: по 467 тестов AGG/Cairo, 10 выбранных проверок памяти, 25 исходных
 эталонных SWF в каждом профиле; полная совместимость этим не подтверждается.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_to_boolean` | function | [include/flashvm/execution.h:469](../include/flashvm/execution.h#L469) |
+| `fvm_exec_to_number` | function | [include/flashvm/execution.h:466](../include/flashvm/execution.h#L466) |
+| `fvm_exec_type_of` | function | [include/flashvm/execution.h:471](../include/flashvm/execution.h#L471) |
+<!-- source-links:end -->

@@ -1,8 +1,8 @@
 # Контракты сборщика и регрессионные проверки
 
 Корни: глобальный граф, явные pin, стеки операндов AVM1, параметры, локальные
-переменные и получатели, содержимое публичных `FVM_Stack`, захваченные таблицы
-из `fvm_register_function_rooted`. Замена функции снимает её старый корень.
+переменные и получатели, содержимое публичных [`FVM_Stack`](../src/capi/stack_c.cpp#L16), захваченные таблицы
+из [`fvm_register_function_rooted`](../include/flashvm/value.h#L106). Замена функции снимает её старый корень.
 Одна захваченная таблица может удерживать несколько объектов. Произвольная
 память userdata и локальные переменные C не сканируются. Внутри нативного
 callback автоматическая сборка откладывается, явная рекурсивная запрещена.
@@ -27,7 +27,7 @@ callback автоматическая сборка откладывается, �
 замыкания и свойства со значением-функцией интерпретатор пока не поддерживает.
 
 При уничтожении контекста повторное уничтожение и сборка запрещены. Создание
-объекта возвращает `FVM_INVALID_ARGUMENT`, список финализаторов не растёт.
+объекта возвращает [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), список финализаторов не растёт.
 Воскрешение не продлевает жизнь уничтожаемого контекста. Void API уничтожения
 не возвращает ошибки callback.
 
@@ -41,7 +41,7 @@ points AVM1. Сборщик объектов останавливает VM, он
 
 ## Дополнительные API времени жизни
 
-fvm_stack_register_rooted, fvm_callable_create_rooted и fvm_meta_register_rooted
+[fvm_stack_register_rooted](../include/flashvm/stack.h#L38), [fvm_callable_create_rooted](../include/flashvm/callable.h#L22) и [fvm_meta_register_rooted](../include/flashvm/metamethod.h#L23)
 трассируют захваченные таблицы. Глобальная стековая регистрация — безусловный
 корень; захват вызываемого объекта/метатаблицы удерживается лишь при достижимом
 владельце. Все три варианта проверяет gc_callback_captures.
@@ -54,3 +54,20 @@ flashvm/userdata.h присоединяет payload и release-callback к об�
 сборка завершается с ошибкой. gc_userdata проверяет воскрешение, однократный release,
 защиту повторного входа, диагностику и уничтожение контекста. Payload не сканируется;
 захваченные объекты нужно хранить в трассируемых свойствах.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_callable_create_rooted` | function | [include/flashvm/callable.h:22](../include/flashvm/callable.h#L22) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `fvm_meta_register_rooted` | function | [include/flashvm/metamethod.h:23](../include/flashvm/metamethod.h#L23) |
+| `fvm_register_function_rooted` | function | [include/flashvm/value.h:106](../include/flashvm/value.h#L106) |
+| `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
+| `fvm_stack_register_rooted` | function | [include/flashvm/stack.h:38](../include/flashvm/stack.h#L38) |
+<!-- source-links:end -->

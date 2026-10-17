@@ -1,13 +1,13 @@
 # Текстовые объекты ActionScript: проверенный поднабор Flash 6–8
 
-fvm_standard_text_install отдельно от числовой библиотеки устанавливает
+[fvm_standard_text_install](../include/flashvm/standard_text.h#L17) отдельно от числовой библиотеки устанавливает
 метаданные классов TextFormat/TextField и именованный конструктор TextFormat.
 Конфликты имён отклоняются; повторная установка проверяет привязки.
 Библиотеки остаются статическими, загрузок при сборке нет.
 
 | Возможность | Проверенное поведение |
 | --- | --- |
-| AVM1 NewObject / fvm_construct | Отдельный реестр нативных конструкторов, порядок аргументов, проверка объектного результата |
+| AVM1 NewObject / [fvm_construct](../include/flashvm/value.h#L158) | Отдельный реестр нативных конструкторов, порядок аргументов, проверка объектного результата |
 | Нативные свойства | Getter/setter на объекте и прототипе, исходный receiver, игнорирование записи read-only, корни захватов GC |
 | new TextFormat | 13 позиционных параметров; пропущенные и дополнительные поля Flash 8 изначально null |
 | getTextExtent | Шесть метрик, переносы по ширине, суммарный отступ 4 пикселя, размер и leading |
@@ -25,15 +25,15 @@ fvm_standard_text_install отдельно от числовой библиот�
 
 ## Шрифты и владение
 
-fvm_standard_text_register_font копирует и проверяет TTF/OpenType по имени.
+[fvm_standard_text_register_font](../include/flashvm/standard_text.h#L21) копирует и проверяет TTF/OpenType по имени.
 Лимит контекста: 16 шрифтов / 64 МиБ исходных байтов, имя до 255 байтов.
 Повторная регистрация имени отклоняется. Первый шрифт становится шрифтом по
 умолчанию. Системного поиска/подстановки нет. Реестры принадлежат контекстам и
 не копируются автоматически в контексты рабочих потоков ActionScript.
 
-Создайте поле через fvm_textfield_create и опубликуйте fvm_set_global либо
+Создайте поле через [fvm_textfield_create](../include/flashvm/standard_text.h#L27) и опубликуйте [fvm_set_global](../include/flashvm/value.h#L87) либо
 удерживайте pin/корень. Ресурс поля принадлежит GC; это ещё не узел MovieClip
-с глубиной отображения. fvm_textfield_path возвращает самостоятельный контур,
+с глубиной отображения. [fvm_textfield_path](../include/flashvm/standard_text.h#L32) возвращает самостоятельный контур,
 который переживает сборку поля и уничтожение контекста. Его можно рисовать или
 использовать как маску средствами path.h и AGG/Cairo; цвет выбирает приложение,
 например читая textColor. Контуры не обрезаются прямоугольником поля.
@@ -136,3 +136,20 @@ v0.393–v0.396: текст с NUL сохраняется при редакти�
 строки форматирования проверяются целиком; восстановление соблюдает пределы;
 присваивание прежнего текста в загруженной среде сохраняет текущий формат.
 Подробности и проверки: [текст с явной длиной](TEXTFIELD_COUNTED_TEXT.ru.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
+| `fvm_set_global` | function | [include/flashvm/value.h:87](../include/flashvm/value.h#L87) |
+| `fvm_standard_text_install` | function | [include/flashvm/standard_text.h:17](../include/flashvm/standard_text.h#L17) |
+| `fvm_standard_text_register_font` | function | [include/flashvm/standard_text.h:21](../include/flashvm/standard_text.h#L21) |
+| `fvm_textfield_create` | function | [include/flashvm/standard_text.h:27](../include/flashvm/standard_text.h#L27) |
+| `fvm_textfield_path` | function | [include/flashvm/standard_text.h:32](../include/flashvm/standard_text.h#L32) |
+<!-- source-links:end -->

@@ -32,10 +32,10 @@ New tests check resolved build macros, bundled SQLite version/compile options,
 soft-light Pixman compositing, straight-alpha source-over, padding and hidden
 RGB preservation. Existing VM/GC/worker/channel tests are also exercised.
 
-Evidence: [summary](validation/dependencies-summary.json),
-[definitions](validation/dependencies-definitions.json),
-[strict run](validation/dependencies-strict-linux.json),
-[sanitizers](validation/dependencies-sanitizers-cairo-linux.json),
+Evidence: summary (`validation/dependencies-summary.json`),
+definitions (`validation/dependencies-definitions.json`),
+strict run (`validation/dependencies-strict-linux.json`),
+sanitizers (`validation/dependencies-sanitizers-cairo-linux.json`),
 CMake configure/build/test logs named validation/dependencies-*-<profile>.log.
 Linux standalone commands: python3 scripts/check.py; python3 scripts/check.py
 --sanitize --defs /path/to/cairo-defs.txt. Configuration checks:
@@ -53,3 +53,6 @@ GL/GUI/native fonts/PNG/document output and Pixman SIMD are disabled. Cairo's
 premultiplied intermediate can cause different low-alpha rounding from AGG.
 FB/GLES/OGL/DX/SDL1/SDL2/SDL3, JIT and media remain unimplemented. The complete
 SWF <= 8 player and all standard ActionScript objects are not declared finished.
+
+Historical evidence filenames above are labels, not downloadable files in this checkout;
+these generated validation reports are not stored in the source repository.

@@ -9,8 +9,8 @@ Delete и Delete2. Все генераторы машинного кода ис�
 
 Запись/объявление выбирают MovieClip либо глобальный объект, script-this и
 подготовленную activation по тем же правилам, что интерпретатор. Используются
-общие `fvm_exec_variable_set`, `fvm_exec_variable_declare`, `fvm_exec_member`,
-`fvm_exec_delete_member`, `fvm_exec_delete_reference`.
+общие [`fvm_exec_variable_set`](../include/flashvm/execution.h#L408), [`fvm_exec_variable_declare`](../include/flashvm/execution.h#L428), [`fvm_exec_member`](../include/flashvm/execution.h#L206),
+[`fvm_exec_delete_member`](../include/flashvm/execution.h#L135), [`fvm_exec_delete_reference`](../include/flashvm/execution.h#L391).
 
 Операнды остаются в корнях нативного вызова до завершения преобразований,
 getter/setter и удаления. Результаты заменяют существующие элементы стека без
@@ -44,3 +44,19 @@ Linux Release: прошли все 704 AGG, 704 Cairo и 685 minimal прове�
 AGG, двух Cairo и семи minimal ELF. Это отказы запуска; ошибки поведения повтором
 не скрывались. В процессе разработки также исправлена описанная выше ошибка
 общего состояния в сравнительном тесте.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_delete_member` | function | [include/flashvm/execution.h:135](../include/flashvm/execution.h#L135) |
+| `fvm_exec_delete_reference` | function | [include/flashvm/execution.h:391](../include/flashvm/execution.h#L391) |
+| `fvm_exec_member` | function | [include/flashvm/execution.h:206](../include/flashvm/execution.h#L206) |
+| `fvm_exec_variable_declare` | function | [include/flashvm/execution.h:428](../include/flashvm/execution.h#L428) |
+| `fvm_exec_variable_set` | function | [include/flashvm/execution.h:408](../include/flashvm/execution.h#L408) |
+<!-- source-links:end -->

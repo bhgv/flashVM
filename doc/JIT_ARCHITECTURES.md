@@ -94,19 +94,19 @@ and its required shared system libraries on the matching Linux target. Build
 third-party dependencies for that same target; do not link host libraries into a
 foreign executable. An installed riscv64 compiler can serve RV32 only if its
 multilib and Linux sysroot actually include the requested ILP32 ABI.
-The DEFS `INTERPRETER` selection includes the runtime JIT options; the
-DEFS `JIT` preset selects automatic compilation/fallback for new contexts. OS worker examples require OS
+The DEFS [`INTERPRETER`](../cmake/BuildDefinitions.cmake#L13) selection includes the runtime JIT options; the
+DEFS [`JIT`](../cmake/BuildDefinitions.cmake#L13) preset selects automatic compilation/fallback for new contexts. OS worker examples require OS
 ports; a minimal NO_OS_PORTS build prints an explicit unavailable message.
 
 ## Breakpoints and JIT / Точки останова
 
 Use the existing `flashvm/debug.h` source mapping together with the new
-`fvm_debug_set_breakpoint` and `fvm_debug_set_breakpoint_handler` APIs. Offsets are
+[`fvm_debug_set_breakpoint`](../include/flashvm/debug.h#L51) and [`fvm_debug_set_breakpoint_handler`](../include/flashvm/debug.h#L54) APIs. Offsets are
 exact AVM1 action offsets. A source line by itself does not install a breakpoint;
 map the line to an actual action offset, then set that offset.
 
 Any installed breakpoint excludes the **whole named function/body** from native
-entry, including already cached code and explicit `fvm_jit_body` attachments.
+entry, including already cached code and explicit [`fvm_jit_body`](../include/flashvm/jit.h#L24) attachments.
 Top-level blocks use the empty name; anonymous C-created AVM1 functions use
 `<function>`, matching the existing interpreter debug naming.
 All same-named functions share this exclusion: it is deliberately conservative,
@@ -116,7 +116,7 @@ reuse the existing native cache without recompiling it.
 
 При наличии breakpoint вся соответствующая функция или корневой блок
 интерпретируется. Внутри неё callback вызывается перед отмеченной инструкцией,
-после обновления source/line/offset и проверки бюджета. Возврат FVM_OK продолжает
+после обновления source/line/offset и проверки бюджета. Возврат [FVM_OK](../include/flashvm/flashvm.h#L42) продолжает
 выполнение; другой статус останавливает вызов. При удалении breakpoint следующий
 вход снова допускает JIT. Без callback тело всё равно интерпретируется.
 
@@ -141,7 +141,7 @@ Automatic code caches, execution modes, breakpoint tables, logs and counters
 belong to each context. There is no global mutable JIT compiler or global mode.
 The encoders use invocation-local buffers. Keep each context on one owning
 thread; do not concurrently invoke it or mutate its policy/debugger tables.
-Manual FVM_JitCode handles have unsynchronized active counts: compile/own one per
+Manual [FVM_JitCode](../src/jit/internal.hpp#L59) handles have unsynchronized active counts: compile/own one per
 VM/thread and never share a handle across concurrent threads. Automatic caches
 already follow this rule. Managed objects and function pointers must not be
 passed directly to a different context; use graph transport where supported.
@@ -203,3 +203,23 @@ ARM, ARM64, RV32 and RV64; ordinary/far branches, ARM Thumb helper interworking,
 by the current minimal Release executable, then checked by
 `scripts/check_jit_backends.py`. This executes generated instructions with stub
 helpers; it remains distinct from running full FlashVM on a foreign CPU/OS.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_debug_set_breakpoint` | function | [include/flashvm/debug.h:51](../include/flashvm/debug.h#L51) |
+| `fvm_debug_set_breakpoint_handler` | function | [include/flashvm/debug.h:54](../include/flashvm/debug.h#L54) |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
+| `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
+| `fvm_jit_body` | function | [include/flashvm/jit.h:24](../include/flashvm/jit.h#L24) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
+| `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
+| `INTERPRETER` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+| `JIT` | DEFS switch | [cmake/BuildDefinitions.cmake:13](../cmake/BuildDefinitions.cmake#L13) |
+<!-- source-links:end -->

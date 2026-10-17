@@ -93,7 +93,7 @@ nullish or unavailable/nonobject result becomes a fresh bare object; omitted
 arguments still return false directly. Unloaded host queries retain their
 object-only behavior. The existing bounded prototype-cycle policy is unchanged.
 
-`fvm_exec_to_object` accepts only object results from a boxing constructor.
+[`fvm_exec_to_object`](../include/flashvm/execution.h#L474) accepts only object results from a boxing constructor.
 Native NewObject/NewMethod may legitimately return primitives (v0.475), but
 ToObject maps those results to undefined, allowing each consumer's existing
 fallback policy. Native barriers remain active during isPrototypeOf; getter GC
@@ -110,3 +110,15 @@ Tests / Проверки: object_prototype_global_boxing, to_object_native_primi
 object_prototype_boxing_allocation. Current-global name lookup, inherited getters,
 legacy spelling, resolver suppression, NUL strings, callback errors/exceptions,
 interpreter/explicit/automatic JIT and allocation retries are covered.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_to_object` | function | [include/flashvm/execution.h:474](../include/flashvm/execution.h#L474) |
+<!-- source-links:end -->

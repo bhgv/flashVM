@@ -1,6 +1,6 @@
 # Mode Tuning
 
-Use fvm_gc_mode to select -100..100 and query fvm_gc_threshold to see the corresponding threshold.
+Use [fvm_gc_mode](../../../include/flashvm/gc.h#L37) to select -100..100 and query [fvm_gc_threshold](../../../include/flashvm/gc.h#L65) to see the corresponding threshold.
 
 **Русский:** Настройка частоты проверок GC и чтение порога.
 
@@ -17,8 +17,21 @@ Use fvm_gc_mode to select -100..100 and query fvm_gc_threshold to see the corres
 
 | Функция | Где читать подробнее |
 | --- | --- |
-| [`fvm_gc_mode`](../../../include/flashvm/gc.h) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
-| [`fvm_gc_threshold`](../../../include/flashvm/gc.h) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
+| [`fvm_gc_mode`](../../../include/flashvm/gc.h#L37) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
+| [`fvm_gc_threshold`](../../../include/flashvm/gc.h#L65) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-mode_tuning).
 <!-- example-catalog-api:end -->
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_gc_mode` | function | [include/flashvm/gc.h:37](../../../include/flashvm/gc.h#L37) |
+| `fvm_gc_threshold` | function | [include/flashvm/gc.h:65](../../../include/flashvm/gc.h#L65) |
+<!-- source-links:end -->

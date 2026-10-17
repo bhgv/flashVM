@@ -30,7 +30,7 @@ cmake --build build-rpc --config Release --target flashvm_examples_embedding_fun
 ```
 
 Первая среда выполнения передаёт свой контекст исключительно потоку брокера.
-`fvm_worker_run` создаёт вторую независимую среду и контекст на рабочем потоке.
+[`fvm_worker_run`](../../../include/flashvm/worker.h#L21) создаёт вторую независимую среду и контекст на рабочем потоке.
 В него копируется только примитивная строка URI. Вторая VM импортирует интерфейс
 и вызывает оригинал через TCP, хотя обе работают в одном процессе. Объекты VM,
 адрес функции и указатель userdata в VM-получатель не передаются.
@@ -104,3 +104,15 @@ ctest --test-dir build-rpc -C Release -R "function_independent|examples_embeddin
 адреса прослушивания/публикации и неверные порты. Межпроцессный тест включается,
 если CMake нашёл Python 3; потоковый тест от Python не зависит. Не отключайте
 `FVM_BUILD_EXAMPLES` и `FVM_BUILD_TESTS` для этой команды.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_worker_run` | function | [include/flashvm/worker.h:21](../../../include/flashvm/worker.h#L21) |
+<!-- source-links:end -->

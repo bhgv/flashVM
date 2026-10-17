@@ -8,7 +8,7 @@ Property-aware путь больше не вызывает getter при фор�
 Бюджет включает вложенные преобразования границ в рамках того же вызова.
 
 Созданный removed/копируемый результат удерживается allocation-free корнем
-FVM_ObjectRootScope до завершения native-метода. Корень не меняет calling-owner
+[FVM_ObjectRootScope](../src/core/object_root_scope.hpp#L6) до завершения native-метода. Корень не меняет calling-owner
 и восстанавливается при возвратах и исключениях. Используется также для общих
 slice/splice результатов. Корень защищает graph/строки при поздних callback.
 
@@ -47,3 +47,15 @@ No actual collection inside native watchers is claimed; the native barrier stays
 Historical source set_data/movement, signed own-data length and generic mutation
 atomicity remain open. Large generic mutations stay restricted. All stages remain
 open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ObjectRootScope` | class | [src/core/object_root_scope.hpp:6](../src/core/object_root_scope.hpp#L6) |
+<!-- source-links:end -->

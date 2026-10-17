@@ -20,7 +20,7 @@ Catch привязывает исключение к имени или реги�
 
 ## Объект ResourceException
 
-Ошибки AS-методов и свойств каналов/мутексов возвращают приложению FVM_EXCEPTION
+Ошибки AS-методов и свойств каналов/мутексов возвращают приложению [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48)
 и выбрасывают объект с полями name, code, message и context. Текст на английском
 стабилен; для автоматического распознавания предпочтителен числовой код.
 
@@ -54,21 +54,21 @@ set не вызывает автоматический повтор: захва�
 ## Встраивание и отладчик
 
 Новый заголовок include/flashvm/exception.h предоставляет get/info/clear/raise.
-После FVM_EXCEPTION получите ожидающее значение через fvm_exception_get и
+После [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) получите ожидающее значение через [fvm_exception_get](../include/flashvm/exception.h#L61) и
 обработайте его до clear. После clear корень исключения снимается: сохраняемый
 объект нужно опубликовать в VM или закрепить. raise принимает любое значение
 данного контекста и копирует строки. Для обычного скриптового throw функция info
-возвращает NOT_FOUND. Низкоуровневые нативные API сохраняют контракт FVM_ERROR;
+возвращает NOT_FOUND. Низкоуровневые нативные API сохраняют контракт [FVM_ERROR](../include/flashvm/flashvm.h#L43);
 контекстную причину можно получить через info/get, AS-обёртка превращает её в
-исключение. join передаёт статус FVM_EXCEPTION нативного рабочего callback,
+исключение. join передаёт статус [FVM_EXCEPTION](../include/flashvm/flashvm.h#L48) нативного рабочего callback,
 но не переносит его объект из уничтожаемого контекста автоматически. Для
 передачи данных обработайте/отправьте исключение внутри рабочего потока.
 
-fvm_debug_exception_events возвращает до 64 копий событий ресурсов со всем
+[fvm_debug_exception_events](../include/flashvm/exception.h#L70) возвращает до 64 копий событий ресурсов со всем
 контекстом. При переполнении удаляется старейшее событие. Недостаточная ёмкость
 возвращает NOT_FOUND и требуемый размер без очистки. Catch и clear не удаляют
 события. Обычные скриптовые throw не входят в эту очередь событий ресурсов.
-Прежний fvm_debug_resource_errors сохранён. Интерактивный интерфейс отладчика,
+Прежний [fvm_debug_resource_errors](../include/flashvm/debug.h#L156) сохранён. Интерактивный интерфейс отладчика,
 остановка исполнения и удалённый протокол замораживания очередей не реализованы.
 
 Проверки: actionscript_exceptions.cpp проверяет именованный/регистровый catch,
@@ -80,7 +80,7 @@ resource_exception_network.c и resource_exception_file.c проверяют р�
 проверяют новый AS-статус и сохранённые нативные статусы.
 
 Изменение публичного API добавочное: новый статус и отдельный заголовок.
-Существующие публичные структуры и FVM_ABI_VERSION не менялись.
+Существующие публичные структуры и [FVM_ABI_VERSION](../include/flashvm/flashvm.h#L25) не менялись.
 
 Результаты проверки: [отчёт v0.8](EXCEPTIONS_REPORT.md).
 
@@ -90,3 +90,20 @@ resource_exception_network.c и resource_exception_file.c проверяют р�
 стандартной библиотеки. При установленном Error оно наследует зарегистрированный
 прототип. Диагностический граф и встроенный метод восстанавливаются из файла другим
 процессом. Подробности: [STANDARD_ERROR.ru.md](STANDARD_ERROR.ru.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ABI_VERSION` | macro / define | [include/flashvm/flashvm.h:25](../include/flashvm/flashvm.h#L25) |
+| `fvm_debug_exception_events` | function | [include/flashvm/exception.h:70](../include/flashvm/exception.h#L70) |
+| `fvm_debug_resource_errors` | function | [include/flashvm/debug.h:156](../include/flashvm/debug.h#L156) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_EXCEPTION` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
+| `fvm_exception_get` | function | [include/flashvm/exception.h:61](../include/flashvm/exception.h#L61) |
+<!-- source-links:end -->

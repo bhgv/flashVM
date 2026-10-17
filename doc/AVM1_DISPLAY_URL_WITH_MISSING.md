@@ -31,7 +31,7 @@ The callback argument count remains a separate contract from root/operand sizes.
 The With fixture embeds an observable nested assignment, verifies it is skipped
 for the missing undefined value, and confirms outer execution continues with no
 lexical scope left behind. Malformed With payloads and invalid GetURL2 method
-flags still return FVM_INVALID_ARGUMENT before semantic dispatch. Public C service
+flags still return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before semantic dispatch. Public C service
 signatures and Action encodings are unchanged.
 
 Primary comparison: Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd,
@@ -58,3 +58,15 @@ and passed on retry. Four targeted heap/global ASan+UBSan fixtures passed after
 explicitly rebuilding the With allocation target as well (no stack/leak coverage).
 All 26 accepted original SWFs matched the pinned oracle in both profiles.
 The bounded Action-reference audit remains 94/100, not semantic certification.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+<!-- source-links:end -->

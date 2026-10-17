@@ -1,6 +1,6 @@
 # Shared variable-path phase / Общий разбор путей переменных
 
-v0.258 exposes `fvm_exec_variable_path` as a C89 value service and uses it in the
+v0.258 exposes [`fvm_exec_variable_path`](../include/flashvm/execution.h#L398) as a C89 value service and uses it in the
 interpreter's counted variable-read bridge and Delete2 owner lookup. This removes
 their duplicate path grammar. Managed scopes/target/this and a counted string are
 explicit inputs; bytecode, operand stacks and raw local maps are not accepted.
@@ -41,3 +41,15 @@ remains disabled on this host. All 25 unchanged reference SWFs matched in each
 profile. This verifies the listed path subset, not full AVM1/Flash equivalence.
 Проверено по 480 тестов AGG/Cairo, 14 выбранных проверок памяти и 25 исходных
 эталонов в каждом профиле. Ограничения совместимости и инструментов сохранены.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_variable_path` | function | [include/flashvm/execution.h:398](../include/flashvm/execution.h#L398) |
+<!-- source-links:end -->

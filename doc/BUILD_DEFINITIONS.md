@@ -18,22 +18,22 @@ rejects unknown keys, duplicates, empty groups and competing selections.
 | Execution | INTERPRETER | JIT — automatic compilation with interpreter fallback; runtime modes: EXECUTION_MODES.md |
 | Media | NO_MEDIA | MEDIA — not implemented |
 
-`AUTO_PLATFORM` resolves to the target OS reported by the CMake toolchain.
+[`AUTO_PLATFORM`](../cmake/BuildDefinitions.cmake#L8) resolves to the target OS reported by the CMake toolchain.
 An explicit OS key must match that target: changing LINUX to WINDOWS does not
 turn a Linux compiler into a Windows cross compiler. Android is selected before
 the general Linux case. The selected adapter files come from `ports/<platform>/`.
 
-`HEADLESS` keeps graphics in a host-owned RGBA8 image. It creates no native window
+[`HEADLESS`](../cmake/BuildDefinitions.cmake#L9) keeps graphics in a host-owned RGBA8 image. It creates no native window
 or screen connection; presentation belongs to the embedding application. Screen
 adapter keys are reserved and fail explicitly when selected. Cairo's own GL or
 Win32 surface code is not a FlashVM screen adapter and is not enabled here.
 
-With `GRAPHICS_CAIRO`, CMake compiles bundled Cairo and Pixman and the FlashVM
-raster API uses Cairo. With `GRAPHICS_AGG`, it compiles bundled AGG. `NO_GRAPHICS`
-builds no FlashVM raster backend and returns FVM_UNSUPPORTED from valid raster calls.
+With [`GRAPHICS_CAIRO`](../cmake/BuildDefinitions.cmake#L7), CMake compiles bundled Cairo and Pixman and the FlashVM
+raster API uses Cairo. With [`GRAPHICS_AGG`](../cmake/BuildDefinitions.cmake#L7), it compiles bundled AGG. [`NO_GRAPHICS`](../cmake/BuildDefinitions.cmake#L7)
+builds no FlashVM raster backend and returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) from valid raster calls.
 IMAGE_CODECS independently builds PNG/GIF/JPEG and Cairo/NanoSVG for SVG.
 See [image APIs and limits](IMAGE_CODECS.md).
-zlib and mini_regex remain enabled in all profiles. `SQLITE` compiles the bundled
+zlib and mini_regex remain enabled in all profiles. [`SQLITE`](../cmake/BuildDefinitions.cmake#L10) compiles the bundled
 amalgamation, C adapter and SQLite programs; no system lookup or fallback occurs.
 
 Configure a fresh build after selecting keys:
@@ -75,3 +75,21 @@ AGG/Cairo FreeType adapters and exposes native font/vector APIs. See
 linkage of any selected external target.
 
 See / см. [JIT build-default contract](JIT_BUILD_DEFAULT.md).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `AUTO_PLATFORM` | DEFS switch | [cmake/BuildDefinitions.cmake:8](../cmake/BuildDefinitions.cmake#L8) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+| `GRAPHICS_AGG` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `GRAPHICS_CAIRO` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `HEADLESS` | DEFS switch | [cmake/BuildDefinitions.cmake:9](../cmake/BuildDefinitions.cmake#L9) |
+| `NO_GRAPHICS` | DEFS switch | [cmake/BuildDefinitions.cmake:7](../cmake/BuildDefinitions.cmake#L7) |
+| `SQLITE` | DEFS switch | [cmake/BuildDefinitions.cmake:10](../cmake/BuildDefinitions.cmake#L10) |
+<!-- source-links:end -->

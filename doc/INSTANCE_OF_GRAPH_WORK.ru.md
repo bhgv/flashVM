@@ -1,6 +1,6 @@
 # Бюджет обхода интерфейсов — v0.381
 
-В загруженном fvm_exec_instance_of снят отказ после 4096 посещённых узлов
+В загруженном [fvm_exec_instance_of](../include/flashvm/execution.h#L226) снят отказ после 4096 посещённых узлов
 интерфейсов. Линейный поиск в visited-vector заменён hash map по идентичности
 объектов. Сравнивается полный указатель, поэтому коллизии hash и усечение
 его адресных битов на LLP64 не дают ложного совпадения. Для выбранных портов
@@ -11,7 +11,7 @@ size_t должен вмещать указатель; это проверяет
 AVM1, включая вложенные скрипты и нативные операции. Внешний прямой вызов
 сбрасывает счётчик; вложенный сохраняет его. До обработки оплачиваются каждый
 обычный прототип, извлечение pending-узла, включая повторный, и ребро интерфейса.
-Исчерпание бюджета и насыщение unsigned-счётчика возвращают FVM_ERROR без
+Исчерпание бюджета и насыщение unsigned-счётчика возвращают [FVM_ERROR](../include/flashvm/flashvm.h#L43) без
 изменения выхода. Нулевой instruction_limit означает отсутствие лимита.
 Проверка остановки worker сохраняет прежнюю политику Array: раз в 64 единицы.
 Прежнее имя Array scope теперь является alias общего механизма; стоимость
@@ -45,3 +45,16 @@ callbacks/allocation/data and large-sort/negative-end Array regressions.
 Stack ASan and LeakSanitizer remain disabled. The new native polling and revised
 membership constants headers pass a strict C89 syntax probe. No new original
 external SWF oracle or foreign-OS acceptance is claimed. All nine stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_instance_of` | function | [include/flashvm/execution.h:226](../include/flashvm/execution.h#L226) |
+<!-- source-links:end -->

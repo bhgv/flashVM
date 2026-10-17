@@ -895,7 +895,7 @@ ASan+UBSan — по 7/7. Входы JIT проверены на Linux x64; NO_OS
 исходному объекту, как has_own_property в закреплённом script_object.rs. Запрос
 не читает приватные данные фасада и свойства родителя, сохраняет правила
 регистра версии SWF. Host-поведение прежнее. Цепочки вложенных/повреждённых
-фасадов обходятся итеративно с пределом; цикл возвращает FVM_ERROR.
+фасадов обходятся итеративно с пределом; цикл возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L43).
 
 object_super_membership воспроизвёл сбой v0.425. Проверены SWF5–8 и host, C API и
 заимствованный Object.hasOwnProperty.call, NUL в имени, регистр, наследуемые и
@@ -1028,7 +1028,7 @@ Ruffle 2372a4e148a67d68efd796f4477b3cddd4f880cd; ссылки в WATCH_THROW.md.
 Первый продолжает присваивание и отдельно обрабатывает наследуемый setter;
 второй заменяет присваиваемое значение на undefined при script-исключении.
 
-[GC:] FVM_WatchWriteScope сохраняет граф исключения до очистки pending-состояния.
+[GC:] [FVM_WatchWriteScope](../src/core/watch_write_scope.hpp#L8) сохраняет граф исключения до очистки pending-состояния.
 Явный корень защищает строки, объекты и циклы во время setter/GC. Деструктор
 восстанавливает владение pending-значением до снятия корня и выполняется раньше
 окружающего корня владельца поиска. Отказ выделения до приостановки сохраняет
@@ -1039,7 +1039,7 @@ object_watch_throw воспроизвёл ошибку v0.431. Проверен�
 успех/исключение setter и приоритет ошибок. Самоцикличный объект исключения
 переживает настоящий GC внутри setter, где pending-состояние приостановлено.
 Прежние тесты строк с NUL и JIT теперь ожидают запись undefined при loaded throw.
-FVM_ERROR и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
+[FVM_ERROR](../include/flashvm/flashvm.h#L43) и OOM по-прежнему останавливают операцию; их эквивалентность ошибкам
 эталона не заявляется. Нативная длина/ресурсы, метатаблицы, пределы рекурсии и
 полная совместимость требуют проверок. Все девять стадий остаются открытыми.
 
@@ -1222,7 +1222,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 закреплённый avm1/value.rs type_of проверяет as_function, а не общую вызываемость.
 
 object_super_typeof воспроизвёл прежний результат `function`, затем проверяет
-host/SWF5–8, запись C-helper в исходный FVM_Value, Function, экземпляры, GC и
+host/SWF5–8, запись C-helper в исходный [FVM_Value](../include/flashvm/value.h#L24), Function, экземпляры, GC и
 повтор, отсутствие вызова конструктора и сохранение прямого super.
 jit_object_super_typeof повторяет TypeOf в интерпретаторе и двух режимах JIT с
 настоящими нативными входами. Остальные рефлексия/преобразования super и все
@@ -1276,7 +1276,7 @@ heap/global ASan+UBSan — по 4/4. Применены средства вос�
 
 ## v0.444 — корни идентичности вызова без выделения памяти
 
-FVM_CallScope удерживает сохранённые/активные constructor, function и owner
+[FVM_CallScope](../src/core/call_scope.hpp#L8) удерживает сохранённые/активные constructor, function и owner
 через шесть встроенных root-frame. Публикация полной цепочки и восстановление
 прежней идентичности больше не выделяют временный вектор. Вложенные вызовы и
 раскрутка исключения сохраняют начало корней вызывающей стороны. Это изменение
@@ -1464,7 +1464,7 @@ AGG/NO_OS_PORTS на Linux/heap-global ASan+UBSan — по 6/6. Первый п�
 
 ## v0.453 — статусы resolver и исходные нативные интерфейсы
 
-Наличие resolver отделено от статуса callback. Реальный FVM_NOT_FOUND от
+Наличие resolver отделено от статуса callback. Реальный [FVM_NOT_FOUND](../include/flashvm/flashvm.h#L47) от
 обработчика, возвращённого метода или отозванного RPC-интерфейса передаётся
 без маскировки под отсутствие hook и без повторного вызова через fallback.
 Проверки интерпретатора/JIT включают эти ошибки, super и счётчики вызовов.
@@ -1531,7 +1531,7 @@ CallFunction в трёх режимах JIT/интерпретатора. Пол
 
 ## v0.457 — снимок аргументов прямого глобального вызова
 
-fvm_call_bytes копирует аргументы в вектор с GC-корнем до очистки результата
+[fvm_call_bytes](../include/flashvm/value.h#L98) копирует аргументы в вектор с GC-корнем до очистки результата
 и поиска Function. Результат может совпадать с аргументом; изменение исходного
 массива callback не меняет активный вызов. Внешние строковые буферы по-прежнему
 должны жить до конца вызова. Обычный GC-барьер нативных callbacks сохранён.
@@ -1579,7 +1579,7 @@ host/SWF4–8, глобальные и методные обёртки, изме
 
 ## v0.460 — корни аргументов конструктора до поиска глобального имени
 
-fvm_construct_bytes создаёт снимок аргументов с GC-корнем до поиска конструктора.
+[fvm_construct_bytes](../include/flashvm/value.h#L155) создаёт снимок аргументов с GC-корнем до поиска конструктора.
 Getter/resolver может изменить исходный массив или вызвать GC до начала
 построения Function; зарегистрированная C-фабрика также получает стабильный
 снимок. Обычный нативный барьер сохранён. Выход остаётся указателем на Object;
@@ -1614,7 +1614,7 @@ Stack ASan/LeakSanitizer отключены; все стадии и другие
 
 ## v0.462 — снимок аргументов прямого конструктора Function
 
-fvm_function_construct удерживает незакреплённую Function и копирует аргументы
+[fvm_function_construct](../include/flashvm/function.h#L69) удерживает незакреплённую Function и копирует аргументы
 с GC-корнями до нативной фабрики или чтения prototype. Getter может собрать
 мусор и изменить исходный массив до вызова конструктора. Внешние строковые
 буферы остаются ответственностью вызывающего; нативный GC-барьер сохранён.
@@ -1645,7 +1645,7 @@ function_construct_native_result воспроизвёл ошибку и пров
 
 ## v0.464 — прямой Function-вызов использует удерживаемый снимок
 
-fvm_function_invoke передаёт callback копию аргументов вместо изменяемого
+[fvm_function_invoke](../include/flashvm/function.h#L65) передаёт callback копию аргументов вместо изменяемого
 массива хоста. Результат очищается после копирования и может совпадать с любым
 аргументом. Ошибки проверки/OOM очищают выход; внешние строки остаются
 ответственностью вызывающего. Раскладка корневого кадра и GC-барьер сохранены.
@@ -1760,7 +1760,7 @@ Object/Number в accessor, native accessor, наследуемые/смешан�
 Внутреннее чтение prototype теперь получает кэшированную Function-обёртку
 собственного native method, не вызывая callback. Сохраняются source-version
 регистр, приоритет data/accessor и отсутствие поиска по наследованию.
-Общий helper возвращает FVM_Result: ошибки создания обёртки передаются через
+Общий helper возвращает [FVM_Result](../include/flashvm/flashvm.h#L40): ошибки создания обёртки передаются через
 конструкторы, instanceof, ImplementsOp и регистрацию MovieClip.
 Расширены function_constructor_stored_prototype (холодный и тёплый кэш,
 SWF4–8/host, GC, instanceof, три режима NewObject) и
@@ -2358,3 +2358,41 @@ and glossary; subgroup/entry/glossary sorting checked. All 1870 relative file
 and Markdown-anchor links resolve; every directly called public C API appears
 in its example README. Existing debugger tutorial/API checker passed. No runtime
 or build-target behavior changed.
+
+### v0.536 — source-linked manuals and standing documentation rules
+
+Documentation / документация: manuals and tutorial READMEs link referenced
+functions, types, macros/defines and constants to actual source declarations
+with current line anchors. A reusable refresh/check command maintains these
+links after code movement. Standing API/example documentation and alphabetic
+catalog requirements are recorded in AGENTS.md and the
+[RU/EN maintenance guide](DOCUMENTATION_GUIDELINES.md). No runtime behavior
+changed; all nine completion stages remain open.
+
+Validation / проверки v0.536: 6170 relative Markdown/file links resolve,
+including 3530 source-line links; symbol-labelled source links match the named
+symbol on that line. The 78-entry catalog and debugger tutorial/API checks pass.
+Repeated refresh is stable; simulated source-line movement updates links while
+preserving headings and fenced examples. The existing isolated version-refresh
+check passed. Runtime code was unchanged and runtime suites were not rerun.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
+| `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
+| `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
+| `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
+| `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+| `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
+<!-- source-links:end -->

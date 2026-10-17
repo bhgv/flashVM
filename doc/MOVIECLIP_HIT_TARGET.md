@@ -1,6 +1,6 @@
 # Explicit clip resolution / Явное разрешение клипа — v0.319
 
-The C89 fvm_exec_resolve_clip(context, start, input, allow_empty, out) service
+The C89 [fvm_exec_resolve_clip](../include/flashvm/execution.h#L321)(context, start, input, allow_empty, out) service
 accepts a native instance directly or stringifies another value once and resolves
 its counted path from the explicit start. It uses versioned AVM1 coercion and the
 existing native path resolver, including root locks. It does not use activation
@@ -44,3 +44,15 @@ allocation failures for direct aliased resolution and native path hitTest.
 цели. Прежний режим host сохранён. Тесты проверяют SWF4–8, исключения, GC в прямом
 C-вызове и отказы памяти. Это ограниченный шаг, не завершение MovieClip или стадий
 роудмапа; полная геометрия удалённых клипов, обводок и фильтров остаётся открытой.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_resolve_clip` | function | [include/flashvm/execution.h:321](../include/flashvm/execution.h#L321) |
+<!-- source-links:end -->

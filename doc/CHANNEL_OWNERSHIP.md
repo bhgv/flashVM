@@ -2,13 +2,13 @@
 
 ## English
 
-`fvm_channel_create` returns one owned reference. `fvm_channel_retain` adds
+[`fvm_channel_create`](../include/flashvm/channel.h#L23) returns one owned reference. [`fvm_channel_retain`](../include/flashvm/channel.h#L45) adds
 an owned reference before passing the same channel to another worker or VM
-context. `fvm_channel_release` drops one reference; `fvm_channel_destroy`
+context. [`fvm_channel_release`](../include/flashvm/channel.h#L47) drops one reference; [`fvm_channel_destroy`](../include/flashvm/channel.h#L49)
 is retained as a compatibility alias for release. Only the last release
 frees the queue, strings, and platform synchronization object.
 
-The channel is an independent C handle, **not yet an `FVM_Value`**. This
+The channel is an independent C handle, **not yet an [`FVM_Value`](../include/flashvm/value.h#L24)**. This
 step enables explicit sharing across independent contexts but does not yet
 implement automatic propagation through cloned tables or the `<...>` syntax.
 Never release the final reference while another thread may be inside a
@@ -18,15 +18,31 @@ are borrowed until the next receive on that channel.
 
 ## Русский
 
-`fvm_channel_create` возвращает одну принадлежащую вызывающему ссылку.
-`fvm_channel_retain` добавляет ссылку перед передачей того же канала другому
-рабочему потоку или контексту VM. `fvm_channel_release` освобождает одну
-ссылку; `fvm_channel_destroy` оставлен как совместимый с прежним API синоним.
+[`fvm_channel_create`](../include/flashvm/channel.h#L23) возвращает одну принадлежащую вызывающему ссылку.
+[`fvm_channel_retain`](../include/flashvm/channel.h#L45) добавляет ссылку перед передачей того же канала другому
+рабочему потоку или контексту VM. [`fvm_channel_release`](../include/flashvm/channel.h#L47) освобождает одну
+ссылку; [`fvm_channel_destroy`](../include/flashvm/channel.h#L49) оставлен как совместимый с прежним API синоним.
 Только последняя ссылка уничтожает очередь, строки и примитивы синхронизации.
 
-Канал пока является отдельным C-дескриптором, **а не `FVM_Value`**.
+Канал пока является отдельным C-дескриптором, **а не [`FVM_Value`](../include/flashvm/value.h#L24)**.
 Автоматическое копирование таблиц с каналами и синтаксис `<...>` ещё не
 реализованы. Нельзя освобождать последнюю ссылку, пока другой поток выполняет
 операцию с каналом. Перед последним освобождением следует остановить потоки
 и дождаться их завершения. Указатель на принятую строку действителен только
 до следующего получения сообщения из этого канала.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../include/flashvm/channel.h#L23) |
+| `fvm_channel_destroy` | function | [include/flashvm/channel.h:49](../include/flashvm/channel.h#L49) |
+| `fvm_channel_release` | function | [include/flashvm/channel.h:47](../include/flashvm/channel.h#L47) |
+| `fvm_channel_retain` | function | [include/flashvm/channel.h:45](../include/flashvm/channel.h#L45) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->

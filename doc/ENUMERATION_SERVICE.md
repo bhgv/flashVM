@@ -39,3 +39,15 @@ Flash enumeration order, removed-clip handling and all roadmap gates remain open
 имена со встроенным NUL, сокрытие свойств, снимки и отказы выделения памяти.
 Исключение из преобразования имени распространяется без построения снимка.
 Полный исторический порядок перечисления этим изменением не заявляется.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_exec_enumerate` | function | [include/flashvm/execution.h:133](../include/flashvm/execution.h#L133) |
+<!-- source-links:end -->

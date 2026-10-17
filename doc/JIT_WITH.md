@@ -25,7 +25,7 @@ retain its object after the parent returns and its code is released.
 
 Parent handles own and recursively release child mappings. Both mappings remain
 active during child execution, so collecting/reentrant callbacks cannot release
-them. `fvm_jit_code_size` reports emitted bytes in the complete owned tree; automatic
+them. [`fvm_jit_code_size`](../include/flashvm/jit.h#L35) reports emitted bytes in the complete owned tree; automatic
 cache accounting and the compilation byte limit include those child bytes. The
 nesting limit is the interpreter's 64 With levels. Compilation failure leaves the
 caller's existing output handle unchanged and frees all prepared child mappings.
@@ -51,3 +51,15 @@ private JIT layout changes. Fresh fixtures pass 26 synthetic Unicorn ISA/ABI cas
 
 Update v0.372: [native Try/Catch/Finally](JIT_TRY.md) closes the earlier Try
 compiler gap; full conformance and all roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
+<!-- source-links:end -->

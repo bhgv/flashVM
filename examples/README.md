@@ -194,7 +194,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/file_channels.md](actionscript/file_channels.md).
 
-Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через fvm_extensions_install.
+Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через [fvm_extensions_install](../include/flashvm/extensions.h#L17).
 
 **Файлы:** [file_channels.as](actionscript/file_channels.as).
 
@@ -479,7 +479,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed FVM_Object перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L118) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -686,7 +686,7 @@ AS2-эскиз манипуляций MovieClip и заметка о host-инт
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/jit/README.md](embedding/jit/README.md).
 
-Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение FVM_JitCode и interpreter fallback.
+Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../src/jit/internal.hpp#L59) и interpreter fallback.
 
 **Файлы:** [main.c](embedding/jit/main.c).
 
@@ -744,7 +744,7 @@ AS2-эскиз манипуляций MovieClip и заметка о host-инт
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/objects/README.md](embedding/objects/README.md).
 
-Создаёт объект, записывает и считывает свойства и публикует ссылку глобально. Полезен для изучения FVM_Value и контекстного владения; сопровождающий AS2-файл показывает использование объекта со стороны скрипта.
+Создаёт объект, записывает и считывает свойства и публикует ссылку глобально. Полезен для изучения [FVM_Value](../include/flashvm/value.h#L24) и контекстного владения; сопровождающий AS2-файл показывает использование объекта со стороны скрипта.
 
 **Файлы:** [example_as2.as](embedding/objects/example_as2.as), [main.c](embedding/objects/main.c).
 
@@ -979,7 +979,7 @@ AS2-эскиз обращения к host-функции и заметка о п
 
 **Тип:** C/C++ — собираемый пример. **README:** [extending/stack_c/README.md](extending/stack_c/README.md).
 
-Регистрирует callback со стеком FVM_Stack, читает аргументы, очищает стек и возвращает сумму. Показывает индексацию, размер стека и правило единственного результата.
+Регистрирует callback со стеком [FVM_Stack](../src/capi/stack_c.cpp#L16), читает аргументы, очищает стек и возвращает сумму. Показывает индексацию, размер стека и правило единственного результата.
 
 **Файлы:** [main.c](extending/stack_c/main.c).
 
@@ -1064,6 +1064,22 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 **Файлы:** [example_as2.as](extending/sqlite/example_as2.as), [main.c](extending/sqlite/main.c).
 
 [К оглавлению](#оглавление).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
+| `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+| `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
+| `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
+<!-- source-links:end -->
 
 <a id="glossary"></a>
 ## Глоссарий — алфавитный список всех примеров

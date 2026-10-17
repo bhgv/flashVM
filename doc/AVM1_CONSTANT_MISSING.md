@@ -3,11 +3,11 @@
 Loaded ActionPush now produces undefined when a Constant8 or Constant16 index is
 outside the current string pool, including an absent/empty pool. Existing valid
 indices still create owned strings. Standalone host execution retains its strict
-FVM_INVALID_ARGUMENT result. Truncated index payloads remain malformed in every
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) result. Truncated index payloads remain malformed in every
 mode: the decoder checks the full index width before examining the pool.
 
-The widths have separate documented FVM_AVM1_CONSTANT8_INDEX_BYTES and
-FVM_AVM1_CONSTANT16_INDEX_BYTES macros in encoding_constants.h. No shared C
+The widths have separate documented [FVM_AVM1_CONSTANT8_INDEX_BYTES](../src/avm1/encoding_constants.h#L137) and
+[FVM_AVM1_CONSTANT16_INDEX_BYTES](../src/avm1/encoding_constants.h#L139) macros in encoding_constants.h. No shared C
 execution service or ABI changes are needed for this bytecode decoding rule.
 
 avm1_constant_missing checks host/SWF4–8, both widths, absent/one-entry pools,
@@ -33,3 +33,17 @@ Validation: Linux AGG/Cairo each passed 601 tests; five AGG launch permissions
 were restored and those tests passed on retry. Two targeted heap/global
 ASan+UBSan tests passed (no stack/leak coverage). All 26 accepted original SWFs
 matched the pinned oracle in both profiles. Action-reference coverage is 94/100.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_AVM1_CONSTANT16_INDEX_BYTES` | macro / define | [src/avm1/encoding_constants.h:139](../src/avm1/encoding_constants.h#L139) |
+| `FVM_AVM1_CONSTANT8_INDEX_BYTES` | macro / define | [src/avm1/encoding_constants.h:137](../src/avm1/encoding_constants.h#L137) |
+| `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+<!-- source-links:end -->

@@ -16,7 +16,7 @@ greater converts left before right. Errors propagate through the existing safe
 native boundary without committing a result.
 
 The shared services' existing compatibility limits are preserved: SWF4–5
-length/extract/character operations reject non-ASCII with FVM_UNSUPPORTED;
+length/extract/character operations reject non-ASCII with [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
 character construction maps zero to an empty string and surrogate units to a
 replacement character. MB and ordinary variants share the interpreter policy.
 This extension does not certify historical multibyte encodings or full Flash
@@ -36,3 +36,15 @@ foreign CPU/OS runtime acceptance is unchanged.
 Linux Release: all 723 AGG, 723 Cairo and 704 minimal checks pass after restoring
 generated ELF execute permissions. Three string tests and execution_modes pass
 restricted heap/global ASan+UBSan; stack ASan and LeakSanitizer remain disabled.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

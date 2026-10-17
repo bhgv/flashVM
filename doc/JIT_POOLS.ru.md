@@ -22,7 +22,7 @@ ConstantPool, Push-constant8 и Push-constant16 компилируются в п
 не вводится.
 
 Компилятор проверяет длины, терминаторы и ширину индексов. Независимый лимит
-`FVM_JIT_MAX_POOL_ENTRIES` ограничивает сумму элементов всех замен числом 65536.
+[`FVM_JIT_MAX_POOL_ENTRIES`](../src/jit/constants.h#L7) ограничивает сумму элементов всех замен числом 65536.
 Он отличается от UI16-длины/счётчика отдельной записи и от таблицы литералов.
 Ошибка не заменяет прежний code handle.
 
@@ -48,3 +48,15 @@ roadmap не объявляются подтверждёнными.
 Linux Release: 713 AGG, 713 Cairo and 694 minimal checks pass. AGG/Cairo
 test objects were rebuilt for the changed private context layout. Generated
 ELF execute permissions were restored for AGG/minimal launch failures.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_JIT_MAX_POOL_ENTRIES` | macro / define | [src/jit/constants.h:7](../src/jit/constants.h#L7) |
+<!-- source-links:end -->

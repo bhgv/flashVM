@@ -5,7 +5,7 @@
 функции trace на этот Action-код не влияет. Преобразование выполняется
 и при отключённом обработчике, сохраняя побочные эффекты toString.
 
-`fvm_avm1_set_trace_rooted` принимает обычный FVM_NativeFunction, userdata
+[`fvm_avm1_set_trace_rooted`](../include/flashvm/avm1.h#L43) принимает обычный [FVM_NativeFunction](../include/flashvm/value.h#L37), userdata
 и необязательный захват из того же контекста. Обработчик получает глобальный
 receiver и один STRING-аргумент с полным размером; возвращаемое значение
 игнорируется, код ошибки распространяется. Захват удерживается GC до замены
@@ -30,3 +30,16 @@ trace compatibility: version-specific toString, player fallback text after
 coercion exceptions, legacy encodings and display-object formatting remain open.
 Эталонные строки при исключении и исторические преобразования пока открыты.
 Primary comparison: [pinned Ruffle ActionTrace](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/activation.rs).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_avm1_set_trace_rooted` | function | [include/flashvm/avm1.h:43](../include/flashvm/avm1.h#L43) |
+| `FVM_NativeFunction` | callback typedef | [include/flashvm/value.h:37](../include/flashvm/value.h#L37) |
+<!-- source-links:end -->

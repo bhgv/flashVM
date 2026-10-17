@@ -24,7 +24,7 @@ setters _width/_height этим изменением не устанавлива
 в том числе поверх входа. Корни и нативная глубина восстанавливаются.
 
 Конечные масштабы, не помещающиеся в прежнее процентное представление,
-возвращают FVM_UNSUPPORTED до публикации. Authored shear сохраняет свой basis,
+возвращают [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) до публикации. Authored shear сохраняет свой basis,
 но точные Flash skew/rounding не подтверждаются. Открыты named intrinsics,
 точные twip/stroke/cap/join границы, masks/filter/text/bitmap extents, смешанные
 player-профили и полная геометрия. Сохраняется ограниченная double vector модель.
@@ -52,3 +52,15 @@ reads and geometry allocation. Stack ASan and LeakSanitizer remain disabled.
 The revised MovieClip constants header passes a strict C89 syntax probe.
 No new original external SWF oracle or foreign-OS run is claimed.
 All nine roadmap stages remain open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->

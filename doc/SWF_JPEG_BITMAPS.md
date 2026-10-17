@@ -5,7 +5,7 @@
 v0.46 подключает DefineBitsJPEG2 (21, SWF 2+) и JPEG3 (35, SWF 3+) к
 общему dictionary BitmapData и существующим bitmap-заливкам. Используется
 статически включённый IJG libjpeg 9f из external/; IMAGE_CODECS обязателен.
-NO_IMAGE_CODECS возвращает FVM_UNSUPPORTED при загрузке JPEG, сохраняя
+NO_IMAGE_CODECS возвращает [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) при загрузке JPEG, сохраняя
 возможность загрузки lossless-ресурсов через zlib.
 
 Поддержаны RGB, YCbCr и grayscale JPEG, включая преобразование grayscale
@@ -67,3 +67,15 @@ C++ allocation failures; they do not inject libjpeg malloc failures. Disabled
 codecs and instrumented AGG builds are also checked, with technical evidence
 kept outside Git. Legacy table-based JPEG, embedded PNG/GIF, CMYK, recovery
 compatibility and the remaining stage 4 features are still open.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
+<!-- source-links:end -->
