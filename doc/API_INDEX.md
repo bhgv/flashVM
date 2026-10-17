@@ -117,6 +117,9 @@ short-tail silence and no allocation/implicit device or clock.
 [Detailed TTS/STT API and per-OS preparation](SPEECH_BRIDGES.md); [public speech.h](../include/flashvm/speech.h).
 Separate explicit voice and microphone sessions, replaceable native providers, retained UTF-8 transcript query/copy.
 
+
+Prepared PCM stream snapshots / Независимые индексированные снимки PCM: [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm). Six C89 functions copy/index one validated root PCM segment; indexed reads survive source VM destruction without allocation. Preparation is explicitly budgeted; compressed codecs and automatic MovieClip audio clocks remain unsupported.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

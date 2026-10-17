@@ -1,4 +1,4 @@
-/* FlashVM: allocation-free root streaming-sound segments and bounded PCM block extraction.
+/* FlashVM: live root streaming-sound inspection and optional owned indexed PCM snapshots.
  * This parser does not execute MovieClip clocks, compressed stream codecs or host output. */
 #include "../core/runtime.hpp"
 #include "flashvm/swf_stream_sound.h"
@@ -6,6 +6,22 @@
 #include "sound_pcm.hpp"
 #include "sound_stream_constants.h"
 #include <cstring>
+#include <new>
+
+/* Owned raw PCM block plus its offset into the immutable byte store. */
+struct FVM_SWFStreamSoundEntry
+{
+    FVM_SWFStreamSoundBlock block; /* Copied wire metadata; data is reconstructed on lookup. */
+    size_t offset; /* Payload offset in the owned byte store. */
+};
+/* [GC:] Native independent snapshot; no VM pointer or managed value is retained. */
+struct FVM_SWFStreamSoundSnapshot
+{
+    FVM_SWFStreamSoundInfo info; /* Copied source and playback header. */
+    fvm_detail::vector<FVM_SWFStreamSoundEntry> blocks; /* Exact segment block index. */
+    fvm_detail::vector<unsigned char> bytes; /* Original wire PCM bytes, not expanded samples. */
+    unsigned char empty; /* Valid address for an entirely empty payload store. */
+};
 
 namespace
 {
@@ -61,7 +77,8 @@ FVM_Result head(const unsigned char *data, size_t size, unsigned int tag, unsign
 
 /* Validate the entire root timeline before publishing any segment, block or count. */
 FVM_Result scan(FVM_Context *context, size_t wanted, size_t block_ordinal, FVM_SWFStreamSoundInfo *info,
-                FVM_SWFStreamSoundBlock *block, size_t *stream_count, size_t *block_count)
+                FVM_SWFStreamSoundBlock *block, size_t *stream_count, size_t *block_count, size_t *payload_size = 0,
+                FVM_SWFStreamSoundSnapshot *capture = 0)
 {
     /* [GC:] Canonical storage belongs to the context; no managed allocation or callback occurs. */
     if (!context || context->destroying || context->gc_collecting || context->gc_releasing)
@@ -78,7 +95,7 @@ FVM_Result scan(FVM_Context *context, size_t wanted, size_t block_ordinal, FVM_S
         bytes.size() - FVM_SWF_SOUND_FILE_PREFIX_BYTES - rectangle < FVM_SWF_SOUND_MOVIE_HEADER_BYTES)
         return FVM_INVALID_ARGUMENT;
     size_t at = FVM_SWF_SOUND_FILE_PREFIX_BYTES + rectangle + FVM_SWF_SOUND_MOVIE_HEADER_BYTES;
-    size_t streams = 0, blocks = 0, selected_count = 0;
+    size_t streams = 0, blocks = 0, selected_count = 0, payload = 0;
     unsigned int frame = 1;
     bool frame_block = false, have_header = false, found_header = false, found_block = false;
     FVM_SWFStreamSoundInfo current, selected;
@@ -134,6 +151,18 @@ FVM_Result scan(FVM_Context *context, size_t wanted, size_t block_ordinal, FVM_S
             }
             if (current.stream_index == wanted)
             {
+                if (value.data_size > (size_t)-1 - payload)
+                    return FVM_OUT_OF_MEMORY;
+                if (capture)
+                {
+                    FVM_SWFStreamSoundEntry &entry = capture->blocks[selected_count];
+                    entry.block = value;
+                    entry.block.data = 0;
+                    entry.offset = payload;
+                    if (value.data_size)
+                        std::memcpy(capture->bytes.begin() + payload, value.data, value.data_size);
+                }
+                payload += value.data_size;
                 ++selected_count;
                 if (value.block_index == block_ordinal)
                 {
@@ -166,6 +195,8 @@ FVM_Result scan(FVM_Context *context, size_t wanted, size_t block_ordinal, FVM_S
                 *stream_count = streams;
             if (block_count)
                 *block_count = selected_count;
+            if (payload_size)
+                *payload_size = payload;
             return FVM_OK;
         }
     }
@@ -220,4 +251,107 @@ extern "C" FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *context, size_t
     info.data = block.data;
     info.data_size = block.data_size;
     return fvm_swf_sound_decode_pcm(info, (unsigned long)first, frames, out, capacity, written);
+}
+
+/* Prepare an indexed immutable PCM segment in two linear scans, publishing only on success. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, size_t stream,
+                                                         FVM_SWFStreamSoundSnapshot **out)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    *out = 0;
+    FVM_SWFStreamSoundInfo info;
+    size_t count = 0, bytes = 0;
+    FVM_Result result = scan(context, stream, 0, &info, 0, 0, &count, &bytes);
+    if (result != FVM_OK)
+        return result;
+    if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
+        return FVM_UNSUPPORTED;
+    size_t limit = context->runtime->config.memory_limit_bytes ? context->runtime->config.memory_limit_bytes
+                                                               : FVM_SWF_DEFAULT_LIMIT;
+    if (bytes > limit || count > (limit - bytes) / sizeof(FVM_SWFStreamSoundEntry))
+        return FVM_OUT_OF_MEMORY;
+    FVM_SWFStreamSoundSnapshot *snapshot = 0;
+    try
+    {
+        snapshot = new FVM_SWFStreamSoundSnapshot;
+        snapshot->empty = 0;
+        snapshot->info = info;
+        snapshot->blocks.resize(count);
+        snapshot->bytes.resize(bytes);
+        result = scan(context, stream, 0, 0, 0, 0, 0, 0, snapshot);
+        if (result != FVM_OK)
+        {
+            delete snapshot;
+            return result;
+        }
+        *out = snapshot;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        delete snapshot;
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+/* Copy source geometry without consulting the original context. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                                         FVM_SWFStreamSoundInfo *out)
+{
+    if (!snapshot || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    *out = snapshot->info;
+    return FVM_OK;
+}
+/* Return the indexed block count without scanning tags. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_block_count(const FVM_SWFStreamSoundSnapshot *snapshot, size_t *out)
+{
+    if (!snapshot || !out)
+        return FVM_INVALID_ARGUMENT;
+    *out = snapshot->blocks.size();
+    return FVM_OK;
+}
+/* Reconstruct an owned raw-payload view in constant time. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_block_at(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                                             size_t ordinal, FVM_SWFStreamSoundBlock *out)
+{
+    if (!snapshot || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    if (ordinal >= snapshot->blocks.size())
+        return FVM_NOT_FOUND;
+    const FVM_SWFStreamSoundEntry &entry = snapshot->blocks[ordinal];
+    *out = entry.block;
+    out->data = snapshot->bytes.empty() ? &snapshot->empty : snapshot->bytes.begin() + entry.offset;
+    return FVM_OK;
+}
+/* Decode only the requested range from the indexed source; no allocation, callback or VM access. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                                             size_t ordinal, size_t first, size_t frames,
+                                                             short *out, size_t capacity, size_t *written)
+{
+    if (!written)
+        return FVM_INVALID_ARGUMENT;
+    *written = 0;
+    FVM_SWFStreamSoundBlock block;
+    block.struct_size = sizeof(block);
+    FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, &block);
+    if (result != FVM_OK)
+        return result;
+    if (first > block.sample_count || block.sample_count > ULONG_MAX)
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFSoundInfo info;
+    std::memset(&info, 0, sizeof(info));
+    info.format = snapshot->info.format;
+    info.sample_rate = snapshot->info.sample_rate;
+    info.bits_per_sample = snapshot->info.bits_per_sample;
+    info.channels = snapshot->info.channels;
+    info.sample_count = (unsigned long)block.sample_count;
+    info.data = block.data;
+    info.data_size = block.data_size;
+    return fvm_swf_sound_decode_pcm(info, (unsigned long)first, frames, out, capacity, written);
+}
+/* Release only native owned storage; null is accepted and no originating VM is required. */
+extern "C" void fvm_swf_stream_sound_snapshot_close(FVM_SWFStreamSoundSnapshot *snapshot)
+{
+    delete snapshot;
 }

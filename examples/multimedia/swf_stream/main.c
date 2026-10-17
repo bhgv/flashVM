@@ -55,6 +55,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     FVM_Config config; /* Initialize before acquiring runtime ownership. */
     FVM_Runtime *runtime = 0; /* Own runtime after successful creation. */
     FVM_Context *context = 0; /* Own canonical FWS bytes and channel registrations. */
+    FVM_SWFStreamSoundSnapshot *snapshot = 0; /* Own optional prepared source independently of both VMs. */
     FVM_AudioChannel *channel = 0; /* Borrow the context-owned registration. */
     FVM_SWFStreamSoundInfo info; /* Copy one governing stream header. */
     FVM_SWFStreamSoundBlock block; /* Borrow payload metadata only while the current SWF is loaded. */
@@ -63,11 +64,12 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     StreamFile host; /* Keep output userdata alive through context destruction. */
     short samples[TUTORIAL_STREAM_CHUNK_FRAMES * TUTORIAL_STREAM_CHANNELS]; /* Bound caller-owned native-S16 output. */
     size_t streams, blocks, ordinal, first, frames, written, total = 0; /* Distinguish ordinals, sample frames and channel values. */
+    int prepared = argc == TUTORIAL_STREAM_ARGUMENT_COUNT + 1 && !strcmp(argv[2], "--prepared"); /* Select explicit native indexing before any side effects. */
     int exit_code = 1; /* Report success only after actual output stopping. */
     memset(&host, 0, sizeof(host)); /* Make partial-setup and failed-write cleanup safe. */
-    if (argc != TUTORIAL_STREAM_ARGUMENT_COUNT) /* Require an explicit replaceable output path. */
+    if (argc != TUTORIAL_STREAM_ARGUMENT_COUNT && !prepared) /* Require an explicit replaceable output path. */
     { /* Keep no-argument smoke runs side-effect free. */
-        printf("Usage: %s OUTPUT.pcm\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
+        printf("Usage: %s OUTPUT.pcm [--prepared]\nReplaces the selected file with raw native S16 stereo PCM.\n", argv[0]); /* Describe the actual file side effect. */
         return 0; /* No VM, file or device ownership exists yet. */
     } /* Finish explicit output selection. */
     host.path = argv[1]; /* Borrow the caller-selected path. */
@@ -80,6 +82,19 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     info.struct_size = sizeof(info); /* Declare the exact copied-header ABI. */
     if (!streams || !checked(fvm_swf_stream_sound_at(context, 0, &info), "stream_at") || !checked(fvm_swf_stream_sound_block_count(context, 0, &blocks), "block_count")) /* Select the fixture's first header segment. */
         goto cleanup; /* Keep missing/header errors visible. */
+    if (prepared) /* Demonstrate that the index does not borrow the original VM. */
+    { /* Prepare before destroying source ownership. */
+        if (!checked(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot), "snapshot_open")) /* Copy source bytes and block index once. */
+            goto cleanup; /* Preserve ordinary allocation errors. */
+        fvm_context_destroy(context); /* Release canonical movie storage. */
+        context = 0; /* Keep partial reacquisition cleanup safe. */
+        fvm_runtime_destroy(runtime); /* Prove no runtime pointer is retained by the snapshot. */
+        runtime = 0; /* Mark the old owner released. */
+        if (!checked(fvm_runtime_create(&config, &runtime), "output_runtime") || !checked(fvm_context_create(runtime, &context), "output_context")) /* Create an unloaded VM only for output registration. */
+            goto cleanup; /* The independent snapshot still has its own cleanup. */
+        if (!checked(fvm_swf_stream_sound_snapshot_info(snapshot, &info), "snapshot_info") || !checked(fvm_swf_stream_sound_snapshot_block_count(snapshot, &blocks), "snapshot_count")) /* Obtain copied metadata after original VM teardown. */
+            goto cleanup; /* No movie has been loaded into the output VM. */
+    } /* Finish independent source preparation. */
     if (info.channels != TUTORIAL_STREAM_CHANNELS) /* Require the layout promised by the bounded stereo buffer. */
         goto cleanup; /* Do not silently reinterpret channel geometry. */
     output.struct_size = sizeof(output); /* Supply the complete host bridge ABI. */
@@ -91,7 +106,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
     for (ordinal = 0; ordinal < blocks; ++ordinal) /* Visit encoded block occurrences, including explicit empty blocks. */
     { /* Preserve movie frame numbers independently of sample offsets. */
         block.struct_size = sizeof(block); /* Declare the exact borrowed-block view ABI. */
-        if (!checked(fvm_swf_stream_sound_block_at(context, 0, ordinal, &block), "block_at")) /* Re-resolve current canonical bytes. */
+        if (!checked(snapshot ? fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, &block) : fvm_swf_stream_sound_block_at(context, 0, ordinal, &block), "block_at")) /* Re-resolve current canonical bytes. */
             goto cleanup; /* Report metadata failure before reading payload. */
         printf("Frame %u: %lu sample frames\n", block.frame, (unsigned long)block.sample_count); /* Expose the gap and variable block lengths. */
         if (!block.sample_count_known) /* Compressed stream payloads have no supported PCM count here. */
@@ -101,7 +116,7 @@ int main(int argc, char **argv) /* Use the public C89 ABI without assertions or 
             frames = block.sample_count - first; /* Count remaining sample frames, not scalar channel values. */
             if (frames > TUTORIAL_STREAM_CHUNK_FRAMES) /* Split a long block without a full-block allocation. */
                 frames = TUTORIAL_STREAM_CHUNK_FRAMES; /* Retain fixed caller geometry. */
-            if (!checked(fvm_swf_stream_sound_read_pcm(context, 0, ordinal, first, frames, samples, sizeof(samples) / sizeof(samples[0]), &written), "read_pcm")) /* Convert into independent native shorts without callbacks. */
+            if (!checked(snapshot ? fvm_swf_stream_sound_snapshot_read_pcm(snapshot, ordinal, first, frames, samples, sizeof(samples) / sizeof(samples[0]), &written) : fvm_swf_stream_sound_read_pcm(context, 0, ordinal, first, frames, samples, sizeof(samples) / sizeof(samples[0]), &written), "read_pcm")) /* Convert into independent native shorts without callbacks. */
                 goto cleanup; /* Preserve actual decoder/range errors. */
             memset(&frame, 0, sizeof(frame)); /* Clear scheduling/video fields; this tutorial does no real-time scheduling. */
             frame.kind = FVM_MEDIA_AUDIO; /* Select the existing native-S16 output bridge. */
@@ -126,5 +141,6 @@ cleanup: /* Preserve userdata until all context-owned callbacks finish. */
         fclose(host.file); /* Release fallback ownership after context callbacks return. */
     if (runtime) /* Runtime must outlive its context. */
         fvm_runtime_destroy(runtime); /* Release remaining VM ownership last. */
+    fvm_swf_stream_sound_snapshot_close(snapshot); /* Release native source storage independently; null is accepted. */
     return exit_code; /* Report ordinary success/failure rather than using tutorial assertions. */
 } /* Finish explicit root-stream export with no automatic movie clock. */

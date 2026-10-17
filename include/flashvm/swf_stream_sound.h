@@ -32,7 +32,7 @@ extern "C"
         unsigned int frame; /* One-based root frame; gaps do not synthesize blocks. */
         int sample_count_known; /* Nonzero for supported uncompressed PCM geometry only. */
         size_t sample_count; /* Actual PCM frames inferred from bytes, or zero when unknown. */
-        const unsigned char *data; /* Borrowed until successful load_memory or context destruction. */
+        const unsigned char *data; /* Live view: until successful reload/context destruction; snapshot view: until snapshot_close. */
         size_t data_size; /* Complete block payload, including codec-specific prefixes when opaque. */
     } FVM_SWFStreamSoundBlock;
     /* Count header segments after validating all root stream controls and PCM block alignment. */
@@ -45,6 +45,20 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_block_at(FVM_Context *, size_t, size_t, FVM_SWFStreamSoundBlock *);
     /* Decode a bounded PCM range without allocations/callbacks; written counts channel values and is cleared first. */
     FVM_API FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *, size_t, size_t, size_t, size_t, short *, size_t, size_t *);
+    /* Independent immutable native PCM segment, explicitly prepared and released by the host. */
+    typedef struct FVM_SWFStreamSoundSnapshot FVM_SWFStreamSoundSnapshot;
+    /* Copy and index one PCM segment; clear *out first, subject to the runtime memory budget. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *, size_t, FVM_SWFStreamSoundSnapshot **);
+    /* Copy the original source/advisory header, preserving output on error. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
+    /* Query the prepared block count without rescanning the movie. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_count(const FVM_SWFStreamSoundSnapshot *, size_t *);
+    /* Borrow an indexed original-wire PCM payload until snapshot_close. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundBlock *);
+    /* Decode a requested range to native S16; written counts channel values and is cleared first. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStreamSoundSnapshot *, size_t, size_t, size_t, short *, size_t, size_t *);
+    /* Free the independent snapshot; null is a no-op. */
+    FVM_API void fvm_swf_stream_sound_snapshot_close(FVM_SWFStreamSoundSnapshot *);
 #ifdef __cplusplus
 }
 #endif

@@ -110,7 +110,7 @@
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
-    - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, пропуски кадров и native FILE</em></small>
+    - [swf_stream](#example-multimedia-swf_stream) — <small><em>Потоковый SWF PCM: блоки, независимый индекс и native FILE</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
@@ -1191,7 +1191,7 @@ NO_MEDIA работает без SDK. Режим `--event` применяет д
 <a id="example-multimedia-swf_stream"></a>
 #### swf_stream
 
-Исполняемый C89 учебник: [README](multimedia/swf_stream/README.md),
+Исполняемый C89 учебник: [README](multimedia/swf_stream/README.md), включая `--prepared`: независимый индекс PCM после уничтожения исходной VM.
 [main.c](multimedia/swf_stream/main.c), [constants](multimedia/swf_stream/example_constants.h).
 Читает встроенный SoundStreamHead2 и блоки с фактическими номерами кадров,
 variable-length stereo PCM, пропуском и явным empty block. Показывает отличие

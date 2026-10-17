@@ -7,7 +7,7 @@ int main(void)
 {
  FVM_Config cfg;FVM_Runtime *rt=0;FVM_Context *c=0;unsigned i;
  assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK && fvm_context_create(rt,&c)==FVM_OK);
- for(i=0;i<2;++i){FVM_SWFStreamSoundInfo info;FVM_SWFStreamSoundBlock block;size_t n=0,count=0;short out[4];
+ for(i=0;i<2;++i){FVM_SWFStreamSoundInfo info;FVM_SWFStreamSoundBlock block;size_t n=0,count=0;short out[4];FVM_SWFStreamSoundSnapshot *snapshot=0;
  assert(fvm_load_memory(c,i?compressed:raw,i?sizeof(compressed):sizeof(raw))==FVM_OK);
  info.struct_size=sizeof(info);block.struct_size=sizeof(block);
  assert(fvm_swf_stream_sound_count(c,&count)==FVM_OK && count==1);
@@ -19,6 +19,12 @@ int main(void)
  assert(fvm_swf_stream_sound_read_pcm(c,0,1,0,1,out,4,&n)==FVM_OK && n==2 && out[0]==32512 && out[1]==-32768);
  assert(fvm_swf_stream_sound_block_at(c,0,2,&block)==FVM_OK && block.frame==4 && !block.sample_count);
  assert(fvm_swf_stream_sound_read_pcm(c,0,2,0,0,0,0,&n)==FVM_OK && !n);
+ assert(fvm_swf_stream_sound_snapshot_open(c,0,&snapshot)==FVM_OK);
+ assert(fvm_swf_stream_sound_snapshot_info(snapshot,&info)==FVM_OK && info.channels==2);
+ assert(fvm_swf_stream_sound_snapshot_block_count(snapshot,&count)==FVM_OK && count==3);
+ assert(fvm_swf_stream_sound_snapshot_block_at(snapshot,1,&block)==FVM_OK && block.frame==3);
+ assert(fvm_swf_stream_sound_snapshot_read_pcm(snapshot,1,0,1,out,4,&n)==FVM_OK && n==2 && out[0]==32512);
+ fvm_swf_stream_sound_snapshot_close(snapshot);
  }
  fvm_context_destroy(c);fvm_runtime_destroy(rt);return 0;
 }

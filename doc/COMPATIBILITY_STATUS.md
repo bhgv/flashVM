@@ -4548,6 +4548,9 @@ positions/bindings и не включает автоматический MovieCl
 частоты/layouts требуют отдельной конверсии; прочие кодеки и foreign native
 platform acceptance остаются открытыми. No roadmap stage is closed.
 
+
+Prepared PCM stream snapshots / Независимые индексированные снимки PCM: [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm). Six C89 functions copy/index one validated root PCM segment; indexed reads survive source VM destruction without allocation. Preparation is explicitly budgeted; compressed codecs and automatic MovieClip audio clocks remain unsupported.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

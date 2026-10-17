@@ -2833,6 +2833,41 @@ integration, automatic seek/gap synchronization or native sound-card acceptance.
 Полнота SWF/AS, оставшиеся JIT/GC/отладка/потоки и реальные foreign-platform
 запуски остаются открытыми. No roadmap stage is closed.
 
+### v0.559 — independent indexed streaming PCM snapshots
+
+Implemented / реализовано: optional C89 native PCM snapshots validate the entire
+root stream, copy the selected segment's original wire bytes and build an exact
+block index in two linear passes. Subsequent metadata lookup is constant-time;
+bounded decoding visits requested sample values only. No context/runtime pointer
+or managed root is retained. GC, successful source reload and original VM teardown
+do not invalidate the snapshot. Queries/reads/close allocate nothing. Preparation
+limits payload plus index bytes using the configured/default SWF budget, with
+explicit per-handle accounting and excluded wrapper/allocator overhead. Existing
+allocation-free live APIs remain available. Full contracts in
+[SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md).
+
+The annotated swf_stream tutorial adds --prepared: it destroys both source owners
+and uses a new unloaded VM only for real file-output callbacks. The host harness
+compares both modes' stdout and native PCM bytes and exercises actual file-error
+cleanup. API indexes, compatibility inventory and the 93-example catalog retain
+source/document links and lifetime/unsupported-codec limits.
+
+Validation: full Linux Release minimal-JIT CTest passes 1168 tests with the existing
+speech SSIP endpoint check skipped (1169 total). Five focused ASAN/UBSAN checks
+pass with LeakSanitizer disabled: snapshot lifecycle/geometry, native allocation
+failures/budget boundary, C89 FWS/CWS ABI and the actual tutorial/smoke checks.
+SWF3–8 PCM width/channel/endian combinations match live range decoding; tests also
+cover empty blocks/segments, late malformed controls, missing ordinals, invalid
+ranges and byte-for-byte owned payloads. Every preparation allocation is denied
+in turn; all prepared queries/read/close succeed with allocation denied after
+VM destruction. The installed FFmpeg raw-U8 conversion oracle matches both tutorial
+modes. Source-link determinism, source-line bounds, catalog completeness and
+per-line tutorial comments pass. No foreign-platform or hardware run is claimed.
+
+Это развитие этапа 4 и проверок времени жизни этапа 7. Compressed stream codecs,
+MovieClip audio clocks, resampling and full SWF/platform conformance remain open.
+Ни один из девяти этапов этим checkpoint не закрывается.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

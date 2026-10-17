@@ -197,6 +197,85 @@ canonical truncation fixture deliberately injects internal storage faults that
 the outer loader normally rejects first. These are parser/PCM tests, not full
 audio playback or foreign-platform acceptance.
 
+## Prepared immutable PCM index / Подготовленный неизменяемый индекс PCM
+
+The optional [`FVM_SWFStreamSoundSnapshot`](../src/swf/sound_stream.cpp#L18) removes repeated root scans for incremental
+reads. Open performs two linear scans of the loaded root: full validation and size
+measurement, then copying into an exact block index and raw byte store. It does
+not expand PCM to S16 or copy unrelated segments. Preparation remains on the
+context's owning thread, outside terminal/collecting GC phases, with no concurrent
+load or mutation. It invokes no host callback or collection.
+
+Необязательный снимок устраняет повторное сканирование SWF при чтении короткими
+порциями. Подготовка выполняет два линейных прохода: полную проверку и подсчёт,
+затем копирование индекса и исходных PCM-байтов. Чужие сегменты не копируются,
+предварительного расширения в S16 нет. Подготовка выполняется в потоке владельца
+контекста; параллельные загрузка/изменение и терминальные фазы GC недопустимы.
+
+All six functions are declared in `include/flashvm/swf_stream_sound.h`:
+
+- `fvm_swf_stream_sound_snapshot_open(context, stream, out)` requires a valid loaded
+  context, zero-based segment and nonnull handle-output pointer. Clears `*out` on
+  every failure; returns OK with a new independently owned handle, NOT_FOUND for
+  a missing segment, UNSUPPORTED for compressed PCM alternatives/unloaded context,
+  INVALID_ARGUMENT for malformed controls or invalid context/output, OUT_OF_MEMORY
+  for allocation failure or budget overflow. All later root controls validate
+  before allocation. The budget is configured `memory_limit_bytes`, or the existing
+  default SWF limit when zero. It bounds raw payload bytes plus
+  `block_count * sizeof(FVM_SWFStreamSoundEntry)`; wrapper/allocator overhead is
+  excluded. This is a per-snapshot cap, not aggregate accounting across handles.
+- `fvm_swf_stream_sound_snapshot_info(snapshot, out)` copies the original header.
+  `out->struct_size` must equal `sizeof(FVM_SWFStreamSoundInfo)`. Returns OK or
+  INVALID_ARGUMENT for null/bad size, leaving metadata unchanged on error.
+- `fvm_swf_stream_sound_snapshot_block_count(snapshot, out)` copies the segment's
+  number of explicit blocks. Returns OK or INVALID_ARGUMENT for null arguments;
+  output is unchanged on error. Header-only segments return zero blocks.
+- `fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, out)` requires the
+  exact [`FVM_SWFStreamSoundBlock`](../include/flashvm/swf_stream_sound.h#L27) struct size. Returns OK, NOT_FOUND for an absent
+  ordinal, INVALID_ARGUMENT for null/bad size. Output is unchanged on error.
+  `data` points to original wire PCM, retaining source endian/width, until close;
+  it is never a decoded S16 buffer. Empty blocks have a nonnull zero-length view.
+- `[fvm_swf_stream_sound_snapshot_read_pcm](../include/flashvm/swf_stream_sound.h#L59)(snapshot, ordinal, first, frames, out,
+  capacity, written)` decodes to caller-owned native interleaved S16. Block index
+  is constant-time; conversion visits requested samples only. Offsets/counts are
+  sample frames, capacity/written are channel values. Required `written` is
+  cleared before validation. Returns OK, NOT_FOUND for absent ordinal,
+  INVALID_ARGUMENT for null handle/written, range/capacity/required destination,
+  or UNSUPPORTED on an unsupported native representation. Destination is unchanged
+  on failure. Zero frames at the block end and a null destination are valid.
+- `fvm_swf_stream_sound_snapshot_close(snapshot)` releases the owned native index
+  and bytes; returns void and accepts null. All borrowed views become invalid.
+  Double close or any subsequent use of a released handle is invalid.
+
+Контракты функций: open обнуляет выходной указатель, проверяет весь root и лимит,
+возвращает независимый handle либо NOT_FOUND / UNSUPPORTED / INVALID_ARGUMENT /
+OUT_OF_MEMORY. info и block_count копируют заголовок/число блоков; block_at
+возвращает исходные байты, принадлежащие снимку до close. Для info/block_at нужен
+точный struct_size; при ошибке выходная метаинформация не меняется. read_pcm
+принимает смещения в sample frames, ёмкость и written в отдельных значениях
+каналов, сначала обнуляет written и не меняет PCM при ошибке. Нулевой диапазон
+в конце допустим. close освобождает снимок, null допустим. Лимит учитывает байты
+payload и индекс блоков, исключая оболочку/накладные расходы аллокатора; каждый
+снимок ограничивается отдельно. Пустой сегмент имеет ноль блоков.
+
+After open, no operation needs the originating context or runtime: ordinary GC,
+successful reload and destruction of both owners leave the snapshot valid.
+Queries, reads and close allocate nothing and invoke no VM/host callbacks.
+Immutable reads may run concurrently with separate outputs when the host protects
+handle lifetime; close must never race any operation. Output buffers/counts must
+not alias snapshot storage or each other. No clock, resampling, automatic silence,
+compressed decoder or device acceptance is added.
+
+После подготовки GC, новая загрузка и уничтожение исходных context/runtime не
+влияют на снимок. Запросы, чтение и close не выделяют память и не вызывают VM,
+GC или переходники. Параллельное чтение допустимо с отдельными буферами и защитой
+времени жизни со стороны host; close не должен пересекаться с операциями.
+Выходы не должны перекрывать друг друга или память снимка. Планировщик, ресемплинг,
+тишина для пропусков и декодирование сжатых потоков не добавляются.
+
+The [swf_stream tutorial](../examples/multimedia/swf_stream/README.md) demonstrates
+`--prepared`: it destroys the source VM and exports through a new unloaded VM.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -217,7 +296,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:43](../include/flashvm/swf_stream_sound.h#L43) |
 | `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
 | `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:47](../include/flashvm/swf_stream_sound.h#L47) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:57](../include/flashvm/swf_stream_sound.h#L57) |
+| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:55](../include/flashvm/swf_stream_sound.h#L55) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:61](../include/flashvm/swf_stream_sound.h#L61) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:53](../include/flashvm/swf_stream_sound.h#L53) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:51](../include/flashvm/swf_stream_sound.h#L51) |
+| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:59](../include/flashvm/swf_stream_sound.h#L59) |
 | `FVM_SWFStreamSoundBlock` | struct | [include/flashvm/swf_stream_sound.h:27](../include/flashvm/swf_stream_sound.h#L27) |
+| `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream.cpp:12](../src/swf/sound_stream.cpp#L12) |
 | `FVM_SWFStreamSoundInfo` | struct | [include/flashvm/swf_stream_sound.h:10](../include/flashvm/swf_stream_sound.h#L10) |
+| `FVM_SWFStreamSoundSnapshot` | struct | [src/swf/sound_stream.cpp:18](../src/swf/sound_stream.cpp#L18) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
