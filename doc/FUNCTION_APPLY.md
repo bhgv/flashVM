@@ -175,3 +175,6 @@ permissions for 20/18/26 binaries. Six targeted ASan/UBSan cases passed. A fresh
 strict GNU readelf audit passed for 1079 Cairo ELF artifacts, with only libc,
 libgcc_s, libm and libstdc++ as direct dependencies. This does not certify
 transitive/dlopen dependencies or Windows/macOS/Android runtime acceptance.
+
+Follow-up v0.521 extends live own length reading to native Array methods; see
+[remaining scope and RU/EN contract](ARRAY_LENGTH_STORAGE.md).

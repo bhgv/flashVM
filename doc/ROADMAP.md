@@ -2196,3 +2196,12 @@ Array list lacks own length data, instead of reviving cached native length.
 Tests / проверки: function_apply_deleted_length and roots/allocation variants.
 See FUNCTION_APPLY.md and FUNCTION_APPLY.ru.md. Other native Array deletion
 semantics and all nine stages remain open / остаются открытыми.
+
+### v0.521 — live own Array length in native methods
+
+Implemented / реализовано: deleted/recreated length is read as live own data;
+native writes recreate ordinary length, preserve readonly policy and truncate
+only old numeric data. Incoming moves are rooted across coercion. Tests /
+проверки: array_deleted_length plus roots, flags and allocation variants.
+See [RU/EN contract](ARRAY_LENGTH_STORAGE.md). Indexed assignments, sortOn
+argument-list lengths and all nine stages remain open / остаются открытыми.
