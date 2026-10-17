@@ -1,4 +1,6 @@
 /* FlashVM: backend-independent gradient sampling composed through the existing vector mask API. */
+#include "../render/quality_internal.hpp"
+
 #include "flashvm/gradient.h"
 #include "../details/vector.hpp"
 #include <cmath>
@@ -124,10 +126,17 @@ extern "C" FVM_Result fvm_gradient_init(FVM_Gradient *gradient)
 extern "C" FVM_Result fvm_path_draw_gradient(const FVM_Path *path, FVM_RasterSurface *surface,
                                              const FVM_Gradient *gradient, int even_odd)
 {
+    return fvm_path_draw_gradient_quality(path, surface, gradient, even_odd, true);
+}
+/* Apply context-selected edge coverage without changing public standalone defaults. */
+FVM_Result fvm_path_draw_gradient_quality(const FVM_Path *path, FVM_RasterSurface *surface,
+                                             const FVM_Gradient *gradient, int even_odd, bool antialias)
+{
     FVM_Affine inverse;
     if (!validate(path, surface, gradient, even_odd, inverse))
         return FVM_INVALID_ARGUMENT;
 #if !defined(FVM_HAS_AGG) && !defined(FVM_HAS_CAIRO)
+    (void)antialias;
     return FVM_UNSUPPORTED;
 #else
     try
@@ -149,7 +158,7 @@ extern "C" FVM_Result fvm_path_draw_gradient(const FVM_Path *path, FVM_RasterSur
                 p[3] = color.a;
             }
         FVM_RasterSurface source = {pixels.begin(), surface->width, surface->height, stride};
-        return fvm_path_mask(path, surface, &source, even_odd);
+        return fvm_path_mask_quality(path, surface, &source, even_odd, antialias);
     }
     catch (const std::bad_alloc &)
     {

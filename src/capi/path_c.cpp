@@ -3,6 +3,8 @@
  */
 
 #include "flashvm/path.h"
+#include "../render/quality_internal.hpp"
+#include "../render/quality_constants.h"
 #include "../details/vector.hpp"
 #include <cmath>
 #include <cstring>
@@ -16,6 +18,7 @@
 #include "agg_renderer_scanline.h"
 #include "agg_rasterizer_scanline_aa.h"
 #include "agg_scanline_u.h"
+#include "agg_gamma_functions.h"
 #elif defined(FVM_HAS_CAIRO)
 #include "cairo.h"
 #endif
@@ -307,6 +310,13 @@ static unsigned int packed_pixel(const unsigned char *p)
 extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
                                     double width, int even_odd)
 {
+    return fvm_path_draw_quality(p, s, color, width, even_odd, true);
+}
+/* Keep the coverage policy local to this draw, including strokes and masks. */
+FVM_Result fvm_path_draw_quality(const FVM_Path *p, FVM_RasterSurface *s, FVM_RasterColor color,
+                                double width, int even_odd, bool antialias)
+{
+    (void)antialias; /* NO_GRAPHICS validates inputs but has no backend policy to apply. */
     if (!p || !valid_surface(s) || !(width >= 0 && width <= 4096) ||
         (even_odd != 0 && even_odd != 1))
         return FVM_INVALID_ARGUMENT;
@@ -344,6 +354,8 @@ extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM
         agg::conv_curve<agg::path_storage> curves(path);
         agg::rasterizer_scanline_aa<> ras;
         agg::scanline_u8 scanline;
+        if (!antialias)
+            ras.gamma(agg::gamma_threshold(FVM_RENDER_BINARY_COVERAGE_THRESHOLD));
         ras.clip_box(0, 0, s->width, s->height);
         ras.filling_rule(even_odd ? agg::fill_even_odd : agg::fill_non_zero);
         if (width > 0)
@@ -385,6 +397,7 @@ extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM
         }
     cairo_surface_mark_dirty(image);
     cairo_t *cr = cairo_create(image);
+    cairo_set_antialias(cr, antialias ? CAIRO_ANTIALIAS_DEFAULT : CAIRO_ANTIALIAS_NONE);
     double x = 0, y = 0, sx = 0, sy = 0;
     for (size_t i = 0; i < p->commands.size(); ++i)
     {
@@ -471,6 +484,12 @@ extern "C" FVM_Result fvm_path_draw(const FVM_Path *p, FVM_RasterSurface *s, FVM
 extern "C" FVM_Result fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst,
                                     const FVM_RasterSurface *src, int even_odd)
 {
+    return fvm_path_mask_quality(p, dst, src, even_odd, true);
+}
+/* Mask sampling uses the same per-call edge policy as ordinary solid vector paths. */
+FVM_Result fvm_path_mask_quality(const FVM_Path *p, FVM_RasterSurface *dst,
+                                const FVM_RasterSurface *src, int even_odd, bool antialias)
+{
     if (!valid_surface(dst) || !valid_surface(src) || src->width != dst->width ||
         src->height != dst->height)
         return FVM_INVALID_ARGUMENT;
@@ -485,7 +504,7 @@ extern "C" FVM_Result fvm_path_mask(const FVM_Path *p, FVM_RasterSurface *dst,
     /* Initialization / Инициализация локального состояния. */
     FVM_RasterSurface s = {mask, dst->width, dst->height, (size_t)dst->width * 4};
     FVM_RasterColor white = {255, 255, 255, 255};
-    FVM_Result result = fvm_path_draw(p, &s, white, 0, even_odd);
+    FVM_Result result = fvm_path_draw_quality(p, &s, white, 0, even_odd, antialias);
     if (result == FVM_OK)
         for (unsigned int y = 0; y < dst->height; ++y)
             for (unsigned int x = 0; x < dst->width; ++x)

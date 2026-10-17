@@ -1,4 +1,4 @@
-Версия разработки: **0.537** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.538** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -311,6 +311,7 @@ Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG
 
 Полный каталог примеров / Complete example catalog: [examples/README.md](examples/README.md).
 Documentation source links and maintenance / Правила документации: [RU/EN](doc/DOCUMENTATION_GUIDELINES.md).
+Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_QUALITY.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

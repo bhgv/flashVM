@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 2/3/4/7/8: Stage quality / ToggleQuality | Проверено целевыми тестами v0.538 | SWF1–8, independent contexts, operand preservation, interpreter/JIT fallback, LOW/HIGH/BEST transitions; solid/stroke/gradient/bitmap edge coverage on AGG/Cairo. STAGE_QUALITY.md. Sampling grids, bitmap downsampling and script quality properties remain open. |
 | 1/2/7: resolver result OOM publication | Проверено для v0.452 | Fresh-context SWF4–8 native/script/method resolver allocation sweeps, named NUL/indexed reads, cyclic exceptions, safe undefined output, cleanup/GC/retry. OBJECT_RESOLVE.md / .ru.md; C/OS allocators, scope/transport and stages open. |
 | 1/2/7/8: resolved method invocation | Проверено для v0.451 | C/AVM1 ordinary/super Function dispatch, missing/nonfunction distinction, original rooted args, collecting deletion/detachment and no replay of failing callbacks in JIT. OBJECT_RESOLVE.md / .ru.md; scope/transport/OOM and stages open. |
 | 1/2/7/8: loaded Object.__resolve reads | Проверено для v0.450 | Raw own/inherited resolver rules, names/index/super reads, GC/errors, special exclusion, native recursion and actual JIT GetMember. OBJECT_RESOLVE.md / .ru.md; C/super calls: v0.451; scope/transport/OOM and stages open. |

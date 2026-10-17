@@ -1,6 +1,8 @@
 /* FlashVM: Built-in ActionScript objects: movieclip.
  * File: src/standard/movieclip.cpp.
  */
+#include "../render/quality_internal.hpp"
+
 
 #include "../core/string_internal.hpp"
 #include "movieclip_state.hpp"
@@ -2230,11 +2232,11 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                     r = fvm_movieclip_gradient_draw(c, part, world, p, surface, transform.multiply,
                                                     transform.add, even_odd);
                 else
-                    r = fvm_path_draw(p, surface, color(rgb, a, transform), 0, even_odd);
+                    r = fvm_path_draw_quality(p, surface, color(rgb, a, transform), 0, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
                 if (r == FVM_OK && coverage)
                 {
                     FVM_RasterColor opaque = {255, 255, 255, 255};
-                    r = fvm_path_draw(p, coverage, opaque, 0, even_odd);
+                    r = fvm_path_draw_quality(p, coverage, opaque, 0, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
                 }
             }
         }
@@ -2247,12 +2249,12 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                 r = numeric(c, part, "width", width);
             double scale = vector_length(world.xx, world.yx);
             if (r == FVM_OK)
-                r = fvm_path_draw(p, surface, color(rgb, a, transform), width ? width * scale : 1,
-                                  0);
+                r = fvm_path_draw_quality(p, surface, color(rgb, a, transform), width ? width * scale : 1,
+                                  0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
             if (r == FVM_OK && coverage)
             {
                 FVM_RasterColor opaque = {255, 255, 255, 255};
-                r = fvm_path_draw(p, coverage, opaque, width ? width * scale : 1, 0);
+                r = fvm_path_draw_quality(p, coverage, opaque, width ? width * scale : 1, 0, c->stage_quality != FVM_STAGE_QUALITY_LOW);
             }
         }
         if (r != FVM_OK)

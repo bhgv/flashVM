@@ -53,6 +53,7 @@
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
     - [movieclip](#example-embedding-movieclip) — <small><em>Управление MovieClip — AS-эскиз</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
+    - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
   - [input](#group-embedding-input)
     - [gesture_dispatch](#example-embedding-gesture_dispatch) — <small><em>Жест преобразуется в C callback мыши</em></small>
     - [gesture_recognizer](#example-embedding-gesture_recognizer) — <small><em>Распознавание tap по событиям касания</em></small>
@@ -620,6 +621,21 @@ AS2-эскиз манипуляций MovieClip и заметка о host-инт
 
 [К оглавлению](#оглавление).
 
+<a id="example-embedding-stage_quality"></a>
+#### stage_quality
+
+**Тип:** C89 — собираемый пример. **README:** [embedding/stage_quality/README.md](embedding/stage_quality/README.md).
+
+Рисует непрозрачный треугольник с дробными координатами в HIGH, выполняет реальный
+AVM1 ToggleQuality и повторяет отрисовку в LOW. Печатает количество пикселей с
+промежуточной альфой, демонстрируя отличие сглаживания от прозрачности краски.
+Использует контекстную политику, без глобального состояния; требует AGG/Cairo,
+а NO_GRAPHICS явно сообщает об отключённом renderer.
+
+**Файлы:** [main.c](embedding/stage_quality/main.c).
+
+[К оглавлению](#оглавление).
+
 <a id="group-embedding-input"></a>
 ### input
 
@@ -1155,6 +1171,7 @@ Source line links describe the current checkout, including in historical notes.
 - [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
 - [sqlite — extending/sqlite](#example-extending-sqlite)
 - [stack_c — extending/stack_c](#example-extending-stack_c)
+- [stage_quality — embedding/stage_quality](#example-embedding-stage_quality)
 - [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)

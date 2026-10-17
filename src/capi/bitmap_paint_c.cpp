@@ -1,4 +1,6 @@
 /* FlashVM: affine bitmap sampling, repeat/edge extension and alpha-aware bilinear filtering. */
+#include "../render/quality_internal.hpp"
+
 #include "flashvm/bitmap_paint.h"
 #include "../details/vector.hpp"
 #include <cmath>
@@ -141,10 +143,17 @@ extern "C" FVM_Result fvm_bitmap_paint_init(FVM_BitmapPaint *paint)
 extern "C" FVM_Result fvm_path_draw_bitmap(const FVM_Path *path, FVM_RasterSurface *destination,
                                            const FVM_BitmapPaint *paint, int even_odd)
 {
+    return fvm_path_draw_bitmap_quality(path, destination, paint, even_odd, true);
+}
+/* Apply context-selected edge coverage without changing public standalone defaults. */
+FVM_Result fvm_path_draw_bitmap_quality(const FVM_Path *path, FVM_RasterSurface *destination,
+                                           const FVM_BitmapPaint *paint, int even_odd, bool antialias)
+{
     FVM_Affine inverse;
     if (!validate(path, destination, paint, even_odd, inverse))
         return FVM_INVALID_ARGUMENT;
 #if !defined(FVM_HAS_AGG) && !defined(FVM_HAS_CAIRO)
+    (void)antialias;
     return FVM_UNSUPPORTED;
 #else
     try
@@ -160,7 +169,7 @@ extern "C" FVM_Result fvm_path_draw_bitmap(const FVM_Path *path, FVM_RasterSurfa
             }
         FVM_RasterSurface source = {pixels.begin(), destination->width, destination->height,
                                     stride};
-        return fvm_path_mask(path, destination, &source, even_odd);
+        return fvm_path_mask_quality(path, destination, &source, even_odd, antialias);
     }
     catch (const std::bad_alloc &)
     {

@@ -201,6 +201,8 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->input_userdata = 0;
         /* Initialize stage selection before the new context becomes visible to host callbacks. */
+        context->stage_quality = FVM_STAGE_QUALITY_HIGH;
+        context->stage_quality_best = false;
         context->stage_background_set = false;
         context->stage_background.r = context->stage_background.g =
             context->stage_background.b = context->stage_background.a = 0;

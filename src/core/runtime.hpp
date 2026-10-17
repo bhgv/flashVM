@@ -16,7 +16,7 @@
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
-#include "flashvm/raster.h"
+#include "flashvm/stage.h"
 #include "flashvm/input_queue.h"
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
@@ -318,6 +318,8 @@ struct FVM_Context
     fvm_detail::vector<unsigned char> swf_bytes; /* [GC:] Stored bytes of the loaded SWF. */
     FVM_SWFInfo swf_info;                        /* [GC:] Parsed metadata of the loaded SWF. */
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
+    FVM_StageQuality stage_quality; /* Context-wide vector rendering policy, default HIGH. */
+    bool stage_quality_best; /* Remember BEST across LOW transitions from ToggleQuality. */
     bool stage_background_set; /* Whether a host or encountered SWF control selected a color. */
     FVM_RasterColor stage_background; /* Straight-alpha RGBA stage color, containing no managed edges. */
     bool avm1_target_active; /* Whether an AVM1 activation has published display target state. */

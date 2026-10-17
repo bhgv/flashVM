@@ -794,6 +794,12 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
                     stack.push_back(v);
                 }
             }
+            else if (a.op == FVM_AVM1_ACTION_TOGGLE_QUALITY)
+            {
+                FVM_Result quality = fvm_stage_toggle_quality(c);
+                if (quality != FVM_OK)
+                    return quality;
+            }
             else if (a.op == FVM_AVM1_ACTION_INIT_ARRAY || a.op == FVM_AVM1_ACTION_INIT_OBJECT)
             {
                 if (stack.empty())

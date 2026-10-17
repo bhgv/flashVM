@@ -72,6 +72,10 @@ implicit AVM1 closure dispatch. See [meta_call.h](../include/flashvm/meta_call.h
 одного соглашения на другое. Stack callbacks описаны отдельно в [STACK_API.md](STACK_API.md).
 Documentation maintenance / Ведение документации: [rules and workflow](DOCUMENTATION_GUIDELINES.md).
 
+Stage policy: [`fvm_stage_get_quality`](../include/flashvm/stage.h#L19), [`fvm_stage_set_quality`](../include/flashvm/stage.h#L22), [`fvm_stage_toggle_quality`](../include/flashvm/stage.h#L25)
+— [STAGE_QUALITY.md](STAGE_QUALITY.md), including parameters, statuses, lifetime,
+ToggleQuality transitions and renderer limits.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -95,6 +99,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../include/flashvm/flashvm.h#L66) |
+| `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |
+| `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
+| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
 | `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 <!-- source-links:end -->

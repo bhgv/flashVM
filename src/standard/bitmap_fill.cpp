@@ -1,5 +1,7 @@
 /* FlashVM: retained BitmapData drawing styles with copied matrices and live pixel/color sampling.
  */
+#include "../render/quality_internal.hpp"
+
 #include "bitmap_fill.hpp"
 #include "bitmap_state.hpp"
 #include "movieclip_scene.hpp"
@@ -206,5 +208,5 @@ FVM_Result fvm_movieclip_bitmap_draw(FVM_Context *c, FVM_Object *part, const FVM
         paint.multiply[i] = multiply_values[i];
         paint.add[i] = add[i];
     }
-    return fvm_path_draw_bitmap(path, destination, &paint, even_odd);
+    return fvm_path_draw_bitmap_quality(path, destination, &paint, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }

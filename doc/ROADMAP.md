@@ -2385,6 +2385,22 @@ groups, description anchors and the final flat glossary are preserved. The
 format is recorded in the standing documentation rules. No runtime change;
 all nine stages remain open.
 
+
+### v0.538 — stage quality, ToggleQuality and explicit vector coverage
+
+Implemented / реализовано: context-local quality API, BEST preference across
+ToggleQuality, interpreter dispatch without operand changes and automatic-JIT
+fallback. LOW controls solid/stroke/gradient/bitmap MovieClip edge coverage on
+AGG/Cairo without global renderer state; standalone path APIs retain AA.
+Added a line-commented C89 tutorial with full README/API links and catalog entry.
+Tests: stage_quality and stage_quality_render; source dispatch is now 99/100.
+Validation: minimal and minimal-JIT 1113/1113 each; AGG and Cairo 1132/1132
+each; eight affected AGG+JIT tests passed ASAN/UBSAN. Generated ELF execute
+bits lost by workspace synchronization were repaired before successful reruns.
+See [RU/EN API contract](STAGE_QUALITY.md). Historic sampling grids, bitmap
+quality differences, script quality properties, StopSounds and foreign-platform
+acceptance remain open. No completion stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

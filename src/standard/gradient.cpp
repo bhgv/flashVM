@@ -1,4 +1,6 @@
 /* FlashVM: restore portable gradient descriptions from managed scene paint records. */
+#include "../render/quality_internal.hpp"
+
 #include "gradient.hpp"
 #include <cmath>
 
@@ -116,5 +118,5 @@ FVM_Result fvm_movieclip_gradient_draw(FVM_Context *c, FVM_Object *paint, const 
     }
     gradient.stops = values.begin();
     gradient.count = values.size();
-    return fvm_path_draw_gradient(path, surface, &gradient, even_odd);
+    return fvm_path_draw_gradient_quality(path, surface, &gradient, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
 }
