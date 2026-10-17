@@ -1,5 +1,5 @@
-Development version: **0.542** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.542 ` and an English description. Increase the subversion before each
+Development version: **0.543** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.543 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -48,8 +48,8 @@ until revoked. Use `origin` pointing to
 `git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
 Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
 
-Версия разработки: **0.542** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.542 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.543** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.543 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -548,6 +548,14 @@ Documentation source links and maintenance / Правила документац
 Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_QUALITY.md).
 [Multimedia and device bridges / Мосты мультимедиа и устройств](doc/MULTIMEDIA_BRIDGES.md): static FFmpeg and replaceable host callbacks.
 [Native speech / Системные TTS и STT](doc/SPEECH_BRIDGES.md): explicit providers and per-OS prepared-host examples.
+## License
+
+FlashVM's original code and documentation are licensed under the
+[MIT License](LICENSE). Copyright (c) 2026 bhgv.
+Third-party code, data and dependencies retain their own copyright notices and
+licenses; the root MIT license does not replace them. See notices in
+[external/](external/README.md) and the relevant dependency directories,
+including any third-party material identified within project sources.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

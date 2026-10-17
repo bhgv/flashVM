@@ -1,4 +1,4 @@
-Версия разработки: **0.542** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.543** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -314,6 +314,14 @@ Documentation source links and maintenance / Правила документац
 Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_QUALITY.md).
 [Multimedia and device bridges / Мосты мультимедиа и устройств](doc/MULTIMEDIA_BRIDGES.md): static FFmpeg and replaceable host callbacks.
 [Native speech / Системные TTS и STT](doc/SPEECH_BRIDGES.md): explicit providers and per-OS prepared-host examples.
+## Лицензия
+
+Собственный код и документация FlashVM распространяются по
+[лицензии MIT](LICENSE). Copyright (c) 2026 bhgv.
+Сторонний код, данные и зависимости сохраняют свои авторские уведомления и
+лицензии: корневая MIT их не заменяет. См. уведомления в
+[external/](external/README.md), каталогах соответствующих зависимостей и
+отмеченных сторонних фрагментах исходников проекта.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
