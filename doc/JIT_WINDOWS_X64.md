@@ -51,6 +51,21 @@ The shared frame constants tie encoding and OS metadata to one documented layout
 | [`FVM_JIT_WIN64_PROLOGUE_BYTES`](../src/jit/windows_x64_constants.h#L14) | Fixed prologue length 13 / длина пролога 13 |
 | [`FVM_JIT_WIN64_UNWIND_CODES`](../ports/windows/code.c#L33) | Two records describing allocation and push / два unwind-кода |
 
+## Availability correction / Исправление доступности — v0.562
+
+The v0.561 pointer-width switch omitted the Windows target. Selection and offline
+encoding existed, but [`fvm_jit_available`](../include/flashvm/jit.h#L13) would reject Windows because its ABI
+width was reported as zero. v0.562 explicitly returns eight bytes for Microsoft
+x64 (LLP64); this corrects the earlier activation claim. No actual Windows run
+is retroactively claimed. New target-width and macro-specialized production
+selection tests cover both the selected target and its linked width lookup.
+
+В v0.561 выбор Windows backend был добавлен, но switch ширины указателя пропускал
+Windows target. Поэтому проверка доступности возвращала false. v0.562 исправляет
+ширину на восемь байт; прежнее утверждение о включении уточняется этим дефектом.
+Добавлены проверки всех ABI и настоящего кода выбора под Windows-макросами.
+Это не означает, что выполнена нативная Windows приёмка.
+
 ## Windows publication and ownership / Публикация и владение
 
 [`fvm_jit_host_target`](../src/jit/backend.cpp#L5) selects Microsoft x64 only for `_WIN32` with an ordinary
@@ -174,6 +189,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
 | `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
 | `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
 | `fvm_jit_encode` | function | [src/jit/backend.hpp:28](../src/jit/backend.hpp#L28) |

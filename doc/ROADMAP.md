@@ -2917,6 +2917,18 @@ catalog entry describe both the new behavior and this outstanding acceptance.
 Stages 8/9 and the other roadmap stages remain open. / Нативная приёмка Windows,
 macOS/Android и полнота SWF/AS ещё не завершены.
 
+### v0.562 — correct Windows ABI availability
+
+Fixed / исправлено: the width switch added before v0.561 did not actually include
+WINDOWS_X64, so the public availability gate would return false on that target.
+The backend now explicitly reports its eight-byte LLP64 pointer width. This
+corrects the earlier claim of usable Windows activation; native Windows execution
+has still not been performed. Regression coverage checks all target widths and
+compiles the actual selector with Windows macros, checking both the selected
+name and the linked production width needed by availability. The existing
+Microsoft-ABI instruction and SDK publication fixtures remain part of focused
+validation. Stages 8/9 remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
