@@ -33,10 +33,11 @@ int main()
         if ((route == 2 || route == 3) && !fvm_jit_available()) continue;
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK); version_load(c, version); assert(fvm_standard_install(c) == FVM_OK);
         FVM_Object *receiver = sort_live_receiver(c), *fields = sort_live_list(c, false, 1), *options = sort_live_list(c, true, 1); FVM_Value value;
-        value = class_value(sort_live_convertible(c, 1, fields)); assert(fvm_object_set(c, fields, "length", &value) == FVM_OK);
+        /* Install elements before coercible lengths: indexed assignment now reads live length. */
         value = class_value(sort_live_convertible(c, 2, fields)); assert(fvm_table_set_index(c, fields, 0, &value) == FVM_OK);
-        value = class_value(sort_live_convertible(c, 3, options)); assert(fvm_object_set(c, options, "length", &value) == FVM_OK);
         value = class_value(sort_live_convertible(c, 4, receiver)); assert(fvm_table_set_index(c, options, 0, &value) == FVM_OK);
+        value = class_value(sort_live_convertible(c, 1, fields)); assert(fvm_object_set(c, fields, "length", &value) == FVM_OK);
+        value = class_value(sort_live_convertible(c, 3, options)); assert(fvm_object_set(c, options, "length", &value) == FVM_OK);
         FVM_Object *original[3]; for (unsigned i = 0; i < 3; ++i) { assert(fvm_table_get_index(c, receiver, i, &value) == FVM_OK); original[i] = value.object; }
         const bool fails = sort_live_failure && (!sort_live_empty || sort_live_failure == 1);
         const FVM_Result expected = fails ? sort_live_throw ? FVM_EXCEPTION : FVM_ERROR : FVM_OK; sort_live_event = 0;

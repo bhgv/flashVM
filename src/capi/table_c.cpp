@@ -10,6 +10,8 @@
 #include "../core/property_lookup.hpp"
 #include "../core/property_write.hpp"
 #include "../core/watch_write_scope.hpp"
+#include "../core/object_root_scope.hpp"
+#include "../core/value_vector_root_scope.hpp"
 #include "flashvm/property.h"
 #include <cstdio>
 #include "../core/runtime.hpp"
@@ -66,6 +68,10 @@ extern "C"
         bool prepared_watch = false;
         if (!valid(c, o) || fvm_validate_value(c, v) != FVM_OK)
             return FVM_INVALID_ARGUMENT;
+        /* [GC:] Length conversion can detach the receiver and watched value before storage. */
+        FVM_ObjectRootScope receiver_roots(c, o);
+        fvm_detail::vector<FVM_Value> retained;
+        FVM_ValueVectorRootScope value_roots(c, retained);
         FVM_WatchWriteScope write(c);
         if (o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT)
         {
@@ -82,6 +88,8 @@ extern "C"
                     return r;
                 prepared_watch = true;
             }
+            if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
+                retained.push_back(watched);
             /* Loaded growth can truncate on Int32 overflow and must propagate errors. */
             r = fvm_array_prepare_index(c, o, fvm_detail::string(name));
             if (r != FVM_OK)

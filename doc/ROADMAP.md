@@ -2221,3 +2221,12 @@ instead of rejecting counts above 64; each compared field charges shared work.
 Tests / проверки: array_sort_on_many_fields plus roots/allocation variants.
 See [RU/EN contract](SORT_ON_MANY_FIELDS.md). General Array/SWF compatibility
 and all nine stages remain open / остаются открытыми.
+
+### v0.524 — live length before general Array indexed writes
+
+Implemented / реализовано: general indexed writes convert live own length once,
+apply raw growth before own flags/setters and preserve setter length mutations.
+Detached input graphs stay rooted across coercion. Tests / проверки:
+array_index_live_length plus roots/allocation variants.
+See [RU/EN contract](ARRAY_INDEX_LIVE_LENGTH.md). Remaining Array/SWF semantics,
+real foreign-platform acceptance and all nine stages remain open / остаются открытыми.

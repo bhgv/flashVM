@@ -2467,36 +2467,21 @@ FVM_Result fvm_array_prepare_index(FVM_Context *c, FVM_Object *o, const fvm_deta
     }
     if (cursor && depth > FVM_PROTOTYPE_MAX_DEPTH)
         return FVM_ERROR;
-    if (index < fvm_array_number_length(o->resource_result.number))
-        return FVM_OK;
-    FVM_Value length, ignored;
-    fvm_value_number(&length, index == FVM_INT32_MAX_LONG ? FVM_INT32_MIN_NUMBER : (double)index + 1);
-    return array_resize(c, o, 1, &length, &ignored, 0);
+    /* Length coercion and ensuing tail deletion share the same execution quota. */
+    FVM_ArrayWorkScope work(c);
+    long current = 0;
+    FVM_Result status = fvm_array_legacy_length(c, o, &current);
+    if (status != FVM_OK || index < current)
+        return status;
+    const long length = index == FVM_INT32_MAX_LONG ? -FVM_INT32_MAX_LONG - 1 : index + 1;
+    return fvm_array_legacy_set_length(c, o, length);
 }
 
-/* Update Array length after writing an indexed property. */
+/* Host arrays grow after storage; loaded writes already handled live length before dispatch. */
 void fvm_array_note_index(FVM_Object *o, unsigned long key)
 {
-    if (array(o) && key < FVM_UINT32_MASK &&
-        (o->owner->swf_loaded ? fvm_array_number_length((double)key) >=
-         fvm_array_number_length(o->resource_result.number) : key >= size(o)))
-    {
-        if (o->owner->swf_loaded)
-        {
-            fvm_detail::map<fvm_detail::string, unsigned int>::iterator flags = o->attributes.find("length");
-            if (flags != o->attributes.end() && (flags->second & FVM_PROPERTY_READ_ONLY))
-                return;
-            if (flags != o->attributes.end())
-            {
-                flags->second &= ~FVM_PROPERTY_AVM1_VERSION_MASK;
-                if (!flags->second)
-                    o->attributes.erase(flags->first);
-            }
-        }
-        const long signed_key = fvm_array_number_length((double)key);
-        fvm_value_number(&o->resource_result, o->owner->swf_loaded ?
-            (signed_key == FVM_INT32_MAX_LONG ? FVM_INT32_MIN_NUMBER : (double)signed_key + 1) : (double)key + 1);
-    }
+    if (array(o) && !o->owner->swf_loaded && key < FVM_UINT32_MASK && key >= size(o))
+        fvm_value_number(&o->resource_result, (double)key + 1);
 }
 
 /* Store own ActionScript data while retaining virtual properties and bypassing callbacks. */

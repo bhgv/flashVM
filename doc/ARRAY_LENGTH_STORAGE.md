@@ -70,3 +70,7 @@ OS acceptance or transitive/dlopen dependencies.
 Follow-up v0.522 applies the live signed reader to sortOn field/option lists;
 see [RU/EN contract](SORT_ON_LIVE_LENGTHS.md).
 В v0.522 общий обработчик используется и для списков полей/опций sortOn.
+
+Follow-up v0.524 applies live length to general indexed assignment and removes
+loaded post-store cache growth; see [RU/EN contract](ARRAY_INDEX_LIVE_LENGTH.md).
+В v0.524 обычные индексные записи используют текущую собственную длину.

@@ -16,6 +16,9 @@ FVM_Result fvm_array_legacy_store_element(FVM_Context *, FVM_Object *, unsigned 
 /* [GC:] Retains a coercible stored object through callbacks without invoking length getters. */
 FVM_Result fvm_array_legacy_length(FVM_Context *, FVM_Object *, long *);
 
+/* Apply raw native Int32 length without setter/watch callbacks, preserving truncation errors. */
+FVM_Result fvm_array_legacy_set_length(FVM_Context *, FVM_Object *, long);
+
 /* Captured splice preparation has no managed edges or callback-owned values. */
 struct FVM_ArraySpliceBounds
 {

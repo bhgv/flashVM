@@ -464,6 +464,12 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
         fvm_object_prototype_name(c, name) && fvm_object_intrinsic_prototype(c, o, &name))
         name = "__proto__";
 
+    /* [GC:] Live length conversion may remove the only stored edge to a watched value. */
+    fvm_detail::vector<FVM_Value> retained;
+    FVM_ValueVectorRootScope value_roots(c, retained);
+    if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
+        retained.push_back(watched);
+
     /* Canonical table writes already prepared growth before entering this fallback. */
     if (c->swf_loaded && !loaded_super && start == o && !prepared_watch)
     {

@@ -1318,6 +1318,23 @@ FVM_Result fvm_array_legacy_length(FVM_Context *c, FVM_Object *o, long *out)
     }
 }
 
+/* Share native raw length mutation with ordinary indexed assignment. */
+FVM_Result fvm_array_legacy_set_length(FVM_Context *c, FVM_Object *o, long length)
+{
+    if (!c || !o || o->owner != c || !c->swf_loaded ||
+        o->resource_kind != FVM_RESOURCE_ARRAY)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        FVM_ArrayWorkScope work(c);
+        return legacy_set_length(c, o, (double)length, work);
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 /* Capture observable splice inputs once, leaving a rejected result without allocation. */
 FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n,
                                     const FVM_Value *a, FVM_ArraySpliceBounds &out)
