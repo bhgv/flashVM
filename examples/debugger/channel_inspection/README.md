@@ -62,3 +62,30 @@ error paths and line-by-line comments, with no process assertions. Build/run
 commands above select the minimal profile. The implementation/lifetime notes
 explain the expected VM result, borrowed data and cleanup; every used FlashVM
 function links to its detailed reference or public ownership contract.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Останавливает доставку FIFO, читает состояние очереди и независимый снимок сообщения без его извлечения. Затем возобновляет доставку и принимает исходное значение; все попытки получения неблокирующие.
+
+**Текущая CMake-цель:** `flashvm_examples_debugger_channel_inspection_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
+| [`fvm_channel_send_value`](../../../include/flashvm/transfer.h) | [RESOURCE_TRANSPORT.md#русский](../../../doc/RESOURCE_TRANSPORT.md#русский) — Сериализованные графы и ресурсные ссылки. |
+| [`fvm_debug_channel_freeze`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_channel_freeze](../../../doc/DEBUG_API.md#fvm_debug_channel_freeze) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_channel_message`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_channel_message](../../../doc/DEBUG_API.md#fvm_debug_channel_message) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_channel_state`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_channel_state](../../../doc/DEBUG_API.md#fvm_debug_channel_state) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_value_number`](../../../include/flashvm/value.h) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+
+[Описание в общем каталоге](../../README.md#example-debugger-channel_inspection).
+<!-- example-catalog-api:end -->

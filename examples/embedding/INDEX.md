@@ -1,8 +1,6 @@
-# Embedding example catalog
+# embedding: каталог примеров
 
-- `objects/`: runnable C89 object/property example + AS2 usage.
-- `input/`: runnable C89 multitap/swipe mapping example + AS2 mouse sketch.
-- `network/`: planned network host API and AS2 sketch.
-- `media/`: planned sound/video backend and AS2 sketch.
-- `movieclip/`: planned display-list manipulation and AS2 sketch.
-- `drawing/`: planned renderer/drawing integration and AS2 sketch.
+Полный перечень с тематическими подгруппами, подробными описаниями и
+алфавитным указателем: [examples/README.md](../README.md#group-embedding).
+
+Описание базового main: [README.md](README.md).

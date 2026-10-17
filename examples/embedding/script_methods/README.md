@@ -21,3 +21,20 @@ RU: **Ограничение:** поиск имени метода выполн�
 полная совместимость с Flash 8.
 
 Run / Запуск: `ctest --test-dir build -R flashvm_avm1_script_method --output-on-failure`.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Показывает присваивание функции свойству объекта и вызов через объект. Помогает разобраться с this и методом; это AS-исходник и описание соответствующего регрессионного сценария, а не отдельная C-программа.
+
+
+## Демонстрируемый script API
+
+- `compute` — [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md).
+- `receiver.compute` — [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md).
+
+Это AS-эскиз/исходник; перечень имён не утверждает наличие отдельного C main
+или полноту реализации каждого вызова.
+
+[Описание в общем каталоге](../../README.md#example-embedding-script_methods).
+<!-- example-catalog-api:end -->

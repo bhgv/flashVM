@@ -40,3 +40,27 @@ GC этому нативному API не требуются. Ограничен
 
 The annotated AS2 example_as2.as demonstrates MovieClip.beginGradientFill with a copied legacy box matrix; see [RU/EN checkpoint](../../../doc/MOVIECLIP_GRADIENT_FILL.md).
 Русский: example_as2.as поясняет вызов beginGradientFill, копирование аргументов и сохранение рампы готовым контуром.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Создаёт редактируемый прямоугольный путь и линейную красно-синюю заливку, затем печатает центральный RGBA. Показывает матрицу градиента, диапазон stop ratios и владение массивом остановок; графический backend выбирается в DEFS.
+
+**Текущая CMake-цель:** `flashvm_examples_embedding_gradients_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_gradient_init`](../../../include/flashvm/gradient.h) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+| [`fvm_path_add`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_create`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_destroy`](../../../include/flashvm/path.h) | [FONT_LIBRARIES.md#owned-vector-model](../../../doc/FONT_LIBRARIES.md#owned-vector-model) — Владеющие векторные пути и преобразования. |
+| [`fvm_path_draw_gradient`](../../../include/flashvm/gradient.h) | [SWF_GRADIENTS.md](../../../doc/SWF_GRADIENTS.md) — Типы градиентов и координатные преобразования. |
+
+[Описание в общем каталоге](../../README.md#example-embedding-gradients).
+<!-- example-catalog-api:end -->

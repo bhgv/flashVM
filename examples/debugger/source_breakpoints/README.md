@@ -62,3 +62,30 @@ error paths and line-by-line comments, with no process assertions. Build/run
 commands above select the minimal profile. The implementation/lifetime notes
 explain the expected VM result, borrowed data and cleanup; every used FlashVM
 function links to its detailed reference or public ownership contract.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Подключает согласованную пару SWF/SWD, ставит breakpoint по смещению и показывает Main.as с текущей строкой. Выбранное тело исполняется интерпретатором; crash action NONE не мешает осмотру исходника.
+
+**Текущая CMake-цель:** `flashvm_examples_debugger_source_breakpoints_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_avm1_execute`](../../../include/flashvm/avm1.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — AVM1-вызовы и связь с host API. |
+| [`fvm_debug_clear_symbols`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_clear_symbols](../../../doc/DEBUG_API.md#fvm_debug_clear_symbols) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_current_source`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_current_source](../../../doc/DEBUG_API.md#fvm_debug_current_source) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_load_swd`](../../../include/flashvm/source_debug.h) | [DEBUG_API.md#fvm_debug_load_swd](../../../doc/DEBUG_API.md#fvm_debug_load_swd) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_set_breakpoint`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_set_breakpoint](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_set_breakpoint_handler`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_set_breakpoint_handler](../../../doc/DEBUG_API.md#fvm_debug_set_breakpoint_handler) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+
+[Описание в общем каталоге](../../README.md#example-debugger-source_breakpoints).
+<!-- example-catalog-api:end -->

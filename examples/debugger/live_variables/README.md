@@ -65,3 +65,33 @@ error paths and line-by-line comments, with no process assertions. Build/run
 commands above select the minimal profile. The implementation/lifetime notes
 explain the expected VM result, borrowed data and cleanup; every used FlashVM
 function links to its detailed reference or public ownership contract.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Входит в синхронный debugger callback до раскрутки кадров и читает аргумент, локальные значения и регистр. FORCE и выбор JIT независимы; callback проверяет успешность сохранения и возвращает управление обычной обработке ошибки.
+
+**Текущая CMake-цель:** `flashvm_examples_debugger_live_variables_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_crash_argument`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_argument](../../../doc/DEBUG_API.md#fvm_crash_argument) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_configure`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_configure](../../../doc/DEBUG_API.md#fvm_crash_configure) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_local`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_local](../../../doc/DEBUG_API.md#fvm_crash_local) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_register`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_register](../../../doc/DEBUG_API.md#fvm_crash_register) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_set_detail`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_set_detail](../../../doc/DEBUG_API.md#fvm_crash_set_detail) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_debug_frame_at`](../../../include/flashvm/debug.h) | [DEBUG_API.md#fvm_debug_frame_at](../../../doc/DEBUG_API.md#fvm_debug_frame_at) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_function_create_avm1`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_invoke`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_value_number`](../../../include/flashvm/value.h) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+
+[Описание в общем каталоге](../../README.md#example-debugger-live_variables).
+<!-- example-catalog-api:end -->

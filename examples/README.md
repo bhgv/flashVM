@@ -1,0 +1,1151 @@
+# Каталог примеров FlashVM / FlashVM example catalog
+
+## Оглавление
+
+- [actionscript](#group-actionscript)
+  - [language](#group-actionscript-language)
+    - [error.as](#example-actionscript-error-as)
+    - [parsing.as](#example-actionscript-parsing-as)
+    - [string.as](#example-actionscript-string-as)
+  - [resources](#group-actionscript-resources)
+    - [file_channels.as](#example-actionscript-file_channels-as)
+    - [gc_workers_channels.as](#example-actionscript-gc_workers_channels-as)
+    - [resource_exceptions.as](#example-actionscript-resource_exceptions-as)
+    - [shared_mutex.as](#example-actionscript-shared_mutex-as)
+    - [sprite_resources.as](#example-actionscript-sprite_resources-as)
+- [debugger](#group-debugger)
+  - [inspection](#group-debugger-inspection)
+    - [channel_inspection](#example-debugger-channel_inspection)
+    - [resource_snapshots](#example-debugger-resource_snapshots)
+  - [stops](#group-debugger-stops)
+    - [backtrace](#example-debugger-backtrace)
+    - [jit_dump](#example-debugger-jit_dump)
+    - [live_variables](#example-debugger-live_variables)
+    - [source_breakpoints](#example-debugger-source_breakpoints)
+- [embedding](#group-embedding)
+  - [channels](#group-embedding-channels)
+    - [channel_cpp98](#example-embedding-channel_cpp98)
+    - [channel_values](#example-embedding-channel_values)
+    - [channels](#example-embedding-channels)
+    - [file_channels](#example-embedding-file_channels)
+    - [resource_broker](#example-embedding-resource_broker)
+    - [shared_mutex](#example-embedding-shared_mutex)
+  - [functions](#group-embedding-functions)
+    - [cpp98_stack](#example-embedding-cpp98_stack)
+    - [function_parameters](#example-embedding-function_parameters)
+    - [function_rpc](#example-embedding-function_rpc)
+    - [object_methods](#example-embedding-object_methods)
+    - [script_functions](#example-embedding-script_functions)
+    - [script_methods](#example-embedding-script_methods)
+  - [gc](#group-embedding-gc)
+    - [cycle_collection](#example-embedding-cycle_collection)
+    - [gc](#example-embedding-gc)
+    - [manual_collection](#example-embedding-manual_collection)
+    - [mode_tuning](#example-embedding-mode_tuning)
+    - [resurrection](#example-embedding-resurrection)
+  - [graphics](#group-embedding-graphics)
+    - [bitmap_fill](#example-embedding-bitmap_fill)
+    - [color_matrix_filter](#example-embedding-color_matrix_filter)
+    - [drawing](#example-embedding-drawing)
+    - [geometry](#example-embedding-geometry)
+    - [gradients](#example-embedding-gradients)
+    - [image_codecs](#example-embedding-image_codecs)
+    - [media](#example-embedding-media)
+    - [movieclip](#example-embedding-movieclip)
+    - [parallel_render](#example-embedding-parallel_render)
+  - [input](#group-embedding-input)
+    - [gesture_dispatch](#example-embedding-gesture_dispatch)
+    - [gesture_recognizer](#example-embedding-gesture_recognizer)
+    - [input](#example-embedding-input)
+    - [input_queue](#example-embedding-input_queue)
+  - [jit](#group-embedding-jit)
+    - [execution_modes](#example-embedding-execution_modes)
+    - [jit](#example-embedding-jit)
+    - [jit_debug](#example-embedding-jit_debug)
+    - [jit_instances](#example-embedding-jit_instances)
+    - [jit_workers](#example-embedding-jit_workers)
+  - [objects](#group-embedding-objects)
+    - [main](#example-embedding-main)
+    - [objects](#example-embedding-objects)
+    - [property_resolve](#example-embedding-property_resolve)
+    - [prototypes](#example-embedding-prototypes)
+    - [standard_boolean](#example-embedding-standard_boolean)
+    - [tables_debug](#example-embedding-tables_debug)
+  - [platform](#group-embedding-platform)
+    - [network](#example-embedding-network)
+    - [os_ports](#example-embedding-os_ports)
+  - [text](#group-embedding-text)
+    - [font_libraries](#example-embedding-font_libraries)
+    - [standard_text](#example-embedding-standard_text)
+    - [text](#example-embedding-text)
+    - [text_layout](#example-embedding-text_layout)
+  - [workers](#group-embedding-workers)
+    - [worker_channels](#example-embedding-worker_channels)
+    - [worker_lifecycle](#example-embedding-worker_lifecycle)
+    - [worker_stop](#example-embedding-worker_stop)
+    - [workers](#example-embedding-workers)
+- [extending](#group-extending)
+  - [callbacks](#group-extending-callbacks)
+    - [callable_objects](#example-extending-callable_objects)
+    - [lua_style](#example-extending-lua_style)
+    - [main](#example-extending-main)
+    - [meta_call](#example-extending-meta_call)
+    - [native_functions](#example-extending-native_functions)
+    - [stack_c](#example-extending-stack_c)
+  - [integration](#group-extending-integration)
+    - [channel_worker](#example-extending-channel_worker)
+    - [drawing](#example-extending-drawing)
+    - [media](#example-extending-media)
+    - [movieclip](#example-extending-movieclip)
+    - [network](#example-extending-network)
+    - [prototypes](#example-extending-prototypes)
+    - [sqlite](#example-extending-sqlite)
+- [Сборка, типы примеров и чтение API](#using-examples)
+- [Глоссарий — алфавитный список всех примеров](#glossary)
+
+<a id="using-examples"></a>
+## Сборка, типы примеров и чтение API
+
+Основные группы соответствуют подпапкам `actionscript/`, `debugger/`,
+`embedding/`, `extending/`. Тематические подгруппы ниже объединяют одну идею;
+имя подгруппы занимает своё алфавитное место, а её примеры также отсортированы.
+Существующие пути исходников и CMake-имена сохранены: например, подгруппа
+`embedding/jit` в каталоге объединяет `jit/`, `jit_debug/`, `jit_instances/` и
+`jit_workers/`. Вспомогательные headers и сопровождающие AS-файлы описываются
+в составе своего примера, а не выдаются за самостоятельные программы.
+
+У каждого пункта указаны тип, исходники, назначение и ссылка на локальный README.
+**C/C++** означает наличие main, но доступность возможностей зависит от DEFS.
+**ActionScript** требует внешнего компилятора в SWF/AVM1; текст .as не передаётся
+FlashVM как программа. **Заметка** не имеет самостоятельного исполняемого файла.
+Исторические эскизы не являются подтверждением полноты соответствующей подсистемы.
+Точные контракты смотрите по ссылкам API и текущему [роудмапу](../doc/ROADMAP.md).
+
+```sh
+cmake -S . -B build-examples -DFVM_DEFS_FILE=cmake/profiles/minimal.defs \
+  -DFVM_BUILD_EXAMPLES=ON -DFVM_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build-examples --parallel
+ctest --test-dir build-examples -R flashvm_examples_ --output-on-failure
+```
+
+Для графики выберите профиль с AGG/Cairo; minimal отключает графические backend.
+OS_PORTS, JIT, codecs и SQLite также зависят от профиля. Некоторые программы
+пишут файлы или открывают соединения: перед запуском читайте их README.
+CMake-цель получается из пути: `embedding/jit/main.c` →
+`flashvm_examples_embedding_jit_main`; соответствующее имя также используется
+CTest. Программы запускайте из выбранного рабочего каталога, чтобы явно
+контролировать размещение создаваемых файлов.
+
+В README каждого примера есть список непосредственно используемых C API
+со ссылками на публичные декларации и файлы руководства. Для AS/заметок
+отдельно указаны демонстрируемые script API или связанные C API: эти списки
+не означают, что в папке присутствует выполняющий их main.
+
+English: this catalog covers every example folder and standalone ActionScript
+sample. Groups match the existing directories; conceptual subgroups and entries
+are alphabetically sorted. Each entry distinguishes executable C/C++, external-
+compiler ActionScript and documentation-only notes. Per-example README files
+link demonstrated API functions to public headers and feature guides.
+
+<a id="group-actionscript"></a>
+## actionscript
+
+<a id="group-actionscript-language"></a>
+### language
+
+<a id="example-actionscript-error-as"></a>
+#### error.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/error.md](actionscript/error.md).
+
+Показывает создание Error, throw, проверку instanceof в catch и выполнение finally. Полезен для понимания обработки ошибки на уровне AS1/AS2; исполняемая проверка соответствующего байткода находится в tests/actionscript_error.cpp.
+
+**Файлы:** [error.as](actionscript/error.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-parsing-as"></a>
+#### parsing.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/parsing.md](actionscript/parsing.md).
+
+Сравнивает parseInt с автоматическим и явным основанием и parseFloat с числовым префиксом. Примеры 0777, шестнадцатеричного 3E8 и строки с единицами показывают, почему основание и границы числового префикса важны.
+
+**Файлы:** [parsing.as](actionscript/parsing.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-string-as"></a>
+#### string.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/string.md](actionscript/string.md).
+
+Показывает String.length, substring, indexOf, charCodeAt и fromCharCode на смешанной латинице, кириллице и emoji. Позволяет отличить число кодовых единиц UTF-16 от числа видимых символов; это исходник для внешнего AVM1-компилятора.
+
+**Файлы:** [string.as](actionscript/string.as).
+
+[К оглавлению](#оглавление).
+
+<a id="group-actionscript-resources"></a>
+### resources
+
+<a id="example-actionscript-file_channels-as"></a>
+#### file_channels.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/file_channels.md](actionscript/file_channels.md).
+
+Сохраняет циклический граф объектов в файловый канал, закрывает его и читает граф обратно. Различает receive и tryReceive на EOF и описывает режим добавления; расширения устанавливает приложение через fvm_extensions_install.
+
+**Файлы:** [file_channels.as](actionscript/file_channels.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-gc_workers_channels-as"></a>
+#### gc_workers_channels.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/gc_workers_channels.md](actionscript/gc_workers_channels.md).
+
+Связывает именованную worker-функцию, отложенный запуск, передачу сообщения по общему каналу и join. После завершения убирает ссылку на worker и вызывает GC; демонстрирует координацию ресурсов между изолированными VM.
+
+**Файлы:** [gc_workers_channels.as](actionscript/gc_workers_channels.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-resource_exceptions-as"></a>
+#### resource_exceptions.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/resource_exceptions.md](actionscript/resource_exceptions.md).
+
+Использует try/catch/finally для захвата и гарантированного освобождения mutex. В catch рассматривает структурированные поля ресурсной ошибки, включая транспорт и путь; подходит как шаблон очистки после отказа операции.
+
+**Файлы:** [resource_exceptions.as](actionscript/resource_exceptions.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-shared_mutex-as"></a>
+#### shared_mutex.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/shared_mutex.md](actionscript/shared_mutex.md).
+
+Передаёт worker-потоку объект с mutex и каналом. Рабочая функция захватывает общий ресурс, отправляет сообщение и освобождает его; показывает различие общей идентичности ресурса и копирования обычного графа.
+
+**Файлы:** [shared_mutex.as](actionscript/shared_mutex.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-actionscript-sprite_resources-as"></a>
+#### sprite_resources.as
+
+**Тип:** ActionScript — исходник для внешнего AVM1-компилятора. **README:** [actionscript/sprite_resources.md](actionscript/sprite_resources.md).
+
+Создаёт два независимых экземпляра экспортированного спрайта Hero и обращается к его таймлайну. Требует заранее загруженного SWF с ExportAssets и меткой second; показывает использование ресурсов документа, а не создание спрайта из пустого объекта.
+
+**Файлы:** [sprite_resources.as](actionscript/sprite_resources.as).
+
+[К оглавлению](#оглавление).
+
+<a id="group-debugger"></a>
+## debugger
+
+<a id="group-debugger-inspection"></a>
+### inspection
+
+<a id="example-debugger-channel_inspection"></a>
+#### channel_inspection
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/channel_inspection/README.md](debugger/channel_inspection/README.md).
+
+Останавливает доставку FIFO, читает состояние очереди и независимый снимок сообщения без его извлечения. Затем возобновляет доставку и принимает исходное значение; все попытки получения неблокирующие.
+
+**Файлы:** [main.c](debugger/channel_inspection/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-debugger-resource_snapshots"></a>
+#### resource_snapshots
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/resource_snapshots/README.md](debugger/resource_snapshots/README.md).
+
+Перечисляет объекты и реестры функций, затем снимает согласованный снимок владельцев mutex. Показывает двухшаговый запрос размера и копирование данных, не создавая искусственный deadlock.
+
+**Файлы:** [main.c](debugger/resource_snapshots/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-debugger-stops"></a>
+### stops
+
+<a id="example-debugger-backtrace"></a>
+#### backtrace
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/backtrace/README.md](debugger/backtrace/README.md).
+
+Сохраняет JSON-бэктрейс после намеренного Throw и читает его после возврата из функции. Режим BACKTRACE сочетается с NATURAL; пример подходит для логирования без интерфейса отладчика.
+
+**Файлы:** [main.c](debugger/backtrace/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-debugger-jit_dump"></a>
+#### jit_dump
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/jit_dump/README.md](debugger/jit_dump/README.md).
+
+Явно компилирует AVM1, связывает машинное тело с исходным байткодом и создаёт ZIP_CODE-дамп. Проверяет результат записи отдельно от исходного исключения; при отсутствии JIT демонстрирует интерпретаторный вариант.
+
+**Файлы:** [main.c](debugger/jit_dump/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-debugger-live_variables"></a>
+#### live_variables
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/live_variables/README.md](debugger/live_variables/README.md).
+
+Входит в синхронный debugger callback до раскрутки кадров и читает аргумент, локальные значения и регистр. FORCE и выбор JIT независимы; callback проверяет успешность сохранения и возвращает управление обычной обработке ошибки.
+
+**Файлы:** [main.c](debugger/live_variables/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-debugger-source_breakpoints"></a>
+#### source_breakpoints
+
+**Тип:** C/C++ — собираемый пример. **README:** [debugger/source_breakpoints/README.md](debugger/source_breakpoints/README.md).
+
+Подключает согласованную пару SWF/SWD, ставит breakpoint по смещению и показывает Main.as с текущей строкой. Выбранное тело исполняется интерпретатором; crash action NONE не мешает осмотру исходника.
+
+**Файлы:** [main.c](debugger/source_breakpoints/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding"></a>
+## embedding
+
+<a id="group-embedding-channels"></a>
+### channels
+
+<a id="example-embedding-channel_cpp98"></a>
+#### channel_cpp98
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/channel_cpp98/README.md](embedding/channel_cpp98/README.md).
+
+Оборачивает владеющий дескриптор канала в C++98 RAII-класс. Запрещает неявное копирование и освобождает ссылку при выходе из области видимости; полезен для безопасного управления каналом в C++-хосте.
+
+**Файлы:** [main.cpp](embedding/channel_cpp98/main.cpp).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-channel_values"></a>
+#### channel_values
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/channel_values/README.md](embedding/channel_values/README.md).
+
+Создаёт владеющий channel handle, явно копирует ссылку на тот же канал и передаёт число между двумя handles. Объясняет, почему копия дескриптора не является копией очереди и требует отдельного release.
+
+**Файлы:** [main.c](embedding/channel_values/main.c), [usage.as](embedding/channel_values/usage.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-channels"></a>
+#### channels
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/channels/README.md](embedding/channels/README.md).
+
+Создаёт внутрипроцессную FIFO, отправляет и получает значение, затем уничтожает канал. Это базовый транспортный пример; сопровождающий channel.as описывает отдельный синтаксический эскиз.
+
+**Файлы:** [channel.as](embedding/channels/channel.as), [main.c](embedding/channels/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-file_channels"></a>
+#### file_channels
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/file_channels/README.md](embedding/file_channels/README.md).
+
+Сериализует объект в файловый канал и восстанавливает его в другом контексте. Показывает владение независимым декодированным графом и возможность читать файл позднее или из другого процесса.
+
+**Файлы:** [main.c](embedding/file_channels/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-resource_broker"></a>
+#### resource_broker
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/resource_broker/README.md](embedding/resource_broker/README.md).
+
+Экспортирует живой mutex через TCP-брокер, сохраняет ссылку в файловом канале и импортирует её в другом контексте. Восстанавливается доступ к исходному ресурсу, а не снимок его состояния; требуется OS_PORTS.
+
+**Файлы:** [main.c](embedding/resource_broker/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-shared_mutex"></a>
+#### shared_mutex
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/shared_mutex/README.md](embedding/shared_mutex/README.md).
+
+Использует установленные расширения mutex/channel в нескольких worker-контекстах. Демонстрирует разделяемую блокировку и обмен сериализованными значениями при раздельном владении обычными объектами.
+
+**Файлы:** [main.c](embedding/shared_mutex/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-functions"></a>
+### functions
+
+<a id="example-embedding-cpp98_stack"></a>
+#### cpp98_stack
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/cpp98_stack/README.md](embedding/cpp98_stack/README.md).
+
+Создаёт flashvm::Stack в области видимости C++98, помещает число, читает его по отрицательному индексу и удаляет. Показывает RAII поверх C ABI и необходимость завершить жизнь стека до уничтожения контекста.
+
+**Файлы:** [main.cpp](embedding/cpp98_stack/main.cpp).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-function_parameters"></a>
+#### function_parameters
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/function_parameters/README.md](embedding/function_parameters/README.md).
+
+Исходник echo(n) и ссылка на байткодный тест показывают передачу параметра и запись результата в глобальную переменную. Отдельного main нет; исходный AS компилируется внешним инструментом.
+
+**Файлы:** [example.as](embedding/function_parameters/example.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-function_rpc"></a>
+#### function_rpc
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/function_rpc/README.md](embedding/function_rpc/README.md).
+
+Одна native-функция используется через интерфейсы между процессами, независимыми VM-потоками и узлами LAN. Показывает брокер, маршрутизацию вызовов, обслуживание исходного контекста, ошибки и время жизни экспортированной функции.
+
+**Файлы:** [main.c](embedding/function_rpc/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-object_methods"></a>
+#### object_methods
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/object_methods/README.md](embedding/object_methods/README.md).
+
+Регистрирует native-функцию, связывает её с объектом и вызывает как метод. Позволяет увидеть, как receiver/self и аргументы отличаются от обычного глобального вызова.
+
+**Файлы:** [example.as](embedding/object_methods/example.as), [main.c](embedding/object_methods/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-script_functions"></a>
+#### script_functions
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/script_functions/README.md](embedding/script_functions/README.md).
+
+Исходник иллюстрирует объявление и вызов AVM1-функции и получение результата через глобальную переменную. README направляет к отдельному байткодному тесту; текстовый AS-парсер в этот пример не входит.
+
+**Файлы:** [example.as](embedding/script_functions/example.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-script_methods"></a>
+#### script_methods
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/script_methods/README.md](embedding/script_methods/README.md).
+
+Показывает присваивание функции свойству объекта и вызов через объект. Помогает разобраться с this и методом; это AS-исходник и описание соответствующего регрессионного сценария, а не отдельная C-программа.
+
+**Файлы:** [example.as](embedding/script_methods/example.as).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-gc"></a>
+### gc
+
+<a id="example-embedding-cycle_collection"></a>
+#### cycle_collection
+
+**Тип:** Заметка — без отдельного main. **README:** [embedding/cycle_collection/README.md](embedding/cycle_collection/README.md).
+
+Концептуальная заметка о сборке взаимно ссылающихся объектов после исчезновения всех корней. Подходит для объяснения отличия трассирующего GC от подсчёта ссылок; самостоятельного исходника здесь нет.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-gc"></a>
+#### gc
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
+
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed FVM_Object перестаёт быть допустимым для доступа.
+
+**Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-manual_collection"></a>
+#### manual_collection
+
+**Тип:** Заметка — без отдельного main. **README:** [embedding/manual_collection/README.md](embedding/manual_collection/README.md).
+
+Краткая заметка о ручном запуске GC в безопасной точке и закреплении объектов, которые удерживает хост. Это последовательность действий для интеграции, а не отдельная исполняемая программа.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-mode_tuning"></a>
+#### mode_tuning
+
+**Тип:** Заметка — без отдельного main. **README:** [embedding/mode_tuning/README.md](embedding/mode_tuning/README.md).
+
+Объясняет выбор режима GC в диапазоне -100..100 и чтение соответствующего порога. Полезна при настройке компромисса между частотой проверок и объёмом удерживаемой памяти; исходника main нет.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-resurrection"></a>
+#### resurrection
+
+**Тип:** Заметка — без отдельного main. **README:** [embedding/resurrection/README.md](embedding/resurrection/README.md).
+
+Описывает возвращение объекта в достижимый граф из __gc и повторную маркировку после финализации. Это концептуальная заметка о контракте финализатора, а не пример с отдельным main.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-graphics"></a>
+### graphics
+
+<a id="example-embedding-bitmap_fill"></a>
+#### bitmap_fill
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/bitmap_fill/README.md](embedding/bitmap_fill/README.md).
+
+Создаёт BitmapData из двух пикселей, использует живой bitmap как заливку MovieClip и рендерит результат. Показывает сохранение GC-корней для удерживаемых объектов и порядок освобождения ресурсов.
+
+**Файлы:** [main.c](embedding/bitmap_fill/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-color_matrix_filter"></a>
+#### color_matrix_filter
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/color_matrix_filter/README.md](embedding/color_matrix_filter/README.md).
+
+Заполняет двадцать коэффициентов ColorMatrixFilter и меняет красный и синий каналы одного RGBA-пикселя. Демонстрирует копирование матрицы и работу фильтра без большого изображения.
+
+**Файлы:** [main.c](embedding/color_matrix_filter/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-drawing"></a>
+#### drawing
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/drawing/README.md](embedding/drawing/README.md).
+
+AS2-эскиз рисования и заметка об интеграции drawing API. В папке нет самостоятельного C main; её историческое описание не следует читать как перечень всего современного renderer API.
+
+**Файлы:** [example_as2.as](embedding/drawing/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-geometry"></a>
+#### geometry
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/geometry/README.md](embedding/geometry/README.md).
+
+AS2-исходник использует Point, Matrix и Rectangle: перенос координат, полуоткрытые границы и расширение прямоугольника. Рассчитан на внешний AVM1-компилятор; связан с байткодными тестами геометрии.
+
+**Файлы:** [example_as2.as](embedding/geometry/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-gradients"></a>
+#### gradients
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/gradients/README.md](embedding/gradients/README.md).
+
+Создаёт редактируемый прямоугольный путь и линейную красно-синюю заливку, затем печатает центральный RGBA. Показывает матрицу градиента, диапазон stop ratios и владение массивом остановок; графический backend выбирается в DEFS.
+
+**Файлы:** [example_as2.as](embedding/gradients/example_as2.as), [main.c](embedding/gradients/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-image_codecs"></a>
+#### image_codecs
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/image_codecs/README.md](embedding/image_codecs/README.md).
+
+Разбирает и растеризует SVG и использует подключённую PNG-библиотеку. Демонстрирует обмен буферами изображения и освобождение SVG; доступность зависит от выбранных библиотек и профиля.
+
+**Файлы:** [main.c](embedding/image_codecs/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-media"></a>
+#### media
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/media/README.md](embedding/media/README.md).
+
+AS2-эскиз Sound/Video и заметка о подключении медиа backend. В этой папке нет запускаемого C-примера; поддержка конкретных операций проверяется отдельно по документации подсистемы.
+
+**Файлы:** [example_as2.as](embedding/media/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-movieclip"></a>
+#### movieclip
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/movieclip/README.md](embedding/movieclip/README.md).
+
+AS2-эскиз манипуляций MovieClip и заметка о host-интеграции display list. Его назначение — показать идею использования; наличие файла не означает приёмку всех операций таймлайна.
+
+**Файлы:** [example_as2.as](embedding/movieclip/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-parallel_render"></a>
+#### parallel_render
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/parallel_render/README.md](embedding/parallel_render/README.md).
+
+Передаёт независимые render jobs исполнителю, используя вызывающий поток для одного задания и native-потоки для остальных. Показывает разделение callback/userdata и синхронное завершение пакета работ.
+
+**Файлы:** [example.as](embedding/parallel_render/example.as), [main.c](embedding/parallel_render/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-input"></a>
+### input
+
+<a id="example-embedding-gesture_dispatch"></a>
+#### gesture_dispatch
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/gesture_dispatch/README.md](embedding/gesture_dispatch/README.md).
+
+Сопоставляет распознанный двухпальцевый tap с правой кнопкой мыши и синхронно передаёт событие C callback. Показывает именно host dispatch; сопровождающий AS-файл является отдельным эскизом.
+
+**Файлы:** [example_as2.as](embedding/gesture_dispatch/example_as2.as), [main.c](embedding/gesture_dispatch/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-gesture_recognizer"></a>
+#### gesture_recognizer
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/gesture_recognizer/README.md](embedding/gesture_recognizer/README.md).
+
+Подаёт BEGIN/MOVE/END/CANCEL в host-распознаватель и преобразует двухпальцевый tap в кнопку мыши. Объясняет монотонное время, координаты сцены и отличия распознавания от непосредственного AS-события.
+
+**Файлы:** [gesture.as](embedding/gesture_recognizer/gesture.as), [main.c](embedding/gesture_recognizer/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-input"></a>
+#### input
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/input/README.md](embedding/input/README.md).
+
+Настраивает правила tap/swipe и сопоставляет уже распознанные жесты с мышью и колесом. Подходит для первого знакомства с mapper; сам пример не создаёт оконную систему и не распознаёт сырые касания.
+
+**Файлы:** [example_as2.as](embedding/input/example_as2.as), [main.c](embedding/input/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-input_queue"></a>
+#### input_queue
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/input_queue/README.md](embedding/input_queue/README.md).
+
+Помещает распознанные события в отложенную очередь и передаёт их callback при pump на VM-потоке. Позволяет отделить получение ввода от его обработки без графического backend.
+
+**Файлы:** [example.as](embedding/input_queue/example.as), [main.c](embedding/input_queue/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-jit"></a>
+### jit
+
+<a id="example-embedding-execution_modes"></a>
+#### execution_modes
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/execution_modes/README.md](embedding/execution_modes/README.md).
+
+Задаёт режимы исполнения на входе и во время работы, затем демонстрирует opt-in replay ошибки в интерпретаторе. Показывает счётчики и диагностические callback; повторное исполнение требует учёта побочных эффектов.
+
+**Файлы:** [main.c](embedding/execution_modes/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-jit"></a>
+#### jit
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/jit/README.md](embedding/jit/README.md).
+
+Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение FVM_JitCode и interpreter fallback.
+
+**Файлы:** [main.c](embedding/jit/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-jit_debug"></a>
+#### jit_debug
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/jit_debug/README.md](embedding/jit_debug/README.md).
+
+Добавляет ручную source map и breakpoint, затем читает статистику исполнения. Демонстрирует исключение выбранного тела из JIT на следующем входе и синхронную остановку интерпретатора.
+
+**Файлы:** [main.c](embedding/jit_debug/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-jit_instances"></a>
+#### jit_instances
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/jit_instances/README.md](embedding/jit_instances/README.md).
+
+Создаёт две VM с одинаковым исходным телом, но независимыми режимами и кэшами. Вызовы чередуются на одном потоке; пример показывает изоляцию политик и статистики, а не совместный доступ к объектам.
+
+**Файлы:** [main.c](embedding/jit_instances/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-jit_workers"></a>
+#### jit_workers
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/jit_workers/README.md](embedding/jit_workers/README.md).
+
+Запускает два native worker-потока, каждый со своей VM и автоматическим JIT-кэшем. Главный поток получает результаты после join; управляемые объекты и изменяемое script-состояние между VM не разделяются.
+
+**Файлы:** [main.c](embedding/jit_workers/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-objects"></a>
+### objects
+
+<a id="example-embedding-main"></a>
+#### main
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/README.md](embedding/README.md).
+
+Базовая интеграция C89: создание runtime/context, объекта и свойства, публикация глобального значения, регистрация и вызов nativeSum. Показывает исходный жизненный цикл хоста и освобождение контекста раньше runtime.
+
+**Файлы:** [main.c](embedding/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-objects"></a>
+#### objects
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/objects/README.md](embedding/objects/README.md).
+
+Создаёт объект, записывает и считывает свойства и публикует ссылку глобально. Полезен для изучения FVM_Value и контекстного владения; сопровождающий AS2-файл показывает использование объекта со стороны скрипта.
+
+**Файлы:** [example_as2.as](embedding/objects/example_as2.as), [main.c](embedding/objects/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-property_resolve"></a>
+#### property_resolve
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/property_resolve/README.md](embedding/property_resolve/README.md).
+
+Подключает ленивое разрешение отсутствующих свойств через __resolve и вызывает его через API/AVM1. Показывает receiver, повторное использование функции, GC-корни и отличие отсутствующего свойства от собственного поля.
+
+**Файлы:** [main.c](embedding/property_resolve/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-prototypes"></a>
+#### prototypes
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/prototypes/README.md](embedding/prototypes/README.md).
+
+Создаёт объект и прототип, связывает их и читает унаследованное свойство. Показывает доступ через цепочку прототипов и раздельное владение объектами внутри одного контекста.
+
+**Файлы:** [example.as](embedding/prototypes/example.as), [main.c](embedding/prototypes/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-standard_boolean"></a>
+#### standard_boolean
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/standard_boolean/README.md](embedding/standard_boolean/README.md).
+
+Устанавливает стандартные объекты и сравнивает вызов Boolean как функции и конструктора. Демонстрирует преобразование примитива, boxed-объект, методы и защиту удерживаемых объектов от GC.
+
+**Файлы:** [example.as](embedding/standard_boolean/example.as), [main.c](embedding/standard_boolean/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-tables_debug"></a>
+#### tables_debug
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/tables_debug/README.md](embedding/tables_debug/README.md).
+
+Записывает именованное и индексное поле, читает число имён и количество объектов VM. Минимальный пример сочетания table API с диагностической инспекцией без пользовательских getter.
+
+**Файлы:** [main.c](embedding/tables_debug/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-platform"></a>
+### platform
+
+<a id="example-embedding-network"></a>
+#### network
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/network/README.md](embedding/network/README.md).
+
+AS2-эскиз сетевой интеграции и host bridge. Отдельного native main в папке нет; позволяет обсудить прикладную схему, но не заменяет примеры реально подключённых TCP-портов.
+
+**Файлы:** [example_as2.as](embedding/network/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-os_ports"></a>
+#### os_ports
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/os_ports/README.md](embedding/os_ports/README.md).
+
+Использует native mouse polling и TCP connect/send/close. Показывает платформенный слой и ресурсное закрытие; наличие успешного TCP-соединения зависит от внешнего адреса и окружения.
+
+**Файлы:** [example.as](embedding/os_ports/example.as), [main.c](embedding/os_ports/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-text"></a>
+### text
+
+<a id="example-embedding-font_libraries"></a>
+#### font_libraries
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/font_libraries/README.md](embedding/font_libraries/README.md).
+
+Читает OpenType fixture, формирует text run, извлекает редактируемые векторные контуры и преобразует их. Показывает границы, правку точек, заливку и маску; fixture позволяет не зависеть от установленных шрифтов.
+
+**Файлы:** [main.c](embedding/font_libraries/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-standard_text"></a>
+#### standard_text
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/standard_text/README.md](embedding/standard_text/README.md).
+
+Регистрирует шрифт, создаёт TextField и обращается к его свойствам и методам через обычные объекты VM. Извлекает векторный путь; AS-файл отдельно показывает редактирование текста.
+
+**Файлы:** [editing.as](embedding/standard_text/editing.as), [main.c](embedding/standard_text/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-text"></a>
+#### text
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/text/README.md](embedding/text/README.md).
+
+Проверяет UTF-8 и выполняет поиск регулярным выражением через C API. Позволяет проверить обработку строки до передачи в VM; AS2-исходник рядом относится к отдельному script-сценарию.
+
+**Файлы:** [example.as](embedding/text/example.as), [main.c](embedding/text/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-text_layout"></a>
+#### text_layout
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/text_layout/README.md](embedding/text_layout/README.md).
+
+Создаёт горизонтальную раскладку текста, запрашивает метрики и строки и извлекает контуры отдельных glyph и всего layout. Показывает преобразование и отрисовку owned-путей и порядок освобождения font/layout/path.
+
+**Файлы:** [main.c](embedding/text_layout/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-workers"></a>
+### workers
+
+<a id="example-embedding-worker_channels"></a>
+#### worker_channels
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/worker_channels/README.md](embedding/worker_channels/README.md).
+
+Создаёт два FIFO для обмена host↔worker и передаёт строку с ответом о её длине. Показывает неблокирующий probe, закрытие каналов и обязательный join до их уничтожения.
+
+**Файлы:** [main.c](embedding/worker_channels/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-worker_lifecycle"></a>
+#### worker_lifecycle
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/worker_lifecycle/README.md](embedding/worker_lifecycle/README.md).
+
+Создаёт worker в приостановленном состоянии, читает его state, запускает и получает 42 через join. Позволяет отделить создание потока от разрешения начать работу.
+
+**Файлы:** [main.c](embedding/worker_lifecycle/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-worker_stop"></a>
+#### worker_stop
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/worker_stop/README.md](embedding/worker_stop/README.md).
+
+Запрашивает кооперативную остановку приостановленного worker и ожидает завершения через join_all. Показывает проверку stop_requested в callback и безопасное завершение без принудительного убийства потока.
+
+**Файлы:** [main.c](embedding/worker_stop/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-workers"></a>
+#### workers
+
+**Тип:** C/C++ — собираемый пример. **README:** [embedding/workers/README.md](embedding/workers/README.md).
+
+Запускает native callback в отдельном OS-потоке с новым runtime/context и копией входного значения. После join читает результат до destroy; userdata и управляемые объекты не становятся автоматически общими.
+
+**Файлы:** [main.c](embedding/workers/main.c), [proposed.as](embedding/workers/proposed.as).
+
+[К оглавлению](#оглавление).
+
+<a id="group-extending"></a>
+## extending
+
+<a id="group-extending-callbacks"></a>
+### callbacks
+
+<a id="example-extending-callable_objects"></a>
+#### callable_objects
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/callable_objects/README.md](extending/callable_objects/README.md).
+
+Создаёт native callable, сохраняет его в свойстве объекта и вызывает с двумя числами. Callback работает со стеком аргументов и формирует результат; userdata остаётся ответственностью хоста.
+
+**Файлы:** [main.c](extending/callable_objects/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-lua_style"></a>
+#### lua_style
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/lua_style/README.md](extending/lua_style/README.md).
+
+Регистрирует add через Lua-подобный стековый API, читает числовые аргументы и помещает сумму. Показывает компактный способ писать native-функции без совместимости с Lua ABI.
+
+**Файлы:** [main.c](extending/lua_style/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-main"></a>
+#### main
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/README.md](extending/README.md).
+
+Регистрирует makePoint, проверяет два числовых аргумента, создаёт объект x/y и возвращает его C-хосту. Это статическая регистрация native callback, а не загрузчик динамической библиотеки.
+
+**Файлы:** [main.c](extending/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-meta_call"></a>
+#### meta_call
+
+**Тип:** Заметка — без отдельного main. **README:** [extending/meta_call/README.md](extending/meta_call/README.md).
+
+README ссылается на tests/meta_call.c: объекты связываются метатаблицей и __call, принимающим таблицу аргументов. Показывает соглашение meta-call; отдельного main в examples нет.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-native_functions"></a>
+#### native_functions
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [extending/native_functions/README.md](extending/native_functions/README.md).
+
+AS2-эскиз обращения к host-функции и заметка о проектируемой интеграции. Запускаемый пример статической регистрации находится в extending/main.c.
+
+**Файлы:** [example_as2.as](extending/native_functions/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-stack_c"></a>
+#### stack_c
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/stack_c/README.md](extending/stack_c/README.md).
+
+Регистрирует callback со стеком FVM_Stack, читает аргументы, очищает стек и возвращает сумму. Показывает индексацию, размер стека и правило единственного результата.
+
+**Файлы:** [main.c](extending/stack_c/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-extending-integration"></a>
+### integration
+
+<a id="example-extending-channel_worker"></a>
+#### channel_worker
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/channel_worker/README.md](extending/channel_worker/README.md).
+
+Передаёт worker через userdata удерживаемый channel handle, ожидает число и возвращает число плюс один. Показывает явное копирование/release дескриптора и join перед освобождением канала.
+
+**Файлы:** [main.c](extending/channel_worker/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-drawing"></a>
+#### drawing
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [extending/drawing/README.md](extending/drawing/README.md).
+
+AS2-эскиз drawing bridge для расширения. В этой папке нет самостоятельной C-программы; конкретный host renderer демонстрируют примеры embedding/graphics в каталоге.
+
+**Файлы:** [example_as2.as](extending/drawing/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-media"></a>
+#### media
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [extending/media/README.md](extending/media/README.md).
+
+AS2-эскиз интеграции медиа через расширение. Это исходник и историческая проектная заметка, а не готовый динамический media plugin.
+
+**Файлы:** [example_as2.as](extending/media/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-movieclip"></a>
+#### movieclip
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [extending/movieclip/README.md](extending/movieclip/README.md).
+
+AS2-эскиз работы расширения с MovieClip. Показывает ожидаемую прикладную идею; исполняемый native module и отдельный main здесь отсутствуют.
+
+**Файлы:** [example_as2.as](extending/movieclip/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-network"></a>
+#### network
+
+**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [extending/network/README.md](extending/network/README.md).
+
+AS2-эскиз сетевого host bridge для расширений. Не выполняет реального сетевого подключения сам по себе; для native TCP следует смотреть embedding/os_ports.
+
+**Файлы:** [example_as2.as](extending/network/example_as2.as).
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-prototypes"></a>
+#### prototypes
+
+**Тип:** Заметка — без отдельного main. **README:** [extending/prototypes/README.md](extending/prototypes/README.md).
+
+Заметка о построении native-объектов на прототипах и ссылка на embedding/prototypes. Это описание повторного использования C ABI, без отдельной реализации загружаемого плагина.
+
+**Файлы:** отдельного исходника нет; руководство и связанные API перечислены в README.
+
+[К оглавлению](#оглавление).
+
+<a id="example-extending-sqlite"></a>
+#### sqlite
+
+**Тип:** C/C++ — собираемый пример. **README:** [extending/sqlite/README.md](extending/sqlite/README.md).
+
+Открывает SQLite в памяти, выполняет SQL и получает целочисленный результат. Показывает владение adapter handle; доступность определяется поддержкой SQLite, а AS-файл описывает отдельный host bridge.
+
+**Файлы:** [example_as2.as](extending/sqlite/example_as2.as), [main.c](extending/sqlite/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="glossary"></a>
+## Глоссарий — алфавитный список всех примеров
+
+Один список без тематических подгрупп. Сортировка по имени примера; одинаковые
+имена различаются путём. Это указатель примеров, а не словарь терминов.
+
+- [backtrace — debugger/backtrace](#example-debugger-backtrace)
+- [bitmap_fill — embedding/bitmap_fill](#example-embedding-bitmap_fill)
+- [callable_objects — extending/callable_objects](#example-extending-callable_objects)
+- [channel_cpp98 — embedding/channel_cpp98](#example-embedding-channel_cpp98)
+- [channel_inspection — debugger/channel_inspection](#example-debugger-channel_inspection)
+- [channel_values — embedding/channel_values](#example-embedding-channel_values)
+- [channel_worker — extending/channel_worker](#example-extending-channel_worker)
+- [channels — embedding/channels](#example-embedding-channels)
+- [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
+- [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)
+- [cycle_collection — embedding/cycle_collection](#example-embedding-cycle_collection)
+- [drawing — embedding/drawing](#example-embedding-drawing)
+- [drawing — extending/drawing](#example-extending-drawing)
+- [error.as — actionscript/error.as](#example-actionscript-error-as)
+- [execution_modes — embedding/execution_modes](#example-embedding-execution_modes)
+- [file_channels — embedding/file_channels](#example-embedding-file_channels)
+- [file_channels.as — actionscript/file_channels.as](#example-actionscript-file_channels-as)
+- [font_libraries — embedding/font_libraries](#example-embedding-font_libraries)
+- [function_parameters — embedding/function_parameters](#example-embedding-function_parameters)
+- [function_rpc — embedding/function_rpc](#example-embedding-function_rpc)
+- [gc — embedding/gc](#example-embedding-gc)
+- [gc_workers_channels.as — actionscript/gc_workers_channels.as](#example-actionscript-gc_workers_channels-as)
+- [geometry — embedding/geometry](#example-embedding-geometry)
+- [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
+- [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
+- [gradients — embedding/gradients](#example-embedding-gradients)
+- [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
+- [input — embedding/input](#example-embedding-input)
+- [input_queue — embedding/input_queue](#example-embedding-input_queue)
+- [jit — embedding/jit](#example-embedding-jit)
+- [jit_debug — embedding/jit_debug](#example-embedding-jit_debug)
+- [jit_dump — debugger/jit_dump](#example-debugger-jit_dump)
+- [jit_instances — embedding/jit_instances](#example-embedding-jit_instances)
+- [jit_workers — embedding/jit_workers](#example-embedding-jit_workers)
+- [live_variables — debugger/live_variables](#example-debugger-live_variables)
+- [lua_style — extending/lua_style](#example-extending-lua_style)
+- [main — embedding/main](#example-embedding-main)
+- [main — extending/main](#example-extending-main)
+- [manual_collection — embedding/manual_collection](#example-embedding-manual_collection)
+- [media — embedding/media](#example-embedding-media)
+- [media — extending/media](#example-extending-media)
+- [meta_call — extending/meta_call](#example-extending-meta_call)
+- [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
+- [movieclip — embedding/movieclip](#example-embedding-movieclip)
+- [movieclip — extending/movieclip](#example-extending-movieclip)
+- [native_functions — extending/native_functions](#example-extending-native_functions)
+- [network — embedding/network](#example-embedding-network)
+- [network — extending/network](#example-extending-network)
+- [object_methods — embedding/object_methods](#example-embedding-object_methods)
+- [objects — embedding/objects](#example-embedding-objects)
+- [os_ports — embedding/os_ports](#example-embedding-os_ports)
+- [parallel_render — embedding/parallel_render](#example-embedding-parallel_render)
+- [parsing.as — actionscript/parsing.as](#example-actionscript-parsing-as)
+- [property_resolve — embedding/property_resolve](#example-embedding-property_resolve)
+- [prototypes — embedding/prototypes](#example-embedding-prototypes)
+- [prototypes — extending/prototypes](#example-extending-prototypes)
+- [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
+- [resource_exceptions.as — actionscript/resource_exceptions.as](#example-actionscript-resource_exceptions-as)
+- [resource_snapshots — debugger/resource_snapshots](#example-debugger-resource_snapshots)
+- [resurrection — embedding/resurrection](#example-embedding-resurrection)
+- [script_functions — embedding/script_functions](#example-embedding-script_functions)
+- [script_methods — embedding/script_methods](#example-embedding-script_methods)
+- [shared_mutex — embedding/shared_mutex](#example-embedding-shared_mutex)
+- [shared_mutex.as — actionscript/shared_mutex.as](#example-actionscript-shared_mutex-as)
+- [source_breakpoints — debugger/source_breakpoints](#example-debugger-source_breakpoints)
+- [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
+- [sqlite — extending/sqlite](#example-extending-sqlite)
+- [stack_c — extending/stack_c](#example-extending-stack_c)
+- [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)
+- [standard_text — embedding/standard_text](#example-embedding-standard_text)
+- [string.as — actionscript/string.as](#example-actionscript-string-as)
+- [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
+- [text — embedding/text](#example-embedding-text)
+- [text_layout — embedding/text_layout](#example-embedding-text_layout)
+- [worker_channels — embedding/worker_channels](#example-embedding-worker_channels)
+- [worker_lifecycle — embedding/worker_lifecycle](#example-embedding-worker_lifecycle)
+- [worker_stop — embedding/worker_stop](#example-embedding-worker_stop)
+- [workers — embedding/workers](#example-embedding-workers)

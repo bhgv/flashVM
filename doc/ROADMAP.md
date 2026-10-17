@@ -2341,3 +2341,20 @@ Five targeted ASan/UBSan tests passed: crash_diagnostics, crash_allocation,
 execution_mode_frame_replay, swd_sources and swd_allocation (stack-use-after-return
 on; LeakSanitizer off). Stale incremental objects were rebuilt and generated
 ELF execute permissions repaired before the final complete passing runs.
+
+
+### v0.535 — complete example catalog and API navigation
+
+Documentation / документация: examples/README.md covers all 78 example folders,
+base programs and standalone AS sources, with alphabetically sorted thematic
+subgroups, linked contents and a flat alphabetic glossary. Each example links
+to its own README, source files and demonstrated API guides/declarations.
+Added missing README files and corrected obsolete example target names.
+Executable C/C++, external-compiler AS and conceptual notes are distinguished.
+Existing source paths and build targets are preserved. All nine stages remain open.
+
+Validation / проверки: all 78 entries occur in the linked contents, descriptions
+and glossary; subgroup/entry/glossary sorting checked. All 1870 relative file
+and Markdown-anchor links resolve; every directly called public C API appears
+in its example README. Existing debugger tutorial/API checker passed. No runtime
+or build-target behavior changed.

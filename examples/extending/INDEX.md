@@ -1,7 +1,6 @@
-# Extension example catalog
+# extending: каталог примеров
 
-- `sqlite/`: runnable C89 SQLite adapter (when SQLite is installed), AS2 host bridge sketch.
-- `native_functions/`: native callback integration sketch.
-- `network/`, `media/`, `movieclip/`, `drawing/`: design-only placeholders with AS2 examples.
+Полный перечень с тематическими подгруппами, подробными описаниями и
+алфавитным указателем: [examples/README.md](../README.md#group-extending).
 
-The existing top-level `main.c` is the runnable native callback example.
+Описание базового main: [README.md](README.md).

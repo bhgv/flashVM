@@ -61,3 +61,29 @@ error paths and line-by-line comments, with no process assertions. Build/run
 commands above select the minimal profile. The implementation/lifetime notes
 explain the expected VM result, borrowed data and cleanup; every used FlashVM
 function links to its detailed reference or public ownership contract.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Сохраняет JSON-бэктрейс после намеренного Throw и читает его после возврата из функции. Режим BACKTRACE сочетается с NATURAL; пример подходит для логирования без интерфейса отладчика.
+
+**Текущая CMake-цель:** `flashvm_examples_debugger_backtrace_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_crash_configure`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_configure](../../../doc/DEBUG_API.md#fvm_crash_configure) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_data`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_data](../../../doc/DEBUG_API.md#fvm_crash_data) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_function_create_avm1`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_invoke`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_value_number`](../../../include/flashvm/value.h) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+
+[Описание в общем каталоге](../../README.md#example-debugger-backtrace).
+<!-- example-catalog-api:end -->

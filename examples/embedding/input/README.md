@@ -1,3 +1,29 @@
 # Embedding: gesture mapping (implemented mapper)
 
 Configure two-finger tap -> right mouse button and three-finger upward swipe -> wheel up. Host code supplies already-recognized gesture events. **Gesture recognition, mouse dispatch into AVM1, and window integration are not implemented.** Directions: -1 left, 1 right, -2 up, 2 down; zero in a rule is a wildcard.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Настраивает правила tap/swipe и сопоставляет уже распознанные жесты с мышью и колесом. Подходит для первого знакомства с mapper; сам пример не создаёт оконную систему и не распознаёт сырые касания.
+
+**Текущая CMake-цель:** `flashvm_examples_embedding_input_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_config_init`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_create`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_context_destroy`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_input_map`](../../../include/flashvm/input.h) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
+| [`fvm_input_set_rule`](../../../include/flashvm/input.h) | [INPUT_API.md](../../../doc/INPUT_API.md) — Правила преобразования ввода. |
+| [`fvm_runtime_create`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+| [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
+
+[Описание в общем каталоге](../../README.md#example-embedding-input).
+<!-- example-catalog-api:end -->

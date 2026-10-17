@@ -7,3 +7,28 @@
 `channel.as` contains **proposed syntax only**; the AVM1 interpreter does not yet parse channel expressions or operators.
 
 `channel.as` показывает **проектируемый синтаксис**, который пока не исполняется AVM1.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Создаёт внутрипроцессную FIFO, отправляет и получает значение, затем уничтожает канал. Это базовый транспортный пример; сопровождающий channel.as описывает отдельный синтаксический эскиз.
+
+**Текущая CMake-цель:** `flashvm_examples_embedding_channels_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_channel_close`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_destroy`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_receive`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_channel_send`](../../../include/flashvm/channel.h) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
+| [`fvm_value_number`](../../../include/flashvm/value.h) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+
+[Описание в общем каталоге](../../README.md#example-embedding-channels).
+<!-- example-catalog-api:end -->

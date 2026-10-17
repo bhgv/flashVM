@@ -69,3 +69,36 @@ error paths and line-by-line comments, with no process assertions. Build/run
 commands above select the minimal profile. The implementation/lifetime notes
 explain the expected VM result, borrowed data and cleanup; every used FlashVM
 function links to its detailed reference or public ownership contract.
+
+<!-- example-catalog-api:start -->
+## Назначение и особенности
+
+Явно компилирует AVM1, связывает машинное тело с исходным байткодом и создаёт ZIP_CODE-дамп. Проверяет результат записи отдельно от исходного исключения; при отсутствии JIT демонстрирует интерпретаторный вариант.
+
+**Текущая CMake-цель:** `flashvm_examples_debugger_jit_dump_main`.
+
+
+## Демонстрируемые функции C API
+
+Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
+и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+
+| Функция | Где читать подробнее |
+| --- | --- |
+| [`fvm_crash_configure`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_configure](../../../doc/DEBUG_API.md#fvm_crash_configure) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_data`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_data](../../../doc/DEBUG_API.md#fvm_crash_data) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_crash_info`](../../../include/flashvm/crash.h) | [DEBUG_API.md#fvm_crash_info](../../../doc/DEBUG_API.md#fvm_crash_info) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_exception_clear`](../../../include/flashvm/exception.h) | [STANDARD_ERROR.md](../../../doc/STANDARD_ERROR.md) — Ошибки и сохранение исходного исключения. |
+| [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h) | [DEBUG_API.md#fvm_execution_set_mode](../../../doc/DEBUG_API.md#fvm_execution_set_mode) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_function_create_avm1`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_invoke`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_function_set_body`](../../../include/flashvm/function.h) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Создание функций, аргументы, вызов и receiver. |
+| [`fvm_jit_available`](../../../include/flashvm/jit.h) | [DEBUG_API.md#fvm_jit_available](../../../doc/DEBUG_API.md#fvm_jit_available) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_jit_backend_name`](../../../include/flashvm/jit.h) | [DEBUG_API.md#fvm_jit_backend_name](../../../doc/DEBUG_API.md#fvm_jit_backend_name) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_jit_compile`](../../../include/flashvm/jit.h) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
+| [`fvm_jit_destroy`](../../../include/flashvm/jit.h) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
+| [`fvm_jit_machine_code`](../../../include/flashvm/jit.h) | [DEBUG_API.md#fvm_jit_machine_code](../../../doc/DEBUG_API.md#fvm_jit_machine_code) — Параметры, статусы, время жизни и ограничения вызова. |
+| [`fvm_jit_source`](../../../include/flashvm/jit.h) | [DEBUG_API.md#fvm_jit_source](../../../doc/DEBUG_API.md#fvm_jit_source) — Параметры, статусы, время жизни и ограничения вызова. |
+
+[Описание в общем каталоге](../../README.md#example-debugger-jit_dump).
+<!-- example-catalog-api:end -->
