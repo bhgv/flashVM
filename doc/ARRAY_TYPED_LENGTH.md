@@ -55,3 +55,12 @@ This is source comparison, not an original Flash Player oracle run.
 Deleted/recreated and virtual length assignment semantics require separate work;
 complete Array/SWF compatibility and all nine roadmap stages remain open.
 Windows/macOS/Android runtime acceptance is not established by Linux tests.
+
+Extension v0.528 / Дополнение: recreated and virtual exact length assignment
+now has its own preparation/dispatch path; see
+[ARRAY_LENGTH_REASSIGNMENT.md](ARRAY_LENGTH_REASSIGNMENT.md).
+Validation of the v0.527 semantic checkpoint on Linux minimal: 1090 CTest cases
+passed after restoring user-execute permission on 27 generated ELF artifacts
+and rerunning 29 failed launch/dependent cases. Three targeted ASan/UBSan tests
+passed with stack instrumentation enabled and LeakSanitizer explicitly disabled.
+This is neither foreign-platform acceptance nor completion of any roadmap stage.

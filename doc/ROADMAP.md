@@ -2257,3 +2257,12 @@ cycles/metadata with malformed-reference validation. Tests: array_typed_length,
 roots, allocation and wire variants. См. [RU/EN contract](ARRAY_TYPED_LENGTH.md).
 Deleted/recreated/virtual length assignment, real foreign OS acceptance and all
 nine roadmap stages remain open / остаются открытыми.
+
+### v0.528 — recreated/virtual Array length assignment
+
+Exact loaded length writes prepare coercion/truncation before descriptor flags
+and virtual dispatch. Loaded addProperty permits length and preserves its typed
+data; descriptor re-resolution avoids double coercion after native reinstatement.
+Tests: array_length_reassignment, roots/allocation variants. См.
+[RU/EN contract](ARRAY_LENGTH_REASSIGNMENT.md). Original native-descriptor
+mutation, complete compatibility and all nine stages remain open.

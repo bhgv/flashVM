@@ -1304,6 +1304,48 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     return r;
 }
 } // namespace
+/* Convert exact nonnative length writes before readonly checks or virtual dispatch. */
+FVM_Result fvm_array_prepare_length_data(FVM_Context *c, FVM_Object *o,
+                                         const FVM_Value &input, bool *prepared)
+{
+    *prepared = false;
+    if (!c->swf_loaded || o->resource_kind != FVM_RESOURCE_ARRAY)
+        return FVM_OK;
+    const fvm_detail::string name("length");
+    if (fvm_property_find(c, o->properties, name) == o->properties.end())
+    {
+        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
+            fvm_property_find(c, o->accessors, name);
+        if (accessor != o->accessors.end() && fvm_base_array_length_accessor(accessor->second))
+            return FVM_OK;
+    }
+    *prepared = true;
+    FVM_ArrayWorkScope work(c);
+    double number = 0;
+    FVM_Result status = fvm_avm1_number(c, &input, &number);
+    if (status != FVM_OK)
+        return status;
+    FVM_Value previous;
+    status = legacy_length_data(c, o, previous);
+    if (status != FVM_OK || previous.type != FVM_VALUE_NUMBER)
+        return status;
+    const long first = fvm_array_number_length(number);
+    const long old = fvm_array_number_length(previous.number);
+    for (long index = first > 0 ? first : 0; index < old; ++index)
+    {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
+        char key[FVM_ARRAY_SIGNED_KEY_CAPACITY];
+        std::sprintf(key, "%ld", index);
+        int removed = 0;
+        status = fvm_object_delete(c, o, key, &removed);
+        if (status != FVM_OK)
+            return status;
+    }
+    return FVM_OK;
+}
+
 /* Write loaded own data while preserving the receiver's current length, tail and property flags. */
 FVM_Result fvm_array_legacy_store_element(FVM_Context *c, FVM_Object *o, unsigned long index,
                                          const FVM_Value &value)

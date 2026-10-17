@@ -1,4 +1,5 @@
 /* sortOn snapshots field length once, converts all names, then reads/converts options. */
+#include "../src/standard/base_state.hpp"
 #define FVM_SORT_LIVE_LENGTH_FIXTURE_ONLY
 #include "array_sort_on_live_lengths.cpp"
 static unsigned sort_live_event, sort_live_failure, sort_live_throw, sort_live_empty;
@@ -22,6 +23,7 @@ static FVM_Object *sort_live_convertible(FVM_Context *c, unsigned phase, FVM_Obj
     FVM_Object *object = 0, *fn = version_function(c, 0); assert(fvm_construct(c, "Object", 0, 0, &object) == FVM_OK && fvm_function_set_body(c, fn, sort_live_conversion, &sort_live_phases[phase - 1], capture) == FVM_OK);
     FVM_Value value = class_value(fn); assert(fvm_object_set(c, object, phase == 2 ? "toString" : "valueOf", &value) == FVM_OK); return object;
 }
+/* Raw fixture storage defers the destructive callback until the operation under test. */
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
@@ -36,8 +38,8 @@ int main()
         /* Install elements before coercible lengths: indexed assignment now reads live length. */
         value = class_value(sort_live_convertible(c, 2, fields)); assert(fvm_table_set_index(c, fields, 0, &value) == FVM_OK);
         value = class_value(sort_live_convertible(c, 4, receiver)); assert(fvm_table_set_index(c, options, 0, &value) == FVM_OK);
-        value = class_value(sort_live_convertible(c, 1, fields)); assert(fvm_object_set(c, fields, "length", &value) == FVM_OK);
-        value = class_value(sort_live_convertible(c, 3, options)); assert(fvm_object_set(c, options, "length", &value) == FVM_OK);
+        value = class_value(sort_live_convertible(c, 1, fields)); assert(fvm_base_store_data(c, fields, "length", value, false) == FVM_OK);
+        value = class_value(sort_live_convertible(c, 3, options)); assert(fvm_base_store_data(c, options, "length", value, false) == FVM_OK);
         FVM_Object *original[3]; for (unsigned i = 0; i < 3; ++i) { assert(fvm_table_get_index(c, receiver, i, &value) == FVM_OK); original[i] = value.object; }
         const bool fails = sort_live_failure && (!sort_live_empty || sort_live_failure == 1);
         const FVM_Result expected = fails ? sort_live_throw ? FVM_EXCEPTION : FVM_ERROR : FVM_OK; sort_live_event = 0;

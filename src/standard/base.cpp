@@ -212,18 +212,9 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
             if (r != FVM_OK)
                 return r;
         }
-        unsigned int flags = 0;
-        r = fvm_object_property_flags(c, o, "length", &flags);
-        if (r != FVM_OK)
-            return r;
-        if (!(flags & FVM_PROPERTY_READ_ONLY))
-        {
-            /* [GC:] Native length owns the object/string/metatable edge after publication. */
-            o->resource_result = *retained.begin();
-            fvm_property_clear_versions(c, o, "length");
-        }
+        r = fvm_base_array_store_length(c, o, *retained.begin());
         fvm_value_undefined(out);
-        return FVM_OK;
+        return r;
     }
     /* A nondeletable highest slot stops a descending length truncation. */
     for (Slots::iterator i = o->indexed.begin(); i != o->indexed.end(); ++i)
@@ -2133,7 +2124,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     unsigned long index;
     /* Preserve unloaded indexed behavior; loaded numeric slots can become virtual properties. */
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (receiver->resource_kind == ARRAY_OBJECT && (!c->swf_loaded || name == "length") &&
+    if (receiver->resource_kind == ARRAY_OBJECT && !c->swf_loaded &&
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         ((fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index)) || name == fvm_detail::string("length")))
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -2145,6 +2136,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     /* [GC:] Preserve the previous stored value while the owning receiver still roots it. */
     FVM_Value stored;
     fvm_value_undefined(&stored);
+    bool replaced_native_length = false;
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator previous = receiver->properties.find(name);
     bool existed = previous != receiver->properties.end() || receiver->methods.find(name) != receiver->methods.end();
     if (previous != receiver->properties.end())
@@ -2155,7 +2147,13 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
         if (accessor != receiver->accessors.end())
         {
             existed = true;
-            fvm_base_accessor_data(accessor->second, stored);
+            if (!fvm_base_accessor_data(accessor->second, stored) &&
+                receiver->resource_kind == ARRAY_OBJECT &&
+                fvm_base_array_length_accessor(accessor->second))
+            {
+                stored = receiver->resource_result;
+                replaced_native_length = true;
+            }
         }
         else if (fvm_property_terminated(name) && fvm_as_index(name.c_str(), &index))
         {
@@ -2233,6 +2231,9 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
     receiver->methods.erase(name);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     receiver->method_values.erase(name);
+    /* [GC:] The published descriptor now owns the old length; drop the obsolete cache edge. */
+    if (replaced_native_length)
+        fvm_value_number(&receiver->resource_result, 0);
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     fvm_value_boolean(out, 1);
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
@@ -2408,6 +2409,24 @@ bool fvm_base_prototype_accessor(const FVM_AccessorEntry &entry)
 bool fvm_base_array_length_accessor(const FVM_AccessorEntry &entry)
 {
     return entry.getter == array_length && entry.setter == array_resize;
+}
+
+/* Store an already-converted input after live descriptor selection, without repeating valueOf. */
+FVM_Result fvm_base_array_store_length(FVM_Context *c, FVM_Object *o, const FVM_Value &value)
+{
+    if (!array(o) || o->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int flags = 0;
+    FVM_Result status = fvm_object_property_flags(c, o, "length", &flags);
+    if (status != FVM_OK)
+        return status;
+    if (!(flags & FVM_PROPERTY_READ_ONLY))
+    {
+        /* [GC:] Native storage takes ownership of the already-rooted value graph. */
+        o->resource_result = value;
+        fvm_property_clear_versions(c, o, "length");
+    }
+    return FVM_OK;
 }
 
 /* Read script descriptor data directly; older descriptors without data retain undefined. */

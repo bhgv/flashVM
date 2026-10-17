@@ -74,6 +74,9 @@ bool fvm_base_prototype_accessor(const FVM_AccessorEntry &);
 /* Recognize the native Array length bridge whose loaded truncation precedes readonly data checks. */
 bool fvm_base_array_length_accessor(const FVM_AccessorEntry &);
 
+/* Publish preconverted native length data, respecting the live readonly/version flags. */
+FVM_Result fvm_base_array_store_length(FVM_Context *, FVM_Object *, const FVM_Value &);
+
 /* Store own data without setters; note_length optionally suppresses implicit native Array growth. */
 FVM_Result fvm_base_store_data(FVM_Context *, FVM_Object *, const fvm_detail::string &, const FVM_Value &,
                                bool note_length = true);

@@ -1,4 +1,5 @@
 /* Indexed growth roots detached watched graphs and converts live length exactly once. */
+#include "../src/standard/base_state.hpp"
 #define FVM_INDEX_LIVE_LENGTH_FIXTURE_ONLY
 #include "array_index_live_length.cpp"
 static FVM_Object *index_live_array, *index_live_input, *index_live_meta;
@@ -27,6 +28,7 @@ static FVM_Result index_live_setter(FVM_Context *c, const FVM_ScriptFrame *, FVM
     assert(fvm_gc_collect(c, 0) == (c->gc_native_depth ? FVM_INVALID_ARGUMENT : FVM_OK));
     fvm_value_undefined(out); return FVM_OK;
 }
+/* Raw fixture storage defers the destructive callback until the operation under test. */
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
@@ -39,7 +41,7 @@ int main()
         index_live_array = deleted_length_array(c); assert(fvm_construct(c, "Object", 0, 0, &index_live_input) == FVM_OK && fvm_object_create(c, &index_live_meta) == FVM_OK);
         FVM_Object *number = 0, *function = version_function(c, 1); assert(fvm_construct(c, "Object", 0, 0, &number) == FVM_OK && fvm_function_set_body(c, function, index_live_number, 0, 0) == FVM_OK);
         FVM_Value value = class_value(function), input = class_value(index_live_input), out;
-        value = class_value(index_live_meta); assert(fvm_object_set(c, index_live_input, "edge", &value) == FVM_OK); value = class_value(function); assert(fvm_object_set(c, number, "valueOf", &value) == FVM_OK); value = class_value(number); assert(fvm_object_set(c, index_live_array, "length", &value) == FVM_OK);
+        value = class_value(index_live_meta); assert(fvm_object_set(c, index_live_input, "edge", &value) == FVM_OK); value = class_value(function); assert(fvm_object_set(c, number, "valueOf", &value) == FVM_OK); value = class_value(number); assert(fvm_base_store_data(c, index_live_array, "length", value, false) == FVM_OK);
         value = class_value(index_live_array); assert(fvm_set_global(c, "indexLiveTarget", &value) == FVM_OK && fvm_set_global(c, "indexLiveValue", &input) == FVM_OK);
         if (setter) { FVM_Object *fn = version_function(c, 0); assert(fvm_function_set_body(c, fn, index_live_setter, 0, 0) == FVM_OK); FVM_Value args[3]; fvm_value_string(args, "3"); args[1] = class_value(version_function(c, 7)); args[2] = class_value(fn); assert(fvm_object_call(c, index_live_array, "addProperty", 3, args, &out) == FVM_OK && out.boolean); }
         index_live_calls = index_live_setters = 0; FVM_Result expected = !index_live_fault ? FVM_OK : index_live_fault == 1 ? FVM_ERROR : FVM_EXCEPTION;

@@ -4318,3 +4318,10 @@ null, undefined and Object, with separate AVM1 Int32 truncation, readonly/versio
 policy, rooted coercion and graph identity. Tests: array_typed_length and roots,
 allocation and wire variants; see [RU/EN contract](ARRAY_TYPED_LENGTH.md).
 Deleted/recreated/virtual length assignment and full roadmap acceptance remain open.
+
+### v0.528 — exact recreated/virtual length writes
+
+Implemented / реализовано: Array length preparation before readonly/setters,
+virtual length definition, retained raw data and live descriptor dispatch.
+Tests: array_length_reassignment and roots/allocation variants; see
+[RU/EN contract](ARRAY_LENGTH_REASSIGNMENT.md). All nine roadmap stages remain open.

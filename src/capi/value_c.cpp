@@ -5,6 +5,7 @@
 #include "../standard/function_state.hpp"
 #include "flashvm/function.h"
 #include "../standard/base_state.hpp"
+#include "../standard/array_generic.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_resolve.hpp"
 #include "../core/property_resolve_constants.h"
@@ -470,6 +471,14 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
     if (c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY)
         retained.push_back(watched);
 
+    bool prepared_length = false;
+    if (!loaded_super && start == o && requested_name == "length")
+    {
+        r = fvm_array_prepare_length_data(c, o, watched, &prepared_length);
+        if (r != FVM_OK)
+            return r;
+    }
+
     /* Canonical table writes already prepared growth before entering this fallback. */
     if (c->swf_loaded && !loaded_super && start == o && !prepared_watch)
     {
@@ -583,7 +592,9 @@ FVM_Result fvm_object_set_from(FVM_Context *c, FVM_Object *o, FVM_Object *start,
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                 return write.finish(fvm_exception_complete(
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    c, o, entry.setter(c, o, 1, &copy, &result, entry.userdata)), cursor != o);
+                    c, o, prepared_length && fvm_base_array_length_accessor(entry)
+                        ? fvm_base_array_store_length(c, o, copy)
+                        : entry.setter(c, o, 1, &copy, &result, entry.userdata)), cursor != o);
                 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
             }
             /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

@@ -1,4 +1,5 @@
 /* Coercible recreated length can remove its own binding and collect during Array methods. */
+#include "../src/standard/base_state.hpp"
 #define FVM_ARRAY_DELETED_LENGTH_FIXTURE_ONLY
 #include "array_deleted_length.cpp"
 static unsigned deleted_array_conversions, deleted_array_fault;
@@ -12,6 +13,7 @@ static FVM_Result deleted_array_number(FVM_Context *c, const FVM_ScriptFrame *fr
     fvm_value_number(out, 1);
     return deleted_array_fault == 1 ? FVM_ERROR : deleted_array_fault == 2 ? fvm_exception_raise(c, out) : FVM_OK;
 }
+/* Raw fixture storage defers the destructive callback until the operation under test. */
 int main()
 {
     FVM_Config cfg; FVM_Runtime *rt = 0; assert(fvm_config_init(&cfg) == FVM_OK && fvm_runtime_create(&cfg, &rt) == FVM_OK);
@@ -24,7 +26,7 @@ int main()
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK); version_load(c, version); assert(fvm_standard_install(c) == FVM_OK);
         FVM_Object *array = deleted_length_array(c), *number = 0, *fn = deleted_length_function(c);
         assert(fvm_construct(c, "Object", 0, 0, &number) == FVM_OK && fvm_function_set_body(c, fn, deleted_array_number, 0, array) == FVM_OK);
-        FVM_Value value = class_value(fn), out; assert(fvm_object_set(c, number, "valueOf", &value) == FVM_OK); value = class_value(number); assert(fvm_object_set(c, array, "length", &value) == FVM_OK);
+        FVM_Value value = class_value(fn), out; assert(fvm_object_set(c, number, "valueOf", &value) == FVM_OK); value = class_value(number); assert(fvm_base_store_data(c, array, "length", value, false) == FVM_OK);
         value = class_value(array); assert(fvm_set_global(c, "arrayDeletedTarget", &value) == FVM_OK);
         const FVM_Result expected = !deleted_array_fault ? FVM_OK : deleted_array_fault == 1 ? FVM_ERROR : FVM_EXCEPTION;
         const unsigned argc = method == 2 || method == 3 ? 1 : 0; deleted_array_conversions = 0;
