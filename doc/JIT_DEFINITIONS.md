@@ -35,9 +35,9 @@ the rooted operand vector, respecting its existing native capacity bound.
 | `jit_definitions_callbacks` | Selected MovieClip declaration invokes a collecting script setter; newly created function is callable inside the setter and after GC; original setter exception and all roots/depths/pool state are preserved |
 | `jit_definitions_allocation` | Every compile/invoke allocation boundary for both Actions, named/anonymous and host/loaded contexts, manual/automatic parent entries; unchanged code handles on failure, restored roots/active code and a callable successful result |
 
-Existing mode/frame fallback fixtures now use an unreachable ToggleQuality Action,
-which remains unsupported by the native compiler. With and Try are still native
-compiler gaps. These checks establish agreement with FlashVM's interpreter, not
+Since v0.557 mode/frame fallback fixtures use unreachable byte 0x16, absent
+from the project opcode catalog. ToggleQuality is now native (STAGE_QUALITY.md);
+With and Try gained separate native support after this original checkpoint. These checks establish agreement with FlashVM's interpreter, not
 complete reference Flash conformance or acceptance on other operating systems.
 All roadmap stages remain open.
 

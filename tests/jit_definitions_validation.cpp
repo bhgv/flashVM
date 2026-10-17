@@ -39,7 +39,7 @@ int main()
         Program strict;definition_record(strict,"",true,false,body,0,1,0);strict.finish();
         strict_definition(c,strict,loaded!=0);
         Program parameter;definition_record(parameter,"",true,true,body,1,0,2);parameter.finish();strict_definition(c,parameter,loaded!=0);
-        Program skipped;skipped.op(0x99);definition_word(skipped,2);definition_word(skipped,1);skipped.op(0x08);skipped.number(42);skipped.finish();
+        Program skipped;skipped.op(0x99);definition_word(skipped,2);definition_word(skipped,1);skipped.op(0x16);skipped.number(42);skipped.finish();
         Program parent;definition_record(parent,"",false,false,skipped);parent.finish();FVM_Value out=class_run(c,parent);assert(out.type==FVM_VALUE_OBJECT);
         assert(fvm_execution_set_mode(c,FVM_EXECUTION_JIT,0)==FVM_OK);unsigned long native=c->execution_mode.stats.native_entries;FVM_Value result;
         assert(fvm_function_invoke(c,out.object,0,0,0,&result)==FVM_OK && result.number==42 && c->execution_mode.stats.native_entries==native);

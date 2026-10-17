@@ -1,7 +1,13 @@
-/* FlashVM: native display-property and target-path bridges retain shared scene semantics. */
+/* FlashVM: native stage-quality, display-property and target-path bridges retain shared scene semantics. */
 #include "internal.hpp"
+#include "flashvm/stage.h"
 #include "../avm1/operand_stack.hpp"
 #include "../avm1/operand_constants.h"
+/* [GC:] Change only scalar context policy through the shared nonallocating stage service. */
+FVM_Result fvm_jit_toggle_quality(FVM_JitInvocation *s, unsigned int)
+{
+    return fvm_stage_toggle_quality(s->context);
+}
 /* [GC:] Preserve target/index/value through ordered coercion, resolution and property callbacks. */
 FVM_Result fvm_jit_display_property(FVM_JitInvocation *s, unsigned int write)
 {

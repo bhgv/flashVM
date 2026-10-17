@@ -36,6 +36,12 @@ cmake --build build-quality --target flashvm_examples_embedding_stage_quality_ma
 Для Cairo выберите `cmake/profiles/cairo.defs`. В minimal/NO_GRAPHICS программа
 объясняет, какой backend включить, и не заявляет, что выполнила растеризацию.
 
+С v0.557 та же операция поддержана в compiled function bodies через прямой
+JIT-helper; этот пример по-прежнему вызывает root [fvm_avm1_execute](../../../include/flashvm/avm1.h#L38). Проверка
+трёх режимов и actual native entries описана в
+[STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#native-verification--проверки-jit-v0557).
+Это не новая проверка AGG/Cairo или иной ОС.
+
 ## Демонстрируемые функции API
 
 - [`fvm_value_string`](../../../include/flashvm/value.h#L46) — подготовка строкового аргумента качества: [STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#script-quality-properties).
@@ -58,6 +64,10 @@ AVM1 ToggleQuality and renders LOW. It compares partial-alpha edge counts, with
 ordinary error cleanup and no assertions. AGG/Cairo are selected explicitly;
 NO_GRAPHICS is reported as a disabled backend. Context quality controls vector
 coverage; independent path APIs and bitmap smoothing keep their own contracts.
+
+Since v0.557 compiled function bodies also lower ToggleQuality directly. This
+example continues to use root [fvm_avm1_execute](../../../include/flashvm/avm1.h#L38); native-entry evidence comes from
+the linked three-mode tests, not from a new renderer/platform run.
 
 [Каталог](../../README.md#example-embedding-stage_quality).
 

@@ -9,7 +9,7 @@ int main(void)
  const unsigned char bad_dispatch[][10]={{0x83,1,0,'u',0},{0x83,2,0,'u',0,0},
  {0x83,3,0,0,0,0,0},{0x9a,0,0,0},{0x9a,1,0,3,0},{0x9a,1,0,4,0},{0x9e,1,0,0,0}};
  const unsigned int dispatch_sizes[]={5,6,7,4,5,5,5};
- const unsigned char good[]={0};const unsigned char unsupported[]={0x08,0};
+ const unsigned char good[]={0};const unsigned char unsupported[]={0x16,0};
  const unsigned char short_record[]={0x96,5,0,7};const unsigned char bad_string[]={0x96,2,0,0,'x'};
  const unsigned char bad_target[]={0x99,2,0,1,0,0x96,5,0,7,1,0,0,0,0};
  const unsigned char bad_branch[]={0x99,1,0,0,0};FVM_JitCode *code=0,*keep;

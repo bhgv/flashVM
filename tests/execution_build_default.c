@@ -15,8 +15,8 @@ static void check_mode(FVM_Context *context, FVM_ExecutionMode expected)
 int main(void)
 {
     const unsigned char body[] = {0x96,5,0,7,42,0,0,0,0x3e,0};
-    /* Unsupported, unreachable ToggleQuality forces whole-body fallback. */
-    const unsigned char fallback[] = {0x99,2,0,1,0,0x08,0x96,5,0,7,42,0,0,0,0x3e,0};
+    /* Unsupported, unreachable reserved opcode 0x16 forces whole-body fallback. */
+    const unsigned char fallback[] = {0x99,2,0,1,0,0x16,0x96,5,0,7,42,0,0,0,0x3e,0};
     FVM_Config config;
     FVM_Runtime *runtime;
     FVM_Context *first, *second;

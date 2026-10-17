@@ -58,7 +58,7 @@ int main()
         frame_dispatch_run(c,number,root,63,FVM_ERROR);
         for(fvm_detail::map<fvm_detail::string,FVM_JitCode *>::iterator cached=c->execution_mode.cache.begin();cached!=c->execution_mode.cache.end();++cached)assert(!cached->second || !cached->second->active);
         frame_define(c,root,2,"second",42);frame_dispatch_run(c,number,root);frame_seen(c,root,42);
-        const unsigned char fallback[]={0x99,2,0,1,0,0x08,0};
+        const unsigned char fallback[]={0x99,2,0,1,0,0x16,0};
         assert(fvm_movieclip_define_frame(c,root,2,"second",fallback,sizeof(fallback))==FVM_OK);
         frame_dispatch_run(c,number,root,1,FVM_OK,false);frame_define(c,root,2,"second",42);
         frame_breaks=0;assert(fvm_debug_set_breakpoint_handler(c,frame_break,0)==FVM_OK && fvm_debug_set_breakpoint(c,"[Frame Call]",0,1)==FVM_OK);

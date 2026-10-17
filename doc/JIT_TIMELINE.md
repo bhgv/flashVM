@@ -1,5 +1,12 @@
 # Native timeline controls — v0.365
 
+Current v0.557 update / Обновление v0.557: ToggleQuality is now native through
+the shared stage service. Rejection/fallback fixtures use unreachable byte 0x16,
+absent from the bounded project opcode catalog. See [STAGE_QUALITY.md](STAGE_QUALITY.md).
+Ранее описанные ниже fallback-маркеры относятся к историческим checkpoint;
+неизвестный byte не объявляется новой исполняемой инструкцией Flash.
+
+
 [Русское описание](JIT_TIMELINE.ru.md)
 
 NextFrame, PreviousFrame, Play, Stop, GotoFrame, GotoLabel and GotoFrame2 lower to

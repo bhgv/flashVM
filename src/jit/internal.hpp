@@ -141,6 +141,8 @@ FVM_Result fvm_jit_call_named(FVM_JitInvocation *, unsigned int);
 FVM_Result fvm_jit_display_property(FVM_JitInvocation *, unsigned int);
 /* Box an input and return its native counted timeline path when applicable. */
 FVM_Result fvm_jit_target_path(FVM_JitInvocation *, unsigned int);
+/* Apply context-wide quality transitions without stack operands or managed references. */
+FVM_Result fvm_jit_toggle_quality(FVM_JitInvocation *, unsigned int);
 /* Stop context-registered outputs using the same guarded callbacks as interpretation. */
 FVM_Result fvm_jit_stop_sounds(FVM_JitInvocation *, unsigned int);
 /* Deliver converted trace values through the shared host sink. */

@@ -1,5 +1,12 @@
 # Нативные trace, throw, время и случайные числа — v0.363
 
+Current v0.557 update / Обновление v0.557: ToggleQuality is now native through
+the shared stage service. Rejection/fallback fixtures use unreachable byte 0x16,
+absent from the bounded project opcode catalog. See [STAGE_QUALITY.md](STAGE_QUALITY.md).
+Ранее описанные ниже fallback-маркеры относятся к историческим checkpoint;
+неизвестный byte не объявляется новой исполняемой инструкцией Flash.
+
+
 [English description](JIT_EFFECTS.md)
 
 Trace, Throw, GetTime и RandomNumber используют из нативных помощников те же

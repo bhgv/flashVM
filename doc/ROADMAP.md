@@ -2761,6 +2761,37 @@ unregistered snapshots, add codecs or certify physical/foreign-OS playback.
 Автоматический audio timeline, полная семантика SWF/AS, оставшиеся JIT/platform
 проверки и все девять этапов остаются открытыми. No roadmap stage is closed.
 
+### v0.557 — native ToggleQuality with shared stage policy
+
+Implemented / реализовано: ToggleQuality lowers through [fvm_jit_toggle_quality](../src/jit/display.cpp#L7)
+to the existing allocation-free [fvm_stage_toggle_quality](../include/flashvm/stage.h#L25) service. It preserves
+stack operands, context isolation and the remembered BEST/reset policy. Normal
+source checkpoints still gate delivery and later failures do not roll back the
+scalar transition. Unknown-record rejection and independent nested fallback
+fixtures now use unreachable byte 0x16, absent from the bounded opcode catalog;
+this byte is not introduced as a supported Flash instruction. RU/EN contracts
+and the compatibility inventory distinguish current behavior from old fallback
+checkpoint notes. See [STAGE_QUALITY.md](STAGE_QUALITY.md).
+
+Validation: 14 focused checks pass in each Linux minimal, automatic-JIT and
+ASAN/UBSAN build (LeakSanitizer disabled). Host/SWF1–8 three-mode cases cover
+actual native entries, all starting qualities across repeated toggles, remembered
+BEST/reset, context isolation, skipped branches, lower operands and source-budget
+ordering. Allocation-denied helper calls and lifecycle rejection preserve the
+correct scalar state. Existing C89 stage checks observe native entries; unknown
+record, nested With/Try, nested-function and frame/mode fallback fixtures pass.
+A combined ToggleQuality/StopSounds body delivers actual registered output
+callbacks while preserving its lower operand. The real mixed FILE tutorial again
+passes both explicit modes in all three builds, including error cleanup and the
+independent installed FFmpeg amix oracle. Full-suite evidence remains the separate
+v0.556 run above; this checkpoint validates the affected paths, not a new full
+renderer/foreign-platform acceptance. Catalog/source/comment checks pass with
+92 examples.
+
+No new renderer sampling grid, bitmap downsampling or foreign-platform run is
+claimed. Полнота SWF/AS, звуковой MovieClip timeline, оставшаяся JIT семантика,
+GC/debugger/concurrency acceptance и все девять этапов остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -2779,8 +2810,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_construct` | function | [include/flashvm/function.h:69](../include/flashvm/function.h#L69) |
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `fvm_jit_stop_sounds` | function | [src/jit/effects.cpp:7](../src/jit/effects.cpp#L7) |
+| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:7](../src/jit/display.cpp#L7) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
+| `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |

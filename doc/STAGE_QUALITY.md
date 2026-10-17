@@ -56,8 +56,12 @@ for null/destruction/collection/release state. It retains the BEST preference
 while switching HIGH/BEST → LOW or LOW/MEDIUM → HIGH/BEST. **Lifetime:** no
 returned handle or managed reference. **Execution:** same VM-thread restrictions
 as the setter; no allocation, script callback, GC or replay. A body containing
-ToggleQuality currently uses interpreter fallback when automatic JIT cannot
-compile it; it is not silently skipped by the compiler.
+Since v0.557 ToggleQuality lowers to [fvm_jit_toggle_quality](../src/jit/display.cpp#L7), which directly
+calls [fvm_stage_toggle_quality](../include/flashvm/stage.h#L25). Its source checkpoint precedes the transition;
+the helper consumes no operands, pushes no result, allocates nothing and retains
+no managed references. Unsupported operations elsewhere in a body can still
+force fallback. Instruction-budget failure before the action leaves policy
+unchanged; failure after delivery does not undo the transition.
 
 ## Script quality properties
 
@@ -145,10 +149,35 @@ BEST при временном переходе в LOW. Все операции 
 
 Загрузка SWF не сбрасывает настройку хоста; новая VM получает HIGH. Перенос
 объекта MovieClip не переносит настройку сцены его исходной VM. JIT-body с этим
-Action пока исполняется через интерпретаторный fallback. Проверки охватывают
+Action с v0.557 компилируется в прямой [fvm_jit_toggle_quality](../src/jit/display.cpp#L7) с общим stage
+service. Он не меняет стек, не выделяет память и не содержит managed roots.
+Checkpoint до действия может запретить его выполнение; ошибка бюджета после
+действия не откатывает политику. Проверки охватывают
 SWF1–8, независимые контексты, стек функции и четыре вида векторного рисования.
 Полная совместимость Flash и SWF-аудио остаются открытыми; StopSounds
 подключён к [контекстным аудиовыходам](AUDIO_CHANNELS.md).
+
+## Native verification / Проверки JIT (v0.557)
+
+`jit_stage_quality` uses isolated host/SWF1–8 contexts and interpreter, explicit
+native and automatic native execution. It checks actual entries, all four
+starting qualities over six toggles, remembered BEST, explicit LOW reset,
+context isolation, skipped branches, lower operands and budget failures before
+and after the state transition. `jit_stage_quality_allocation` denies allocation
+for the direct helper and verifies unchanged policy in destruction, collecting,
+release and null-context rejection. Existing `stage_quality` C89 checks now
+verify actual native-entry increments, rather than expecting compiler rejection.
+
+Тесты проверяют host/SWF1–8 и три режима с настоящими native entries, все
+начальные уровни, BEST preference/reset, независимость контекстов, пропущенную
+ветку, нижний операнд и бюджет до/после действия. Helper проверен без аллокаций
+и при запрещённых lifecycle phases. Изменения не добавляют новые sampling grids,
+bitmap downsampling, renderer/platform acceptance или полную Flash conformance.
+`jit_stop_sounds` additionally executes both ToggleQuality and StopSounds in
+one compiled function, preserving the lower operand while delivering actual
+registered host stops. This covers interaction with the preceding v0.556 change.
+Fallback fixtures now use unreachable byte 0x16, absent from the project's
+bounded opcode catalog; executing that byte is not a supported Flash feature.
 
 [Tutorial / пример](../examples/embedding/stage_quality/README.md).
 
@@ -162,6 +191,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_exec_display_property` | function | [include/flashvm/execution.h:177](../include/flashvm/execution.h#L177) |
+| `fvm_jit_toggle_quality` | function | [src/jit/display.cpp:7](../src/jit/display.cpp#L7) |
 | `fvm_movieclip_quality_read` | function | [src/standard/movieclip_quality.cpp:27](../src/standard/movieclip_quality.cpp#L27) |
 | `fvm_movieclip_quality_write` | function | [src/standard/movieclip_quality.cpp:46](../src/standard/movieclip_quality.cpp#L46) |
 | `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:316](../src/capi/path_c.cpp#L316) |

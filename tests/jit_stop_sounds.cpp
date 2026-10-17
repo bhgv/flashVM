@@ -2,6 +2,7 @@
 #define FVM_CLASS_FIXTURE_ONLY
 #include "jit_classes.cpp"
 #include "flashvm/multimedia.h"
+#include "flashvm/stage.h"
 struct AudioHost
 {
     FVM_Context *context;
@@ -114,6 +115,13 @@ int main()
         active(a, true); active(b, true);
         a.status = b.status = FVM_OK; order_count = 0;
         assert(class_run(c, stop).number == 42 && order_count == 2);
+        /* Both newly native actions coexist in one compiled body without disturbing the lower value. */
+        activate(a); activate(b); order_count = 0;
+        assert(fvm_stage_set_quality(c, FVM_STAGE_QUALITY_BEST) == FVM_OK);
+        Program combined; combined.number(42); combined.op(8); combined.op(9); combined.finish();
+        assert(class_run(c, combined).number == 42 && order_count == 2);
+        FVM_StageQuality quality;
+        assert(fvm_stage_get_quality(c, &quality) == FVM_OK && quality == FVM_STAGE_QUALITY_LOW);
         /* A source checkpoint gates delivery, but later budget exhaustion cannot undo it. */
         activate(a); activate(b); order_count = 0;
         unsigned long saved_limit = rt->config.instruction_limit;

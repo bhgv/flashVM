@@ -18,7 +18,7 @@ int main()
     assert(fvm_jit_compile(entering.bytes.begin(),entering.bytes.size(),&code)==FVM_INVALID_ARGUMENT && code==keep);
     Program past;past.op(0x99);definition_word(past,2);definition_word(past,0);Program escaping;escaping.op(0x96);definition_word(escaping,1);escaping.op(2);with_block(escaping,past);escaping.op(0);
     assert(fvm_jit_compile(escaping.bytes.begin(),escaping.bytes.size(),&code)==FVM_INVALID_ARGUMENT && code==keep);
-    Program unsupported;unsupported.op(0x08);Program fallback;fallback.op(0x96);definition_word(fallback,1);fallback.op(2);with_block(fallback,unsupported);fallback.op(0);
+    Program unsupported;unsupported.op(0x16);Program fallback;fallback.op(0x96);definition_word(fallback,1);fallback.op(2);with_block(fallback,unsupported);fallback.op(0);
     assert(fvm_jit_compile(fallback.bytes.begin(),fallback.bytes.size(),&code)==FVM_UNSUPPORTED && code==keep);
     Program deep;deep.number(42);deep.op(0x3e);
     for(unsigned i=0;i<65;++i){Program outer;outer.variable("owner");with_block(outer,deep);deep=outer;}

@@ -26,7 +26,7 @@ int main()
     }
     Program broken;broken.op(0x96);Program malformed;try_block(malformed,broken,empty,empty,0);malformed.op(0);assert(fvm_jit_compile(malformed.bytes.begin(),malformed.bytes.size(),&code)==FVM_INVALID_ARGUMENT && code==keep);
     Program body;body.number(42);body.op(0x17);Program caught;caught.op(0);Program crossing;crossing.op(0x99);definition_word(crossing,2);definition_word(crossing,12+body.bytes.size());try_block(crossing,body,caught,empty,1);crossing.op(0);assert(fvm_jit_compile(crossing.bytes.begin(),crossing.bytes.size(),&code)==FVM_INVALID_ARGUMENT && code==keep);
-    Program unsupported;unsupported.op(0x08);Program rejected;try_block(rejected,unsupported,empty,empty,0);rejected.op(0);assert(fvm_jit_compile(rejected.bytes.begin(),rejected.bytes.size(),&code)==FVM_UNSUPPORTED && code==keep);
+    Program unsupported;unsupported.op(0x16);Program rejected;try_block(rejected,unsupported,empty,empty,0);rejected.op(0);assert(fvm_jit_compile(rejected.bytes.begin(),rejected.bytes.size(),&code)==FVM_UNSUPPORTED && code==keep);
     Program deep=try_exit(42);for(unsigned i=0;i<65;++i){Program outer;try_block(outer,deep,empty,empty,2);deep=outer;}deep.op(0);assert(fvm_jit_compile(deep.bytes.begin(),deep.bytes.size(),&code)==FVM_UNSUPPORTED && code==keep);assert(fvm_jit_destroy(code)==FVM_OK);
     FVM_Config cfg;FVM_Runtime *rt=0;assert(fvm_config_init(&cfg)==FVM_OK && fvm_runtime_create(&cfg,&rt)==FVM_OK);
     for(unsigned loaded=0;loaded<2;++loaded)for(unsigned native=0;native<2;++native)for(unsigned reg=0;reg<2;++reg)
