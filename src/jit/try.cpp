@@ -1,5 +1,6 @@
 /* FlashVM: native structured exception handling over shared rooted execution state. */
 #include "internal.hpp"
+#include "../core/this_cell.hpp"
 #include "try_constants.h"
 #include "../avm1/try_record.hpp"
 #include "../avm1/try_constants.h"
@@ -31,6 +32,9 @@ FVM_Result fvm_jit_try(FVM_JitInvocation *s, unsigned int index)
     FVM_ExecutionRoots saved(c, FVM_AVM1_TRY_ROOT_COUNT);
     if (result == FVM_EXCEPTION && (record.flags & FVM_AVM1_TRY_CATCH))
     {
+        /* [GC:] Catch copies this before binding its exception, including a binding named this. */
+        FVM_ThisCellScope catch_this(c, fvm_this_cell_initial(c, 0, s->frame->receiver),
+                                     c->swf_loaded);
         saved.values[FVM_AVM1_TRY_THROWN_ROOT] = c->exception_value;
         *s->stack = baseline.values;
         fvm_exception_clear(c);

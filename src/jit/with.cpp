@@ -1,5 +1,6 @@
 /* FlashVM: native structured-block execution and lexical With publication. */
 #include "internal.hpp"
+#include "../core/this_cell.hpp"
 #include "../avm1/operand_stack.hpp"
 #include "../avm1/lexical_scope.hpp"
 /* [GC:] Keep the wrapped input rooted until its managed lexical node is published. */
@@ -26,6 +27,8 @@ FVM_Result fvm_jit_with(FVM_JitInvocation *s, unsigned int index)
     FVM_AVM1LexicalScope lexical(c);
     lexical.publish(scope);
     s->stack->pop_back();
+    /* [GC:] With has a copied this cell while sharing registers and operand state. */
+    FVM_ThisCellScope with_this(c, fvm_this_cell_initial(c, 0, s->frame->receiver));
     return fvm_jit_run_block(s, index);
 }
 /* Execute an owned block without creating a new activation or operand/root vector. */

@@ -10,5 +10,5 @@ FVM_Result fvm_avm1_call_script(FVM_Context *, const fvm_detail::string &,
 /* Enter bytecode only after the shared activation builder chooses interpreter fallback. */
 FVM_Result fvm_avm1_interpret_function(FVM_Context *, const FVM_ScriptFunction &, FVM_Value *,
                                        fvm_detail::map<fvm_detail::string, FVM_Value> *,
-                                       FVM_Object *, Execution *, FVM_Object *);
+                                       FVM_Object *, Execution *, const FVM_Value *);
 #endif

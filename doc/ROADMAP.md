@@ -2147,3 +2147,12 @@ well as the existing fvm_* aliases. Regression fixtures demonstrate the former
 false pass and stale-evidence replacement. See [EN](PLATFORM_VALIDATION.md) /
 [RU](PLATFORM_VALIDATION.ru.md). Foreign OS execution, transitive/dlopen audits
 and all nine roadmap stages remain open / остаются открытыми.
+
+### v0.515 — mutable typed this cells
+
+Implemented / реализовано: exact SetVariable this in SWF5–8 replaces the active
+typed cell; typed Function2 inheritance, GC roots for suspended values, owned
+borrowed strings, With/Catch copies and shared Try/Finally state. Tests / проверки:
+this_cell_assignment, roots/allocation/transport variants and this_cell_blocks.
+See [RU/EN contract](THIS_CELL_ASSIGNMENT.md). Native receiver coercion, complete
+scope/SWF semantics and all nine roadmap stages remain open / остаются открытыми.

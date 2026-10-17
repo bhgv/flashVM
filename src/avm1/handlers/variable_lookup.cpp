@@ -46,14 +46,16 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
             return status;
         FVM_Value &result = roots.values[FVM_VARIABLE_LOOKUP_RESULT_ROOT];
         FVM_Object *selected_receiver = default_receiver ? default_receiver : c->global;
-        bool implicit_this = (receiver || c->script_this_undefined) &&
+        bool implicit_this = (receiver || c->script_this_cell || c->script_this_undefined) &&
                              (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5) &&
                              this_keyword(c, local_scope != 0, key);
         int found = 0;
         if (implicit_this && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5)
         {
             fvm_value_undefined(&result);
-            if (!c->script_this_undefined)
+            if (c->script_this_cell)
+                result = c->script_this_cell->value;
+            else if (!c->script_this_undefined)
             {
                 result.type = FVM_VALUE_OBJECT;
                 result.object = receiver;

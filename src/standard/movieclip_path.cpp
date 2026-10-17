@@ -292,7 +292,9 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                 if (modern && path_this && name == fvm_detail::string("this"))
                 {
                     /* The embedding receiver cannot replace an Undefined script cell. */
-                    if (!c->script_this_undefined)
+                    if (c->swf_loaded && c->script_this_cell)
+                        value = c->script_this_cell->value;
+                    else if (!c->script_this_undefined)
                     {
                         value.type = FVM_VALUE_OBJECT;
                         value.object = path_this;

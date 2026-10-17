@@ -19,7 +19,7 @@ extern "C"
         unsigned long abi_version;   /* FVM_SCRIPT_FRAME_ABI. */
         FVM_Object *function;        /* Active first-class script function. */
         FVM_Object *receiver;        /* Actual call receiver. */
-        FVM_Object *implicit_this;   /* Version/Function2-dependent this binding. */
+        FVM_Object *implicit_this;   /* Object-valued entry snapshot; NULL for primitive this. Read current this via execution helpers. */
         FVM_Object *activation;      /* Named locals and retained lexical environment. */
         FVM_Object *arguments;       /* Prepared arguments object, including formal aliases. */
         FVM_Value super_value;       /* Prepared super facade, or undefined if suppressed. */

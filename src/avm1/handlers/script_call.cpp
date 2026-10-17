@@ -30,10 +30,27 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
      * preload still receives the actual receiver according to the flags. */
     const bool actual_undefined = c->swf_loaded && c->calling_function == callee &&
                                   c->calling_this_undefined;
-    FVM_Object *local_this = actual_undefined ? 0 : receiver ? receiver : c->global;
+    FVM_Value local_this_value;
+    fvm_value_undefined(&local_this_value);
+    if (!actual_undefined)
+    {
+        local_this_value.type = FVM_VALUE_OBJECT;
+        local_this_value.object = receiver ? receiver : c->global;
+    }
     if (c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 && fn.function2 &&
         (fn.flags & FVM_AVM1_F2_THIS_FLAGS))
-        local_this = c->script_this_undefined ? 0 : c->script_this ? c->script_this : c->global;
+    {
+        if (c->script_this_cell)
+            local_this_value = c->script_this_cell->value;
+        else if (c->script_this_undefined)
+            fvm_value_undefined(&local_this_value);
+        else
+        {
+            local_this_value.type = FVM_VALUE_OBJECT;
+            local_this_value.object = c->script_this ? c->script_this : c->global;
+        }
+    }
+    FVM_Object *local_this = local_this_value.type == FVM_VALUE_OBJECT ? local_this_value.object : 0;
     /* [GC:] Root the definition timeline and restore the caller's target metadata
      * across both activation preparation and body execution. */
     FVM_AVM1TargetScope targets(c, base_clip ? base_clip : c->avm1_target_active ? 0 : receiver,
@@ -482,12 +499,13 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
             prepared.registers =
                 execution.global_registers ? c->avm1_global_registers : execution.registers.begin();
             prepared.capture = native_entry.capture;
-            status = fvm_exec_native_body(c, native_entry, prepared, result, &execution.constants);
+            status = fvm_exec_native_body(c, native_entry, prepared, result, &execution.constants,
+                                          &local_this_value);
             native_fault_offset = c->debug_offset;
         }
         else
             status = fvm_avm1_interpret_function(c, snapshot, result, &frame, receiver, &execution,
-                                                 local_this);
+                                                 &local_this_value);
     }
     catch (...)
     {

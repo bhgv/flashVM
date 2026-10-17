@@ -1,5 +1,7 @@
 /* FlashVM: getter-free binding selection and qualified variable writes for C execution clients. */
 #include "support.hpp"
+#include "../../core/this_cell.hpp"
+#include <cstring>
 #include "../scope_keywords.hpp"
 #include "variable_set_constants.h"
 #include "reference_path_constants.h"
@@ -42,6 +44,18 @@ extern "C" FVM_Result fvm_exec_variable_set(FVM_Context *c, FVM_Object *scope, F
                 return conversion;
         }
         size_t size = fvm_string_size(text), separator = size;
+        if (c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5 &&
+            c->script_this_cell && size == FVM_SCOPE_KEYWORD_THIS_UNITS &&
+            !std::memcmp(text.string, FVM_SCOPE_KEYWORD_THIS_NAME, size))
+        {
+            /* [GC:] Own borrowed string storage before publishing the replacement cell. */
+            FVM_Value copy = roots.values[FVM_VARIABLE_SET_VALUE_ROOT];
+            FVM_Result copied = fvm_native_result(c, FVM_OK, &copy);
+            if (copied != FVM_OK)
+                return copied;
+            fvm_this_cell_update(c, copy);
+            return FVM_OK;
+        }
         if (!size)
             return FVM_OK;
         unsigned int segments = 1;

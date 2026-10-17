@@ -1,5 +1,6 @@
 /* FlashVM: execute a prepared native script body with script activation semantics. */
 #include "native_body.hpp"
+#include "../../core/this_cell.hpp"
 #include "support.hpp"
 #include "execution_roots.h"
 #include "../target_scope.hpp"
@@ -8,7 +9,8 @@
 /* [GC:] Preserve script identity and a snapshotted capture across GC and self-unbinding. */
 FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry,
                                 const FVM_ScriptFrame &frame, FVM_Value *out,
-                                const fvm_detail::vector<fvm_detail::string> *pool)
+                                const fvm_detail::vector<fvm_detail::string> *pool,
+                                const FVM_Value *this_value)
 {
     /* Raw pool bytes belong to the activation snapshot, not the managed graph.
      * Nested native functions/root entries must restore the caller's borrowed view. */
@@ -39,26 +41,17 @@ FVM_Result fvm_exec_native_body(FVM_Context *c, const FVM_ScriptBodyEntry &entry
             roots.values[i].type = FVM_VALUE_OBJECT;
             roots.values[i].object = objects[i];
         }
-    /* Restore the caller's this even when generated code exits through an exception status. */
-    struct ThisScope
+    FVM_Value prepared_this;
+    fvm_value_undefined(&prepared_this);
+    if (frame.implicit_this)
     {
-        FVM_Context *context; /* Owner of scoped implicit this. */
-        bool previous_undefined; /* Saved scalar value of the caller this cell. */
-        FVM_Object *previous; /* [GC:] Suspended identity retained above. */
-        /* Publish prepared this for nested calls. */
-        ThisScope(FVM_Context *c, FVM_Object *value) : context(c), previous_undefined(c->script_this_undefined),
-                                                       previous(c->script_this)
-        {
-            c->script_this = value;
-            c->script_this_undefined = c->swf_loaded && c->script_depth && !value;
-        }
-        /* Restore identity on all exits. */
-        ~ThisScope()
-        {
-            context->script_this = previous;
-            context->script_this_undefined = previous_undefined;
-        }
-    } identity(c, frame.implicit_this);
+        prepared_this.type = FVM_VALUE_OBJECT;
+        prepared_this.object = frame.implicit_this;
+    }
+    if (this_value)
+        prepared_this = *this_value;
+    /* [GC:] Retain current and suspended typed cells through all generated-body exits. */
+    FVM_ThisCellScope identity(c, prepared_this);
     /* The shared activation builder already selected its definition timeline. */
     FVM_AVM1TargetScope target(c, frame.receiver, true);
     FVM_Value ignored;

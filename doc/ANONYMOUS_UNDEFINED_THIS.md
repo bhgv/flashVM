@@ -55,3 +55,7 @@ Function2 regression also passed separately. Twenty-six Unicorn branch/error
 cases passed for x86, ARM, ARM64, RV32 and RV64; native x64 ran in host suites.
 Five final fixture targets passed in minimal/AGG after the last test-only edits;
 Cairo's final full suite includes those edits. Foreign OS acceptance remains open.
+
+Follow-up v0.515: arbitrary active this-cell assignment is implemented with typed
+GC roots and copied With/Catch cells; see [current contract](THIS_CELL_ASSIGNMENT.md).
+Уточнение v0.515: присваивание произвольного this описано в связанном документе.

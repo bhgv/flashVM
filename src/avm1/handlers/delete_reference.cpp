@@ -62,7 +62,9 @@ extern "C" FVM_Result fvm_exec_delete_reference(FVM_Context *c, FVM_Object *scop
                 !std::memcmp(prefix.string, "this", sizeof("this") - 1))
             {
                 /* A qualified Delete2 reads the this cell before selecting its member. */
-                if (!c->script_this_undefined)
+                if (c->swf_loaded && c->script_this_cell)
+                    base = c->script_this_cell->value;
+                else if (!c->script_this_undefined)
                 {
                     base.type = FVM_VALUE_OBJECT;
                     base.object = receiver;

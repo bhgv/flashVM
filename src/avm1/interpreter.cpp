@@ -2,6 +2,7 @@
  * File: src/avm1/interpreter.cpp.
  */
 
+#include "../core/this_cell.hpp"
 #include "function_record.hpp"
 #include "function_definition.hpp"
 #include "with_record.hpp"
@@ -203,14 +204,14 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared = 0, size_t base = 0, unsigned int depth = 0,
-                          bool bounded = false, FVM_Object *implicit_this = 0);
+                          bool bounded = false, const FVM_Value *implicit_this = 0);
 /* Execute the current value. */
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared, size_t base, unsigned int depth, bool bounded,
-                          FVM_Object *implicit_this)
+                          const FVM_Value *implicit_this)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -250,18 +251,17 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
         FVM_Context *context;
         /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
         FVM_GCRootFrame frame, register_frame;
-        bool previous_this_undefined; /* Saved scalar value of the caller this cell. */
-        FVM_Object *previous_this; /* [GC:] Caller identity retained by its suspended frame. */
+        FVM_ThisCellScope this_scope; /* [GC:] Typed activation and suspended caller values. */
         /* Initialize Root Guard and its owned state. */
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         RootGuard(FVM_Context *c, fvm_detail::vector<FVM_Value> *s,
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                   fvm_detail::map<fvm_detail::string, FVM_Value> *l, FVM_Object *r,
                   /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                  fvm_detail::vector<FVM_Value> *reg, FVM_Object *current_this = 0)
+                  fvm_detail::vector<FVM_Value> *reg, const FVM_Value *current_this = 0, bool new_cell = false)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            : context(c), previous_this_undefined(c->script_this_undefined),
-              previous_this(c->script_this)
+            : context(c), this_scope(c, fvm_this_cell_initial(c, current_this,
+                                                        c->script_this ? c->script_this : r), new_cell)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
 
@@ -282,14 +282,7 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             register_frame.locals = 0;
             /* [GC:] Подключаем стек, локальные значения или получателя к активному корню вызова. */
             /* [GC:] The register frame also retains the distinct implicit receiver. */
-            register_frame.receiver = current_this    ? current_this
-                                      : previous_this ? previous_this
-                                                      : r;
-            c->script_this_undefined = c->swf_loaded && !current_this &&
-                                       (c->calling_this_undefined || previous_this_undefined);
-            if (c->script_this_undefined)
-                register_frame.receiver = 0;
-            c->script_this = register_frame.receiver;
+            register_frame.receiver = c->script_this;
             /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             c->gc_frames = &register_frame;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -302,12 +295,11 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
             /* [GC:] Обновляем цепочку активных корней; порядок восстановления должен быть LIFO. */
             context->gc_frames = frame.previous;
             /* [GC:] Restore caller identity on normal, exception and OOM exits. */
-            context->script_this = previous_this;
-            context->script_this_undefined = previous_this_undefined;
+            /* The typed cell scope restores the caller after detaching these frames. */
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    } roots(c, &stack, locals, self, &registers, implicit_this);
+    } roots(c, &stack, locals, self, &registers, implicit_this, !depth || implicit_this != 0);
     size_t pos = 0, pc = 0, i;
     unsigned long &steps = execution.steps;
     if (!c || (!data && size) || depth > FVM_AVM1_MAX_BLOCK_DEPTH)
@@ -446,6 +438,8 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                     FVM_AVM1LexicalScope scope_exit(c);
                     scope_exit.publish(scope);
                     stack.pop_back();
+                    /* [GC:] With copies the current this value into its child activation. */
+                    FVM_ThisCellScope with_this(c, fvm_this_cell_initial(c, 0, self));
                     status = execute(c, data + body, count, returned, locals, self, 0,
                                      &execution, base + body, depth + 1);
                     if (status != FVM_OK || execution.returned) return status;
@@ -473,6 +467,9 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                 RootGuard saved_roots(c, &saved, 0, 0, &registers);
                 if (result == FVM_EXCEPTION && (record.flags & FVM_AVM1_TRY_CATCH))
                 {
+                    /* [GC:] Catch owns a copied cell; Try/Finally retain the parent cell. */
+                    FVM_ThisCellScope catch_this(c, fvm_this_cell_initial(c, 0, self),
+                                                 c->swf_loaded);
                     saved[FVM_AVM1_TRY_THROWN_ROOT] = c->exception_value;
                     stack = baseline;
                     fvm_exception_clear(c);
@@ -1875,8 +1872,12 @@ extern "C" FVM_Result fvm_avm1_execute(FVM_Context *c, const void *data, size_t 
     FVM_Result native = fvm_execution_try_root(c, data, size, c->global, &handled);
     if (handled)
         return native;
+    FVM_Value root_this;
+    fvm_value_undefined(&root_this);
+    root_this.type = FVM_VALUE_OBJECT;
+    root_this.object = c->global;
     return execute(c, (const unsigned char *)data, size, 0, 0, c->global, 0, 0, 0, 0, c->swf_loaded,
-                   c->global);
+                   &root_this);
 }
 /* [GC:] Replace a synchronous host trace sink after validating its retained capture. */
 extern "C" FVM_Result fvm_avm1_set_trace_rooted(FVM_Context *c, FVM_NativeFunction callback,
@@ -2002,7 +2003,7 @@ FVM_Result fvm_avm1_interpret_function(FVM_Context *c, const FVM_ScriptFunction 
                                        FVM_Value *result,
                                        fvm_detail::map<fvm_detail::string, FVM_Value> *frame,
                                        FVM_Object *receiver, Execution *execution,
-                                       FVM_Object *implicit_this)
+                                       const FVM_Value *implicit_this)
 {
     return execute(c, snapshot.body.begin(), snapshot.body.size(), result, frame, receiver,
                    &snapshot.constants, execution, 0, 0, false, implicit_this);
@@ -2024,8 +2025,12 @@ extern "C" FVM_Result fvm_avm1_execute_receiver(FVM_Context *c, const void *data
     FVM_Result native = fvm_execution_try_root(c, data, size, receiver, &handled);
     if (handled)
         return native;
+    FVM_Value root_this;
+    fvm_value_undefined(&root_this);
+    root_this.type = FVM_VALUE_OBJECT;
+    root_this.object = receiver;
     return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0, 0, c->swf_loaded,
-                   receiver);
+                   &root_this);
 }
 
 /* Execute an exact stored frame block independently of the receiving context's load state. */
@@ -2047,6 +2052,10 @@ FVM_Result fvm_avm1_execute_block_receiver(FVM_Context *c, const void *data, siz
         if (handled)
             return native;
     }
+    FVM_Value root_this;
+    fvm_value_undefined(&root_this);
+    root_this.type = FVM_VALUE_OBJECT;
+    root_this.object = receiver;
     return execute(c, (const unsigned char *)data, size, 0, 0, receiver, 0, 0, 0,
-                   0, true, receiver);
+                   0, true, &root_this);
 }

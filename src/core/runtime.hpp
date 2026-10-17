@@ -224,6 +224,13 @@ struct FVM_SourceLocation
         line; /* Source line number associated with this entry. */
 };
 
+/* [GC:] Allocation-free activation this cell, linked across suspended script scopes. */
+struct FVM_ThisCell
+{
+    FVM_ThisCell *previous; /* [GC:] Suspended activation cells retained until scope exit. */
+    FVM_Value value; /* [GC:] Mutable typed this, including strings and primitive metatables. */
+};
+
 /* Define FVM_Context struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
 struct FVM_Context
@@ -361,6 +368,7 @@ struct FVM_Context
     FVM_GCRootFrame *gc_frames; /* [GC:] Linked active collector root frames. */
     /* [GC:] Описываем или используем состояние сборщика и его активные корни. */
     unsigned int gc_native_depth;  /* Current native-call collector barrier depth. */
+    FVM_ThisCell *script_this_cell; /* [GC:] Active and suspended typed this cells. */
     FVM_Object *pending_finalizer; /* [GC:] Resolved finalizer whose user-code entry is not yet
                                       committed. */
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */

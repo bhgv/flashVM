@@ -47,3 +47,7 @@ Fresh Cairo GNU readelf evidence passed for 1063 CTest ELF artifacts, with direc
 dependencies limited to libc, libgcc_s, libm and libstdc++; bundled dependency
 families were not dynamically linked. This audit is direct DT_NEEDED evidence,
 not transitive/dlopen coverage or foreign-platform acceptance.
+
+Follow-up v0.515: arbitrary active this-cell assignment is implemented with typed
+GC roots and copied With/Catch cells; see [current contract](THIS_CELL_ASSIGNMENT.md).
+Уточнение v0.515: присваивание произвольного this описано в связанном документе.
