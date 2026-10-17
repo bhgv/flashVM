@@ -2230,3 +2230,12 @@ Detached input graphs stay rooted across coercion. Tests / проверки:
 array_index_live_length plus roots/allocation variants.
 See [RU/EN contract](ARRAY_INDEX_LIVE_LENGTH.md). Remaining Array/SWF semantics,
 real foreign-platform acceptance and all nine stages remain open / остаются открытыми.
+
+### v0.525 — native method-valued own Array length
+
+Implemented / реализовано: raw own native method slots resolve to stable Function
+data for length coercion, preserving case policy, GC roots and wrapper errors.
+Tests / проверки: array_method_length plus roots/allocation variants, including
+graph roundtrips and C/interpreter/JIT routes.
+See [RU/EN contract](ARRAY_METHOD_LENGTH.md). General Array/SWF compatibility,
+real foreign-platform acceptance and all nine stages remain open / остаются открытыми.

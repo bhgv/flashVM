@@ -74,3 +74,7 @@ see [RU/EN contract](SORT_ON_LIVE_LENGTHS.md).
 Follow-up v0.524 applies live length to general indexed assignment and removes
 loaded post-store cache growth; see [RU/EN contract](ARRAY_INDEX_LIVE_LENGTH.md).
 В v0.524 обычные индексные записи используют текущую собственную длину.
+
+Follow-up v0.525 reads native method-valued own length through its stable Function;
+see [RU/EN contract](ARRAY_METHOD_LENGTH.md).
+В v0.525 обработан собственный нативный метод в роли length.

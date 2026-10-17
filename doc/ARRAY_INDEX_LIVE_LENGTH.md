@@ -64,3 +64,7 @@ x64 uses native JIT. Direct DT_NEEDED audit passed 1092 Cairo ELF artifacts,
 with only libc/libgcc_s/libm/libstdc++; transitive/dlopen dependencies and actual
 foreign OS acceptance are not certified. Все перечисленные проверки успешны;
 полная совместимость и девять этапов остаются открытыми.
+
+Follow-up v0.525 extends the shared own length reader to native method-valued
+slots; see [RU/EN contract](ARRAY_METHOD_LENGTH.md).
+В v0.525 индексная запись также учитывает нативный метод в роли length.

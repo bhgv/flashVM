@@ -15,6 +15,7 @@
 #include "../core/object_root_scope.hpp"
 #include "../core/value_vector_root_scope.hpp"
 #include "base_state.hpp"
+#include "function_state.hpp"
 #include "../core/string_internal.hpp"
 #include "flashvm/standard.h"
 #include "flashvm/table.h"
@@ -126,8 +127,8 @@ void legacy_signed_element(FVM_Object *o, long index, FVM_Value &out)
     }
 }
 
-/* Read own length storage without inherited properties or getter execution. */
-void legacy_length_data(FVM_Context *c, FVM_Object *o, FVM_Value &value)
+/* Read own length storage, including lazy native Functions, without getters or inheritance. */
+FVM_Result legacy_length_data(FVM_Context *c, FVM_Object *o, FVM_Value &value)
 {
     fvm_value_undefined(&value);
     fvm_detail::map<fvm_detail::string, FVM_Value>::iterator property =
@@ -138,11 +139,21 @@ void legacy_length_data(FVM_Context *c, FVM_Object *o, FVM_Value &value)
     {
         fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
             fvm_property_find(c, o->accessors, fvm_detail::string("length"));
-        if (accessor != o->accessors.end() &&
-            !fvm_base_accessor_data(accessor->second, value) &&
-            fvm_base_array_length_accessor(accessor->second) && o->resource_result_valid)
-            value = o->resource_result;
+        if (accessor != o->accessors.end())
+        {
+            if (!fvm_base_accessor_data(accessor->second, value) &&
+                fvm_base_array_length_accessor(accessor->second) && o->resource_result_valid)
+                value = o->resource_result;
+        }
+        else
+        {
+            fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator method =
+                fvm_property_find(c, o->methods, fvm_detail::string("length"));
+            if (method != o->methods.end())
+                return fvm_function_wrap_entry(c, o, method->first, method->second, &value);
+        }
     }
+    return FVM_OK;
 }
 
 /* Capture own-data length once; deleted native accessors do not expose cached storage. */
@@ -152,11 +163,13 @@ FVM_Result legacy_data_length(FVM_Context *c, FVM_Object *o, unsigned long &out,
     if (signed_length)
         *signed_length = 0;
     FVM_Value value;
-    legacy_length_data(c, o, value);
+    FVM_Result status = legacy_length_data(c, o, value);
+    if (status != FVM_OK)
+        return status;
     /* [GC:] valueOf can remove its own length binding and collect during conversion. */
     FVM_ObjectRootScope roots(c, value.type == FVM_VALUE_OBJECT ? value.object : 0);
     double number = 0;
-    FVM_Result status = fvm_avm1_number(c, &value, &number);
+    status = fvm_avm1_number(c, &value, &number);
     if (status != FVM_OK)
         return status;
     const long length = fvm_array_number_length(number);
@@ -242,11 +255,12 @@ FVM_Result legacy_set_length(FVM_Context *c, FVM_Object *o, double count, FVM_Ar
     if (o->resource_kind == FVM_RESOURCE_ARRAY)
     {
         FVM_Value previous;
-        legacy_length_data(c, o, previous);
+        FVM_Result status = legacy_length_data(c, o, previous);
+        if (status != FVM_OK)
+            return status;
         const long signed_old = previous.type == FVM_VALUE_NUMBER
                                     ? fvm_array_number_length(previous.number) : 0;
         const unsigned long old = signed_old > 0 ? (unsigned long)signed_old : 0;
-        FVM_Result status = FVM_OK;
         for (unsigned long i = count > 0 ? (unsigned long)count : 0; i < old; ++i)
         {
             status = work.step();
