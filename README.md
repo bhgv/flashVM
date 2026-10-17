@@ -1,5 +1,5 @@
-Development version: **0.539** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.539 ` and an English description. Increase the subversion before each
+Development version: **0.540** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.540 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -547,6 +547,7 @@ Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG
 Documentation source links and maintenance / Правила документации: [RU/EN](doc/DOCUMENTATION_GUIDELINES.md).
 Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_QUALITY.md).
 [Multimedia and device bridges / Мосты мультимедиа и устройств](doc/MULTIMEDIA_BRIDGES.md): static FFmpeg and replaceable host callbacks.
+[Native speech / Системные TTS и STT](doc/SPEECH_BRIDGES.md): explicit providers and per-OS prepared-host examples.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

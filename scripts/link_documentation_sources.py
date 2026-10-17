@@ -32,7 +32,7 @@ def index_sources():
     files = []
     for folder in ('include/flashvm', 'src', 'ports'):
         files.extend(p for p in (ROOT / folder).rglob('*')
-                     if p.suffix in ('.h', '.hpp', '.c', '.cpp') and p.is_file())
+                     if p.suffix in ('.h', '.hpp', '.c', '.cpp', '.mm') and p.is_file())
     for path in sorted(files):
         original = path.read_text(encoding='utf-8')
         text = without_comments(original)
@@ -132,7 +132,7 @@ def refresh(path, index):
             if not existing or existing[1] not in index:
                 continue
             destination = existing[2].split('#', 1)[0]
-            if Path(destination).suffix not in ('.h', '.hpp', '.c', '.cpp', '.cmake'):
+            if Path(destination).suffix not in ('.h', '.hpp', '.c', '.cpp', '.mm', '.cmake'):
                 continue
             # Refresh old generated #L anchors and plain header links alike;
             # manual/TOC links remain intact because their targets are Markdown.
@@ -148,7 +148,7 @@ def refresh(path, index):
                     continue
                 if key in SOURCE_LOCATIONS:
                     item = SOURCE_LOCATIONS[key]
-                elif Path(destination).suffix in ('.c', '.cpp'):
+                elif Path(destination).suffix in ('.c', '.cpp', '.mm'):
                     # Preserve an explicit implementation if its definition
                     # is outside the bounded declaration matcher.
                     continue

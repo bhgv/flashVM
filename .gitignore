@@ -26,3 +26,7 @@ __pycache__/
 # Explicit optional FFmpeg dependency build outputs.
 /external/ffmpeg/work/
 /external/ffmpeg/install/
+
+# Optional speech SDK/model work is local dependency material.
+/external/speech/work/
+/external/speech/install/

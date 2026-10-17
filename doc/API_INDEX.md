@@ -79,6 +79,10 @@ ToggleQuality transitions and renderer limits.
 
 [Bridge API and detailed contracts](MULTIMEDIA_BRIDGES.md); [public header](../include/flashvm/multimedia.h).
 Decoder/capture sessions, synchronous PCM/RGBA output, native input and future sensor providers.
+## Speech / Речевые службы
+
+[Detailed TTS/STT API and per-OS preparation](SPEECH_BRIDGES.md); [public speech.h](../include/flashvm/speech.h).
+Separate explicit voice and microphone sessions, replaceable native providers, retained UTF-8 transcript query/copy.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

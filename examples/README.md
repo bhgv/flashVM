@@ -109,6 +109,11 @@
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
+  - [speech](#group-multimedia-speech)
+    - [speech_android](#example-multimedia-speech_android) — <small><em>Android: Context, permissions, JNI и речевые службы</em></small>
+    - [speech_macos](#example-multimedia-speech_macos) — <small><em>macOS: реальные speech и microphone permissions</em></small>
+    - [speech_stt](#example-multimedia-speech_stt) — <small><em>Системный STT: разрешения и захват настоящей речи</em></small>
+    - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 
@@ -1149,6 +1154,52 @@ FFmpeg: декодирование файлов и явная камера. Ис
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
 Нет ожидания, фонового потока, изменения прав или поиска устройств.
 
+<a id="group-multimedia-speech"></a>
+### speech
+
+<a id="example-multimedia-speech_android"></a>
+#### speech_android
+
+Android: Context, permissions, JNI и речевые службы. Native app integration source; не standalone executable: [README](multimedia/speech_android/README.md).
+[SocketNames.java](multimedia/speech_android/SocketNames.java) показывает реальные Android ABSTRACT/FILESYSTEM соединения.
+
+Исходники интеграции **в реальное Android приложение**, не desktop executable
+и не готовый APK. bridge.cpp содержит JNI host с двумя независимыми sessions,
+SpeechHost.java — разрешения и Java entrypoints. Настоящие system helpers находятся
+в src/multimedia/speech/tts/FlashVMTts.java и stt/FlashVMStt.java.
+
+<a id="example-multimedia-speech_macos"></a>
+#### speech_macos
+
+macOS: реальные speech и microphone permissions. Native app integration source; не standalone executable: [README](multimedia/speech_macos/README.md).
+
+Исходник prepare.mm для **настоящего macOS app host** (10.15+), а не переносимый
+standalone executable. Он показывает то, что библиотека не должна делать скрыто:
+реальные SFSpeechRecognizer/AVCaptureDevice permission prompts после явного
+пользовательского действия, ожидание результата, затем open на main queue.
+
+<a id="example-multimedia-speech_stt"></a>
+#### speech_stt
+
+Системный STT: разрешения и захват настоящей речи. Исполняемый C89 пример: [README](multimedia/speech_stt/README.md).
+
+Исполняемый C89 host: явно открывает настоящий микрофон/recognizer, до примерно
+30 секунд опрашивает actual partial/final текст, закрывается после final либо
+ошибки/timeout. Ни одна заранее заданная строка не выдаётся за распознавание.
+Без аргументов только usage, без capture/permission dialogs. [GC:] Микрофон,
+модель и host transcript allocations не принадлежат VM collector.
+
+<a id="example-multimedia-speech_tts"></a>
+#### speech_tts
+
+Системный TTS: подготовка голоса и реальная речь. Исполняемый C89 пример: [README](multimedia/speech_tts/README.md).
+
+Исполняемый C89 пример: заводит настоящий голос/SSIP session, отправляет явный
+UTF-8 текст, ждёт Enter, затем останавливает и закрывает session. Это ожидание
+нужно: немедленный close отменил бы только что поставленную речь. Без аргументов
+пример выводит usage и ничего не произносит/не подключает. Обычные ошибки вместо
+assertions; [GC:] native sessions не входят в VM heap и освобождаются явно.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -1242,6 +1293,10 @@ Source line links describe the current checkout, including in historical notes.
 - [shared_mutex — embedding/shared_mutex](#example-embedding-shared_mutex)
 - [shared_mutex.as — actionscript/shared_mutex.as](#example-actionscript-shared_mutex-as)
 - [source_breakpoints — debugger/source_breakpoints](#example-debugger-source_breakpoints)
+- [speech_android — multimedia/speech_android](#example-multimedia-speech_android)
+- [speech_macos — multimedia/speech_macos](#example-multimedia-speech_macos)
+- [speech_stt — multimedia/speech_stt](#example-multimedia-speech_stt)
+- [speech_tts — multimedia/speech_tts](#example-multimedia-speech_tts)
 - [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
 - [sqlite — extending/sqlite](#example-extending-sqlite)
 - [stack_c — extending/stack_c](#example-extending-stack_c)

@@ -2417,6 +2417,29 @@ Speech/TTS/STT is the next related bridge increment. Physical audio output,
 SWF/AS multimedia integration, camera hardware and foreign OS runs remain open.
 No roadmap stage is closed.
 
+### v0.540 — explicit native TTS/STT providers and prepared-host tutorials
+
+Implemented / реализовано: speech/tts and speech/stt; replaceable C89 voice and
+recognition sessions with strict UTF-8, explicit microphone opening and retained
+transcript query/copy. Real Windows SAPI TTS/dictation, Linux SSIP TTS and optional
+static ALSA/Vosk capture/inference, macOS Speech Synthesis and optional
+Speech/AVFoundation STT, Android JNI plus actual Java speech service helpers.
+Explicit filesystem/abstract SSIP endpoints preserve binary names, embedded NULs
+and exact native connect lengths on Linux/Android. Four documented tutorials cover executable TTS/STT and Android/macOS native app
+preparation, real permissions, system services, ownership and cleanup.
+Validation: MEDIA full suite 1128 passed, one explicitly skipped named Unix
+endpoint test (1129 total; runner denies socket(AF_UNIX) before namespace choice).
+NO_MEDIA speech checks: seven passed, same one skip. Five affected speech tests
+passed ASAN/UBSAN; LeakSanitizer is unavailable in this runner. Real socketpair
+I/O, binary names/lengths and intercepted connect arguments are tested separately
+from an actual endpoint/daemon or audible-output run. Twenty Android JNI/Unix
+adapter/example units passed C++98 source compilation with the official JNI
+header; four Java sources compiled against Android API 35. Four optional Linux
+ALSA/Vosk units compiled against ALSA 1.2.12/Vosk 0.3.45 headers; no complete Vosk
+model/microphone run is claimed. Tutorial comments/API coverage, all 87 catalog
+entries, source links and version metadata passed. Native Windows/macOS/Android
+hardware acceptance remains open. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

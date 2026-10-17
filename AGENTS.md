@@ -123,3 +123,8 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   Use real system/library functions; expose missing target capabilities as UNSUPPORTED.
   Preserve explicit host ownership/permissions and a replaceable C89 callback ABI.
   Document custom bridge construction, units/clocks and native validation limits; maintain examples.
+
+- Speech examples must include actual per-OS host preparation: installed voice/recognition
+  services, static SDK/model paths, permissions/manifest/entitlements, native event loop,
+  ownership and cleanup. Distinguish executable tutorials from app-integration sources
+  and compile/protocol fixtures from actual audible/microphone/device acceptance.

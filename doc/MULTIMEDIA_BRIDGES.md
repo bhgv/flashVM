@@ -23,12 +23,15 @@ implicit network connection or automatic ActionScript dispatch is performed.
 | `src/multimedia/camera` | Explicit camera opening and registered device-format lookup |
 | `src/multimedia/input` | Common polling plus Linux, Windows, macOS and Android functions |
 | `src/multimedia/common` | Session ownership, validation, FFmpeg open/read/seek/close/backend |
+| `src/multimedia/speech/tts` | Native text-to-speech providers and explicit voice sessions |
+| `src/multimedia/speech/stt` | Native microphone recognition and retained UTF-8 transcripts |
 | `external/ffmpeg` | Pinned explicit static SDK build recipe and CMake import |
 
 Функции разнесены по операциям; каждый файл помечает ОС, каждая строка нового
 переходника и примеров пояснена. Обёртки системного ввода работают независимо от
-MEDIA и OS_PORTS. Для добавляемых speech/TTS/STT используется такой же принцип;
-сам FFmpeg не синтезирует и не распознаёт речь.
+MEDIA и OS_PORTS. Для speech/TTS/STT используется такой же принцип;
+[реальные системные speech bridges и подготовка host](SPEECH_BRIDGES.md).
+Сам FFmpeg не синтезирует и не распознаёт речь.
 
 ## Общий контракт / Common contract
 

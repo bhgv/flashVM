@@ -1,4 +1,4 @@
-Версия разработки: **0.539** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.540** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -313,6 +313,7 @@ Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG
 Documentation source links and maintenance / Правила документации: [RU/EN](doc/DOCUMENTATION_GUIDELINES.md).
 Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_QUALITY.md).
 [Multimedia and device bridges / Мосты мультимедиа и устройств](doc/MULTIMEDIA_BRIDGES.md): static FFmpeg and replaceable host callbacks.
+[Native speech / Системные TTS и STT](doc/SPEECH_BRIDGES.md): explicit providers and per-OS prepared-host examples.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

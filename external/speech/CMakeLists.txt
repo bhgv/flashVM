@@ -1,0 +1,20 @@
+# Optional real Linux microphone STT; never substitute shared libraries or download a model.
+set(FVM_VOSK_ROOT "" CACHE PATH "Static Vosk SDK prefix with include/vosk_api.h and lib/libvosk.a")
+set(FVM_ALSA_ROOT "" CACHE PATH "Static ALSA SDK prefix with include/alsa/asoundlib.h and lib/libasound.a")
+set(FVM_VOSK_SYSTEM_LIBRARIES "" CACHE STRING "Transitive libraries required by the supplied static Vosk/Kaldi/ALSA SDKs")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
+  message(FATAL_ERROR "FVM_ENABLE_LINUX_STT requires a Linux target")
+endif()
+foreach(check "${FVM_VOSK_ROOT}/include/vosk_api.h" "${FVM_VOSK_ROOT}/lib/libvosk.a"
+              "${FVM_ALSA_ROOT}/include/alsa/asoundlib.h" "${FVM_ALSA_ROOT}/lib/libasound.a")
+  if(NOT EXISTS "${check}")
+    message(FATAL_ERROR "Missing static speech SDK component: ${check}; see external/speech/README.md")
+  endif()
+endforeach()
+add_library(fvm_vosk STATIC IMPORTED GLOBAL)
+set_target_properties(fvm_vosk PROPERTIES IMPORTED_LOCATION "${FVM_VOSK_ROOT}/lib/libvosk.a")
+add_library(fvm_alsa STATIC IMPORTED GLOBAL)
+set_target_properties(fvm_alsa PROPERTIES IMPORTED_LOCATION "${FVM_ALSA_ROOT}/lib/libasound.a")
+add_library(fvm_linux_stt INTERFACE)
+target_link_libraries(fvm_linux_stt INTERFACE fvm_vosk fvm_alsa ${FVM_VOSK_SYSTEM_LIBRARIES}
+  Threads::Threads m ${CMAKE_DL_LIBS})

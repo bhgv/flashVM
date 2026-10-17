@@ -57,7 +57,7 @@ endif()
 
 # Native multimedia input wrappers are available independently of FFmpeg/OS_PORTS.
 if(WIN32)
-  target_link_libraries(flashvm PUBLIC user32)
+  target_link_libraries(flashvm PUBLIC user32 ole32 sapi uuid)
 elseif(ANDROID)
   target_link_libraries(flashvm PUBLIC android)
 elseif(APPLE)
@@ -66,6 +66,44 @@ elseif(APPLE)
     message(FATAL_ERROR "Multimedia input requires ApplicationServices on macOS")
   endif()
   target_link_libraries(flashvm PUBLIC ${FVM_MULTIMEDIA_APPLICATION_SERVICES})
+endif()
+if(APPLE)
+  option(FVM_ENABLE_MACOS_STT "Build macOS 10.15+ Speech/AVFoundation recognition adapter" ON)
+  if(FVM_ENABLE_MACOS_STT)
+    if(CMAKE_VERSION VERSION_LESS 3.16)
+      message(FATAL_ERROR "macOS STT requires CMake 3.16+ Objective-C++ support; or disable FVM_ENABLE_MACOS_STT")
+    endif()
+    if(CMAKE_OSX_DEPLOYMENT_TARGET AND CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS 10.15)
+      message(FATAL_ERROR "macOS STT requires deployment target 10.15+; or disable FVM_ENABLE_MACOS_STT")
+    endif()
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 98)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    set(CMAKE_OBJCXX_EXTENSIONS OFF)
+    find_library(FVM_SPEECH_FRAMEWORK Speech)
+    find_library(FVM_AVFOUNDATION_FRAMEWORK AVFoundation)
+    find_library(FVM_FOUNDATION_FRAMEWORK Foundation)
+    if(NOT FVM_SPEECH_FRAMEWORK OR NOT FVM_AVFOUNDATION_FRAMEWORK OR NOT FVM_FOUNDATION_FRAMEWORK)
+      message(FATAL_ERROR "macOS STT requires Speech, AVFoundation and Foundation (10.15+ SDK); or disable FVM_ENABLE_MACOS_STT")
+    endif()
+    set(FVM_MACOS_STT_SOURCES src/multimedia/speech/stt/macos_service.mm
+      src/multimedia/speech/stt/macos_open.mm src/multimedia/speech/stt/macos_poll.mm
+      src/multimedia/speech/stt/macos_close.mm)
+    # Use the actual Objective-C++ frontend while retaining C++98 for the C++ portion.
+    set_source_files_properties(${FVM_MACOS_STT_SOURCES} PROPERTIES LANGUAGE OBJCXX
+      COMPILE_FLAGS "-fblocks -fno-objc-arc")
+    target_sources(flashvm PRIVATE ${FVM_MACOS_STT_SOURCES})
+    target_compile_definitions(flashvm PRIVATE FVM_HAS_MACOS_STT=1)
+    target_link_libraries(flashvm PUBLIC ${FVM_SPEECH_FRAMEWORK}
+      ${FVM_AVFOUNDATION_FRAMEWORK} ${FVM_FOUNDATION_FRAMEWORK})
+  endif()
+endif()
+option(FVM_ENABLE_LINUX_STT "Build real Linux ALSA/Vosk speech recognition with supplied static SDKs" OFF)
+if(FVM_ENABLE_LINUX_STT)
+  add_subdirectory(external/speech)
+  target_include_directories(flashvm SYSTEM PRIVATE "${FVM_VOSK_ROOT}/include" "${FVM_ALSA_ROOT}/include")
+  target_compile_definitions(flashvm PRIVATE FVM_HAS_LINUX_STT=1)
+  target_link_libraries(flashvm PUBLIC fvm_linux_stt)
 endif()
 if(FVM_ENABLE_MEDIA)
   add_subdirectory(external/ffmpeg)
@@ -314,4 +352,24 @@ if(FVM_BUILD_TESTS AND CMAKE_CROSSCOMPILING)
   if(NOT CMAKE_CROSSCOMPILING_EMULATOR)
     message(STATUS "Cross tests are build-only until a target execution adapter is configured")
   endif()
+endif()
+
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND
+   CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_speech_ssip_protocol_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_speech_ssip.py
+      $<TARGET_FILE:flashvm_examples_multimedia_speech_tts_main>)
+  set_tests_properties(flashvm_speech_ssip_protocol_host PROPERTIES TIMEOUT 60 SKIP_RETURN_CODE 77)
+endif()
+
+if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_multimedia_tutorial_contract
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_multimedia_examples.py)
+endif()
+
+if(TARGET flashvm_tests_speech_unix_connect AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   AND NOT ANDROID AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  # Interpose only endpoint creation/connect in this fixture; transport uses real socketpair I/O.
+  set_property(TARGET flashvm_tests_speech_unix_connect APPEND_STRING PROPERTY
+    LINK_FLAGS " -Wl,--wrap=socket -Wl,--wrap=connect")
 endif()
