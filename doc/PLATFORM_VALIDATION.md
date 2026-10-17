@@ -258,3 +258,10 @@ unavailable device can still leave a uniquely named binary for manual cleanup.
 Nine host transport tests include overlapping executions of the same target,
 argument quoting, partial push cleanup, execution timeout, cleanup failures and
 shared fixture paths. These are mocked ADB tests, not an Android device run.
+
+## Recorded Linux matrix — v0.530
+
+The v0.529 implementation passed minimal (1095), AGG (1115) and Cairo (1115),
+plus fresh Unicorn/direct ELF gates. See [checkpoint](LINUX_CHECKPOINT_V529.md)
+for exact source/tool provenance, permission repairs and acceptance limits.
+This documentation checkpoint adds no runtime behavior or foreign-OS evidence.

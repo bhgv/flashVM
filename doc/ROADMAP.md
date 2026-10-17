@@ -2275,3 +2275,11 @@ cache GC/alias/shared-edge controls, existing typed/recreated suites. Linux
 minimal: 1095 cases; nine targeted ASan/UBSan cases. См.
 [RU/EN contract](ARRAY_LENGTH_CACHE_GC.md). Full compatibility and real foreign
 OS acceptance remain open; no roadmap stage is closed.
+
+### v0.530 — Linux validation checkpoint (documentation only)
+
+Recorded v0.529 implementation evidence: minimal 1095; AGG/Cairo 1115 each;
+26 fresh Unicorn cases per profile; direct ELF audits 1084/1104/1104 artifacts.
+Nine targeted ASan/UBSan cases and 26 build-definition checks passed. См.
+[RU/EN checkpoint and limits](LINUX_CHECKPOINT_V529.md). No executable feature
+change. All nine completion stages remain open / остаются открытыми.

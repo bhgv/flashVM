@@ -4333,3 +4333,10 @@ obsolete cache clearing on deletion, independent alias/shared-edge controls,
 C/interpreter/JIT and errors. Minimal 1095/1095 after generated-ELF permission
 repair/rerun; nine targeted ASan/UBSan cases (stack instrumentation on, LSan off).
 See [RU/EN contract](ARRAY_LENGTH_CACHE_GC.md). All nine stages remain open.
+
+### v0.530 — recorded v0.529 Linux matrix
+
+Tested / проверено: minimal 1095, AGG/Cairo 1115 each; fresh 26-case Unicorn
+gates and direct ELF audits per profile; nine targeted ASan/UBSan cases. See
+[RU/EN evidence and scope](LINUX_CHECKPOINT_V529.md). Documentation-only version;
+full SWF compatibility and real foreign-OS acceptance remain open.
