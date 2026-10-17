@@ -168,6 +168,9 @@ ARM, ARM64, RV32 и RV64; обычные/дальние переходы, выз
 исполнение сгенерированных инструкций с заглушками helper; полная VM на другой
 CPU/ОС таким прогоном не проверяется.
 
+
+Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). This checkpoint does not enable a Windows VM backend. / Windows VM backend пока не включён.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -2868,6 +2868,22 @@ per-line tutorial comments pass. No foreign-platform or hardware run is claimed.
 MovieClip audio clocks, resampling and full SWF/platform conformance remain open.
 Ни один из девяти этапов этим checkpoint не закрывается.
 
+### v0.560 — Microsoft x64 call-plan encoder
+
+Implemented / реализовано: a separate offline Windows x64 target shares decoded
+call-plan lowering and checked rel32 relocations. Its fixed frame preserves r12,
+passes state/operand in RCX/EDX and reserves 32 bytes of mandatory shadow space.
+It does not reuse the incompatible System V register contract or select Windows
+runtime execution before memory/unwind publication is available.
+
+Validation: Linux x86-64 GCC executes the emitted bytes with real ms_abi helpers.
+Checks cover full-width addresses, unsigned high operands, volatile-register
+clobbers, entry alignment, writes to all four home slots, conditional/backward
+branches, error exits and a forward jump over 1 MiB. Invalid branch targets leave
+output unchanged. Existing five offline architecture encoder fixtures also pass.
+This is actual instruction/ABI execution on Linux, not Windows OS/SEH acceptance.
+Documentation and example guide identify that boundary. Stages 8/9 remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

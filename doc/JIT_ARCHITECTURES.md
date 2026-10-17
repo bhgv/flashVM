@@ -204,6 +204,9 @@ by the current minimal Release executable, then checked by
 `scripts/check_jit_backends.py`. This executes generated instructions with stub
 helpers; it remains distinct from running full FlashVM on a foreign CPU/OS.
 
+
+Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). This checkpoint does not enable a Windows VM backend. / Windows VM backend пока не включён.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -724,6 +724,7 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 #### jit
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/jit/README.md](embedding/jit/README.md).
+Руководство отдельно описывает Windows x64 offline encoder и Linux ms_abi evidence, не выдавая их за запуск Windows VM.
 
 Явно компилирует тело x*2+2 и подключает его к обычной AVM1-функции. Сравнивает результат вызова и размер кода, показывает отдельное владение [FVM_JitCode](../src/jit/internal.hpp#L59) и interpreter fallback.
 

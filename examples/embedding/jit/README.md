@@ -44,6 +44,9 @@ cmake --build build-examples --target flashvm_examples_embedding_jit_main --para
 [Описание в общем каталоге](../../README.md#example-embedding-jit).
 <!-- example-catalog-api:end -->
 
+
+Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / автономный генератор и проверка ABI: [JIT_WINDOWS_X64.md](../../../doc/JIT_WINDOWS_X64.md). This checkpoint does not enable a Windows VM backend. / Windows VM backend пока не включён.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

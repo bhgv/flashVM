@@ -27,6 +27,9 @@ void machine(FVM_JitTarget target, fvm_detail::vector<unsigned char> &b, FVM_Jit
     case FVM_JIT_TARGET_X86:
         fvm_jit_machine_x86(b, op, address, operand);
         break;
+    case FVM_JIT_TARGET_WINDOWS_X64:
+        fvm_jit_machine_windows_x64(b, op, address, operand);
+        break;
     case FVM_JIT_TARGET_ARM:
         fvm_jit_machine_arm(b, op, address, operand);
         break;
@@ -59,7 +62,8 @@ FVM_Result fvm_jit_encode(FVM_JitTarget target, const FVM_JitCode &code,
                           fvm_detail::vector<unsigned char> &output, FVM_JitResolver resolver,
                           void *userdata)
 {
-    if (target < FVM_JIT_TARGET_X86 || target > FVM_JIT_TARGET_RISCV64 || !resolver ||
+    if (((target < FVM_JIT_TARGET_X86 || target > FVM_JIT_TARGET_RISCV64) &&
+         target != FVM_JIT_TARGET_WINDOWS_X64) || !resolver ||
         code.actions.empty())
         return FVM_UNSUPPORTED;
     fvm_detail::vector<unsigned char> b;
@@ -111,7 +115,7 @@ FVM_Result fvm_jit_encode(FVM_JitTarget target, const FVM_JitCode &code,
     {
         const Patch &p = patches[i];
         size_t dest = p.label == FVM_JIT_EXIT_LABEL ? exit : labels[p.label];
-        if (target == FVM_JIT_TARGET_X86)
+        if (target == FVM_JIT_TARGET_X86 || target == FVM_JIT_TARGET_WINDOWS_X64)
             patch(b, p.at, (unsigned long)(dest - p.at - FVM_JIT_IMMEDIATE_BYTES));
         else if (target == FVM_JIT_TARGET_ARM)
             patch(b, p.at,
