@@ -1304,21 +1304,13 @@ FVM_Result run(FVM_Context *c, FVM_Object *o, const char *method, unsigned int n
     return r;
 }
 } // namespace
-/* Convert exact nonnative length writes before readonly checks or virtual dispatch. */
+/* Convert exact Array length writes before readonly checks or live descriptor dispatch. */
 FVM_Result fvm_array_prepare_length_data(FVM_Context *c, FVM_Object *o,
                                          const FVM_Value &input, bool *prepared)
 {
     *prepared = false;
     if (!c->swf_loaded || o->resource_kind != FVM_RESOURCE_ARRAY)
         return FVM_OK;
-    const fvm_detail::string name("length");
-    if (fvm_property_find(c, o->properties, name) == o->properties.end())
-    {
-        fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator accessor =
-            fvm_property_find(c, o->accessors, name);
-        if (accessor != o->accessors.end() && fvm_base_array_length_accessor(accessor->second))
-            return FVM_OK;
-    }
     *prepared = true;
     FVM_ArrayWorkScope work(c);
     double number = 0;

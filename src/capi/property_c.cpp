@@ -115,6 +115,14 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
             return r;
         if (flags & FVM_PROPERTY_DONT_DELETE)
             return FVM_OK;
+        bool clear_native_length = false;
+        if (o->resource_kind == FVM_RESOURCE_ARRAY)
+        {
+            fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator length =
+                fvm_property_find(c, o->accessors, fvm_detail::string("length"));
+            clear_native_length = length != o->accessors.end() && length->first == key &&
+                                  fvm_base_array_length_accessor(length->second);
+        }
         unsigned long index;
         if ((o->resource_kind == FVM_RESOURCE_ARRAY || o->resource_kind == FVM_RESOURCE_OBJECT) &&
                 fvm_property_terminated(key) && fvm_as_index(key.c_str(), &index))
@@ -129,6 +137,11 @@ extern "C" FVM_Result fvm_object_delete_bytes(FVM_Context *c, FVM_Object *o, con
         o->methods.erase(key);
         /* [GC:] Deleted methods must not retain captures through their lazy wrapper cache. */
         o->method_values.erase(key);
+        if (clear_native_length)
+        {
+            /* [GC:] A deleted native length must not retain its obsolete object/metatable graph. */
+            fvm_value_number(&o->resource_result, 0);
+        }
         o->accessors.erase(key);
         o->attributes.erase(key);
         *deleted = 1;

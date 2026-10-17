@@ -2149,6 +2149,7 @@ add_property(FVM_Context *c, FVM_Object *receiver, unsigned int n, const FVM_Val
             existed = true;
             if (!fvm_base_accessor_data(accessor->second, stored) &&
                 receiver->resource_kind == ARRAY_OBJECT &&
+                accessor == fvm_property_find(c, receiver->accessors, fvm_detail::string("length")) &&
                 fvm_base_array_length_accessor(accessor->second))
             {
                 stored = receiver->resource_result;

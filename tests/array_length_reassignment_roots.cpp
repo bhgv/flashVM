@@ -14,7 +14,7 @@ static FVM_Result reassign_root_convert(FVM_Context *c, const FVM_ScriptFrame *,
     if (!reassign_root_mode) { FVM_Value n; fvm_value_number(&n, 2); assert(fvm_object_set(c, reassign_root_array, "length", &n) == FVM_OK); }
     else {
         assert(fvm_object_delete(c, reassign_root_array, "length", &removed) == FVM_OK && removed);
-        if (reassign_root_mode == 2) reassign_root_array->accessors["length"] = reassign_root_native;
+        if (reassign_root_mode == 2) { reassign_root_array->accessors["length"] = reassign_root_native; fvm_value_number(&reassign_root_array->resource_result, 3); }
     }
     assert(fvm_gc_collect(c, 0) == (c->gc_native_depth ? FVM_INVALID_ARGUMENT : FVM_OK));
     assert(reassign_root_alive(c, reassign_root_array) && reassign_root_alive(c, reassign_root_input) && reassign_root_alive(c, reassign_root_meta));

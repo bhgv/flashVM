@@ -4325,3 +4325,11 @@ Implemented / реализовано: Array length preparation before readonly/s
 virtual length definition, retained raw data and live descriptor dispatch.
 Tests: array_length_reassignment and roots/allocation variants; see
 [RU/EN contract](ARRAY_LENGTH_REASSIGNMENT.md). All nine roadmap stages remain open.
+
+### v0.529 — original native length descriptor reentry and GC
+
+Tested / проверено: live descriptor dispatch after original native coercion,
+obsolete cache clearing on deletion, independent alias/shared-edge controls,
+C/interpreter/JIT and errors. Minimal 1095/1095 after generated-ELF permission
+repair/rerun; nine targeted ASan/UBSan cases (stack instrumentation on, LSan off).
+See [RU/EN contract](ARRAY_LENGTH_CACHE_GC.md). All nine stages remain open.

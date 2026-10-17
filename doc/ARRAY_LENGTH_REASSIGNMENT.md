@@ -54,3 +54,7 @@ raw-data helper so destructive callbacks execute in the operation being tested,
 rather than during the newly observable assignment. Their original callback
 assertions remain active; the indexed setter callback still uses public assignment.
 The final indexed-roots fixture was rebuilt and rerun successfully.
+
+Extension v0.529 / Дополнение: original native-accessor writes now also select
+the live descriptor after conversion, and deleted cached data is released from
+GC roots. See [ARRAY_LENGTH_CACHE_GC.md](ARRAY_LENGTH_CACHE_GC.md).

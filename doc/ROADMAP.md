@@ -2266,3 +2266,12 @@ data; descriptor re-resolution avoids double coercion after native reinstatement
 Tests: array_length_reassignment, roots/allocation variants. См.
 [RU/EN contract](ARRAY_LENGTH_REASSIGNMENT.md). Original native-descriptor
 mutation, complete compatibility and all nine stages remain open.
+
+### v0.529 — native length reentry and obsolete GC edges
+
+Exact native writes select the descriptor after conversion; deleting length
+releases obsolete cached Object/String/metatable edges. Tests: native reentry,
+cache GC/alias/shared-edge controls, existing typed/recreated suites. Linux
+minimal: 1095 cases; nine targeted ASan/UBSan cases. См.
+[RU/EN contract](ARRAY_LENGTH_CACHE_GC.md). Full compatibility and real foreign
+OS acceptance remain open; no roadmap stage is closed.
