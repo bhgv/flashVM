@@ -1,5 +1,6 @@
 /* FlashVM: explicit native program ownership and prepared-activation entry. */
 #include "internal.hpp"
+#include "../core/crash_internal.hpp"
 #include <cstring>
 #include "../avm1/encoding_constants.h"
 /* Availability is limited to the implemented ABI, not merely the processor family. */
@@ -100,6 +101,19 @@ extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame,
     {
         /* [GC:] The root vector object stays stable while its operand storage grows. */
         FVM_ExecutionRoots roots(c, 0);
+        FVM_CrashScope diagnostic(c, 0, code->source.begin(), code->source.size(),
+            frame->argc, frame->argv, frame->activation, !frame->activation || !c->crash.active);
+        if (c->crash.active && !c->crash.busy && !c->execution_mode.replay_depth)
+        {
+            FVM_CrashActivation *a = c->crash.active;
+            a->jit = true;
+            a->source = code->source.begin();
+            a->source_size = code->source.size();
+            a->machine = code->memory;
+            a->machine_size = code->bytes;
+            a->registers = frame->registers;
+            a->register_count = frame->register_count;
+        }
         FVM_JitInvocation state;
         state.context = c;
         state.frame = frame;
@@ -116,6 +130,7 @@ extern "C" FVM_Result fvm_jit_body(FVM_Context *c, const FVM_ScriptFrame *frame,
         std::memcpy(&entry, &code->memory, sizeof(entry));
         ++c->execution_mode.stats.native_entries;
         FVM_Result status = entry(&state);
+        fvm_crash_failure(c, status);
         if (status == FVM_OK)
             *out = state.result;
         return status;
@@ -141,4 +156,17 @@ extern "C" FVM_Result fvm_jit_destroy(FVM_JitCode *code)
 extern "C" size_t fvm_jit_code_size(const FVM_JitCode *code)
 {
     return fvm_jit_retained_bytes(code);
+}
+
+/* Return the immutable AVM1 snapshot associated with emitted code. */
+extern "C" FVM_Result fvm_jit_source(const FVM_JitCode *code, const void **out, size_t *size)
+{
+    if (!code || !out || !size) return FVM_INVALID_ARGUMENT;
+    *out = code->source.begin(); *size = code->source.size(); return FVM_OK;
+}
+/* Expose a read-only mapping view for host debugger address correlation. */
+extern "C" FVM_Result fvm_jit_machine_code(const FVM_JitCode *code, const void **out, size_t *size)
+{
+    if (!code || !out || !size) return FVM_INVALID_ARGUMENT;
+    *out = code->memory; *size = code->bytes; return FVM_OK;
 }

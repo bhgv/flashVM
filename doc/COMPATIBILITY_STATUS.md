@@ -4360,3 +4360,17 @@ Recorded / зафиксировано: clean v0.531 minimal-jit release-runner v
 precommit minimal/JIT 1096 each, 30 definition cases and three ASan/UBSan cases.
 See [RU/EN evidence and limits](LINUX_JIT_CHECKPOINT_V531.md). Documentation
 only; real foreign OS/CPU acceptance and all nine stages remain open.
+
+
+### v0.533 — VM fault diagnostics and preservation policies
+
+Implemented / реализовано: independent NONE/BACKTRACE/ZIP/ZIP_CODE/DEBUGGER
+fault actions and NATURAL/FORCE detail. Copied source/body reports, synchronous
+live argument/local/register inspection, raw heap/class snapshots, CRC ZIPs,
+active structured JIT bytes and original-report preservation across replay.
+Tests: crash_c_api, crash_diagnostics, crash_allocation, crash_archive_host and
+execution_mode_frame_replay; targeted ASan/UBSan. See
+[RU/EN contracts and limits](CRASH_DIAGNOSTICS.md). First-chance VM statuses
+are supported; asynchronous OS signals/SEH and native-PC unwinding remain open.
+SWF/SWD source import is the next user-requested debugger work. No roadmap stage
+is closed / все этапы остаются открытыми.

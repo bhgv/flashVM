@@ -111,6 +111,16 @@ void replay(FVM_Context *c, const char *name, size_t length, unsigned long offse
 {
     if (c->execution_mode.replay_depth || !(c->execution_mode.flags & FVM_EXEC_REPLAY_ON_EXCEPTION))
         return;
+    /* Diagnostic replay must not replace the original first-chance crash report. */
+    struct CrashPropagationScope
+    {
+        FVM_Context *context; /* Context being diagnostically replayed. */
+        bool previous; /* Original report's unwind suppression state. */
+        /* Save state before replay clears its private pending exception. */
+        explicit CrashPropagationScope(FVM_Context *c) : context(c), previous(c->crash.propagating) {}
+        /* Restore even when replay preparation or execution fails. */
+        ~CrashPropagationScope() { context->crash.propagating = previous; }
+    } crash_scope(c);
     try
     {
         /* [GC:] Clearing pending state must not release the original thrown graph. */

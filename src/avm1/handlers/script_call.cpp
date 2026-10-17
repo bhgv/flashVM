@@ -3,6 +3,7 @@
 #include "script_call.hpp"
 #include "../target_scope.hpp"
 #include "support.hpp"
+#include "../../core/crash_internal.hpp"
 #include "flashvm/standard.h"
 #include "native_body.hpp"
 #include "../../jit/mode_internal.hpp"
@@ -462,6 +463,17 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         FVM_ExecutionMode mode = fvm_debug_has_breakpoints(c, c->debug_function)
                                      ? FVM_EXECUTION_INTERPRETER
                                      : fvm_execution_effective_mode(c);
+        /* Borrow existing activation/argument storage; report copies are made only on failure. */
+        FVM_CrashScope diagnostic(c, &name, snapshot.body.begin(), snapshot.body.size(),
+                                  argc, args, activation);
+        if (c->crash.active && !c->crash.busy && !c->execution_mode.replay_depth)
+        {
+            c->crash.active->function = &snapshot;
+            c->crash.active->registers = execution.global_registers
+                ? c->avm1_global_registers : execution.registers.begin();
+            c->crash.active->register_count = execution.global_registers
+                ? FVM_EXEC_GLOBAL_REGISTER_COUNT : (unsigned int)execution.registers.size();
+        }
         if (mode == FVM_EXECUTION_INTERPRETER && native_entry.callback == fvm_jit_body)
             native_entry = FVM_ScriptBodyEntry();
         if (mode == FVM_EXECUTION_JIT && !native_entry.callback)
@@ -506,6 +518,7 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
         else
             status = fvm_avm1_interpret_function(c, snapshot, result, &frame, receiver, &execution,
                                                  &local_this_value);
+        fvm_crash_failure(c, status);
     }
     catch (...)
     {

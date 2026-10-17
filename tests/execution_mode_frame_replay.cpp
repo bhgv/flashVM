@@ -1,5 +1,6 @@
 /* Bounded frame diagnostics preserve implicit End framing and the original thrown value. */
 #include "flashvm/execution_mode.h"
+#include "flashvm/crash.h"
 #include "flashvm/standard.h"
 #include "flashvm/exception.h"
 #include "../src/avm1/block.hpp"
@@ -21,6 +22,7 @@ int main()
   assert(fvm_context_create(rt,&c)==FVM_OK);if(version)assert(fvm_load_memory(c,swf,sizeof(swf))==FVM_OK);
   assert(fvm_standard_install(c)==FVM_OK && fvm_object_define_accessor_rooted(c,c->global,"x",getter,0,0,0)==FVM_OK);
   assert(fvm_execution_set_mode(c,FVM_EXECUTION_JIT,retry?FVM_EXEC_REPLAY_ON_EXCEPTION:0)==FVM_OK && fvm_execution_set_logger(c,logger,0)==FVM_OK);
+  assert(fvm_crash_configure(c,FVM_CRASH_BACKTRACE,0,0,0)==FVM_OK);
   const unsigned char body[]={0x96,3,0,0,'x',0,0x1c,0};calls=ends=0;
   FVM_GCRootFrame *roots=c->gc_frames;FVM_Value exception;
   assert(fvm_avm1_execute_block_receiver(c,body,sizeof(body)-(terminated?0:1),c->global)==FVM_EXCEPTION);
@@ -29,6 +31,7 @@ int main()
   assert(fvm_exception_get(c,&exception)==FVM_OK && exception.type==FVM_VALUE_NUMBER && exception.number==111);
   FVM_ExecutionStats stats;stats.struct_size=sizeof(stats);
   assert(fvm_execution_get_stats(c,&stats)==FVM_OK && stats.native_entries==1 && stats.interpreter_entries==retry && stats.replays==retry && stats.replay_steps==(retry_throws?2:3)*retry);
+  FVM_CrashFrame crash;assert(fvm_crash_frame(c,0,&crash)==FVM_OK && crash.jit && crash.bytecode_size==sizeof(body)-(terminated?0:1));
   if(retry)assert(stats.last_replay_status==(retry_throws?FVM_EXCEPTION:FVM_OK));
   for(fvm_detail::map<fvm_detail::string,FVM_JitCode *>::iterator i=c->execution_mode.cache.begin();i!=c->execution_mode.cache.end();++i)assert(!i->second || !i->second->active);
   assert(fvm_exception_clear(c)==FVM_OK);fvm_context_destroy(c);

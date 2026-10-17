@@ -262,6 +262,7 @@ extern "C" FVM_Result fvm_exception_clear(FVM_Context *c)
     /* Computation / Вычисление и обновление состояния. */
     c->exception_pending = false;
     c->fault_pending = false;
+    c->crash.propagating = false;
     fvm_value_undefined(&c->exception_value);
     return FVM_OK;
 }

@@ -1,3 +1,4 @@
+#include "../core/crash_internal.hpp"
 /* FlashVM: AVM1 bytecode decoding and execution: interpreter.
  * File: src/avm1/interpreter.cpp.
  */
@@ -206,7 +207,30 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           Execution *shared = 0, size_t base = 0, unsigned int depth = 0,
                           bool bounded = false, const FVM_Value *implicit_this = 0);
 /* Execute the current value. */
+/* Keep root source metadata alive through fault capture; functions own their shared scope. */
+static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t size,
+                          FVM_Value *returned,
+                          fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
+                          const fvm_detail::vector<fvm_detail::string> *inherited,
+                          Execution *shared, size_t base, unsigned int depth, bool bounded,
+                          const FVM_Value *implicit_this)
+;
+/* Capture errors before caller activations and their borrowed source/arguments are released. */
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
+                          FVM_Value *returned,
+                          fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
+                          const fvm_detail::vector<fvm_detail::string> *inherited,
+                          Execution *shared, size_t base, unsigned int depth, bool bounded,
+                          const FVM_Value *implicit_this)
+{
+    FVM_CrashScope diagnostic(c, 0, data, size, 0, 0, 0, !shared);
+    FVM_Result status = execute_impl(c, data, size, returned, locals, self, inherited,
+                                     shared, base, depth, bounded, implicit_this);
+    fvm_crash_failure(c, status);
+    return status;
+}
+/* Execute one AVM1 block with the existing interpreter state and root policy. */
+static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,

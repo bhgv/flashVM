@@ -1,5 +1,6 @@
 /* FlashVM: native structured-block execution and lexical With publication. */
 #include "internal.hpp"
+#include "../core/crash_internal.hpp"
 #include "../core/this_cell.hpp"
 #include "../avm1/operand_stack.hpp"
 #include "../avm1/lexical_scope.hpp"
@@ -57,7 +58,26 @@ FVM_Result fvm_jit_run_block(FVM_JitInvocation *s, unsigned int index,
     typedef FVM_Result (*Entry)(FVM_JitInvocation *);
     Entry entry;
     std::memcpy(&entry, &block.code->memory, sizeof(entry));
+    /* Expose the actual active structured mapping without inventing another function frame. */
+    struct DiagnosticMapping
+    {
+        FVM_CrashActivation *frame; /* Borrowed current function diagnostic link. */
+        const void *previous; /* Suspended parent mapping. */
+        size_t previous_size; /* Suspended parent payload length. */
+        /* Publish the child mapping only while its generated instructions are active. */
+        DiagnosticMapping(FVM_Context *c, FVM_JitCode *code) : frame(c->crash.active),
+            previous(frame ? frame->machine : 0), previous_size(frame ? frame->machine_size : 0)
+        {
+            if (frame) { frame->machine = code->memory; frame->machine_size = code->bytes; }
+        }
+        /* Restore parent metadata after capture or successful structured-block return. */
+        ~DiagnosticMapping()
+        {
+            if (frame) { frame->machine = previous; frame->machine_size = previous_size; }
+        }
+    } diagnostic(s->context, block.code);
     FVM_Result status = entry(&child);
+    fvm_crash_failure(s->context, status);
     /* Match the interpreter's shared Execution, including failed/returning blocks. */
     s->pool = child.pool;
     s->steps = child.steps;
