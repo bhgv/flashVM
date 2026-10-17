@@ -9,12 +9,10 @@ Run `python3 scripts/check_avm1_dispatch.py` from the source checkout; redirect
 its generated JSON outside Git. The audit validates catalog duplicates/byte
 ranges, finds documented Action constants and checks their source references in
 the interpreter's execution loop after removing comments and quoted literals.
-`--require-all` fails if a catalog entry has no dispatch reference. It currently
-fails as expected: 99 entries have references and StopSounds remains absent.
-
-| Byte | Missing action | Area requiring implementation |
-| --- | --- | --- |
-| 0x09 | StopSounds | Audio playback integration |
+`--require-all` now passes: all 100 entries have source references as of v0.546.
+StopSounds (0x09) stops active context-registered host outputs through the shared
+[AUDIO_CHANNELS.md](AUDIO_CHANNELS.md) operation. This does not implement SWF
+DefineSound/StartSound/streaming audio or certify complete sound playback.
 
 A source reference certifies neither operand decoding nor runtime semantics,
 SWF version conformance, GC safety or historical player equivalence. Selected
@@ -27,6 +25,7 @@ RemoveSprite подключён для описанных в AVM1_REMOVE_SPRITE.
 CloneSprite подключён через общий C-сервис (AVM1_CLONE_SPRITE.md);
 StartDrag/EndDrag подключены к общему C-механизму (AVM1_DRAG.md);
 ToggleQuality подключён к состоянию сцены и LOW/HIGH vector coverage
-([STAGE_QUALITY.md](STAGE_QUALITY.md)); StopSounds ещё отсутствует. Полная приёмка требует
+([STAGE_QUALITY.md](STAGE_QUALITY.md)); StopSounds подключён к явно
+зарегистрированным аудиовыходам контекста ([AUDIO_CHANNELS.md](AUDIO_CHANNELS.md)). Полная приёмка требует
 реальных SWF, проверок версий, исключений, GC и всех остальных пунктов роудмапа.
 Сгенерированный JSON в исходники и историю Git не включается.

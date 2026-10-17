@@ -122,9 +122,9 @@ and bitmap paint. Solid fills, strokes and optional geometry-coverage surfaces
 use the same context selection. Bitmap paint's own smoothing option is retained;
 edge antialiasing is a separate decision.
 
-Exact historic quality grids and device renderer policies remain open. StopSounds
-remains absent. No completion stage is closed by reaching 99 source dispatch
-references. See the [roadmap](ROADMAP.md) and [dispatch inventory](AVM1_DISPATCH_INVENTORY.md).
+Exact historic quality grids and device renderer policies remain open.
+StopSounds now stops [registered context outputs](AUDIO_CHANNELS.md); full SWF
+audio remains open. A source dispatch inventory does not close any stage. See the [roadmap](ROADMAP.md) and [dispatch inventory](AVM1_DISPATCH_INVENTORY.md).
 
 ## Русский
 
@@ -147,7 +147,8 @@ BEST при временном переходе в LOW. Все операции 
 объекта MovieClip не переносит настройку сцены его исходной VM. JIT-body с этим
 Action пока исполняется через интерпретаторный fallback. Проверки охватывают
 SWF1–8, независимые контексты, стек функции и четыре вида векторного рисования.
-Полная совместимость Flash и StopSounds остаются открытыми.
+Полная совместимость Flash и SWF-аудио остаются открытыми; StopSounds
+подключён к [контекстным аудиовыходам](AUDIO_CHANNELS.md).
 
 [Tutorial / пример](../examples/embedding/stage_quality/README.md).
 

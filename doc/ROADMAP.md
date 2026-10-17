@@ -2495,6 +2495,28 @@ render on 3.12. Links and all 87 example catalog entries pass. Chromium was
 unavailable and its download failed, so browser screenshot/layout acceptance
 and native Windows/macOS execution are not claimed. No roadmap stage is closed.
 
+### v0.546 — context audio outputs, StopSounds and global stopping
+
+Implemented / реализовано: six C89 channel APIs with copied host output tables,
+active state, retryable failures, all-output stop attempts, native callback/GC
+barriers and terminal context cleanup. AVM1 StopSounds and global stopAllSounds
+use the same real host stop callbacks; stable global callback transport affects
+only destination-context outputs. Added a fully commented PCM file-sink tutorial,
+RU/EN detailed contracts and source links. Dispatch inventory now has 100/100
+source references; this is not a sound/AVM1 completion certificate.
+
+Validation: minimal full suite 1133 passed plus one existing explicitly skipped
+named Unix endpoint test (1134 total). Three focused JIT and three ASAN/UBSAN
+checks passed (LeakSanitizer disabled for this runner); four targeted MEDIA
+checks passed, including real FFmpeg WAV decoding into registered PCM output
+and StopSounds. Actual tutorial fwrite/fclose appended four bytes and reported
+inactive/one stop. Atomic registration OOM, allocation-free stop/close, failed
+output retry, callback reentry, teardown, function stack preservation and actual
+serialized global callback isolation are tested. All 88 catalog entries and
+109 multimedia/tutorial source files pass documentation checks. Full SWF sound
+resources, streaming/mixing/envelopes and audible/native device acceptance remain
+open. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

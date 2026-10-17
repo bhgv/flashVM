@@ -234,6 +234,7 @@ struct FVM_ThisCell
 
 /* Define FVM_Context struct and its representation. */
 /* [GC:] Объявляем представление состояния сборщика или корней. */
+struct FVM_AudioChannel; /* Host-owned callback state has no managed GC edges. */
 struct FVM_Context
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
@@ -318,6 +319,8 @@ struct FVM_Context
     fvm_detail::vector<unsigned char> swf_bytes; /* [GC:] Stored bytes of the loaded SWF. */
     FVM_SWFInfo swf_info;                        /* [GC:] Parsed metadata of the loaded SWF. */
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
+    fvm_detail::vector<FVM_AudioChannel *> audio_channels; /* Context-owned registrations; callbacks borrow host userdata. */
+    bool audio_busy; /* Reject nested channel mutation while a host output callback runs. */
     FVM_StageQuality stage_quality; /* Context-wide vector rendering policy, default HIGH. */
     bool stage_quality_best; /* Remember BEST across LOW transitions from ToggleQuality. */
     bool stage_background_set; /* Whether a host or encountered SWF control selected a color. */

@@ -103,6 +103,7 @@
     - [sqlite](#example-extending-sqlite) — <small><em>SQLite в памяти и целочисленный запрос</em></small>
 - [multimedia](#group-multimedia)
   - [bridges](#group-multimedia-bridges)
+    - [audio_channels](#example-multimedia-audio_channels) — <small><em>Регистрация PCM-выхода и остановка через AVM1</em></small>
     - [custom_audio_bridge](#example-multimedia-custom_audio_bridge) — <small><em>Свой источник PCM через stdio</em></small>
     - [custom_video_output](#example-multimedia-custom_video_output) — <small><em>Свой вывод RGBA в реальный PPM файл</em></small>
   - [decoding](#group-multimedia-decoding)
@@ -1103,6 +1104,17 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 <a id="group-multimedia-bridges"></a>
 ### bridges
 
+<a id="example-multimedia-audio_channels"></a>
+#### audio_channels
+
+Регистрация PCM-выхода и StopSounds. Исполняемый C89 учебник:
+[README](multimedia/audio_channels/README.md), [main.c](multimedia/audio_channels/main.c).
+Два silent mono S16 sample frames записываются через настоящий fwrite в явно
+заданный raw PCM файл; Action 0x09 вызывает stop callback, закрывающий FILE.
+Показывает inactive/active состояние, копирование таблицы, borrowed буфер и
+host userdata, живущий до конца context cleanup. Ошибки обрабатываются обычно,
+без assert. Это файловый sink, не звуковая карта; NO_MEDIA поддерживается.
+
 <a id="example-multimedia-custom_audio_bridge"></a>
 #### custom_audio_bridge
 
@@ -1122,7 +1134,7 @@ FILE и освобождает malloc. В session копируется табл�
 Свой вывод RGBA в реальный PPM файл. Исполняемый C89 учебник: [README](multimedia/custom_video_output/README.md), [main.c](multimedia/custom_video_output/main.c).
 
 Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L66).write поверх реальных fprintf/fwrite.
-Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L113)
+Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L126)
 проверяет размер/stride; callback пишет PPM P6 и отбрасывает alpha. Файл создаётся
 только по явному аргументу; существующий файл по этому пути заменяется. Временный
 буфер не сохраняется после возврата callback. FILE принадлежит main и закрывается
@@ -1151,7 +1163,7 @@ FFmpeg: декодирование файлов и явная камера. Ис
 
 Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
 
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L82).poll. Main явно
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L95).poll. Main явно
 открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
 его адрес через userdata. Callback не владеет fd и делегирует read нативному
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
@@ -1212,14 +1224,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:95](../include/flashvm/multimedia.h#L95) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../include/flashvm/multimedia.h#L66) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_video_present` | function | [include/flashvm/multimedia.h:113](../include/flashvm/multimedia.h#L113) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:126](../include/flashvm/multimedia.h#L126) |
 <!-- source-links:end -->
 
 <a id="glossary"></a>
@@ -1228,6 +1240,7 @@ Source line links describe the current checkout, including in historical notes.
 Один список без тематических подгрупп. Сортировка по имени примера; одинаковые
 имена различаются путём. Это указатель примеров, а не словарь терминов.
 
+- [audio_channels — multimedia/audio_channels](#example-multimedia-audio_channels)
 - [backtrace — debugger/backtrace](#example-debugger-backtrace)
 - [bitmap_fill — embedding/bitmap_fill](#example-embedding-bitmap_fill)
 - [callable_objects — extending/callable_objects](#example-extending-callable_objects)

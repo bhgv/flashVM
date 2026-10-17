@@ -1,3 +1,4 @@
+#include "flashvm/multimedia.h" /* Route StopSounds through context audio output state. */
 #include "../core/crash_internal.hpp"
 /* FlashVM: AVM1 bytecode decoding and execution: interpreter.
  * File: src/avm1/interpreter.cpp.
@@ -793,6 +794,12 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
                         return FVM_UNSUPPORTED;
                     stack.push_back(v);
                 }
+            }
+            else if (a.op == FVM_AVM1_ACTION_STOP_SOUNDS)
+            {
+                FVM_Result stopped = fvm_audio_stop_all(c);
+                if (stopped != FVM_OK)
+                    return stopped;
             }
             else if (a.op == FVM_AVM1_ACTION_TOGGLE_QUALITY)
             {

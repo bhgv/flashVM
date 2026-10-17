@@ -13,6 +13,7 @@
 #define FVM_AVM1_ACTION_STOP 0x07U
 /* Toggle stage quality without reading the operand stack. */
 #define FVM_AVM1_ACTION_TOGGLE_QUALITY 0x08U
+#define FVM_AVM1_ACTION_STOP_SOUNDS 0x09U /* Stop context-registered audio outputs. */
 /* Legacy numeric addition. */
 #define FVM_AVM1_ACTION_ADD 0x0aU
 /* Numeric subtraction. */

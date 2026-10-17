@@ -33,4 +33,6 @@
 #define FVM_BASE_CALLBACK_ARRAY_CALL 628UL
 /* First callback in the existing Array method table; preserve the historical wire identity. */
 #define FVM_BASE_CALLBACK_ARRAY_METHOD_BASE 630UL
+/* Global stopAllSounds; keep this outside the historical ordered method ranges. */
+#define FVM_BASE_CALLBACK_STOP_ALL_SOUNDS 690UL
 #endif

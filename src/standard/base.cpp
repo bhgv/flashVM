@@ -2,6 +2,7 @@
  * File: src/standard/base.cpp.
  */
 
+#include "stop_all_sounds.hpp"
 #include "string_state.hpp"
 #include "array_generic.hpp"
 #include "array_work.hpp"
@@ -2848,6 +2849,9 @@ FVM_Result fvm_base_stage(FVM_Context *c, fvm_detail::map<fvm_detail::string, FV
     /* Computation / Вычисление и обновление состояния. */
     flags_entry.callback = set_flags;
     functions["ASSetPropFlags"] = flags_entry;
+    FVM_NativeEntry stop_sounds_entry;
+    stop_sounds_entry.callback = fvm_stop_all_sounds;
+    functions["stopAllSounds"] = stop_sounds_entry;
     /* Only new built-in classes may be linked/flagged. Existing user globals
      * must not be mutated by an installation that can still fail. */
     const char *builtins[] = {"Math",   "Boolean", "Number", "String",   "Error",
@@ -2924,6 +2928,8 @@ FVM_Result fvm_base_validate(FVM_Context *c)
 /* Map a native base callback to its stable serialization identifier. */
 unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == fvm_stop_all_sounds)
+        return FVM_BASE_CALLBACK_STOP_ALL_SOUNDS;
     if (callback == array_call)
         return FVM_BASE_CALLBACK_ARRAY_CALL;
     if (callback == object_locale)
@@ -2962,6 +2968,8 @@ unsigned long fvm_base_callback_id(FVM_NativeFunction callback)
 /* Restore a native base callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_base_callback_from_id(unsigned long id)
 {
+    if (id == FVM_BASE_CALLBACK_STOP_ALL_SOUNDS)
+        return fvm_stop_all_sounds;
     if (id == FVM_BASE_CALLBACK_ARRAY_CALL)
         return array_call;
     if (id == FVM_BASE_CALLBACK_OBJECT_LOCALE)

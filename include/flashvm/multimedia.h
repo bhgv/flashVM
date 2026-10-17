@@ -70,6 +70,19 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
         FVM_Result (*write)(void *, const FVM_MediaFrame *); /* Consume or copy the borrowed frame synchronously. */
         FVM_Result (*stop)(void *); /* Stop and discard pending output; optional until stop is requested. */
     } FVM_MediaOutput; /* Finish the output bridge shared by audio and video. */
+    typedef struct FVM_AudioChannel FVM_AudioChannel; /* Context-owned host output registration; invalid after context destruction. */
+    /* Copy a host output table with required write/stop callbacks; publish an inactive channel. */
+    FVM_API FVM_Result fvm_audio_channel_create(FVM_Context *, const FVM_MediaOutput *, FVM_AudioChannel **); /* OS: host callback. */
+    /* Validate and synchronously submit PCM; a successful write marks the channel active. */
+    FVM_API FVM_Result fvm_audio_channel_write(FVM_AudioChannel *, const FVM_MediaFrame *); /* OS: host callback. */
+    /* Stop an active channel; success marks inactive, failure retains it for retry. */
+    FVM_API FVM_Result fvm_audio_channel_stop(FVM_AudioChannel *); /* OS: host callback. */
+    /* Stop then unregister; failure keeps the handle valid, null is accepted. */
+    FVM_API FVM_Result fvm_audio_channel_close(FVM_AudioChannel *); /* OS: host callback. */
+    /* Return a copied active flag, without entering host callbacks. */
+    FVM_API FVM_Result fvm_audio_channel_active(FVM_AudioChannel *, int *); /* OS: portable state query. */
+    /* Stop every active registered output in this context, attempting all after failures. */
+    FVM_API FVM_Result fvm_audio_stop_all(FVM_Context *); /* OS: host callback; AVM1 StopSounds uses this operation. */
     typedef struct FVM_DeviceEvent /* Carry one host/device event independently of ActionScript dispatch. */
     { /* Carry one host/device event independently of ActionScript dispatch. */
         int kind; /* One FVM_DEVICE_* category. */
@@ -107,7 +120,7 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
     /* Send a valid audio buffer to a real host output callback; no buffering or conversion is
      * implicit. */
     FVM_API FVM_Result fvm_audio_write(const FVM_MediaOutput *, const FVM_MediaFrame *); /* OS: host callback. */
-    /* Stop the host's audio output; this does not implement AVM1 StopSounds yet. */
+    /* Stop only this standalone output; context channels use fvm_audio_stop_all. */
     FVM_API FVM_Result fvm_audio_stop(const FVM_MediaOutput *); /* OS: host callback. */
     /* Present a valid RGBA frame through the host's output callback. */
     FVM_API FVM_Result fvm_video_present(const FVM_MediaOutput *, const FVM_MediaFrame *); /* OS: host callback. */

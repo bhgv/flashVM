@@ -43,12 +43,12 @@ cmake --build build-media --target flashvm_examples_multimedia_custom_audio_brid
 
 | API (public source declaration is linked below) | Detailed contract and ownership guide |
 | --- | --- |
-| [`fvm_audio_open`](../../../include/flashvm/multimedia.h#L92) | [MULTIMEDIA_BRIDGES.md — fvm_audio_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_audio_open) |
-| [`fvm_media_read`](../../../include/flashvm/multimedia.h#L101) | [MULTIMEDIA_BRIDGES.md — fvm_media_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_read) |
-| [`fvm_media_close`](../../../include/flashvm/multimedia.h#L106) | [MULTIMEDIA_BRIDGES.md — fvm_media_close](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_close) |
+| [`fvm_audio_open`](../../../include/flashvm/multimedia.h#L105) | [MULTIMEDIA_BRIDGES.md — fvm_audio_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_audio_open) |
+| [`fvm_media_read`](../../../include/flashvm/multimedia.h#L114) | [MULTIMEDIA_BRIDGES.md — fvm_media_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_read) |
+| [`fvm_media_close`](../../../include/flashvm/multimedia.h#L119) | [MULTIMEDIA_BRIDGES.md — fvm_media_close](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_close) |
 
 Типы: [FVM_MediaBackend](../../../include/flashvm/multimedia.h#L55), [FVM_MediaSession](../../../src/multimedia/common/session.hpp#L5), [FVM_MediaFrame](../../../include/flashvm/multimedia.h#L36), [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L66),
-[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L82) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L73) описаны в
+[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L95) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L86) описаны в
 [общем руководстве](../../../doc/MULTIMEDIA_BRIDGES.md#общий-контракт--common-contract).
 Ни одна демонстрация не завершает roadmap этап 4 или 9.
 
@@ -61,11 +61,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_open` | function | [include/flashvm/multimedia.h:92](../../../include/flashvm/multimedia.h#L92) |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
-| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:73](../../../include/flashvm/multimedia.h#L73) |
-| `fvm_media_close` | function | [include/flashvm/multimedia.h:106](../../../include/flashvm/multimedia.h#L106) |
-| `fvm_media_read` | function | [include/flashvm/multimedia.h:101](../../../include/flashvm/multimedia.h#L101) |
+| `fvm_audio_open` | function | [include/flashvm/multimedia.h:105](../../../include/flashvm/multimedia.h#L105) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:95](../../../include/flashvm/multimedia.h#L95) |
+| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:86](../../../include/flashvm/multimedia.h#L86) |
+| `fvm_media_close` | function | [include/flashvm/multimedia.h:119](../../../include/flashvm/multimedia.h#L119) |
+| `fvm_media_read` | function | [include/flashvm/multimedia.h:114](../../../include/flashvm/multimedia.h#L114) |
 | `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:55](../../../include/flashvm/multimedia.h#L55) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../../../include/flashvm/multimedia.h#L36) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../../../include/flashvm/multimedia.h#L66) |

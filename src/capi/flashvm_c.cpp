@@ -2,6 +2,7 @@
  * File: src/capi/flashvm_c.cpp.
  */
 
+#include "../multimedia/audio/channel.hpp" /* Stop registered host outputs before releasing the context. */
 #include "../core/runtime.hpp"
 #include "../core/call_scope_constants.h"
 #include "../core/random_constants.h"
@@ -201,6 +202,7 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->input_userdata = 0;
         /* Initialize stage selection before the new context becomes visible to host callbacks. */
+        context->audio_busy = false;
         context->stage_quality = FVM_STAGE_QUALITY_HIGH;
         context->stage_quality_best = false;
         context->stage_background_set = false;
@@ -240,6 +242,7 @@ extern "C"
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         fvm_function_context_cleanup(context);
         context->destroying = true;
+        fvm_audio_context_cleanup(context); /* Host userdata remains borrowed through final output stopping. */
         /* [GC:] Release the native drag root before finalization destroys the object graph. */
         context->drag_clip = 0;
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */

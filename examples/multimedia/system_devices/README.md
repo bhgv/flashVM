@@ -2,7 +2,7 @@
 
 ## Назначение и реализация / Purpose and implementation
 
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L82).poll. Main явно
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L95).poll. Main явно
 открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
 его адрес через userdata. Callback не владеет fd и делегирует read нативному
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
@@ -46,11 +46,11 @@ cmake --build build-media --target flashvm_examples_multimedia_system_devices_ma
 
 | API (public source declaration is linked below) | Detailed contract and ownership guide |
 | --- | --- |
-| [`fvm_device_poll`](../../../include/flashvm/multimedia.h#L116) | [MULTIMEDIA_BRIDGES.md — fvm_device_poll](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_device_poll) |
-| [`fvm_input_linux_evdev_read`](../../../include/flashvm/multimedia.h#L119) | [MULTIMEDIA_BRIDGES.md — fvm_input_linux_evdev_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_input_linux_evdev_read) |
+| [`fvm_device_poll`](../../../include/flashvm/multimedia.h#L129) | [MULTIMEDIA_BRIDGES.md — fvm_device_poll](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_device_poll) |
+| [`fvm_input_linux_evdev_read`](../../../include/flashvm/multimedia.h#L132) | [MULTIMEDIA_BRIDGES.md — fvm_input_linux_evdev_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_input_linux_evdev_read) |
 
 Типы: [FVM_MediaBackend](../../../include/flashvm/multimedia.h#L55), [FVM_MediaSession](../../../src/multimedia/common/session.hpp#L5), [FVM_MediaFrame](../../../include/flashvm/multimedia.h#L36), [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L66),
-[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L82) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L73) описаны в
+[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L95) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L86) описаны в
 [общем руководстве](../../../doc/MULTIMEDIA_BRIDGES.md#общий-контракт--common-contract).
 Ни одна демонстрация не завершает roadmap этап 4 или 9.
 
@@ -63,10 +63,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_device_poll` | function | [include/flashvm/multimedia.h:116](../../../include/flashvm/multimedia.h#L116) |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
-| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:73](../../../include/flashvm/multimedia.h#L73) |
-| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:119](../../../include/flashvm/multimedia.h#L119) |
+| `fvm_device_poll` | function | [include/flashvm/multimedia.h:129](../../../include/flashvm/multimedia.h#L129) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:95](../../../include/flashvm/multimedia.h#L95) |
+| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:86](../../../include/flashvm/multimedia.h#L86) |
+| `fvm_input_linux_evdev_read` | function | [include/flashvm/multimedia.h:132](../../../include/flashvm/multimedia.h#L132) |
 | `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:55](../../../include/flashvm/multimedia.h#L55) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../../../include/flashvm/multimedia.h#L36) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../../../include/flashvm/multimedia.h#L66) |
