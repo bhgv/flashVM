@@ -393,3 +393,8 @@ if(FVM_ENABLE_LINUX_AUDIO AND TARGET flashvm_tests_audio_alsa_faults)
   set_tests_properties(flashvm_tests_audio_alsa_faults PROPERTIES
     ENVIRONMENT "ALSA_CONFIG_PATH=${PROJECT_SOURCE_DIR}/tests/alsa_null.conf")
 endif()
+if(FVM_ENABLE_LINUX_AUDIO AND TARGET flashvm_tests_swf_sound_alsa)
+  target_compile_definitions(flashvm_tests_swf_sound_alsa PRIVATE FVM_TEST_LINUX_AUDIO=1)
+  set_tests_properties(flashvm_tests_swf_sound_alsa PROPERTIES
+    ENVIRONMENT "ALSA_CONFIG_PATH=${PROJECT_SOURCE_DIR}/tests/alsa_null.conf")
+endif()

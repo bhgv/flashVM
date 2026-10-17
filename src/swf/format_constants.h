@@ -19,6 +19,8 @@
 #define FVM_SWF_TAG_SET_BACKGROUND_COLOR 9U
 /* SWF do action tag identifier. */
 #define FVM_SWF_TAG_DO_ACTION 12U
+/* SWF root event sound definition tag identifier. */
+#define FVM_SWF_TAG_DEFINE_SOUND 14U
 /* SWF define bits lossless tag identifier. */
 #define FVM_SWF_TAG_DEFINE_BITS_LOSSLESS 20U
 /* SWF define bits jpeg2 tag identifier. */

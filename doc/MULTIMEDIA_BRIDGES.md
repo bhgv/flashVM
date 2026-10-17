@@ -20,6 +20,10 @@ Context output registration and AVM1/global stopping are documented in
 Explicit native Linux PCM output is available with a supplied static ALSA SDK:
 [ALSA_AUDIO_OUTPUT.md](ALSA_AUDIO_OUTPUT.md). Disabled builds remain dependency-free.
 
+Explicit loaded SWF DefineSound inspection/16-bit PCM submission is documented
+in [SWF_SOUND_RESOURCES.md](SWF_SOUND_RESOURCES.md); automatic sound timeline
+controls remain unsupported.
+
 ## Дерево исходников / Source layout
 
 | Directory | Responsibility |

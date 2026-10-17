@@ -2536,6 +2536,29 @@ catalog entries and 115 bridge/tutorial files pass documentation checks.
 Physical audible output, desktop server/plugin configurations, other OS playback
 and full SWF sound integration remain open. No roadmap stage is closed.
 
+### v0.548 — root SWF sound resource views and explicit PCM submission
+
+Implemented / реализовано: five C89 APIs count/enumerate/find DefineSound root
+resources in canonical loaded FWS/CWS, expose borrowed nominal metadata, decode
+bounded native/little-endian 16-bit PCM ranges and submit callback-independent
+copies to context audio channels. Exact PCM lengths, selected duplicate IDs,
+version-3-format gating, sample/channel units, lifetime and temporary memory
+limits are documented. This is explicit host resource output, not automatic
+StartSound/SWF timeline playback. Added a full line-commented export tutorial.
+
+Validation: minimal full suite 1141 passed and one existing named Unix endpoint
+skip (1142 total). Four targeted native ALSA null-PCM pipeline tests and four
+ASAN/UBSAN tests passed (external SDK/zlib not instrumented, LSAN disabled);
+three targeted JIT-profile tests passed. Independent SWF1–8 mono/stereo fixtures,
+CWS ownership, long headers, signed limits, capacity/range validation, malformed
+PCM/duplicate IDs, allocation-free lookup/read, atomic OOM and successful reload
+inside output callback are covered. Actual tutorial FWS/CWS raw export matched
+expected bytes; unsupported/empty sounds created no output. All 90 catalog
+entries and 117 bridge/tutorial files pass documentation checks.
+Automatic StartSound, streaming, loops/envelopes/mixing, AS Sound, compressed and
+eight-bit decoding, original player equivalence and foreign native platform
+acceptance remain open. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

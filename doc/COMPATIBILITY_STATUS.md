@@ -7,6 +7,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/4/7/9: root SWF sound resources | Initial implementation v0.548 | Five C89 APIs: count/ordinal/ID views, bounded 16-bit PCM conversion and explicit channel submission. SWF_SOUND_RESOURCES.md. Native ALSA null pipeline is separate from physical playback; StartSound/streaming/AS Sound and compressed/8-bit decoding remain open. |
 | 4/5/7/9: Linux ALSA PCM output | Initial implementation v0.547 | Explicit static SDK, native nonblocking write/start/drop/reprepare/close. ALSA_AUDIO_OUTPUT.md. Real null-PCM library tests are separate from physical playback and other OS acceptance. |
 | 2/4/5/7/8: context audio and StopSounds | Initial implementation v0.546 | Copied C89 host output registrations, active/retry/error policy, teardown, AVM1 0x09 and transported global stopAllSounds. AUDIO_CHANNELS.md. Full SWF sound decoding/scheduling/mixing and native sound-card acceptance remain open. |
 | 2/3/4/7/8: Stage quality / ToggleQuality | Проверено целевыми тестами v0.538 | SWF1–8, independent contexts, operand preservation, interpreter/JIT fallback, LOW/HIGH/BEST transitions; solid/stroke/gradient/bitmap edge coverage on AGG/Cairo. STAGE_QUALITY.md. v0.541 adds named _quality/_highquality and intrinsic indices 16/19: SWF4–8 coercion, GC/error paths and graph transport. Sampling grids and bitmap downsampling remain open. |

@@ -109,6 +109,7 @@
     - [custom_video_output](#example-multimedia-custom_video_output) — <small><em>Свой вывод RGBA в реальный PPM файл</em></small>
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
+    - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound: обзор ресурсов и явный экспорт PCM</em></small>
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [speech](#group-multimedia-speech)
@@ -1167,6 +1168,17 @@ FFmpeg: декодирование файлов и явная камера. Ис
 Воспроизведение/окно не создаются. Без MEDIA явный запуск сообщает UNSUPPORTED и
 показывает настройку SDK; без аргументов выводится usage с успешным smoke exit.
 
+<a id="example-multimedia-swf_audio"></a>
+#### swf_audio
+
+DefineSound: обзор корневых ресурсов и явный экспорт PCM. Исполняемый C89 учебник:
+[README](multimedia/swf_audio/README.md), [main.c](multimedia/swf_audio/main.c).
+Загружает явно названный FWS/CWS, перечисляет звуковые ID/метаданные и отправляет
+выбранный 16-bit PCM в настоящий stdio sink кусками по 256 sample frames.
+Показывает canonical ownership, borrowed views, bounded copy до host callback,
+ошибки кодеков/размеров и StopSounds, закрывающий FILE. Нужен явный вход/ID/выход;
+NO_MEDIA работает без SDK. Это экспорт raw PCM, не автоматический SWF-плеер.
+
 <a id="group-multimedia-devices"></a>
 ### devices
 
@@ -1333,6 +1345,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
+- [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
 - [system_devices — multimedia/system_devices](#example-multimedia-system_devices)
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)
