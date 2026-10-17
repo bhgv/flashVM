@@ -5,12 +5,14 @@
 #include "../../core/property_lookup.hpp"
 #include "../scope_keywords.hpp"
 #include "../../standard/function_state.hpp"
-/* Preserve local/global this spelling rules across SWF5, SWF6 and case-sensitive SWF7+. */
-static bool this_keyword(FVM_Context *c, bool local_scope, const fvm_detail::string &name)
+/* Use the innermost scope class for SWF5 this spelling, including With over local frames. */
+static bool this_keyword(FVM_Context *c, FVM_Object *scope, bool local_scope,
+                         const fvm_detail::string &name)
 {
+    const bool local = local_scope && (!scope || scope->resource_kind != FVM_RESOURCE_WITH_SCOPE);
     bool sensitive = !c->swf_loaded || c->swf_info.version < FVM_SWF_VERSION_5 ||
                      c->swf_info.version >= FVM_SWF_VERSION_7 ||
-                     (c->swf_info.version <= FVM_SWF_VERSION_5 && local_scope);
+                     (c->swf_info.version <= FVM_SWF_VERSION_5 && local);
     return fvm_avm1_keyword_name(name, FVM_SCOPE_KEYWORD_THIS_NAME, FVM_SCOPE_KEYWORD_THIS_UNITS,
                                  sensitive);
 }
@@ -48,7 +50,7 @@ extern "C" FVM_Result fvm_exec_variable_lookup(FVM_Context *c, FVM_Object *scope
         FVM_Object *selected_receiver = default_receiver ? default_receiver : c->global;
         bool implicit_this = (receiver || c->script_this_cell || c->script_this_undefined) &&
                              (!c->swf_loaded || c->swf_info.version >= FVM_SWF_VERSION_5) &&
-                             this_keyword(c, local_scope != 0, key);
+                             this_keyword(c, scope, local_scope != 0, key);
         int found = 0;
         if (implicit_this && c->swf_loaded && c->swf_info.version >= FVM_SWF_VERSION_5)
         {

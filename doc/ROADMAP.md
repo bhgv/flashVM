@@ -2156,3 +2156,11 @@ borrowed strings, With/Catch copies and shared Try/Finally state. Tests / про
 this_cell_assignment, roots/allocation/transport variants and this_cell_blocks.
 See [RU/EN contract](THIS_CELL_ASSIGNMENT.md). Native receiver coercion, complete
 scope/SWF semantics and all nine roadmap stages remain open / остаются открытыми.
+
+### v0.516 — SWF5 With this keyword case
+
+Implemented / реализовано: the innermost With scope overrides the local frame
+hint for this keyword folding; local functions with With closures retain local
+recognition. Tests / проверки: with_this_case (including transport and native JIT),
+its roots and allocation variants. See [RU/EN contract](WITH_THIS_CASE.md).
+Complete scope/SWF semantics and all nine stages remain open / остаются открытыми.

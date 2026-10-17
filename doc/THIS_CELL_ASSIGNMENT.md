@@ -61,3 +61,7 @@ branch/error cases on x86, ARM, ARM64, RV32 and RV64 passed; native x64 ran in
 host suites. A fresh GNU readelf audit passed for 1068 Cairo CTest ELF artifacts,
 with only libc, libgcc_s, libm and libstdc++ in direct DT_NEEDED. Foreign OS,
 transitive/dlopen dependencies and complete roadmap acceptance remain open.
+
+Follow-up v0.516: With-sensitive SWF5 keyword folding is corrected separately;
+see [RU/EN contract](WITH_THIS_CASE.md). Уточнение регистра this внутри With
+описано в связанном документе.
