@@ -1,5 +1,7 @@
 # FlashVM development rules
 
+- Standing user instruction on 2026-10-17: commit directly on `master`.
+
 - Read `doc/ROADMAP.md` before continuing development. It is the user-approved
   completion plan and the primary reference for scope, sequence and acceptance.
   Keep compatibility status and test evidence current; do not mark a stage

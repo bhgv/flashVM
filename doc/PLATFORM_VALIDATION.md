@@ -242,3 +242,19 @@ Fresh GNU readelf audit passed for 1076 current Cairo ELF artifacts, with only
 libc, libgcc_s, libm and libstdc++ in direct DT_NEEDED. Runtime code is unchanged
 from the full v0.518 suites (1067/1086/1087); those suites are not claimed as new
 v0.519 full runs. Actual foreign-OS and transitive/dlopen acceptance remain open.
+
+## Parallel Android staging — v0.526
+
+Each ADB adapter invocation now uploads a uniquely named executable. Parallel
+CTest entries can invoke the same build target without overwriting an executable
+that another test is using. All invocations retain the configured shared working
+directory, so file-process fixtures keep their existing paths and ordering.
+Only the invocation's own binary is removed after execution or a failed push;
+fixture data is preserved. A cleanup failure cannot turn a passing target into a
+pass, and cannot replace an already nonzero target exit code. Execution/staging
+exceptions remain primary if best-effort cleanup also fails. A hard host kill or
+unavailable device can still leave a uniquely named binary for manual cleanup.
+
+Nine host transport tests include overlapping executions of the same target,
+argument quoting, partial push cleanup, execution timeout, cleanup failures and
+shared fixture paths. These are mocked ADB tests, not an Android device run.

@@ -4301,3 +4301,12 @@ sharing the AVM1 budget and worker cancellation scope. Проверены C/dire
 GC и OOM/retry. See [ARRAY_SPLICE_BUDGET.md](ARRAY_SPLICE_BUDGET.md).
 Argument-coercion side effects remain visible after a staging error. Generic
 mutations retain their existing partial-write policy; all nine stages remain open.
+
+### v0.526 — Android parallel test transport
+
+Tested / проверено: unique per-invocation executable staging with shared fixture
+CWD, cleanup after partial push/execution failure, preserved remote nonzero exit
+status, and failure on cleanup errors after successful execution. Nine mocked
+host tests include overlapping invocations of the same target. See
+PLATFORM_VALIDATION.md / PLATFORM_VALIDATION.ru.md. No new SWF behavior; actual
+Android/Windows/macOS acceptance and all nine completion stages remain open.

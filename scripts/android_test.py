@@ -11,6 +11,7 @@ from pathlib import Path
 import shlex
 import subprocess
 import sys
+import uuid
 
 
 def run_test(adb, serial, directory, executable, arguments, timeout):
@@ -25,16 +26,37 @@ def run_test(adb, serial, directory, executable, arguments, timeout):
             len(parts) != 5 or directory == '/data/local/tmp/flashvm-'):
         raise ValueError('directory must be /data/local/tmp/flashvm-SESSION')
     command = [adb, '-s', serial]
-    remote = directory + '/' + executable.name
+    # Parallel CTest entries may invoke the same target. Never overwrite an
+    # executable another invocation is running (ETXTBSY/stale binary races).
+    # Keep the working directory shared for CTest's persisted file fixtures.
+    remote = directory + '/' + executable.name + '-' + uuid.uuid4().hex
     subprocess.run(command + ['get-state'], check=True, timeout=timeout)
     subprocess.run(command + ['shell', '-T', 'mkdir -p ' + shlex.quote(directory)],
                    check=True, timeout=timeout)
-    subprocess.run(command + ['push', str(executable), remote], check=True, timeout=timeout)
-    # ADB shell protocol v2 returns the remote exit code. Do not use shell -x,
-    # which disables that protocol, or a trailing command that masks failures.
-    shell = ('chmod 700 ' + shlex.quote(remote) + ' && cd ' + shlex.quote(directory) +
-             ' && exec ' + ' '.join(shlex.quote(value) for value in [remote] + arguments))
-    return subprocess.run(command + ['shell', '-T', shell], timeout=timeout).returncode
+    try:
+        subprocess.run(command + ['push', str(executable), remote], check=True, timeout=timeout)
+        # ADB shell protocol v2 returns the remote exit code. Do not use shell -x,
+        # which disables that protocol, or a trailing command that masks failures.
+        shell = ('chmod 700 ' + shlex.quote(remote) + ' && cd ' + shlex.quote(directory) +
+                 ' && exec ' + ' '.join(shlex.quote(value) for value in [remote] + arguments))
+        result = subprocess.run(command + ['shell', '-T', shell], timeout=timeout).returncode
+    except BaseException:
+        # A failed push may leave a partial binary. Preserve the original error
+        # even when an unavailable device also prevents best-effort cleanup.
+        try:
+            subprocess.run(command + ['shell', '-T', 'rm -f ' + shlex.quote(remote)],
+                           check=True, timeout=timeout)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        raise
+    try:
+        cleanup = subprocess.run(command + ['shell', '-T', 'rm -f ' + shlex.quote(remote)],
+                                 timeout=timeout).returncode
+    except (OSError, subprocess.SubprocessError):
+        if result:
+            return result
+        raise
+    return result if result else cleanup
 
 
 def main():

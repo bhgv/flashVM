@@ -2239,3 +2239,12 @@ Tests / проверки: array_method_length plus roots/allocation variants, in
 graph roundtrips and C/interpreter/JIT routes.
 See [RU/EN contract](ARRAY_METHOD_LENGTH.md). General Array/SWF compatibility,
 real foreign-platform acceptance and all nine stages remain open / остаются открытыми.
+
+### v0.526 — parallel Android executable staging
+
+Android CTest/ADB invocations upload unique binaries while retaining shared
+fixture working directories; cleanup preserves primary failures and removes only
+the invocation's binary. Девять host transport tests включают одновременные
+запуски одного target, ошибки загрузки/очистки и timeout. See PLATFORM_VALIDATION.md
+and PLATFORM_VALIDATION.ru.md. This is stage 9 tooling evidence; real Android
+execution and all nine roadmap stages remain open / остаются открытыми.
