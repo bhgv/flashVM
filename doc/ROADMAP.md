@@ -2172,3 +2172,11 @@ property as an index or triggers overflow truncation. Tests / проверки:
 array_index_whitespace, array_index_whitespace_effects and corrected
 array_named_index expectation. See [RU/EN contract](ARRAY_NAMED_INDEX.md).
 Nonnumeric Array length and all nine stages remain open / остаются открытыми.
+
+### v0.518 — exact root path keyword
+
+Implemented / реализовано: only exact first-token _root bypasses ordinary
+property lookup in loaded paths; mixed-case spellings retain shadowing,
+getters and qualified call receivers. Tests / проверки: path_root_case and
+its roots/allocation variants. See [RU/EN contract](PATH_ROOT_CASE.md).
+General path compatibility and all nine stages remain open / остаются открытыми.

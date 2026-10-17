@@ -311,9 +311,8 @@ FVM_Result fvm_movieclip_resolve_path(FVM_Context *c, FVM_Object *start, const F
                         value.object = c->global;
                     }
                 }
-                else if (first && modern &&
-                         (sensitive ? name == fvm_detail::string("_root")
-                                    : fvm_avm1_folded_name_equal(name, "_root")))
+                /* The path keyword stays exact even when ordinary properties fold in SWF5/6. */
+                else if (first && modern && name == fvm_detail::string("_root"))
                 {
                     value.type = FVM_VALUE_OBJECT;
                     value.object = root;
