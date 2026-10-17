@@ -1297,6 +1297,27 @@ FVM_Result fvm_array_legacy_store_element(FVM_Context *c, FVM_Object *o, unsigne
     return legacy_store_element(c, o, index, value);
 }
 
+/* Export the shared own-data Int32 reader without exposing getter or cached-length shortcuts. */
+FVM_Result fvm_array_legacy_length(FVM_Context *c, FVM_Object *o, long *out)
+{
+    if (!c || !o || o->owner != c || !out || !c->swf_loaded ||
+        o->resource_kind != FVM_RESOURCE_ARRAY)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        unsigned long ignored = 0;
+        long length = 0;
+        FVM_Result status = legacy_data_length(c, o, ignored, &length);
+        if (status == FVM_OK)
+            *out = length;
+        return status;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
 /* Capture observable splice inputs once, leaving a rejected result without allocation. */
 FVM_Result fvm_array_splice_prepare(FVM_Context *c, FVM_Object *o, unsigned int n,
                                     const FVM_Value *a, FVM_ArraySpliceBounds &out)

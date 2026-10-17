@@ -2205,3 +2205,11 @@ only old numeric data. Incoming moves are rooted across coercion. Tests /
 проверки: array_deleted_length plus roots, flags and allocation variants.
 See [RU/EN contract](ARRAY_LENGTH_STORAGE.md). Indexed assignments, sortOn
 argument-list lengths and all nine stages remain open / остаются открытыми.
+
+### v0.522 — live sortOn field and option list lengths
+
+Implemented / реализовано: sortOn captures own signed field-list length once,
+converts names before option-list length, and ignores mismatching options.
+Tests / проверки: array_sort_on_live_lengths plus roots/allocation variants.
+See [RU/EN contract](SORT_ON_LIVE_LENGTHS.md). General indexed writes and all
+nine stages remain open / остаются открытыми.

@@ -1694,9 +1694,6 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
             fvm_value_undefined(out);
             return FVM_OK;
         }
-        if (a[0].type == FVM_VALUE_OBJECT && array(a[0].object) &&
-            (!size(a[0].object) || size(a[0].object) >= 2147483648UL))
-            return object_value(c, o, 0, 0, out, 0);
     }
     if (!c->swf_loaded && fvm_array_needs_generic(o))
         return fvm_array_generic(c, o, "sortOn", n, a, out, sort_on);
@@ -1723,9 +1720,17 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
                 return fvm_array_generic(c, o, "sortOn", 0, 0, out, sort_prepared);
             return sort_impl(c, o, 0, 0, out, 0);
         }
-        unsigned long count = fields_array ? size(a[0].object) : 1;
-        if (fields_array && (!count || count >= 2147483648UL))
-            return object_value(c, o, 0, 0, out, 0);
+        unsigned long count = 1;
+        if (fields_array)
+        {
+            long length = 0;
+            FVM_Result status = fvm_array_legacy_length(c, a[0].object, &length);
+            if (status != FVM_OK)
+                return status;
+            if (length <= 0)
+                return object_value(c, o, 0, 0, out, 0);
+            count = (unsigned long)length;
+        }
         if (count > 64)
             return FVM_OUT_OF_MEMORY;
         for (unsigned long i = 0; i < count; ++i)
@@ -1755,7 +1760,14 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
         if (n > 1)
         {
             bool options_array = a[1].type == FVM_VALUE_OBJECT && array(a[1].object);
-            if (fields_array && options_array && size(a[1].object) == count)
+            long options_length = 0;
+            if (fields_array && options_array)
+            {
+                FVM_Result status = fvm_array_legacy_length(c, a[1].object, &options_length);
+                if (status != FVM_OK)
+                    return status;
+            }
+            if (fields_array && options_array && options_length == (long)count)
             {
                 for (unsigned long i = 0; i < count; ++i)
                 {

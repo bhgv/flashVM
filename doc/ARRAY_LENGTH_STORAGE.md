@@ -66,3 +66,7 @@ and libstdc++. Emulator checks and Linux results do not certify real foreign
 OS acceptance or transitive/dlopen dependencies.
 Все перечисленные проверки успешны; реальная приёмка остальных ОС и полная
 совместимость SWF/Array остаются открытыми.
+
+Follow-up v0.522 applies the live signed reader to sortOn field/option lists;
+see [RU/EN contract](SORT_ON_LIVE_LENGTHS.md).
+В v0.522 общий обработчик используется и для списков полей/опций sortOn.
