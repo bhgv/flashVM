@@ -70,6 +70,11 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
         FVM_Result (*write)(void *, const FVM_MediaFrame *); /* Consume or copy the borrowed frame synchronously. */
         FVM_Result (*stop)(void *); /* Stop and discard pending output; optional until stop is requested. */
     } FVM_MediaOutput; /* Finish the output bridge shared by audio and video. */
+    typedef struct FVM_AlsaOutput FVM_AlsaOutput; /* Host-owned Linux PCM device; close only after unregistering its channel. */
+    /* Explicitly open/configure nonblocking interleaved S16 playback; disabled builds return UNSUPPORTED. */
+    FVM_API FVM_Result fvm_audio_linux_alsa_open(const char *, unsigned int, unsigned int, unsigned int, FVM_AlsaOutput **, FVM_MediaOutput *); /* OS: Linux/static ALSA. */
+    /* Drop pending PCM and close the device; always invalidates a non-null live handle, even on I/O error. */
+    FVM_API FVM_Result fvm_audio_linux_alsa_close(FVM_AlsaOutput *); /* OS: Linux/static ALSA; null succeeds. */
     typedef struct FVM_AudioChannel FVM_AudioChannel; /* Context-owned host output registration; invalid after context destruction. */
     /* Copy a host output table with required write/stop callbacks; publish an inactive channel. */
     FVM_API FVM_Result fvm_audio_channel_create(FVM_Context *, const FVM_MediaOutput *, FVM_AudioChannel **); /* OS: host callback. */

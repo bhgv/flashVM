@@ -2517,6 +2517,25 @@ serialized global callback isolation are tested. All 88 catalog entries and
 resources, streaming/mixing/envelopes and audible/native device acceptance remain
 open. No roadmap stage is closed.
 
+### v0.547 — optional native Linux ALSA playback output
+
+Implemented / реализовано: explicit static ALSA SDK import, C89 open/close
+factories, separate native open/write/start/drop/reprepare/close source adapters,
+nonblocking complete-frame/error policy and independently host-owned provider
+lifetime. Added an explicit-device, fully line-commented tone tutorial and RU/EN
+API/preparation contracts. Default/foreign builds retain UNSUPPORTED factories.
+
+Validation: five actual native tests passed on static ALSA 1.2.12, and the same
+five passed ASAN/UBSAN on FlashVM (external SDK not instrumented, LSAN disabled).
+Real built-in null PCM validates library operations; linker-wrapped short write,
+EAGAIN, zero progress and start failures validate discard/retry state. The null
+endpoint tutorial completed with EOF input, ELF has no dynamic libasound and
+missing static SDK configuration is rejected. Default full suite 1136 passed,
+one existing named Unix endpoint test explicitly skipped (1137 total). All 89
+catalog entries and 115 bridge/tutorial files pass documentation checks.
+Physical audible output, desktop server/plugin configurations, other OS playback
+and full SWF sound integration remain open. No roadmap stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

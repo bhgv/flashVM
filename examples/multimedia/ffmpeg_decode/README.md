@@ -15,7 +15,7 @@
 и read могут блокироваться; у checkpoint нет timeout/cancel API. Не используйте
 этот режим в unattended smoke suite. Live камера в runner не проверена.
 
-[GC:] Нативные session/buffers не входят в VM heap; [fvm_media_close](../../../include/flashvm/multimedia.h#L119) освобождает
+[GC:] Нативные session/buffers не входят в VM heap; [fvm_media_close](../../../include/flashvm/multimedia.h#L124) освобождает
 libavformat/libavcodec/swscale storage после успеха или read failure. Ошибка open
 не публикует session. Результат read — borrowed view до следующей операции.
 
@@ -47,15 +47,15 @@ cmake --build build-media --target flashvm_examples_multimedia_ffmpeg_decode_mai
 
 | API (public source declaration is linked below) | Detailed contract and ownership guide |
 | --- | --- |
-| [`fvm_media_ffmpeg_backend`](../../../include/flashvm/multimedia.h#L102) | [MULTIMEDIA_BRIDGES.md — fvm_media_ffmpeg_backend](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_ffmpeg_backend) |
-| [`fvm_audio_open`](../../../include/flashvm/multimedia.h#L105) | [MULTIMEDIA_BRIDGES.md — fvm_audio_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_audio_open) |
-| [`fvm_video_open`](../../../include/flashvm/multimedia.h#L108) | [MULTIMEDIA_BRIDGES.md — fvm_video_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_video_open) |
-| [`fvm_camera_open`](../../../include/flashvm/multimedia.h#L111) | [MULTIMEDIA_BRIDGES.md — fvm_camera_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_camera_open) |
-| [`fvm_media_read`](../../../include/flashvm/multimedia.h#L114) | [MULTIMEDIA_BRIDGES.md — fvm_media_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_read) |
-| [`fvm_media_close`](../../../include/flashvm/multimedia.h#L119) | [MULTIMEDIA_BRIDGES.md — fvm_media_close](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_close) |
+| [`fvm_media_ffmpeg_backend`](../../../include/flashvm/multimedia.h#L107) | [MULTIMEDIA_BRIDGES.md — fvm_media_ffmpeg_backend](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_ffmpeg_backend) |
+| [`fvm_audio_open`](../../../include/flashvm/multimedia.h#L110) | [MULTIMEDIA_BRIDGES.md — fvm_audio_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_audio_open) |
+| [`fvm_video_open`](../../../include/flashvm/multimedia.h#L113) | [MULTIMEDIA_BRIDGES.md — fvm_video_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_video_open) |
+| [`fvm_camera_open`](../../../include/flashvm/multimedia.h#L116) | [MULTIMEDIA_BRIDGES.md — fvm_camera_open](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_camera_open) |
+| [`fvm_media_read`](../../../include/flashvm/multimedia.h#L119) | [MULTIMEDIA_BRIDGES.md — fvm_media_read](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_read) |
+| [`fvm_media_close`](../../../include/flashvm/multimedia.h#L124) | [MULTIMEDIA_BRIDGES.md — fvm_media_close](../../../doc/MULTIMEDIA_BRIDGES.md#fvm_media_close) |
 
 Типы: [FVM_MediaBackend](../../../include/flashvm/multimedia.h#L55), [FVM_MediaSession](../../../src/multimedia/common/session.hpp#L5), [FVM_MediaFrame](../../../include/flashvm/multimedia.h#L36), [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L66),
-[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L95) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L86) описаны в
+[FVM_DeviceBridge](../../../include/flashvm/multimedia.h#L100) и [FVM_DeviceEvent](../../../include/flashvm/multimedia.h#L91) описаны в
 [общем руководстве](../../../doc/MULTIMEDIA_BRIDGES.md#общий-контракт--common-contract).
 Ни одна демонстрация не завершает roadmap этап 4 или 9.
 
@@ -68,16 +68,16 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_open` | function | [include/flashvm/multimedia.h:105](../../../include/flashvm/multimedia.h#L105) |
-| `fvm_camera_open` | function | [include/flashvm/multimedia.h:111](../../../include/flashvm/multimedia.h#L111) |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:95](../../../include/flashvm/multimedia.h#L95) |
-| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:86](../../../include/flashvm/multimedia.h#L86) |
-| `fvm_media_close` | function | [include/flashvm/multimedia.h:119](../../../include/flashvm/multimedia.h#L119) |
-| `fvm_media_ffmpeg_backend` | function | [include/flashvm/multimedia.h:102](../../../include/flashvm/multimedia.h#L102) |
-| `fvm_media_read` | function | [include/flashvm/multimedia.h:114](../../../include/flashvm/multimedia.h#L114) |
+| `fvm_audio_open` | function | [include/flashvm/multimedia.h:110](../../../include/flashvm/multimedia.h#L110) |
+| `fvm_camera_open` | function | [include/flashvm/multimedia.h:116](../../../include/flashvm/multimedia.h#L116) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:100](../../../include/flashvm/multimedia.h#L100) |
+| `FVM_DeviceEvent` | struct | [include/flashvm/multimedia.h:91](../../../include/flashvm/multimedia.h#L91) |
+| `fvm_media_close` | function | [include/flashvm/multimedia.h:124](../../../include/flashvm/multimedia.h#L124) |
+| `fvm_media_ffmpeg_backend` | function | [include/flashvm/multimedia.h:107](../../../include/flashvm/multimedia.h#L107) |
+| `fvm_media_read` | function | [include/flashvm/multimedia.h:119](../../../include/flashvm/multimedia.h#L119) |
 | `FVM_MediaBackend` | struct | [include/flashvm/multimedia.h:55](../../../include/flashvm/multimedia.h#L55) |
 | `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:36](../../../include/flashvm/multimedia.h#L36) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:66](../../../include/flashvm/multimedia.h#L66) |
 | `FVM_MediaSession` | struct | [src/multimedia/common/session.hpp:5](../../../src/multimedia/common/session.hpp#L5) |
-| `fvm_video_open` | function | [include/flashvm/multimedia.h:108](../../../include/flashvm/multimedia.h#L108) |
+| `fvm_video_open` | function | [include/flashvm/multimedia.h:113](../../../include/flashvm/multimedia.h#L113) |
 <!-- source-links:end -->

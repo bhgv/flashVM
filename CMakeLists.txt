@@ -98,6 +98,12 @@ if(APPLE)
       ${FVM_AVFOUNDATION_FRAMEWORK} ${FVM_FOUNDATION_FRAMEWORK})
   endif()
 endif()
+option(FVM_ENABLE_LINUX_AUDIO "Build real Linux PCM output with a supplied static ALSA SDK" OFF)
+if(FVM_ENABLE_LINUX_AUDIO)
+  add_subdirectory(external/audio)
+  target_link_libraries(flashvm PUBLIC fvm_linux_audio)
+  target_compile_definitions(flashvm PRIVATE FVM_HAS_LINUX_ALSA_AUDIO=1)
+endif()
 option(FVM_ENABLE_LINUX_STT "Build real Linux ALSA/Vosk speech recognition with supplied static SDKs" OFF)
 if(FVM_ENABLE_LINUX_STT)
   add_subdirectory(external/speech)
@@ -372,4 +378,18 @@ if(TARGET flashvm_tests_speech_unix_connect AND CMAKE_SYSTEM_NAME STREQUAL "Linu
   # Interpose only endpoint creation/connect in this fixture; transport uses real socketpair I/O.
   set_property(TARGET flashvm_tests_speech_unix_connect APPEND_STRING PROPERTY
     LINK_FLAGS " -Wl,--wrap=socket -Wl,--wrap=connect")
+endif()
+
+# The native output fixture uses ALSA's real built-in null PCM, not physical hardware.
+if(FVM_ENABLE_LINUX_AUDIO AND TARGET flashvm_tests_audio_alsa)
+  target_compile_definitions(flashvm_tests_audio_alsa PRIVATE FVM_TEST_LINUX_AUDIO=1)
+  set_tests_properties(flashvm_tests_audio_alsa PROPERTIES
+    ENVIRONMENT "ALSA_CONFIG_PATH=${PROJECT_SOURCE_DIR}/tests/alsa_null.conf")
+endif()
+if(FVM_ENABLE_LINUX_AUDIO AND TARGET flashvm_tests_audio_alsa_faults)
+  target_compile_definitions(flashvm_tests_audio_alsa_faults PRIVATE FVM_TEST_LINUX_AUDIO=1)
+  set_property(TARGET flashvm_tests_audio_alsa_faults APPEND_STRING PROPERTY LINK_FLAGS
+    " -Wl,--wrap=snd_pcm_writei -Wl,--wrap=snd_pcm_drop -Wl,--wrap=snd_pcm_prepare -Wl,--wrap=snd_pcm_start")
+  set_tests_properties(flashvm_tests_audio_alsa_faults PROPERTIES
+    ENVIRONMENT "ALSA_CONFIG_PATH=${PROJECT_SOURCE_DIR}/tests/alsa_null.conf")
 endif()
