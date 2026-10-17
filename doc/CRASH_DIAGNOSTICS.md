@@ -109,3 +109,22 @@ Generated ELF execute bits were repaired before final complete passing suites.
 живые параметры и Function2-регистры, активный дочерний JIT-блок, сохранность
 данных после освобождения кода/GC, OOM/retry и исходный JIT-отчёт после replay.
 Три целевых ASan/UBSan-теста прошли с указанными выше ограничениями.
+
+### Source and breakpoint inspection (v0.534)
+
+`fvm_debug_frame_count/at` expose borrowed live frames in both breakpoint and
+fault callbacks; `fvm_crash_argument/local/register` work in either stop, even
+with fault action NONE. Root register storage survives fault inspection.
+Frames distinguish interpreter, JIT and attached host-native bodies. SWD-backed
+reports retain the current source line; ZIP snapshots include embedded source
+modules and an index. Synthetic replay does not trigger debugger breakpoints.
+See [complete function reference](DEBUG_API.md), [source mapping](SWD_DEBUGGING.md)
+and [six runnable tutorials](../examples/debugger/README.md).
+
+`fvm_debug_frame_count/at` показывают живые кадры на breakpoint и при ошибке;
+аргументы, локальные и регистры доступны в обоих callback, в том числе с NONE.
+Корневые регистры живут до завершения осмотра. Различаются интерпретатор, JIT и
+native-тело хоста. SWD добавляет строку исходника в отчёт и модули исходников
+в ZIP; служебный replay не вызывает breakpoint. Подробности:
+[справочник функций](DEBUG_API.ru.md), [исходники](SWD_DEBUGGING.md),
+[учебные примеры](../examples/debugger/README.md).

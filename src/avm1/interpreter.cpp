@@ -213,8 +213,7 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared, size_t base, unsigned int depth, bool bounded,
-                          const FVM_Value *implicit_this)
-;
+                          const FVM_Value *implicit_this, Execution *root_state);
 /* Capture errors before caller activations and their borrowed source/arguments are released. */
 static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size,
                           FVM_Value *returned,
@@ -223,9 +222,10 @@ static FVM_Result execute(FVM_Context *c, const unsigned char *data, size_t size
                           Execution *shared, size_t base, unsigned int depth, bool bounded,
                           const FVM_Value *implicit_this)
 {
+    Execution root_state; /* Keep root registers/operands alive until fault inspection returns. */
     FVM_CrashScope diagnostic(c, 0, data, size, 0, 0, 0, !shared);
     FVM_Result status = execute_impl(c, data, size, returned, locals, self, inherited,
-                                     shared, base, depth, bounded, implicit_this);
+                                     shared, base, depth, bounded, implicit_this, &root_state);
     fvm_crash_failure(c, status);
     return status;
 }
@@ -235,7 +235,7 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
                           fvm_detail::map<fvm_detail::string, FVM_Value> *locals, FVM_Object *self,
                           const fvm_detail::vector<fvm_detail::string> *inherited,
                           Execution *shared, size_t base, unsigned int depth, bool bounded,
-                          const FVM_Value *implicit_this)
+                          const FVM_Value *implicit_this, Execution *root_state)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -258,8 +258,7 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
             --context->avm1_execution_depth;
         }
     } budget(c);
-    Execution owned;
-    Execution &execution = shared ? *shared : owned;
+    Execution &execution = shared ? *shared : *root_state;
     fvm_detail::vector<fvm_detail::string> &constants = execution.constants;
     fvm_detail::vector<FVM_Value> &registers = execution.registers;
     fvm_detail::vector<FVM_Value> &stack = execution.stack;
@@ -344,6 +343,13 @@ static FVM_Result execute_impl(FVM_Context *c, const unsigned char *data, size_t
             registers.resize(FVM_AVM1_LEGACY_REGISTER_COUNT);
             for (size_t reg = 0; reg < registers.size(); ++reg)
                 fvm_value_undefined(&registers[reg]);
+        }
+        if (!shared && c->crash.active && !c->crash.busy && !c->execution_mode.replay_depth)
+        {
+            c->crash.active->registers = execution.global_registers
+                ? c->avm1_global_registers : registers.begin();
+            c->crash.active->register_count = execution.global_registers
+                ? FVM_EXEC_GLOBAL_REGISTER_COUNT : (unsigned int)registers.size();
         }
         while (pos < size)
         {

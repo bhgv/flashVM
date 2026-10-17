@@ -19,9 +19,10 @@ struct FVM_CrashActivation
     size_t machine_size;                /* Native payload size. */
     const FVM_ScriptFunction *function; /* Borrowed immutable formal/register metadata. */
     bool forced;                        /* Entry copies were retained successfully in FORCE mode. */
-    bool jit;                           /* Actual body engine. */
-    unsigned long offset;               /* Caller offset frozen on nested entry. */
-    unsigned long line;                 /* Caller mapped line frozen on nested entry. */
+    bool external;        /* Host-owned native attachment, distinct from generated code. */
+    bool jit;             /* Actual body engine. */
+    unsigned long offset; /* Caller offset frozen on nested entry. */
+    unsigned long line;   /* Caller mapped line frozen on nested entry. */
 };
 /* Link borrowed activation metadata; explicit FORCE mode also owns rooted entry copies. */
 class FVM_CrashScope

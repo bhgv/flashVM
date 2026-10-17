@@ -2317,3 +2317,27 @@ execution_mode_frame_replay; targeted ASan/UBSan. See
 are supported; asynchronous OS signals/SEH and native-PC unwinding remain open.
 SWF/SWD source import is the next user-requested debugger work. No roadmap stage
 is closed / все этапы остаются открытыми.
+
+
+### v0.534 — source-aware debugger API and runnable tutorials
+
+Implemented / реализовано: bounded matching SWF/SWD source import, copied
+executing source lines and ZIP source modules, interpreter/JIT/native frame
+classification, live frame/argument/local/register inspection at ordinary
+breakpoints with fault action NONE. Added six C89 tutorials under
+[examples/debugger](../examples/debugger/README.md), with every code line
+commented, explicit errors and no assertions. Each tutorial documents purpose,
+implementation, ownership and linked functions. The complete
+[EN](DEBUG_API.md)/[RU](DEBUG_API.ru.md) reference describes all debugger APIs.
+See [SWD contracts and limits](SWD_DEBUGGING.md). Tests include malformed/truncated
+symbols, CWS, ambiguous bodies, atomic OOM retries, independent ZIP/source reads
+and a tutorial/documentation contract check. All nine stages remain open;
+OS signals/SEH, native-PC unwinding and foreign-platform acceptance remain open.
+
+Validation / проверки v0.534: Linux x86-64 strict C90/C++98 Release minimal
+and minimal-jit each passed 1110 CTest cases, including all six tutorials,
+independent ZIP CRC/JSON/source reading and API/documentation coverage.
+Five targeted ASan/UBSan tests passed: crash_diagnostics, crash_allocation,
+execution_mode_frame_replay, swd_sources and swd_allocation (stack-use-after-return
+on; LeakSanitizer off). Stale incremental objects were rebuilt and generated
+ELF execute permissions repaired before the final complete passing runs.

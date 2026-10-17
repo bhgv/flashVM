@@ -1,5 +1,6 @@
 /* FlashVM: interpreter-only breakpoint dispatch and per-context JIT exclusion. */
 #include "mode_internal.hpp"
+#include "flashvm/source_debug.h"
 /* A nonempty breakpoint list excludes the whole named body, including cached native bodies. */
 bool fvm_debug_has_breakpoints(FVM_Context *c, const fvm_detail::string &name)
 {
@@ -64,7 +65,7 @@ extern "C" FVM_Result fvm_debug_set_breakpoint_handler(FVM_Context *c,
 FVM_Result fvm_debug_breakpoint_poll(FVM_Context *c)
 {
     FVM_ExecutionModeState &state = c->execution_mode;
-    if (!state.breakpoint_handler || state.breakpoint_busy)
+    if (!state.breakpoint_handler || state.breakpoint_busy || state.replay_depth)
         return FVM_OK;
     fvm_detail::map<fvm_detail::string, fvm_detail::vector<unsigned long> >::iterator found =
         state.breakpoints.find(c->debug_function);
@@ -84,6 +85,13 @@ FVM_Result fvm_debug_breakpoint_poll(FVM_Context *c)
     location.source = c->debug_source.c_str();
     location.offset = c->debug_offset;
     location.line = c->debug_line;
+    /* Source-content lookup occurs only on a breakpoint hit, not at each checkpoint. */
+    FVM_DebugSourcePosition source;
+    if (fvm_debug_current_source(c, &source) == FVM_OK)
+    {
+        location.source = source.source;
+        location.line = source.line;
+    }
     state.breakpoint_busy = true;
     FVM_Result result;
     try

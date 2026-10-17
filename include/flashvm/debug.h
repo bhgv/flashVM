@@ -6,11 +6,32 @@
 /* Define FLASHVM DEBUG H constant or compilation switch. */
 #define FLASHVM_DEBUG_H
 #include "channel.h"
+#include "crash.h"
 #include "table.h"
 #ifdef __cplusplus
 extern "C"
 {
 #endif
+    /* Borrowed activation view valid only inside a breakpoint or fault debugger callback. */
+    typedef struct FVM_DebugFrame
+    {
+        const char *function;   /* Counted function label; <root> for top-level actions. */
+        size_t function_size;   /* Complete label byte length. */
+        unsigned long offset;   /* Current/caller-suspended AVM1 action offset. */
+        FVM_CrashEngine engine; /* Actual interpreter/JIT/host-native body category. */
+        int forced;             /* Whether explicit entry argument preservation succeeded. */
+        FVM_Result preservation_status; /* OK or failed FORCE entry-copy status. */
+        unsigned int argc;              /* Number of supplied input arguments. */
+        unsigned int register_count;    /* Number of existing materialized ABI register slots. */
+        const void *bytecode;           /* Borrowed immutable original source body. */
+        size_t bytecode_size;           /* Source body byte count. */
+        const void *machine_code;       /* Borrowed active RX mapping, or null outside JIT. */
+        size_t machine_code_size;       /* Active mapping payload byte count. */
+    } FVM_DebugFrame;
+    /* Count up to 256 live frames, innermost first. NOT_FOUND outside a debugger stop. */
+    FVM_API FVM_Result fvm_debug_frame_count(FVM_Context *, size_t *);
+    /* Borrow one live frame; pair with crash_argument/local/register queries during either stop. */
+    FVM_API FVM_Result fvm_debug_frame_at(FVM_Context *, size_t, FVM_DebugFrame *);
     /* Borrowed location valid only during the synchronous interpreter breakpoint callback. */
     typedef struct FVM_DebugBreakpoint
     {

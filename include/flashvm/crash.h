@@ -21,6 +21,13 @@ extern "C"
         FVM_CRASH_DETAIL_NATURAL = 0, /* Inspect existing values without forcing entry copies. */
         FVM_CRASH_DETAIL_FORCE /* Retain supplied arguments and expose named register parameters. */
     } FVM_CrashDetail;
+    /* Actual execution engine; native host attachments need not have emitted machine views. */
+    typedef enum FVM_CrashEngine
+    {
+        FVM_CRASH_ENGINE_INTERPRETER = 0,
+        FVM_CRASH_ENGINE_JIT,
+        FVM_CRASH_ENGINE_NATIVE
+    } FVM_CrashEngine;
     /* A copied report owns these byte views until the next report, clear or destruction. */
     typedef struct FVM_CrashFrame
     {
@@ -30,7 +37,7 @@ extern "C"
         size_t source_size;   /* Source name byte length. */
         unsigned long offset; /* AVM1 action offset, not a native program counter. */
         unsigned long line;   /* Host-mapped line or zero. */
-        int jit;              /* Nonzero for emitted native execution, zero for interpretation. */
+        int jit;              /* Nonzero for emitted native execution, zero for other engines. */
         int forced;           /* Nonzero when extra entry preservation succeeded for this frame. */
         unsigned int argc;    /* Original supplied argument count. */
         const void *bytecode; /* Owned copy of the interpreted source for this activation. */
@@ -59,10 +66,14 @@ extern "C"
                                       FVM_Result *diagnostic_status);
     /* Copy a borrowed frame view, innermost first. */
     FVM_API FVM_Result fvm_crash_frame(FVM_Context *, size_t, FVM_CrashFrame *);
+    /* Query exact engine classification, including host-owned native attachments. */
+    FVM_API FVM_Result fvm_crash_frame_engine(FVM_Context *, size_t, FVM_CrashEngine *);
+    /* Borrow the copied executed source line when an attached SWD resolves the frame. */
+    FVM_API FVM_Result fvm_crash_source_line(FVM_Context *, size_t, const char **, size_t *);
     /* Retained JSON trace or ZIP bytes. Output is borrowed; zero size denotes no ZIP. */
     FVM_API FVM_Result fvm_crash_data(FVM_Context *, int zip, const void **, size_t *);
-    /* Live debugger-only inspection. Values and names are borrowed until callback return.
-     * No getters or coercions are invoked. Registers have no invented local names. */
+    /* Live breakpoint/fault debugger inspection. Values and names are borrowed until callback
+     * return. No getters or coercions are invoked. Registers have no invented local names. */
     FVM_API FVM_Result fvm_crash_argument(FVM_Context *, size_t frame, unsigned int, FVM_Value *);
     /* Enumerate available raw activation locals; NOT_FOUND marks end/unavailable. */
     FVM_API FVM_Result fvm_crash_local(FVM_Context *, size_t frame, size_t index, const char **name,

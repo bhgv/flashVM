@@ -42,6 +42,19 @@ static void registered(FVM_Context *c,FVM_Result result,void *)
         if(n==5 && !std::memcmp(name,"input",5)){found=true;assert(v.number==99);}
     assert(found==forced);
 }
+static FVM_Result stopped(FVM_Context *c,const FVM_DebugBreakpoint *,void *)
+{
+    ++callbacks;size_t count;assert(fvm_debug_frame_count(c,&count)==FVM_OK && count==1);
+    FVM_DebugFrame frame;assert(fvm_debug_frame_at(c,0,&frame)==FVM_OK && frame.argc==1 && frame.engine==FVM_CRASH_ENGINE_INTERPRETER);
+    assert(frame.forced==(int)forced && frame.preservation_status==FVM_OK);
+    FVM_Value value;assert(fvm_crash_argument(c,0,0,&value)==FVM_OK && value.number==42);
+    const char *name;size_t n;bool found=false;
+    for(size_t i=0;fvm_crash_local(c,0,i,&name,&n,&value)==FVM_OK;++i)
+        if(n==5 && !std::memcmp(name,"input",5))found=true;
+    assert(found);return FVM_OK;
+}
+static FVM_Result host_body(FVM_Context *c,const FVM_ScriptFrame *,FVM_Value *out,void *)
+{fvm_value_number(out,88);return fvm_exception_raise(c,out);}
 static void body(FVM_ScriptFunction &fn,const char *name,const unsigned char *data,size_t n)
 {
     fn.name=name;fn.body.assign(data,data+n);fn.parameters.push_back(fvm_detail::string("input"));
@@ -75,6 +88,13 @@ int main(int argc,char **argv)
         assert(fvm_crash_argument(c,0,0,&out)==FVM_NOT_FOUND);
         assert(fvm_exception_get(c,&out)==FVM_OK && out.number==123);
         assert(fvm_exception_clear(c)==FVM_OK && fvm_crash_clear(c)==FVM_OK);
+        /* Ordinary breakpoints can inspect live variables without producing crash reports. */
+        assert(fvm_crash_configure(c,FVM_CRASH_NONE,0,0,0)==FVM_OK);
+        assert(fvm_debug_set_breakpoint(c,"caller",0,1)==FVM_OK && fvm_debug_set_breakpoint_handler(c,stopped,0)==FVM_OK);
+        fvm_value_number(&input,42);callbacks=0;
+        assert(fvm_avm1_call_script(c,caller.name,caller,1,&input,c->global,&out)==FVM_EXCEPTION && callbacks==1);
+        assert(fvm_debug_set_breakpoint(c,"caller",0,0)==FVM_OK && fvm_debug_set_breakpoint_handler(c,0,0)==FVM_OK);
+        assert(fvm_exception_clear(c)==FVM_OK);
         /* Real private register parameters are available by name only in explicit FORCE mode. */
         const unsigned char regbody[]={0x96,5,0,7,99,0,0,0,0x87,1,0,1,0x17,0x96,2,0,4,1,0x2a,0};
         unsigned char swf[]={'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0};
@@ -115,6 +135,12 @@ int main(int argc,char **argv)
             assert(fvm_exception_clear(c)==FVM_OK);
         }
         assert(fvm_gc_collect(c,0)==FVM_OK && fvm_crash_frame(c,0,&frame)==FVM_OK && frame.bytecode_size==sizeof(throwing));
+        assert(fvm_execution_set_mode(c,FVM_EXECUTION_MANUAL,0)==FVM_OK);
+        assert(fvm_crash_configure(c,FVM_CRASH_BACKTRACE,0,0,0)==FVM_OK);
+        assert(fvm_function_set_body(c,inner,host_body,0,0)==FVM_OK);
+        assert(fvm_function_invoke(c,inner,0,1,&input,&out)==FVM_EXCEPTION);
+        FVM_CrashEngine actual;assert(fvm_crash_frame_engine(c,0,&actual)==FVM_OK && actual==FVM_CRASH_ENGINE_NATIVE);
+        assert(fvm_function_set_body(c,inner,0,0,0)==FVM_OK && fvm_exception_clear(c)==FVM_OK);
         fvm_context_destroy(c);
     }
     if(argc==1)assert(std::remove(path)==0);

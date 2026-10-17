@@ -29,4 +29,14 @@ with tempfile.TemporaryDirectory(prefix='flashvm-crash-') as directory:
         global_object = next(obj for obj in heap['objects'] if obj['id'] == heap['global'])
         assert any(field['name'] == 'Object' for field in global_object['properties'])
         assert all('prototype' in obj and 'properties' in obj for obj in heap['objects'])
+    if len(sys.argv) > 2:
+        source_archive = root / 'source-report.zip'
+        subprocess.run([str(Path(sys.argv[2]).resolve()), str(source_archive)], cwd=root, check=True, timeout=60)
+        with zipfile.ZipFile(source_archive) as report:
+            assert report.testzip() is None
+            modules = json.loads(report.read('sources/index.json'))
+            assert modules == [{'module': 7, 'name': 'Main.as', 'entry': 'sources/module0.txt'}]
+            assert report.read(modules[0]['entry']) == b'// source\r\nthrow 42;\nvar other = 0;\n'
+            frame = json.loads(report.read('backtrace.json'))['frames'][0]
+            assert frame['source'] == 'Main.as' and frame['line'] == 2 and frame['source_line'] == 'throw 42;'
 print('PASS fault ZIP CRC, JSON, arguments, source, globals/classes and active JIT bytes')

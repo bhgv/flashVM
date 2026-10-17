@@ -489,6 +489,8 @@ FVM_Result fvm_avm1_call_script(FVM_Context *c, const fvm_detail::string &name,
                 native_entry.userdata = code;
             }
         }
+        if (c->crash.active && !c->crash.busy && !c->execution_mode.replay_depth)
+            c->crash.active->external = native_entry.callback && native_entry.callback != fvm_jit_body;
         if (native_entry.callback)
         {
             ran_jit = native_entry.callback == fvm_jit_body;

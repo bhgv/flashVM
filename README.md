@@ -1,5 +1,5 @@
-Development version: **0.533** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.533 ` and an English description. Increase the subversion before each
+Development version: **0.534** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.534 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -538,3 +538,7 @@ Loaded Function calls and native construction values: [RU/EN contract](doc/FUNCT
 ASSetPropFlags conversion order and supported flags: [RU/EN](doc/PROPERTY_FLAGS.md).
 
 Loaded Math namespace attributes and host activation: [RU/EN](doc/MATH_ATTRIBUTES.md).
+
+Debugger tutorials / Примеры отладчика: [examples/debugger](examples/debugger/README.md).
+Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG_API.ru.md);
+[SWF/SWD source mapping](doc/SWD_DEBUGGING.md).

@@ -2,6 +2,7 @@
 #include "crash_constants.h"
 #include "crash_internal.hpp"
 #include "flashvm/jit.h"
+#include "flashvm/source_debug.h"
 #include <cstdio>
 #include <cstring>
 #include <new>
@@ -80,16 +81,23 @@ void value(Bytes &out, const FVM_Value &v)
 /* A section is copied independently so postmortem storage owns no live VM references. */
 struct SavedFrame
 {
-    fvm_detail::string name;     /* Owned function label. */
-    fvm_detail::string source;   /* Owned mapped source name. */
-    unsigned long offset, line;  /* AVM1 offset and optional source line. */
-    bool forced;                 /* Successful FORCE entry preservation. */
-    bool jit;                    /* Actual engine at the failing activation. */
-    const void *machine_address; /* Original RX address, retained only as an opaque identity. */
-    unsigned int argc;           /* Supplied argument count. */
-    Bytes bytecode, machine;     /* Owned source and optional generated instruction bytes. */
+    fvm_detail::string name;        /* Owned function label. */
+    fvm_detail::string source;      /* Owned mapped source name. */
+    fvm_detail::string source_line; /* Owned executing source line. */
+    bool source_available;          /* A known source line may be empty. */
+    unsigned long offset, line;     /* AVM1 offset and optional source line. */
+    bool external;                  /* Host-attached native body rather than emitted JIT. */
+    bool forced;                    /* Successful FORCE entry preservation. */
+    bool jit;                       /* Actual engine at the failing activation. */
+    const void *machine_address;    /* Original RX address, retained only as an opaque identity. */
+    unsigned int argc;              /* Supplied argument count. */
+    Bytes bytecode, machine;        /* Owned source and optional generated instruction bytes. */
     /* Initialize copied frame metadata. */
-    SavedFrame() : offset(0), line(0), forced(false), jit(false), machine_address(0), argc(0) {}
+    SavedFrame()
+        : source_available(false), offset(0), line(0), external(false), forced(false), jit(false),
+          machine_address(0), argc(0)
+    {
+    }
 };
 /* Encode a fixed-width little-endian ZIP field. */
 void field(Bytes &out, unsigned long n, unsigned int width)
@@ -178,6 +186,17 @@ void location(FVM_Context *c, const FVM_CrashActivation &a, SavedFrame &out)
             nearest = m.offset;
             out.source = m.source;
             out.line = m.line;
+        }
+    }
+    if (!found && !a.external && c->crash.symbols)
+    {
+        FVM_DebugSourcePosition position;
+        if (fvm_debug_source_position(c, a.source, a.source_size, out.offset, &position) == FVM_OK)
+        {
+            out.source = fvm_detail::string(position.source, position.source_size);
+            out.line = position.line;
+            out.source_line = fvm_detail::string(position.line_text, position.line_size);
+            out.source_available = true;
         }
     }
 }
@@ -295,13 +314,19 @@ struct FVM_CrashReport
     FVM_CrashReport() : status(FVM_OK) {}  /* Initialize an empty postmortem report. */
 };
 /* Destroy copied byte storage without traversing managed state. */
-FVM_CrashState::~FVM_CrashState() { delete report; }
+FVM_CrashState::~FVM_CrashState()
+{
+    delete report;
+    fvm_debug_symbols_destroy(symbols);
+}
 /* Register a borrowed stack frame only for enabled diagnostics and meaningful activations. */
 FVM_CrashScope::FVM_CrashScope(FVM_Context *c, const fvm_detail::string *name, const void *source,
                                size_t size, unsigned int argc, const FVM_Value *argv,
                                FVM_Object *activation, bool enabled)
-    : context_(c), linked_(enabled && c->crash.mode != FVM_CRASH_NONE && !c->crash.busy &&
-                           !c->execution_mode.replay_depth)
+    : context_(c), linked_(enabled &&
+                           (c->crash.mode != FVM_CRASH_NONE || c->crash.symbols ||
+                            !c->execution_mode.breakpoints.empty()) &&
+                           !c->crash.busy && !c->execution_mode.replay_depth)
 {
     rooted_ = false;
     if (!linked_)
@@ -322,6 +347,7 @@ FVM_CrashScope::FVM_CrashScope(FVM_Context *c, const fvm_detail::string *name, c
     frame_.machine = 0;
     frame_.machine_size = 0;
     frame_.jit = false;
+    frame_.external = false;
     frame_.offset = 0;
     frame_.function = 0;
     frame_.forced = false;
@@ -399,6 +425,7 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
         {
             SavedFrame saved;
             saved.offset = n ? a->offset : c->debug_offset;
+            saved.external = a->external;
             saved.forced = a->forced;
             saved.jit = a->jit;
             saved.machine_address = a->machine;
@@ -417,13 +444,18 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
             text(r->trace, "{\"function\":");
             quoted(r->trace, saved.name.data(), saved.name.size());
             text(r->trace, ",\"engine\":");
-            text(r->trace, a->jit ? "\"jit\"" : "\"interpreter\"");
+            text(r->trace, a->jit ? "\"jit\"" : a->external ? "\"native\"" : "\"interpreter\"");
             text(r->trace, ",\"jit_address\":");
             identity(r->trace, a->machine);
             text(r->trace, ",\"jit_size\":");
             integer(r->trace, (unsigned long)a->machine_size);
             text(r->trace, ",\"source\":");
             quoted(r->trace, saved.source.data(), saved.source.size());
+            text(r->trace, ",\"source_line\":");
+            if (saved.source_available)
+                quoted(r->trace, saved.source_line.data(), saved.source_line.size());
+            else
+                text(r->trace, "null");
             text(r->trace, ",\"line\":");
             integer(r->trace, saved.line);
             text(r->trace, ",\"offset\":");
@@ -502,6 +534,35 @@ void fvm_crash_failure(FVM_Context *c, FVM_Result status)
                     std::sprintf(name, "jit/frame%lu.bin", (unsigned long)i);
                     archive.add(name, f.machine.begin(), f.machine.size());
                 }
+            }
+            size_t sources = 0;
+            if (fvm_debug_source_count(c, &sources) == FVM_OK && sources)
+            {
+                Bytes index;
+                text(index, "[");
+                for (size_t i = 0; i < sources; ++i)
+                {
+                    unsigned long id;
+                    const char *name, *source;
+                    size_t name_size, source_size;
+                    if (fvm_debug_source_at(c, i, &id, &name, &name_size, &source, &source_size) !=
+                        FVM_OK)
+                        continue;
+                    char entry[64];
+                    std::sprintf(entry, "sources/module%lu.txt", (unsigned long)i);
+                    archive.add(entry, source, source_size);
+                    if (i)
+                        text(index, ",");
+                    text(index, "{\"module\":");
+                    integer(index, id);
+                    text(index, ",\"name\":");
+                    quoted(index, name, name_size);
+                    text(index, ",\"entry\":");
+                    quoted(index, entry, std::strlen(entry));
+                    text(index, "}");
+                }
+                text(index, "]");
+                archive.add("sources/index.json", index.begin(), index.size());
             }
             archive.finish(s.report->zip);
             if (!s.path.empty())
@@ -644,7 +705,8 @@ namespace
 /* Resolve a live frame only inside the synchronous DEBUGGER callback. */
 FVM_CrashActivation *live(FVM_Context *c, size_t index)
 {
-    if (!c || !c->crash.busy || c->crash.mode != FVM_CRASH_DEBUGGER)
+    if (!c || (!c->execution_mode.breakpoint_busy &&
+               (!c->crash.busy || c->crash.mode != FVM_CRASH_DEBUGGER)))
         return 0;
     FVM_CrashActivation *f = c->crash.active;
     while (f && index--)
@@ -716,5 +778,81 @@ extern "C" FVM_Result fvm_crash_register(FVM_Context *c, size_t frame, unsigned 
     if (!f || index >= f->register_count)
         return FVM_NOT_FOUND;
     *out = f->registers[index];
+    return FVM_OK;
+}
+
+/* Return the copied executed source line independently from borrowed symbol-bundle lifetime. */
+extern "C" FVM_Result fvm_crash_source_line(FVM_Context *c, size_t index, const char **out,
+                                            size_t *size)
+{
+    if (!c || !out || !size)
+        return FVM_INVALID_ARGUMENT;
+    if (!c->crash.report || index >= c->crash.report->frames.size())
+        return FVM_NOT_FOUND;
+    const SavedFrame &f = c->crash.report->frames[index];
+    if (!f.source_available)
+        return FVM_NOT_FOUND;
+    *out = f.source_line.data();
+    *size = f.source_line.size();
+    return FVM_OK;
+}
+/* Distinguish interpreter, generated JIT and embedding-owned native bodies. */
+extern "C" FVM_Result fvm_crash_frame_engine(FVM_Context *c, size_t index, FVM_CrashEngine *out)
+{
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    if (!c->crash.report || index >= c->crash.report->frames.size())
+        return FVM_NOT_FOUND;
+    const SavedFrame &f = c->crash.report->frames[index];
+    *out = f.jit        ? FVM_CRASH_ENGINE_JIT
+           : f.external ? FVM_CRASH_ENGINE_NATIVE
+                        : FVM_CRASH_ENGINE_INTERPRETER;
+    return FVM_OK;
+}
+
+/* Count borrowed execution frames only while a host debugger callback owns the stop. */
+extern "C" FVM_Result fvm_debug_frame_count(FVM_Context *c, size_t *count)
+{
+    if (!c || !count)
+        return FVM_INVALID_ARGUMENT;
+    FVM_CrashActivation *frame = live(c, 0);
+    if (!frame)
+    {
+        *count = 0;
+        return FVM_NOT_FOUND;
+    }
+    size_t n = 0;
+    while (frame && n < FVM_CRASH_MAX_FRAMES)
+    {
+        ++n;
+        frame = frame->previous;
+    }
+    *count = n;
+    return FVM_OK;
+}
+/* Expose a stable borrowed activation view without constructing a postmortem report. */
+extern "C" FVM_Result fvm_debug_frame_at(FVM_Context *c, size_t index, FVM_DebugFrame *out)
+{
+    if (!c || !out)
+        return FVM_INVALID_ARGUMENT;
+    FVM_CrashActivation *frame = live(c, index);
+    if (!frame || index >= FVM_CRASH_MAX_FRAMES)
+        return FVM_NOT_FOUND;
+    FVM_DebugFrame view;
+    view.function = frame->name ? frame->name->data() : "<root>";
+    view.function_size = frame->name ? frame->name->size() : sizeof("<root>") - 1;
+    view.offset = index ? frame->offset : c->debug_offset;
+    view.engine = frame->jit        ? FVM_CRASH_ENGINE_JIT
+                  : frame->external ? FVM_CRASH_ENGINE_NATIVE
+                                    : FVM_CRASH_ENGINE_INTERPRETER;
+    view.forced = frame->forced;
+    view.preservation_status = c->crash.detail == FVM_CRASH_DETAIL_FORCE && !frame->forced ? FVM_OUT_OF_MEMORY : FVM_OK;
+    view.argc = frame->argc;
+    view.register_count = frame->register_count;
+    view.bytecode = frame->source;
+    view.bytecode_size = frame->source_size;
+    view.machine_code = frame->machine;
+    view.machine_code_size = frame->machine_size;
+    *out = view;
     return FVM_OK;
 }

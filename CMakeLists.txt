@@ -197,8 +197,11 @@ endif()
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_crash_archive_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_crash_archive.py
-            $<TARGET_FILE:flashvm_tests_crash_diagnostics>)
+            $<TARGET_FILE:flashvm_tests_crash_diagnostics>
+            $<TARGET_FILE:flashvm_tests_swd_sources>)
   set_tests_properties(flashvm_crash_archive_host PROPERTIES TIMEOUT 70)
+  add_test(NAME flashvm_debugger_tutorial_contract
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_debugger_examples.py)
 endif()
 if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND FVM_ENABLE_OS_PORTS AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_function_independent_threads

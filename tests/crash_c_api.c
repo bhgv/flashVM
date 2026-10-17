@@ -1,5 +1,7 @@
 /* Public crash/JIT views compile as strict C89 and preserve typed source bytes. */
 #include "flashvm/crash.h"
+#include "flashvm/source_debug.h"
+#include "flashvm/debug.h"
 #include "flashvm/jit.h"
 #include <assert.h>
 #include <string.h>
@@ -15,6 +17,9 @@ int main(void)
     assert(fvm_crash_configure(c,FVM_CRASH_DEBUGGER,0,0,0)==FVM_INVALID_ARGUMENT);
     assert(fvm_crash_info(c,&count,&status,&diagnostic)==FVM_NOT_FOUND && count==0 && diagnostic==FVM_OK);
     assert(fvm_crash_clear(c)==FVM_OK);
+    assert(fvm_debug_source_count(c,&count)==FVM_OK && count==0);
+    assert(fvm_debug_clear_symbols(c)==FVM_OK);
+    assert(fvm_debug_frame_count(c,&count)==FVM_NOT_FOUND && count==0);
     if(fvm_jit_available()) {
         assert(fvm_jit_compile(source,sizeof(source),&code)==FVM_OK);
         assert(fvm_jit_source(code,&bytes,&size)==FVM_OK && size==sizeof(source) && !memcmp(bytes,source,size));

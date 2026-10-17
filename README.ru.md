@@ -1,4 +1,4 @@
-Версия разработки: **0.533** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.534** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
@@ -304,3 +304,7 @@ Unicode legacy display paths / Unicode-пути старых SWF: [EN](doc/MOVIE
 [Loaded builtin construction / Конструирование и вызовы SWF](doc/BUILTIN_CONSTRUCTION.md) — v0.474.
 
 [Current-global primitive boxing / Текущие классы примитивов](doc/PRIMITIVE_GLOBAL_BOXING.md) — v0.474.
+
+Debugger tutorials / Примеры отладчика: [examples/debugger](examples/debugger/README.md).
+Complete API reference: [English](doc/DEBUG_API.md) / [Русский](doc/DEBUG_API.ru.md);
+[SWF/SWD source mapping](doc/SWD_DEBUGGING.md).
