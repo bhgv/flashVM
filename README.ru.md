@@ -1,10 +1,21 @@
-Версия разработки: **0.544** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.545** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению зеркало обновляется после каждого коммита с
 проверкой серверного HEAD; внутренний Git остаётся основным.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+## Просмотр документации
+
+Из корня проекта установите зависимости и запустите локальный просмотрщик:
+
+```sh
+python -m pip install -r doku_viewer/requirements.txt
+python view_docs.py
+```
+
+[Руководство просмотрщика](doku_viewer/README.md). Python 2.7.9 / Python 3.
 
 
 Повторяемые AGG/Cairo/minimal и адаптер Android CTest/ADB:
