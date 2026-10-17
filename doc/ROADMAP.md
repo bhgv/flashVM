@@ -2213,3 +2213,11 @@ converts names before option-list length, and ignores mismatching options.
 Tests / проверки: array_sort_on_live_lengths plus roots/allocation variants.
 See [RU/EN contract](SORT_ON_LIVE_LENGTHS.md). General indexed writes and all
 nine stages remain open / остаются открытыми.
+
+### v0.523 — loaded sortOn beyond 64 fields
+
+Implemented / реализовано: loaded sortOn grows dynamic field/option preparation
+instead of rejecting counts above 64; each compared field charges shared work.
+Tests / проверки: array_sort_on_many_fields plus roots/allocation variants.
+See [RU/EN contract](SORT_ON_MANY_FIELDS.md). General Array/SWF compatibility
+and all nine stages remain open / остаются открытыми.

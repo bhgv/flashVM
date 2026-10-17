@@ -32,3 +32,6 @@ retained virtual indices without getter calls, empty fields, fallback and restor
 GC/depth state. The 64-field cap remains. Full signed native length semantics,
 arbitrary native callback GC, Unicode case mapping and all stages remain open.
 Reference: pinned Ruffle globals/array.rs sort_on.
+
+Follow-up v0.523 / Продолжение: the loaded 64-field cap is removed; host policy
+is retained. See [RU/EN contract](SORT_ON_MANY_FIELDS.md).

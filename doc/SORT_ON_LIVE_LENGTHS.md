@@ -52,3 +52,7 @@ targeted ASan/UBSan cases passed. Fresh direct DT_NEEDED audit passed for 1086
 Cairo ELF artifacts, with only libc, libgcc_s, libm and libstdc++. These checks
 do not certify transitive/dlopen dependencies or actual foreign-OS acceptance.
 Реальные сборки/запуски остальных ОС и полная совместимость остаются открытыми.
+
+Follow-up v0.523 removes the loaded 64-field cap and charges each field
+comparison; see [RU/EN contract](SORT_ON_MANY_FIELDS.md).
+В v0.523 предел 64 полей снят для загруженного SWF, добавлен учёт сравнений.

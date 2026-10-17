@@ -1210,7 +1210,7 @@ FVM_Result loaded_sort_field(FVM_Context *c, FVM_Object *o, const fvm_detail::st
     return FVM_OK;
 }
 
-/* Compare the current value. */
+/* Compare loaded values with per-field work accounting, preserving the host key policy. */
 FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigned int flags,
                    FVM_Object *callback, int &order, const SortSpec *spec = 0)
 {
@@ -1227,10 +1227,14 @@ FVM_Result compare(FVM_Context *c, const SortItem &a, const SortItem &b, unsigne
             if (a.value.type != FVM_VALUE_OBJECT || b.value.type != FVM_VALUE_OBJECT)
                 return loaded_value_compare(c, a.value, b.value, flags, order);
             order = 0;
+            FVM_ArrayWorkScope work(c);
             for (size_t i = 0; i < spec->fields.size(); ++i)
             {
+                FVM_Result result = work.step();
+                if (result != FVM_OK)
+                    return result;
                 FVM_Value left, right;
-                FVM_Result result = loaded_sort_field(c, a.value.object, spec->fields[i], left);
+                result = loaded_sort_field(c, a.value.object, spec->fields[i], left);
                 if (result == FVM_OK)
                     result = loaded_sort_field(c, b.value.object, spec->fields[i], right);
                 if (result == FVM_OK)
@@ -1731,8 +1735,6 @@ FVM_Result sort_on(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM_Valu
                 return object_value(c, o, 0, 0, out, 0);
             count = (unsigned long)length;
         }
-        if (count > 64)
-            return FVM_OUT_OF_MEMORY;
         for (unsigned long i = 0; i < count; ++i)
         {
             FVM_Result r = work.step();
