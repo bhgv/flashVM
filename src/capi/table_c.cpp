@@ -106,7 +106,8 @@ extern "C"
                     !fvm_base_script_accessor(script->second))
                     return write.finish(FVM_OK);
             }
-            if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY && key >= o->resource_result.number)
+            if (!c->swf_loaded && o->resource_kind == FVM_RESOURCE_ARRAY &&
+                (o->resource_result.type != FVM_VALUE_NUMBER || key >= o->resource_result.number))
             {
                 status = fvm_object_property_flags(c, o, "length", &flags);
                 if (status != FVM_OK)

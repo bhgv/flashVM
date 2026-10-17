@@ -25,6 +25,7 @@
 #include "function_state.hpp"
 #include "../core/native_call_guard.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/value_vector_root_scope.hpp"
 #include "../core/property_watch.hpp"
 #include "../core/property_key.hpp"
 #include "../core/property_lookup.hpp"
@@ -70,6 +71,9 @@ FVM_Result owned(FVM_Context *c, const FVM_Value &src, FVM_Value &dst)
 /* Return the nonnegative traversal extent without casting signed length to unsigned. */
 unsigned long size(FVM_Object *o)
 {
+    /* Truncation examines only old Number data, never coercing a retained object. */
+    if (o->resource_result.type != FVM_VALUE_NUMBER)
+        return 0;
     if (o->owner->swf_loaded)
     {
         const long length = fvm_array_number_length(o->resource_result.number);
@@ -79,11 +83,10 @@ unsigned long size(FVM_Object *o)
     return length > 0 && length <= FVM_UINT32_MAX_NUMBER ? (unsigned long)length : 0;
 }
 
-/* Validate numeric native length; loaded assignment retains every Number representation. */
+/* Recognize native Array storage independently of its retained length value. */
 bool array(FVM_Object *o)
 {
-    return o && o->resource_kind == ARRAY_OBJECT && o->resource_result_valid &&
-           o->resource_result.type == FVM_VALUE_NUMBER;
+    return o && o->resource_kind == ARRAY_OBJECT && o->resource_result_valid;
 }
 
 /* Validate and apply an Array length update, removing truncated entries. */
@@ -178,18 +181,22 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
         return FVM_INVALID_ARGUMENT;
 
     FVM_ArrayWorkScope work(c, c->swf_loaded);
+    /* [GC:] Coercion may delete its input's last ordinary binding and collect. */
+    fvm_detail::vector<FVM_Value> retained;
+    retained.push_back(a[0]);
+    FVM_ValueVectorRootScope input_roots(c, retained);
     /* Initialization / Инициализация локального состояния. */
     double length = 0;
-    FVM_Result r = fvm_value_to_number(c, a, &length);
+    FVM_Result r = c->swf_loaded ? fvm_avm1_number(c, retained.begin(), &length)
+                                : fvm_value_to_number(c, retained.begin(), &length);
     if (r != FVM_OK)
         return r;
-    const bool raw_number = c->swf_loaded && a[0].type == FVM_VALUE_NUMBER;
-    if (!raw_number && (length < 0 || length > FVM_UINT32_MAX_NUMBER || length != std::floor(length)))
+    if (!c->swf_loaded && (length < 0 || length > FVM_UINT32_MAX_NUMBER || length != std::floor(length)))
         return FVM_INVALID_ARGUMENT;
     if (c->swf_loaded)
     {
         /* Read current length after conversion callbacks, then use Int32 bounds.
-         * The original numeric input, including NaN/fractions, remains the stored data. */
+         * Retain the original typed input instead of replacing it with its conversion. */
         const unsigned long old_length = size(o);
         const long signed_first = fvm_array_number_length(length);
         const unsigned long first = signed_first > 0 ? (unsigned long)signed_first : 0;
@@ -211,11 +218,8 @@ FVM_Result array_resize(FVM_Context *c, FVM_Object *o, unsigned int n, const FVM
             return r;
         if (!(flags & FVM_PROPERTY_READ_ONLY))
         {
-            /* [GC:] Numeric data retains its traced primitive metatable until replacement. */
-            if (raw_number)
-                o->resource_result = a[0];
-            else
-                fvm_value_number(&o->resource_result, length);
+            /* [GC:] Native length owns the object/string/metatable edge after publication. */
+            o->resource_result = *retained.begin();
             fvm_property_clear_versions(c, o, "length");
         }
         fvm_value_undefined(out);

@@ -2248,3 +2248,12 @@ the invocation's binary. Девять host transport tests включают од
 запуски одного target, ошибки загрузки/очистки и timeout. See PLATFORM_VALIDATION.md
 and PLATFORM_VALIDATION.ru.md. This is stage 9 tooling evidence; real Android
 execution and all nine roadmap stages remain open / остаются открытыми.
+
+### v0.527 — typed native Array length
+
+Loaded native length retains all valid value types; AVM1 conversion controls
+truncation independently of stored data. GC and graph transport retain typed
+cycles/metadata with malformed-reference validation. Tests: array_typed_length,
+roots, allocation and wire variants. См. [RU/EN contract](ARRAY_TYPED_LENGTH.md).
+Deleted/recreated/virtual length assignment, real foreign OS acceptance and all
+nine roadmap stages remain open / остаются открытыми.

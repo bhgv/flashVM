@@ -4310,3 +4310,11 @@ status, and failure on cleanup errors after successful execution. Nine mocked
 host tests include overlapping invocations of the same target. See
 PLATFORM_VALIDATION.md / PLATFORM_VALIDATION.ru.md. No new SWF behavior; actual
 Android/Windows/macOS acceptance and all nine completion stages remain open.
+
+### v0.527 — typed native Array length
+
+Implemented / реализовано: original native Array.length retains String, Boolean,
+null, undefined and Object, with separate AVM1 Int32 truncation, readonly/version
+policy, rooted coercion and graph identity. Tests: array_typed_length and roots,
+allocation and wire variants; see [RU/EN contract](ARRAY_TYPED_LENGTH.md).
+Deleted/recreated/virtual length assignment and full roadmap acceptance remain open.

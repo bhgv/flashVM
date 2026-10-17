@@ -37,14 +37,10 @@ int main()
         assert(fvm_object_set_property_flags(c, array, "length", 0, 4) == FVM_OK);
         fvm_value_number(&input, 0); assert(fvm_object_set(c, array, "length", &input) == FVM_OK);
         assert(fvm_object_get(c, array, "length", &length) == FVM_OK && length.number == 0);
-        /* Numeric lengths are unrestricted; native state must still have a Number tag. */
-        const FVM_ValueType invalid[] = {FVM_VALUE_UNDEFINED, FVM_VALUE_NULL, FVM_VALUE_BOOLEAN, FVM_VALUE_OBJECT};
-        for (unsigned i = 0; i < 4; ++i) {
-            fvm_value_undefined(&array->resource_result); array->resource_result.type = invalid[i];
-            if (invalid[i] == FVM_VALUE_OBJECT) array->resource_result.object = array;
-            data = 0; bytes = 0;
-            assert(fvm_value_serialize(c, &value, &data, &bytes) == FVM_UNSUPPORTED && !data && !bytes);
-        }
+        /* Every valid typed length is now supported; absent native storage is malformed. */
+        array->resource_result_valid = false;
+        data = 0; bytes = 0;
+        assert(fvm_value_serialize(c, &value, &data, &bytes) == FVM_UNSUPPORTED && !data && !bytes);
         assert(!c->gc_frames && !c->gc_native_depth); fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

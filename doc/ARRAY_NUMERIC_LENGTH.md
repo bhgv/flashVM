@@ -51,3 +51,8 @@ Primary comparison sources: pinned Ruffle
 [Array set_local/length/set_length](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/script_object.rs)
 and [Array methods](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/globals/array.rs).
 This is source-based comparison, not a fresh original-player oracle run.
+
+Current extension / Обновление v0.527: the original native accessor also retains
+nonnumeric values with separate AVM1 coercion; graph payloads now accept every
+valid value type. See [ARRAY_TYPED_LENGTH.md](ARRAY_TYPED_LENGTH.md) for the new
+contract, tests, older-reader compatibility and remaining descriptor limitations.

@@ -436,13 +436,13 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
         {
             require(
                 src->resource_result_valid &&
-                    src->resource_result.type ==
+                    (dst.kind == FVM_RESOURCE_ARRAY || src->resource_result.type ==
                         (dst.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
                          : dst.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
                          : (dst.kind == FVM_RESOURCE_SCRIPT_FUNCTION || dst.kind == FVM_RESOURCE_SUPER || dst.kind == FVM_RESOURCE_WITH_SCOPE || dst.kind == FVM_RESOURCE_MOVIECLIP || dst.kind == FVM_RESOURCE_COLOR_TRANSFORM ||
                             dst.kind == FVM_RESOURCE_TRANSFORM || (dst.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || dst.kind == FVM_RESOURCE_BLUR_FILTER || dst.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
                              ? FVM_VALUE_OBJECT
-                             : FVM_VALUE_NUMBER),
+                             : FVM_VALUE_NUMBER)),
                 FVM_UNSUPPORTED);
             if (dst.kind == FVM_RESOURCE_COLOR_TRANSFORM)
             {
@@ -1041,7 +1041,7 @@ Graph read_graph(Reader &r, unsigned int version)
         require(known_kind(o.kind), FVM_UNSUPPORTED);
         /* Bitmap native payload is validated as binary storage, not as ActionScript text. */
         o.state = r.value(o.kind == FVM_RESOURCE_BITMAP_DATA);
-        /* [GC:] Array length is retained numeric user data; its primitive metatable
+        /* [GC:] Array length is retained typed user data; its primitive metatable
          * is validated and restored through the ordinary graph identity map. */
         require(o.kind == FVM_RESOURCE_ARRAY || o.state.metatable == none);
         if (o.kind == FVM_RESOURCE_TEXT_FIELD)
@@ -1067,7 +1067,7 @@ Graph read_graph(Reader &r, unsigned int version)
         else if (o.kind == FVM_RESOURCE_BOOLEAN || o.kind == FVM_RESOURCE_NUMBER || o.kind == FVM_RESOURCE_STRING || o.kind == FVM_RESOURCE_ARRAY || o.kind == FVM_RESOURCE_SCRIPT_FUNCTION ||
                  o.kind == FVM_RESOURCE_DATE || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_WITH_SCOPE || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM || o.kind == FVM_RESOURCE_TRANSFORM ||
                  (o.kind == FVM_RESOURCE_COLOR_MATRIX_FILTER || o.kind == FVM_RESOURCE_BLUR_FILTER || o.kind == FVM_RESOURCE_CONVOLUTION_FILTER))
-            require(o.state.type ==
+            require(o.kind == FVM_RESOURCE_ARRAY || o.state.type ==
                     (o.kind == FVM_RESOURCE_BOOLEAN   ? FVM_VALUE_BOOLEAN
                      : o.kind == FVM_RESOURCE_STRING ? FVM_VALUE_STRING
                      : (o.kind == FVM_RESOURCE_SCRIPT_FUNCTION || o.kind == FVM_RESOURCE_SUPER || o.kind == FVM_RESOURCE_WITH_SCOPE || o.kind == FVM_RESOURCE_MOVIECLIP || o.kind == FVM_RESOURCE_COLOR_TRANSFORM ||

@@ -1417,7 +1417,7 @@ bool fvm_array_needs_generic(FVM_Object *o)
     }
     if (o->resource_result_valid)
     {
-        if (o->resource_result.metatable)
+        if (o->resource_result.type != FVM_VALUE_NUMBER || o->resource_result.metatable)
             return true;
         const double length = o->resource_result.number;
         /* Fast storage assumes canonical integral bounds; loaded traversal is signed. */
