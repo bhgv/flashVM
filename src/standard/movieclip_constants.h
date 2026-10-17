@@ -47,6 +47,10 @@
 #define FVM_MOVIECLIP_CALLBACK_LOCKROOT_SET 1007UL
 #define FVM_MOVIECLIP_CALLBACK_XMOUSE_GET 1008UL /* Context-local pointer X getter; stable graph ID. */
 #define FVM_MOVIECLIP_CALLBACK_YMOUSE_GET 1009UL /* Context-local pointer Y getter; stable graph ID. */
+#define FVM_MOVIECLIP_CALLBACK_QUALITY_GET 1200UL /* Stable quality accessor identity. */
+#define FVM_MOVIECLIP_CALLBACK_QUALITY_SET 1201UL /* Stable quality accessor identity. */
+#define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET 1202UL /* Stable quality accessor identity. */
+#define FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET 1203UL /* Stable quality accessor identity. */
 /* Ordered method callbacks occupy consecutive IDs beginning here. */
 #define FVM_MOVIECLIP_CALLBACK_METHOD_BASE 1010UL
 #define FVM_MOVIECLIP_CLASS_PROTOTYPE_KEY                                                          \

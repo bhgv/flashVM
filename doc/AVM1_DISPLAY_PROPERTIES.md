@@ -14,13 +14,14 @@ Implemented/tested indices: 0 _x, 1 _y, 2 _xscale, 3 _yscale, 4 _currentframe,
 13 _name. v0.327 also supports 20 _xmouse and 21 _ymouse through the shared
 clip-local pointer query (CLIP_POINTER.md). v0.379 adds indexed vector dimension
 reads 8/9 (MOVIECLIP_INDEXED_SIZE.md); v0.385 adds vector dimension writes
-(MOVIECLIP_DIMENSION_WRITES.md). System/media
-fields 14–19 explicitly return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for a valid target. Pointer reads
+(MOVIECLIP_DIMENSION_WRITES.md). Quality indices 16/19 now use the shared context policy ([quality contract](STAGE_QUALITY.md#script-quality-properties)). Remaining system/media
+fields 14/15/17/18 explicitly return [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) for a valid target. Pointer reads
 project the context position through the inverse world matrix; other scalar reads use stored intrinsic fields;
 frame counts and slash target use native state. Visibility reads a boolean.
 Position writes truncate to twips with Int32 saturation; coordinate infinities
 select the minimum coordinate. Rotation is normalized into [-180,180]. Null,
-undefined and numeric NaN are ignored by numeric setters. Non-coordinate
+undefined and numeric NaN are ignored by geometry numeric setters; quality has
+its own versioned conversion policy. Non-coordinate
 infinities remain unsupported. Name writes use AVM1 string coercion, with a
 numeric NaN name becoming "0" in SWF 7–8. Full rename binding reconciliation,
 public named-member intrinsic behavior and complete matrix/field semantics are
@@ -43,7 +44,8 @@ readonly/no-op поведение и сохранение отсоединённ
 локальных координат (CLIP_POINTER.md). В v0.379 добавлено чтение векторных
 размеров 8/9 (MOVIECLIP_INDEXED_SIZE.ru.md), в v0.385 — индексная запись
 (MOVIECLIP_DIMENSION_WRITES.ru.md). Системные индексы
-14–19 ещё явно не поддерживаются. Полный named-member
+16/19 реализованы через общее качество контекста ([контракт](STAGE_QUALITY.md#свойства-качества));
+14/15/17/18 ещё явно не поддерживаются. Полный named-member
 контракт и согласование имени с родительскими bindings остаются открытыми.
 
 avm1_display_properties and C89 avm1_target_api are the new tests. All 276 core

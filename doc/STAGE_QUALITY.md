@@ -59,6 +59,61 @@ as the setter; no allocation, script callback, GC or replay. A body containing
 ToggleQuality currently uses interpreter fallback when automatic JIT cannot
 compile it; it is not silently skipped by the compiler.
 
+## Script quality properties
+
+`_quality` is a MovieClip accessor for context-wide state: its getter returns
+LOW, MEDIUM, HIGH or BEST in uppercase. Its setter performs AVM1 string
+conversion once, then accepts these four labels without regard to ASCII case.
+Whitespace, unknown labels, embedded NUL suffixes and unsupported newer Flash
+sampling labels leave state unchanged. Conversion failures propagate.
+
+`_highquality` reads 2 for BEST, 1 for HIGH and 0 for LOW or MEDIUM. The named
+setter ignores null/undefined; otherwise it performs AVM1 numeric conversion.
+NaN is ignored, zero (including negative zero) selects LOW, values strictly
+greater than 1.5 select BEST, and every other nonzero number selects HIGH.
+Explicit script selection resets the remembered toggle preference just like
+host selection. The class prototype itself returns undefined and ignores writes.
+
+AVM1 GetProperty/SetProperty indices 16 and 19 use intrinsic state independently
+of replaceable named properties. Index 16 always performs numeric conversion
+before the typed setter, including null/undefined; therefore null selects LOW in SWF4–6 (zero) and leaves state unchanged
+in SWF7–8 (NaN). Index 19 performs string conversion. Existing target/index
+resolution happens before value conversion. Interpreter and automatic JIT use
+the same execution helper. Native accessor identities are stable in graph
+transport, and a transported clip observes its destination context's quality.
+
+[GC:] Native invocation retains the receiver and arguments during named coercion;
+explicit collection remains forbidden inside that native callback (and its error
+propagates). The execution helper roots target/index/value and the resolved clip during
+intrinsic coercion. No local snapshots or additional per-frame roots are added.
+The resulting label is consumed without allocation or another callback.
+
+The conversion policy follows pinned Ruffle
+[stage properties](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/core/src/avm1/object/stage_object.rs)
+and [quality labels](https://github.com/ruffle-rs/ruffle/blob/2372a4e148a67d68efd796f4477b3cddd4f880cd/render/src/quality.rs).
+This source comparison is separate from original Flash Player acceptance.
+Implementation: [`fvm_movieclip_quality_read`](../src/standard/movieclip_quality.cpp#L27), [`fvm_movieclip_quality_write`](../src/standard/movieclip_quality.cpp#L46) and
+[`fvm_exec_display_property`](../include/flashvm/execution.h#L177).
+
+### Свойства качества
+
+`_quality` читает общее качество контекста строкой в верхнем регистре. Setter
+однократно преобразует значение в AVM1-строку и распознаёт четыре имени без
+учёта ASCII-регистра, но без удаления пробелов и без обрезания по NUL.
+Неизвестное имя ничего не меняет; ошибка преобразования возвращается вызывающему.
+`_highquality` читает BEST=2, HIGH=1, LOW/MEDIUM=0. Именованный setter игнорирует
+null/undefined и NaN; числовой ноль задаёт LOW, значение строго больше 1.5 —
+BEST, остальные ненулевые числа — HIGH. Прототип класса возвращает undefined
+и игнорирует запись. Явный выбор сбрасывает прежнее предпочтение ToggleQuality.
+Индексы AVM1 16/19 обходят подменённые именованные свойства. Индекс 16 сначала
+преобразует значение в число: null задаёт LOW в SWF4–6 (ноль), но ничего
+не меняет в SWF7–8 (NaN). Корни защищают
+операнды и clip через вызовы пользовательских преобразований и GC. Явная
+сборка внутри native-setter запрещена; её ошибка возвращается без изменения
+качества. Перенос
+callback сохраняет его назначение, но качество берётся из контекста получателя.
+Оригинальный Flash Player и точные исторические sampling grids ещё не проверены.
+
 ## Renderer integration and limits
 
 [`fvm_path_draw_quality`](../src/capi/path_c.cpp#L316) applies AGG's half-coverage threshold for LOW and Cairo's
@@ -67,8 +122,7 @@ and bitmap paint. Solid fills, strokes and optional geometry-coverage surfaces
 use the same context selection. Bitmap paint's own smoothing option is retained;
 edge antialiasing is a separate decision.
 
-This work does not implement `_quality`/`_highquality` script properties, exact
-historic quality grids, device renderer policies or multimedia. StopSounds
+Exact historic quality grids and device renderer policies remain open. StopSounds
 remains absent. No completion stage is closed by reaching 99 source dispatch
 references. See the [roadmap](ROADMAP.md) and [dispatch inventory](AVM1_DISPATCH_INVENTORY.md).
 
@@ -93,8 +147,7 @@ BEST при временном переходе в LOW. Все операции 
 объекта MovieClip не переносит настройку сцены его исходной VM. JIT-body с этим
 Action пока исполняется через интерпретаторный fallback. Проверки охватывают
 SWF1–8, независимые контексты, стек функции и четыре вида векторного рисования.
-Полная совместимость Flash, script-свойства качества и StopSounds остаются
-открытыми.
+Полная совместимость Flash и StopSounds остаются открытыми.
 
 [Tutorial / пример](../examples/embedding/stage_quality/README.md).
 
@@ -107,6 +160,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_exec_display_property` | function | [include/flashvm/execution.h:177](../include/flashvm/execution.h#L177) |
+| `fvm_movieclip_quality_read` | function | [src/standard/movieclip_quality.cpp:27](../src/standard/movieclip_quality.cpp#L27) |
+| `fvm_movieclip_quality_write` | function | [src/standard/movieclip_quality.cpp:46](../src/standard/movieclip_quality.cpp#L46) |
 | `fvm_path_draw_quality` | function | [src/capi/path_c.cpp:316](../src/capi/path_c.cpp#L316) |
 | `fvm_path_mask_quality` | function | [src/capi/path_c.cpp:490](../src/capi/path_c.cpp#L490) |
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |

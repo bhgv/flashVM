@@ -1,6 +1,7 @@
 /* FlashVM: Built-in ActionScript objects: movieclip.
  * File: src/standard/movieclip.cpp.
  */
+#include "movieclip_quality.hpp"
 #include "../render/quality_internal.hpp"
 
 
@@ -2923,6 +2924,8 @@ FVM_Result fvm_movieclip_get_action_property(FVM_Context *c, FVM_Object *clip,
                                                               : extent.y_max - extent.y_min);
         return FVM_OK;
     }
+    if (index == FVM_AVM1_PROPERTY_HIGH_QUALITY || index == FVM_AVM1_PROPERTY_QUALITY)
+        return fvm_movieclip_quality_read(c, index == FVM_AVM1_PROPERTY_HIGH_QUALITY, out);
     if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_TARGET)
@@ -2981,6 +2984,8 @@ FVM_Result fvm_movieclip_set_action_property(FVM_Context *c, FVM_Object *clip,
             return FVM_OK;
         return resize_dimension(c, clip, index == FVM_AVM1_PROPERTY_WIDTH, input.number);
     }
+    if (index == FVM_AVM1_PROPERTY_HIGH_QUALITY || index == FVM_AVM1_PROPERTY_QUALITY)
+        return fvm_movieclip_quality_write(c, index == FVM_AVM1_PROPERTY_HIGH_QUALITY, input);
     if (index > FVM_AVM1_PROPERTY_NAME)
         return FVM_UNSUPPORTED;
     if (index == FVM_AVM1_PROPERTY_CURRENT_FRAME || index == FVM_AVM1_PROPERTY_TOTAL_FRAMES ||
@@ -3587,6 +3592,17 @@ fvm_movieclip_stage(FVM_Context *c,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Value v = object(klass);
 
+    /* Quality accessors share context state, including after graph transport. */
+    FVM_AccessorEntry quality, highquality;
+    quality.getter = fvm_movieclip_quality_get;
+    quality.setter = fvm_movieclip_quality_set;
+    highquality.getter = fvm_movieclip_highquality_get;
+    highquality.setter = fvm_movieclip_highquality_set;
+    proto->accessors["_quality"] = quality;
+    proto->accessors["_highquality"] = highquality;
+    proto->attributes["_quality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+    proto->attributes["_highquality"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
+
     /* _lockroot is a nonenumerable, nondeletable instance property, independent of _parent. */
     FVM_AccessorEntry lockroot;
     lockroot.getter = fvm_movieclip_lockroot_get;
@@ -3708,6 +3724,14 @@ unsigned long fvm_movieclip_callback_id(FVM_NativeFunction cb)
         return FVM_MOVIECLIP_CALLBACK_XMOUSE_GET;
     if (cb == fvm_movieclip_ymouse_get)
         return FVM_MOVIECLIP_CALLBACK_YMOUSE_GET;
+    if (cb == fvm_movieclip_quality_get)
+        return FVM_MOVIECLIP_CALLBACK_QUALITY_GET;
+    if (cb == fvm_movieclip_quality_set)
+        return FVM_MOVIECLIP_CALLBACK_QUALITY_SET;
+    if (cb == fvm_movieclip_highquality_get)
+        return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET;
+    if (cb == fvm_movieclip_highquality_set)
+        return FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET;
     for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); ++i)
         if (cb == methods[i].callback)
             return FVM_MOVIECLIP_CALLBACK_METHOD_BASE + (unsigned long)i;
@@ -3737,6 +3761,14 @@ FVM_NativeFunction fvm_movieclip_callback_from_id(unsigned long id)
         return fvm_movieclip_xmouse_get;
     if (id == FVM_MOVIECLIP_CALLBACK_YMOUSE_GET)
         return fvm_movieclip_ymouse_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_QUALITY_GET)
+        return fvm_movieclip_quality_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_QUALITY_SET)
+        return fvm_movieclip_quality_set;
+    if (id == FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_GET)
+        return fvm_movieclip_highquality_get;
+    if (id == FVM_MOVIECLIP_CALLBACK_HIGHQUALITY_SET)
+        return fvm_movieclip_highquality_set;
     return id >= FVM_MOVIECLIP_CALLBACK_METHOD_BASE &&
                    id < FVM_MOVIECLIP_CALLBACK_METHOD_BASE + sizeof(methods) / sizeof(methods[0])
                ? methods[id - FVM_MOVIECLIP_CALLBACK_METHOD_BASE].callback

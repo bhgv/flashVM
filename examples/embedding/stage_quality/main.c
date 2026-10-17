@@ -66,6 +66,13 @@ int main(void) /* No command line input or external SWF file is required. */
     if (!checked(fvm_gc_pin(context, clip), "gc_pin")) /* [GC:] Keep the clip reachable while the host holds its pointer. */
         goto cleanup; /* [GC:] Never execute with an unprotected host-only reference. */
     clip_pinned = 1; /* [GC:] Record the root that cleanup must release. */
+    if (!checked(fvm_value_string(arguments, "high"), "quality label")) /* Prepare a case-insensitive script quality label. */
+        goto cleanup; /* Keep ordinary string preparation errors visible. */
+    if (!checked(fvm_object_set(context, clip, "_quality", arguments), "script quality")) /* Set the shared stage policy through a MovieClip accessor. */
+        goto cleanup; /* Stop if conversion or publication failed. */
+    if (!checked(fvm_object_get(context, clip, "_highquality", &output), "legacy quality")) /* Read the legacy numeric view of the same policy. */
+        goto cleanup; /* Preserve the normal cleanup path on getter failure. */
+    printf("Script _highquality: %.0f\n", output.number); /* HIGH has the legacy numeric value one. */
     fvm_value_number(arguments, 0xff0000); /* Select opaque red paint. */
     if (!checked(fvm_object_call(context, clip, "beginFill", 1, arguments, &output), "beginFill")) /* Start an opaque solid fill. */
         goto cleanup; /* Leave any partial drawing to context cleanup. */

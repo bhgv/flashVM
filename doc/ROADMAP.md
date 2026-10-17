@@ -2440,6 +2440,28 @@ model/microphone run is claimed. Tutorial comments/API coverage, all 87 catalog
 entries, source links and version metadata passed. Native Windows/macOS/Android
 hardware acceptance remains open. No roadmap stage is closed.
 
+### v0.541 — named and indexed AVM1 stage quality
+
+Implemented / реализовано: MovieClip `_quality` and `_highquality` accessors,
+GetProperty/SetProperty indices 16/19, case-insensitive counted labels and the
+legacy numeric threshold policy. Named null/undefined handling remains distinct
+from versioned action conversion (SWF4–6 zero, SWF7–8 NaN). Stable callback IDs
+preserve accessors through graph transport; quality remains destination-context
+state. Conversion errors leave stage state unchanged. Named native coercion
+retains the existing prohibition on explicit GC; intrinsic action coercion is
+protected by execution roots through real collection.
+
+Validation: minimal full suite 1129 passed, one existing explicitly skipped Unix
+endpoint test (1130 total). Three focused tests passed in the JIT profile and
+three under ASAN/UBSAN with leak detection disabled for this runner. Tests cover
+SWF4–8 in both requested execution modes, case/count boundaries, signed zero,
+NaN/infinities/thresholds, coercion errors, GC and serialized native accessors.
+The existing line-commented stage-quality example now demonstrates both named
+properties; RU/EN contracts and compatibility inventory are updated. Pinned
+Ruffle source is a semantic cross-check, not original Flash Player acceptance.
+Historic quality sampling grids, StopSounds, native platform runs and the other
+roadmap acceptance requirements remain open. No stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

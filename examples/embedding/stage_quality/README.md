@@ -5,6 +5,9 @@
 контекст в LOW. Программа печатает количество пикселей с промежуточной альфой:
 в HIGH оно положительно, в LOW — ноль. Точное число зависит от AGG/Cairo.
 
+Пример также устанавливает `_quality` через обычное свойство MovieClip и читает
+числовое `_highquality`; обе формы обращаются к состоянию всего контекста.
+
 ## Реализация и владение
 
 Хост владеет маленьким RGBA-буфером; render использует его только синхронно.
@@ -34,6 +37,11 @@ cmake --build build-quality --target flashvm_examples_embedding_stage_quality_ma
 объясняет, какой backend включить, и не заявляет, что выполнила растеризацию.
 
 ## Демонстрируемые функции API
+
+- [`fvm_value_string`](../../../include/flashvm/value.h#L46) — подготовка строкового аргумента качества: [STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#script-quality-properties).
+
+- [`fvm_object_set`](../../../include/flashvm/value.h#L74), [`fvm_object_get`](../../../include/flashvm/value.h#L72) — запись `_quality` и чтение `_highquality`: [свойства и преобразования](../../../doc/STAGE_QUALITY.md#script-quality-properties).
+
 
 - [`fvm_stage_set_quality`](../../../include/flashvm/stage.h#L22), [`fvm_stage_get_quality`](../../../include/flashvm/stage.h#L19) — настройка и чтение политики: [STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#fvm_stage_set_quality), [getter](../../../doc/STAGE_QUALITY.md#fvm_stage_get_quality).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий ToggleQuality и переход к LOW: [контракт действия](../../../doc/STAGE_QUALITY.md#contract).
@@ -71,10 +79,13 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:28](../../../include/flashvm/movieclip.h#L28) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:48](../../../include/flashvm/movieclip.h#L48) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
+| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
+| `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../../../include/flashvm/stage.h#L19) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../../../include/flashvm/stage.h#L22) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

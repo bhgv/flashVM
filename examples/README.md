@@ -635,6 +635,7 @@ AS2-эскиз манипуляций MovieClip и заметка о host-инт
 [К оглавлению](#оглавление).
 
 <a id="example-embedding-stage_quality"></a>
+
 #### stage_quality
 
 **Тип:** C89 — собираемый пример. **README:** [embedding/stage_quality/README.md](embedding/stage_quality/README.md).
@@ -644,6 +645,8 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 промежуточной альфой, демонстрируя отличие сглаживания от прозрачности краски.
 Использует контекстную политику, без глобального состояния; требует AGG/Cairo,
 а NO_GRAPHICS явно сообщает об отключённом renderer.
+Именованные `_quality`/`_highquality` демонстрируют запись строкового качества и чтение его числового представления через обычный object API.
+
 
 **Файлы:** [main.c](embedding/stage_quality/main.c).
 

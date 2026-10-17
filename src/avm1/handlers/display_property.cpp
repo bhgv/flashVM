@@ -65,6 +65,21 @@ extern "C" FVM_Result fvm_exec_display_property(FVM_Context *c, int write,
                 status = fvm_movieclip_get_action_property(c, clip, index, &result);
             else if (index == FVM_AVM1_PROPERTY_XMOUSE || index == FVM_AVM1_PROPERTY_YMOUSE)
                 status = FVM_OK; /* Read-only fields follow the existing legacy no-coercion policy. */
+            else if (index == FVM_AVM1_PROPERTY_HIGH_QUALITY || index == FVM_AVM1_PROPERTY_QUALITY)
+            {
+                const FVM_Value &input = roots.values[FVM_DISPLAY_PROPERTY_INPUT_VALUE_ROOT];
+                if (index == FVM_AVM1_PROPERTY_QUALITY)
+                    status = fvm_avm1_string(c, input, &converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT]);
+                else
+                {
+                    double scalar = 0;
+                    status = fvm_avm1_number(c, &input, &scalar);
+                    fvm_value_number(&converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT], scalar);
+                }
+                if (status == FVM_OK)
+                    status = fvm_movieclip_set_action_property(
+                        c, clip, index, converted[FVM_DISPLAY_PROPERTY_VALUE_ROOT]);
+            }
             else if (index > FVM_AVM1_PROPERTY_NAME)
                 status = FVM_UNSUPPORTED;
             else if (index != FVM_AVM1_PROPERTY_CURRENT_FRAME &&
