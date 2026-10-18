@@ -153,3 +153,6 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   Use explicit documented SDK/tool/library dependencies and public formats/APIs.
   Verify changed tooling with a renamed detached component when paths are involved.
   Preserve the common MIT license in separated distributions and upstream notices.
+
+- Keep Coco/R documentation, translations and usage notes out of the FlashVM
+  repository: Coco/R is a separate project. Do not import its documentation patches.
