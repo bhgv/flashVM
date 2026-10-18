@@ -122,7 +122,10 @@ static FVM_Result publish_input(FVM_Context *context, FVM_Object *object,
     FVM_PUBLISH_INPUT("clicks", input->clicks);
     FVM_PUBLISH_INPUT("keyPresses", input->key_presses);
 #undef FVM_PUBLISH_INPUT
-    return fvm_input_set_pointer(context, input->x + origin_x, input->y + origin_y);
+    result = fvm_input_set_keyboard(context, &input->keyboard);
+    return result == FVM_OK
+               ? fvm_input_set_pointer(context, input->x + origin_x, input->y + origin_y)
+               : result;
 }
 
 /* Play one file. All VM/SDL objects belong to this thread; no background worker touches them. */
@@ -193,6 +196,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         goto cleanup;
     if (!checked(fvm_standard_install(context), "standard objects", path))
         goto cleanup;
+    if (!checked(fvm_standard_keyboard_install(context), "Key polling namespace", path))
+        goto cleanup;
     if (!checked(fvm_movieclip_load_swf(context, bytes, length, "_root", &clip), "scene import",
                  path))
         goto cleanup;
@@ -254,8 +259,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         }
         if (!fvm_desktop_window_active(window))
         {
-            if (audio.output && !checked(fvm_desktop_audio_pause(&audio, 1),
-                                         "background audio pause", path))
+            if (audio.output &&
+                !checked(fvm_desktop_audio_pause(&audio, 1), "background audio pause", path))
                 goto cleanup;
             if (!fvm_desktop_window_events(window, FVM_DESKTOP_AUDIO_WAIT))
                 *quit = 1;
@@ -328,8 +333,11 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         stats.struct_size = sizeof(stats);
         if (!checked(fvm_execution_get_stats(context, &stats), "execution statistics", path))
             goto cleanup;
-        fprintf(stderr, "input_keys=%lu input_clicks=%lu sound_events=%lu sound_stops=%lu audio_device=%d audio_underruns=%d\n",
-                input.key_presses, input.clicks, audio.events, audio.stops, audio.device != 0, SDL_AtomicGet(&audio.underruns));
+        fprintf(stderr,
+                "input_keys=%lu input_clicks=%lu sound_events=%lu sound_stops=%lu audio_device=%d "
+                "audio_underruns=%d\n",
+                input.key_presses, input.clicks, audio.events, audio.stops, audio.device != 0,
+                SDL_AtomicGet(&audio.underruns));
         fprintf(stderr, "frames=%lu native=%lu interpreter=%lu fallbacks=%lu\n", ticks,
                 stats.native_entries, stats.interpreter_entries, stats.fallbacks);
     }

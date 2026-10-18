@@ -2,6 +2,7 @@
 #ifndef FVM_DESKTOP_WINDOW_H
 #define FVM_DESKTOP_WINDOW_H
 #include "flashvm/raster.h"
+#include "flashvm/keyboard.h"
 #define FVM_DESKTOP_MAX_PIXELS 4096U    /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U              /* Red offset in a packed RGBA pixel. */
 #define FVM_DESKTOP_GREEN 1U            /* Green offset in a packed RGBA pixel. */
@@ -24,6 +25,7 @@
 /* Copied main-thread input state, with counters preserving taps between movie ticks. */
 typedef struct FVM_DesktopInput
 {
+    FVM_KeyboardState keyboard; /* Full held-key/toggle snapshot for standard Key polling. */
     double x, y; /* Logical stage pixels, before authored stage-origin restoration. */
     int left, right, up, down, space; /* Held directional/space keys, cleared on focus loss. */
     int key_code, key_down; /* Latest key transition: ASCII uppercase/digits or arrow 37..40. */

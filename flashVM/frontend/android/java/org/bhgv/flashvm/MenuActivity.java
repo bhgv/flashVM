@@ -24,6 +24,15 @@ import java.io.InputStream;
 
 /** Own the ordinary Android menu; no VM runs until the user selects a test. */
 public final class MenuActivity extends Activity {
+    /** Read the packaged version so menus and evidence cannot retain an older hard-coded number. */
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (android.content.pm.PackageManager.NameNotFoundException error) {
+            return "unknown";
+        }
+    }
+
     /** Build a readable test menu without storage/microphone permissions. */
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -31,7 +40,7 @@ public final class MenuActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(24, 24, 24, 24);
         TextView help = new TextView(this);
-        help.setText("FlashVM 0.587 · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
+        help.setText("FlashVM " + appVersion() + " · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
                      "Для стрелок нужна физическая клавиатура. Назад — выйти из теста. " +
                      "Звук: PCM8 mono / PCM16 stereo / ADPCM. JIT может использовать fallback.");
         layout.addView(help);
@@ -84,7 +93,7 @@ public final class MenuActivity extends Activity {
                 String audioProperties = manager == null ? "unavailable" :
                     "rate=" + manager.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE) +
                     " frames=" + manager.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
-                String text = "FlashVM 0.587\nAndroid=" + Build.VERSION.RELEASE + " API=" +
+                String text = "FlashVM " + appVersion() + "\nAndroid=" + Build.VERSION.RELEASE + " API=" +
                     Build.VERSION.SDK_INT + "\nmanufacturer=" + Build.MANUFACTURER +
                     " model=" + Build.MODEL + "\nABI=" + Arrays.toString(Build.SUPPORTED_ABIS) +
                     "\nAudioManager " + audioProperties + "\nNo microphone capture. WAV contains SDL-bound native PCM.\n";

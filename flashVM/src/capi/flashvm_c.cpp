@@ -144,6 +144,8 @@ extern "C"
         context->movieclip_sound_callback = 0;
         context->movieclip_sound_userdata = 0;
         context->movieclip_sound_busy = false;
+        std::memset(&context->keyboard, 0, sizeof(context->keyboard));
+        context->keyboard.struct_size = sizeof(context->keyboard);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */

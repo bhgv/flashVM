@@ -1,6 +1,7 @@
 /* SDL2 window adapter for desktop targets. All event/render calls remain on main thread. */
 #define SDL_MAIN_HANDLED /* OS entrypoints are supplied in frontend/{linux,windows,macos}. */
 #include "window.h"
+#include "keyboard_sdl.h"
 #include <SDL.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,6 +31,7 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
         SDL_Quit();
         return 0;
     }
+    view->input.keyboard.struct_size = sizeof(view->input.keyboard);
     view->window =
         SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)width,
                          (int)height, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -97,6 +99,8 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.left = view->input.right = view->input.up = view->input.down = 0;
         view->input.space = view->input.key_down = 0;
         view->input.buttons = 0;
+        memset(&view->input.keyboard, 0, sizeof(view->input.keyboard));
+        view->input.keyboard.struct_size = sizeof(view->input.keyboard);
     }
     if (event->type == SDL_MOUSEMOTION)
     {
@@ -126,6 +130,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         int code = key >= SDLK_a && key <= SDLK_z                  ? (int)(key - SDLK_a + 'A')
                    : key >= 0 && key < FVM_DESKTOP_KEY_ASCII_LIMIT ? (int)key
                                                                    : 0;
+        fvm_desktop_keyboard_event(&view->input.keyboard, &event->key);
         if (key == SDLK_LEFT)
         {
             view->input.left = down;
@@ -179,7 +184,10 @@ void fvm_desktop_window_input(FVM_DesktopWindow *view, FVM_DesktopInput *out)
 }
 
 /* Android lifecycle is a real pause, not a hidden offscreen timeline loop. */
-int fvm_desktop_window_active(FVM_DesktopWindow *view) { return !view->background; }
+int fvm_desktop_window_active(FVM_DesktopWindow *view)
+{
+    return !view->background;
+}
 
 /* SDL counters are monotonic and keep scheduling independent of adjustable wall-clock dates. */
 double fvm_desktop_now(void)
@@ -189,7 +197,10 @@ double fvm_desktop_now(void)
 }
 
 /* Borrow the current SDL error string for immediate reporting only. */
-const char *fvm_desktop_window_error(void) { return SDL_GetError(); }
+const char *fvm_desktop_window_error(void)
+{
+    return SDL_GetError();
+}
 
 /* Safe reverse-order cleanup also handles partially initialized windows. */
 void fvm_desktop_window_close(FVM_DesktopWindow *view)

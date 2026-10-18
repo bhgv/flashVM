@@ -22,7 +22,7 @@ def main():
     movies = Path(__file__).resolve().parents[2] / 'examples/player/animation_audio'
     levels = {}
     with tempfile.TemporaryDirectory(prefix='flashvm-audio-evidence-') as directory:
-        for movie in ('01-animation-audio', '03-stop-sounds'):
+        for movie in ('01-animation-audio', '02-input-audio', '03-stop-sounds'):
             for mode in ('--no-jit', '--jit'):
                 base = Path(directory) / (movie + mode)
                 environment = dict(os.environ, SDL_AUDIODRIVER='dummy', FVM_AUDIO_TRACE=str(base))
@@ -73,7 +73,7 @@ def main():
                 assert peak <= 6500, peak
                 levels[movie, mode] = peak
                 print(movie, mode, 'frames', len(frames), 'peak', peak, 'stereo amplitude', best)
-        for movie in ('01-animation-audio', '03-stop-sounds'):
+        for movie in ('01-animation-audio', '02-input-audio', '03-stop-sounds'):
             assert levels[movie, '--no-jit'] == levels[movie, '--jit']
     return 0
 

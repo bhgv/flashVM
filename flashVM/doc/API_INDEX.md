@@ -180,6 +180,9 @@ standard Flash Key/Mouse API. Native foreign-platform acceptance remains open.
 - [`fvm_swf_sound_output_set_release`](../include/flashvm/swf_sound_output.h#L63): transactional optional history configuration before submission; [arguments/status/ownership](PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_set_release).
 - [`fvm_swf_sound_output_stop_release`](../include/flashvm/swf_sound_output.h#L67): running queue replacement and bounded tail; [errors/retry/limits](PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_stop_release).
 
+
+[Keyboard snapshot and Key polling / клавиатурный снимок и опрос Key](KEYBOARD.md) ([RU](KEYBOARD.ru.md)): [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L59), [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L61), [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L63), [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L65).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -209,6 +212,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:59](../include/flashvm/keyboard.h#L59) |
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
@@ -216,7 +222,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:120](../src/core/runtime.hpp#L120) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
 | `fvm_register_function` | function | [include/flashvm/value.h:101](../include/flashvm/value.h#L101) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
@@ -225,6 +231,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
 | `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:88](../include/flashvm/swf_sound.h#L88) |
 | `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:86](../include/flashvm/swf_sound.h#L86) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |

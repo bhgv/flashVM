@@ -17,5 +17,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_gc_object_count` | function | [include/flashvm/gc.h:57](../include/flashvm/gc.h#L57) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:120](../src/core/runtime.hpp#L120) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
 <!-- source-links:end -->

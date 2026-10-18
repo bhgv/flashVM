@@ -3055,6 +3055,48 @@ staging phases, with the instruction limit disabled. Stack ASan/LSan remain
 disabled. The direct budget regression fails against v0.492. Foreign-platform
 runtime validation and all nine roadmap stages remain open.
 
+## v0.588 phone confirmation / Подтверждение на телефоне
+
+The user reports all three sound tests are now audibly correct on Samsung
+SM-S931B/Android16 in interpreter/JIT. The latest six-run archive contains the
+corrected ADPCM waveform: maximum adjacent output sample step in each 880 Hz
+burst is 688 rather than the previous 1902. No software-starvation markers,
+truncation or dropped diagnostic events appear. This is bounded acceptance of
+these test movies, not general codec/device/endurance certification.
+The archive's device.txt still says 0.587 because the Android menu/export label
+was hard-coded; v0.589 reads the packaged version dynamically instead.
+
+Пользователь подтвердил отсутствие щелчков в трёх звуковых тестах обоих режимов.
+Это приёмка конкретных SWF на конкретном телефоне; она не закрывает ни одну
+стадию. Старый номер в device.txt был ошибкой подписи отчёта, не основанием
+выдавать его за повторный прогон старого звука.
+
+## v0.589 keyboard polling / Опрос клавиатуры
+
+Native per-context snapshot ABI, explicit transactional Key polling installation,
+SDL virtual-key/English-ASCII translation and focus/background reset. Test 02 now
+calls Key.isDown for arrows/Space and Key.getCode for its indicator. The C89
+[example](../examples/embedding/keyboard_polling/README.md) demonstrates simultaneous
+keys and reset. [EN contracts](KEYBOARD.md) / [RU](KEYBOARD.ru.md).
+Listeners, clip/button key events, security origins, IME/text composition and
+full reference/platform keyboard acceptance remain open. All nine stages remain
+open; this advances input support in stages 3/5 and accompanies GC/JIT/platform
+verification rather than claiming completion of the plan.
+
+### v0.589 verification / Проверка
+
+Lean AGG/JIT Linux SDL Release with examples: 1235 registered cases, 1231 passed
+and four explicit native-macOS/native-Windows/SSIP skips after restoring missing
+execute permissions and rerunning four unstarted cases. No assertion failures.
+Final affected keyboard/API/C89 tutorial/SDL translation tests: 5/5. The three
+core keyboard tests pass ASan/UBSan (LeakSanitizer disabled), including allocation
+failure sweeps and SWF5/6 folded-name installation conflicts. Real SDL dummy
+video/audio captures pass all three movies in both modes, including the updated
+02's actual Key calls and preserved PCM tone levels. This is not native X11 or
+physical keyboard acceptance. Android ARM64/API23 native build passes; Java/Dex
+APK packaging uses the persisted signer. Phone keyboard/foreign-OS runs remain
+open; the user's audio confirmation applies to the previous corrected assets.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

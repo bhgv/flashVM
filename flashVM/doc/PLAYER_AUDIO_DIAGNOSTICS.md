@@ -197,7 +197,10 @@ internal boundaries against the intended analytic sinusoid without importing
 the encoder or VM decoder. [Player capture regression](../frontend/tests/audio_trace.py)
 also checks the resampled mono tone for large steps in interpreter and JIT.
 Run `python3 frontend/tests/audio_assets.py` from the component directory.
-Physical listening on the affected phone remains necessary; v0.588 changes test
+The user has now confirmed correct listening on the affected phone for all six
+test/mode combinations. The new archive contains the corrected waveform (880 Hz
+maximum output step 688), though its old hard-coded device label says 0.587;
+v0.589 reads the actual packaged version. v0.588 changes test
 assets, not playback filtering, output gain or general decoder semantics.
 
 <!-- source-links:start -->

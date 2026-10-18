@@ -16,6 +16,7 @@
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
+#include "flashvm/keyboard.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/stage.h"
 #include "flashvm/input_queue.h"
@@ -352,6 +353,7 @@ struct FVM_Context
     bool drag_updating; /* Reentry guard during matrix getters and transform publication. */
     double pointer_world_x; /* Last accepted host pointer X; no managed edges. */
     double pointer_world_y; /* Last accepted host pointer Y; no managed edges. */
+    FVM_KeyboardState keyboard; /* Context-local native snapshot; no managed roots or serialized state. */
     bool pumping_input; /* [GC:] Whether input delivery is already in progress. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_InputCallback

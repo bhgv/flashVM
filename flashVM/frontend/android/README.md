@@ -100,3 +100,11 @@ v0.585: SDL AudioTrack вместо AAudio; [диагноз, проверка и
 v0.586: [согласование фактического audio quantum](../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0586-публикация-согласованного-блока-устройства); обновление поверх 0.585 с тем же ключом подписи.
 
 v0.587: [короткое затухание остановок](../../doc/PLAYER_AUDIO_RELEASE.ru.md). Обновление тем же ключом v0.585; native AudioTrack сохраняется.
+
+## v0.589 keyboard polling and version labels
+
+The host explicitly installs [Key polling](../../doc/KEYBOARD.md) ([RU](../../doc/KEYBOARD.ru.md));
+test 02 uses it for arrows/Space. Physical/BT/USB keyboards are still required.
+Menu and exported device.txt now read PackageInfo.versionName from the installed
+APK instead of retaining a hard-coded previous version; the application label is
+the stable name FlashVM. The persisted v0.585 test signer remains unchanged.

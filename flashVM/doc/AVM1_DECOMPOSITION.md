@@ -34,13 +34,13 @@ exception-block orchestration. No roadmap stage is marked complete.
 [`FVM_Value`](../include/flashvm/value.h#L24) operands and semantic command enums. They accept no Action opcode,
 bytecode pointer, instruction offset or interpreter operand stack. Outputs may
 alias inputs; failed value services leave the output intact. Runtime context
-[`FVM_Context`](../src/core/runtime.hpp#L240) remains necessary for object ownership, GC, SWF-version policy,
+[`FVM_Context`](../src/core/runtime.hpp#L241) remains necessary for object ownership, GC, SWF-version policy,
 display targets and host services. This is independence from the interpreter,
 not independence from the managed runtime. Private `Execution` state is isolated
 in `execution_state.hpp` and never appears in the public ABI.
 
 C89-функции принимают значения и смысловые команды. Коды Action, пи-код,
-счётчик команд и стек интерпретатора не входят в их интерфейсы. [`FVM_Context`](../src/core/runtime.hpp#L240)
+счётчик команд и стек интерпретатора не входят в их интерфейсы. [`FVM_Context`](../src/core/runtime.hpp#L241)
 нужен как среда объектов, GC, версионных правил и служб; он не передаёт
 обработчику детали декодирования. Результат можно записать поверх операнда;
 ошибка не меняет выходное значение. Изменения объектов, сделанные пользовательским
@@ -285,7 +285,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_affine_inverse_point` | function | [include/flashvm/affine.h:19](../include/flashvm/affine.h#L19) |
 | `fvm_avm1_call_script` | function | [src/avm1/handlers/script_call.cpp:20](../src/avm1/handlers/script_call.cpp#L20) |
-| `FVM_Context` | struct | [src/core/runtime.hpp:240](../src/core/runtime.hpp#L240) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:241](../src/core/runtime.hpp#L241) |
 | `fvm_exception_raise` | function | [include/flashvm/exception.h:67](../include/flashvm/exception.h#L67) |
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
 | `fvm_exec_clip_copy_transform` | function | [include/flashvm/execution.h:71](../include/flashvm/execution.h#L71) |

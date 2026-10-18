@@ -59,6 +59,7 @@
     - [gesture_recognizer](#example-embedding-gesture_recognizer) — <small><em>Распознавание tap по событиям касания</em></small>
     - [input](#example-embedding-input) — <small><em>Правила преобразования tap и swipe</em></small>
     - [input_queue](#example-embedding-input_queue) — <small><em>Очередь ввода и обработка на VM-потоке</em></small>
+    - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
@@ -506,7 +507,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L120) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L121) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -709,6 +710,20 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 Помещает распознанные события в отложенную очередь и передаёт их callback при pump на VM-потоке. Позволяет отделить получение ввода от его обработки без графического backend.
 
 **Файлы:** [example.as](embedding/input_queue/example.as), [main.c](embedding/input_queue/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-keyboard_polling"></a>
+#### keyboard_polling
+
+**Тип:** C89 — собираемый пример. **README:** [embedding/keyboard_polling/README.md](embedding/keyboard_polling/README.md).
+
+Публикует независимые удержания Left/Right в контексте, вызывает настоящие методы
+Key и очищает состояние как при потере фокуса. Не требует устройства или окна;
+показывает владение снимком, явную установку объекта и обычную обработку ошибок.
+[API и ограничения](../doc/KEYBOARD.ru.md).
+
+**Файлы:** [main.c](embedding/keyboard_polling/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1394,7 +1409,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:120](../src/core/runtime.hpp#L120) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_video_present` | function | [include/flashvm/multimedia.h:137](../include/flashvm/multimedia.h#L137) |
@@ -1446,6 +1461,7 @@ Source line links describe the current checkout, including in historical notes.
 - [jit_dump — debugger/jit_dump](#example-debugger-jit_dump)
 - [jit_instances — embedding/jit_instances](#example-embedding-jit_instances)
 - [jit_workers — embedding/jit_workers](#example-embedding-jit_workers)
+- [keyboard_polling — embedding/keyboard_polling](#example-embedding-keyboard_polling)
 - [live_variables — debugger/live_variables](#example-debugger-live_variables)
 - [lua_style — extending/lua_style](#example-extending-lua_style)
 - [main — embedding/main](#example-embedding-main)

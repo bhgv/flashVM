@@ -22,6 +22,9 @@ Windows x64 backend selection, W^X and OS unwind-table ownership / выбор Wi
 
 macOS Intel classic JIT memory policy, frame chain and host preparation / память JIT, цепочка кадров и подготовка host: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). Apple Silicon/MAP_JIT and native macOS acceptance remain open / Apple Silicon/MAP_JIT и нативная приёмка остаются открытыми.
 
+
+[Keyboard snapshot and Key polling / клавиатурный снимок и опрос Key](KEYBOARD.md) ([RU](KEYBOARD.ru.md)): [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L59), [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L61), [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L63), [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L65).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -31,5 +34,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:59](../include/flashvm/keyboard.h#L59) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
 <!-- source-links:end -->

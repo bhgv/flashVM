@@ -98,6 +98,16 @@ def host(name):
     return push('HostInput') + b'\x1c' + push(name) + b'\x4e'
 
 
+def key_down(code):
+    """Call the standard Key polling subset: argument, count, receiver, method, CallMethod."""
+    return push(code) + push(1) + push('Key') + b'\x1c' + push('isDown') + b'\x52'
+
+
+def key_code():
+    """Read the latest pressed virtual key through the real Key.getCode native bridge."""
+    return push(0) + push('Key') + b'\x1c' + push('getCode') + b'\x52'
+
+
 def set_position(target, index, expression):
     """Leave target/index/value on the AVM1 stack, then execute SetProperty."""
     return push(target) + push(index) + expression + b'\x23'
@@ -106,14 +116,14 @@ def set_position(target, index, expression):
 def actions():
     """Move the marker to the pointer; move the blue box with held arrows/space."""
     data = set_position('pointer', 0, host('x')) + set_position('pointer', 1, host('y'))
-    for index, positive, negative in ((0, 'right', 'left'), (1, 'down', 'up')):
+    for index, positive, negative in ((0, 39, 37), (1, 40, 38)):
         old = push('box') + push(index) + b'\x22'
-        delta = host(positive) + host(negative) + b'\x0b' + push(5) + b'\x0c'
+        delta = key_down(positive) + key_down(negative) + b'\x0b' + push(5) + b'\x0c'
         data += set_position('box', index, old + delta + b'\x0a')
     # Alpha and scale make short taps visible through cumulative host counters.
     data += set_position('pointer', 2, push(100) + host('buttons') + push(10) + b'\x0c\x0a')
-    data += set_position('box', 2, push(100) + host('space') + push(80) + b'\x0c\x0a')
-    data += set_position('key', 0, push(20) + host('keyCode') + push(4) + b'\x0c\x0a')
+    data += set_position('box', 2, push(100) + key_down(32) + push(80) + b'\x0c\x0a')
+    data += set_position('key', 0, push(20) + key_code() + push(4) + b'\x0c\x0a')
     data += set_position('click', 0, push(20) + host('clicks') + push(20) + b'\x0c\x0a')
     return tag(DO_ACTION, data + b'\0')
 

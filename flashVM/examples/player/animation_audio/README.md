@@ -7,8 +7,9 @@
 Файлы перезаписываются рядом с генератором. Сам генератор устройств не открывает.
 
 Three runnable 640×360, 24 fps, 120-frame SWF8 movies. All loop every five seconds
-in the default single-file player. Input capture uses the documented **HostInput
-player extension**, not a claim of complete Flash Key/Mouse/button compatibility.
+in the default single-file player. Keyboard controls use the explicit **Key polling
+subset**; pointer/buttons/counters use the documented **HostInput player extension**.
+This is not complete Flash Key/Mouse/button compatibility.
 [Full EN guide](../../../doc/PLAYER_TEST_BUILDS.md) /
 [RU](../../../doc/PLAYER_TEST_BUILDS.ru.md).
 
@@ -22,6 +23,10 @@ SWFs together; [diagnosis and regression checks](../../../doc/PLAYER_AUDIO_DIAGN
 v0.588: кодировщик ADPCM сохраняет адаптивный индекс между блоками, устраняя
 перегрузку кодирования ближе к концу тона 880 Гц. Пересоздавайте все три SWF;
 [подробности и проверка](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0588-границы-блоков-тестового-adpcm-тона).
+
+v0.589: test 02 calls `Key.isDown` for arrows/Space and `Key.getCode` for its
+indicator. The host explicitly installs the polling subset before loading;
+[EN](../../../doc/KEYBOARD.md) / [RU](../../../doc/KEYBOARD.ru.md).
 
 ## Tests / Тесты
 
