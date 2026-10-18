@@ -1,4 +1,4 @@
-Версия разработки: **0.577** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.578** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -343,6 +343,9 @@ Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_Q
 [Frontend](frontend/README.ru.md): необязательный SDL2-проигрыватель для
 Linux/Windows/macOS, SWF-пути, JIT/interpreter, качество, FPS/проценты и справка.
 [Полное руководство](doc/DESKTOP_FRONTEND.ru.md).
+Порционный StartSound-микшер: [руководство](doc/SWF_SOUND_MIXER.ru.md),
+[учебник](examples/multimedia/swf_event_mixer/README.md); перекрытие голосов,
+stop/no-multiple, циклы и огибающие без новых выделений при чтении.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

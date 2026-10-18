@@ -185,6 +185,13 @@ failure tests drain 65535 plays after VM destruction with allocations disabled.
 Prepared chunks can be summed through [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L130) without allocating:
 [block mixer contract](AUDIO_MIXING.md), [swf_mix tutorial](../examples/multimedia/swf_mix/README.md).
 This does not apply automatic event scheduling or synchronization to snapshots.
+## Independent mixer integration
+
+Prepared voices now also back the optional host-owned
+[StartSound mixer](SWF_SOUND_MIXER.md), which applies mixer-local stop/no-multiple
+and combines incremental reads. Standalone voices retain their existing
+independent behavior. Это отдельный владелец/пространство управления, а не
+автоматическая смена поведения старых voice/channel API.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

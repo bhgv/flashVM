@@ -1,5 +1,5 @@
-Development version: **0.577** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.577 ` and an English description. Increase the subversion before each
+Development version: **0.578** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.578 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -58,8 +58,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.577** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.577 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.578** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.578 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -574,6 +574,8 @@ Pygments source-line links: [viewer guide](doku_viewer/README.md).
 [Desktop frontend](frontend/README.md): optional Linux/Windows/macOS SDL2 player,
 command-line SWF paths, JIT/interpreter, quality, FPS/percentage timing and help.
 [Full guide](doc/DESKTOP_FRONTEND.md).
+Incremental StartSound mixer: [API guide](doc/SWF_SOUND_MIXER.md) /
+[RU](doc/SWF_SOUND_MIXER.ru.md), bounded independent voices and explicit PCM reads.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

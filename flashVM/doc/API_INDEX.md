@@ -131,6 +131,14 @@ macOS Intel classic JIT memory policy, frame chain and host preparation / пам
 [`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L51) projects rendering without modifying script poses.
 Full parameters, ownership, errors and restrictions:
 [EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
+## Incremental StartSound mixing
+
+[`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L22), [`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L27),
+[`fvm_swf_sound_mixer_read`](../include/flashvm/swf_sound_mixer.h#L32), [`fvm_swf_sound_mixer_info`](../include/flashvm/swf_sound_mixer.h#L36),
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L38), [`fvm_swf_sound_mixer_close`](../include/flashvm/swf_sound_mixer.h#L40):
+[full individual contracts](SWF_SOUND_MIXER.md) /
+[русское руководство](SWF_SOUND_MIXER.ru.md),
+[annotated C89 tutorial](../examples/multimedia/swf_event_mixer/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -176,6 +184,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:60](../include/flashvm/swf_sound.h#L60) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:90](../include/flashvm/swf_sound.h#L90) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:40](../include/flashvm/swf_sound_mixer.h#L40) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:22](../include/flashvm/swf_sound_mixer.h#L22) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:36](../include/flashvm/swf_sound_mixer.h#L36) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:32](../include/flashvm/swf_sound_mixer.h#L32) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:38](../include/flashvm/swf_sound_mixer.h#L38) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:27](../include/flashvm/swf_sound_mixer.h#L27) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:93](../include/flashvm/swf_sound.h#L93) |
 | `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
 | `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:84](../include/flashvm/swf_sound.h#L84) |

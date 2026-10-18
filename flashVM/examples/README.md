@@ -115,6 +115,7 @@
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
+    - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>Порционный StartSound-микшер: перекрытие, stop и независимость от VM</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [speech](#group-multimedia-speech)
@@ -1237,6 +1238,20 @@ source geometry от advisory playback и среднего числа samples. �
 <a id="group-multimedia-mixing"></a>
 ### mixing
 
+<a id="example-multimedia-swf_event_mixer"></a>
+#### swf_event_mixer
+
+Исполняемый C89 учебник: [README](multimedia/swf_event_mixer/README.md),
+[main.c](multimedia/swf_event_mixer/main.c),
+[constants](multimedia/swf_event_mixer/example_constants.h).
+Создаёт три независимых голоса из встроенного SWF, подавляет повторный
+SyncNoMultiple, суммирует с единственным насыщением, останавливает оба голоса
+одного ID и продолжает читать другой после уничтожения исходной VM.
+Без выходного пути работает в памяти; с явным путём пишет настоящий native S16
+PCM через fopen/fwrite/fclose. Каждая строка кода подписана; assert нет.
+Это явное управление событиями, не автоматический timeline/device clock.
+Подробные контракты: [SWF_SOUND_MIXER.md](../doc/SWF_SOUND_MIXER.md).
+
 <a id="example-multimedia-swf_mix"></a>
 #### swf_mix
 
@@ -1416,6 +1431,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
+- [swf_event_mixer — multimedia/swf_event_mixer](#example-multimedia-swf_event_mixer)
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
 - [swf_stream — multimedia/swf_stream](#example-multimedia-swf_stream)

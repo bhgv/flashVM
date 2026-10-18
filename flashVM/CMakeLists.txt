@@ -455,3 +455,11 @@ if(FVM_BUILD_DESKTOP_FRONTEND)
   endif()
   add_subdirectory(frontend)
 endif()
+
+# Run the actual annotated software mixer, including optional native file I/O and bad CLI.
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_swf_event_mixer_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/swf_event_mixer_tutorial.py
+      $<TARGET_FILE:flashvm_examples_multimedia_swf_event_mixer_main>)
+  set_tests_properties(flashvm_swf_event_mixer_tutorial PROPERTIES TIMEOUT 30)
+endif()

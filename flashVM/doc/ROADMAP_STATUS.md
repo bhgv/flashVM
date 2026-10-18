@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.577
+# FlashVM stage status / Состояние стадий — v0.578
 
 This is a bounded review of existing implementation reports and the current
-desktop-host work. It does not replace a complete per-API/SWF conformance matrix
+incremental event-mixer work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущего десктопного host, а не
+Это сводка существующих отчётов и текущего порционного микшера, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -23,28 +23,28 @@ counts are historical unless explicitly rerun for this revision.
 
 ## Current Linux verification / Текущая проверка Linux
 
-v0.576: complete current-profile C89/C++98 build; 1204 passing tests and four
-explicit skips out of 1208 registered. Skips: native macOS ARM64/Intel and Windows
-unwind acceptance, plus the conditional speech SSIP endpoint. The new MP3 prefix,
-encoded snapshot, allocation-failure and real tutorial tests pass. No new native
-foreign-OS or sanitizer run is claimed.
+v0.578: complete default Linux Release C89/C++98 build, including examples;
+1212 passing tests and 4 explicit skips out of 1216 registered. The skips require
+native macOS ARM64/Intel, native Windows unwind, or an external speech SSIP endpoint.
+Five focused mixer/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
+build with LeakSanitizer disabled. Desktop SDL is OFF in this full run; earlier
+native X11/Cairo evidence below belongs to v0.577 and was not rerun here.
 
-Полная текущая Linux-сборка: 1204 успешных теста, 4 явных пропуска из 1208.
-Пропуски не засчитываются в нативную приёмку других ОС или speech-сервиса.
+Полная текущая Linux Release-сборка с examples: 1212 успешных, 4 пропуска из
+1216. ASan/UBSan: 5/5 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
+foreign OS в этом прогоне не выполнялись. Числа не доказывают полноту SWF.
 
 ## Current work and next boundary / Текущая работа и следующий рубеж
 
-v0.576 develops stages 3/4/7: retain encoded stream blocks independently of the
-VM and inspect the SWF MP3 count/seek prefix safely. It enables external decoder
-integration but supplies no compressed decoder, seek scheduler or audio clock.
-Next streaming boundary: stateful codec decoding with authentic input/oracles,
-then sample scheduling against MovieClip frame progression. Do not confuse copied
-wire SampleCount with a verified decoded frame count.
+v0.578 develops independent software event polyphony on top of prepared voices.
+Next: deliver actually executed root/sprite timeline events to the host, convert
+mixed source geometries, then integrate the output-device clock. Stream codecs
+and sample scheduling remain separate open work; copied MP3 SampleCount is not a
+verified decoded frame count.
 
-v0.576 развивает стадии 3/4/7: независимое хранение сжатых блоков и безопасный
-разбор MP3-префикса. Следующий рубеж — настоящий stateful decoder с реальными
-входами/эталонами, затем планирование samples по timeline MovieClip. Это не
-закрывает остальные стадии и не заменяет нативные проверки других ОС.
+v0.578 даёт software polyphony с явной подачей событий. Следующий рубеж — доставка
+реально исполняемых timeline-событий, преобразование геометрии и device clock.
+Streaming codecs и автоматическая синхронизация пока не реализованы этим API.
 
 ## v0.577 desktop checkpoint / Десктопный запуск
 
@@ -63,8 +63,27 @@ Cairo: 4/4; просмотрщик документации: 8/8. Windows/macOS 
 нативного прогона, Android — Activity/surface frontend. Это не закрывает
 полноту SWF, input, звуковой clock и платформенную приёмку стадии 9.
 
-Current desktop-enabled Linux profile: 1140 passed and 3 explicitly skipped
+Historical v0.577 desktop-enabled Linux profile: 1140 passed and 3 explicitly skipped
 (native macOS ARM64/Intel and Windows unwind), 1143 registered tests total.
 This run disables examples and is not directly comparable to v0.576's count.
-Текущий Linux-профиль с desktop: 1140 успешных, 3 пропущенных, всего 1143;
+Исторический Linux-профиль v0.577 с desktop: 1140 успешных, 3 пропущенных, всего 1143;
 examples выключены, поэтому число тестов отличается от предыдущего профиля.
+
+## v0.578 incremental event mixing / Порционное смешивание событий
+
+Independent software polyphony now combines prepared PCM/ADPCM snapshots with
+per-ID stop/no-multiple, loop/envelope progress, fixed geometry and bounded voice
+capacity. Wide summation clips once; reads allocate nothing and survive source
+reload/GC/context/runtime destruction. See [EN](SWF_SOUND_MIXER.md) /
+[RU](SWF_SOUND_MIXER.ru.md) and the annotated C89 tutorial.
+
+Five focused mixer/tutorial tests pass in the Linux minimal-JIT ASan/UBSan build
+(LeakSanitizer disabled). This includes injected OOM cleanup, all ADPCM widths,
+packet/chunk boundaries, exact native file PCM and strict C89 use. Source links,
+debugger tutorial contracts and the new example's line comments/catalog/anchors
+are checked separately. No native device or foreign-OS acceptance is claimed.
+
+Это развитие стадий 3/4/7, а не закрытие любой из девяти стадий. Следующие
+звуковые рубежи: фактическая доставка исполняемых timeline-событий в host mixer,
+разные частоты/каналы, системный device clock, streaming codec/A/V integration.
+Общее число тестов не заменяет эти условия и оригинальные Flash-эталоны.
