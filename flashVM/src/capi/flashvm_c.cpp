@@ -255,6 +255,7 @@ extern "C"
         context->drag_clip = 0;
         /* [GC:] Drop listener roots before finalization destroys their graph. */
         context->keyboard_listeners.clear();
+        context->selection_listeners.clear(); /* [GC:] Drop focus observers before finalization. */
         context->keyboard_focus = 0; /* [GC:] Release selection before object finalization. */
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         context->gc_collecting = true;

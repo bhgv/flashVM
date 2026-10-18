@@ -10,7 +10,8 @@ v0.592 добавляет явные Selection.getFocus/setFocus для нати
 `fvm_standard_selection_install(context)` принимает заимствованный ненулевой живой
 контекст с уже установленными через [`fvm_standard_install`](../include/flashvm/standard.h#L18) стандартными объектами.
 Вызывать в потоке-владельце VM, вне уничтожения и сборки/освобождения GC.
-Синхронно готовит namespace только с getFocus/setFocus и атомарно публикует
+Синхронно готовит namespace с getFocus/setFocus/addListener/removeListener и
+accessor-снимком _listeners и атомарно публикует
 глобальный Selection. Скрипт не запускается, фокус не меняется, устройства не
 открываются. Установка Key независима.
 
@@ -97,6 +98,45 @@ native-callback остаётся в силе. Getter может сменить �
 Ошибка callback не превращается в штатный Boolean false. Очереди и отката нет.
 Это явная политика подмножества; сравнение граничного порядка с оригиналом открыто.
 
+## Слушатели Selection
+
+С v0.594 `Selection.addListener(object)` возвращает undefined и один раз удерживает
+объект того же контекста. Дубликат не меняет порядок. Отсутствующий аргумент,
+null, undefined и примитивы игнорируются. Проверка аргументов VM до входа отвергает
+объекты другого контекста с [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). OOM сохраняет регистрации;
+предел [FVM_SELECTION_MAX_LISTENERS](../src/standard/selection_listeners.hpp#L6) (4096) возвращает [FVM_ERROR](../include/flashvm/flashvm.h#L43). Регистрация
+не вызывает скрипт и не открывает устройства. `Selection.removeListener(object)`
+возвращает true только при удалении идентичности, иначе false. Само удаление
+не выделяет память, но вызывающий dispatcher может выделять снимок аргументов.
+
+До публикации реальной смены выбора создаётся защищённый GC-корнями снимок
+регистраций. OOM подготовки сохраняет прежний выбор. После уведомлений клипов
+каждый получатель снимка получает `listener.onSetFocus(oldClip, newClip)` в порядке
+регистрации; концы представлены объектом или null, receiver — сам слушатель.
+Обработчик ищется один раз при доставке. Отсутствующий/невызываемый пропускается
+без глобальной подстановки, настоящая ошибка прекращает доставку и передаётся
+без отката уже опубликованного выбора. Вложенная смена синхронная, со своим
+снимком и сохранением своего результата. Повторный выбор того же клипа,
+недопустимый кандидат, C setter и ленивое снятие удалённого выбора не уведомляют.
+
+Добавление/удаление подписки внутри callback действует на следующие переходы.
+Удаление будущего получателя с последующим GC не отменяет уведомление текущего
+снимка. Изменение его обработчика влияет на позднейшую доставку. Регистрации
+сильные, принадлежат контексту, независимы от Key и замены глобального Selection.
+Они живут до явного удаления или уничтожения контекста, не синхронизируются и не
+сериализуются. Передача обычного объекта не подписывает его в другом контексте.
+
+`Selection._listeners` возвращает новый нативный Array с текущими объектами,
+без заменяемого конструктора Array. Accessor не перечисляется, не удаляется и
+не имеет setter. Изменение Array не меняет подписки; удерживаемый результат
+нужно защитить корнями перед собирающим вызовом. OOM сохраняет регистрации.
+Это снимок для просмотра, а не изменяемый broadcaster-массив оригинального Flash.
+Повторная установка проверяет все четыре метода и неподменённый accessor.
+
+Базовые сигнатуры соответствуют справочнику Adobe AS2 по ссылке ниже. Порядок
+вложенных уведомлений, снимки, пределы и замена namespace — явная политика
+подмножества; сравнение с оригинальным плеером остаётся открытым.
+
 ## getFocus
 
 `Selection.getFocus()` игнорирует аргументы. Возвращает null без выбора либо
@@ -120,7 +160,7 @@ Selection и C API хоста разделяют один сильный кор�
 локально для хоста и не сериализуется; методы namespace не имеют переносимых
 serialization callback IDs, передача графа возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
 
-Открыты TextField/каретка/диапазоны, Button, слушатели Selection, рамки фокуса, автоматический выбор мышью/Tab, IME, security origins,
+Открыты TextField/каретка/диапазоны, Button, рамки фокуса, автоматический выбор мышью/Tab, IME, security origins,
 SWF ClipActions и сравнение граничных случаев/порядка с оригинальным плеером.
 Точечный формат getFocus и требование вызываемого кнопочного обработчика —
 описанная политика подмножества; полная эталонная приёмка ещё не выполнена.
@@ -135,10 +175,13 @@ SWF ClipActions и сравнение граничных случаев/поря
 - [Интерактивный SWF](../examples/player/animation_audio/README.md): выбирает корень
   путём `_root`, независимо считает события клипа/Key, увеличивает высоту синего
   квадрата при отпусканиях, доставленных выбранному корню.
+- `tests/selection_listeners.cpp`: идентичность, снимок, мутации с GC, ошибки,
+  замена namespace и изоляция контекстов.
+- `tests/selection_listeners_allocation.cpp`: OOM регистрации/снимка/публикации.
 - `tests/selection.cpp`: Unicode-пути, допустимость, неверные типы, нативные getters,
   реальные ошибки, удаление при проверке и ленивый сброс по удалённому предку.
 - `tests/selection_install_allocation.cpp`: fresh-context перебор отказов установки
-  и setFocus с сохранением прежнего выбора.
+  и setFocus с проверкой границы публикации/уведомлений.
 - `tests/jit_selection.cpp`: SWF6–8, interpreter/ручной/автоматический JIT,
   скриптовые getters с настоящим GC, версионные конфликты globals, callbacks.
 - `frontend/tests/keyboard_movie.cpp`: настоящий поставляемый SWF, три цикла,
@@ -147,7 +190,7 @@ SWF ClipActions и сравнение граничных случаев/поря
 Тесты VM/хоста и кросс-сборки не равны приёмке физической клавиатуры/устройств.
 См. [текущее состояние роудмапа](ROADMAP_STATUS.md).
 
-Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L84), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L133)
+Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L113), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L162)
 in [src/standard/selection.cpp](../src/standard/selection.cpp).
 
 <!-- source-links:start -->
@@ -165,9 +208,10 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:66](../src/standard/movieclip_constants.h#L66) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:133](../src/standard/selection.cpp#L133) |
+| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:162](../src/standard/selection.cpp#L162) |
+| `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:6](../src/standard/selection_listeners.hpp#L6) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:84](../src/standard/selection.cpp#L84) |
+| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:113](../src/standard/selection.cpp#L113) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

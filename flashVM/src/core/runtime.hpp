@@ -353,6 +353,7 @@ struct FVM_Context
     bool drag_updating; /* Reentry guard during matrix getters and transform publication. */
     double pointer_world_x; /* Last accepted host pointer X; no managed edges. */
     double pointer_world_y; /* Last accepted host pointer Y; no managed edges. */
+    fvm_detail::vector<FVM_Object *> selection_listeners; /* [GC:] Strong, context-local focus observers. */
     fvm_detail::vector<FVM_Object *> keyboard_listeners; /* [GC:] Strong owning-context listener registrations. */
     FVM_Object *keyboard_focus; /* [GC:] Explicit host-selected native MovieClip; null means none. */
     bool keyboard_dispatching; /* Reject recursive keyboard notification and context destruction. */

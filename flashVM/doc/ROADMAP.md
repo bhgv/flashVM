@@ -3259,6 +3259,16 @@ exercise notification delivery. [EN](SELECTION.md#focus-notifications) /
 [RU](SELECTION.ru.md#уведомления-фокуса). Это развитие стадий 3/5/7/8;
 полная совместимость и нативная платформенная приёмка остаются открытыми.
 
+## v0.594 — context-owned Selection observers
+
+Explicit addListener/removeListener and read-only _listeners inspection snapshots
+extend the SWF6–8 MovieClip Selection namespace. Rooted recipients are prepared
+before focus publication and notified after clip callbacks with old/new objects.
+Mutation affects later transitions; handler errors preserve committed effects.
+[EN](SELECTION.md#selection-listeners) / [RU](SELECTION.ru.md#слушатели-selection).
+Это развитие стадий 3/5/7/8; TextField/Button, автоматический выбор, точная
+совместимость broadcaster-массива и нативная приёмка ОС остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -6,7 +6,7 @@
 static FVM_Result collect(FVM_Context *c, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *out, void *)
 { assert(!c->gc_native_depth); assert(fvm_gc_collect(c, 0) == FVM_OK); fvm_value_boolean(out, 1); return FVM_OK; }
 /* Nested script getters may enter JIT too; verify actual native entry without assuming one call. */
-static FVM_Value run_selection(FVM_Context *c, const Program &program)
+static FVM_Value run_selection(FVM_Context *c, const Program &program, FVM_Result expected = FVM_OK)
 {
     FVM_Object *fn = 0; FVM_JitCode *code = 0; FVM_Value out;
     assert(fvm_function_create_avm1(c, program.bytes.begin(), program.bytes.size(), 0, 0, 0, &fn) == FVM_OK);
@@ -15,10 +15,11 @@ static FVM_Value run_selection(FVM_Context *c, const Program &program)
     if (class_mode == 1) assert(fvm_function_set_body(c, fn, fvm_jit_body, code, 0) == FVM_OK);
     assert(fvm_execution_set_mode(c, class_mode == 2 ? FVM_EXECUTION_JIT : FVM_EXECUTION_MANUAL, 0) == FVM_OK);
     unsigned long entries = c->execution_mode.stats.native_entries;
-    assert(fvm_function_invoke(c, fn, 0, 0, 0, &out) == FVM_OK);
+    assert(fvm_function_invoke(c, fn, 0, 0, 0, &out) == expected);
     if (class_mode) assert(c->execution_mode.stats.native_entries > entries);
     else assert(c->execution_mode.stats.native_entries == entries);
     assert(!c->gc_frames && !c->gc_native_depth && !c->script_depth && !code->active);
+    if (expected == FVM_EXCEPTION) assert(fvm_exception_clear(c) == FVM_OK);
     assert(fvm_function_set_body(c, fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(code) == FVM_OK);
     assert(fvm_gc_unpin(c, fn) == FVM_OK);
     return out;
@@ -53,10 +54,28 @@ int main()
         assert(fvm_function_create_avm1(c, getter.bytes.begin(), getter.bytes.size(), 0, 0, 0, &fn) == FVM_OK);
         FVM_Value args[3]; fvm_value_string(args, "focusEnabled"); args[1] = class_value(fn); fvm_value_undefined(args + 2); args[2].type = FVM_VALUE_NULL;
         assert(fvm_object_call(c, clip, "addProperty", 3, args, &value) == FVM_OK && value.boolean);
+        FVM_Object *observer = 0;
+        assert(fvm_object_create(c, &observer) == FVM_OK);
+        value = class_value(observer); assert(fvm_set_global(c, "observer", &value) == FVM_OK);
+        Program observe;
+        observe.variable("this"); observe.text("old"); observe.variable("old"); observe.op(0x4f);
+        observe.variable("this"); observe.text("next"); observe.variable("next"); observe.op(0x4f);
+        observe.number(0); observe.text("collectFocus"); observe.op(0x3d); observe.finish();
+        const char *observer_parameters[] = {"old", "next"}; FVM_Object *observer_handler = 0;
+        assert(fvm_function_create_avm1(c, observe.bytes.begin(), observe.bytes.size(), 2,
+                                        observer_parameters, 0, &observer_handler) == FVM_OK);
+        value = class_value(observer_handler);
+        assert(fvm_object_set(c, observer, "onSetFocus", &value) == FVM_OK);
+        Program add_observer;
+        add_observer.variable("observer"); add_observer.number(1); add_observer.variable("Selection");
+        add_observer.text("addListener"); add_observer.op(0x52); add_observer.finish();
+        value = run_selection(c, add_observer); assert(value.type == FVM_VALUE_UNDEFINED);
         Program set;
         set.variable("movie"); set.number(1); set.variable("Selection"); set.text("setFocus"); set.op(0x52); set.finish();
         value = run_selection(c, set);
         assert(value.type == FVM_VALUE_BOOLEAN && value.boolean && c->keyboard_focus == clip);
+        assert(fvm_object_get(c, observer, "old", &value) == FVM_OK && value.type == FVM_VALUE_NULL);
+        assert(fvm_object_get(c, observer, "next", &value) == FVM_OK && value.object == clip);
         Program get;
         get.number(0); get.variable("Selection"); get.text("getFocus"); get.op(0x52); get.finish();
         value = run_selection(c, get);
@@ -81,9 +100,16 @@ int main()
         clear.number(1); clear.variable("Selection"); clear.text("setFocus"); clear.op(0x52); clear.finish();
         value = run_selection(c, clear);
         assert(value.boolean && !c->keyboard_focus);
+        assert(fvm_object_get(c, observer, "old", &value) == FVM_OK && value.object == clip);
+        assert(fvm_object_get(c, observer, "next", &value) == FVM_OK && value.type == FVM_VALUE_NULL);
         assert(fvm_object_get(c, clip, "previous", &value) == FVM_OK && value.type == FVM_VALUE_NULL);
         value = run_selection(c, set);
         assert(value.boolean && c->keyboard_focus == clip);
+        Program remove_observer;
+        remove_observer.variable("observer"); remove_observer.number(1); remove_observer.variable("Selection");
+        remove_observer.text("removeListener"); remove_observer.op(0x52); remove_observer.finish();
+        value = run_selection(c, remove_observer); assert(value.type == FVM_VALUE_BOOLEAN && value.boolean);
+        assert(c->selection_listeners.empty());
         Program callback;
         callback.variable("this"); callback.text("seen"); callback.number(99); callback.op(0x4f); callback.number(1); callback.finish();
         FVM_Object *handler = 0;
@@ -95,6 +121,17 @@ int main()
         assert(fvm_input_dispatch_keyboard(c, &state, 1) == FVM_OK);
         assert(fvm_object_get(c, clip, "seen", &value) == FVM_OK && value.number == 99);
         assert(!c->gc_frames && !c->gc_native_depth);
+        /* Real script exceptions from observers stop delivery after focus publication. */
+        Program throwing; throwing.text("focus failure"); throwing.op(0x2a); throwing.op(0);
+        FVM_Object *throw_handler = 0;
+        assert(fvm_function_create_avm1(c, throwing.bytes.begin(), throwing.bytes.size(), 0, 0,
+                                        0, &throw_handler) == FVM_OK);
+        value = class_value(throw_handler);
+        assert(fvm_object_set(c, observer, "onSetFocus", &value) == FVM_OK);
+        run_selection(c, add_observer);
+        run_selection(c, clear, FVM_EXCEPTION);
+        assert(!c->keyboard_focus && !c->gc_frames && !c->gc_native_depth);
+        value = run_selection(c, remove_observer); assert(value.boolean);
         assert(fvm_input_set_keyboard_focus(c, 0) == FVM_OK);
         fvm_context_destroy(c);
     }

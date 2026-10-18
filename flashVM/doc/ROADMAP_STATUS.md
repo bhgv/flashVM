@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.593
+# FlashVM stage status / Состояние стадий — v0.594
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -393,6 +393,38 @@ and SWF6–8 interpreter/manual/automatic-JIT script callbacks collecting inside
 notification. Source-link HTML/determinism and debugger tutorial checks pass.
 This checkpoint supplies no new Android/Windows/macOS native execution or
 reference-player ordering comparison; all roadmap stages remain open.
+
+## v0.594 Selection observers / Наблюдатели смены фокуса
+
+Selection.addListener/removeListener retain context-local object identities;
+read-only _listeners returns independent native Array snapshots. Before publishing
+focus, the transition prepares a rooted recipient snapshot. After clip callbacks,
+observers receive old/new objects (or null). Mutation affects later transitions;
+real errors stop delivery without rolling back committed focus. Registrations
+survive public namespace replacement and are independent of Key.
+[EN](SELECTION.md#selection-listeners) / [RU](SELECTION.ru.md#слушатели-selection).
+
+Это ограниченная реализация: TextField/Button, выбор касанием/Tab, изменяемая
+идентичность broadcaster-массива оригинального Flash, эталонный порядок и
+новая нативная приёмка ОС не заявляются. Все девять стадий остаются открытыми.
+
+### v0.594 verification / Проверка
+
+Full Linux Release C89/C++98 AGG build with examples: 1259 registered,
+1255 pass and four explicit native-macOS/native-Windows/SSIP skips. Cached
+executables were fully materialized and execute permissions restored before
+this run; there are no not-started tests or assertion/runtime failures.
+The real C89 tutorial prints both clip events and both two-endpoint observer
+events, clears focus and reports successful observer removal.
+
+Five focused regressions pass ASan/UBSan with leak detection disabled: observer
+identity/mutation/GC/isolation/limits, observer allocation sweeps, endpoint
+notification/reentry/GC, installation/publication allocation sweeps and real
+SWF6–8 interpreter/manual/automatic-JIT callbacks. The latter also throws from
+an actual AVM1 observer and verifies committed focus plus restored GC/script/JIT
+state. Source-link HTML/determinism, source-link freshness and debugger tutorial
+checks pass. No new foreign native runtime/device/reference-player acceptance
+is claimed; all nine roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

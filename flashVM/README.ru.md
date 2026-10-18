@@ -1,4 +1,4 @@
-Версия разработки: **0.593** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.594** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -23,6 +23,8 @@ v0.587: [optional stop release / затухание остановки](doc/PLAY
 v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 v0.589: [Опрос Key и клавиатурные снимки хоста](doc/KEYBOARD.ru.md).
+
+v0.594: [Selection observers / наблюдатели смены фокуса](doc/SELECTION.md#selection-listeners) ([RU](doc/SELECTION.ru.md#слушатели-selection)).
 
 v0.593: [MovieClip focus notifications / уведомления смены фокуса](doc/SELECTION.md#focus-notifications) ([RU](doc/SELECTION.ru.md#уведомления-фокуса)).
 

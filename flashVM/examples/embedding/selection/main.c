@@ -15,12 +15,29 @@ static FVM_Result focus_event(FVM_Context *context, FVM_Object *receiver, unsign
     fvm_value_undefined(out); /* Event return values are intentionally ignored by Selection. */
     return FVM_OK; /* Preserve a successful selection. */
 } /* The callback's borrowed values expire on return unless explicitly rooted. */
+/* Observe both endpoints; SELECTION.md#selection-listeners defines the snapshot delivery policy. */
+static FVM_Result focus_observer(FVM_Context *context, FVM_Object *receiver, unsigned int count, /* Borrow state. */
+                                 const FVM_Value *args, FVM_Value *out, void *userdata) /* Receive old/new clips. */
+{ /* This callback is independent of the MovieClip-specific handlers above. */
+    (void)context; /* Keep the example free of nested VM calls. */
+    (void)receiver; /* The receiver is the registered observer object. */
+    (void)userdata; /* No external state is needed. */
+    if (count != 2) /* Treat a broken host invocation as a real API error. */
+        return FVM_INVALID_ARGUMENT; /* Selection propagates errors after publishing focus. */
+    printf("observer old-null=%d new-null=%d\n", /* Print the two endpoint identities as null flags. */
+           args[0].type == FVM_VALUE_NULL, args[1].type == FVM_VALUE_NULL); /* Do not retain borrowed values. */
+    fvm_value_undefined(out); /* Event return values do not change the selection result. */
+    return FVM_OK; /* Continue synchronous notification delivery. */
+} /* End the observer callback. */
 /* Run all managed operations on one owning thread without opening an OS window. */
 int main(void) /* Use a strict-C89 host entry point. */
 { /* Begin the complete ownership example. */
     FVM_Config config; /* Own configuration storage. */
     FVM_Runtime *runtime = 0; /* Acquire before creating the context. */
     FVM_Context *context = 0; /* Own all managed objects and keyboard selection. */
+    FVM_Object *observer = 0; /* Borrow an observer retained by its pin and registration. */
+    int observer_pinned = 0; /* Track construction ownership even on partial setup failure. */
+    FVM_Value observer_value; /* Pass one observer to addListener and removeListener. */
     FVM_Object *clip = 0; /* Borrow the clip while pinned or selected. */
     FVM_Value selection, argument, result; /* Borrow namespace, argument and result values. */
     int pinned = 0; /* Track whether cleanup owns a temporary root. */
@@ -32,7 +49,7 @@ int main(void) /* Use a strict-C89 host entry point. */
     if (status == FVM_OK) /* Install MovieClip and ordinary Object methods first. */
         status = fvm_standard_install(context); /* Preserve conflicting globals as errors. */
     if (status == FVM_OK) /* Explicitly opt into the supported Selection subset. */
-        status = fvm_standard_selection_install(context); /* Install getFocus and setFocus only. */
+        status = fvm_standard_selection_install(context); /* Install the explicit Selection namespace. */
     if (status == FVM_OK) /* Create a standalone scene with no button-like handlers. */
         status = fvm_movieclip_create(context, "hostMovie", 1, &clip); /* Return a borrowed clip. */
     if (status == FVM_OK) /* Protect construction before focus can retain the clip. */
@@ -58,6 +75,22 @@ int main(void) /* Use a strict-C89 host entry point. */
     if (status == FVM_OK) /* Receive synchronous loss with the replacement clip or null as argument. */
         status = fvm_object_define_method_rooted(context, clip, "onKillFocus", focus_event, /* Install callback. */
                                                  (void *)"kill", 0); /* Ordinary native GC barrier remains active. */
+    if (status == FVM_OK) /* Prepare a separate object for global Selection notifications. */
+        status = fvm_object_create(context, &observer); /* Return a borrowed managed object. */
+    if (status == FVM_OK) /* Protect partial observer setup before registration. */
+    { /* Begin observer pin acquisition. */
+        status = fvm_gc_pin(context, observer); /* [GC:] Retain the observer until cleanup. */
+        observer_pinned = status == FVM_OK; /* Record only a successfully acquired pin. */
+    } /* End observer pin acquisition. */
+    if (status == FVM_OK) /* Selection observers receive two endpoint arguments. */
+        status = fvm_object_define_method_rooted(context, observer, "onSetFocus", /* Register native code. */
+                                                 focus_observer, 0, 0); /* No userdata/capture ownership. */
+    fvm_value_undefined(&observer_value); /* Initialize the observer argument completely. */
+    observer_value.type = FVM_VALUE_OBJECT; /* Select the ordinary managed-object representation. */
+    observer_value.object = observer; /* Construction pin retains this borrowed pointer. */
+    if (status == FVM_OK) /* Add one strong registration, independent of the public namespace binding. */
+        status = fvm_object_call(context, selection.object, "addListener", 1, /* Register once by identity. */
+                                 &observer_value, &result); /* Return value is undefined on success. */
     if (status == FVM_OK) /* Try the same object with the updated eligibility. */
         status = fvm_object_call(context, selection.object, "setFocus", 1, &argument, &result); /* Select it. */
     if (status == FVM_OK) /* A successful selection is now a strong context GC root too. */
@@ -77,8 +110,15 @@ int main(void) /* Use a strict-C89 host entry point. */
         status = fvm_object_call(context, selection.object, "getFocus", 0, 0, &result); /* Query again. */
     if (status == FVM_OK) /* Report the expected empty result without assertions. */
         printf("cleared=%d\n", result.type == FVM_VALUE_NULL); /* Expect one. */
+    if (status == FVM_OK) /* Remove the registration explicitly before destroying its owner. */
+        status = fvm_object_call(context, selection.object, "removeListener", 1, /* Remove by identity. */
+                                 &observer_value, &result); /* Ordinary errors remain visible below. */
+    if (status == FVM_OK) /* Show successful removal rather than silently retaining an observer. */
+        printf("observer removed=%d\n", result.boolean); /* Expect one. */
     if (status != FVM_OK) /* Keep runtime errors visible to the embedding author. */
         fprintf(stderr, "Selection example failed: %d\n", (int)status); /* Print the actual status. */
+    if (observer_pinned) /* Release construction ownership on every exit path. */
+        fvm_gc_unpin(context, observer); /* [GC:] Context teardown releases any surviving registration. */
     if (pinned) /* Release the construction pin on success and failure. */
         fvm_gc_unpin(context, clip); /* [GC:] Context teardown still owns all remaining objects. */
     if (context) /* Destroy focus and any partial setup after the last borrowed access. */

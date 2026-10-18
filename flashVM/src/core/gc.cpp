@@ -102,6 +102,9 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
     /* [GC:] Registered Key listeners remain alive independently of script bindings. */
     for (size_t listener = 0; listener < c->keyboard_listeners.size(); ++listener)
         mark_object(c->keyboard_listeners[listener], pending);
+    /* [GC:] Selection registrations survive loss/replacement of their public namespace. */
+    for (size_t listener = 0; listener < c->selection_listeners.size(); ++listener)
+        mark_object(c->selection_listeners[listener], pending);
     /* [GC:] Keep invocation metadata reachable during callback-triggered collection. */
     mark_object(c->calling_constructor, pending);
     /* [GC:] Retain the function used to resolve the current method owner. */

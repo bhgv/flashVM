@@ -1,8 +1,10 @@
 /* FlashVM: explicit SWF6--8 Selection MovieClip subset over the host focus root. */
 #include "movieclip_state.hpp"
+#include "selection_listeners.hpp"
 #include "movieclip_scene.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/optional_method.hpp"
+#include "../core/value_vector_root_scope.hpp"
 #include "../core/property_lookup.hpp"
 #include "flashvm/keyboard.h"
 #include "flashvm/property.h"
@@ -60,8 +62,22 @@ FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
     /* [GC:] Both transition endpoints survive script detachment, replacement and collection. */
     FVM_ObjectRootScope previous_root(context, previous);
     FVM_ObjectRootScope next_root(context, clip);
+    if (previous == clip)
+        return FVM_OK;
+    fvm_detail::vector<FVM_Value> listeners;
+    /* [GC:] Snapshot recipients before publication; callback mutations affect the next change. */
+    FVM_ValueVectorRootScope listener_roots(context, listeners);
+    listeners.reserve(context->selection_listeners.size());
+    for (size_t i = 0; i < context->selection_listeners.size(); ++i)
+    {
+        FVM_Value value;
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = context->selection_listeners[i];
+        listeners.push_back(value);
+    }
     result = fvm_input_set_keyboard_focus(context, clip);
-    if (result != FVM_OK || previous == clip)
+    if (result != FVM_OK)
         return result;
     FVM_Value argument;
     fvm_value_undefined(&argument);
@@ -77,7 +93,20 @@ FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
     argument.object = previous;
     if (clip)
         result = fvm_object_call_optional_args(context, clip, "onSetFocus", 1, &argument);
-    return result;
+    if (result != FVM_OK)
+        return result;
+    FVM_Value args[2];
+    args[0] = argument;
+    fvm_value_undefined(args + 1);
+    args[1].type = clip ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
+    args[1].object = clip;
+    for (size_t i = 0; i < listeners.size(); ++i)
+    {
+        result = fvm_object_call_optional_args(context, listeners[i].object, "onSetFocus", 2, args);
+        if (result != FVM_OK)
+            return result;
+    }
+    return FVM_OK;
 }
 
 /* Select an eligible native clip or clear through null/undefined; never fabricate text focus. */
@@ -151,7 +180,9 @@ struct Method
     FVM_NativeFunction callback; /* Native receiver-bound entry, without owned userdata. */
 };
 const Method methods[] = {{"getFocus", fvm_selection_get_focus},
-                          {"setFocus", fvm_selection_set_focus}};
+                          {"setFocus", fvm_selection_set_focus},
+                          {"addListener", fvm_selection_add_listener},
+                          {"removeListener", fvm_selection_remove_listener}};
 /* Recognize our unshadowed methods without executing getters or allocating a new namespace. */
 bool installed(FVM_Context *context, FVM_Object *object)
 {
@@ -167,7 +198,15 @@ bool installed(FVM_Context *context, FVM_Object *object)
                 object->accessors.end())
             return false;
     }
-    return true;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator listeners =
+        fvm_property_find(context, object->accessors, fvm_detail::string("_listeners"));
+    return listeners != object->accessors.end() &&
+           listeners->second.getter == fvm_selection_listener_array && !listeners->second.setter &&
+           !listeners->second.userdata && !listeners->second.root &&
+           fvm_property_find(context, object->properties, fvm_detail::string("_listeners")) ==
+               object->properties.end() &&
+           fvm_property_find(context, object->methods, fvm_detail::string("_listeners")) ==
+               object->methods.end();
 }
 } // namespace
 
@@ -217,6 +256,10 @@ extern "C" FVM_Result fvm_standard_selection_install(FVM_Context *context)
             object->methods[methods[i].name] = entry;
             object->attributes[methods[i].name] = FVM_PROPERTY_DONT_ENUM;
         }
+        FVM_AccessorEntry listeners;
+        listeners.getter = fvm_selection_listener_array;
+        object->accessors["_listeners"] = listeners;
+        object->attributes["_listeners"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
         /* Copy before publication so map growth cannot leave a partial global binding. */
         fvm_detail::map<fvm_detail::string, FVM_Value> globals = context->global->properties;
         FVM_Value value;
