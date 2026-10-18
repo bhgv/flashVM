@@ -10,6 +10,7 @@ int main(void)
     char *valid[] = {"player",  "--no-jit", "--quality", "best",
                      "--speed", "200%",     "a.swf",     "b.swf"};
     char *fps[] = {"player", "--fps", "30", "--frames", "2", "movie.swf"};
+    char *mute[] = {"player", "--mute", "movie.swf"};
     char *help[] = {"player", "--help"};
     char *dash[] = {"player", "--", "--help"};
     char *conflict[] = {"player", "--jit", "--no-jit", "a.swf"};
@@ -30,6 +31,7 @@ int main(void)
     assert(!fvm_desktop_rate(&options, 0, &rate) && rate == 24);
     assert(fvm_desktop_parse(6, fps, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
     assert(options.frames == 2 && fvm_desktop_rate(&options, 0, &rate) && rate == 30);
+    assert(fvm_desktop_parse(3, mute, files, &options, &error) == FVM_DESKTOP_PARSE_OK && options.mute);
     assert(fvm_desktop_parse(2, help, files, &options, &error) == FVM_DESKTOP_PARSE_HELP);
     assert(fvm_desktop_parse(3, dash, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
            !strcmp(files[0], "--help"));

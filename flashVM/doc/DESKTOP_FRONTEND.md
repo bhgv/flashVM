@@ -1,5 +1,8 @@
 # Desktop SWF application — v0.577
 
+v0.582 update: [test builds, HostInput, event audio and Android APK](PLAYER_TEST_BUILDS.md).
+
+
 [Русская версия](DESKTOP_FRONTEND.ru.md).
 
 ## Build and launch
@@ -27,8 +30,7 @@ and notices. Use `SDL2_DIR`/`CMAKE_PREFIX_PATH` for a nonstandard SDK. Do not as
 
 OS preparation: [Linux](../frontend/linux/README.md),
 [Windows](../frontend/windows/README.md), [macOS](../frontend/macos/README.md).
-[Android](../frontend/android/README.md) still needs a separate Activity/surface
-integration; this desktop target deliberately rejects Android configuration.
+[Android](../frontend/android/README.md) has a separate SDLActivity/Surface APK target since v0.582.
 
 ## Complete command line
 
@@ -46,6 +48,7 @@ paths that begin with a dash. Input paths are local files, not URLs.
 | `--speed N` or `--speed N%` | Decimal 0.1..10000 percent of authored FPS; default 100 |
 | `--once` | Runs the authored frame count worth of ticks, then closes the current movie |
 | `--frames N` | Positive integer per-file tick limit; useful for bounded launches/tests |
+| `--mute` | Skips event audio/device opening |
 | `--stats` | Reports tick count and actual native/interpreter/fallback counters |
 
 Conflicting interpreter/JIT options, `--fps` with `--speed`, and `--frames` with
@@ -158,8 +161,9 @@ driver to prove no display initialization is required.
 Enable native-display tests explicitly with `-DFVM_DESKTOP_WINDOW_TESTS=ON`, then
 run CTest in a display session. They are not registered for cross builds. This
 checkpoint does not certify native Windows/macOS, Wayland, a physical GPU or
-Android. There is no automatic SWF audio/video clock, ActionScript keyboard/button
-routing, browser plugin, file association or application bundle. Unsupported SWF
+Android. v0.582 adds explicit root event audio and a HostInput extension; full
+A/V clock synchronization, standard Flash keyboard/button routing, browser plugin
+and desktop file association remain open. Unsupported SWF
 features remain errors; this is a desktop host for the implemented VM subset,
 not a claim of full Flash Player compatibility or completion of roadmap stage 9.
 Linux checkpoint v0.577: the desktop-enabled profile passes 1140 tests with

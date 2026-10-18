@@ -23,37 +23,44 @@ counts are historical unless explicitly rerun for this revision.
 
 ## Current Linux verification / Текущая проверка Linux
 
-v0.581: complete default Linux Release C89/C++98 build, including examples;
-1230 passing tests and 4 explicit skips out of 1234 registered. The skips require
+v0.582: complete default Linux Release C89/C++98 build, including examples;
+1230 passing tests and 4 explicit skips out of 1234 registered. Skips require
 native macOS ARM64/Intel, native Windows unwind, or an external speech SSIP endpoint.
-Seven focused queue/timeline/tutorial tests additionally pass in the minimal-JIT
-ASan/UBSan build with LeakSanitizer disabled. Eight focused tests pass in an
-SDL2 2.30.0 SDK/runtime build, including an explicitly selected dummy-driver queue
-consumption test and forced native allocation failure/reset. The real tutorial
-also executes its --sdl path with that dummy driver. These are SDK/protocol
-checks, not audible hardware or foreign-OS acceptance. Desktop SDL is OFF in
-the full default run; earlier native X11/Cairo evidence below belongs to v0.577.
+The separate lean AGG/JIT SDL2 player passes five explicit frontend checks under
+X11/Xvfb, including real keyboard/mouse injection and pixel changes in both modes.
+Both delivered SWFs complete 120 frames in interpreter and JIT; interactive JIT
+reports native=120/interpreter=0/fallbacks=0. SDL disk output in both modes contains
+PCM8/PCM16/ADPCM and expected mono/stereo tone frequencies. Dummy/disk audio checks
+are not physical listening acceptance. Core default tests have desktop SDL OFF.
 
-Полная Linux Release-сборка с examples: 1230 успешных, 4 пропуска из 1234.
-ASan/UBSan: 7/7 новых проверок, LeakSanitizer выключен. Отдельная сборка с настоящим
-SDL2 SDK/runtime: 8/8, включая dummy FIFO и ошибку native allocation со сбросом.
-Это не проверка физического звука, окна или foreign OS. Числа не доказывают
-полноту SWF или завершение какой-либо стадии.
+Windows x64: real MinGW GCC13 C89/C++98 PE32+ player build and DLL-import inspection;
+no actual Windows runtime run. Android arm64-v8a/API23: NDK r27c + SDL2 2.30.0,
+SDLActivity Java/Dex and test-signed APK, 16 KiB ELF/ZIP alignment and signature
+verified; no actual Android device/emulator execution. SDK sensor support disabled
+for the older SDL2 source's NDK27-incompatible ALooper_pollAll call. This does not
+replace native platform/device/endurance gates.
+
+Полная core-сборка Linux: 1230 успешных, 4 пропуска из 1234. Отдельный player:
+5/5 X11/Xvfb проверок, реальные input/pixel изменения и interpreter/JIT обоих SWF.
+PCM записан настоящим SDL disk backend и проверен по частотам в обоих режимах.
+Windows/Android собраны, но на целевых ОС не запускались. Подпись/ABI/выравнивание
+APK и кросс-компиляция не доказывают нативную совместимость.
 
 ## Current work and next boundary / Текущая работа и следующий рубеж
 
-v0.581 connects converted mixing to an explicit copied native FIFO ABI with
-one-block pumping, stable retry PCM, pause/clear/reset and a consumed-frame clock.
-The optional SDL2 bridge uses real native queue functions, while default builds
-return UNSUPPORTED. [EN contracts](SWF_SOUND_OUTPUT.md) / [RU](SWF_SOUND_OUTPUT.ru.md).
-This clock observes software FIFO depletion, not DAC position. Next: automatic
-desktop A/V scheduling and latency/underrun policy, sprite sound/linkage, prepared
-source indexing and a band-limited resampler. Stream codecs/reference movies and
-native platform/device/endurance acceptance remain open.
+v0.582 connects the desktop host to a documented HostInput extension and root
+PCM/ADPCM event queues; --mute avoids device opening. Adds reproducible lean
+player profile/cross-toolchain, Android SDLActivity test menu and two standalone
+SWF fixtures. [EN](PLAYER_TEST_BUILDS.md) / [RU](PLAYER_TEST_BUILDS.ru.md).
+Wall-clock video and PCM FIFO clocks remain independent. Next: full Flash
+Key/Mouse/button/event routing, StopSounds/AS Sound integration into this player
+mixer, drift/latency/underrun policy, sprite sound/linkage and stream codecs.
+Native Windows/Android/macOS device runs and complete reference acceptance remain
+open. All nine stages remain open.
 
-v0.581 добавляет сменный PCM output, безопасный повтор блока и часы потребления.
-Автоматическое подключение desktop/timeline, политика задержек/underrun, sprite,
-compressed streams и нативная приёмка остаются открыты. Все девять стадий открыты.
+v0.582 даёт настоящие тестовые player binaries/APK, input snapshot и root event
+звук. Полный стандартный input/audio API, A/V синхронизация и приёмка целевых
+платформ ещё открыты; номер версии не означает завершение стадий.
 
 ## v0.577 desktop checkpoint / Десктопный запуск
 

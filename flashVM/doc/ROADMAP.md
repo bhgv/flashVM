@@ -3153,6 +3153,15 @@ partial backend failure, source teardown and interpreter/JIT delivery are covere
 Automatic desktop A/V scheduling, latency/underrun policy, compressed streams,
 sprite sound and native foreign-OS/device acceptance remain open. No stage closes.
 
+## v0.582 — player test packages and host input/audio
+
+Linux x64/Windows x64 player and Android ARM64 SDLActivity test APK, two ready SWF8
+movies, pinned HostInput snapshots and real root event audio through SDL2.
+Linux X11 input/pixel and disk-PCM evidence is distinct from cross builds.
+[EN](PLAYER_TEST_BUILDS.md) / [RU](PLAYER_TEST_BUILDS.ru.md).
+Full Flash input/broadcaster/button API, drift-corrected A/V clocks and actual
+foreign-platform device/endurance acceptance remain open; no stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

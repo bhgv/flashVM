@@ -144,6 +144,8 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
         }
         else if (!paths_only && !strcmp(arg, "--once"))
             value.once = 1;
+        else if (!paths_only && !strcmp(arg, "--mute"))
+            value.mute = 1;
         else if (!paths_only && !strcmp(arg, "--stats"))
             value.stats = 1;
         else if (!paths_only && *arg == '-')
@@ -202,9 +204,12 @@ void fvm_desktop_help(const char *program)
     puts("                          --fps and --speed cannot be combined");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
+    puts("  --mute                  Disable event-sound device opening/playback");
     puts("  --stats                 Print actual interpreter/JIT counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
+    puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");
-    puts("This frontend plays the currently supported SWF subset; audio is not scheduled yet.");
+    puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM StartSound uses "
+         "optional SDL audio.");
 }

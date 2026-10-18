@@ -25,8 +25,9 @@ typedef struct FVM_DesktopOptions
     double fps;               /* Explicit absolute rate, or zero for authored-rate scaling. */
     double percent;       /* Percentage of the SWF rate; mutually exclusive with explicit fps. */
     unsigned long frames; /* Per-file tick limit, or zero for the normal playback policy. */
-    int once;  /* Stop after the authored frame count; multiple files imply this by default. */
-    int stats; /* Print actual VM counters after each movie. */
+    int once; /* Stop after the authored frame count; multiple files imply this by default. */
+    int mute; /* Explicitly skip device opening and event sound for headless/audio-free sessions. */
+    int stats;          /* Print actual VM counters after each movie. */
     const char **files; /* Caller-provided storage for borrowed movie paths. */
     size_t file_count;  /* Number of initialized entries in files. */
 } FVM_DesktopOptions;

@@ -9,6 +9,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+/* Bionic's kernel networking headers spell inline as C99 even for a C89 caller. */
+#if !defined(__cplusplus) && !defined(inline)
+#define inline __inline__ /* Confine the compiler spelling to SDK headers, not project C89 code. */
+#define FVM_ANDROID_NETWORK_INLINE_COMPAT
+#endif
+#include <netinet/in.h> /* Declare IPv4/IPv6 sockaddr layouts explicitly on Bionic. */
+#include <arpa/inet.h> /* Declare network byte-order conversion without transitive headers. */
+#ifdef FVM_ANDROID_NETWORK_INLINE_COMPAT
+#undef inline
+#undef FVM_ANDROID_NETWORK_INLINE_COMPAT
+#endif
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/time.h>

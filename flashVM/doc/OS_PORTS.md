@@ -8,7 +8,7 @@
 
 ## Network
 
-`fvm_port_tcp_connect(host, port)` uses native OS TCP sockets and DNS (Winsock on Windows, BSD/POSIX sockets elsewhere). `send`/`recv` return byte counts, -1 on error; `recv` returns 0 on orderly close. Always call [`fvm_port_socket_close`](../ports/android/network.c#L130). **Calls are blocking**, no TLS, timeout, URL loading, Flash `XMLSocket`, `LoadVars`, or sandbox policy enforcement yet. Run on a dedicated host worker, never on the VM/render thread. Do not connect untrusted SWFs directly: implement origin permissions and limits before exposure to AVM1. Android requires `INTERNET` manifest permission. Windows uses Winsock startup/cleanup.
+`fvm_port_tcp_connect(host, port)` uses native OS TCP sockets and DNS (Winsock on Windows, BSD/POSIX sockets elsewhere). `send`/`recv` return byte counts, -1 on error; `recv` returns 0 on orderly close. Always call [`fvm_port_socket_close`](../ports/android/network.c#L141). **Calls are blocking**, no TLS, timeout, URL loading, Flash `XMLSocket`, `LoadVars`, or sandbox policy enforcement yet. Run on a dedicated host worker, never on the VM/render thread. Do not connect untrusted SWFs directly: implement origin permissions and limits before exposure to AVM1. Android requires `INTERNET` manifest permission. Windows uses Winsock startup/cleanup.
 
 ## Examples
 
@@ -26,6 +26,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_port_android_touch_poll` | function | [ports/android/input.c:18](../ports/android/input.c#L18) |
 | `fvm_port_mouse_poll` | function | [ports/android/input.c:11](../ports/android/input.c#L11) |
-| `fvm_port_socket_close` | function | [ports/android/network.c:130](../ports/android/network.c#L130) |
-| `fvm_port_tcp_connect` | function | [ports/android/network.c:58](../ports/android/network.c#L58) |
+| `fvm_port_socket_close` | function | [ports/android/network.c:141](../ports/android/network.c#L141) |
+| `fvm_port_tcp_connect` | function | [ports/android/network.c:69](../ports/android/network.c#L69) |
 <!-- source-links:end -->

@@ -1,5 +1,8 @@
 # Десктопное приложение для SWF — v0.577
 
+Обновление v0.582: [тестовые сборки, HostInput, звук и Android APK](PLAYER_TEST_BUILDS.ru.md).
+
+
 [English](DESKTOP_FRONTEND.md).
 
 ## Сборка и запуск
@@ -27,8 +30,7 @@ origin указывает на GitHub.
 
 Подготовка ОС: [Linux](../frontend/linux/README.md),
 [Windows](../frontend/windows/README.md), [macOS](../frontend/macos/README.md).
-Для [Android](../frontend/android/README.md) ещё нужны Activity и интеграция
-поверхности; десктопная цель явно отклоняется при сборке для Android.
+Для [Android](../frontend/android/README.md) с v0.582 есть отдельный SDLActivity/Surface APK target.
 
 ## Все параметры
 
@@ -156,8 +158,8 @@ RECT разных разрядностей, неизменность ошибо�
 
 Оконные проверки включаются явно FVM_DESKTOP_WINDOW_TESTS=ON и запускаются через
 CTest в сеансе display. Для cross-build они не регистрируются. Это не нативная
-приёмка Windows/macOS, Wayland, физического GPU или Android. Пока нет автоматического
-звука/видео, доставки клавиш/кнопок в ActionScript, browser plugin, file association
+приёмка Windows/macOS, Wayland, физического GPU или Android. v0.582 добавляет root event audio и HostInput, но полной A/V синхронизации,
+стандартных Flash keyboard/button handlers, browser plugin и file association пока нет
 и .app-пакета. Это приложение для реализованного подмножества VM, а не заявление
 о полном Flash Player или завершении стадии 9.
 Проверка Linux v0.577: 1140 успешных тестов, 3 явных пропуска нативных

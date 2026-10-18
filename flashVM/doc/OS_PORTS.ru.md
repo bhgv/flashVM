@@ -10,7 +10,7 @@
 
 ## Сеть
 
-[`fvm_port_tcp_connect`](../ports/android/network.c#L58) создаёт TCP-соединение через системные сокеты и DNS: Winsock на Windows, POSIX/BSD на других системах. [`fvm_port_socket_send`](../ports/android/network.c#L100) и [`fvm_port_socket_recv`](../ports/android/network.c#L117) возвращают число байтов либо -1 при ошибке; 0 у `recv` означает закрытие соединения. [`fvm_port_socket_close`](../ports/android/network.c#L130) освобождает ресурсы. **Операции блокирующие**: вызывайте их из отдельного потока хоста. Пока нет TLS, таймаутов, HTTP, `XMLSocket`, `LoadVars` и проверки Flash sandbox. Не открывайте эти функции недоверенному SWF без политики доступа к сети. Для Android необходимо разрешение `INTERNET` в манифесте.
+[`fvm_port_tcp_connect`](../ports/android/network.c#L69) создаёт TCP-соединение через системные сокеты и DNS: Winsock на Windows, POSIX/BSD на других системах. [`fvm_port_socket_send`](../ports/android/network.c#L111) и [`fvm_port_socket_recv`](../ports/android/network.c#L128) возвращают число байтов либо -1 при ошибке; 0 у `recv` означает закрытие соединения. [`fvm_port_socket_close`](../ports/android/network.c#L141) освобождает ресурсы. **Операции блокирующие**: вызывайте их из отдельного потока хоста. Пока нет TLS, таймаутов, HTTP, `XMLSocket`, `LoadVars` и проверки Flash sandbox. Не открывайте эти функции недоверенному SWF без политики доступа к сети. Для Android необходимо разрешение `INTERNET` в манифесте.
 
 ## Примеры
 
@@ -28,8 +28,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_port_android_touch_poll` | function | [ports/android/input.c:18](../ports/android/input.c#L18) |
 | `fvm_port_mouse_poll` | function | [ports/android/input.c:11](../ports/android/input.c#L11) |
-| `fvm_port_socket_close` | function | [ports/android/network.c:130](../ports/android/network.c#L130) |
-| `fvm_port_socket_recv` | function | [ports/android/network.c:117](../ports/android/network.c#L117) |
-| `fvm_port_socket_send` | function | [ports/android/network.c:100](../ports/android/network.c#L100) |
-| `fvm_port_tcp_connect` | function | [ports/android/network.c:58](../ports/android/network.c#L58) |
+| `fvm_port_socket_close` | function | [ports/android/network.c:141](../ports/android/network.c#L141) |
+| `fvm_port_socket_recv` | function | [ports/android/network.c:128](../ports/android/network.c#L128) |
+| `fvm_port_socket_send` | function | [ports/android/network.c:111](../ports/android/network.c#L111) |
+| `fvm_port_tcp_connect` | function | [ports/android/network.c:69](../ports/android/network.c#L69) |
 <!-- source-links:end -->

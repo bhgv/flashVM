@@ -124,6 +124,8 @@
     - [speech_macos](#example-multimedia-speech_macos) — <small><em>macOS: реальные speech и microphone permissions</em></small>
     - [speech_stt](#example-multimedia-speech_stt) — <small><em>Системный STT: разрешения и захват настоящей речи</em></small>
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
+- [player](#group-player)
+  - [animation_audio](#example-player-animation_audio) — <small><em>Два SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 
@@ -131,7 +133,7 @@
 ## Сборка, типы примеров и чтение API
 
 Основные группы соответствуют подпапкам `actionscript/`, `debugger/`,
-`embedding/`, `extending/`. Тематические подгруппы ниже объединяют одну идею;
+`embedding/`, `extending/`, `multimedia/`, `player/`. Тематические подгруппы ниже объединяют одну идею;
 имя подгруппы занимает своё алфавитное место, а её примеры также отсортированы.
 Существующие пути исходников и CMake-имена сохранены: например, подгруппа
 `embedding/jit` в каталоге объединяет `jit/`, `jit_debug/`, `jit_instances/` и
@@ -1341,6 +1343,22 @@ UTF-8 текст, ждёт Enter, затем останавливает и за�
 пример выводит usage и ничего не произносит/не подключает. Обычные ошибки вместо
 assertions; [GC:] native sessions не входят в VM heap и освобождаются явно.
 
+<a id="group-player"></a>
+## player
+
+<a id="example-player-animation_audio"></a>
+### animation_audio
+
+Два готовых исполняемых SWF8: [README](player/animation_audio/README.md),
+[генератор Python3](player/animation_audio/make_movies.py),
+[animation](player/animation_audio/01-animation-audio.swf),
+[input](player/animation_audio/02-input-audio.swf). Первый проверяет timeline
+движение; второй — AVM1 управление MovieClip через HostInput, стрелки/Space,
+указатель и сохранённые счётчики. Оба содержат тихие U8 PCM/S16 stereo/ADPCM тоны,
+loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLActivity
+запускают те же файлы в interpreter/JIT. Это не полная совместимость Key/Mouse
+или аппаратная приёмка всех ОС; [контракты и сборка](../doc/PLAYER_TEST_BUILDS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -1367,6 +1385,7 @@ Source line links describe the current checkout, including in historical notes.
 имена различаются путём. Это указатель примеров, а не словарь терминов.
 
 - [alsa_output — multimedia/alsa_output](#example-multimedia-alsa_output)
+- [animation_audio — player/animation_audio](#example-player-animation_audio)
 - [audio_channels — multimedia/audio_channels](#example-multimedia-audio_channels)
 - [backtrace — debugger/backtrace](#example-debugger-backtrace)
 - [bitmap_fill — embedding/bitmap_fill](#example-embedding-bitmap_fill)

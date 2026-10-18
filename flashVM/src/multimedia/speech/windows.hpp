@@ -3,8 +3,8 @@
 #define FVM_SPEECH_WINDOWS_HPP /* Define the private header guard. */
 #include "session.hpp" /* Import public provider tables. */
 #ifdef _WIN32 /* Do not require a Windows SDK on other targets. */
+#include <windows.h> /* Declare base Windows types before dependent SAPI/MMSystem headers. */
 #include <sapi.h> /* Declare the real Windows voice and dictation interfaces. */
-#include <windows.h> /* Declare COM initialization and UTF-8 conversion. */
 struct FVM_WindowsTts /* Own one COM voice and its apartment reference. */
 { /* Own one COM voice and its apartment reference. */
     ISpVoice *voice; /* Own the native speech voice interface. */

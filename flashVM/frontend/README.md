@@ -17,14 +17,15 @@ cmake --build build-desktop --target flashvm_player --parallel
 | [linux](linux/README.md) | Linux main-thread launcher; SDL2 X11/Wayland presentation |
 | [windows](windows/README.md) | Win32 UTF-16 command-line conversion and UTF-8 file paths |
 | [macos](macos/README.md) | macOS main-thread launcher; SDL2 Cocoa presentation |
-| [android](android/README.md) | Explicit scope boundary: desktop CLI is not an Android Activity |
+| [android](android/README.md) | SDLActivity test APK: two bundled movies, interpreter/JIT menu |
 | [common](common/player.c) | Shared parser, VM lifecycle, timing and SDL window adapter |
 | [tests](tests/smoke.py) | CLI/timing tests and opt-in native-display/presentation tests |
 
 [Full options, API/source links, timing, ownership and limits](../doc/DESKTOP_FRONTEND.md).
 Single files loop by default. Multiple files run sequentially for each authored
 frame-count worth of ticks. Escape or window close exits the entire playlist.
-The host advances/rasterizes the supported SWF subset; automatic audio/video
-scheduling, browser integration and SWF keyboard/button dispatch are not added.
-Linux X11 software presentation and actual interpreter/JIT execution are checked;
-Windows/macOS native execution, Wayland and physical GPU acceptance remain open.
+The host advances/rasterizes the supported SWF subset. v0.582 adds HostInput
+snapshots and real root PCM/ADPCM event output through optional SDL2 audio.
+[Binary/test guide](../doc/PLAYER_TEST_BUILDS.md), [two SWFs](../examples/player/animation_audio/README.md).
+Automatic A/V clock sync, full Flash Key/Mouse/button routing and browser integration
+remain open. Windows/Android cross builds do not establish native runtime acceptance.

@@ -12,7 +12,25 @@
 #define FVM_DESKTOP_RGBA_BYTES 4U       /* Packed straight-alpha bytes per pixel. */
 #define FVM_DESKTOP_MILLISECONDS 1000.0 /* Convert seconds to scheduler milliseconds. */
 #define FVM_DESKTOP_LATE_FRAMES                                                                    \
-    4.0 /* Reset an excessively late deadline without skipping VM ticks. */
+    4.0                          /* Reset an excessively late deadline without skipping VM ticks. */
+#define FVM_DESKTOP_KEY_LEFT 37  /* Flash-style code for the left arrow. */
+#define FVM_DESKTOP_KEY_UP 38    /* Flash-style code for the up arrow. */
+#define FVM_DESKTOP_KEY_RIGHT 39 /* Flash-style code for the right arrow. */
+#define FVM_DESKTOP_KEY_DOWN 40  /* Flash-style code for the down arrow. */
+#define FVM_DESKTOP_KEY_ASCII_LIMIT 128 /* Non-ASCII/non-arrow keys report code zero. */
+#define FVM_DESKTOP_BUTTON_LEFT 1U      /* HostInput buttons bit for the primary pointer button. */
+#define FVM_DESKTOP_BUTTON_MIDDLE 2U    /* HostInput buttons bit for the middle pointer button. */
+#define FVM_DESKTOP_BUTTON_RIGHT 4U /* HostInput buttons bit for the secondary pointer button. */
+/* Copied main-thread input state, with counters preserving taps between movie ticks. */
+typedef struct FVM_DesktopInput
+{
+    double x, y; /* Logical stage pixels, before authored stage-origin restoration. */
+    int left, right, up, down, space; /* Held directional/space keys, cleared on focus loss. */
+    int key_code, key_down; /* Latest key transition: ASCII uppercase/digits or arrow 37..40. */
+    unsigned int buttons;   /* Held pointer-button bits; no global OS mouse capture. */
+    unsigned long clicks,
+        key_presses; /* Counts of physical down transitions, excluding key repeats. */
+} FVM_DesktopInput;
 typedef struct FVM_DesktopWindow FVM_DesktopWindow;
 /* Initialize SDL/video on the calling main thread and own window/renderer/texture. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned int);
@@ -20,6 +38,11 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned 
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *);
 /* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
+/* Copy current input state without retaining caller storage or entering the VM. */
+void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
+/* Read whether the Android application is foreground; ordinary desktop focus loss only clears held
+ * input. */
+int fvm_desktop_window_active(FVM_DesktopWindow *);
 /* Read monotonic elapsed milliseconds from SDL's performance counter. */
 double fvm_desktop_now(void);
 /* Report the latest SDL failure while the backend remains initialized. */

@@ -146,3 +146,10 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
 
 - Keep Coco/R documentation, translations and usage notes out of the FlashVM
   repository: Coco/R is a separate project. Do not import its documentation patches.
+
+- Standing patch-delivery instruction (2026-10-18): include a copy-paste Termux
+  command block with every downloadable patch: pull --ff-only from the full
+  https://github.com/bhgv/flashVM.git URL, am --3way the exact delivered filename
+  under ~/storage/downloads with user.name=bhgv and user.email=bhgv@bhgv.bhgv,
+  print author/committer for verification, then push master to that full URL.
+  Put raw commands in a fenced shell block, without Markdown links or escaped ~/@.

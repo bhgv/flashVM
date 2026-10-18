@@ -9,6 +9,9 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 98)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if(ANDROID)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-Wall -Wextra -pedantic-errors
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>)
@@ -145,6 +148,10 @@ add_library(fvm_zlib STATIC
   ${FVM_ZLIB_DIR}/inffast.c ${FVM_ZLIB_DIR}/zutil.c
   ${FVM_ZLIB_DIR}/compress.c ${FVM_ZLIB_DIR}/uncompr.c)
 target_include_directories(fvm_zlib PUBLIC ${FVM_ZLIB_DIR})
+# LLP64 Windows has 32-bit long: select zlib's supported 32-bit CRC braid in strict C89.
+if(WIN32)
+  target_compile_definitions(fvm_zlib PRIVATE Z_TESTW=4)
+endif()
 target_link_libraries(flashvm PUBLIC fvm_zlib)
 if(FVM_ENABLE_AGG)
   file(GLOB FVM_AGG_SOURCES external/agg/upstream/src/*.cpp)

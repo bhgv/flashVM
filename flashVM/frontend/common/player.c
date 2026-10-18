@@ -1,13 +1,15 @@
 /* Host-owned desktop playback: load, root, advance, rasterize, present, release. */
 #define SDL_MAIN_HANDLED
-#include <SDL.h>
 #include "player.h"
+#include "audio.h"
+#include "flashvm/gc.h"
+#include "flashvm/input.h"
+#include "flashvm/movieclip.h"
+#include "flashvm/standard.h"
+#include "flashvm/swf.h"
 #include "options.h"
 #include "window.h"
-#include "flashvm/movieclip.h"
-#include "flashvm/swf.h"
-#include "flashvm/standard.h"
-#include "flashvm/gc.h"
+#include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +88,43 @@ static int clear_stage(FVM_Context *context, FVM_RasterSurface *surface)
     return 1;
 }
 
+/* Copy a scalar without retaining borrowed storage or invoking user-defined input listeners. */
+static FVM_Result input_number(FVM_Context *context, FVM_Object *object, const char *name,
+                               double number)
+{
+    FVM_Value value;
+    fvm_value_number(&value, number);
+    return fvm_object_set(context, object, name, &value);
+}
+
+/* Publish a frame snapshot; HostInput is a player extension, not the complete Flash Key API. */
+static FVM_Result publish_input(FVM_Context *context, FVM_Object *object,
+                                const FVM_DesktopInput *input, double origin_x, double origin_y)
+{
+    FVM_Result result;
+#define FVM_PUBLISH_INPUT(name, value)                                                             \
+    do                                                                                             \
+    {                                                                                              \
+        result = input_number(context, object, name, (double)(value));                             \
+        if (result != FVM_OK)                                                                      \
+            return result;                                                                         \
+    } while (0)
+    FVM_PUBLISH_INPUT("x", input->x + origin_x);
+    FVM_PUBLISH_INPUT("y", input->y + origin_y);
+    FVM_PUBLISH_INPUT("left", input->left);
+    FVM_PUBLISH_INPUT("right", input->right);
+    FVM_PUBLISH_INPUT("up", input->up);
+    FVM_PUBLISH_INPUT("down", input->down);
+    FVM_PUBLISH_INPUT("space", input->space);
+    FVM_PUBLISH_INPUT("buttons", input->buttons);
+    FVM_PUBLISH_INPUT("keyCode", input->key_code);
+    FVM_PUBLISH_INPUT("keyDown", input->key_down);
+    FVM_PUBLISH_INPUT("clicks", input->clicks);
+    FVM_PUBLISH_INPUT("keyPresses", input->key_presses);
+#undef FVM_PUBLISH_INPUT
+    return fvm_input_set_pointer(context, input->x + origin_x, input->y + origin_y);
+}
+
 /* Play one file. All VM/SDL objects belong to this thread; no background worker touches them. */
 static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
 {
@@ -93,6 +132,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     FVM_Runtime *runtime = 0;
     FVM_Context *context = 0;
     FVM_Object *clip = 0;
+    FVM_Object *host_input = 0;
+    FVM_Value host_value;
+    FVM_DesktopInput input;
+    FVM_DesktopAudio audio;
     FVM_DesktopWindow *window = 0;
     FVM_SWFInfo info;
     FVM_SWFStageBounds bounds;
@@ -103,7 +146,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     size_t length = 0;
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
-    int status = 1, pinned = 0;
+    int status = 1, pinned = 0, input_pinned = 0;
+    memset(&input, 0, sizeof(input));
+    memset(&audio, 0, sizeof(audio));
     memset(&surface, 0, sizeof(surface));
     bytes = read_movie(path, &length);
     if (!bytes)
@@ -155,6 +200,17 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     if (!checked(fvm_gc_pin(context, clip), "root pin", path))
         goto cleanup;
     pinned = 1;
+    if (!checked(fvm_object_create(context, &host_input), "HostInput object", path))
+        goto cleanup;
+    /* [GC:] Keep the host-owned input object live even if a script replaces its global binding. */
+    if (!checked(fvm_gc_pin(context, host_input), "HostInput pin", path))
+        goto cleanup;
+    input_pinned = 1;
+    fvm_value_undefined(&host_value);
+    host_value.type = FVM_VALUE_OBJECT;
+    host_value.object = host_input;
+    if (!checked(fvm_set_global(context, "HostInput", &host_value), "HostInput binding", path))
+        goto cleanup;
     free(bytes);
     bytes = 0;
     mode = options->mode;
@@ -179,6 +235,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         fprintf(stderr, "%s: cannot open desktop window\n", path);
         goto cleanup;
     }
+    if (!options->mute && !checked(fvm_desktop_audio_open(context, clip, &audio),
+                                   "event audio (use --mute to disable)", path))
+        goto cleanup;
     if (!limit && (options->once || options->file_count > 1))
         limit = info.frame_count;
     fprintf(stderr, "%s: SWF%u %ux%u source=%.6g fps effective=%.6g fps\n", path, info.version,
@@ -193,10 +252,26 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             *quit = 1;
             break;
         }
+        if (!fvm_desktop_window_active(window))
+        {
+            if (audio.output && !checked(fvm_swf_sound_output_pause(audio.output, 1),
+                                         "background audio pause", path))
+                goto cleanup;
+            if (!fvm_desktop_window_events(window, FVM_DESKTOP_AUDIO_WAIT))
+                *quit = 1;
+            if (*quit)
+                break;
+            next = fvm_desktop_now();
+            continue;
+        }
+        if (!checked(fvm_desktop_audio_tick(&audio), "PCM queue", path))
+            goto cleanup;
         now = fvm_desktop_now();
         if (now < next)
         {
             int wait = (int)(next - now);
+            if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
+                wait = FVM_DESKTOP_AUDIO_WAIT;
             if (wait < 1)
                 wait = 1;
             if (!fvm_desktop_window_events(window, wait))
@@ -206,7 +281,15 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             }
             continue;
         }
+        fvm_desktop_window_input(window, &input);
+        if (!checked(publish_input(context, host_input, &input,
+                                   (double)bounds.x_min / FVM_SWF_TWIPS_PER_PIXEL,
+                                   (double)bounds.y_min / FVM_SWF_TWIPS_PER_PIXEL),
+                     "host input", path))
+            goto cleanup;
         if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline tick", path))
+            goto cleanup;
+        if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
             goto cleanup;
         if (!clear_stage(context, &surface))
             goto cleanup;
@@ -230,6 +313,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     while (!*quit && fvm_desktop_now() < next)
     {
         int wait = (int)(next - fvm_desktop_now());
+        if (!checked(fvm_desktop_audio_tick(&audio), "tail PCM queue", path))
+            goto cleanup;
+        if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
+            wait = FVM_DESKTOP_AUDIO_WAIT;
         if (wait < 1)
             wait = 1;
         if (!fvm_desktop_window_events(window, wait))
@@ -241,15 +328,22 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         stats.struct_size = sizeof(stats);
         if (!checked(fvm_execution_get_stats(context, &stats), "execution statistics", path))
             goto cleanup;
+        fprintf(stderr, "input_keys=%lu input_clicks=%lu sound_events=%lu audio_device=%d\n",
+                input.key_presses, input.clicks, audio.events, audio.device != 0);
         fprintf(stderr, "frames=%lu native=%lu interpreter=%lu fallbacks=%lu\n", ticks,
                 stats.native_entries, stats.interpreter_entries, stats.fallbacks);
     }
     status = 0;
 cleanup:
+    if (context && clip && audio.mixer)
+        fvm_movieclip_set_sound_callback(context, 0, 0);
+    fvm_desktop_audio_close(&audio);
     fvm_desktop_window_close(window);
     free(surface.pixels);
     free(bytes);
     /* [GC:] End the host root before destroying its context; no borrowed pointer escapes. */
+    if (input_pinned)
+        fvm_gc_unpin(context, host_input);
     if (pinned)
         fvm_gc_unpin(context, clip);
     if (context)

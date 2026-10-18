@@ -161,6 +161,13 @@ and [`fvm_audio_sdl_queue_close`](../include/flashvm/swf_sound_output.h#L73): [i
 Host-owned queue integration and software FIFO clock; automatic desktop A/V
 synchronization and exact hardware position remain open.
 
+## Player test packages and host extensions
+
+[Linux/Windows/Android build and HostInput contracts](PLAYER_TEST_BUILDS.md) /
+[RU](PLAYER_TEST_BUILDS.ru.md), [two runnable SWF demos](../examples/player/animation_audio/README.md).
+This is host integration of the existing C ABI; HostInput is not the complete
+standard Flash Key/Mouse API. Native foreign-platform acceptance remains open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

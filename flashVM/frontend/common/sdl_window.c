@@ -1,14 +1,18 @@
 /* SDL2 window adapter for desktop targets. All event/render calls remain on main thread. */
 #define SDL_MAIN_HANDLED /* OS entrypoints are supplied in frontend/{linux,windows,macos}. */
+#include "window.h"
 #include <SDL.h>
 #include <stdlib.h>
-#include "window.h"
+#include <string.h>
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
 struct FVM_DesktopWindow
 {
     SDL_Window *window;     /* Native OS window, owned until close. */
     SDL_Renderer *renderer; /* SDL software/accelerated presenter selected by SDL. */
     SDL_Texture *texture;   /* Streaming byte-order-independent RGBA texture. */
+    int background;         /* Suspend timeline/audio while Android activity is not foreground. */
+    FVM_DesktopInput
+        input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
     int ready; /* Nonzero after a complete upload; permits repaint without another VM tick. */
 };
 
@@ -80,8 +84,75 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 {
     if (event->type == SDL_QUIT ||
         (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE) ||
-        (event->type == SDL_KEYDOWN && event->key.keysym.sym == SDLK_ESCAPE))
+        (event->type == SDL_KEYDOWN &&
+         (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK)))
         return 0;
+    if (event->type == SDL_APP_WILLENTERBACKGROUND)
+        view->background = 1;
+    if (event->type == SDL_APP_DIDENTERFOREGROUND)
+        view->background = 0;
+    if (event->type == SDL_APP_WILLENTERBACKGROUND ||
+        (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST))
+    {
+        view->input.left = view->input.right = view->input.up = view->input.down = 0;
+        view->input.space = view->input.key_down = 0;
+        view->input.buttons = 0;
+    }
+    if (event->type == SDL_MOUSEMOTION)
+    {
+        view->input.x = event->motion.x;
+        view->input.y = event->motion.y;
+    }
+    if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
+    {
+        unsigned int bit = event->button.button == SDL_BUTTON_LEFT     ? FVM_DESKTOP_BUTTON_LEFT
+                           : event->button.button == SDL_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE
+                           : event->button.button == SDL_BUTTON_RIGHT  ? FVM_DESKTOP_BUTTON_RIGHT
+                                                                       : 0;
+        view->input.x = event->button.x;
+        view->input.y = event->button.y;
+        if (event->type == SDL_MOUSEBUTTONDOWN)
+        {
+            view->input.buttons |= bit;
+            ++view->input.clicks;
+        }
+        else
+            view->input.buttons &= ~bit;
+    }
+    if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP)
+    {
+        SDL_Keycode key = event->key.keysym.sym;
+        int down = event->type == SDL_KEYDOWN;
+        int code = key >= SDLK_a && key <= SDLK_z                  ? (int)(key - SDLK_a + 'A')
+                   : key >= 0 && key < FVM_DESKTOP_KEY_ASCII_LIMIT ? (int)key
+                                                                   : 0;
+        if (key == SDLK_LEFT)
+        {
+            view->input.left = down;
+            code = FVM_DESKTOP_KEY_LEFT;
+        }
+        if (key == SDLK_UP)
+        {
+            view->input.up = down;
+            code = FVM_DESKTOP_KEY_UP;
+        }
+        if (key == SDLK_RIGHT)
+        {
+            view->input.right = down;
+            code = FVM_DESKTOP_KEY_RIGHT;
+        }
+        if (key == SDLK_DOWN)
+        {
+            view->input.down = down;
+            code = FVM_DESKTOP_KEY_DOWN;
+        }
+        if (key == SDLK_SPACE)
+            view->input.space = down;
+        view->input.key_code = code;
+        view->input.key_down = down;
+        if (down && !event->key.repeat)
+            ++view->input.key_presses;
+    }
     if (view->ready && event->type == SDL_WINDOWEVENT &&
         (event->window.event == SDL_WINDOWEVENT_EXPOSED ||
          event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
@@ -101,6 +172,15 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
     return 1;
 }
 
+/* Copy host state before publishing it into the rooted script-visible HostInput object. */
+void fvm_desktop_window_input(FVM_DesktopWindow *view, FVM_DesktopInput *out)
+{
+    *out = view->input;
+}
+
+/* Android lifecycle is a real pause, not a hidden offscreen timeline loop. */
+int fvm_desktop_window_active(FVM_DesktopWindow *view) { return !view->background; }
+
 /* SDL counters are monotonic and keep scheduling independent of adjustable wall-clock dates. */
 double fvm_desktop_now(void)
 {
@@ -109,10 +189,7 @@ double fvm_desktop_now(void)
 }
 
 /* Borrow the current SDL error string for immediate reporting only. */
-const char *fvm_desktop_window_error(void)
-{
-    return SDL_GetError();
-}
+const char *fvm_desktop_window_error(void) { return SDL_GetError(); }
 
 /* Safe reverse-order cleanup also handles partially initialized windows. */
 void fvm_desktop_window_close(FVM_DesktopWindow *view)
