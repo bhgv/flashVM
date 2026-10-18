@@ -18,6 +18,27 @@ extern "C"
         unsigned int voice_capacity; /* Maximum simultaneous voices, chosen on create. */
         unsigned int active_voices;  /* Current nonempty/nonexhausted voice count. */
     } FVM_SWFSoundMixerInfo;
+#define FVM_SWF_SOUND_MIXER_CONVERT                                                                \
+    1UL /* Explicit linear rate/channel conversion; zero keeps strict geometry. */
+#define FVM_SWF_SOUND_MIXER_MIN_RATE 5512U /* Lowest configured output clock in integer Hz. */
+#define FVM_SWF_SOUND_MIXER_MAX_RATE                                                               \
+    192000U /* Highest configured output clock; bounds rational phase arithmetic. */
+    typedef struct FVM_SWFSoundMixerConfig
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFSoundMixerConfig). */
+        unsigned int sample_rate;  /* Output Hz; strict mode requires a SWF nominal rate. */
+        unsigned int channels; /* Output mono/stereo geometry, not a source-format restriction in
+                                  convert mode. */
+        unsigned int voice_capacity; /* Maximum simultaneous nonempty voices, 1..MAX_VOICES. */
+        unsigned long flags;         /* Zero for strict geometry, or FVM_SWF_SOUND_MIXER_CONVERT. */
+    } FVM_SWFSoundMixerConfig;
+    /* Create with explicit conversion policy; clear *out on all failures, copy caller config on
+     * success. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *,
+                                                             FVM_SWFSoundMixer **out);
+    /* Copy the immutable configuration; wrong size/null arguments preserve output. */
+    FVM_API FVM_Result fvm_swf_sound_mixer_get_config(const FVM_SWFSoundMixer *,
+                                                      FVM_SWFSoundMixerConfig *);
     /* Allocate a fixed-capacity mixer for a SWF nominal rate and mono/stereo; clear *out first. */
     FVM_API FVM_Result fvm_swf_sound_mixer_create(unsigned int sample_rate, unsigned int channels,
                                                   unsigned int voice_capacity,

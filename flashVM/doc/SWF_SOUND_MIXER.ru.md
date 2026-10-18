@@ -19,6 +19,10 @@ reload, GC, уничтожение context/runtime. Для submit нужен ж�
 
 ## Геометрия и пространство ID
 
+Ниже описан прежний strict create. Явная configured-конвертация документирована
+отдельно: [частота/каналы](SWF_SOUND_CONVERSION.ru.md). Старые функция создания
+и info struct сохраняют ABI и строгую геометрию.
+
 Частота фиксирована: 5512, 11025, 22050 или 44100 Гц; каналы — один или два,
 interleaved. Ёмкость: 1..[`FVM_SWF_SOUND_MIXER_MAX_VOICES`](../include/flashvm/swf_sound_mixer.h#L9) (сейчас 64). Исходные
 PCM8/PCM16/ADPCM преобразуются существующим декодером и подготовкой голоса.
@@ -30,7 +34,7 @@ Sound ID общий для всего микшера. Используйте о�
 действовать и на старые, и на новые голоса этого ID. Идентификатор context не
 сохраняется. Другие микшеры и context audio channels — отдельные пространства
 управления. AVM1 StopSounds не очищает независимый микшер: хост вызывает
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L38) и отдельно сбрасывает очередь устройства.
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L59) и отдельно сбрасывает очередь устройства.
 
 ## Контракты функций
 
@@ -56,7 +60,7 @@ StartSound по нулевому индексу через [`fvm_swf_sound_event
    Отсутствие совпадающего голоса тоже даёт OK.
 2. NO_MULTIPLE при активном совпадающем ID даёт OK без подготовки нового голоса.
    Обычный start разрешает несколько копий одного ресурса.
-3. Новый голос требует совпадения source rate/channels, иначе UNSUPPORTED.
+3. В strict режиме новый голос требует совпадения source rate/channels, иначе UNSUPPORTED.
    [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L78) применяет диапазон, повторы и огибающую. Каждая
    копия получает независимую позицию чтения и огибающей.
 4. Пустой диапазон/явно нулевое число повторов не занимают слот. Иначе заполнение
@@ -72,7 +76,7 @@ callback. Действует существующий **покадровый с�
 
 ### fvm_swf_sound_mixer_read
 
-`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L32)(mixer, frames, destination, capacity_values,
+`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L53)(mixer, frames, destination, capacity_values,
 written_values)` заполняет ровно frames sample frames. Capacity/written считают
 **short-значения каналов**, то есть для stereo нужно frames × 2. Written не может
 быть null, обнуляется до проверок и не должен перекрываться с destination.
@@ -81,7 +85,8 @@ Destination обязателен при frames > 0. Ёмкость провер�
 голосов/выходного буфера. Нулевое чтение разрешает null destination и не двигает
 позиции.
 
-После OK голоса продвинуты не более чем на frames. Короткий/законченный голос
+После OK в strict режиме голоса продвинуты не более чем на frames. Для configured
+conversion действуют [отдельные часы/lookahead](SWF_SOUND_CONVERSION.ru.md). Короткий/законченный голос
 дополняется тишиной; пустой микшер тоже возвращает полный буфер тишины и OK,
 а не NOT_FOUND. Закончившиеся snapshots освобождаются, слоты доступны повторно.
 Значения с уже применённой огибающей суммируются в signed long ограниченными
@@ -100,7 +105,8 @@ Destination обязателен при frames > 0. Ёмкость провер�
 sample_rate, channels, voice_capacity, active_voices. Сначала установите точный
 `struct_size = sizeof(...)`. Null или неверный размер дают INVALID_ARGUMENT,
 выход сохраняется. Нет выделений, callbacks и доступа к VM. Active не считает
-пустые/законченные голоса и ничего не говорит о PCM, уже ушедшем в устройство.
+пустые/законченные выходные голоса; оставшийся converted lookahead ещё считается,
+даже если decoder достиг EOF. Active ничего не говорит о PCM, уже ушедшем в устройство.
 
 ### fvm_swf_sound_mixer_stop_all
 
@@ -117,13 +123,13 @@ callbacks не вызываются. Устройство хост закрыв�
 
 ## Интеграция с часами и timeline
 
-Хост определяет, какие события реально исполняются, передаёт их по порядку и
-запрашивает PCM по часам вывода. Повторный обычный start создаёт ещё один голос.
-Отсутствие read останавливает software audio clock. Пропуски кадров, goto/stop/play,
-sprite StartSound, SoundStreamBlock/MP3, resampling и автоматический A/V sync ещё
-требуют интеграции. Нельзя подавать все корневые события на каждом display tick.
-PCM передаётся в host output bridge без неявного отката прочитанных samples при
-ошибке системной записи.
+[Корневой callback](MOVIECLIP_SOUND.ru.md) доставляет реально исполняемые входы;
+нельзя подавать все root события на каждом display tick. Хост передаёт их по
+порядку и запрашивает PCM по выбранным часам. Повторный start создаёт новый голос,
+отсутствие read останавливает software clock. [Configured conversion](SWF_SOUND_CONVERSION.ru.md)
+явно обрабатывает разные rate/channels. Sprite sound, stream codecs, band-limited
+фильтр и автоматическая device/A/V синхронизация ещё открыты. PCM передаётся в
+host bridge без отката уже прочитанных samples при ошибке вывода.
 
 ## Проверки и пределы результата
 
@@ -154,13 +160,13 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:40](../include/flashvm/swf_sound_mixer.h#L40) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:22](../include/flashvm/swf_sound_mixer.h#L22) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:36](../include/flashvm/swf_sound_mixer.h#L36) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:43](../include/flashvm/swf_sound_mixer.h#L43) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:32](../include/flashvm/swf_sound_mixer.h#L32) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:38](../include/flashvm/swf_sound_mixer.h#L38) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:27](../include/flashvm/swf_sound_mixer.h#L27) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:53](../include/flashvm/swf_sound_mixer.h#L53) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:59](../include/flashvm/swf_sound_mixer.h#L59) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |

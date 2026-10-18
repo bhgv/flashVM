@@ -4677,6 +4677,16 @@ identity, GC/graph transport, OOM and exception/reentry guards are covered.
 [English contracts](MOVIECLIP_SOUND.md) / [RU](MOVIECLIP_SOUND.ru.md).
 Sprite sound, streams, resampling, device clocks and foreign native acceptance
 remain open; no roadmap stage is closed by this change.
+## v0.580 — explicit rational output conversion
+
+Configured StartSound mixing now accepts different source rates/channels into
+one output clock, including 48000 Hz stereo. Integer phase preserves block/loop
+duration; channel mapping, linear interpolation and rounding are specified.
+[EN](SWF_SOUND_CONVERSION.md) / [RU](SWF_SOUND_CONVERSION.ru.md). Legacy strict
+creation/info ABI is unchanged. Source-time envelopes, ADPCM, buffered EOF,
+stop/no-multiple, teardown and actual timeline/JIT integration are exercised.
+No band-limited filter, device clock, sprite sound or foreign native acceptance
+is supplied; all roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

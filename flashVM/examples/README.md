@@ -115,7 +115,7 @@
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
-    - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline callback, stop и независимость от VM</em></small>
+    - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline, 48 kHz stereo и stop</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [speech](#group-multimedia-speech)
@@ -1251,6 +1251,8 @@ SyncNoMultiple, суммирует с единственным насыщени�
 PCM через fopen/fwrite/fclose. Каждая строка кода подписана; assert нет.
 --timeline-demo доставляет четыре StartSound из реального входа в кадр через
 host callback и pin-ит root; оба режима проверяются по точному PCM файлу.
+--convert-demo явно преобразует source в 48000 Hz stereo с линейной интерполяцией;
+проверяются точные stereo PCM байты и владение после уничтожения VM.
 Автоматического device clock нет.
 Подробные контракты: [SWF_SOUND_MIXER.md](../doc/SWF_SOUND_MIXER.md).
 

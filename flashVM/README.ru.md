@@ -1,4 +1,4 @@
-Версия разработки: **0.579** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.580** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -349,6 +349,9 @@ stop/no-multiple, циклы и огибающие без новых выдел�
 Root timeline sound delivery: [EN](doc/MOVIECLIP_SOUND.md) /
 [RU](doc/MOVIECLIP_SOUND.ru.md); actual frame entry before DoAction,
 source checks and host-local callback registration.
+Explicit mixed-rate/channel audio: [EN](doc/SWF_SOUND_CONVERSION.md) /
+[RU](doc/SWF_SOUND_CONVERSION.ru.md); configured output including 48000 Hz stereo,
+with legacy strict API preserved and an annotated --convert-demo tutorial.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

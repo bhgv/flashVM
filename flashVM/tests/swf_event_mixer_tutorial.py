@@ -22,6 +22,16 @@ def main():
         with open(target, "rb") as stream:
             if stream.read() != struct.pack("=4h", -32768, 32512, 0, 0):
                 raise RuntimeError("actual native file differs from the independent PCM oracle")
+        converted = os.path.join(root, "converted stereo.pcm")
+        for args in [("--convert-demo",), ("--convert-demo", converted)]:
+            result = run(exe, *args)
+            if result.returncode or b"first=-32768 tail=27208 active=0" not in result.stdout:
+                raise RuntimeError((args, result.returncode, result.stdout, result.stderr))
+        with open(converted, "rb") as stream:
+            if stream.read() != struct.pack("=8h", -32768, -32768, 27208, 27208, 32512, 32512, 0, 0):
+                raise RuntimeError("converted stereo bytes differ from the independent PCM oracle")
+        if run(exe, "--convert-demo", os.path.join(root, "missing", "out")).returncode != 1:
+            raise RuntimeError("converted file-open failure was lost")
         if run(exe, "--demo", os.path.join(root, "missing", "out")).returncode != 1:
             raise RuntimeError("file-open failure was lost")
         if run(exe).returncode != 0:

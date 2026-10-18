@@ -39,21 +39,28 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
     FVM_Runtime *runtime = 0; /* Own the runtime until explicit destruction. */
     FVM_Context *context = 0; /* Own the loaded source until snapshots have been submitted. */
     FVM_SWFSoundMixer *mixer = 0; /* Own software voices independently of the source context. */
+    FVM_SWFSoundMixerConfig geometry; /* Copy an explicit output conversion policy without changing the old info ABI. */
     FVM_SWFSoundMixerInfo info; /* Receive copied geometry/activity, never a borrowed pointer. */
     FVM_Object *clip = 0; /* Borrow the managed root while its explicit pin is held. */
     int pinned = 0; /* Remember whether root ownership was successfully acquired. */
+    int converted = 0; /* Enable rate/channel conversion only when explicitly requested. */
+    unsigned int channels = EXAMPLE_CHANNELS; /* Use the actual output geometry for writes. */
     int timeline = 0; /* Choose actual frame delivery only in the explicit timeline mode. */
     FILE *output = 0; /* Open a file only when the user supplied its path. */
-    short first[EXAMPLE_CHANNELS]; /* Store the first saturated frame. */
-    short tail[EXAMPLE_TAIL_FRAMES * EXAMPLE_CHANNELS]; /* Keep remaining output and padded silence. */
+    short first[EXAMPLE_OUTPUT_CHANNELS]; /* Store the first saturated frame. */
+    short tail[EXAMPLE_TAIL_FRAMES * EXAMPLE_OUTPUT_CHANNELS]; /* Keep remaining output and padded silence. */
     size_t written = 0; /* Receive counts in channel values rather than sample frames. */
     int status = 1; /* Assume failure until every operation and optional write succeeds. */
-    if ((argc != 2 && argc != 3) || (strcmp(argv[1], "--demo") != 0 && strcmp(argv[1], "--timeline-demo") != 0)) /* Validate before allocation/I/O. */
+    if ((argc != 2 && argc != 3) || /* Accept one mode and at most one explicit output path. */
+        (strcmp(argv[1], "--demo") != 0 && /* Recognize manual source-rate mixing. */
+         strcmp(argv[1], "--timeline-demo") != 0 && /* Recognize actual root timeline delivery. */
+         strcmp(argv[1], "--convert-demo") != 0)) /* Reject unknown modes before allocation/I/O. */
     { /* Explain the only accepted invocation. */
-        fprintf(stderr, "usage: %s --demo|--timeline-demo [output-native-s16.pcm]\n", argv[0]); /* Name the explicit output. */
+        fprintf(stderr, "usage: %s --demo|--timeline-demo|--convert-demo [output-native-s16.pcm]\n", argv[0]); /* Name the explicit output. */
         return argc == 1 ? 0 : 2; /* Usage alone succeeds; malformed arguments fail. */
     } /* Finish argument validation. */
-    timeline = strcmp(argv[1], "--timeline-demo") == 0; /* Select scheduling before acquiring VM resources. */
+    converted = strcmp(argv[1], "--convert-demo") == 0; /* Opt in before creating any resources. */
+    timeline = converted || strcmp(argv[1], "--timeline-demo") == 0; /* Select scheduling before acquiring VM resources. */
     if (!checked(fvm_config_init(&config), "config")) /* Obtain the supported default configuration. */
         goto cleanup; /* Do not construct dependent objects after failure. */
     if (!checked(fvm_runtime_create(&config, &runtime), "runtime")) /* Acquire the native runtime. */
@@ -62,8 +69,24 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
         goto cleanup; /* Release only objects actually acquired. */
     if (!checked(fvm_load_memory(context, swf, sizeof(swf)), "load")) /* Load canonical dictionary/events. */
         goto cleanup; /* Reject malformed or unsupported source data. */
-    if (!checked(fvm_swf_sound_mixer_create(EXAMPLE_RATE, EXAMPLE_CHANNELS, EXAMPLE_VOICES, &mixer), "mixer")) /* Allocate bounded slots. */
-        goto cleanup; /* Keep any existing source resources for cleanup. */
+    if (converted) /* The explicit third mode targets a common stereo device format. */
+    { /* Configuration is copied; the stack object does not need to outlive the mixer. */
+        geometry.struct_size = sizeof(geometry); /* Select the exact configured-creation ABI. */
+        geometry.sample_rate = EXAMPLE_OUTPUT_RATE; /* Request 48000 output frames per second. */
+        geometry.channels = EXAMPLE_OUTPUT_CHANNELS; /* Duplicate mono into stereo in this fixture. */
+        geometry.voice_capacity = EXAMPLE_VOICES; /* Keep the same bounded polyphony policy. */
+        geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT; /* Explicitly allow source/output mismatch. */
+        if (!checked(fvm_swf_sound_mixer_create_configured(&geometry, &mixer), "converted mixer")) /* Allocate fixed buffers. */
+            goto cleanup; /* No partial mixer is published on failure. */
+        if (!checked(fvm_swf_sound_mixer_get_config(mixer, &geometry), "output geometry")) /* Copy the actual policy. */
+            goto cleanup; /* Never consume unchecked output geometry. */
+        channels = geometry.channels; /* Write exactly the returned interleaved channel count. */
+    } /* Interpolation and channel conversion occur during subsequent reads. */
+    else /* Preserve the original strict mono SWF-rate mode. */
+    { /* Existing callers never opt in to conversion accidentally. */
+        if (!checked(fvm_swf_sound_mixer_create(EXAMPLE_RATE, EXAMPLE_CHANNELS, EXAMPLE_VOICES, &mixer), "mixer")) /* Allocate strict slots. */
+            goto cleanup; /* Retain source resources for centralized cleanup. */
+    } /* Finish fixed-policy mixer creation. */
     if (timeline) /* The alternate mode delivers all four controls from the actual first frame. */
     { /* Keep the imported root alive until after its synchronous callbacks have finished. */
         if (!checked(fvm_standard_install(context), "standard objects")) /* Install actual MovieClip methods. */
@@ -89,7 +112,7 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
     if (!checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_OTHER), "other ID")) /* Fill the third slot with ID 8. */
         goto cleanup; /* Capacity errors remain visible. */
     } /* Both modes now provide an active voice for the same explicit PCM reader. */
-    if (!checked(fvm_swf_sound_mixer_read(mixer, 1, first, EXAMPLE_CHANNELS, &written), "first frame")) /* Mix the currently active voices once. */
+    if (!checked(fvm_swf_sound_mixer_read(mixer, 1, first, EXAMPLE_OUTPUT_CHANNELS, &written), "first frame")) /* Mix the currently active voices once. */
         goto cleanup; /* Both modes produce a first signed-16 sample of -32768. */
     if (!timeline && !checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_STOP), "stop ID 7")) /* Remove both ID-7 copies. */
         goto cleanup; /* ID 8 continues from its own current position. */
@@ -100,15 +123,15 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
     context = 0; /* Prevent a second destruction on cleanup. */
     fvm_runtime_destroy(runtime); /* The mixer retains no runtime pointer. */
     runtime = 0; /* Record that native runtime ownership ended. */
-    if (!checked(fvm_swf_sound_mixer_read(mixer, EXAMPLE_TAIL_FRAMES, tail, EXAMPLE_TAIL_FRAMES * EXAMPLE_CHANNELS, &written), "tail")) /* Continue after VM teardown. */
-        goto cleanup; /* Produce +32512 followed by two silence frames. */
+    if (!checked(fvm_swf_sound_mixer_read(mixer, EXAMPLE_TAIL_FRAMES, tail, EXAMPLE_TAIL_FRAMES * EXAMPLE_OUTPUT_CHANNELS, &written), "tail")) /* Continue after VM teardown. */
+        goto cleanup; /* Produce the remaining converted/strict samples and silence. */
     info.struct_size = sizeof(info); /* Declare the exact ABI structure size. */
     if (!checked(fvm_swf_sound_mixer_info(mixer, &info), "activity")) /* Observe exhausted voices. */
         goto cleanup; /* Do not read uninitialized copied fields. */
     if (argc == 3) /* File creation is authorized only by an explicit output argument. */
     { /* Write actual native signed-short PCM through the C runtime. */
         output = fopen(argv[2], "wb"); /* Create or replace the named output. */
-        if (!output || fwrite(first, sizeof(short), EXAMPLE_CHANNELS, output) != EXAMPLE_CHANNELS) /* Check first-buffer I/O. */
+        if (!output || fwrite(first, sizeof(short), channels, output) != channels) /* Check first-buffer I/O. */
             goto cleanup; /* Leave any FILE owned until centralized close. */
         if (fwrite(tail, sizeof(short), written, output) != written) /* Check the complete tail write. */
             goto cleanup; /* Preserve actual output failure. */

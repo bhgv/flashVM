@@ -1,5 +1,5 @@
-Development version: **0.579** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.579 ` and an English description. Increase the subversion before each
+Development version: **0.580** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.580 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -58,8 +58,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.579** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.579 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.580** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.580 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -579,6 +579,9 @@ Incremental StartSound mixer: [API guide](doc/SWF_SOUND_MIXER.md) /
 Root timeline sound delivery: [EN](doc/MOVIECLIP_SOUND.md) /
 [RU](doc/MOVIECLIP_SOUND.ru.md); actual frame entry before DoAction,
 source checks and host-local callback registration.
+Explicit mixed-rate/channel audio: [EN](doc/SWF_SOUND_CONVERSION.md) /
+[RU](doc/SWF_SOUND_CONVERSION.ru.md); configured output including 48000 Hz stereo,
+with legacy strict API preserved and an annotated --convert-demo tutorial.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -12,8 +12,21 @@ struct FVM_SWFSoundMixerSlot
 {
     FVM_SWFSoundVoice *voice; /* Owned snapshot; null identifies a reusable slot. */
     unsigned int sound_id;    /* Source dictionary ID used by stop and SyncNoMultiple. */
+    unsigned int source_rate; /* Source clock from the prepared voice, unchanged by conversion. */
+    unsigned int source_channels; /* One or two source channels used by the frame reader. */
+    unsigned long
+        phase;       /* Exact fractional source position, numerator with output-rate denominator. */
+    bool converted;  /* Use rational conversion only for mismatched source/output geometry. */
+    bool ready;      /* Left/right lookahead has been initialized by a validated read. */
+    bool left_valid; /* A current source frame remains audible even after voice lookahead reaches
+                        EOF. */
+    bool right_valid; /* The next source frame exists; false holds the left value to the end. */
+    long left[FVM_SWF_SOUND_MIXER_CHANNELS];  /* Channel-mapped current styled source frame. */
+    long right[FVM_SWF_SOUND_MIXER_CHANNELS]; /* Channel-mapped next styled source frame. */
     /* Make construction/partial allocation cleanup safe before accepting any events. */
-    FVM_SWFSoundMixerSlot() : voice(0), sound_id(0)
+    FVM_SWFSoundMixerSlot()
+        : voice(0), sound_id(0), source_rate(0), source_channels(0), phase(0), converted(false),
+          ready(false), left_valid(false), right_valid(false)
     {
     }
 };
@@ -22,6 +35,8 @@ struct FVM_SWFSoundMixerSlot
 struct FVM_SWFSoundMixer
 {
     FVM_SWFSoundMixerInfo info; /* Fixed geometry and exact occupied slot count. */
+    FVM_SWFSoundMixerConfig
+        config; /* Immutable copied output policy, independent of legacy info ABI. */
     fvm_detail::vector<FVM_SWFSoundMixerSlot>
         slots; /* Allocate the complete slot table on create. */
     short source[FVM_SWF_SOUND_MIXER_CHUNK *
@@ -33,6 +48,8 @@ struct FVM_SWFSoundMixer
     {
         std::memset(&info, 0, sizeof(info));
         info.struct_size = sizeof(info);
+        std::memset(&config, 0, sizeof(config));
+        config.struct_size = sizeof(config);
     }
     /* [GC:] Native snapshots remain releasable after every source VM has disappeared. */
     ~FVM_SWFSoundMixer()
@@ -60,15 +77,38 @@ static void retire(FVM_SWFSoundMixer *mixer, size_t slot)
     }
 }
 
-/* Create the bounded control/output owner before any source VM or output device is needed. */
+/* Preserve legacy strict geometry; conversion requires the separate configured entry point. */
 extern "C" FVM_Result fvm_swf_sound_mixer_create(unsigned int rate, unsigned int channels,
                                                  unsigned int capacity, FVM_SWFSoundMixer **out)
+{
+    FVM_SWFSoundMixerConfig config;
+    config.struct_size = sizeof(config);
+    config.sample_rate = rate;
+    config.channels = channels;
+    config.voice_capacity = capacity;
+    config.flags = 0;
+    return fvm_swf_sound_mixer_create_configured(&config, out);
+}
+
+/* Create a bounded owner; the policy and slot table are complete before any handle is published. */
+extern "C" FVM_Result fvm_swf_sound_mixer_create_configured(const FVM_SWFSoundMixerConfig *config,
+                                                            FVM_SWFSoundMixer **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!mixer_rate(rate) || !channels || channels > FVM_SWF_SOUND_MIXER_CHANNELS || !capacity ||
-        capacity > FVM_SWF_SOUND_MIXER_MAX_VOICES)
+    if (!config || config->struct_size != sizeof(*config) ||
+        (config->flags & ~FVM_SWF_SOUND_MIXER_CONVERT) || !config->channels ||
+        config->channels > FVM_SWF_SOUND_MIXER_CHANNELS || !config->voice_capacity ||
+        config->voice_capacity > FVM_SWF_SOUND_MIXER_MAX_VOICES)
+        return FVM_INVALID_ARGUMENT;
+    if (config->flags & FVM_SWF_SOUND_MIXER_CONVERT)
+    {
+        if (config->sample_rate < FVM_SWF_SOUND_MIXER_MIN_RATE ||
+            config->sample_rate > FVM_SWF_SOUND_MIXER_MAX_RATE)
+            return FVM_INVALID_ARGUMENT;
+    }
+    else if (!mixer_rate(config->sample_rate))
         return FVM_INVALID_ARGUMENT;
     if (CHAR_BIT != FVM_SWF_SOUND_BYTE_BITS || sizeof(short) != FVM_SWF_SOUND_UI16_BYTES)
         return FVM_UNSUPPORTED;
@@ -76,10 +116,11 @@ extern "C" FVM_Result fvm_swf_sound_mixer_create(unsigned int rate, unsigned int
     try
     {
         mixer = new FVM_SWFSoundMixer;
-        mixer->slots.resize(capacity);
-        mixer->info.sample_rate = rate;
-        mixer->info.channels = channels;
-        mixer->info.voice_capacity = capacity;
+        mixer->slots.resize(config->voice_capacity);
+        mixer->config = *config;
+        mixer->info.sample_rate = config->sample_rate;
+        mixer->info.channels = config->channels;
+        mixer->info.voice_capacity = config->voice_capacity;
         *out = mixer;
         return FVM_OK;
     }
@@ -88,6 +129,17 @@ extern "C" FVM_Result fvm_swf_sound_mixer_create(unsigned int rate, unsigned int
         delete mixer;
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Query the explicit policy without changing phase, voices or caller-owned configuration storage.
+ */
+extern "C" FVM_Result fvm_swf_sound_mixer_get_config(const FVM_SWFSoundMixer *mixer,
+                                                     FVM_SWFSoundMixerConfig *out)
+{
+    if (!mixer || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    *out = mixer->config;
+    return FVM_OK;
 }
 
 /* Resolve control identity before changing slots; a failed snapshot never interrupts old voices. */
@@ -118,7 +170,8 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *mixer, FVM_C
     result = fvm_swf_sound_info(context, event.sound_id, &source);
     if (result != FVM_OK)
         return result;
-    if (source.sample_rate != mixer->info.sample_rate || source.channels != mixer->info.channels)
+    if (!(mixer->config.flags & FVM_SWF_SOUND_MIXER_CONVERT) &&
+        (source.sample_rate != mixer->info.sample_rate || source.channels != mixer->info.channels))
         return FVM_UNSUPPORTED;
     /* Prepare before publication. Empty/zero-loop events consume no voice slot, even when full. */
     FVM_SWFSoundVoice *voice = 0;
@@ -137,14 +190,87 @@ extern "C" FVM_Result fvm_swf_sound_mixer_submit(FVM_SWFSoundMixer *mixer, FVM_C
     {
         if (!mixer->slots[i].voice)
         {
-            mixer->slots[i].sound_id = event.sound_id;
-            mixer->slots[i].voice = voice;
+            FVM_SWFSoundMixerSlot &slot = mixer->slots[i];
+            slot.sound_id = event.sound_id;
+            slot.voice = voice;
+            slot.source_rate = progress.sample_rate;
+            slot.source_channels = progress.channels;
+            slot.phase = 0;
+            slot.ready = slot.left_valid = slot.right_valid = false;
+            slot.converted = progress.sample_rate != mixer->info.sample_rate ||
+                             progress.channels != mixer->info.channels;
             ++mixer->info.active_voices;
             return FVM_OK;
         }
     }
     fvm_swf_sound_voice_close(voice);
     return FVM_OUT_OF_MEMORY;
+}
+
+/* Pull/map one styled source frame. The owned voice decoder cannot fail with these validated
+ * arguments. */
+static bool source_frame(FVM_SWFSoundMixerSlot &slot, unsigned int output_channels, long *out)
+{
+    short raw[FVM_SWF_SOUND_MIXER_CHANNELS];
+    size_t received = 0;
+    fvm_swf_sound_voice_read(slot.voice, 1, raw, FVM_SWF_SOUND_MIXER_CHANNELS, &received);
+    if (!received)
+        return false;
+    if (output_channels == FVM_SWF_SOUND_MONO_CHANNELS)
+    {
+        long sum = slot.source_channels == FVM_SWF_SOUND_MONO_CHANNELS
+                       ? (long)raw[0] * (long)FVM_SWF_SOUND_MIXER_CHANNELS
+                       : (long)raw[0] + raw[1];
+        /* Define negative rounding explicitly even on pre-C++11 signed-division implementations. */
+        long magnitude = sum < 0 ? -sum : sum;
+        long average = magnitude / (long)FVM_SWF_SOUND_MIXER_CHANNELS;
+        out[0] = sum < 0 ? -average : average;
+    }
+    else
+    {
+        out[0] = raw[0];
+        out[1] = slot.source_channels == FVM_SWF_SOUND_MONO_CHANNELS ? raw[0] : raw[1];
+    }
+    return true;
+}
+
+/* Add one converted voice using exact rational phase; hold the final sample for its source
+ * interval. */
+static bool converted_slice(FVM_SWFSoundMixer *mixer, FVM_SWFSoundMixerSlot &slot, size_t frames)
+{
+    unsigned int channels = mixer->info.channels;
+    unsigned long rate = mixer->info.sample_rate;
+    if (!slot.ready)
+    {
+        slot.left_valid = source_frame(slot, channels, slot.left);
+        slot.right_valid = slot.left_valid && source_frame(slot, channels, slot.right);
+        slot.ready = true;
+    }
+    for (size_t frame = 0; frame < frames && slot.left_valid; ++frame)
+    {
+        for (unsigned int channel = 0; channel < channels; ++channel)
+        {
+            long left = slot.left[channel];
+            long right = slot.right_valid ? slot.right[channel] : left;
+            /* Products fit exactly in a double, avoiding non-C++98 64-bit integer extensions.
+             * One final division/truncation rounds this voice toward zero before wide summation. */
+            double value = ((double)left * (rate - slot.phase) + (double)right * slot.phase) / rate;
+            mixer->sum[frame * channels + channel] += (long)value;
+        }
+        slot.phase += slot.source_rate;
+        while (slot.phase >= rate && slot.left_valid)
+        {
+            slot.phase -= rate;
+            slot.left_valid = slot.right_valid;
+            if (slot.left_valid)
+            {
+                for (unsigned int channel = 0; channel < channels; ++channel)
+                    slot.left[channel] = slot.right[channel];
+                slot.right_valid = source_frame(slot, channels, slot.right);
+            }
+        }
+    }
+    return slot.left_valid;
 }
 
 /* Mix in bounded passes: wide addition precedes one final saturation, independent of voice order.
@@ -171,6 +297,12 @@ extern "C" FVM_Result fvm_swf_sound_mixer_read(FVM_SWFSoundMixer *mixer, size_t 
             FVM_SWFSoundVoice *voice = mixer->slots[i].voice;
             if (!voice)
                 continue;
+            if (mixer->slots[i].converted)
+            {
+                if (!converted_slice(mixer, mixer->slots[i], count))
+                    retire(mixer, i);
+                continue;
+            }
             size_t received = 0;
             /* Owned, validated geometry makes read infallible here; short tails are silence. */
             fvm_swf_sound_voice_read(voice, count, mixer->source, values, &received);

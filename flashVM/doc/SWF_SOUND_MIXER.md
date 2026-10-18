@@ -20,6 +20,10 @@ another thread is reading it.
 
 ## Geometry and identity
 
+This section describes legacy strict creation. Explicit configured conversion is
+available separately: [rate/channel conversion](SWF_SOUND_CONVERSION.md). The old
+creation function and info struct retain their ABI and strict behavior.
+
 One mixer has a fixed nominal rate (5512, 11025, 22050 or 44100 Hz), one or two
 interleaved channels and 1..[`FVM_SWF_SOUND_MIXER_MAX_VOICES`](../include/flashvm/swf_sound_mixer.h#L9) simultaneous voices
 (currently 64). Source PCM8/PCM16/ADPCM is converted by the existing decoder and
@@ -32,7 +36,7 @@ host deliberately submits another movie with the same sound ID, stop/no-multiple
 will address the old and new voices together. A mixer contains no source context
 identity. Context audio channels and other mixers form separate control domains.
 AVM1 StopSounds does not implicitly clear this independent mixer; the host must
-call [`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L38) and separately flush any device queue.
+call [`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L59) and separately flush any device queue.
 
 ## API contracts
 
@@ -61,7 +65,7 @@ Controls execute in host submission order:
    both synchronization flags are present. No matching voice still succeeds.
 2. NO_MULTIPLE with a matching active voice succeeds without preparing another
    snapshot. Ordinary starts permit multiple copies of the same resource.
-3. A new voice requires equal source rate/channels (otherwise UNSUPPORTED).
+3. A new voice in strict mode requires equal source rate/channels (otherwise UNSUPPORTED).
    Preparation applies range, repetitions and envelope using
    [`fvm_swf_sound_voice_open`](../include/flashvm/swf_sound.h#L78). Each copy has independent playback/envelope state.
 4. An empty interval or explicit zero loop count consumes no slot. Otherwise a
@@ -77,7 +81,7 @@ Loops do not duplicate stored sample data. No clock advances during submit.
 
 ### fvm_swf_sound_mixer_read
 
-`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L32)(mixer, frames, destination, capacity_values,
+`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L53)(mixer, frames, destination, capacity_values,
 written_values)` fills exactly the requested sample frames. Capacity and written
 count **interleaved short values**, so stereo needs `frames * 2`. Written must be
 nonnull; it is zeroed before validation. Destination must be nonnull for nonzero
@@ -86,7 +90,9 @@ overflow cases. Bad arguments return INVALID_ARGUMENT without changing voices or
 destination. Zero frames succeeds without advancing; destination may then be null.
 The count output must not alias destination storage.
 
-On OK, every active snapshot advances by up to `frames`. A short/exhausted voice
+On OK in strict mode, every active snapshot advances by up to `frames`.
+Configured conversion uses the separate source/output clocks and lookahead rules
+in [SWF_SOUND_CONVERSION.md](SWF_SOUND_CONVERSION.md). A short/exhausted voice
 contributes zeros; no voices also produces full silence and returns OK, never
 NOT_FOUND. Exhausted snapshots are released and their slots reused. Per-voice
 styled samples are added as signed longs in bounded passes, then the complete
@@ -103,7 +109,8 @@ when that distinction matters. Very large reads still take proportional CPU time
 `sample_rate`, `channels`, `voice_capacity`, `active_voices`. Set `struct_size`
 to exactly sizeof the struct. Null pointers or wrong size return INVALID_ARGUMENT
 and preserve output. No allocation, callback or VM access occurs. Active count
-excludes empty or fully rendered voices; it says nothing about samples already
+excludes empty or fully rendered output voices; converted pending lookahead still
+counts even if the underlying decoder reached EOF. It says nothing about samples already
 queued to hardware.
 
 ### fvm_swf_sound_mixer_stop_all
@@ -123,14 +130,15 @@ with the host; close the device separately in the order required by its bridge.
 
 ## Host scheduling
 
-The host decides which timeline events actually execute, submits them in order,
-then requests sample frames from the chosen output clock. Re-submitting an ordinary
-start deliberately creates another voice. Pausing reads pauses the software audio
-clock. Frame skipping, goto/stop/play, sprite StartSound, SoundStreamBlock/MP3,
-resampling and automatic A/V synchronization are separate integration work; blindly
-submitting every root event on every display tick is incorrect. Device writes
-use the host output bridge, with native S16 geometry retained and no implicit
-rollback of a consumed software buffer after device failure.
+The [root callback](MOVIECLIP_SOUND.md) delivers actually executed root entries;
+blindly submitting every root event on every display tick is incorrect. The host
+submits accepted events in order and requests sample frames from its chosen output
+clock. Re-submitting an ordinary start creates another voice; pausing reads pauses
+the software audio clock. [Configured conversion](SWF_SOUND_CONVERSION.md) handles
+explicit rate/channel differences. Sprite sound, stream codecs, band-limited
+filtering and automatic device/A/V clock synchronization remain separate work.
+Device writes use the host bridge without rollback of a consumed software buffer
+after output failure.
 
 ## Validation
 
@@ -162,13 +170,13 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:40](../include/flashvm/swf_sound_mixer.h#L40) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:22](../include/flashvm/swf_sound_mixer.h#L22) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:36](../include/flashvm/swf_sound_mixer.h#L36) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:43](../include/flashvm/swf_sound_mixer.h#L43) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:32](../include/flashvm/swf_sound_mixer.h#L32) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:38](../include/flashvm/swf_sound_mixer.h#L38) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:27](../include/flashvm/swf_sound_mixer.h#L27) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:53](../include/flashvm/swf_sound_mixer.h#L53) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:59](../include/flashvm/swf_sound_mixer.h#L59) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |

@@ -9,4 +9,6 @@
 #define EXAMPLE_STOP 2U /* Stop every resource-7 voice. */
 #define EXAMPLE_OTHER 3U /* Start the separate resource 8. */
 #define EXAMPLE_TAIL_FRAMES 3U /* Read one remaining sample followed by two silence frames. */
+#define EXAMPLE_OUTPUT_RATE 48000U /* Explicit converted output clock for the third demo mode. */
+#define EXAMPLE_OUTPUT_CHANNELS 2U /* Bound caller storage for mono and stereo output modes. */
 #endif /* Finish the tutorial constants. */

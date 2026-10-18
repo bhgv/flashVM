@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.579
+# FlashVM stage status / Состояние стадий — v0.580
 
 This is a bounded review of existing implementation reports and the current
-root timeline sound-delivery work. It does not replace a complete per-API/SWF conformance matrix
+explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущей доставки звуков timeline, а не
+Это сводка существующих отчётов и текущей конвертации частоты/каналов, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -23,27 +23,28 @@ counts are historical unless explicitly rerun for this revision.
 
 ## Current Linux verification / Текущая проверка Linux
 
-v0.579: complete default Linux Release C89/C++98 build, including examples;
-1216 passing tests and 4 explicit skips out of 1220 registered. The skips require
+v0.580: complete default Linux Release C89/C++98 build, including examples;
+1223 passing tests and 4 explicit skips out of 1227 registered. The skips require
 native macOS ARM64/Intel, native Windows unwind, or an external speech SSIP endpoint.
-Five focused timeline/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
+Eight focused conversion/timeline/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
 build with LeakSanitizer disabled. Desktop SDL is OFF in this full run; earlier
 native X11/Cairo evidence below belongs to v0.577 and was not rerun here.
 
-Полная текущая Linux Release-сборка с examples: 1216 успешных, 4 пропуска из
-1220. ASan/UBSan: 5/5 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
+Полная текущая Linux Release-сборка с examples: 1223 успешных, 4 пропуска из
+1227. ASan/UBSan: 8/8 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
 foreign OS в этом прогоне не выполнялись. Числа не доказывают полноту SWF.
 
 ## Current work and next boundary / Текущая работа и следующий рубеж
 
-v0.579 connects actual root sound-frame entry to host mixing. Next: sprite
-sound and linkage, a more efficient prepared source index, mixed source-rate/
-channel conversion, and an output-device clock. Compressed stream decoding,
-reference movies and native platform acceptance remain separate open work.
+v0.580 adds opt-in linear rate/channel conversion with integer phase and bounded
+per-slot lookahead. Strict creation and info ABI remain compatible. Next: device
+clock/output integration, sprite sound/linkage, prepared source indexing and a
+band-limited resampler. Stream codecs/reference movies and native platform
+acceptance remain open.
 
-v0.579 доставляет корневые события реального входа в кадр. Следующие рубежи:
-sprite/linkage, prepared source index, resampling и device clock. Все девять
-стадий остаются открыты; старые числа не доказывают полноту SWF.
+v0.580 явно преобразует разные частоты/каналы в общий output clock. Следующие
+рубежи — device clock/вывод, sprite/linkage, prepared source index и качественный
+anti-alias фильтр. Все девять стадий остаются открыты.
 
 ## v0.577 desktop checkpoint / Десктопный запуск
 
@@ -104,3 +105,22 @@ Final v0.579 verification: full default Linux Release build/CTest, 1216 passed
 and 4 explicit skips out of 1220. Focused timeline/OOM/transport/validation/tutorial
 tests: 5/5 in ASan/UBSan, LeakSanitizer disabled. No SDL window, audible device
 or foreign native rerun is claimed. Source links and example contracts pass.
+
+## v0.580 output conversion / Преобразование выхода
+
+A separate configured creation ABI enables rational-phase linear conversion to
+5512..192000 Hz mono/stereo. The legacy strict entry point and info ABI are
+unchanged. Different source geometries, loop duration, buffered EOF, slot reuse,
+stop/no-multiple and final wide-sum saturation are covered. Eight focused
+conversion/timeline/tutorial tests pass in Linux ASan/UBSan (LeakSanitizer off).
+An actual strict-C89 client compiled against the v0.579 mixer header also links
+and runs against the new library. [EN](SWF_SOUND_CONVERSION.md) /
+[RU](SWF_SOUND_CONVERSION.ru.md). This is software conversion without a low-pass
+anti-alias filter or device/foreign-platform acceptance.
+
+Final v0.580 verification: full default Linux Release C89/C++98 build/CTest,
+1223 passed and four explicit native-macOS/native-Windows/SSIP skips (1227 total).
+Eight focused tests pass in minimal-JIT ASan/UBSan with LeakSanitizer disabled.
+Legacy-header ABI client, source links, guide anchors, tutorial line comments/no
+assertions, catalog entries and debugger tutorial contracts pass separately.
+No native audio device, SDL window or foreign-platform rerun is claimed.
