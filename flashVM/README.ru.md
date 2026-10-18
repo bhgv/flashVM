@@ -1,4 +1,4 @@
-Версия разработки: **0.587** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.588** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -19,6 +19,8 @@ v0.584: [Android PCM/WAV diagnostics / диагностика звука](doc/PL
 v0.586: [согласование блока SDL и запаса очереди](doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0586-публикация-согласованного-блока-устройства).
 
 v0.587: [optional stop release / затухание остановки](doc/PLAYER_AUDIO_RELEASE.md).
+
+v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 ## Просмотр документации
 

@@ -55,11 +55,20 @@ def main():
                 assert len([line for line in events if line[1] == 'clear']) >= (3 if movie.startswith('03') else 1)
                 # Find a 200 ms tone window by scanning the captured stream, not wall-clock guesses.
                 best = [0.0, 0.0]
+                adpcm_windows = 0
                 for at in range(0, len(frames) - 9600, 2400):
                     window = frames[at:at + 9600]
                     best[0] = max(best[0], tone_amplitude([f[0] for f in window], 660))
                     best[1] = max(best[1], tone_amplitude([f[1] for f in window], 990))
+                    if all(left == right for left, right in window):
+                        mono = [frame[0] for frame in window]
+                        if tone_amplitude(mono, 880) > 4000:
+                            # Check the actual resampled decoder output, including block restarts.
+                            largest_step = max(abs(b - a) for a, b in zip(mono, mono[1:]))
+                            assert largest_step < 1000, (movie, mode, at, largest_step)
+                            adpcm_windows += 1
                 assert min(best) > 5000, (movie, mode, best)
+                assert adpcm_windows > 0, (movie, mode, 'missing ADPCM tone')
                 peak = max(abs(value) for frame in frames for value in frame)
                 assert peak <= 6500, peak
                 levels[movie, mode] = peak

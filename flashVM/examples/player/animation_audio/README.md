@@ -15,6 +15,14 @@ player extension**, not a claim of complete Flash Key/Mouse/button compatibility
 v0.583: PCM подаётся отдельным worker с запасом по реальному блоку устройства;
 [причина изменения и ограничения](../../../doc/PLAYER_TEST_BUILDS.ru.md#исправление-звука-android-в-v0583).
 
+v0.588: the ADPCM encoder preserves its adapted step index at internal block
+headers, avoiding overload near the end of the 880 Hz tone. Rebuild all three
+SWFs together; [diagnosis and regression checks](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
+
+v0.588: кодировщик ADPCM сохраняет адаптивный индекс между блоками, устраняя
+перегрузку кодирования ближе к концу тона 880 Гц. Пересоздавайте все три SWF;
+[подробности и проверка](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0588-границы-блоков-тестового-adpcm-тона).
+
 ## Tests / Тесты
 
 | File | What to check / Что проверять |

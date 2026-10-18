@@ -38,6 +38,9 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
   endif()
   add_test(NAME flashvm_frontend_options COMMAND flashvm_frontend_options)
   add_test(NAME flashvm_player_help COMMAND flashvm_player --help)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME flashvm_player_audio_assets COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_assets.py)
 endif()
 
 # Native display tests are opt-in: CI without a display must not silently count dummy-video runs.

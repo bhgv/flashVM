@@ -1362,6 +1362,8 @@ assertions; [GC:] native sessions не входят в VM heap и освобож
 <a id="example-player-animation_audio"></a>
 ### animation_audio
 
+v0.588: исправлены границы блоков тестового ADPCM-тона; [измерения и проверка](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0588-границы-блоков-тестового-adpcm-тона).
+
 v0.587: пяти-миллисекундное затухание явных остановок; [границы и ограничения](../doc/PLAYER_AUDIO_RELEASE.ru.md).
 
 v0.586: [размер системного аудиоблока и темп PCM](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0586-публикация-согласованного-блока-устройства) — повторная проверка 01/03 в обоих режимах.

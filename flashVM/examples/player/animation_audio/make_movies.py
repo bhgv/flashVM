@@ -154,7 +154,9 @@ def adpcm_sound():
         gain = min(1.0, frame / 128, (frames - frame - 1) / 128)
         sample = round(5000 * gain * math.sin(2 * math.pi * 880 * frame / 44100))
         if frame % 4096 == 0:
-            predictor, index = sample, 0
+            # Restart the absolute predictor, but retain the adapted step size: resetting
+            # it to seven on a full-amplitude tone overloads the next differential codes.
+            predictor = sample
             bits.put(predictor, 16)
             bits.put(index, 6)
             continue

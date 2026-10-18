@@ -175,6 +175,31 @@ new behavior remains pending.
 
 [Player policy, new APIs and limitations](PLAYER_AUDIO_RELEASE.md). Original immediate stop behavior remains the default.
 
+## v0.588 ADPCM fixture block restarts
+
+The six Samsung/Android 16 v0.587 captures have no reported software starvation
+or backend errors. They contain the same 880 Hz ADPCM transient about 186 ms into
+each 250 ms tone, near its end. This is separate from explicit stop releases.
+The 660/990 Hz stereo PCM tone has no corresponding block restart.
+
+The [fixture encoder](../examples/player/animation_audio/make_movies.py) reset
+its adaptive step index to zero at every 4096-frame block header. At source
+frame 8192 the following codes cannot track a full-level sinusoid until the step
+size catches up. Independent decoding of the old asset gives a maximum error of
+2530 PCM units near that boundary. The encoder now retains the adapted index
+while writing the new absolute predictor. The first block still starts at zero;
+valid external ADPCM is decoded unchanged. All three shipped SWFs are regenerated.
+The same boundary error is now 83, and the largest source-frame step in that
+window drops from 2134 to 748. These are fixture measurements, not DAC recordings.
+
+[Independent asset regression](../frontend/tests/audio_assets.py) checks both
+internal boundaries against the intended analytic sinusoid without importing
+the encoder or VM decoder. [Player capture regression](../frontend/tests/audio_trace.py)
+also checks the resampled mono tone for large steps in interpreter and JIT.
+Run `python3 frontend/tests/audio_assets.py` from the component directory.
+Physical listening on the affected phone remains necessary; v0.588 changes test
+assets, not playback filtering, output gain or general decoder semantics.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
