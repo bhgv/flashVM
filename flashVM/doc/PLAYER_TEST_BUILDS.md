@@ -75,8 +75,8 @@ The API is per-frame state: a down/up between frames may only change counters.
 controls and no --mute it opens a real 48000 Hz stereo SDL device, a 32-voice
 configured mixer and a 512-frame producer with a 2048-frame FIFO target. Registers
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); each actual entry submits its ordinal to
-[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L48). Decode/conversion errors fail visibly.
-At most four [`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L52) calls per loop visit; waits are capped at five milliseconds
+[`fvm_swf_sound_mixer_submit`](../include/flashvm/swf_sound_mixer.h#L50). Decode/conversion errors fail visibly.
+At most four [`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L55) calls per loop visit; waits are capped at five milliseconds
 while output exists. Queue copying and playback run through the real
 [SDL bridge](SWF_SOUND_OUTPUT.md). Producer work is not realtime callback work.
 
@@ -167,6 +167,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:54](../include/flashvm/movieclip.h#L54) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:56](../include/flashvm/swf_sound.h#L56) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
-| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:52](../include/flashvm/swf_sound_output.h#L52) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
+| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:55](../include/flashvm/swf_sound_output.h#L55) |
 <!-- source-links:end -->

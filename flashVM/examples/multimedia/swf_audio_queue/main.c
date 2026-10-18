@@ -5,6 +5,7 @@
 #define EXAMPLE_RATE 48000U /* Use a common device frame clock. */
 #define EXAMPLE_CHANNELS 2U /* Interleave two signed-short channel values per frame. */
 #define EXAMPLE_BLOCK 128U /* Prepare at most this many frames per pump call. */
+#define EXAMPLE_RELEASE 32U /* Demonstrate an optional release in output frames, within one block. */
 #define EXAMPLE_TARGET 512U /* Bound the copied FIFO backlog separately from one block. */
 #define EXAMPLE_DEVICE_BUFFER 256U /* Ask SDL for a power-of-two playback buffer. */
 /* Keep a deterministic software FIFO model separate from the real SDL adapter. */
@@ -95,6 +96,8 @@ int main(int argc, char **argv) /* Keep the host example portable C89. */
         goto cleanup; /* Release an acquired SDL device if necessary. */
     if (!checked(fvm_swf_sound_output_create(mixer, &backend, EXAMPLE_BLOCK, EXAMPLE_TARGET, &output), "output")) /* Allocate pending storage and pause. */
         goto cleanup; /* Preserve caller ownership of mixer/device. */
+    if (!checked(fvm_swf_sound_output_set_release(output, EXAMPLE_RELEASE), "release configuration")) /* Allocate optional history before any PCM submission. */
+        goto cleanup; /* Configuration failure preserves ordinary ownership cleanup. */
     if (!sdl && fvm_swf_sound_output_pump(output, &accepted) != FVM_ERROR) /* Reject the model's first complete block. */
         goto cleanup; /* Unexpected behavior is an ordinary tutorial failure. */
     if (!checked(fvm_swf_sound_output_pump(output, &accepted), "pump/retry")) /* Retry identical PCM or perform the first native write. */
@@ -106,6 +109,8 @@ int main(int argc, char **argv) /* Keep the host example portable C89. */
     if (!checked(fvm_swf_sound_output_info(output, &info), "clock")) /* Observe queue depletion rather than wall time. */
         goto cleanup; /* Do not print unchecked output. */
     printf("accepted=%lu queued=%lu played=%.0f\n", (unsigned long)accepted, (unsigned long)info.queued_frames, info.played_frames); /* SDL counts are asynchronous. */
+    if (!checked(fvm_swf_sound_output_stop_release(output), "release stop")) /* Clear voices and use a release only if a nonzero consumed boundary exists. */
+        goto cleanup; /* This silence-only model needs no synthesized audible tail. */
     if (!checked(fvm_swf_sound_output_stop(output), "stop")) /* Pause, discard, stop voices and reset the clock epoch. */
         goto cleanup; /* Close can still release ownership after a lost-device error. */
     status = 0; /* Every required operation completed successfully. */

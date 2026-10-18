@@ -62,7 +62,7 @@ static FVM_Result stop_context_audio(void *raw)
     FVM_Result result;
     if (SDL_LockMutex(audio->mutex) != 0)
         return FVM_ERROR;
-    result = fvm_swf_sound_output_stop(audio->output);
+    result = fvm_swf_sound_output_stop_release(audio->output);
     if (result == FVM_OK)
     {
         ++audio->stops;
@@ -167,12 +167,16 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_De
     geometry.sample_rate = FVM_DESKTOP_AUDIO_RATE;
     geometry.channels = FVM_DESKTOP_AUDIO_CHANNELS;
     geometry.voice_capacity = FVM_DESKTOP_AUDIO_VOICES;
-    geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT;
+    geometry.flags = FVM_SWF_SOUND_MIXER_CONVERT | FVM_SWF_SOUND_MIXER_DECLICK;
     result = fvm_swf_sound_mixer_create_configured(&geometry, &audio->mixer);
     if (result != FVM_OK)
         return result;
     result = fvm_swf_sound_output_create(audio->mixer, &backend, FVM_DESKTOP_AUDIO_BLOCK,
                                          audio->target_frames, &audio->output);
+    if (result != FVM_OK)
+        return result;
+    result = fvm_swf_sound_output_set_release(audio->output, FVM_DESKTOP_AUDIO_RATE /
+                                                                 FVM_DESKTOP_AUDIO_RELEASE_DIVISOR);
     if (result != FVM_OK)
         return result;
     audio->mutex = SDL_CreateMutex();

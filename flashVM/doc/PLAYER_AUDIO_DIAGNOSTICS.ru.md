@@ -147,7 +147,7 @@ frames тогда может быть меньше одного native-блок�
 тишины. Мост теперь передаёт только SDL_AUDIO_ALLOW_SAMPLES_CHANGE. Частота,
 каналы и S16 на интерфейсе приложения сохраняются; обычное аппаратное преобразование
 SDL возможно. Согласованный callback-блок публикуется через
-[`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L81) и используется существующим запасом в четыре блока и
+[`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L91) и используется существующим запасом в четыре блока и
 порогом resume в два блока. Это не измерение аппаратной задержки. Теперь нужен
 SDL SDK >=2.0.9, где доступен этот флаг. Без SDK поведение UNSUPPORTED прежнее.
 Полученный блок не обязан быть степенью двойки, в отличие от ограниченного запроса.
@@ -166,6 +166,10 @@ NDK r27c; Java/Dex — JDK17/SDK35. Сохранён ключ подписи v0.
 не требуются. Повторить 01/03 в interpreter/JIT и проверить физический звук.
 Подтверждение нового поведения на телефоне ещё ожидается.
 
+## Необязательное затухание v0.587
+
+[Политика плеера, новые API и ограничения](PLAYER_AUDIO_RELEASE.ru.md). Прежняя немедленная остановка сохраняется по умолчанию.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -175,5 +179,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:91](../include/flashvm/swf_sound_output.h#L91) |
 <!-- source-links:end -->

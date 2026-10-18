@@ -5,11 +5,12 @@
 #include "flashvm/audio_stop.h"
 #include <SDL.h>
 #include "audio_trace.h"
-#define FVM_DESKTOP_AUDIO_RATE 48000U      /* Native frame clock, independent of movie FPS. */
-#define FVM_DESKTOP_AUDIO_CHANNELS 2U      /* Stereo native S16. */
-#define FVM_DESKTOP_AUDIO_VOICES 32U       /* Maximum overlapping prepared voices. */
-#define FVM_DESKTOP_AUDIO_BLOCK 1024U      /* Bounded preparation buffer in frames. */
-#define FVM_DESKTOP_AUDIO_MIN_TARGET 4800U /* At least 100 ms of scheduling reserve. */
+#define FVM_DESKTOP_AUDIO_RELEASE_DIVISOR 200U /* Five-millisecond native stop release. */
+#define FVM_DESKTOP_AUDIO_RATE 48000U          /* Native frame clock, independent of movie FPS. */
+#define FVM_DESKTOP_AUDIO_CHANNELS 2U          /* Stereo native S16. */
+#define FVM_DESKTOP_AUDIO_VOICES 32U           /* Maximum overlapping prepared voices. */
+#define FVM_DESKTOP_AUDIO_BLOCK 1024U          /* Bounded preparation buffer in frames. */
+#define FVM_DESKTOP_AUDIO_MIN_TARGET 4800U     /* At least 100 ms of scheduling reserve. */
 #define FVM_DESKTOP_AUDIO_QUANTA 4U /* Keep at least four obtained driver blocks in reserve. */
 #define FVM_DESKTOP_AUDIO_RESUME_QUANTA 2U /* Prime at least two native blocks before resume. */
 #define FVM_DESKTOP_AUDIO_PUMPS 8U         /* Bound work per worker iteration. */

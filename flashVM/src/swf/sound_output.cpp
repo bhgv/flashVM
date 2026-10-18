@@ -1,5 +1,6 @@
 /* FlashVM: bounded PCM producer/retry state and software-device FIFO clock. */
 #include "../details/vector.hpp"
+#include "sound_output_constants.h"
 #include "flashvm/swf_sound_output.h"
 #include <cfloat>
 #include <cstring>
@@ -13,11 +14,18 @@ struct FVM_SWFSoundOutput
     FVM_AudioQueueBackend backend; /* Copied callback table with borrowed userdata. */
     fvm_detail::vector<short> pcm; /* One fixed-capacity preparation/retry block. */
     FVM_SWFSoundOutputInfo info;   /* Copied epoch counts and last validated queue state. */
-    size_t block;                  /* Maximum frames rendered/accepted by a single pump call. */
-    size_t target;                 /* Maximum producer-requested queue depth. */
-    bool busy;                     /* Reject reentry through backend callbacks. */
+    fvm_detail::vector<short>
+        history;           /* [GC:] Optional native accepted-PCM ring; no managed roots. */
+    size_t history_cursor; /* Next interleaved frame to overwrite. */
+    size_t history_count;  /* Retained complete frames, saturated at ring capacity. */
+    size_t release_frames; /* Configured output-tail length; zero keeps legacy allocation/work. */
+    size_t block;          /* Maximum frames rendered/accepted by a single pump call. */
+    size_t target;         /* Maximum producer-requested queue depth. */
+    bool busy;             /* Reject reentry through backend callbacks. */
     /* Initialize ownership before the fallible buffer allocation. */
-    FVM_SWFSoundOutput() : mixer(0), block(0), target(0), busy(false)
+    FVM_SWFSoundOutput()
+        : mixer(0), history_cursor(0), history_count(0), release_frames(0), block(0), target(0),
+          busy(false)
     {
         std::memset(&backend, 0, sizeof(backend));
         std::memset(&info, 0, sizeof(info));
@@ -32,8 +40,14 @@ namespace
 struct BusyScope
 {
     FVM_SWFSoundOutput *output; /* Borrow the live native owner for one public operation. */
-    explicit BusyScope(FVM_SWFSoundOutput *value) : output(value) { output->busy = true; }
-    ~BusyScope() { output->busy = false; }
+    explicit BusyScope(FVM_SWFSoundOutput *value) : output(value)
+    {
+        output->busy = true;
+    }
+    ~BusyScope()
+    {
+        output->busy = false;
+    }
 };
 
 /* Queue consumption is monotonic unless the backend violates exclusive producer/FIFO ownership. */
@@ -53,6 +67,22 @@ FVM_Result observe(FVM_SWFSoundOutput *output)
     output->info.seconds = played / output->backend.sample_rate;
     output->info.starved = !output->info.paused && output->info.submitted_frames > 0 && !queued;
     return FVM_OK;
+}
+/* Preserve only accepted blocks; rejected retries must not advance native history. */
+void remember(FVM_SWFSoundOutput *output, size_t frames)
+{
+    if (!output->release_frames)
+        return;
+    size_t channels = output->backend.channels;
+    size_t capacity = output->history.size() / channels;
+    for (size_t i = 0; i < frames; ++i)
+    {
+        for (size_t c = 0; c < channels; ++c)
+            output->history[output->history_cursor * channels + c] = output->pcm[i * channels + c];
+        output->history_cursor = (output->history_cursor + 1) % capacity;
+        if (output->history_count < capacity)
+            ++output->history_count;
+    }
 }
 } // namespace
 
@@ -151,6 +181,7 @@ extern "C" FVM_Result fvm_swf_sound_output_pump(FVM_SWFSoundOutput *output, size
         status = output->backend.write(output->backend.userdata, output->pcm.begin(), count);
         if (status != FVM_OK)
             return status;
+        remember(output, count);
         output->info.submitted_frames += count;
         output->info.queued_frames += count;
         output->info.pending_frames = 0;
@@ -234,9 +265,96 @@ extern "C" FVM_Result fvm_swf_sound_output_stop(FVM_SWFSoundOutput *output)
         if (status != FVM_OK)
             return status;
         fvm_swf_sound_mixer_stop_all(output->mixer);
+        output->history_cursor = output->history_count = 0;
         std::memset(&output->info, 0, sizeof(output->info));
         output->info.struct_size = sizeof(output->info);
         output->info.paused = 1;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
+}
+
+/* Configure optional history transactionally outside playback; no source or backend mutation. */
+extern "C" FVM_Result fvm_swf_sound_output_set_release(FVM_SWFSoundOutput *output, size_t frames)
+{
+    if (!output || output->busy || output->info.submitted_frames != 0 ||
+        (frames && (frames < FVM_OUTPUT_RELEASE_MIN_FRAMES || frames > output->block)))
+        return FVM_INVALID_ARGUMENT;
+    BusyScope scope(output);
+    try
+    {
+        fvm_detail::vector<short> history;
+        if (frames)
+            history.resize((output->target + output->block) * output->backend.channels);
+        output->history.swap(history);
+        output->history_cursor = output->history_count = 0;
+        output->release_frames = frames;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
+}
+
+/* Keep a running backend running: clearing must not itself insert a paused silent device block. */
+extern "C" FVM_Result fvm_swf_sound_output_stop_release(FVM_SWFSoundOutput *output)
+{
+    if (!output || output->busy || !output->release_frames)
+        return FVM_INVALID_ARGUMENT;
+    BusyScope scope(output);
+    try
+    {
+        FVM_Result status = observe(output);
+        if (status != FVM_OK)
+            return status;
+        short seed[FVM_OUTPUT_RELEASE_CHANNELS] = {0, 0};
+        unsigned int channels = output->backend.channels;
+        size_t queued = output->info.queued_frames;
+        if (!output->info.paused && output->history_count > queued)
+        {
+            size_t capacity = output->history.size() / channels;
+            size_t at = (output->history_cursor + capacity - queued - 1) % capacity;
+            for (unsigned int c = 0; c < channels; ++c)
+                seed[c] = output->history[at * channels + c];
+        }
+        status = output->backend.clear(output->backend.userdata);
+        if (status != FVM_OK)
+            return status; /* Pending PCM and source ownership remain available for explicit retry.
+                            */
+        int paused = output->info.paused;
+        fvm_swf_sound_mixer_stop_all(output->mixer);
+        std::memset(&output->info, 0, sizeof(output->info));
+        output->info.struct_size = sizeof(output->info);
+        output->info.paused = paused;
+        output->history_cursor = output->history_count = 0;
+        if (!seed[0] && !seed[1])
+            return FVM_OK;
+        size_t count = output->release_frames;
+        for (size_t i = 0; i < count; ++i)
+            for (unsigned int c = 0; c < channels; ++c)
+                output->pcm[i * channels + c] =
+                    (short)((double)seed[c] * (count - 1 - i) / (count - 1));
+        output->info.pending_frames = count;
+        status = output->backend.write(output->backend.userdata, output->pcm.begin(), count);
+        if (status != FVM_OK)
+            return status; /* Old audio is already discarded; preserve the exact release block for
+                              pump retry. */
+        remember(output, count);
+        output->info.submitted_frames = (double)count;
+        output->info.queued_frames = count;
+        output->info.pending_frames = 0;
         return FVM_OK;
     }
     catch (const std::bad_alloc &)

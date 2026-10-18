@@ -6,22 +6,22 @@
 в один native signed-16 output clock, например 48000 Гц stereo. Работает с
 [порционным StartSound](SWF_SOUND_MIXER.ru.md) и [корневым timeline callback](MOVIECLIP_SOUND.ru.md).
 
-Преобразование включается явно. Старый [`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L43) сохраняет
+Преобразование включается явно. Старый [`fvm_swf_sound_mixer_create`](../include/flashvm/swf_sound_mixer.h#L45) сохраняет
 строгую геометрию, прежние ошибки и ABI [`FVM_SWFSoundMixerInfo`](../include/flashvm/swf_sound_mixer.h#L13). Даже в convert
 режиме совпадающая source/output геометрия использует прежний прямой путь.
 Устройства, потоки, скрытые очереди, compressed decoder и A/V clock не создаются.
 
 ## Структура настройки
 
-Отдельная C89 структура [`FVM_SWFSoundMixerConfig`](../include/flashvm/swf_sound_mixer.h#L26); заполнить все поля:
+Отдельная C89 структура [`FVM_SWFSoundMixerConfig`](../include/flashvm/swf_sound_mixer.h#L28); заполнить все поля:
 
 | Поле | Контракт |
 | --- | --- |
-| struct_size | Точно sizeof([FVM_SWFSoundMixerConfig](../include/flashvm/swf_sound_mixer.h#L26)). |
-| sample_rate | Output frames/sec. Strict: 5512/11025/22050/44100. Convert: любое целое от [FVM_SWF_SOUND_MIXER_MIN_RATE](../include/flashvm/swf_sound_mixer.h#L23) (5512) до [FVM_SWF_SOUND_MIXER_MAX_RATE](../include/flashvm/swf_sound_mixer.h#L24) (192000), включая границы. |
+| struct_size | Точно sizeof([FVM_SWFSoundMixerConfig](../include/flashvm/swf_sound_mixer.h#L28)). |
+| sample_rate | Output frames/sec. Strict: 5512/11025/22050/44100. Convert: любое целое от [FVM_SWF_SOUND_MIXER_MIN_RATE](../include/flashvm/swf_sound_mixer.h#L25) (5512) до [FVM_SWF_SOUND_MIXER_MAX_RATE](../include/flashvm/swf_sound_mixer.h#L26) (192000), включая границы. |
 | channels | Output mono (1) или interleaved stereo (2). |
 | voice_capacity | 1..[FVM_SWF_SOUND_MIXER_MAX_VOICES](../include/flashvm/swf_sound_mixer.h#L9) (64) одновременных голосов. |
-| flags | Ноль — strict; [FVM_SWF_SOUND_MIXER_CONVERT](../include/flashvm/swf_sound_mixer.h#L21) — явная линейная конвертация. Другие биты запрещены. |
+| flags | Ноль — strict; [FVM_SWF_SOUND_MIXER_CONVERT](../include/flashvm/swf_sound_mixer.h#L21) — явная линейная конвертация. [`FVM_SWF_SOUND_MIXER_DECLICK`](../include/flashvm/swf_sound_mixer.h#L23) дополнительно включает затухание stop; другие биты запрещены. |
 
 Сохраняется прежняя целая номинальная частота 5512 Гц для SWF 5.5 kHz, не 5512.5.
 Формат устройства хост согласовывает отдельно, затем передаёт его rate/channels.
@@ -116,6 +116,10 @@ OOM, teardown VM и реальные interpreter/native JIT counters при по
 Это software-проверки; приёмка устройств, других ОС и сравнение с оригинальным
 проигрывателем остаются открыты.
 
+## Необязательное затухание v0.587
+
+[Политика плеера, новые API и ограничения](PLAYER_AUDIO_RELEASE.ru.md). Прежняя немедленная остановка сохраняется по умолчанию.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -126,12 +130,13 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../include/flashvm/swf_sound_mixer.h#L21) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:43](../include/flashvm/swf_sound_mixer.h#L43) |
-| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:37](../include/flashvm/swf_sound_mixer.h#L37) |
-| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:40](../include/flashvm/swf_sound_mixer.h#L40) |
-| `FVM_SWF_SOUND_MIXER_MAX_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:24](../include/flashvm/swf_sound_mixer.h#L24) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
+| `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:39](../include/flashvm/swf_sound_mixer.h#L39) |
+| `FVM_SWF_SOUND_MIXER_DECLICK` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
+| `fvm_swf_sound_mixer_get_config` | function | [include/flashvm/swf_sound_mixer.h:42](../include/flashvm/swf_sound_mixer.h#L42) |
+| `FVM_SWF_SOUND_MIXER_MAX_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:26](../include/flashvm/swf_sound_mixer.h#L26) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
-| `FVM_SWF_SOUND_MIXER_MIN_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:23](../include/flashvm/swf_sound_mixer.h#L23) |
-| `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:26](../include/flashvm/swf_sound_mixer.h#L26) |
+| `FVM_SWF_SOUND_MIXER_MIN_RATE` | macro / define | [include/flashvm/swf_sound_mixer.h:25](../include/flashvm/swf_sound_mixer.h#L25) |
+| `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:28](../include/flashvm/swf_sound_mixer.h#L28) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 <!-- source-links:end -->

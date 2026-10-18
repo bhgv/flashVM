@@ -4710,6 +4710,12 @@ Expose the negotiated SDL callback block and use it for queue reserve/resume;
 [diagnosis and limits](PLAYER_AUDIO_DIAGNOSTICS.ru.md). Focused SDK regression,
 source-built Android APK; phone confirmation remains open.
 
+## v0.587 stop-release policy
+
+Optional five-millisecond stop-by-ID fade and configured queue-boundary release;
+[EN](PLAYER_AUDIO_RELEASE.md) / [RU](PLAYER_AUDIO_RELEASE.ru.md). Legacy immediate
+behavior retained; device listening and atomic hardware replacement are not certified.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -35,6 +35,18 @@ def main():
                     assert 4 * 48000 < audio.getnframes() < 7 * 48000
                     raw = audio.readframes(audio.getnframes())
                 frames = list(struct.iter_unpack('<hh', raw))
+                if movie.startswith('01'):
+                    # A sustained silent run must not begin with a large stop-by-ID sample jump.
+                    # 03 concatenates discarded pre-clear blocks, so this is not valid across its clears.
+                    run_start = None
+                    for index, frame in enumerate(frames + [(1, 1)]):
+                        if frame == (0, 0):
+                            if run_start is None:
+                                run_start = index
+                        elif run_start is not None:
+                            if run_start > 0 and index - run_start >= 480:
+                                assert max(map(abs, frames[run_start - 1])) <= 256, frames[run_start - 1]
+                            run_start = None
                 report = Path(str(base) + '.txt').read_text()
                 assert 'truncated=0 dropped_events=0' in report
                 events = [line.split() for line in report.splitlines() if len(line.split()) == 5 and line.split()[0].isdigit()]

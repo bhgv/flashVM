@@ -20,6 +20,8 @@ extern "C"
     } FVM_SWFSoundMixerInfo;
 #define FVM_SWF_SOUND_MIXER_CONVERT                                                                \
     1UL /* Explicit linear rate/channel conversion; zero keeps strict geometry. */
+#define FVM_SWF_SOUND_MIXER_DECLICK                                                                \
+    2UL /* Opt-in five-millisecond release for stop-by-resource events. */
 #define FVM_SWF_SOUND_MIXER_MIN_RATE 5512U /* Lowest configured output clock in integer Hz. */
 #define FVM_SWF_SOUND_MIXER_MAX_RATE                                                               \
     192000U /* Highest configured output clock; bounds rational phase arithmetic. */
@@ -30,7 +32,7 @@ extern "C"
         unsigned int channels; /* Output mono/stereo geometry, not a source-format restriction in
                                   convert mode. */
         unsigned int voice_capacity; /* Maximum simultaneous nonempty voices, 1..MAX_VOICES. */
-        unsigned long flags;         /* Zero for strict geometry, or FVM_SWF_SOUND_MIXER_CONVERT. */
+        unsigned long flags;         /* CONVERT and/or DECLICK; zero retains exact legacy policy. */
     } FVM_SWFSoundMixerConfig;
     /* Create with explicit conversion policy; clear *out on all failures, copy caller config on
      * success. */

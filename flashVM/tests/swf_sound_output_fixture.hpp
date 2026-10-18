@@ -28,6 +28,8 @@ inline void reentry(Device *d)
     assert(fvm_swf_sound_output_info(d->output, &info) == FVM_INVALID_ARGUMENT);
     assert(fvm_swf_sound_output_pause(d->output, 1) == FVM_INVALID_ARGUMENT);
     assert(fvm_swf_sound_output_stop(d->output) == FVM_INVALID_ARGUMENT);
+    assert(fvm_swf_sound_output_set_release(d->output, 2) == FVM_INVALID_ARGUMENT);
+    assert(fvm_swf_sound_output_stop_release(d->output) == FVM_INVALID_ARGUMENT);
     fvm_swf_sound_output_close(d->output); /* Busy close is deliberately a no-op. */
 }
 inline void exception(Device *d)

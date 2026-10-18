@@ -34,7 +34,7 @@ Sound ID общий для всего микшера. Используйте о�
 действовать и на старые, и на новые голоса этого ID. Идентификатор context не
 сохраняется. Другие микшеры и context audio channels — отдельные пространства
 управления. AVM1 StopSounds не очищает независимый микшер: хост вызывает
-[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L59) и отдельно сбрасывает очередь устройства.
+[`fvm_swf_sound_mixer_stop_all`](../include/flashvm/swf_sound_mixer.h#L61) и отдельно сбрасывает очередь устройства.
 
 ## Контракты функций
 
@@ -76,7 +76,7 @@ callback. Действует существующий **покадровый с�
 
 ### fvm_swf_sound_mixer_read
 
-`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L53)(mixer, frames, destination, capacity_values,
+`[fvm_swf_sound_mixer_read](../include/flashvm/swf_sound_mixer.h#L55)(mixer, frames, destination, capacity_values,
 written_values)` заполняет ровно frames sample frames. Capacity/written считают
 **short-значения каналов**, то есть для stereo нужно frames × 2. Written не может
 быть null, обнуляется до проверок и не должен перекрываться с destination.
@@ -149,6 +149,10 @@ read/info/stop/close; reload/GC/уничтожение VM проверяют nat
 реального входа в кадр без звуков пропущенных кадров при seek reconstruction.
 Device clock и автоматическая привязка AVM1 StopSounds всё ещё требуют host моста.
 
+## Необязательное затухание v0.587
+
+[Политика плеера, новые API и ограничения](PLAYER_AUDIO_RELEASE.ru.md). Прежняя немедленная остановка сохраняется по умолчанию.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -160,13 +164,13 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |
 | `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
-| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
-| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:43](../include/flashvm/swf_sound_mixer.h#L43) |
-| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:57](../include/flashvm/swf_sound_mixer.h#L57) |
+| `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:63](../include/flashvm/swf_sound_mixer.h#L63) |
+| `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../include/flashvm/swf_sound_mixer.h#L45) |
+| `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:59](../include/flashvm/swf_sound_mixer.h#L59) |
 | `FVM_SWF_SOUND_MIXER_MAX_VOICES` | macro / define | [include/flashvm/swf_sound_mixer.h:9](../include/flashvm/swf_sound_mixer.h#L9) |
-| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:53](../include/flashvm/swf_sound_mixer.h#L53) |
-| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:59](../include/flashvm/swf_sound_mixer.h#L59) |
-| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
+| `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:55](../include/flashvm/swf_sound_mixer.h#L55) |
+| `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:61](../include/flashvm/swf_sound_mixer.h#L61) |
+| `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
 | `FVM_SWFSoundMixerInfo` | struct | [include/flashvm/swf_sound_mixer.h:13](../include/flashvm/swf_sound_mixer.h#L13) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |

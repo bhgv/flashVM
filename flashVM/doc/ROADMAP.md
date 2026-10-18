@@ -3196,6 +3196,14 @@ acquisition regression and fresh ARM64 APK build; phone confirmation pending.
 [EN](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
 No stage closes.
 
+## v0.587 — opt-in stop release
+
+Bound stop-by-resource endings and context queue stops with explicit host release
+policies. Existing immediate APIs remain available and default. [EN](PLAYER_AUDIO_RELEASE.md) /
+[RU](PLAYER_AUDIO_RELEASE.ru.md). Source waveform discontinuities are localized;
+physical phone listening and generic backend consumer races remain limitations.
+No roadmap stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

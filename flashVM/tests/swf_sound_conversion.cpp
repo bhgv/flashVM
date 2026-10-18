@@ -84,7 +84,7 @@ int main()
         if (scenario == 2)
             candidate.sample_rate = FVM_SWF_SOUND_MIXER_MAX_RATE + 1;
         if (scenario == 3)
-            candidate.flags = 2;
+            candidate.flags = 4; /* Neither conversion nor optional de-click release. */
         if (scenario == 4)
             candidate.channels = 3;
         if (scenario == 5)

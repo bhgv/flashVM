@@ -43,12 +43,15 @@ int main(void)
     backend.userdata = &device;
     assert(fvm_swf_sound_mixer_create(44100, 1, 1, &mixer) == FVM_OK);
     assert(fvm_swf_sound_output_create(mixer, &backend, 4, 8, &output) == FVM_OK);
+    assert(fvm_swf_sound_output_set_release(output, 2) == FVM_OK);
     assert(fvm_swf_sound_output_pump(output, &accepted) == FVM_OK && accepted == 4);
     assert(fvm_swf_sound_output_pause(output, 0) == FVM_OK && !device.paused);
     device.count = 1;
     info.struct_size = sizeof(info);
     assert(fvm_swf_sound_output_info(output, &info) == FVM_OK && info.played_frames == 3);
     assert(fvm_swf_sound_output_stop(output) == FVM_OK && device.paused && !device.count);
+    assert(fvm_swf_sound_output_stop_release(output) == FVM_OK && device.paused && !device.count);
+    assert(fvm_swf_sound_output_set_release(output, 0) == FVM_OK);
     fvm_swf_sound_output_close(output);
     fvm_swf_sound_mixer_close(mixer);
     return 0;

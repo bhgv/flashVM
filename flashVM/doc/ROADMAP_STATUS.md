@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.586
+# FlashVM stage status / Состояние стадий — v0.587
 
 This is a bounded review of existing implementation reports and the current
 explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
@@ -186,3 +186,21 @@ PCM trace integration use explicit dummy audio/video; these are not X11, physica
 audio or Android execution. The regression also rejects the old zero-change flag.
 Fresh Android ARM64 native/Java/Dex build, same v0.585 signer and 16 KiB ELF/ZIP
 checks; actual new phone playback pending. No roadmap stage closes.
+
+## v0.587 validation
+
+Lean AGG/JIT Linux SDL Release with examples: 1225 passing tests and four explicit
+platform/service skips out of 1229 registered. Generated executable permissions
+were restored and the 44 initially unstarted cases all passed on rerun; no test
+assertion failures remained. New direct/converted release, accepted-ring/retry
+and allocation regressions also pass ASan/UBSan (leaks disabled). The allocation
+fixture covers ordinary and nothrow allocation consistently. Strict C89 output
+checks exercise both new APIs.
+
+Real SDL dummy audio/video integration runs 01/03 in both modes, validates tone
+amplitudes and absence of a large tone-to-silence edge in 01, and checks real
+StopSounds control counts. This is not X11, hardware listening or an Android run.
+Fresh NDK r27c ARM64/API23 native/SDL and JDK17/SDK35 Java/Dex APK build: signature
+and 16 KiB alignment checked, persisted v0.585 signer reused. Natural source
+endings and SWF files remain unchanged. Hardware release-boundary races and
+physical click acceptance remain open. [Contracts](PLAYER_AUDIO_RELEASE.md).
