@@ -109,7 +109,7 @@ text/raster type allowlists. Markdown HTML is sanitized; SVG, PDF, Mermaid,
 math rendering and complete GitHub Markdown parity are outside this version.
 Run the same unittest module under each supported interpreter to verify HTTP,
 rendering and confinement. Third-party Python packages retain their own licenses;
-FlashVM's viewer code is covered by the root [MIT license](../LICENSE).
+FlashVM's viewer code is covered by the root [MIT license](../../LICENSE).
 
 ## Unique heading IDs / уникальные якоря заголовков (v0.567)
 
@@ -125,3 +125,25 @@ This checkpoint was run on Python 3; Python 2.7.9 was not rerun in this environm
 а также повторный рендер другого документа. Ручные HTML id не переписываются;
 их уникальность обеспечивает автор. В этой контрольной точке выполнены проверки
 на Python 3; нового прогона Python 2.7.9 в данной среде нет.
+
+
+## Repository layout since v0.572 / Структура с v0.572
+
+From the repository root / Из корня репозитория:
+
+```sh
+python -m pip install -r flashVM/doku_viewer/requirements.txt
+python view_docs.py
+```
+
+The root launcher delegates to `flashVM/view_docs.py`; arguments such as
+`--no-browser` and `--port` are forwarded. Both launchers work independently
+of the working directory. `/` opens `/view/flashVM/README.md`. Navigation covers
+FlashVM and the root README files; the shared `/view/LICENSE` remains readable.
+The server is confined to the repository, including symlink checks.
+
+Корневой файл передаёт управление `flashVM/view_docs.py`, сохраняя параметры.
+Оба запуска не зависят от рабочей папки. Главная страница открывает README
+FlashVM; общая лицензия доступна из корня. Доступ за пределы репозитория запрещён.
+The earlier project-local commands above remain valid after `cd flashVM`.
+Ранее приведённые команды проекта остаются верными после `cd flashVM`.

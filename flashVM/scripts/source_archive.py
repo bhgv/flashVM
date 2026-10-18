@@ -35,14 +35,19 @@ def git(repo, *args, data=None, stdout=subprocess.PIPE):
 
 def create(repo, revision, output):
     """Export a commit and its reachable Git objects with deterministic ZIP metadata."""
-    repo = repo.resolve()
+    repo = Path(git(repo.resolve(), "rev-parse", "--show-toplevel").decode().strip())
     output = output.resolve()
     if output.exists():
         raise ValueError("output already exists: " + str(output))
     if git(repo, "rev-parse", "--is-shallow-repository").strip() == b"true":
         raise ValueError("complete history is required; shallow repositories are rejected")
     commit = git(repo, "rev-parse", "--verify", "--end-of-options", revision + "^{commit}").decode().strip()
-    version = git(repo, "show", commit + ":VERSION.txt").decode().strip()
+    version_path = "flashVM/VERSION.txt"
+    try:
+        version = git(repo, "show", commit + ":" + version_path).decode().strip()
+    except subprocess.CalledProcessError:
+        # Historical commits predate the component directory.
+        version = git(repo, "show", commit + ":VERSION.txt").decode().strip()
     if output.name != "FlashVM-source-v" + version + ".zip":
         raise ValueError("output filename must match committed VERSION.txt")
     epoch = int(git(repo, "show", "-s", "--format=%ct", commit))
@@ -63,7 +68,7 @@ def create(repo, revision, output):
         (metadata / "config").write_text(
             '[core]\n\trepositoryformatversion = ' + repository_format + '\n\tfilemode = true\n\tbare = false\n'
             '\tlogallrefupdates = false\n[remote "origin"]\n'
-            '\turl = https://bhgv.pythonanywhere.com/git/FlashVM/\n'
+            '\turl = https://github.com/bhgv/flashVM.git\n'
             '\tfetch = +refs/heads/*:refs/remotes/origin/*\n' + format_extension, encoding="utf-8")
         # Retain every ancestor of this commit, without copying unrelated local refs.
         pack = Path(temporary) / "history.pack"

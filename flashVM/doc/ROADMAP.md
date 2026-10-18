@@ -30,6 +30,20 @@ examples, and syntax-highlighted source links with exact line navigation.
 Implemented in v0.544: see [viewer guide](../doku_viewer/README.md).
 Implementation does not close the remaining roadmap stages.
 
+## Структура репозитория с v0.572 / Repository layout
+
+Компонент VM целиком расположен в `flashVM/`. Пути проекта в этом плане
+считаются относительно него. В корне остаются общая MIT-лицензия, README
+на двух языках и `view_docs.py`, передающий запуск просмотрщику FlashVM.
+Компиляторы в будущем будут отдельными соседними компонентами.
+Из корня: `cmake -S flashVM -B flashVM/build`; из компонента прежние команды
+сохраняются. Перенос не закрывает стадии 1–9.
+
+The VM component now lives in `flashVM/`; project paths in this roadmap are
+relative to it. The repository root retains the shared license, bilingual
+READMEs and a delegating documentation launcher. Future compilers will be sibling
+components. This layout change does not complete any roadmap stage.
+
 ## Этапы
 
 | № | Этап | Оставшаяся работа |

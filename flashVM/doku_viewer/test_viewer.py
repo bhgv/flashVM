@@ -6,6 +6,9 @@ import os
 import shutil
 import tempfile
 import threading
+import subprocess
+import sys
+import re
 import unittest
 try:
     from urllib.request import urlopen
@@ -36,11 +39,35 @@ class ViewerTests(unittest.TestCase):
         cls.thread.join()
         cls.server.server_close()
 
+    def test_root_launcher_from_another_directory(self):
+        """Delegate flags/imports from the workspace launcher and open FlashVM docs."""
+        directory = tempfile.mkdtemp(prefix='flashvm-launcher-')
+        environment = dict(os.environ, PYTHONUNBUFFERED='1')
+        process = subprocess.Popen(
+            [sys.executable, os.path.join(ROOT, 'view_docs.py'),
+             '--no-browser', '--port', '0'], cwd=directory, env=environment,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            first = process.stdout.readline().decode('utf-8')
+            match = re.search(r'http://127\.0\.0\.1:[0-9]+/', first)
+            self.assertIsNotNone(match, first)
+            response = urlopen(match.group(0))
+            self.assertTrue(response.geturl().endswith('/view/flashVM/README.md'))
+            self.assertIn('flashVM/doc/', response.read().decode('utf-8'))
+            response.close()
+            license_page = urlopen(match.group(0) + 'raw/LICENSE')
+            self.assertIn('MIT License', license_page.read().decode('utf-8'))
+            license_page.close()
+        finally:
+            process.terminate()
+            process.communicate()
+            shutil.rmtree(directory)
+
     def test_http_navigation(self):
         """Follow project, guide, example and exact source-line destinations."""
-        for path in ('/', '/view/README.md', '/view/doc/STAGE_QUALITY.md',
-                     '/view/examples/embedding/stage_quality/README.md',
-                     '/view/include/flashvm/stage.h#L19'):
+        for path in ('/', '/view/README.md', '/view/flashVM/doc/STAGE_QUALITY.md',
+                     '/view/flashVM/examples/embedding/stage_quality/README.md',
+                     '/view/flashVM/include/flashvm/stage.h#L19'):
             response = urlopen(self.base + path)
             self.assertEqual(response.getcode(), 200)
             self.assertIn('text/html', response.info().get('Content-Type'))

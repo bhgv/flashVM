@@ -136,3 +136,12 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
 - Example API tables must explain each individual function and its ownership/
   blocking behavior, with a link to its contract; a repeated guide description
   is not a function description.
+
+- Repository layout since v0.572: this component lives in `flashVM/`. Paths in
+  these component rules refer to that directory unless explicitly repository-wide.
+  The shared MIT LICENSE stays one level above, with repository README.md,
+  README.ru.md and a delegating view_docs.py. Build from the workspace with
+  `cmake -S flashVM -B flashVM/build`, or run existing commands inside flashVM.
+  Compiler components may be added alongside flashVM later; do not mix their
+  implementation into the VM component. Keep both root READMEs and the delegation
+  entry point current when changing repository-wide navigation or layout.

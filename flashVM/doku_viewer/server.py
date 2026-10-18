@@ -20,7 +20,10 @@ except ImportError:
     from cgi import escape
     unescape = HTMLParser().unescape
 
-ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir))
+# The component stays below flashVM; shared documentation/license live one level up.
+PROJECT_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir))
+ROOT = os.path.dirname(PROJECT_ROOT)
+HOME = 'flashVM/README.md'
 SOURCE_EXTENSIONS = ('.c', '.h', '.cpp', '.hpp', '.mm', '.m', '.py', '.java',
                      '.as', '.txt', '.defs', '.cmake', '.json', '.sh', '.css', '.js')
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -152,13 +155,15 @@ def render_source(text, filename):
 
 def navigation(root):
     """Index Markdown guides and example READMEs in alphabetic folder order."""
-    groups = [('Project', ''), ('Documentation', 'doc'), ('Examples', 'examples')]
+    groups = [('Repository', ''), ('FlashVM', 'flashVM'),
+              ('Documentation', 'flashVM/doc'), ('Examples', 'flashVM/examples')]
     blocks = []
     for title, folder in groups:
         files = []
         base = os.path.join(root, folder)
-        if not folder:
-            files = [name for name in os.listdir(base) if name.lower().endswith('.md')]
+        if folder in ('', 'flashVM'):
+            files = [os.path.join(folder, name).replace(os.sep, '/')
+                     for name in os.listdir(base) if name.lower().endswith('.md')]
         else:
             for current, directories, names in os.walk(base, followlinks=False):
                 directories[:] = sorted(d for d in directories if not d.startswith('.'))
@@ -177,7 +182,7 @@ def page(path, content, nav):
     return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>%s — FlashVM docs</title><link rel="stylesheet" href="/assets/style.css">'
-            '</head><body><aside><a class="brand" href="/view/README.md">FlashVM docs</a>'
+            '</head><body><aside><a class="brand" href="/view/flashVM/README.md">FlashVM docs</a>'
             '<input id="filter" aria-label="Filter document paths" placeholder="Filter / Поиск">'
             '%s</aside><main><header><span>%s</span> <a href="/raw/%s">Raw</a></header>'
             '<article>%s</article></main><script src="/assets/viewer.js"></script></body></html>') % (
@@ -211,7 +216,7 @@ class Handler(BaseHTTPRequestHandler):
                 request = request.decode('utf-8', 'strict')
             if request == '/':
                 self.send_response(302)
-                self.send_header('Location', '/view/README.md')
+                self.send_header('Location', '/view/' + HOME)
                 self.end_headers()
                 return
             if request in ('/assets/style.css', '/assets/viewer.js'):
@@ -256,7 +261,7 @@ def main():
         import markdown2
         import pygments
     except ImportError:
-        parser.exit(1, 'Install dependencies: python -m pip install -r doku_viewer/requirements.txt\n')
+        parser.exit(1, 'Install dependencies: from repository root: python -m pip install -r flashVM/doku_viewer/requirements.txt\n')
     try:
         server = HTTPServer(('127.0.0.1', args.port), Handler)
     except (IOError, OSError) as error:
