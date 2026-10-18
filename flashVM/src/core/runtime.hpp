@@ -16,6 +16,7 @@
 #include "flashvm/exception.h"
 #include "flashvm/swf.h"
 #include "flashvm/input.h"
+#include "flashvm/movieclip.h"
 #include "flashvm/stage.h"
 #include "flashvm/input_queue.h"
 #include "../details/hash_table.hpp"
@@ -319,6 +320,12 @@ struct FVM_Context
     fvm_detail::vector<unsigned char> swf_bytes; /* [GC:] Stored bytes of the loaded SWF. */
     FVM_SWFInfo swf_info;                        /* [GC:] Parsed metadata of the loaded SWF. */
     bool swf_loaded; /* [GC:] Whether the context has loaded SWF metadata. */
+    FVM_MovieClipSoundCallback
+        movieclip_sound_callback; /* Borrowed host callback; never a serialized graph edge. */
+    void
+        *movieclip_sound_userdata; /* Borrowed until callback replacement or context destruction. */
+    bool movieclip_sound_busy;     /* Reject recursive delivery/source replacement during a
+                                      notification. */
     fvm_detail::vector<FVM_AudioChannel *> audio_channels; /* Context-owned registrations; callbacks borrow host userdata. */
     bool audio_busy; /* Reject nested channel mutation while a host output callback runs. */
     FVM_StageQuality stage_quality; /* Context-wide vector rendering policy, default HIGH. */

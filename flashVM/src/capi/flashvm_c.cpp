@@ -141,6 +141,9 @@ extern "C"
         context->global = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->swf_loaded = false;
+        context->movieclip_sound_callback = 0;
+        context->movieclip_sound_userdata = 0;
+        context->movieclip_sound_busy = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */
@@ -278,7 +281,8 @@ extern "C"
     /* Load memory. */
     FVM_Result fvm_load_memory(FVM_Context *context, const void *data, size_t length)
     {
-        if (!context || (!data && length))
+        if (!context || (!data && length) || context->movieclip_sound_busy || context->destroying ||
+            context->gc_collecting || context->gc_releasing)
             return FVM_INVALID_ARGUMENT;
         FVM_SWFInfo info;
         info.struct_size = sizeof(info);

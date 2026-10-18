@@ -1,4 +1,4 @@
-Версия разработки: **0.578** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.579** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -346,6 +346,9 @@ Linux/Windows/macOS, SWF-пути, JIT/interpreter, качество, FPS/про
 Порционный StartSound-микшер: [руководство](doc/SWF_SOUND_MIXER.ru.md),
 [учебник](examples/multimedia/swf_event_mixer/README.md); перекрытие голосов,
 stop/no-multiple, циклы и огибающие без новых выделений при чтении.
+Root timeline sound delivery: [EN](doc/MOVIECLIP_SOUND.md) /
+[RU](doc/MOVIECLIP_SOUND.ru.md); actual frame entry before DoAction,
+source checks and host-local callback registration.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

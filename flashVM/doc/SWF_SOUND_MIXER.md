@@ -145,6 +145,11 @@ teardown verify native ownership. A strict C89 client exercises every function.
 The actual annotated example is tested with exact native PCM file bytes, invalid
 CLI and file-open failure. These are software checks, not audible device or
 foreign-platform acceptance, and do not close roadmap stages 4, 8 or 9.
+## Actual root timeline integration (v0.579)
+
+The [MovieClip sound callback](MOVIECLIP_SOUND.md) can now submit root events at
+real frame entry, without replaying skipped frames during seek reconstruction.
+The mixer still has no implicit device clock or automatic AVM1 StopSounds binding.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

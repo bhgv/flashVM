@@ -19,6 +19,7 @@
 #include "../avm1/display_property_ids.h"
 #include "../avm1/block.hpp"
 #include "movieclip_scene.hpp"
+#include "movieclip_sound.hpp"
 #include "transform_scene.hpp"
 #include "gradient.hpp"
 #include "bitmap_fill.hpp"
@@ -2424,6 +2425,9 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
         if (r != FVM_OK)
             return r;
         data->properties["entered"] = number(1);
+        r = fvm_movieclip_sound_run(c, o, frames, current);
+        if (r != FVM_OK)
+            return r;
         Slots::iterator entry = frames->indexed.find(current);
         if (entry != frames->indexed.end())
         {
@@ -3471,7 +3475,8 @@ extern "C" FVM_Result fvm_movieclip_advance(FVM_Context *c, FVM_Object *o, unsig
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!c || !o || o->owner != c || ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
+    if (!c || !o || o->owner != c || c->movieclip_sound_busy ||
+        ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */

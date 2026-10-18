@@ -19,7 +19,7 @@ Object graph coverage and limitations: [EN](STANDARD_OBJECTS.md), [RU](STANDARD_
 
 `value.h`: ABI 3 counted UTF-8/WTF-8 and UTF-16 creation/query/copy helpers.
 
-[`fvm_movieclip_swf_document_info`](../include/flashvm/movieclip.h#L25) — [SWF document metadata / метаданные SWF](SWF_DOCUMENT_METADATA.md), `include/flashvm/movieclip.h`.
+[`fvm_movieclip_swf_document_info`](../include/flashvm/movieclip.h#L33) — [SWF document metadata / метаданные SWF](SWF_DOCUMENT_METADATA.md), `include/flashvm/movieclip.h`.
 
 ## Runtime and context
 
@@ -128,7 +128,7 @@ macOS Intel classic JIT memory policy, frame chain and host preparation / пам
 ## Desktop host and authored stage
 
 [`fvm_swf_stage_bounds`](../include/flashvm/swf.h#L38) reads authored signed-twip geometry;
-[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L51) projects rendering without modifying script poses.
+[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L59) projects rendering without modifying script poses.
 Full parameters, ownership, errors and restrictions:
 [EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
 ## Incremental StartSound mixing
@@ -139,6 +139,11 @@ Full parameters, ownership, errors and restrictions:
 [full individual contracts](SWF_SOUND_MIXER.md) /
 [русское руководство](SWF_SOUND_MIXER.ru.md),
 [annotated C89 tutorial](../examples/multimedia/swf_event_mixer/README.md).
+## MovieClip root sound notifications
+
+[`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) and [`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L18) connect actual
+root StartSound entry to host mixing, before DoAction. [EN contracts](MOVIECLIP_SOUND.md) /
+[RU](MOVIECLIP_SOUND.ru.md). Sprite sound and device clocks remain unsupported.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -166,9 +171,11 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:51](../include/flashvm/movieclip.h#L51) |
-| `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:59](../include/flashvm/movieclip.h#L59) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
+| `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
+| `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:119](../src/core/runtime.hpp#L119) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
 | `fvm_register_function` | function | [include/flashvm/value.h:101](../include/flashvm/value.h#L101) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |

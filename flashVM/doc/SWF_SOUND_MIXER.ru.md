@@ -137,6 +137,11 @@ read/info/stop/close; reload/GC/уничтожение VM проверяют nat
 Отдельный strict C89 клиент вызывает все функции. Настоящий пример проверяется
 по точным native PCM байтам, ошибкам CLI и fopen. Это software-проверки, а не
 подтверждение слышимого вывода, других ОС или завершения стадий 4/8/9.
+## Реальные события root timeline (v0.579)
+
+[MovieClip sound callback](MOVIECLIP_SOUND.ru.md) теперь позволяет подать события
+реального входа в кадр без звуков пропущенных кадров при seek reconstruction.
+Device clock и автоматическая привязка AVM1 StopSounds всё ещё требуют host моста.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

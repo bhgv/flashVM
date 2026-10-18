@@ -15,7 +15,7 @@ def main():
     exe = sys.argv[1]
     with tempfile.TemporaryDirectory(prefix="flashvm-mixer-") as root:
         target = os.path.join(root, "mixed pcm.pcm")
-        for args in [("--demo",), ("--demo", target)]:
+        for args in [("--demo",), ("--demo", target), ("--timeline-demo",), ("--timeline-demo", target)]:
             result = run(exe, *args)
             if result.returncode or b"first=-32768 tail=32512 active=0" not in result.stdout:
                 raise RuntimeError((args, result.returncode, result.stdout, result.stderr))

@@ -12,6 +12,14 @@
 extern "C"
 {
 #endif
+    /* Host event notification at actual root frame entry, before its DoAction blocks.
+     * Ordinal selects the matching context SWF's root StartSound. Return a VM status.
+     * No callback pointers/userdata cross serialization; host must register on the receiving VM. */
+    typedef FVM_Result (*FVM_MovieClipSoundCallback)(FVM_Context *, FVM_Object *, size_t, void *);
+    /* Borrow a synchronous host callback/userdata; null disables delivery, not sound validation.
+     * No device is opened. A sound frame without a callback returns UNSUPPORTED. */
+    FVM_API FVM_Result fvm_movieclip_set_sound_callback(FVM_Context *, FVM_MovieClipSoundCallback,
+                                                        void *);
     /* Neutral SWF document metadata; strings are borrowed from the rooted clip graph. */
     typedef struct FVM_SWFDocumentInfo
     {

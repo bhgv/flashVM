@@ -79,6 +79,32 @@ on main thread; real-time device callbacks should consume a separate host queue.
 
 Полное русское руководство: [SWF_SOUND_MIXER.ru.md](../../../doc/SWF_SOUND_MIXER.ru.md).
 [Описание в общем каталоге](../../README.md#example-multimedia-swf_event_mixer).
+## Actual timeline delivery / Реальная доставка кадра (v0.579)
+
+```sh
+/tmp/flashvm-build/flashvm_examples_multimedia_swf_event_mixer_main --timeline-demo
+/tmp/flashvm-build/flashvm_examples_multimedia_swf_event_mixer_main --timeline-demo timeline.pcm
+```
+
+Этот режим устанавливает стандартные объекты, импортирует тот же SWF после
+[fvm_load_memory](../../../include/flashvm/flashvm.h#L72), pin-ит root, регистрирует callback и вызывает один advance.
+Все четыре StartSound приходят из реально исполняемого кадра: start 7,
+no-multiple 7, stop 7, start 8. При первом PCM read остаётся только ID 8.
+Поэтому stdout и четыре выходных sample совпадают с manual demo, но управляющий
+путь другой. VM затем уничтожается, оставшийся PCM читается независимо.
+Это не открытие устройства и не привязка к его часам. Прежний --demo сохраняет
+показ перекрытия трёх вручную запущенных голосов. Выходной путь по-прежнему явный.
+
+| Additional API | Individual contract / Где читать |
+| --- | --- |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Устанавливает методы MovieClip до исполнения кадра: [API_INDEX.md](../../../doc/API_INDEX.md). |
+| [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Импортирует кадры/корневой звук из совпадающего source; clip нужно удерживать: [MOVIECLIP_SOUND.md](../../../doc/MOVIECLIP_SOUND.md#loading-and-source-identity). |
+| [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | [GC:] Удерживает managed root во время host операций: [GC_NATIVE_ROOTS.md](../../../doc/GC_NATIVE_ROOTS.md). |
+| [`fvm_movieclip_set_sound_callback`](../../../include/flashvm/movieclip.h#L21) | Заимствует callback/userdata, не сериализует их и не открывает device: [контракт](../../../doc/MOVIECLIP_SOUND.md#callback-registration-contract). |
+| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L54) | Реальный вход доставляет события перед DoAction; ошибки не откатываются: [порядок](../../../doc/MOVIECLIP_SOUND.md#execution-order-and-errors). |
+| [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | [GC:] Снимает только успешно полученный pin перед уничтожением context: [GC_NATIVE_ROOTS.md](../../../doc/GC_NATIVE_ROOTS.md). |
+
+[Русское руководство](../../../doc/MOVIECLIP_SOUND.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -92,9 +118,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
+| `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:54](../../../include/flashvm/movieclip.h#L54) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
+| `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../../../include/flashvm/movieclip.h#L21) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:40](../../../include/flashvm/swf_sound_mixer.h#L40) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:22](../../../include/flashvm/swf_sound_mixer.h#L22) |
 | `fvm_swf_sound_mixer_info` | function | [include/flashvm/swf_sound_mixer.h:36](../../../include/flashvm/swf_sound_mixer.h#L36) |

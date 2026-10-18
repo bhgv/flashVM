@@ -1,4 +1,7 @@
 /* C89 tutorial: explicit event controls, incremental mixing and native snapshot ownership. */
+#include "flashvm/movieclip.h" /* Import real frame-entry delivery and callback registration. */
+#include "flashvm/standard.h" /* Install MovieClip standard methods before timeline execution. */
+#include "flashvm/gc.h" /* Pin the imported root during host ownership. */
 #include "flashvm/swf_sound_mixer.h" /* Import the mixer and its underlying sound API. */
 #include "example_constants.h" /* Give fixture indices and host geometry separate names. */
 #include <stdio.h> /* Report failures and optionally write an explicitly named PCM file. */
@@ -23,6 +26,12 @@ static int checked(FVM_Result result, const char *operation) /* Borrow the diagn
     fprintf(stderr, "%s failed: %d\n", operation, (int)result); /* Retain the exact VM status. */
     return 0; /* Use main's centralized ownership cleanup. */
 } /* Finish status handling. */
+/* Connect real root StartSound delivery to the independent software mixer. */
+static FVM_Result timeline_sound(FVM_Context *context, FVM_Object *clip, size_t event, void *raw) /* Borrow host state. */
+{ /* Enter synchronously at actual frame entry, before DoAction execution. */
+    (void)clip; /* This root-only example needs the event ordinal rather than instance state. */
+    return fvm_swf_sound_mixer_submit((FVM_SWFSoundMixer *)raw, context, event); /* Preserve preparation errors. */
+} /* Finish the replaceable frame-to-output bridge. */
 /* Advance the software mixer explicitly; no hidden timer or audio device is opened. */
 int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
 { /* Begin independent VM, software mixer and optional output ownership. */
@@ -31,16 +40,20 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
     FVM_Context *context = 0; /* Own the loaded source until snapshots have been submitted. */
     FVM_SWFSoundMixer *mixer = 0; /* Own software voices independently of the source context. */
     FVM_SWFSoundMixerInfo info; /* Receive copied geometry/activity, never a borrowed pointer. */
+    FVM_Object *clip = 0; /* Borrow the managed root while its explicit pin is held. */
+    int pinned = 0; /* Remember whether root ownership was successfully acquired. */
+    int timeline = 0; /* Choose actual frame delivery only in the explicit timeline mode. */
     FILE *output = 0; /* Open a file only when the user supplied its path. */
     short first[EXAMPLE_CHANNELS]; /* Store the first saturated frame. */
     short tail[EXAMPLE_TAIL_FRAMES * EXAMPLE_CHANNELS]; /* Keep remaining output and padded silence. */
     size_t written = 0; /* Receive counts in channel values rather than sample frames. */
     int status = 1; /* Assume failure until every operation and optional write succeeds. */
-    if ((argc != 2 && argc != 3) || strcmp(argv[1], "--demo") != 0) /* Validate before allocation/I/O. */
+    if ((argc != 2 && argc != 3) || (strcmp(argv[1], "--demo") != 0 && strcmp(argv[1], "--timeline-demo") != 0)) /* Validate before allocation/I/O. */
     { /* Explain the only accepted invocation. */
-        fprintf(stderr, "usage: %s --demo [output-native-s16.pcm]\n", argv[0]); /* Name the explicit output. */
+        fprintf(stderr, "usage: %s --demo|--timeline-demo [output-native-s16.pcm]\n", argv[0]); /* Name the explicit output. */
         return argc == 1 ? 0 : 2; /* Usage alone succeeds; malformed arguments fail. */
     } /* Finish argument validation. */
+    timeline = strcmp(argv[1], "--timeline-demo") == 0; /* Select scheduling before acquiring VM resources. */
     if (!checked(fvm_config_init(&config), "config")) /* Obtain the supported default configuration. */
         goto cleanup; /* Do not construct dependent objects after failure. */
     if (!checked(fvm_runtime_create(&config, &runtime), "runtime")) /* Acquire the native runtime. */
@@ -51,6 +64,22 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
         goto cleanup; /* Reject malformed or unsupported source data. */
     if (!checked(fvm_swf_sound_mixer_create(EXAMPLE_RATE, EXAMPLE_CHANNELS, EXAMPLE_VOICES, &mixer), "mixer")) /* Allocate bounded slots. */
         goto cleanup; /* Keep any existing source resources for cleanup. */
+    if (timeline) /* The alternate mode delivers all four controls from the actual first frame. */
+    { /* Keep the imported root alive until after its synchronous callbacks have finished. */
+        if (!checked(fvm_standard_install(context), "standard objects")) /* Install actual MovieClip methods. */
+            goto cleanup; /* Retain centralized cleanup on failure. */
+        if (!checked(fvm_movieclip_load_swf(context, swf, sizeof(swf), "root", &clip), "scene")) /* Match loaded source. */
+            goto cleanup; /* No partial clip is published on import failure. */
+        if (!checked(fvm_gc_pin(context, clip), "root pin")) /* [GC:] Own the imported frame/source graph. */
+            goto cleanup; /* Never use a root after failed pinning. */
+        pinned = 1; /* [GC:] Record ownership for both success and failure cleanup. */
+        if (!checked(fvm_movieclip_set_sound_callback(context, timeline_sound, mixer), "sound callback")) /* Borrow mixer. */
+            goto cleanup; /* Callback userdata is never owned by the VM. */
+        if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline entry")) /* Run start/no-multiple/stop/other. */
+            goto cleanup; /* Propagate the actual event or script failure. */
+    } /* Only ID 8 remains active after the first frame's ID-7 stop. */
+    else /* Preserve the original explicit-control overlap demonstration. */
+    { /* Manual controls remain useful for custom event schedulers. */
     if (!checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_START), "first voice")) /* Snapshot ID 7. */
         goto cleanup; /* No partial voice is published on error. */
     if (!checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_START), "overlapping voice")) /* Permit ordinary duplication. */
@@ -59,10 +88,14 @@ int main(int argc, char **argv) /* Keep the runnable example C89-compatible. */
         goto cleanup; /* No-multiple never steals another voice. */
     if (!checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_OTHER), "other ID")) /* Fill the third slot with ID 8. */
         goto cleanup; /* Capacity errors remain visible. */
-    if (!checked(fvm_swf_sound_mixer_read(mixer, 1, first, EXAMPLE_CHANNELS, &written), "first frame")) /* Sum all three voices once. */
-        goto cleanup; /* The first output clips -98304 to -32768. */
-    if (!checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_STOP), "stop ID 7")) /* Remove both ID-7 copies. */
+    } /* Both modes now provide an active voice for the same explicit PCM reader. */
+    if (!checked(fvm_swf_sound_mixer_read(mixer, 1, first, EXAMPLE_CHANNELS, &written), "first frame")) /* Mix the currently active voices once. */
+        goto cleanup; /* Both modes produce a first signed-16 sample of -32768. */
+    if (!timeline && !checked(fvm_swf_sound_mixer_submit(mixer, context, EXAMPLE_STOP), "stop ID 7")) /* Remove both ID-7 copies. */
         goto cleanup; /* ID 8 continues from its own current position. */
+    if (pinned) /* [GC:] Release the host root before destroying its source context. */
+        fvm_gc_unpin(context, clip); /* [GC:] No managed pointer is used by later PCM reads. */
+    pinned = 0; /* [GC:] Prevent duplicate unpin during ordinary cleanup. */
     fvm_context_destroy(context); /* Demonstrate independence from canonical source bytes and GC. */
     context = 0; /* Prevent a second destruction on cleanup. */
     fvm_runtime_destroy(runtime); /* The mixer retains no runtime pointer. */
@@ -90,6 +123,8 @@ cleanup: /* Release resources acquired before any failure. */
     if (status && argc == 3) /* Supply a useful diagnostic for output or API failures. */
         fprintf(stderr, "demo/output failed: %s\n", argv[2]); /* Do not silently hide a partial file. */
     fvm_swf_sound_mixer_close(mixer); /* Free native voices even if the source VM was destroyed earlier. */
+    if (pinned) /* [GC:] Cover errors after import/pin and before normal VM teardown. */
+        fvm_gc_unpin(context, clip); /* [GC:] End only successfully acquired root ownership. */
     if (context) /* Handle source initialization failure safely. */
         fvm_context_destroy(context); /* Release any source state still owned here. */
     if (runtime) /* The runtime must outlive an existing source context. */

@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.578
+# FlashVM stage status / Состояние стадий — v0.579
 
 This is a bounded review of existing implementation reports and the current
-incremental event-mixer work. It does not replace a complete per-API/SWF conformance matrix
+root timeline sound-delivery work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущего порционного микшера, а не
+Это сводка существующих отчётов и текущей доставки звуков timeline, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -23,28 +23,27 @@ counts are historical unless explicitly rerun for this revision.
 
 ## Current Linux verification / Текущая проверка Linux
 
-v0.578: complete default Linux Release C89/C++98 build, including examples;
-1212 passing tests and 4 explicit skips out of 1216 registered. The skips require
+v0.579: complete default Linux Release C89/C++98 build, including examples;
+1216 passing tests and 4 explicit skips out of 1220 registered. The skips require
 native macOS ARM64/Intel, native Windows unwind, or an external speech SSIP endpoint.
-Five focused mixer/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
+Five focused timeline/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
 build with LeakSanitizer disabled. Desktop SDL is OFF in this full run; earlier
 native X11/Cairo evidence below belongs to v0.577 and was not rerun here.
 
-Полная текущая Linux Release-сборка с examples: 1212 успешных, 4 пропуска из
-1216. ASan/UBSan: 5/5 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
+Полная текущая Linux Release-сборка с examples: 1216 успешных, 4 пропуска из
+1220. ASan/UBSan: 5/5 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
 foreign OS в этом прогоне не выполнялись. Числа не доказывают полноту SWF.
 
 ## Current work and next boundary / Текущая работа и следующий рубеж
 
-v0.578 develops independent software event polyphony on top of prepared voices.
-Next: deliver actually executed root/sprite timeline events to the host, convert
-mixed source geometries, then integrate the output-device clock. Stream codecs
-and sample scheduling remain separate open work; copied MP3 SampleCount is not a
-verified decoded frame count.
+v0.579 connects actual root sound-frame entry to host mixing. Next: sprite
+sound and linkage, a more efficient prepared source index, mixed source-rate/
+channel conversion, and an output-device clock. Compressed stream decoding,
+reference movies and native platform acceptance remain separate open work.
 
-v0.578 даёт software polyphony с явной подачей событий. Следующий рубеж — доставка
-реально исполняемых timeline-событий, преобразование геометрии и device clock.
-Streaming codecs и автоматическая синхронизация пока не реализованы этим API.
+v0.579 доставляет корневые события реального входа в кадр. Следующие рубежи:
+sprite/linkage, prepared source index, resampling и device clock. Все девять
+стадий остаются открыты; старые числа не доказывают полноту SWF.
 
 ## v0.577 desktop checkpoint / Десктопный запуск
 
@@ -87,3 +86,21 @@ are checked separately. No native device or foreign-OS acceptance is claimed.
 звуковые рубежи: фактическая доставка исполняемых timeline-событий в host mixer,
 разные частоты/каналы, системный device clock, streaming codec/A/V integration.
 Общее число тестов не заменяет эти условия и оригинальные Flash-эталоны.
+
+## v0.579 root frame sound delivery / Звуки фактического входа в кадр
+
+Root DefineSound/StartSound now import and deliver ordered event ordinals through
+a synchronous host callback before DoAction. Visual seek reconstruction does not
+replay skipped sound frames. Loaded source bytes are checked against the imported
+graph, including after reload or transport; callback pointers remain host-local.
+The C89 mixer tutorial adds --timeline-demo with real frame-driven submission.
+See [EN](MOVIECLIP_SOUND.md) / [RU](MOVIECLIP_SOUND.ru.md).
+
+Следующий рубеж: sprite sound, эффективный prepared source index, resampling и
+подключение к реальному device clock. Callback сам не создаёт устройство и не
+синхронизирует видео/звук. Все девять стадий остаются открыты.
+
+Final v0.579 verification: full default Linux Release build/CTest, 1216 passed
+and 4 explicit skips out of 1220. Focused timeline/OOM/transport/validation/tutorial
+tests: 5/5 in ASan/UBSan, LeakSanitizer disabled. No SDL window, audible device
+or foreign native rerun is claimed. Source links and example contracts pass.

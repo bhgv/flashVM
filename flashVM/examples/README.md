@@ -115,7 +115,7 @@
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
-    - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>Порционный StartSound-микшер: перекрытие, stop и независимость от VM</em></small>
+    - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline callback, stop и независимость от VM</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
   - [speech](#group-multimedia-speech)
@@ -502,7 +502,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L118) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L119) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -1249,7 +1249,9 @@ SyncNoMultiple, суммирует с единственным насыщени�
 одного ID и продолжает читать другой после уничтожения исходной VM.
 Без выходного пути работает в памяти; с явным путём пишет настоящий native S16
 PCM через fopen/fwrite/fclose. Каждая строка кода подписана; assert нет.
-Это явное управление событиями, не автоматический timeline/device clock.
+--timeline-demo доставляет четыре StartSound из реального входа в кадр через
+host callback и pin-ит root; оба режима проверяются по точному PCM файлу.
+Автоматического device clock нет.
 Подробные контракты: [SWF_SOUND_MIXER.md](../doc/SWF_SOUND_MIXER.md).
 
 <a id="example-multimedia-swf_mix"></a>
@@ -1337,7 +1339,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../include/flashvm/multimedia.h#L67) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:119](../src/core/runtime.hpp#L119) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_video_present` | function | [include/flashvm/multimedia.h:136](../include/flashvm/multimedia.h#L136) |

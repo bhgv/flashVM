@@ -1,6 +1,8 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "format_constants.h"
+#include "sound_event_constants.h"
+#include "../standard/movieclip_sound_constants.h"
 #include "decode.hpp"
 #include "document.hpp"
 #include "../avm1/block.hpp"
@@ -71,7 +73,8 @@ FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned i
             out.character = (unsigned int)reader.integer(2);
         out.depth = (unsigned int)reader.integer(2);
         if (!reader.finished() || !out.depth ||
-            (tag == FVM_SWF_TAG_REMOVE_OBJECT && known.find(out.character) == known.end()))
+            (tag == FVM_SWF_TAG_REMOVE_OBJECT &&
+             (known.find(out.character) == known.end() || !known.find(out.character)->second)))
             return FVM_INVALID_ARGUMENT;
         return FVM_OK;
     }
@@ -111,23 +114,34 @@ FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned i
             return FVM_INVALID_ARGUMENT;
     }
     if (!reader.finished() || !out.depth ||
-        ((out.flags & 2) && known.find(out.character) == known.end()))
+        ((out.flags & 2) &&
+         (known.find(out.character) == known.end() || !known.find(out.character)->second)))
         return FVM_INVALID_ARGUMENT;
     return FVM_OK;
 }
 
 /* Parsed timeline data contains offsets only; it owns no interpreter objects. */
+struct SoundRange
+{
+    unsigned int frame;    /* Actual root frame containing this StartSound. */
+    unsigned long ordinal; /* Source root StartSound index, not a sound resource ID. */
+};
+
+/* Parsed timeline with independently ordered sound notifications. */
 struct Timeline
 {
     unsigned int id;     /* Zero identifies the root; nonzero IDs identify sprites. */
     unsigned int frames; /* Declared number of frames. */
+    fvm_detail::vector<SoundRange>
+        sounds;               /* Notifications, never replayed as visual reconstruction controls. */
+    bool sound_source;        /* Root dictionary needs matching canonical context bytes. */
     FVM_SWFDocument document; /* Borrowed root metadata copied into managed frame storage later. */
     fvm_detail::vector<Placement> controls;  /* Ordered display-list controls for all frames. */
     fvm_detail::vector<ActionRange> actions; /* Independent DoAction byte ranges. */
     fvm_detail::vector<ActionRange> initializers; /* Root DoInitAction blocks in source order. */
     fvm_detail::vector<fvm_detail::string> labels; /* Optional label at each frame. */
     /* Initialize a parsed timeline without allocating managed state. */
-    Timeline() : id(0), frames(0)
+    Timeline() : id(0), frames(0), sound_source(false)
     {
     }
 };
@@ -140,8 +154,8 @@ struct Export
 };
 
 /* Validate one root or sprite control stream, including every nested tag boundary. */
-FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size_t at, size_t end,
-                            unsigned int version, Timeline &timeline,
+FVM_Result inspect_timeline(FVM_Context *context, const fvm_detail::vector<unsigned char> &bytes,
+                            size_t at, size_t end, unsigned int version, Timeline &timeline,
                             fvm_detail::vector<Timeline> *sprites,
                             fvm_detail::vector<Export> *exports,
                             fvm_detail::vector<FVM_SWFShape> *shapes,
@@ -204,9 +218,48 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
         if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 ||
                          tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS || tag == FVM_SWF_TAG_JPEG_TABLES))
             return FVM_INVALID_ARGUMENT;
-        if (tag == FVM_SWF_TAG_FILE_ATTRIBUTES || tag == FVM_SWF_TAG_METADATA ||
-            tag == FVM_SWF_TAG_ENABLE_DEBUGGER || tag == FVM_SWF_TAG_ENABLE_DEBUGGER2 ||
-            tag == FVM_SWF_TAG_DEBUG_ID)
+        if (tag == FVM_SWF_TAG_DEFINE_SOUND || tag == FVM_SWF_SOUND_EVENT_TAG)
+        {
+            /* Root ordinals address the context inspection API; sprite sounds need their own
+             * namespace. */
+            if (!sprites)
+                return FVM_UNSUPPORTED;
+            if (!timeline.sound_source &&
+                (!context->swf_loaded || context->swf_bytes.size() != bytes.size() ||
+                 std::memcmp(context->swf_bytes.begin(), bytes.begin(), bytes.size())))
+                return FVM_INVALID_ARGUMENT;
+            timeline.sound_source = true;
+            if (tag == FVM_SWF_TAG_DEFINE_SOUND)
+            {
+                if (count < 2)
+                    return FVM_INVALID_ARGUMENT;
+                unsigned int id = (unsigned int)little(p + at, 2);
+                if (known.find(id) != known.end())
+                    return FVM_INVALID_ARGUMENT;
+                FVM_SWFSoundInfo sound;
+                sound.struct_size = sizeof(sound);
+                FVM_Result status = fvm_swf_sound_info(context, id, &sound);
+                if (status != FVM_OK)
+                    return status;
+                known[id] =
+                    false; /* Occupy the dictionary ID without making sound a display symbol. */
+            }
+            else
+            {
+                FVM_SWFSoundEvent event;
+                event.struct_size = sizeof(event);
+                FVM_Result status = fvm_swf_sound_event_at(context, timeline.sounds.size(), &event);
+                if (status != FVM_OK || event.frame != frame)
+                    return status != FVM_OK ? status : FVM_INVALID_ARGUMENT;
+                SoundRange range;
+                range.frame = frame;
+                range.ordinal = (unsigned long)timeline.sounds.size();
+                timeline.sounds.push_back(range);
+            }
+        }
+        else if (tag == FVM_SWF_TAG_FILE_ATTRIBUTES || tag == FVM_SWF_TAG_METADATA ||
+                 tag == FVM_SWF_TAG_ENABLE_DEBUGGER || tag == FVM_SWF_TAG_ENABLE_DEBUGGER2 ||
+                 tag == FVM_SWF_TAG_DEBUG_ID)
         {
             if (!sprites)
                 return FVM_INVALID_ARGUMENT;
@@ -282,8 +335,8 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 return FVM_INVALID_ARGUMENT;
             if (known.find(sprite.id) != known.end())
                 return FVM_INVALID_ARGUMENT;
-            FVM_Result r = inspect_timeline(bytes, at + 4, at + count, version, sprite, 0, 0, 0, 0,
-                                            bitmap_limit, known);
+            FVM_Result r = inspect_timeline(context, bytes, at + 4, at + count, version, sprite, 0,
+                                            0, 0, 0, bitmap_limit, known);
             if (r != FVM_OK)
                 return r;
             sprites->push_back(sprite);
@@ -332,6 +385,9 @@ FVM_Result inspect_timeline(const fvm_detail::vector<unsigned char> &bytes, size
                 pos = (size_t)(zero - p) + 1;
                 if (known.find(asset.id) == known.end())
                     return FVM_INVALID_ARGUMENT;
+                /* Sound linkage needs Sound.attachSound support, not a visual symbol binding. */
+                if (!known.find(asset.id)->second)
+                    return FVM_UNSUPPORTED;
                 exports->push_back(asset);
             }
             if (pos != at + count)
@@ -550,7 +606,29 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
         if (r != FVM_OK)
             return r;
     }
-    size_t next = 0, next_control = 0;
+    size_t next = 0, next_control = 0, next_sound = 0;
+    if (timeline.sound_source)
+    {
+        /* [GC:] ASCII hex retains arbitrary source bytes in the UTF-8 managed/transport graph. */
+        if (bytes.size() > ((size_t)-1 - 1) / FVM_MOVIECLIP_SOUND_HEX_PER_BYTE)
+            return FVM_OUT_OF_MEMORY;
+        const char *digits = "0123456789abcdef";
+        fvm_detail::vector<char> hex(bytes.size() * FVM_MOVIECLIP_SOUND_HEX_PER_BYTE + 1);
+        for (size_t i = 0; i < bytes.size(); ++i)
+        {
+            hex[i * FVM_MOVIECLIP_SOUND_HEX_PER_BYTE] =
+                digits[bytes[i] >> FVM_MOVIECLIP_SOUND_NIBBLE_SHIFT];
+            hex[i * FVM_MOVIECLIP_SOUND_HEX_PER_BYTE + 1] =
+                digits[bytes[i] & FVM_MOVIECLIP_SOUND_NIBBLE_MASK];
+        }
+        hex[hex.size() - 1] = 0;
+        FVM_Value source;
+        fvm_value_string(&source, hex.begin());
+        r = fvm_object_set(c, frames, "sound_source", &source);
+        if (r != FVM_OK)
+            return r;
+    }
+
     if (timeline.document.debugger_tag)
     {
         FVM_Value value;
@@ -603,6 +681,21 @@ FVM_Result build_frames(FVM_Context *c, const fvm_detail::vector<unsigned char> 
                 return r;
             /* [GC:] Publish the control in input order before creating the next one. */
             controls->indexed[(unsigned long)controls->indexed.size()] = managed(control);
+        }
+        if (next_sound < timeline.sounds.size() && timeline.sounds[next_sound].frame == frame)
+        {
+            FVM_Object *sounds = 0;
+            r = fvm_object_create(c, &sounds);
+            if (r != FVM_OK)
+                return r;
+            /* [GC:] Retain only scalar event ordinals in the already rooted frame graph. */
+            record->properties["sounds"] = managed(sounds);
+            while (next_sound < timeline.sounds.size() &&
+                   timeline.sounds[next_sound].frame == frame)
+            {
+                fvm_value_number(&value, timeline.sounds[next_sound++].ordinal);
+                sounds->indexed[(unsigned long)sounds->indexed.size()] = value;
+            }
         }
         unsigned long index = 0;
         while (next < timeline.actions.size() && timeline.actions[next].frame == frame)
@@ -797,7 +890,7 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         fvm_detail::vector<FVM_SWFBitmap> bitmaps;
         size_t start = 8 + (5 + 4 * (bytes[8] >> 3) + 7) / 8 + 4;
         fvm_detail::map<unsigned long, bool> known;
-        r = inspect_timeline(bytes, start, bytes.size(), info.version, main_timeline, &sprites,
+        r = inspect_timeline(c, bytes, start, bytes.size(), info.version, main_timeline, &sprites,
                              &exports, &shapes, &bitmaps, limit, known);
         if (r != FVM_OK)
             return r;

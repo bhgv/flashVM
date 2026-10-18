@@ -3124,6 +3124,14 @@ ActionScript-матрицы. Это развитие стадий 3/4/8/9, не 
 частоты/каналы, compressed streams и нативная приёмка остальных ОС ещё открыты.
 Все девять этапов остаются незавершёнными. Результаты текущих прогонов:
 [ROADMAP_STATUS.md](ROADMAP_STATUS.md).
+## v0.579 — root timeline sound notifications
+
+Root DefineSound/StartSound import and synchronous host callback now deliver
+actual frame-entry events before DoAction. Pause/goto/loop routing, source
+identity, GC/graph transport, OOM and exception/reentry guards are covered.
+[English contracts](MOVIECLIP_SOUND.md) / [RU](MOVIECLIP_SOUND.ru.md).
+Sprite sound, streams, resampling, device clocks and foreign native acceptance
+remain open; no roadmap stage is closed by this change.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
