@@ -8,7 +8,7 @@ FVM_Result fvm_audio_channel_stop(FVM_AudioChannel *channel) /* Retain the handl
     if (!channel->active) /* An inactive output has nothing acknowledged for stopping. */
         return FVM_OK; /* Avoid a redundant host callback. */
     FVM_AudioCallbackGuard guard(channel->context); /* [GC:] Block collection and channel mutation through the callback. */
-    FVM_Result result = channel->output.stop(channel->output.userdata); /* Stop and discard the host's pending output. */
+    FVM_Result result = fvm_audio_invoke_stop(channel->output.stop, channel->output.userdata); /* Stop and discard the host's pending output. */
     if (result == FVM_OK) /* A failed stop remains retryable. */
         channel->active = false; /* Remove acknowledged playback from future stop-all work. */
     return result; /* Preserve the host's exact error status. */

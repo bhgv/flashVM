@@ -63,7 +63,7 @@ catch-up burst. Activity/Surface/native thread принадлежат SDLActivit
 Короткий down/up между кадрами может проявиться только в счётчике; callbacks
 пользовательских обработчиков этот snapshot-механизм не вызывает.
 
-## Звук и владение
+## Звук и владение в v0.582 (изменения v0.583 ниже)
 
 [audio.c](../frontend/common/audio.c) проверяет [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L56). Для root
 событий без --mute создаёт SDL device 48000 Hz stereo, configured mixer на 32
@@ -107,6 +107,28 @@ xdotool и существующий DISPLAY (Xvfb допустим с явным
 sound-event counters обоих SWF в обоих режимах. Dummy audio подтверждает протокол,
 не слышимость на физическом endpoint. Кросс-компиляция не выдаётся за запуск на
 Windows/Android. [Текущие результаты](ROADMAP_STATUS.md); стадии остаются открыты.
+
+## Исправление звука Android в v0.583
+
+Пользователь сообщил о случайных стуках/треске в Android v0.582. Подача PCM из
+цикла рендеринга и фиксированный запас 2048 frames (около 43 мс) могли приводить
+к опустошению очереди при задержках рендеринга или увеличенном native-блоке.
+Это вероятный сценарий, а не подтверждённый на устройстве диагноз.
+
+Теперь отдельный SDL worker подаёт PCM блоками 1024 frames. Цель очереди —
+max(4800 frames, четыре фактических блока устройства); resume после двух блоков
+или 1024 frames. Worker просыпается каждые 5 мс, до восьми pump за проход.
+Submit, pause, stop и наблюдение очереди защищены mutex. VM/GC остаются в основном
+потоке. Запас увеличивает задержку; hard realtime и коррекция дрейфа A/V не заявлены.
+В --stats добавлены audio_underruns и sound_stops, в SDL log — фактические
+quantum/target/resume.
+
+StopSounds и stopAllSounds теперь очищают prepared mixer/queue через
+[привязки контекста](AUDIO_STOP_BINDINGS.ru.md), даже до первой записи PCM.
+Третий SWF 03-stop-sounds отменяет начальный тон и loop, затем звучат stereo/ADPCM.
+В меню три SWF × два режима. Старые скачанные Linux/Windows v0.582 не обновляются
+сами: их нужно пересобрать. Новый APK нужно прослушать на проблемном телефоне в
+обоих режимах и проверить уход в фон/возврат. Linux dummy-тест этого не заменяет.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

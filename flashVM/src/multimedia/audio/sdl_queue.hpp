@@ -10,6 +10,7 @@
 #include <SDL.h> /* Call the real installed SDL2 SDK. */
 struct FVM_SDLAudioQueue /* Own device lifetime independently of mixer/context/pump. */
 { /* Begin native SDL state. */
+    FVM_SDLAudioQueueInfo info; /* Immutable obtained geometry, including enlarged native callback quantum. */
     SDL_AudioDeviceID device; /* Own the explicit playback device until close. */
     bool faulted; /* A failed native write requires explicit clear/reset before trusting queue counts. */
     unsigned int frame_bytes; /* Native signed-short bytes per complete interleaved frame. */

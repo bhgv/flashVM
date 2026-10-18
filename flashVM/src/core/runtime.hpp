@@ -22,6 +22,7 @@
 #include "../details/hash_table.hpp"
 #include "../details/string.hpp"
 #include "../details/vector.hpp"
+struct FVM_AudioStopBinding; /* Native stop-control registrations have no managed values. */
 struct FVM_FontSource;
 struct FVM_Stack;
 struct FVM_Worker;
@@ -326,6 +327,7 @@ struct FVM_Context
         *movieclip_sound_userdata; /* Borrowed until callback replacement or context destruction. */
     bool movieclip_sound_busy;     /* Reject recursive delivery/source replacement during a
                                       notification. */
+    fvm_detail::vector<FVM_AudioStopBinding *> audio_stop_bindings; /* Context-owned, always-called native stop controls. */
     fvm_detail::vector<FVM_AudioChannel *> audio_channels; /* Context-owned registrations; callbacks borrow host userdata. */
     bool audio_busy; /* Reject nested channel mutation while a host output callback runs. */
     FVM_StageQuality stage_quality; /* Context-wide vector rendering policy, default HIGH. */

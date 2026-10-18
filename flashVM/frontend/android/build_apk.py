@@ -63,6 +63,12 @@ def main():
                          (component / 'external/zlib/upstream/LICENSE', 'zlib.txt'),
                          (args.sdl_source / 'LICENSE.txt', 'SDL2.txt')):
         shutil.copy2(source, licenses / name)
+    # Static libc++ and NDK runtime notices accompany the copied native code.
+    if args.strip:
+        notice = args.strip.resolve().parent.parent / 'NOTICE'
+        if not notice.is_file():
+            raise ValueError('Missing NDK toolchain NOTICE beside llvm-strip')
+        shutil.copy2(notice, licenses / 'Android-toolchain.txt')
     unsigned, aligned = work / 'unsigned.apk', work / 'aligned.apk'
     version = (component / 'VERSION.txt').read_text().strip()
     version_code = int(version.split('.')[1])

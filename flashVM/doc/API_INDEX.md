@@ -85,11 +85,11 @@ Root streaming-sound segments, frame blocks and bounded PCM reads:
 [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md), [MP3 prefix/encoded snapshots](SWF_STREAM_MP3.md), [swf_stream_sound.h](../include/flashvm/swf_stream_sound.h).
 
 Context audio registration and script stopping: [AUDIO_CHANNELS.md](AUDIO_CHANNELS.md).
-[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L83), [`fvm_audio_channel_stop`](../include/flashvm/multimedia.h#L85),
-[`fvm_audio_channel_close`](../include/flashvm/multimedia.h#L87), [`fvm_audio_channel_active`](../include/flashvm/multimedia.h#L89) and [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L91)
+[`fvm_audio_channel_create`](../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_write`](../include/flashvm/multimedia.h#L84), [`fvm_audio_channel_stop`](../include/flashvm/multimedia.h#L86),
+[`fvm_audio_channel_close`](../include/flashvm/multimedia.h#L88), [`fvm_audio_channel_active`](../include/flashvm/multimedia.h#L90) and [`fvm_audio_stop_all`](../include/flashvm/multimedia.h#L92)
 provide copied output tables, explicit ownership and shared StopSounds semantics.
 
-Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia.h#L76), [`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L78) —
+Native Linux output: [`fvm_audio_linux_alsa_open`](../include/flashvm/multimedia.h#L77), [`fvm_audio_linux_alsa_close`](../include/flashvm/multimedia.h#L79) —
 [static ALSA provider contracts](ALSA_AUDIO_OUTPUT.md).
 
 Loaded SWF audio resource/StartSound inspection and explicit PCM output: [`FVM_SWFSoundInfo`](../include/flashvm/swf_sound.h#L13),
@@ -108,7 +108,7 @@ Prepared independent sequential voices: [`FVM_SWFSoundVoice`](../src/swf/sound_v
 [`fvm_swf_sound_voice_close`](../include/flashvm/swf_sound.h#L84) — [incremental voice contracts](SWF_SOUND_VOICES.md).
 Source PCM is retained once; snapshot reads allocate nothing and outlive the VM.
 
-Portable bounded S16 summing: [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L130), [`FVM_MEDIA_AUDIO_MIX_MAX_INPUTS`](../include/flashvm/multimedia.h#L18) —
+Portable bounded S16 summing: [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L131), [`FVM_MEDIA_AUDIO_MIX_MAX_INPUTS`](../include/flashvm/multimedia.h#L19) —
 [AUDIO_MIXING.md](AUDIO_MIXING.md). Caller-aligned blocks, final-only saturation,
 short-tail silence and no allocation/implicit device or clock.
 
@@ -156,7 +156,7 @@ Legacy strict creation and info ABI remain unchanged; conversion is opt-in.
 [`FVM_AudioQueueBackend`](../include/flashvm/swf_sound_output.h#L16), [`FVM_SWFSoundOutputInfo`](../include/flashvm/swf_sound_output.h#L33), [`fvm_swf_sound_output_create`](../include/flashvm/swf_sound_output.h#L48),
 [`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L52), [`fvm_swf_sound_output_pause`](../include/flashvm/swf_sound_output.h#L54), [`fvm_swf_sound_output_info`](../include/flashvm/swf_sound_output.h#L56),
 [`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L58), [`fvm_swf_sound_output_close`](../include/flashvm/swf_sound_output.h#L61), [`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L68)
-and [`fvm_audio_sdl_queue_close`](../include/flashvm/swf_sound_output.h#L73): [individual EN contracts](SWF_SOUND_OUTPUT.md) /
+and [`fvm_audio_sdl_queue_close`](../include/flashvm/swf_sound_output.h#L83): [individual EN contracts](SWF_SOUND_OUTPUT.md) /
 [RU](SWF_SOUND_OUTPUT.ru.md), [C89 tutorial](../examples/multimedia/swf_audio_queue/README.md).
 Host-owned queue integration and software FIFO clock; automatic desktop A/V
 synchronization and exact hardware position remain open.
@@ -168,6 +168,12 @@ synchronization and exact hardware position remain open.
 This is host integration of the existing C ABI; HostInput is not the complete
 standard Flash Key/Mouse API. Native foreign-platform acceptance remains open.
 
+## Prepared output stop registration and device geometry
+
+- [`fvm_audio_stop_binding_create`](../include/flashvm/audio_stop.h#L14): context-owned stop registration; callbacks, ownership, errors and reentry in [AUDIO_STOP_BINDINGS.md](AUDIO_STOP_BINDINGS.md).
+- [`fvm_audio_stop_binding_close`](../include/flashvm/audio_stop.h#L17): detach without invoking stop; same [contract](AUDIO_STOP_BINDINGS.md).
+- [`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L81): copy immutable obtained rate/channels/device quantum; [SWF_SOUND_OUTPUT.md](SWF_SOUND_OUTPUT.md#obtained-device-geometry-v0583).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -177,31 +183,34 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:89](../include/flashvm/multimedia.h#L89) |
-| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:87](../include/flashvm/multimedia.h#L87) |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../include/flashvm/multimedia.h#L81) |
-| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:85](../include/flashvm/multimedia.h#L85) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
-| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:78](../include/flashvm/multimedia.h#L78) |
-| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:76](../include/flashvm/multimedia.h#L76) |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:73](../include/flashvm/swf_sound_output.h#L73) |
+| `fvm_audio_channel_active` | function | [include/flashvm/multimedia.h:90](../include/flashvm/multimedia.h#L90) |
+| `fvm_audio_channel_close` | function | [include/flashvm/multimedia.h:88](../include/flashvm/multimedia.h#L88) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../include/flashvm/multimedia.h#L82) |
+| `fvm_audio_channel_stop` | function | [include/flashvm/multimedia.h:86](../include/flashvm/multimedia.h#L86) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
+| `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:79](../include/flashvm/multimedia.h#L79) |
+| `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:77](../include/flashvm/multimedia.h#L77) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:83](../include/flashvm/swf_sound_output.h#L83) |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
 | `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:68](../include/flashvm/swf_sound_output.h#L68) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
+| `fvm_audio_stop_binding_close` | function | [include/flashvm/audio_stop.h:17](../include/flashvm/audio_stop.h#L17) |
+| `fvm_audio_stop_binding_create` | function | [include/flashvm/audio_stop.h:14](../include/flashvm/audio_stop.h#L14) |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
-| `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
+| `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:59](../include/flashvm/movieclip.h#L59) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:119](../src/core/runtime.hpp#L119) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:120](../src/core/runtime.hpp#L120) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
 | `fvm_register_function` | function | [include/flashvm/value.h:101](../include/flashvm/value.h#L101) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |

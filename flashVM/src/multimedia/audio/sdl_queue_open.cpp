@@ -27,10 +27,13 @@ extern "C" FVM_Result fvm_audio_sdl_queue_open(unsigned int rate, unsigned int c
     desired.samples = (Uint16)samples; /* Select the bounded SDK playback buffer. */
     SDL_AudioDeviceID device = SDL_OpenAudioDevice(0, 0, &desired, &obtained, 0); /* Open default output, allowing no format changes. */
     if (!device) { SDL_QuitSubSystem(SDL_INIT_AUDIO); return FVM_ERROR; } /* Balance initialization on native failure. */
-    if (obtained.freq != desired.freq || obtained.channels != desired.channels || obtained.format != desired.format) /* Verify SDK contract. */
+    if (!obtained.samples || obtained.freq != desired.freq || obtained.channels != desired.channels || obtained.format != desired.format) /* Verify SDK contract. */
     { SDL_CloseAudioDevice(device); SDL_QuitSubSystem(SDL_INIT_AUDIO); return FVM_UNSUPPORTED; } /* Reject unexpected geometry. */
     FVM_SDLAudioQueue *queue = new (std::nothrow) FVM_SDLAudioQueue; /* Allocate only after acquiring a real device. */
     if (!queue) { SDL_CloseAudioDevice(device); SDL_QuitSubSystem(SDL_INIT_AUDIO); return FVM_OUT_OF_MEMORY; } /* Release partial resources. */
+    queue->info.struct_size = sizeof(queue->info); /* Publish a complete immutable device-facts layout. */
+    queue->info.sample_rate = (unsigned int)obtained.freq; queue->info.channels = obtained.channels; /* Retain actual input geometry. */
+    queue->info.device_buffer_frames = obtained.samples; /* Android may enlarge this beyond desired.samples. */
     queue->faulted = false; /* Start with trustworthy native FIFO accounting. */
     queue->device = device; /* Transfer native device ownership to the unpublished handle. */
     queue->frame_bytes = channels * (unsigned int)sizeof(short); /* Store complete-frame byte accounting. */

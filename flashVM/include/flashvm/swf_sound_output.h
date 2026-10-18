@@ -1,4 +1,4 @@
-/* FlashVM: explicit main-thread PCM queue pumping and dequeue-clock observation. */
+/* FlashVM: explicit serialized native PCM queue pumping and dequeue-clock observation. */
 #ifndef FLASHVM_SWF_SOUND_OUTPUT_H
 #define FLASHVM_SWF_SOUND_OUTPUT_H /* Guard the independent C89 queue/output ABI. */
 #include "swf_sound_mixer.h"
@@ -69,6 +69,16 @@ FVM_API FVM_Result fvm_audio_sdl_queue_open(unsigned int rate, unsigned int chan
                                             unsigned int device_buffer_frames,
                                             FVM_SDLAudioQueue **out,
                                             FVM_AudioQueueBackend *backend);
+/* Immutable device facts; SDL may enlarge its requested callback block on Android. */
+typedef struct FVM_SDLAudioQueueInfo
+{
+    unsigned long struct_size; /* Required sizeof(FVM_SDLAudioQueueInfo). */
+    unsigned int sample_rate; /* Actual native S16 frames per second. */
+    unsigned int channels; /* Actual native interleaved channels. */
+    unsigned int device_buffer_frames; /* Obtained SDL callback quantum, not software FIFO depth. */
+} FVM_SDLAudioQueueInfo;
+/* Copy immutable obtained geometry without a callback or allocation; errors preserve output. */
+FVM_API FVM_Result fvm_audio_sdl_queue_info(const FVM_SDLAudioQueue *, FVM_SDLAudioQueueInfo *);
 /* Close the real device only after pump close. Null succeeds; no mixer/VM access. */
 FVM_API FVM_Result fvm_audio_sdl_queue_close(FVM_SDLAudioQueue *);
 #ifdef __cplusplus

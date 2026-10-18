@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create two independent SWF8 wire fixtures; no ActionScript compiler is required."""
+"""Create three independent SWF8 wire fixtures; no ActionScript compiler is required."""
 import math
 from pathlib import Path
 import struct
@@ -175,7 +175,7 @@ def adpcm_sound():
     return tag(DEFINE_SOUND, struct.pack('<HBI', 9, 0x1e, frames) + bits.bytes())
 
 
-def movie(interactive):
+def movie(interactive, stop_sounds=False):
     """120 frames: imported animation and sound controls, optionally native AVM1 input logic."""
     data = tag(BACKGROUND, bytes([24, 28, 40]))
     colors = ((255, 160, 40, 255), (40, 140, 255, 255), (255, 80, 160, 255),
@@ -210,17 +210,22 @@ def movie(interactive):
         if frame == 96:
             data += tag(START_SOUND, struct.pack('<HB', 9, 0))
         data += actions() if interactive else tag(DO_ACTION, push(1) + b'\x17\0')
+        if stop_sounds and frame in (0, 30):
+            # Frame zero tests cancellation before any PCM was ever queued; frame30 stops a live loop.
+            data += tag(DO_ACTION, b'\x09\0')
         data += tag(SHOW_FRAME)
     body = rect(WIDTH, HEIGHT) + struct.pack('<HH', FPS * 256, FRAMES) + data + tag(END)
     return b'FWS\x08' + struct.pack('<I', len(body) + 8) + body
 
 
 def main():
-    """Regenerate only the two explicitly named sibling SWF files."""
+    """Regenerate only the three explicitly named sibling SWF files."""
     folder = Path(__file__).resolve().parent
-    for name, interactive in (('01-animation-audio.swf', False), ('02-input-audio.swf', True)):
+    for name, interactive, stops in (('01-animation-audio.swf', False, False),
+                                     ('02-input-audio.swf', True, False),
+                                     ('03-stop-sounds.swf', False, True)):
         destination = folder / name
-        destination.write_bytes(movie(interactive))
+        destination.write_bytes(movie(interactive, stops))
         print(destination.name, destination.stat().st_size)
 
 

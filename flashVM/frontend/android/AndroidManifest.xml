@@ -3,7 +3,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.bhgv.flashvm">
     <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="35" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
-    <application android:label="FlashVM 0.582" android:allowBackup="false" android:theme="@android:style/Theme.Material.NoActionBar">
+    <application android:label="FlashVM 0.583" android:allowBackup="false" android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name=".MenuActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

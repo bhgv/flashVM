@@ -37,6 +37,13 @@ int main(int argc, char **argv)
     assert(SDL_SetMemoryFunctions(native_malloc, native_calloc, native_realloc, native_free) == 0);
 #endif
     assert(fvm_audio_sdl_queue_open(48000, 2, 64, &device, &backend) == FVM_OK && device);
+    FVM_SDLAudioQueueInfo native_info;
+    std::memset(&native_info,0x5a,sizeof(native_info));
+    native_info.struct_size=0;
+    FVM_SDLAudioQueueInfo preserved=native_info;
+    assert(fvm_audio_sdl_queue_info(device,&native_info)==FVM_INVALID_ARGUMENT && !std::memcmp(&native_info,&preserved,sizeof(native_info)));
+    native_info.struct_size=sizeof(native_info);
+    assert(fvm_audio_sdl_queue_info(device,&native_info)==FVM_OK && native_info.sample_rate==48000 && native_info.channels==2 && native_info.device_buffer_frames>0);
     assert(SDL_GetCurrentAudioDriver() && !std::strcmp(SDL_GetCurrentAudioDriver(), "dummy"));
     FVM_SWFSoundMixerConfig config = {sizeof(config), 48000, 2, 4, FVM_SWF_SOUND_MIXER_CONVERT};
     FVM_SWFSoundMixer *mixer = 0;

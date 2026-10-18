@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/4/7/9: Android producer and prepared StopSounds | Реализовано v0.583; Linux SDK tests | Native worker survives a 350 ms main-thread stall; obtained device quantum controls buffering. StopSounds/stopAllSounds clears prepared voices and FIFO. [EN](AUDIO_STOP_BINDINGS.md) / [RU](AUDIO_STOP_BINDINGS.ru.md). Android crackling report requires confirmation on the affected phone; no device fix acceptance claimed. |
 | 3/4/7/8/9: test player input/audio packages | Реализовано v0.582; Linux X11/software checked | HostInput extension, root event PCM8/PCM16/ADPCM, --mute, two runnable SWFs and Android SDLActivity menu. [EN](PLAYER_TEST_BUILDS.md) / [RU](PLAYER_TEST_BUILDS.ru.md). Windows x64 and Android ARM64 cross-built; APK signature/16 KiB alignment checked, no foreign runtime acceptance. Full Flash input API/AS Sound/StopSounds-to-player wiring and drift-corrected A/V sync remain open. |
 | 3/4/7/9: PCM queue and dequeue clock | Реализовано v0.581; Linux/software SDK protocol checked | Copied queue ABI, bounded pending/retry PCM, pause/clear/reset, source-independent mixer/timeline/JIT integration and optional real SDL2 bridge. [EN](SWF_SOUND_OUTPUT.md) / [RU](SWF_SOUND_OUTPUT.ru.md). Real SDK dummy-driver consumption and native allocation failure/reset checked; not DAC position, audible hardware, automatic desktop A/V scheduling or foreign native acceptance. |
 | 3/4/7: encoded stream snapshots and MP3 prefixes | Реализовано v0.576; Linux targeted checks | Independent opaque compressed bytes; UI16 declared count/SI16 seek, selected-prefix validation and source-VM-independent views. [SWF_STREAM_MP3.md](SWF_STREAM_MP3.md). No MPEG decoding, automatic MovieClip clock, physical audio or foreign-platform acceptance. |
@@ -4531,7 +4532,7 @@ PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
 
 ### v0.555 — allocation-free native S16 block mixing
 
-Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L130) validates every input before output,
+Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L131) validates every input before output,
 sums equal-rate/channel interleaved S16 exactly in a bounded signed-long
 accumulator and saturates once. Short/exhausted inputs become silence; a caller
 chooses output duration. No allocation, context, device, callbacks, resampling or
@@ -4699,7 +4700,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
 | `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
 | `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |

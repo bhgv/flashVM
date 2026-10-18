@@ -1,6 +1,7 @@
 /* Multimedia bridge ABI: host-owned sessions, independent of VM managed objects. */
 #ifndef FLASHVM_MULTIMEDIA_H /* Protect the public C89 declarations. */
 #define FLASHVM_MULTIMEDIA_H /* Declare the include guard. */
+#include "audio_stop.h" /* Expose context stop bindings separately from PCM channel activity. */
 #include "flashvm.h" /* Reuse result codes, export attributes and size_t. */
 #ifdef __cplusplus /* Keep the same symbols for C and C++ callers. */
 extern "C" /* Keep public symbols compatible with the C ABI. */
@@ -87,7 +88,7 @@ extern "C" /* Keep public symbols compatible with the C ABI. */
     FVM_API FVM_Result fvm_audio_channel_close(FVM_AudioChannel *); /* OS: host callback. */
     /* Return a copied active flag, without entering host callbacks. */
     FVM_API FVM_Result fvm_audio_channel_active(FVM_AudioChannel *, int *); /* OS: portable state query. */
-    /* Stop every active registered output in this context, attempting all after failures. */
+    /* Stop active PCM channels, then every prepared-output binding; attempt all after failures. */
     FVM_API FVM_Result fvm_audio_stop_all(FVM_Context *); /* OS: host callback; AVM1 StopSounds uses this operation. */
     typedef struct FVM_DeviceEvent /* Carry one host/device event independently of ActionScript dispatch. */
     { /* Carry one host/device event independently of ActionScript dispatch. */

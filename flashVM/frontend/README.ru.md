@@ -17,15 +17,15 @@ cmake --build build-desktop --target flashvm_player --parallel
 | [linux](linux/README.md) | Главный поток Linux; SDL2-окно X11/Wayland |
 | [windows](windows/README.md) | Win32: аргументы UTF-16 преобразуются в UTF-8 |
 | [macos](macos/README.md) | Главный поток macOS; окно Cocoa через SDL2 |
-| [android](android/README.md) | SDLActivity APK: два SWF и меню interpreter/JIT |
+| [android](android/README.md) | SDLActivity APK: три SWF и меню interpreter/JIT |
 | [common](common/player.c) | Общие параметры, жизненный цикл VM, таймер и вывод SDL2 |
 | [tests](tests/smoke.py) | CLI/таймер и явно включаемые тесты настоящего окна |
 
 [Полное руководство: ключи, API, исходники и ограничения](../doc/DESKTOP_FRONTEND.ru.md).
 Один файл по умолчанию зациклен. Несколько файлов запускаются последовательно:
 каждому отводится число тиков, указанное как число кадров SWF. Escape/закрытие
-окна завершает весь список. v0.582 добавляет HostInput snapshots и настоящий
+окна завершает весь список. v0.583 добавляет HostInput snapshots и настоящий
 root PCM/ADPCM event output через опциональный SDL2 audio.
-[Пакеты и тесты](../doc/PLAYER_TEST_BUILDS.ru.md), [два SWF](../examples/player/animation_audio/README.md).
+[Пакеты и тесты](../doc/PLAYER_TEST_BUILDS.ru.md), [три SWF](../examples/player/animation_audio/README.md).
 Автоматический A/V sync, полные Flash Key/Mouse/button handlers и browser остаются
 открытыми. Windows/Android cross builds не заменяют нативную runtime приёмку.

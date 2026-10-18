@@ -108,7 +108,7 @@ Every operation runs on the serialized host thread; no API owns a borrowed mixer
 | [`fvm_swf_sound_output_stop`](../../../include/flashvm/swf_sound_output.h#L58) | Pauses/clears, stops all voices and resets epoch; clear error leaves paused recoverable state. [Stop](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
 | [`fvm_swf_sound_output_close`](../../../include/flashvm/swf_sound_output.h#L61) | Frees pending/producer only, no callbacks/device/mixer ownership; null allowed. [Close](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
 | [`fvm_audio_sdl_queue_open`](../../../include/flashvm/swf_sound_output.h#L68) | Synchronously acquires a real paused playback device and callback table; may fail/UNSUPPORTED. [SDL](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
-| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L73) | Releases device and subsystem reference after output close; null succeeds, no VM access. [SDL cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
+| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L83) | Releases device and subsystem reference after output close; null succeeds, no VM access. [SDL cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
 | [`fvm_swf_sound_mixer_create_configured`](../../../include/flashvm/swf_sound_mixer.h#L37) | Allocates fixed slots with explicit 48000 Hz conversion policy, here empty stereo silence; caller owns mixer. [Configured creation](../../../doc/SWF_SOUND_CONVERSION.md). |
 | [`fvm_swf_sound_mixer_close`](../../../include/flashvm/swf_sound_mixer.h#L61) | Releases all software voices and slots after producer close; independent native ownership. [Mixer cleanup](../../../doc/SWF_SOUND_MIXER.md). |
 
@@ -123,7 +123,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:73](../../../include/flashvm/swf_sound_output.h#L73) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:83](../../../include/flashvm/swf_sound_output.h#L83) |
 | `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:68](../../../include/flashvm/swf_sound_output.h#L68) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:61](../../../include/flashvm/swf_sound_mixer.h#L61) |
 | `fvm_swf_sound_mixer_create_configured` | function | [include/flashvm/swf_sound_mixer.h:37](../../../include/flashvm/swf_sound_mixer.h#L37) |

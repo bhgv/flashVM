@@ -22,14 +22,14 @@ public final class MenuActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(24, 24, 24, 24);
         TextView help = new TextView(this);
-        help.setText("FlashVM 0.582 · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
+        help.setText("FlashVM 0.583 · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
                      "Для стрелок нужна физическая клавиатура. Назад — выйти из теста. " +
                      "Звук: PCM8 mono / PCM16 stereo / ADPCM. JIT может использовать fallback.");
         layout.addView(help);
         final CheckBox mute = new CheckBox(this);
         mute.setText("Без звука / Mute");
         layout.addView(mute);
-        for (final String movie : new String[]{"01-animation-audio.swf", "02-input-audio.swf"}) {
+        for (final String movie : new String[]{"01-animation-audio.swf", "02-input-audio.swf", "03-stop-sounds.swf"}) {
             for (final boolean jit : new boolean[]{false, true}) {
                 Button button = new Button(this);
                 button.setText(movie + " · " + (jit ? "JIT" : "Interpreter"));

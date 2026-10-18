@@ -1,7 +1,7 @@
 # Android ARM64 test player / Тестовый плеер
 
-v0.582 adds a real SDLActivity/Surface/native APK host, with menu selection for
-[two bundled SWFs](../../examples/player/animation_audio/README.md) and
+v0.582 introduced a real SDLActivity/Surface/native APK host, with menu selection for
+[three bundled SWFs](../../examples/player/animation_audio/README.md) and
 interpreter/JIT. Android 6/API23+, arm64-v8a. This is not a desktop main stub:
 [main.c](main.c) exports SDL_main from libflashvm_android.so;
 [java/](java/org/bhgv/flashvm/MenuActivity.java) contains the menu and
@@ -51,7 +51,7 @@ cmake --install /tmp/fvm-sdl-android
 cmake -S flashVM -B /tmp/fvm-android -DCMAKE_TOOLCHAIN_FILE="$FVM_NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-23 -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON -DANDROID_STL=c++_static -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_ENABLE_SDL_AUDIO=ON -DSDL2_DIR=/tmp/fvm-android-sdl/lib/cmake/SDL2 -DFVM_BUILD_TESTS=OFF -DFVM_BUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release
 cmake --build /tmp/fvm-android --target flashvm_player --parallel
 
-python3 flashVM/frontend/android/build_apk.py --native /tmp/fvm-android/frontend/libflashvm_android.so --sdl-lib /tmp/fvm-android-sdl/lib/libSDL2.so --sdl-source "$FVM_SDL_SOURCE" --android-jar "$FVM_ANDROID_JAR" --build-tools "$FVM_BUILD_TOOLS" --java-home "$FVM_JAVA_HOME" --work /tmp/fvm-apk --output "$PWD/FlashVM-player-android-arm64-v0.582.apk" --strip "$FVM_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+python3 flashVM/frontend/android/build_apk.py --native /tmp/fvm-android/frontend/libflashvm_android.so --sdl-lib /tmp/fvm-android-sdl/lib/libSDL2.so --sdl-source "$FVM_SDL_SOURCE" --android-jar "$FVM_ANDROID_JAR" --build-tools "$FVM_BUILD_TOOLS" --java-home "$FVM_JAVA_HOME" --work /tmp/fvm-apk --output "$PWD/FlashVM-player-android-arm64-v0.583.apk" --strip "$FVM_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 ```
 
 Use the NDK host-tag path for your actual build OS in --strip. `--strip` is optional.
@@ -72,7 +72,7 @@ work/build output out of the source repository. Libraries are copied before stri
 При ошибке приложите logcat (фильтр FlashVM/SDL/AndroidRuntime). Например, с ПК:
 
 ```sh
-adb install -r FlashVM-player-android-arm64-v0.582.apk
+adb install -r FlashVM-player-android-arm64-v0.583.apk
 adb logcat -v threadtime
 ```
 
@@ -81,3 +81,14 @@ mappings or use per-body interpreter fallback. `--stats` logs actual counts on
 exit, not merely the selected menu label. No phone/Android emulator execution or
 physical audio acceptance was performed in the build environment. APK signing,
 16 KiB alignment and an ARM64 ELF are build evidence only.
+
+## v0.583 audio / Звук
+
+The new APK uses a native PCM worker and reserve based on the obtained SDL device
+block, addressing render-thread starvation reported as Android crackling.
+[EN details](../../doc/PLAYER_TEST_BUILDS.md#v0583-android-audio-correction) /
+[RU](../../doc/PLAYER_TEST_BUILDS.ru.md#исправление-звука-android-в-v0583).
+Three movies × two modes; the third exercises prepared StopSounds. Reuse the same
+`--work` directory to retain the disposable keystore and install an update over
+your previous test APK. The packager copies the NDK toolchain NOTICE beside
+`--strip`; keep that NOTICE with the supplied NDK. Device listening remains required.

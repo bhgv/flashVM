@@ -4,7 +4,7 @@
 
 AVM1 StopSounds (0x09) now lowers to the direct [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) semantic
 helper. [fvm_jit_decode](../src/jit/decode.cpp#L148) emits a normal source checkpoint followed by a fixed
-helper call. It invokes [fvm_audio_stop_all](../include/flashvm/multimedia.h#L91) exactly as the interpreter does;
+helper call. It invokes [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) exactly as the interpreter does;
 it does not dispatch bytecode from machine code. There are no operands, no
 pushed result and no new public ABI. Lower stack values remain intact.
 
@@ -17,7 +17,7 @@ outputs or [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) snapshots are unto
 channel registrations, free userdata, resample/mix audio or advance MovieClip.
 Actual playback/discard remains the host output's responsibility.
 
-[GC:] [fvm_audio_stop_all](../include/flashvm/multimedia.h#L91) holds [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L19) across the complete stable
+[GC:] [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) holds [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L27) across the complete stable
 registry. GC collection, context destruction and nested channel mutation are
 blocked during callbacks. Metadata queries can inspect previous acknowledged
 active state. Host userdata remains owned by the host until channel/context
@@ -35,7 +35,7 @@ handling use the shared JIT path before the stop callback.
 ## Русский
 
 StopSounds (0x09) компилируется в прямой вызов [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) после обычного
-source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flashvm/multimedia.h#L91), как интерпретатор; нет
+source checkpoint. Helper вызывает [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92), как интерпретатор; нет
 вложенного bytecode dispatch, новых публичных функций, аргументов или результата
 на стеке. Нижние операнды сохраняются.
 
@@ -46,7 +46,7 @@ inactive; неудачные остаются active для явного пов�
 незарегистрированные outputs и [FVM_SWFSoundVoice](../src/swf/sound_voice.cpp#L9) snapshots не затрагиваются.
 Регистрации и userdata остаются живы; MovieClip clock и mixer не запускаются.
 
-[GC:] [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L19) удерживает registry стабильным и запрещает сборку,
+[GC:] [FVM_AudioCallbackGuard](../src/multimedia/audio/channel.hpp#L27) удерживает registry стабильным и запрещает сборку,
 уничтожение context и повторные create/write/stop/close во время callback.
 Запрос active разрешён и видит ранее подтверждённое состояние. Userdata —
 собственность host до завершения cleanup. Callback выполняется синхронно на
@@ -98,8 +98,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
-| `FVM_AudioCallbackGuard` | class | [src/multimedia/audio/channel.hpp:19](../src/multimedia/audio/channel.hpp#L19) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
+| `FVM_AudioCallbackGuard` | class | [src/multimedia/audio/channel.hpp:27](../src/multimedia/audio/channel.hpp#L27) |
 | `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../include/flashvm/execution_mode.h#L71) |
 | `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
 | `fvm_jit_decode` | function | [src/jit/decode.cpp:148](../src/jit/decode.cpp#L148) |

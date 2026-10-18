@@ -254,7 +254,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         }
         if (!fvm_desktop_window_active(window))
         {
-            if (audio.output && !checked(fvm_swf_sound_output_pause(audio.output, 1),
+            if (audio.output && !checked(fvm_desktop_audio_pause(&audio, 1),
                                          "background audio pause", path))
                 goto cleanup;
             if (!fvm_desktop_window_events(window, FVM_DESKTOP_AUDIO_WAIT))
@@ -328,8 +328,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         stats.struct_size = sizeof(stats);
         if (!checked(fvm_execution_get_stats(context, &stats), "execution statistics", path))
             goto cleanup;
-        fprintf(stderr, "input_keys=%lu input_clicks=%lu sound_events=%lu audio_device=%d\n",
-                input.key_presses, input.clicks, audio.events, audio.device != 0);
+        fprintf(stderr, "input_keys=%lu input_clicks=%lu sound_events=%lu sound_stops=%lu audio_device=%d audio_underruns=%d\n",
+                input.key_presses, input.clicks, audio.events, audio.stops, audio.device != 0, SDL_AtomicGet(&audio.underruns));
         fprintf(stderr, "frames=%lu native=%lu interpreter=%lu fallbacks=%lu\n", ticks,
                 stats.native_entries, stats.interpreter_entries, stats.fallbacks);
     }

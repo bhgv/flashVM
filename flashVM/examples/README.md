@@ -107,6 +107,7 @@
     - [audio_channels](#example-multimedia-audio_channels) — <small><em>Регистрация PCM-выхода и остановка через AVM1</em></small>
     - [custom_audio_bridge](#example-multimedia-custom_audio_bridge) — <small><em>Свой источник PCM через stdio</em></small>
     - [custom_video_output](#example-multimedia-custom_video_output) — <small><em>Свой вывод RGBA в реальный PPM файл</em></small>
+    - [stop_binding](#example-multimedia-stop_binding) — <small><em>Остановка подготовленного звука через stopAllSounds</em></small>
   - [decoding](#group-multimedia-decoding)
     - [ffmpeg_decode](#example-multimedia-ffmpeg_decode) — <small><em>FFmpeg: декодирование файлов и явная камера</em></small>
     - [swf_audio](#example-multimedia-swf_audio) — <small><em>DefineSound/StartSound: ресурсы, события и экспорт PCM</em></small>
@@ -505,7 +506,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L119) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L120) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -1161,12 +1162,22 @@ FILE и освобождает malloc. В session копируется табл�
 
 Свой вывод RGBA в реальный PPM файл. Исполняемый C89 учебник: [README](multimedia/custom_video_output/README.md), [main.c](multimedia/custom_video_output/main.c).
 
-Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L67).write поверх реальных fprintf/fwrite.
-Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L136)
+Показывает написание [FVM_MediaOutput](../include/flashvm/multimedia.h#L68).write поверх реальных fprintf/fwrite.
+Стековый RGBA8 кадр 2×1 содержит красный и зелёный пиксели. [fvm_video_present](../include/flashvm/multimedia.h#L137)
 проверяет размер/stride; callback пишет PPM P6 и отбрасывает alpha. Файл создаётся
 только по явному аргументу; существующий файл по этому пути заменяется. Временный
 буфер не сохраняется после возврата callback. FILE принадлежит main и закрывается
 даже при неуспешной записи; проверяется также ошибка flush/close.
+
+<a id="example-multimedia-stop_binding"></a>
+#### stop_binding
+
+Привязка собственного подготовленного native-аудио к stopAllSounds контекста.
+Исполняемый C89 пример без устройства: [README](multimedia/stop_binding/README.md),
+[main.c](multimedia/stop_binding/main.c). `--demo` показывает `pending=0 stops=1`.
+Объясняет borrowed userdata, detach до освобождения и очистку без первой записи PCM.
+Функции API с индивидуальными описаниями перечислены в README;
+[контракт](../doc/AUDIO_STOP_BINDINGS.ru.md). Каждая строка подписана, assertions нет.
 
 <a id="group-multimedia-decoding"></a>
 ### decoding
@@ -1232,7 +1243,7 @@ source geometry от advisory playback и среднего числа samples. �
 
 Свой опрос устройств через Linux evdev. Исполняемый C89 учебник: [README](multimedia/system_devices/README.md), [main.c](multimedia/system_devices/main.c).
 
-Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L101).poll. Main явно
+Показывает адаптер реальной системной очереди к [FVM_DeviceBridge](../include/flashvm/multimedia.h#L102).poll. Main явно
 открывает указанный /dev/input/eventN с O_RDONLY|O_NONBLOCK, хранит fd и передаёт
 его адрес через userdata. Callback не владеет fd и делегирует read нативному
 переходнику. После максимум 64 polling calls main закрывает fd и проверяет close.
@@ -1368,14 +1379,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:101](../include/flashvm/multimedia.h#L101) |
+| `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:102](../include/flashvm/multimedia.h#L102) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../include/flashvm/multimedia.h#L67) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:119](../src/core/runtime.hpp#L119) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:120](../src/core/runtime.hpp#L120) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
-| `fvm_video_present` | function | [include/flashvm/multimedia.h:136](../include/flashvm/multimedia.h#L136) |
+| `fvm_video_present` | function | [include/flashvm/multimedia.h:137](../include/flashvm/multimedia.h#L137) |
 <!-- source-links:end -->
 
 <a id="glossary"></a>
@@ -1459,6 +1470,7 @@ Source line links describe the current checkout, including in historical notes.
 - [speech_macos — multimedia/speech_macos](#example-multimedia-speech_macos)
 - [speech_stt — multimedia/speech_stt](#example-multimedia-speech_stt)
 - [speech_tts — multimedia/speech_tts](#example-multimedia-speech_tts)
+- [stop_binding — multimedia/stop_binding](#example-multimedia-stop_binding)
 - [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
 - [sqlite — extending/sqlite](#example-extending-sqlite)
 - [stack_c — extending/stack_c](#example-extending-stack_c)

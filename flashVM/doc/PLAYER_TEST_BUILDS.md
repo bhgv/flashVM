@@ -69,7 +69,7 @@ Mouse broadcaster API. Arbitrary SWFs expecting those interfaces are not promise
 compatible. No user event handlers are dispatched by this snapshot mechanism.
 The API is per-frame state: a down/up between frames may only change counters.
 
-## Audio ownership and scheduling
+## Audio ownership and scheduling (v0.582; see v0.583 correction below)
 
 [audio.c](../frontend/common/audio.c) queries [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L56). With root
 controls and no --mute it opens a real 48000 Hz stereo SDL device, a 32-voice
@@ -128,6 +128,31 @@ checks actual native/interpreter and sound-event counters. Audio uses dummy here
 protocol success is not audible hardware acceptance. Tests run both demo files in
 both modes; no foreign-platform execution is inferred from cross compilation.
 [Current evidence](ROADMAP_STATUS.md). All roadmap stages remain open.
+
+## v0.583 Android audio correction
+
+The v0.582 Android user report describes sporadic knocks/crackling. Its render-loop
+producer and fixed 2048-frame (about 43 ms) reserve could underrun during rendering
+or when Android supplied a larger device quantum. This is a plausible cause,
+not a device-confirmed diagnosis.
+
+The current player uses a native SDL worker, 1024-frame pump blocks and a target
+of max(4800 frames, four obtained device blocks). Resume requires at least two
+device blocks or 1024 frames. The worker refills every 5 ms, at most eight pumps
+per pass. Source submission, pause, stop and queue inspection share a mutex;
+VM/GC inspection stays on the owning main thread. This increases buffering
+latency to keep rendering stalls from interrupting PCM. It is not hard realtime
+or drift-corrected A/V synchronization. `--stats` adds audio_underruns and
+sound_stops; SDL logging includes actual device quantum/target/resume geometry.
+
+StopSounds and standard stopAllSounds now stop this prepared mixer/queue through
+[context bindings](AUDIO_STOP_BINDINGS.md), even before first PCM submission.
+[03-stop-sounds.swf](../examples/player/animation_audio/03-stop-sounds.swf) cancels
+the initial tone and loop, then plays the later stereo and ADPCM tones.
+The menu includes three movies × two execution modes. Existing v0.582 Linux and
+Windows downloads retain their old implementation; this change requires rebuilding.
+The new Android APK needs listening on the affected phone in both modes and
+foreground/background transitions. Linux dummy-driver checks cannot prove that.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

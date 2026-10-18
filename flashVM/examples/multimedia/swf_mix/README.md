@@ -76,7 +76,7 @@ teardown закрывает такой ресурс. Runtime освобожда�
 
 ## Демонстрируемые API
 
-- [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L130) — точная сумма, silence padding, лимиты/alias/ошибки:
+- [`fvm_audio_mix_s16`](../../../include/flashvm/multimedia.h#L131) — точная сумма, silence padding, лимиты/alias/ошибки:
   [AUDIO_MIXING.md](../../../doc/AUDIO_MIXING.md#fvm_audio_mix_s16).
 - [`fvm_swf_sound_voice_open`](../../../include/flashvm/swf_sound.h#L78), [`fvm_swf_sound_voice_info`](../../../include/flashvm/swf_sound.h#L80),
   [`fvm_swf_sound_voice_read`](../../../include/flashvm/swf_sound.h#L82), [`fvm_swf_sound_voice_close`](../../../include/flashvm/swf_sound.h#L84) — ownership,
@@ -86,7 +86,7 @@ teardown закрывает такой ресурс. Runtime освобожда�
   выбор interpreter/automatic JIT, обычная активация StopSounds и проверка
   фактического native entry: [JIT_SOUND.md](../../../doc/JIT_SOUND.md),
   [EXECUTION_MODES.md](../../../doc/EXECUTION_MODES.md).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83)
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84)
   — copied host callbacks, actual synchronous output, retryable stop:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md).
 - [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72) — canonical input before native preparation:
@@ -149,9 +149,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../../../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../../../include/flashvm/multimedia.h#L84) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../../../include/flashvm/multimedia.h#L131) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |

@@ -72,3 +72,37 @@ if(FVM_BUILD_TESTS AND FVM_DESKTOP_DEMO_TESTS AND NOT CMAKE_CROSSCOMPILING AND N
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/demo_movies.py $<TARGET_FILE:flashvm_player> ${FVM_XDOTOOL})
   set_tests_properties(flashvm_player_demo_movies PROPERTIES TIMEOUT 60)
 endif()
+
+# Root events and actual AVM1 StopSounds share the real SDL output, with no hardware claim.
+if(FVM_BUILD_TESTS AND FVM_DESKTOP_WINDOW_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_test(NAME flashvm_player_stop_sounds COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/stop_sounds.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_player_stop_sounds PROPERTIES TIMEOUT 30)
+endif()
+
+# Native-only producer progress is independent of a deliberately stalled VM/render thread.
+if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_audio_worker tests/audio_worker.cpp common/audio.c)
+  target_link_libraries(flashvm_frontend_audio_worker PRIVATE flashvm SDL2::SDL2)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_audio_worker PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_audio_worker PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_audio_worker COMMAND flashvm_frontend_audio_worker)
+  set_tests_properties(flashvm_frontend_audio_worker PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 10)
+endif()
+
+# SDL/Android may enlarge the device block; reserve sizing must use obtained geometry.
+if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_audio_large_quantum tests/audio_worker.cpp tests/audio_large_quantum.c)
+  target_compile_definitions(flashvm_frontend_audio_large_quantum PRIVATE FVM_TEST_NATIVE_QUANTUM=8192)
+  target_link_libraries(flashvm_frontend_audio_large_quantum PRIVATE flashvm SDL2::SDL2)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_audio_large_quantum PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_audio_large_quantum PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_frontend_audio_large_quantum COMMAND flashvm_frontend_audio_large_quantum)
+  set_tests_properties(flashvm_frontend_audio_large_quantum PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 10)
+endif()

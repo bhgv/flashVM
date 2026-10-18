@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.580
+# FlashVM stage status / Состояние стадий — v0.583
 
 This is a bounded review of existing implementation reports and the current
 explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,22 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.583 verification / Проверка v0.583
+
+Default Linux Release: 1235 passed, four explicit platform/service skips out of
+1239 registered. Eight separate real-SDL frontend tests passed under X11/Xvfb,
+including input/pixels, both execution modes, prepared StopSounds, a 350 ms
+render-thread stall and simulated 8192-frame obtained-quantum policy. The latter
+uses real SDL with wrapped geometry, not an Android device. Four new stop-binding
+core tests also passed ASan/UBSan with leak detection disabled. The no-device
+C89 tutorial reports `pending=0 stops=1`. SDL SDK queue geometry checks passed.
+
+Android ARM64 v0.583: real NDK/SDL native build and test APK with signature and
+16 KiB ELF/ZIP alignment checked. The user reported sporadic knocks/crackling
+in v0.582 on Android. The worker/reserve change addresses an identified underrun
+scenario; actual listening confirmation on that phone remains outstanding.
+No Windows/macOS runtime or stage-9 completion is inferred.
 
 ## Current Linux verification / Текущая проверка Linux
 

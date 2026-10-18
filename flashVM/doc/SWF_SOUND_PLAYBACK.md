@@ -188,7 +188,7 @@ is unchanged.
 порциями. Полный event_submit сохраняет прежний бюджет/один callback. Snapshot
 не исполняет stop/no-multiple и не включает автоматический MovieClip clock.
 
-The separate caller-driven [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L130) block helper is now available:
+The separate caller-driven [`fvm_audio_mix_s16`](../include/flashvm/multimedia.h#L131) block helper is now available:
 [AUDIO_MIXING.md](AUDIO_MIXING.md). It does not connect this event API to an
 automatic MovieClip clock or mix bound channels implicitly.
 
@@ -201,7 +201,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
 | `FVM_AudioChannel` | struct | [src/multimedia/audio/channel.hpp:6](../src/multimedia/audio/channel.hpp#L6) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |

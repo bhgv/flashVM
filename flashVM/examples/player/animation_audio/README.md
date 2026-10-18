@@ -1,16 +1,19 @@
 # Animation, input and event audio / Анимация, ввод и событийный звук
 
-Два готовых SWF8 для ручной проверки настоящего плеера, без внешнего AS-компилятора.
+Три готовых SWF8 для ручной проверки настоящего плеера, без внешнего AS-компилятора.
 **Это исполняемые SWF, не эскизы.** [make_movies.py](make_movies.py) подробно
 показывает самостоятельную запись RECT, MATRIX, Shape3/Sprite, PCM/ADPCM и AVM1.
 Пересоздание: `python3 make_movies.py` (Python 3, только стандартная библиотека).
 Файлы перезаписываются рядом с генератором. Сам генератор устройств не открывает.
 
-Two runnable 640×360, 24 fps, 120-frame SWF8 movies. Both loop every five seconds
+Three runnable 640×360, 24 fps, 120-frame SWF8 movies. All loop every five seconds
 in the default single-file player. Input capture uses the documented **HostInput
 player extension**, not a claim of complete Flash Key/Mouse/button compatibility.
 [Full EN guide](../../../doc/PLAYER_TEST_BUILDS.md) /
 [RU](../../../doc/PLAYER_TEST_BUILDS.ru.md).
+
+v0.583: PCM подаётся отдельным worker с запасом по реальному блоку устройства;
+[причина изменения и ограничения](../../../doc/PLAYER_TEST_BUILDS.ru.md#исправление-звука-android-в-v0583).
 
 ## Tests / Тесты
 
@@ -18,6 +21,7 @@ player extension**, not a claim of complete Flash Key/Mouse/button compatibility
 | --- | --- |
 | [01-animation-audio.swf](01-animation-audio.swf) | Оранжевый квадрат движется вправо и по синусоиде; синий движется навстречу. Раз в пять секунд начинается новая последовательность трёх тонов. Не требует ввода. |
 | [02-input-audio.swf](02-input-audio.swf) | Оранжевая анимация продолжается. Стрелки двигают синий квадрат; Space увеличивает его по X, отпускание восстанавливает размер. Розовый квадрат следует мыши/основному касанию и расширяется при удержании кнопки. Зелёный индикатор меняет X по коду последней клавиши. Жёлтый с каждым кликом смещается на 20 px. |
+| [03-stop-sounds.swf](03-stop-sounds.swf) | Начальный 440 Hz тон отменяется в том же кадре; loop начинается на кадре 24 и обрывается на 30. Поздние stereo/ADPCM звучат как в 01; анимация продолжается. Проверяет StopSounds в interpreter/JIT. |
 
 Кликните окно для фокуса клавиатуры. Зажмите стрелку примерно на полсекунды.
 Короткие нажатия между кадрами сохраняются в счётчиках, но held-флаг может уже
@@ -55,7 +59,7 @@ flashvm_player.exe --no-jit --stats tests\01-animation-audio.swf
 flashvm_player.exe --jit --stats tests\02-input-audio.swf
 ```
 
-Android: установить APK, выбрать один из четырёх пунктов (два теста × два режима).
+Android: установить APK, выбрать один из шести пунктов (три теста × два режима).
 Mute отключает открытие устройства. Back закрывает текущий тест. Возврат из фона
 возобновляет сцену; удерживаемые кнопки сбрасываются при уходе в фон.
 Используется приватная копия встроенного SWF: разрешения storage/mic/network не нужны.
@@ -77,8 +81,8 @@ exist in the generator. The real player explicitly opens playback on launch;
 `--mute` avoids it. Errors are visible, not converted to fake successful playback.
 
 Здесь проверяются root StartSound, loops/no-multiple/stop-by-ID, PCM8/PCM16/ADPCM,
-а не MP3/AAC/video, sprite sound, AS Sound или AVM1 StopSounds — его подключение
-к этой отдельной очереди ещё открыто. Видео-такты и PCM device clock независимы;
+а также StopSounds в третьем тесте; MP3/AAC/video, sprite sound и AS Sound
+не поддерживаются этим примером. [Контракт StopSounds](../../../doc/AUDIO_STOP_BINDINGS.ru.md). Видео-такты и PCM device clock независимы;
 изменение --speed/--fps не меняет высоту звуков. Качество/кодеки/фильтры, отсутствующие
 в player-jit профиле, не входят в эти пакеты. JIT может иметь fallback на других
 роликах; наличие --jit не означает полную native-компиляцию любого SWF.
@@ -102,7 +106,7 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 | [`fvm_swf_sound_output_pause`](../../../include/flashvm/swf_sound_output.h#L54) | Управляет потреблением при воспроизведении/Android background; [pause](../../../doc/SWF_SOUND_OUTPUT.md#pause-and-copied-clock). |
 | [`fvm_swf_sound_output_stop`](../../../include/flashvm/swf_sound_output.h#L58) | Удаляет очередь, pending и голоса перед закрытием; [stop](../../../doc/SWF_SOUND_OUTPUT.md#stop-and-close). |
 | [`fvm_audio_sdl_queue_open`](../../../include/flashvm/swf_sound_output.h#L68) | Открывает настоящий output; host владеет device, SDK failure передаётся наружу; [SDL](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
-| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L73) | Закрывает device до SDL_Quit; [cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
+| [`fvm_audio_sdl_queue_close`](../../../include/flashvm/swf_sound_output.h#L83) | Закрывает device до SDL_Quit; [cleanup](../../../doc/SWF_SOUND_OUTPUT.md#sdl2-native-bridge). |
 | [`fvm_execution_set_mode`](../../../include/flashvm/execution_mode.h#L64) | Выбирает interpreter/automatic JIT с явной проверкой доступности; [execution](../../../doc/API_INDEX.md). |
 | [`fvm_execution_get_stats`](../../../include/flashvm/execution_mode.h#L71) | Возвращает фактические execution counters, не состояние CLI-флага; [API index](../../../doc/API_INDEX.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) / [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | Закрепляют/освобождают managed root и HostInput на срок host-владения; [GC](../../../doc/GC_NATIVE_ROOTS.md). |
@@ -118,7 +122,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:73](../../../include/flashvm/swf_sound_output.h#L73) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:83](../../../include/flashvm/swf_sound_output.h#L83) |
 | `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:68](../../../include/flashvm/swf_sound_output.h#L68) |
 | `fvm_execution_get_stats` | function | [include/flashvm/execution_mode.h:71](../../../include/flashvm/execution_mode.h#L71) |
 | `fvm_execution_set_mode` | function | [include/flashvm/execution_mode.h:64](../../../include/flashvm/execution_mode.h#L64) |

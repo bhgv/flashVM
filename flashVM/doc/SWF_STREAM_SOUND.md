@@ -129,7 +129,7 @@ resampling, advisory playback conversion, gain, timestamp or output registration
 The implementation shares [fvm_swf_sound_decode_pcm](../src/swf/sound_pcm.hpp#L8) with DefineSound, including
 its complete-range preflight. DefineSound ADPCM support is unchanged; it does
 not imply ADPCM streaming support. Use bounded reads followed by
-[fvm_audio_channel_write](../include/flashvm/multimedia.h#L83) to your explicitly owned output; handle real-time clock,
+[fvm_audio_channel_write](../include/flashvm/multimedia.h#L84) to your explicitly owned output; handle real-time clock,
 gaps, segment geometry changes, seeking and underruns in the host.
 
 ## Русский контракт
@@ -177,7 +177,7 @@ Head2 разрешён с SWF3, LE PCM/MP3 — с SWF4; оригинальный
 ADPCM/MP3 metadata с 16-bit flags. Advisory playback не меняет source geometry.
 Планировщик, MovieClip/sprite integration, progressive loading, resampling,
 seek/gap sync и compressed decoder здесь не реализованы. Для host pipeline
-используйте bounded read → [fvm_audio_channel_write](../include/flashvm/multimedia.h#L83) и явную остановку output.
+используйте bounded read → [fvm_audio_channel_write](../include/flashvm/multimedia.h#L84) и явную остановку output.
 
 ## Example and evidence / Пример и проверки
 
@@ -294,7 +294,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

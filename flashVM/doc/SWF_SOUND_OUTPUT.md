@@ -14,10 +14,14 @@ pointers are retained: prepared voices can outlive their source VM. No GC pin is
 needed for these native handles; ordinary MovieClip roots still require their
 usual [ownership](MOVIECLIP_SOUND.md).
 
-Serialize all operations on the host control thread. Only the backend's own
-consumer may run concurrently. The producer has exclusive mixer-read and queue
-write/clear/pause ownership; submit new events to the mixer on the same serialized
-thread. External writes, clears, mixer reads or seeks invalidate clock/accounting.
+Serialize all producer and mixer operations, either on one host control thread
+or with an external mutex shared by every participating thread. A native worker
+may pump prepared PCM under that mutex; submission from a context must remain on
+that context's owning thread under the same mutex. The producer has exclusive
+mixer-read and queue write/clear/pause ownership. Never close while a worker can
+still access these objects: signal and join it first. Backend callbacks execute
+on the invoking thread and must support the chosen host policy.
+External writes, clears, mixer reads or seeks invalidate clock/accounting.
 Callbacks must not mutate the borrowed mixer behind the producer. Reentry into
 pump/info/pause/stop returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45); callback-time close is ignored
 to avoid freeing a live call. This guard is not a thread lock. Close outside callbacks.
@@ -181,6 +185,22 @@ Windows/macOS/Android output, source/movie synchronization and sustained underru
 recovery remain open. Existing FFmpeg decoding adapters are independent of this
 output backend and are not replaced.
 
+## Obtained device geometry (v0.583)
+
+`fvm_audio_sdl_queue_info(device, info)` copies immutable obtained SDL geometry
+into [`FVM_SDLAudioQueueInfo`](../include/flashvm/swf_sound_output.h#L73): `sample_rate` in Hz, `channels`, and
+`device_buffer_frames` in interleaved frames per native device block. Initialize
+`struct_size` to `sizeof(FVM_SDLAudioQueueInfo)`. The actual block may exceed the
+request, particularly on Android; size reserve and resume thresholds from this
+value. It is neither queue depth nor measured hardware latency.
+
+A live owned device and nonnull correctly sized output are required. Invalid
+pointers/size return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45), preserving output. Success returns
+[`FVM_OK`](../include/flashvm/flashvm.h#L42) without allocation, VM/GC access, callbacks or ownership transfer. The
+immutable copy may be read on a worker while the owner guarantees device lifetime;
+close must never race. Disabled builds return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) for otherwise
+valid-shaped arguments; they cannot create a valid device.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -191,7 +211,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_AUDIO_QUEUE_ABI_VERSION` | macro / define | [include/flashvm/swf_sound_output.h:10](../include/flashvm/swf_sound_output.h#L10) |
-| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:73](../include/flashvm/swf_sound_output.h#L73) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:83](../include/flashvm/swf_sound_output.h#L83) |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
 | `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:68](../include/flashvm/swf_sound_output.h#L68) |
 | `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
@@ -203,6 +224,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SDL_AUDIO_MAX_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:65](../include/flashvm/swf_sound_output.h#L65) |
 | `FVM_SDL_AUDIO_MIN_BUFFER` | macro / define | [include/flashvm/swf_sound_output.h:64](../include/flashvm/swf_sound_output.h#L64) |
 | `FVM_SDLAudioQueue` | struct | [src/multimedia/audio/sdl_queue.hpp:11](../src/multimedia/audio/sdl_queue.hpp#L11) |
+| `FVM_SDLAudioQueueInfo` | struct | [include/flashvm/swf_sound_output.h:73](../include/flashvm/swf_sound_output.h#L73) |
 | `FVM_SWF_SOUND_OUTPUT_CLOCK_BITS` | macro / define | [include/flashvm/swf_sound_output.h:13](../include/flashvm/swf_sound_output.h#L13) |
 | `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
 | `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:48](../include/flashvm/swf_sound_output.h#L48) |

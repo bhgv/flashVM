@@ -2714,7 +2714,7 @@ PCM/ADPCM oracles and source/tutorial/catalog links pass (91 examples).
 
 ### v0.555 — allocation-free native S16 block mixing
 
-Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L130) validates every input before output,
+Implemented / реализовано: [fvm_audio_mix_s16](../include/flashvm/multimedia.h#L131) validates every input before output,
 sums equal-rate/channel interleaved S16 exactly in a bounded signed-long
 accumulator and saturates once. Short/exhausted inputs become silence; a caller
 chooses output duration. No allocation, context, device, callbacks, resampling or
@@ -2745,7 +2745,7 @@ platform acceptance остаются открытыми. No roadmap stage is clo
 ### v0.556 — native StopSounds and observable tutorial execution modes
 
 Implemented / реализовано: StopSounds now emits a fixed semantic helper call
-through [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) and the same [fvm_audio_stop_all](../include/flashvm/multimedia.h#L91) service used by the
+through [fvm_jit_stop_sounds](../src/jit/effects.cpp#L7) and the same [fvm_audio_stop_all](../include/flashvm/multimedia.h#L92) service used by the
 interpreter. The action consumes no operands, preserves lower stack values and
 attempts every active context output in registration order, returning the first
 failure. Successful channels become inactive; failures remain retryable. The
@@ -3162,6 +3162,15 @@ Linux X11 input/pixel and disk-PCM evidence is distinct from cross builds.
 Full Flash input/broadcaster/button API, drift-corrected A/V clocks and actual
 foreign-platform device/endurance acceptance remain open; no stage is closed.
 
+## v0.583 — independent native audio worker and prepared StopSounds
+
+Move player PCM production off the render thread, size buffering from the obtained
+SDL quantum and serialize native producer operations. Add context-owned stop
+bindings for prepared output and a third runnable SWF. Native worker pause/resume,
+350 ms main-thread stalls and enlarged-quantum policy have Linux SDL tests.
+Android crackling remains pending listening acceptance on the reporting device.
+[EN](AUDIO_STOP_BINDINGS.md) / [RU](AUDIO_STOP_BINDINGS.ru.md). No stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -3171,8 +3180,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../include/flashvm/multimedia.h#L92) |
 | `fvm_call_bytes` | function | [include/flashvm/value.h:98](../include/flashvm/value.h#L98) |
 | `FVM_CallScope` | class | [src/core/call_scope.hpp:8](../src/core/call_scope.hpp#L8) |
 | `fvm_construct_bytes` | function | [include/flashvm/value.h:155](../include/flashvm/value.h#L155) |

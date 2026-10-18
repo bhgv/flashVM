@@ -10,6 +10,14 @@ struct FVM_AudioChannel /* Register one independently stoppable host output. */
     unsigned int swf_sound_id; /* Bind the first successful StartSound resource; zero means not yet bound. */
     bool active; /* Record successful submission until successful stop. */
 }; /* Finish the non-managed channel layout. */
+struct FVM_AudioStopBinding /* Register prepared native voices independently of successful PCM writes. */
+{ /* Begin the unmanaged control registration. */
+    FVM_Context *context; /* Borrow owner until detach or terminal destruction. */
+    FVM_AudioStopCallback stop; /* Copy an idempotent native stop operation. */
+    void *userdata; /* Borrow host state; never scan it as managed memory. */
+}; /* Finish the native stop binding. */
+/* Contain each stop exception independently so one failure never skips later outputs. */
+FVM_Result fvm_audio_invoke_stop(FVM_AudioStopCallback, void *); /* OS: translated native callback. */
 /* Accept VM-thread operations outside destruction, collection and callback mutation. */
 inline bool fvm_audio_context_valid(FVM_Context *context) /* OS: portable lifecycle checks. */
 { /* Inspect lifecycle without entering host code. */
@@ -34,6 +42,6 @@ class FVM_AudioCallbackGuard /* [GC:] Block collection and registry mutation dur
 }; /* Finish the callback guard. */
 /* Stop every bound voice for one resource, attempting all matches after failures. */
 FVM_Result fvm_swf_sound_stop_bound(FVM_Context *, unsigned int); /* OS: guarded host callbacks; other resource IDs remain active. */
-/* Stop active outputs once and release registrations during context destruction. */
+/* Stop active channels and every control once, then release registrations during destruction. */
 void fvm_audio_context_cleanup(FVM_Context *); /* OS: host callbacks; errors cannot escape void context destruction. */
 #endif /* Finish the private header guard. */

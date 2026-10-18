@@ -13,8 +13,8 @@ Arguments in order:
 
 | Argument | Contract |
 | --- | --- |
-| inputs | Contiguous borrowed array of [FVM_MediaFrame](../include/flashvm/multimedia.h#L37) records; null only when input_count is zero. |
-| input_count | Zero through [FVM_MEDIA_AUDIO_MIX_MAX_INPUTS](../include/flashvm/multimedia.h#L18) (1024) inclusive. |
+| inputs | Contiguous borrowed array of [FVM_MediaFrame](../include/flashvm/multimedia.h#L38) records; null only when input_count is zero. |
+| input_count | Zero through [FVM_MEDIA_AUDIO_MIX_MAX_INPUTS](../include/flashvm/multimedia.h#L19) (1024) inclusive. |
 | sample_rate | Required nonzero common nominal rate, also used in output metadata. |
 | channels | Required nonzero common interleaved channel count. |
 | frames | Exact output sample-frame count, including silence after shorter inputs. |
@@ -22,7 +22,7 @@ Arguments in order:
 | capacity_values | Accessible short channel values, not frames or bytes. |
 | out_frame | Required output view destination; unchanged on any failure. |
 
-Every input must have kind [FVM_MEDIA_AUDIO](../include/flashvm/multimedia.h#L19) and exactly the requested rate/channel
+Every input must have kind [FVM_MEDIA_AUDIO](../include/flashvm/multimedia.h#L20) and exactly the requested rate/channel
 count. The caller must also ensure identical channel ordering: this ABI carries
 no speaker-layout mask. Populated views must satisfy [fvm_media_frame_valid](../src/multimedia/common/session.hpp#L15): non-null accessible
 native S16 bytes, positive declared samples and enough even-sized storage for all
@@ -38,7 +38,7 @@ records are validated before any PCM or output metadata is modified, even on a
 zero-frame request. Invalid arguments/geometry/counts return INVALID_ARGUMENT;
 an incompatible native short/octet representation returns UNSUPPORTED. All
 failures preserve destination PCM and the entire output view. Successful calls
-return OK and publish a borrowed [FVM_MediaFrame](../include/flashvm/multimedia.h#L37) over destination, with kind AUDIO,
+return OK and publish a borrowed [FVM_MediaFrame](../include/flashvm/multimedia.h#L38) over destination, with kind AUDIO,
 requested rate/channels/frame count and exact initialized byte size. Timestamp/
 video fields are zero. A zero-frame result may have null data and must not be
 submitted to APIs requiring a populated output frame.
@@ -59,7 +59,7 @@ Exact-start in-place payload mixing is supported: destination can equal an input
 buffer start with sufficient destination capacity. Partial/offset overlap is
 not supported and is the caller's responsibility; metadata arrays/out_frame
 must not alias PCM storage. The output view can be used synchronously through
-[fvm_audio_channel_write](../include/flashvm/multimedia.h#L83) or [fvm_audio_write](../include/flashvm/multimedia.h#L128) until destination is reused. Retained
+[fvm_audio_channel_write](../include/flashvm/multimedia.h#L84) or [fvm_audio_write](../include/flashvm/multimedia.h#L129) until destination is reused. Retained
 playback requires the host bridge to copy bytes. Independent calls may run on
 separate threads when input/output memory is properly synchronized; concurrent
 mutation of any shared buffer/metadata is invalid. This function itself changes
@@ -67,15 +67,15 @@ no channel active flags, resource bindings, snapshot progress or VM state.
 
 ## Русский контракт
 
-[fvm_audio_mix_s16](../include/flashvm/multimedia.h#L130)(inputs, count, rate, channels, frames, destination,
+[fvm_audio_mix_s16](../include/flashvm/multimedia.h#L131)(inputs, count, rate, channels, frames, destination,
 capacity_values, out_frame) складывает синхронные native S16 blocks в caller
 buffer без аллокаций, VM/GC, блокировок, устройств и callbacks. Работает с
 NO_MEDIA. Host сам выравнивает время, читает голоса, применяет огибающие/громкость,
 управляет их lifecycle и передаёт готовый блок выходному bridge. Планировщика,
 конверсии частоты/каналов и автоматической MovieClip интеграции здесь нет.
 
-inputs — непрерывный массив [FVM_MediaFrame](../include/flashvm/multimedia.h#L37); null допустим только при count=0.
-count ограничен [FVM_MEDIA_AUDIO_MIX_MAX_INPUTS](../include/flashvm/multimedia.h#L18) (1024). rate/channels должны быть
+inputs — непрерывный массив [FVM_MediaFrame](../include/flashvm/multimedia.h#L38); null допустим только при count=0.
+count ограничен [FVM_MEDIA_AUDIO_MIX_MAX_INPUTS](../include/flashvm/multimedia.h#L19) (1024). rate/channels должны быть
 ненулевыми и одинаковыми у всех input records. Speaker-layout mask в ABI нет: host
 также обеспечивает одинаковый порядок каналов. frames — точное число выходных
 кадров. capacity_values — число доступных short values. destination=null
@@ -133,12 +133,12 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../include/flashvm/multimedia.h#L83) |
-| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
-| `fvm_audio_write` | function | [include/flashvm/multimedia.h:128](../include/flashvm/multimedia.h#L128) |
-| `FVM_MEDIA_AUDIO` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
-| `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../include/flashvm/multimedia.h#L84) |
+| `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:131](../include/flashvm/multimedia.h#L131) |
+| `fvm_audio_write` | function | [include/flashvm/multimedia.h:129](../include/flashvm/multimedia.h#L129) |
+| `FVM_MEDIA_AUDIO` | macro / define | [include/flashvm/multimedia.h:20](../include/flashvm/multimedia.h#L20) |
+| `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_media_frame_valid` | function | [src/multimedia/common/session.hpp:15](../src/multimedia/common/session.hpp#L15) |
-| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:37](../include/flashvm/multimedia.h#L37) |
+| `FVM_MediaFrame` | struct | [include/flashvm/multimedia.h:38](../include/flashvm/multimedia.h#L38) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
 <!-- source-links:end -->

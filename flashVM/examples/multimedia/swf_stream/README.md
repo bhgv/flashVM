@@ -12,7 +12,7 @@ geometry, показывает variable-length blocks и пропущенный 
 
 Каждая непустая строка source/header подписана; ошибок через assert нет.
 Host bridge вызывает настоящие fopen/fwrite/fclose, его можно заменить своим
-системным выходом с тем же [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L67) ABI. Мост синхронно заимствует PCM.
+системным выходом с тем же [FVM_MediaOutput](../../../include/flashvm/multimedia.h#L68) ABI. Мост синхронно заимствует PCM.
 
 ## Подготовка и запуск
 
@@ -77,7 +77,7 @@ GC/registry mutation внутри callback. См. [MULTIMEDIA_BRIDGES.md](../../
   [block view](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_block_at).
 - [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L61) — bounded copies без callbacks/allocations:
   [range contract](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_read_pcm).
-- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83), [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L91) —
+- [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L84), [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L92) —
   copied output table, actual native writes, active state and stop:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_load_memory`](../../../include/flashvm/flashvm.h#L72),
@@ -168,14 +168,14 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:81](../../../include/flashvm/multimedia.h#L81) |
-| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:83](../../../include/flashvm/multimedia.h#L83) |
-| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../../../include/flashvm/multimedia.h#L91) |
+| `fvm_audio_channel_create` | function | [include/flashvm/multimedia.h:82](../../../include/flashvm/multimedia.h#L82) |
+| `fvm_audio_channel_write` | function | [include/flashvm/multimedia.h:84](../../../include/flashvm/multimedia.h#L84) |
+| `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:92](../../../include/flashvm/multimedia.h#L92) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../../../include/flashvm/multimedia.h#L67) |
+| `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../../../include/flashvm/multimedia.h#L68) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
