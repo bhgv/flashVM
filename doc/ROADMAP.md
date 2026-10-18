@@ -2979,6 +2979,13 @@ Source-link determinism/bounds, 93-entry catalog and annotated tutorial checks
 pass. None of these checks is a real Apple SDK/native macOS run. All roadmap
 stages remain open; native Windows/macOS/Android and full SWF conformance are
 still outstanding.
+### v0.566 — preserve documentation HTML anchors
+
+Source linking now protects raw HTML tags/comments, including multiline quoted
+attributes, while linking prose inside elements. Six-seed/idempotence regressions
+cover anchors, quoted greater-than signs, comments and fenced HTML. The repository
+source-link check passes. Исправлена инфраструктура навигации документации этапа
+9; это не завершение этапа и не новая проверка чужих платформ.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

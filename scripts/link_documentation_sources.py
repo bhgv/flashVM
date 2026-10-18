@@ -100,6 +100,30 @@ def source_target(path, declaration):
     return f'{target}#L{line}'
 
 
+def protect_html(text):
+    """Keep raw HTML tags, quoted attributes and comments byte-for-byte intact.
+
+    Match the complete authored text so multiline tags do not lose their quoted
+    attribute state at a newline. Element contents remain ordinary Markdown.
+    The private marker is chosen outside the input, including fenced samples.
+    """
+    marker = '\ue000HTML'
+    while marker in text:
+        marker += '_'
+    tags = []
+    pattern = re.compile(
+        r'<!--.*?-->|<!\[CDATA\[.*?\]\]>|<\?.*?\?>|'
+        r'<![A-Za-z](?:[^>\"\']|\"[^\"]*\"|\'[^\']*\')*>|'
+        r'</?[A-Za-z][A-Za-z0-9:-]*(?=[\s/>])'
+        r'(?:[^>\"\']|\"[^\"]*\"|\'[^\']*\')*>', re.S)
+
+    def replace(match):
+        tags.append(match[0])
+        return marker + str(len(tags) - 1) + '\ue001'
+
+    return pattern.sub(replace, text), marker, tags
+
+
 def refresh(path, index):
     """Link isolated inline symbols and provide a source table for prose/headings/code blocks."""
     original = path.read_text(encoding='utf-8')
@@ -109,9 +133,10 @@ def refresh(path, index):
     mentioned = {name for name in SYMBOL.findall(authored) if name in index}
     # Build-switch names are short/common: only treat explicitly backticked names as symbols.
     mentioned.update(name for name in re.findall(r'`([A-Z][A-Z0-9_]+)`', authored) if name in index)
+    protected, html_marker, html_tags = protect_html(authored)
     fence = None
     lines = []
-    for line in authored.splitlines(keepends=True):
+    for line in protected.splitlines(keepends=True):
         match = re.match(r'^\s*(`{3,}|~{3,})', line)
         if match:
             marker = match[1][0]
@@ -175,6 +200,8 @@ def refresh(path, index):
             pieces[i] = ''.join(chunks)
         lines.append(''.join(pieces))
     result = ''.join(lines)
+    result = re.sub(re.escape(html_marker) + r'(\d+)\ue001',
+                    lambda m: html_tags[int(m[1])], result)
     if mentioned:
         table = '\n' + START + '\n## Исходники / Source declarations\n\n'
         table += ('Ссылки ведут к объявлениям/определениям в текущем дереве исходников;\n'

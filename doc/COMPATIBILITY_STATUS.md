@@ -4555,6 +4555,14 @@ platform acceptance остаются открытыми. No roadmap stage is clo
 
 
 Prepared PCM stream snapshots / Независимые индексированные снимки PCM: [SWF_STREAM_SOUND.md](SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm). Six C89 functions copy/index one validated root PCM segment; indexed reads survive source VM destruction without allocation. Preparation is explicitly budgeted; compressed codecs and automatic MovieClip audio clocks remain unsupported.
+## v0.566 — documentation source-link HTML preservation
+
+Tested / проверено: the source linker protects raw tags, multiline quoted
+attributes, HTML comments and fenced samples while linking element contents.
+The regression exercises six hash seeds and idempotent refresh. This prevents
+function names in explicit anchors from becoming Markdown inside HTML attributes.
+Это исправление инфраструктуры документации этапа 9, не доказательство нативной
+приёмки другой ОС или полноты VM. Все этапы остаются открытыми.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

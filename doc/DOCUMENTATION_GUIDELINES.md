@@ -104,6 +104,20 @@ linked structured contents and final flat alphabetical glossary. Validate links,
 coverage, ordering and target requirements; scale runtime checks to actual code
 changes and report evidence accurately.
 
+## HTML anchors and attributes / HTML-якоря и атрибуты
+
+The source linker preserves raw HTML tags and comments byte-for-byte, including
+multiline tags and quoted `>` characters. HTML attribute values are not prose:
+never insert Markdown links into an `id`, `href`, `title` or another attribute.
+Text between HTML tags still receives normal source links. Fenced samples remain
+unchanged. The six-seed regression covers these cases and repeated refresh.
+
+Генератор сохраняет HTML-теги и комментарии без изменений, включая многострочные
+теги и `>` внутри кавычек. Значения атрибутов не являются обычным текстом:
+Markdown-ссылки внутри `id`, `href` и `title` ломают якоря и навигацию. Текст
+между тегами по-прежнему получает ссылки; fenced-примеры не меняются. Проверка
+на шести hash seeds контролирует эти случаи и повторное обновление.
+
 ## Deterministic source table order / стабильный порядок
 
 Generated declaration rows sort by casefolded name and then original spelling.
