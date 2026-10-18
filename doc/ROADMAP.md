@@ -3048,6 +3048,25 @@ fixture's guarded C++98 body was syntax-checked with controlled platform macros;
 no Apple SDK, Apple assembler, code-signing or native ARM64 run is claimed.
 See [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). Это расширение проверок этапов 8/9;
 все этапы и нативная приёмка остаются открытыми.
+### v0.571 — strict two-VM JIT tutorial and survivor execution
+
+The annotated C89 jit_instances example now accepts --both-jit, requires actual
+native entries for both VM owners, destroys the first VM and invokes the survivor
+again. Default interpreter/JIT comparison still allows ordinary fallback. Unknown
+arguments are rejected before resource acquisition and partially destroyed owners
+are nulled for cleanup. Its README/API table and alphabetic catalog explain the
+modes, ownership, signing prerequisites and native-evidence limits.
+
+The registered host harness runs actual default/strict/invalid-option processes,
+checks counters rather than backend labels and does not skip a failure after the
+first successful native VM. Release and ASAN/UBSAN tutorial runs pass on Linux,
+with LeakSanitizer disabled. Нативные foreign-OS проверки и полнота всех девяти
+этапов остаются открытыми.
+Final v0.571 validation: full Linux minimal-JIT Release CTest reports 1181 passed
+and four explicit skips (1185 total). The native ARM64/macOS and Windows unwind
+skips remain foreign-OS acceptance gaps; the speech SSIP endpoint is also skipped.
+Both actual tutorial modes and invalid CLI pass in Release and ASAN/UBSAN.
+Source-link, debugger tutorial and strict C89/C++98 port checks pass separately.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -393,6 +393,10 @@ endif()
 
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   if(FVM_BUILD_EXAMPLES)
+    add_test(NAME flashvm_jit_instances_native_tutorial_host
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_jit_instances_example.py
+              $<TARGET_FILE:flashvm_examples_embedding_jit_instances_main>)
+    set_tests_properties(flashvm_jit_instances_native_tutorial_host PROPERTIES TIMEOUT 60 SKIP_RETURN_CODE 77)
     add_test(NAME flashvm_swf_stream_tutorial_host
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_stream_example.py
               $<TARGET_FILE:flashvm_examples_multimedia_swf_stream_main>)

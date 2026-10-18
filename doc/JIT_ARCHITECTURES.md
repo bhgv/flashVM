@@ -16,6 +16,7 @@ AVM1 compiler. Unsupported operations still execute through the interpreter.
 | --- | --- | --- | --- |
 | x86 | Linux i386 System V cdecl | IA-32, 32 bits | Unicorn call/branch/ABI execution |
 | x86-64 | Linux System V AMD64 | x86-64, 64 bits | Full host VM tests and examples |
+| macOS ARM64 (opt-in) | Darwin C, linked X29, macOS 11.4+ callback MAP_JIT arena | AArch64, 64 bits | Unicorn plus controlled SDK/policy/concurrency fixtures; native Apple acceptance pending |
 | macOS x64 | Darwin ordinary C, linked RBP | x86-64, 64 bits | Linux instruction/AVM1 pipeline and SDK fixtures; native macOS policy acceptance pending |
 | Windows x64 | Microsoft x64 | x86-64, 64 bits | Real Linux ms_abi calls and SDK protocol fixtures; native Windows VM/unwind pending |
 | ARM | Linux AAPCS32 | ARMv7 A32, 32 bits; BLX permits Thumb helpers | Unicorn A32 call/branch/ABI execution |

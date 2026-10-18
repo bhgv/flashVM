@@ -1,3 +1,5 @@
+macOS ARM64 opt-in callback arena (11.4+, default OFF): [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md) (v0.569; native signing/execution acceptance pending).
+
 macOS Intel classic RW→RX and linked-frame backend: [JIT_MACOS_X64.md](JIT_MACOS_X64.md) (v0.564; native macOS policy acceptance pending).
 
 Windows x64 selection, W^X and unwind publication: [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md) (v0.561; native Windows acceptance pending).

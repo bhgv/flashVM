@@ -681,11 +681,11 @@ Declaration / декларация: [`flashvm/jit.h`](../include/flashvm/jit.h).
 
 **Parameters / параметры.** No arguments.
 
-**Results / результаты.** Returns a boolean integer.
+**Results / результаты.** Returns 1 only when the selected native ABI, function-pointer width and executable-memory facility are supported; otherwise 0. Opt-in macOS ARM64 also queries per-thread JIT protection support. This does not allocate a code slot or prove MAP_JIT/signing permission.
 
-**Lifetime / время жизни.** No ownership transfer or allocation. Backend label is static process data.
+**Lifetime / время жизни.** No code-page allocation or ownership transfer. The availability query does not prepare or attach a function.
 
-**Behavior / поведение.** See [JIT ownership/compilation](JIT.md) for compile, attach, execute and destroy contracts. Availability is not a promise that every AVM1 body compiles or that executable allocation cannot later fail.
+**Behavior / поведение.** Checks build/ABI/facility availability, not AVM1 coverage or host signing permission. Compilation can still return UNSUPPORTED or OUT_OF_MEMORY. macOS ARM64 is disabled by default and requires the documented deployment/SDK opt-in. Наличие ABI не удостоверяет разрешение ОС или исполнение конкретного тела; см. [ARM64 policy](JIT_MACOS_ARM64.md) и [JIT contracts](JIT.md).
 
 
 ## fvm_jit_backend_name
@@ -700,7 +700,7 @@ Declaration / декларация: [`flashvm/jit.h`](../include/flashvm/jit.h).
 
 **Lifetime / время жизни.** No ownership transfer or allocation. Backend label is static process data.
 
-**Behavior / поведение.** See [JIT ownership/compilation](JIT.md) for compile, attach, execute and destroy contracts. Availability is not a promise that every AVM1 body compiles or that executable allocation cannot later fail.
+**Behavior / поведение.** Identifies the compiled ABI, including macos-arm64 for its enabled target. The label can exist even when the OS denies executable publication; it is not an execution counter. Use [fvm_execution_get_stats](../include/flashvm/execution_mode.h#L71) and native_entries to prove native execution. Имя backend не удостоверяет успешную компиляцию или нативный вызов; см. [JIT contracts](JIT.md).
 
 
 ## fvm_jit_code_size

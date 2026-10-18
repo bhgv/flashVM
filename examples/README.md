@@ -63,7 +63,7 @@
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
     - [jit_debug](#example-embedding-jit_debug) — <small><em>Source map, breakpoint и статистика JIT</em></small>
-    - [jit_instances](#example-embedding-jit_instances) — <small><em>Две VM с независимыми JIT-кэшами</em></small>
+    - [jit_instances](#example-embedding-jit_instances) — <small><em>Две VM, строгий JIT и вызов после teardown другой VM</em></small>
     - [jit_workers](#example-embedding-jit_workers) — <small><em>Два worker с отдельными VM и JIT</em></small>
   - [objects](#group-embedding-objects)
     - [main](#example-embedding-main) — <small><em>Runtime, объект и nativeSum: базовый C-хост</em></small>
@@ -752,6 +752,8 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/jit_instances/README.md](embedding/jit_instances/README.md).
 
 Создаёт две VM с одинаковым исходным телом, но независимыми режимами и кэшами. Вызовы чередуются на одном потоке; пример показывает изоляцию политик и статистики, а не совместный доступ к объектам.
+
+Опция `--both-jit` требует нативных entries обеих VM; после уничтожения первой пример повторно вызывает вторую и проверяет её счётчики.
 
 **Файлы:** [main.c](embedding/jit_instances/main.c).
 
