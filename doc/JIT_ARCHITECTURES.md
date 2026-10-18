@@ -213,7 +213,7 @@ Windows x64 offline call-plan encoder and actual Linux `ms_abi` validation / а�
 
 
 macOS Intel offline encoder and linked-frame validation / автономный генератор и цепочка кадров: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). v0.564 adds classic desktop macOS x64 RW→RX publication and explicit signing preparation; native macOS acceptance remains pending / добавлены classic RW→RX и подготовка подписи, нативная приёмка ещё не выполнена.
-Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). Apple Silicon host execution remains disabled pending its own memory policy and native acceptance.
+Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). v0.569 adds an opt-in macOS 11.4+ MAP_JIT callback arena; default activation remains OFF pending native acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

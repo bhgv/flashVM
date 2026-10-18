@@ -10,6 +10,8 @@ FVM_JitTarget fvm_jit_host_target(void)
     return FVM_JIT_TARGET_WINDOWS_X64;
 #elif defined(_WIN32)
     return FVM_JIT_TARGET_NONE;
+#elif FVM_MAC_CODE_ARM64
+    return FVM_JIT_TARGET_MACOS_ARM64;
 #elif FVM_MAC_CODE_SUPPORTED
     return FVM_JIT_TARGET_MACOS_X64;
 #elif defined(__APPLE__) || !defined(__linux__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
@@ -86,6 +88,8 @@ extern "C" const char *fvm_jit_backend_name(void)
     {
     case FVM_JIT_TARGET_MACOS_X64:
         return "macos-x64";
+    case FVM_JIT_TARGET_MACOS_ARM64:
+        return "macos-arm64";
     case FVM_JIT_TARGET_WINDOWS_X64:
         return "windows-x64";
     case FVM_JIT_TARGET_X86:

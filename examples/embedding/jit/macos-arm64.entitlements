@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Host-owned signing policy for the opt-in ARM64 MAP_JIT callback adapter. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Begin the property-list document consumed by codesign. -->
+<plist version="1.0">
+<!-- Begin the entitlement dictionary. -->
+<dict>
+    <!-- Permit the host's single MAP_JIT region under Hardened Runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <!-- Enable the preceding entitlement. -->
+    <true/>
+    <!-- Require every write callback to appear in the executable's static allowlist. -->
+    <key>com.apple.security.cs.jit-write-allowlist</key>
+    <!-- Enable callback enforcement; the adapter never calls the incompatible legacy toggle API. -->
+    <true/>
+<!-- End the entitlement dictionary. -->
+</dict>
+<!-- End the property-list document. -->
+</plist>

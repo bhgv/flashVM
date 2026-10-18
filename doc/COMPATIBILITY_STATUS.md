@@ -4589,6 +4589,27 @@ Full Linux Release minimal-JIT CTest: 1176 passed, three explicit skips out of
 width checks also pass under ASAN/UBSAN with LeakSanitizer disabled. The viewer's
 six Python 3 tests and source-link HTML/determinism checks pass separately.
 Это развитие этапов 8/9, а не нативная Apple-приёмка. Все этапы остаются открытыми.
+### v0.569 — opt-in macOS ARM64 callback-protected code arena
+
+Implemented / реализовано: a private C89 boundary and C++98 macOS 11.4+ port use
+one 64-MiB MAP_JIT region, reusable aligned slots, external metadata and a pthread
+mutex. The statically allowlisted system callback copies instructions; cache
+synchronization and output publication follow restoration of executable thread
+protection. Release coalesces inactive slots without unmapping the shared region.
+Opt-in defaults OFF. Desktop/LP64/deployment checks exclude arm64e and iOS; the
+native backend name is macos-arm64 only when selected. Host signing/startup policy
+and pool/process-memory limits are documented with native build/sign commands.
+See [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md).
+
+Validation: full Linux Release minimal-JIT CTest passes 1179 checks with three
+explicit skips (1182 total). Four focused ASAN/UBSAN checks pass with LeakSanitizer
+disabled. Actual production arena/selector code is exercised against controlled
+SDK calls, including metadata/mapping/callback failures, output preservation,
+full-pool exhaustion, split/coalesce/reuse, cache order and four pthread workers
+with 800 allocations/releases. Ten preprocessor policy combinations pass.
+These are not Apple SDK/code-signing/native ARM64 execution results. Нативная
+Apple-приёмка, остальные платформы и полнота VM по-прежнему необходимы; ни один
+из девяти этапов этим изменением не закрыт.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

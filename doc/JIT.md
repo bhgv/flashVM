@@ -159,7 +159,7 @@ CPU execution, full Action coverage or Flash Player oracle equivalence is claime
 (EXECUTION_MODES.md). Нет переноса кода между процессами и backend для остальных ОС/архитектур.
 Полный интерпретатор, JIT всех требуемых архитектур и стадии roadmap остаются
 открытыми; тесты выше подтверждают только перечисленные сценарии.
-Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). Apple Silicon host execution remains disabled pending its own memory policy and native acceptance.
+Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). v0.569 adds an opt-in macOS 11.4+ MAP_JIT callback arena; default activation remains OFF pending native acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

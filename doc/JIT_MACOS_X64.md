@@ -36,14 +36,14 @@ and classic RW-to-RX publication. Full native macOS acceptance remains pending.
 
 ## Memory and host policy / Память и политика host — v0.564
 
-[`FVM_MAC_CODE_SUPPORTED`](../ports/mac/code_platform.h#L7) requires Apple/Mach, `TARGET_OS_OSX`, x86-64 and the
+[`FVM_MAC_CODE_SUPPORTED`](../ports/mac/code_platform.h#L15) requires Apple/Mach, `TARGET_OS_OSX`, x86-64 and the
 ordinary 64-bit pointer ABI. It excludes Apple Silicon arm64/arm64e, iOS and other
 Apple targets. [`fvm_jit_host_target`](../src/jit/backend.cpp#L6) selects [`FVM_JIT_TARGET_MACOS_X64`](../src/jit/backend.hpp#L17) and
 [`fvm_jit_backend_name`](../include/flashvm/jit.h#L15) reports `macos-x64`. This selects the process ISA; a binary
 running through Rosetta has not been validated here. Availability describes the
 compiled ABI, not entitlement approval for an allocation.
 
-[`FVM_MAC_CODE_SUPPORTED`](../ports/mac/code_platform.h#L7) проверяет Apple/Mach, desktop macOS, x86-64 и обычный
+[`FVM_MAC_CODE_SUPPORTED`](../ports/mac/code_platform.h#L15) проверяет Apple/Mach, desktop macOS, x86-64 и обычный
 64-битный ABI. arm64/arm64e, iOS и другие Apple-платформы не включаются. Выбор
 описывает ISA процесса; Rosetta здесь не проверена. Наличие backend не является
 проверкой разрешений подписи приложения.
@@ -184,7 +184,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
 | `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
 | `FVM_JIT_TARGET_MACOS_X64` | enum constant | [src/jit/backend.hpp:17](../src/jit/backend.hpp#L17) |
-| `FVM_MAC_CODE_SUPPORTED` | macro / define | [ports/mac/code_platform.h:7](../ports/mac/code_platform.h#L7) |
+| `FVM_MAC_CODE_SUPPORTED` | macro / define | [ports/mac/code_platform.h:15](../ports/mac/code_platform.h#L15) |
 | `fvm_port_code_create` | function | [ports/code_port.c:32](../ports/code_port.c#L32) |
 | `fvm_port_code_release` | function | [ports/code_port.c:75](../ports/code_port.c#L75) |
 <!-- source-links:end -->

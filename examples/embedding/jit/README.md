@@ -91,7 +91,22 @@ macOS execution and signing are not validated in this Linux workspace.
 Plist относится к classic Intel unsigned code; не включает Apple Silicon/MAP_JIT.
 Подпись и разрешения host задаёт явно; библиотека не меняет их сама. Результат и
 публичные compile/attach/invoke/source/destroy API примера остаются прежними.
-Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](../../../doc/JIT_MACOS_ARM64.md). Apple Silicon host execution remains disabled pending its own memory policy and native acceptance.
+Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](../../../doc/JIT_MACOS_ARM64.md). v0.569 adds an opt-in macOS 11.4+ MAP_JIT callback arena; default activation remains OFF pending native acceptance.
+## macOS ARM64 host preparation / подготовка Apple Silicon
+
+For the opt-in macOS 11.4+ MAP_JIT callback adapter, use the native build/sign/run
+commands in [JIT_MACOS_ARM64.md](../../../doc/JIT_MACOS_ARM64.md#v0569-opt-in-macos-114-publication--включаемая-публикация).
+The accompanying [macos-arm64.entitlements](macos-arm64.entitlements) enables
+allow-jit and the callback allowlist for this executable. It is not the Intel
+unsigned-memory entitlement file. Link statically at startup; the library does
+not sign the application or coordinate callbacks loaded later through dlopen.
+The tutorial's existing MANUAL/native-entry checks apply when this backend is
+actually available. The build option defaults OFF pending native acceptance.
+
+Нужен настоящий macOS ARM64 хост, SDK с callback API и deployment target 11.4+.
+Файл entitlement и точные команды приведены в руководстве. Здесь подтверждены
+эмуляция инструкций и controlled SDK protocol; нативная Apple-приёмка ещё не
+выполнена. Отказ защиты/подписи должен оставаться ошибкой или interpreter fallback.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

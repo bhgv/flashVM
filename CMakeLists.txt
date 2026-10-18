@@ -28,11 +28,22 @@ file(GLOB_RECURSE FVM_CORE_SOURCES src/core/*.cpp src/capi/*.cpp src/capi/*.c
                                  src/multimedia/*.cpp)
 list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm STATIC ${FVM_CORE_SOURCES} src/render/raster_c.cpp
-  ports/code_port.c ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
+  ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)
 target_compile_definitions(flashvm PUBLIC ${FVM_BUILD_KEYS})
+option(FVM_ENABLE_MACOS_ARM64_JIT "Opt in to macOS 11.4+ ARM64 MAP_JIT callback publication" OFF)
+if(FVM_ENABLE_MACOS_ARM64_JIT)
+  if(NOT APPLE OR NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    message(FATAL_ERROR "FVM_ENABLE_MACOS_ARM64_JIT requires a desktop macOS toolchain")
+  endif()
+  if(NOT CMAKE_OSX_DEPLOYMENT_TARGET OR CMAKE_OSX_DEPLOYMENT_TARGET VERSION_LESS "11.4")
+    message(FATAL_ERROR "macOS ARM64 JIT callback publication requires deployment target 11.4+")
+  endif()
+  target_compile_definitions(flashvm PUBLIC FVM_ENABLE_MACOS_ARM64_JIT=1)
+endif()
+
 if(NOT WIN32)
   find_package(Threads REQUIRED)
   target_link_libraries(flashvm PUBLIC Threads::Threads m)
@@ -224,7 +235,8 @@ function(fvm_add_program source)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
     if(target STREQUAL "flashvm_tests_jit_macos_native" OR
-       target STREQUAL "flashvm_tests_jit_windows_unwind")
+       target STREQUAL "flashvm_tests_jit_windows_unwind" OR
+       target STREQUAL "flashvm_tests_jit_macos_arm64_port")
       # OS-only acceptance fixtures must not masquerade as successful execution on another host.
       set_tests_properties(${target} PROPERTIES SKIP_RETURN_CODE 77)
     endif()
@@ -379,6 +391,11 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_swf_stream_example.py
               $<TARGET_FILE:flashvm_examples_multimedia_swf_stream_main>)
     set_tests_properties(flashvm_swf_stream_tutorial_host PROPERTIES TIMEOUT 30)
+  endif()
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    add_test(NAME flashvm_macos_jit_policy
+      COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_macos_jit_policy.py
+              --cc ${CMAKE_C_COMPILER})
   endif()
   add_test(NAME flashvm_documentation_source_link_order
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_documentation_source_links.py)
