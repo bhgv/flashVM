@@ -231,12 +231,18 @@ function(fvm_add_program source)
   else()
     target_compile_options(${target} PRIVATE -UNDEBUG)
   endif()
+  if(target STREQUAL "flashvm_tests_jit_macos_arm64_native" AND
+     CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(${target} PRIVATE -fno-omit-frame-pointer)
+  endif()
   if(FVM_BUILD_TESTS)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
     if(target STREQUAL "flashvm_tests_jit_macos_native" OR
        target STREQUAL "flashvm_tests_jit_windows_unwind" OR
-       target STREQUAL "flashvm_tests_jit_macos_arm64_port")
+       target STREQUAL "flashvm_tests_jit_macos_arm64_port" OR
+       target STREQUAL "flashvm_tests_jit_macos_arm64_native" OR
+       target STREQUAL "flashvm_tests_jit_native_instances")
       # OS-only acceptance fixtures must not masquerade as successful execution on another host.
       set_tests_properties(${target} PROPERTIES SKIP_RETURN_CODE 77)
     endif()

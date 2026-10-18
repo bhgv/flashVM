@@ -4610,6 +4610,21 @@ with 800 allocations/releases. Ten preprocessor policy combinations pass.
 These are not Apple SDK/code-signing/native ARM64 execution results. Нативная
 Apple-приёмка, остальные платформы и полнота VM по-прежнему необходимы; ни один
 из девяти этапов этим изменением не закрыт.
+### v0.570 — explicit native multi-VM and ARM64 frame acceptance
+
+The shared native acceptance scenario verifies simultaneous code owners, two
+independent runtimes, actual native-entry counters, survivor calls after owner
+teardown, source retention and replacement-code execution. It passes Release and
+ASAN/UBSAN on Linux (LeakSanitizer disabled). The macOS-specific wrapper reuses
+that contract and verifies its backend name. A new Apple Silicon-only acceptance
+fixture checks linked frames, preserved registers, error/branch exits and live
+slot reuse through actual published instructions when run on a signed native host.
+
+The two macOS acceptance tests explicitly skip on this Linux host. The ARM64
+fixture's guarded C++98 body was syntax-checked with controlled platform macros;
+no Apple SDK, Apple assembler, code-signing or native ARM64 run is claimed.
+See [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md). Это расширение проверок этапов 8/9;
+все этапы и нативная приёмка остаются открытыми.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

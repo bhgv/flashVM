@@ -201,6 +201,40 @@ Unicorn instruction/frame evidence remains separate from SDK protocol evidence.
 Mach-O callback allowlist или доказательством поведения codesign. Нативные сборка,
 подпись, исполнение нескольких VM/потоков и crash unwind на macOS ещё необходимы.
 Все девять этапов роудмапа остаются открытыми.
+## v0.570: native acceptance scenarios / нативные сценарии приёмки
+
+`flashvm_tests_jit_native_instances` runs on any available native backend. It keeps
+two separately compiled bodies and two runtime/context owners alive, checks actual
+native-entry counters in MANUAL mode, destroys the first owner, calls the survivor,
+checks its original source bytes, compiles a replacement and calls it before final
+cleanup. On macOS, `flashvm_tests_jit_macos_native` delegates the same contract after
+checking the selected Darwin backend name. This avoids counting a correct number
+returned by interpreter fallback as native execution.
+
+`flashvm_tests_jit_macos_arm64_native` is Apple Silicon only. Its helpers inspect
+the linked frame record, check return-address provenance and exercise preserved
+X19/X20, unsigned operands, branches and error returns through actual published
+code. It keeps two bodies live, releases one, publishes another and calls both
+survivors. The target uses frame pointers explicitly. It never modifies or relies
+on the OS-owned X18 value. Sign this executable using the ARM64 entitlement file
+before running under the host's Hardened Runtime policy.
+
+```sh
+codesign --force --sign - --options runtime   --entitlements examples/embedding/jit/macos-arm64.entitlements   build-macos-arm64/flashvm_tests_jit_macos_arm64_native
+ctest --test-dir build-macos-arm64 --output-on-failure   -R 'jit_(macos_arm64_native|macos_native|native_instances)$'
+```
+
+Sign the other two executables separately when required. A first publication
+rejected with UNSUPPORTED, a disabled backend or a foreign host reports explicit
+skip 77. Once the first publication succeeds, failure to create the simultaneous
+second body is a test failure, not a policy skip. The two runtime instances are
+interleaved on one owning thread; this does not certify concurrent use of one VM.
+
+В Linux выполнен общий сценарий с настоящим JIT и его ASAN/UBSAN-прогон, без
+LeakSanitizer. macOS-сценарии на Linux дают явный skip. ARM64-тело проверено на
+C++98-синтаксис с контролируемыми platform macros; это не компиляция Apple SDK,
+не проверка ассемблера Apple Clang и не нативное исполнение. Нативные сборка,
+подпись и запуск этих сценариев остаются обязательными перед закрытием этапа 9.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
