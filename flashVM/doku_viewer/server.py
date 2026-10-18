@@ -157,7 +157,8 @@ def navigation(root, component=""):
     """Index Markdown guides and example READMEs in alphabetic folder order."""
     groups = [('FlashVM', component),
               ('Documentation', os.path.join(component, 'doc')),
-              ('Examples', os.path.join(component, 'examples'))]
+              ('Examples', os.path.join(component, 'examples')),
+              ('Desktop frontend', os.path.join(component, 'frontend'))]
     if component:
         groups.insert(0, ('Repository', ''))
         # Workspace-only navigation: detached VM browsing never inspects siblings.

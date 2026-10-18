@@ -1,6 +1,6 @@
 # FlashVM workspace
 
-Development version: **0.576**. [Русская версия](README.ru.md).
+Development version: **0.577**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -81,3 +81,15 @@ and [Limbo](compiler/limbo/frontend/README.md). Each owns a readable, commented
 Component versions remain independent.
 [linker/](linker/README.md) is reserved for an independent C99 implementation;
 there is no linker executable yet. Editor/IDE implementation remains future work.
+
+## Desktop SWF player
+
+The optional [FlashVM desktop frontend](flashVM/frontend/README.md) has Linux,
+Windows and macOS launchers, `-h`/`--help`, interpreter/JIT, graphics quality,
+absolute FPS and percentage speed options. It requires an SDL2 development SDK:
+
+```sh
+cmake -S flashVM -B flashVM/build-desktop -DFVM_BUILD_DESKTOP_FRONTEND=ON
+cmake --build flashVM/build-desktop --target flashvm_player --parallel
+./flashVM/build-desktop/frontend/flashvm_player --help
+```

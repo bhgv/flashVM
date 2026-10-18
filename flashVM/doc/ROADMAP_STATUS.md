@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.576
+# FlashVM stage status / Состояние стадий — v0.577
 
 This is a bounded review of existing implementation reports and the current
-stream-sound work. It does not replace a complete per-API/SWF conformance matrix
+desktop-host work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущего изменения потокового звука, а не
+Это сводка существующих отчётов и текущего десктопного host, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -45,3 +45,26 @@ v0.576 развивает стадии 3/4/7: независимое хране�
 разбор MP3-префикса. Следующий рубеж — настоящий stateful decoder с реальными
 входами/эталонами, затем планирование samples по timeline MovieClip. Это не
 закрывает остальные стадии и не заменяет нативные проверки других ОС.
+
+## v0.577 desktop checkpoint / Десктопный запуск
+
+The optional [SDL2 desktop host](DESKTOP_FRONTEND.md) adds OS launch adapters,
+JIT/interpreter selection, quality, monotonic frame pacing and playlists.
+Stage bounds and a render-only viewport preserve authored transforms.
+Linux X11/software presentation is exercised with real windows, including
+RGBA pixels, close events and FWS/CWS playback. Cairo core viewport/shape/RECT/
+raster tests also pass (4/4); this build does not require SDL.
+The eight documentation-viewer tests pass. Foreign-OS launch adapters are
+implemented but not native-tested. All nine stages remain open.
+
+Добавлен [десктопный host](DESKTOP_FRONTEND.ru.md). Проверены окно X11,
+пиксели, закрытие, FWS/CWS, JIT/interpreter и управление темпом.
+Cairo: 4/4; просмотрщик документации: 8/8. Windows/macOS требуют
+нативного прогона, Android — Activity/surface frontend. Это не закрывает
+полноту SWF, input, звуковой clock и платформенную приёмку стадии 9.
+
+Current desktop-enabled Linux profile: 1140 passed and 3 explicitly skipped
+(native macOS ARM64/Intel and Windows unwind), 1143 registered tests total.
+This run disables examples and is not directly comparable to v0.576's count.
+Текущий Linux-профиль с desktop: 1140 успешных, 3 пропущенных, всего 1143;
+examples выключены, поэтому число тестов отличается от предыдущего профиля.

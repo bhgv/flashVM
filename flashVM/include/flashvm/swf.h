@@ -24,6 +24,18 @@ extern "C"
             tag_count /* Number of parsed SWF tags. */,
             action_tag_count; /* Number of ActionScript action tags. */
     } FVM_SWFInfo;
+#define FVM_SWF_TWIPS_PER_PIXEL 20L /* SWF stage coordinates use twenty twips per logical pixel. */
+    /* Authored stage rectangle, independent of visible object bounds. */
+    typedef struct FVM_SWFStageBounds
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFStageBounds). */
+        long x_min; /* Signed authored left edge in twips. */
+        long x_max; /* Signed authored right edge in twips. */
+        long y_min; /* Signed authored top edge in twips. */
+        long y_max; /* Signed authored bottom edge in twips. */
+    } FVM_SWFStageBounds;
+    /* Copy the loaded canonical RECT without allocation/script/GC; preserve output on failure. */
+    FVM_API FVM_Result fvm_swf_stage_bounds(FVM_Context *, FVM_SWFStageBounds *);
     /* Implement swf inspect for this subsystem. */
     FVM_API FVM_Result fvm_swf_inspect(const void *, size_t, FVM_SWFInfo *);
     /* Implement swf info for this subsystem. */

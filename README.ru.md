@@ -1,6 +1,6 @@
 # Рабочее пространство FlashVM
 
-Версия разработки: **0.576**. [English](README.md).
+Версия разработки: **0.577**. [English](README.md).
 
 ## Просмотр документации
 
@@ -82,3 +82,15 @@ DEFS, публичные заголовки, структура исходник
 Версии проектов ведутся независимо. [linker/](linker/README.ru.md) подготовлена для
 независимой реализации на C99; исполняемого линковщика пока нет.
 Редактор/IDE пока не реализован.
+
+## Десктопный проигрыватель SWF
+
+Необязательный [frontend FlashVM](flashVM/frontend/README.ru.md) содержит запуск
+для Linux, Windows и macOS, справку `-h`/`--help`, interpreter/JIT, качество,
+абсолютный FPS и скорость в процентах. Нужен SDK разработки SDL2:
+
+```sh
+cmake -S flashVM -B flashVM/build-desktop -DFVM_BUILD_DESKTOP_FRONTEND=ON
+cmake --build flashVM/build-desktop --target flashvm_player --parallel
+./flashVM/build-desktop/frontend/flashvm_player --help
+```

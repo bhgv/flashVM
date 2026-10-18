@@ -2145,7 +2145,8 @@ FVM_Result bitmap_snap(FVM_Object *data, FVM_Affine &world)
 /* Render the current value. */
 FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                   const ColorAffine &parent_color, unsigned int depth,
-                  const FVM_Affine *drawing_base = 0, FVM_RasterSurface *coverage = 0)
+                  const FVM_Affine *drawing_base = 0, FVM_RasterSurface *coverage = 0,
+                  const FVM_Affine *viewport = 0)
 {
     if (depth > 64)
         return FVM_INVALID_ARGUMENT;
@@ -2196,6 +2197,10 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         if (r != FVM_OK)
             return r;
     }
+    /* Host viewport is applied after the script world matrix, once per node.
+     * Normal child recursion recomputes authored world matrices, not this projected copy. */
+    if (viewport)
+        world = multiply(*viewport, world);
     if (!drawing_base || depth)
     {
         r = bitmap_snap(data, world);
@@ -2282,7 +2287,7 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         if (child.type != FVM_VALUE_OBJECT)
             return FVM_INVALID_ARGUMENT;
         r = render(c, child.object, surface, transform, depth + 1, drawing_base ? &world : 0,
-                   coverage);
+                   coverage, viewport);
         if (r != FVM_OK)
             return r;
     }
@@ -3536,6 +3541,33 @@ extern "C" FVM_Result fvm_movieclip_render(
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     }
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
+}
+
+/* Present through a host view while retaining ordinary root visibility, pose and color.
+ * [GC:] Copy host matrix before rendering getters; no script-visible transform is modified. */
+extern "C" FVM_Result fvm_movieclip_render_view(FVM_Context *c, FVM_Object *clip,
+                                                FVM_RasterSurface *surface, const FVM_Affine *view)
+{
+    if (!c || !clip || clip->owner != c || !surface || !view || c->destroying ||
+        c->gc_collecting || c->gc_releasing)
+        return FVM_INVALID_ARGUMENT;
+    const double values[FVM_MOVIECLIP_VIEW_COMPONENTS] = {view->xx, view->yx, view->xy,
+                                                         view->yy, view->x0, view->y0};
+    for (unsigned int i = 0; i < FVM_MOVIECLIP_VIEW_COMPONENTS; ++i)
+        if (values[i] != values[i] || values[i] > DBL_MAX || values[i] < -DBL_MAX)
+            return FVM_INVALID_ARGUMENT;
+    FVM_Affine viewport = *view;
+    try
+    {
+        FVM_NativeCallGuard guard(c);
+        ColorAffine root_color;
+        FVM_Result result = ancestor_color(c, clip, root_color);
+        return result == FVM_OK ? render(c, clip, surface, root_color, 0, 0, 0, &viewport) : result;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }
 
 /* [GC:] Render source-library geometry while ignoring the root clip's on-stage pose/color. */

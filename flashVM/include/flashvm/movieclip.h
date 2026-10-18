@@ -46,6 +46,10 @@ extern "C"
     FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
     /* Render movieclip. */
     FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterSurface *);
+    /* Render through a finite host viewport without changing script-visible clip transforms.
+       Viewport applies once to every world-space node, preserving root visibility/color. */
+    FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
+                                                const FVM_Affine *viewport);
 #ifdef __cplusplus
 }
 #endif

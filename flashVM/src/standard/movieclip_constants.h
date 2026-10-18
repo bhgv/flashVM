@@ -88,4 +88,6 @@
 #define FVM_MOVIECLIP_DUPLICATE_MAX_ABSOLUTE_DEPTH 2130706428L
 /* Maximum physical ancestor transforms composed by world geometry queries. */
 #define FVM_MOVIECLIP_MATRIX_MAX_ANCESTORS 1024U
+
+#define FVM_MOVIECLIP_VIEW_COMPONENTS 6U /* Finite affine viewport scalar count. */
 #endif

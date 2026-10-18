@@ -4648,6 +4648,17 @@ and four explicit skips (1185 total). The native ARM64/macOS and Windows unwind
 skips remain foreign-OS acceptance gaps; the speech SSIP endpoint is also skipped.
 Both actual tutorial modes and invalid CLI pass in Release and ASAN/UBSAN.
 Source-link, debugger tutorial and strict C89/C++98 port checks pass separately.
+## v0.577: desktop frontend / Десктопный запуск
+
+Добавлен необязательный SDL2 host в [frontend](../frontend/README.ru.md):
+точки входа Linux/Windows/macOS, SWF через argv, JIT/interpreter, качество,
+FPS/проценты скорости, playlist и справка. Контракты и ограничения:
+[руководство](DESKTOP_FRONTEND.ru.md) / [English](DESKTOP_FRONTEND.md).
+Размер и начало stage читаются через новый API; viewport не изменяет
+ActionScript-матрицы. Это развитие стадий 3/4/8/9, не их завершение.
+Нативная проверка Windows/macOS/Android, полноценный input и автоматическая
+синхронизация звука/видео остаются открыты. Результаты Linux приведены в
+[сводке](ROADMAP_STATUS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

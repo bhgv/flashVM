@@ -446,3 +446,12 @@ if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES)
   set_tests_properties(flashvm_swf_stream_mp3_tutorial PROPERTIES
     PASS_REGULAR_EXPRESSION "frame=1 declared=576 seek=-3 bytes=3" TIMEOUT 30)
 endif()
+
+# The VM remains independently embeddable; a desktop SDL2 SDK is needed only on explicit request.
+option(FVM_BUILD_DESKTOP_FRONTEND "Build the SDL2 desktop SWF player" OFF)
+if(FVM_BUILD_DESKTOP_FRONTEND)
+  if(NOT FVM_ENABLE_AGG AND NOT FVM_ENABLE_CAIRO)
+    message(FATAL_ERROR "Desktop playback requires GRAPHICS_AGG or GRAPHICS_CAIRO")
+  endif()
+  add_subdirectory(frontend)
+endif()

@@ -3103,6 +3103,17 @@ Windows/macOS native runtimes and one requires the speech SSIP endpoint. New
 MP3/live/snapshot/OOM/strict-C89 tests and the actual --demo tutorial pass; source
 links and the existing multimedia tutorial contract pass. No sanitizer or foreign
 OS run is claimed for this checkpoint.
+## v0.577: desktop frontend / Десктопный запуск
+
+Добавлен необязательный SDL2 host в [frontend](../frontend/README.ru.md):
+точки входа Linux/Windows/macOS, SWF через argv, JIT/interpreter, качество,
+FPS/проценты скорости, playlist и справка. Контракты и ограничения:
+[руководство](DESKTOP_FRONTEND.ru.md) / [English](DESKTOP_FRONTEND.md).
+Размер и начало stage читаются через новый API; viewport не изменяет
+ActionScript-матрицы. Это развитие стадий 3/4/8/9, не их завершение.
+Нативная проверка Windows/macOS/Android, полноценный input и автоматическая
+синхронизация звука/видео остаются открыты. Результаты Linux приведены в
+[сводке](ROADMAP_STATUS.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

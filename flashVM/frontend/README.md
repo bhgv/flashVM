@@ -1,0 +1,30 @@
+# Desktop SWF frontend
+
+[Русская версия](README.ru.md). This is an optional C89 desktop host for the VM,
+not a dependency of the core library or compiler projects.
+
+```sh
+# Run from the flashVM component directory; install the SDL2 development SDK first.
+cmake -S . -B build-desktop -DFVM_BUILD_DESKTOP_FRONTEND=ON
+cmake --build build-desktop --target flashvm_player --parallel
+./build-desktop/frontend/flashvm_player --help
+./build-desktop/frontend/flashvm_player --jit --quality high --speed 150% movie.swf
+./build-desktop/frontend/flashvm_player --no-jit --fps 30 first.swf second.swf
+```
+
+| Folder | Purpose |
+| --- | --- |
+| [linux](linux/README.md) | Linux main-thread launcher; SDL2 X11/Wayland presentation |
+| [windows](windows/README.md) | Win32 UTF-16 command-line conversion and UTF-8 file paths |
+| [macos](macos/README.md) | macOS main-thread launcher; SDL2 Cocoa presentation |
+| [android](android/README.md) | Explicit scope boundary: desktop CLI is not an Android Activity |
+| [common](common/player.c) | Shared parser, VM lifecycle, timing and SDL window adapter |
+| [tests](tests/smoke.py) | CLI/timing tests and opt-in native-display/presentation tests |
+
+[Full options, API/source links, timing, ownership and limits](../doc/DESKTOP_FRONTEND.md).
+Single files loop by default. Multiple files run sequentially for each authored
+frame-count worth of ticks. Escape or window close exits the entire playlist.
+The host advances/rasterizes the supported SWF subset; automatic audio/video
+scheduling, browser integration and SWF keyboard/button dispatch are not added.
+Linux X11 software presentation and actual interpreter/JIT execution are checked;
+Windows/macOS native execution, Wayland and physical GPU acceptance remain open.

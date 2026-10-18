@@ -1,5 +1,5 @@
-Development version: **0.576** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.576 ` and an English description. Increase the subversion before each
+Development version: **0.577** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.577 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -53,22 +53,19 @@ CloneSprite/RemoveSprite/StartDrag/EndDrag: [contracts and checks](doc/JIT_SCENE
 WaitForFrame/WaitForFrame2: [contracts and checks](doc/JIT_WAIT_FRAMES.md).
 GetURL/GetURL2/Call and stored-frame JIT: [contracts and checks](doc/JIT_DISPATCH.md).
 
-The current standing user instruction authorizes mirror updates after every commit
-until revoked. Use `origin` pointing to
-`https://bhgv.pythonanywhere.com/git/FlashVM/` and push with a 64 MiB HTTP buffer:
-`git -c http.postBuffer=67108864 push origin HEAD:master`. Do not force push.
-Fetch `origin master` afterwards and check `git merge-base --is-ancestor HEAD FETCH_HEAD`.
+The current primary repository is [GitHub](https://github.com/bhgv/flashVM).
+Use its full URL for authorized updates:
+`git push https://github.com/bhgv/flashVM.git master`. Do not force push.
+Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.576** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.576 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.577** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.577 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
 
-Действующая команда пользователя разрешает обновлять зеркало после каждого
-коммита до нового указания. Для отправки используйте
-указанный выше `origin` и HTTP-буфер 64 МиБ, без принудительной перезаписи истории.
-После отправки получите серверную ветку и проверьте, что она содержит текущий коммит.
+Сейчас основным является GitHub по полному адресу, указанному выше.
+Автор и коммитер: `bhgv <bhgv@bhgv.bhgv>`. Историю принудительно не переписывать.
 
 String checkpoint: native wrapper, UTF-16 indexed length/search/ranges,
 fromCharCode, GC and graph transfer. See [English](doc/STANDARD_STRING.md) /
@@ -572,6 +569,11 @@ including any third-party material identified within project sources.
 Run `python -m pip install -r doku_viewer/requirements.txt`, then
 `python view_docs.py`. Python 2.7.9/3 server, browser Markdown navigation and
 Pygments source-line links: [viewer guide](doku_viewer/README.md).
+## Desktop application
+
+[Desktop frontend](frontend/README.md): optional Linux/Windows/macOS SDL2 player,
+command-line SWF paths, JIT/interpreter, quality, FPS/percentage timing and help.
+[Full guide](doc/DESKTOP_FRONTEND.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

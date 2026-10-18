@@ -20,24 +20,14 @@
 - The internal Git repository and delivered archive are authoritative. Update
   the remote mirror only on an explicit user command. Do not publish private
   stashes or rewrite existing history without explicit authorization.
-- Configure `origin` as `https://bhgv.pythonanywhere.com/git/FlashVM/`.
-  For authorized mirror updates use
-  `git -c http.postBuffer=67108864 push origin HEAD:master`, without force.
-  Afterwards fetch `origin master` and verify that the local HEAD is an ancestor
-  of `FETCH_HEAD`; report the verified server commit, not just the push exit code.
-  Standing user authorization on 2026-10-12: update the mirror after every new
-  commit until the user gives another instruction. This supersedes the earlier
-  per-update restriction while active; the internal repository stays primary.
-- Standing user instruction on 2026-10-15: continue in the existing checkout,
-  update only the remote mirror, and do not create/export source or local-Git
-  archives unless the user explicitly asks again. This supersedes routine archive delivery.
-- Recovery authorization on 2026-10-15: the user permits cloning Git again after
-  workspace maintenance removed the checkout. Mirror updates remain authorized;
-  source/local-Git archive delivery remains disabled unless explicitly requested.
-- User reconfirmed sending to the mirror on 2026-10-15 with "отправь на зеркало"
-  after automatic review blocked the v0.366 upload. The destination remains
-  https://bhgv.pythonanywhere.com/git/FlashVM/; the standing non-force mirror-only
-  instructions above remain active.
+- Current standing user instruction supersedes earlier mirror destinations:
+  use only `https://github.com/bhgv/flashVM.git` as the primary remote for now.
+  Use the full GitHub URL in fetch/pull/push commands, not a remote alias.
+  Commit directly on master; author AND committer are `bhgv <bhgv@bhgv.bhgv>`.
+  Non-force publication remains authorized. Fetch the same full URL afterwards
+  and verify the published commit; never claim a local commit was published.
+  Do not export source/Git archives unless requested; the current user explicitly
+  requests a downloadable patch saved to Library.
 - Keep public APIs C89-compatible and implementation C++98-compatible, without
   STL containers. Keep platform adapters in `ports/` and bundled static library
   sources in `external/`.

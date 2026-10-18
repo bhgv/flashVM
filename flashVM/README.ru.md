@@ -1,4 +1,4 @@
-Версия разработки: **0.576** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.577** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -338,6 +338,11 @@ Stage quality / Качество сцены: [API and ToggleQuality](doc/STAGE_Q
 Установите `python -m pip install -r doku_viewer/requirements.txt`, затем
 запустите `python view_docs.py`. Python 2.7.9/3, навигация по Markdown и
 подсвеченные исходники с переходом к строке: [руководство](doku_viewer/README.md).
+## Десктопное приложение
+
+[Frontend](frontend/README.ru.md): необязательный SDL2-проигрыватель для
+Linux/Windows/macOS, SWF-пути, JIT/interpreter, качество, FPS/проценты и справка.
+[Полное руководство](doc/DESKTOP_FRONTEND.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

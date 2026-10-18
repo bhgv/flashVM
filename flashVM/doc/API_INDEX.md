@@ -125,6 +125,12 @@ Windows x64 backend selection, W^X and OS unwind-table ownership / выбор Wi
 
 
 macOS Intel classic JIT memory policy, frame chain and host preparation / память JIT, цепочка кадров и подготовка host: [JIT_MACOS_X64.md](JIT_MACOS_X64.md). Apple Silicon/MAP_JIT and native macOS acceptance remain open / Apple Silicon/MAP_JIT и нативная приёмка остаются открытыми.
+## Desktop host and authored stage
+
+[`fvm_swf_stage_bounds`](../include/flashvm/swf.h#L38) reads authored signed-twip geometry;
+[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L51) projects rendering without modifying script poses.
+Full parameters, ownership, errors and restrictions:
+[EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -152,6 +158,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:18](../include/flashvm/multimedia.h#L18) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:51](../include/flashvm/movieclip.h#L51) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:25](../include/flashvm/movieclip.h#L25) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:118](../src/core/runtime.hpp#L118) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
@@ -175,6 +182,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_voice_info` | function | [include/flashvm/swf_sound.h:80](../include/flashvm/swf_sound.h#L80) |
 | `fvm_swf_sound_voice_open` | function | [include/flashvm/swf_sound.h:78](../include/flashvm/swf_sound.h#L78) |
 | `fvm_swf_sound_voice_read` | function | [include/flashvm/swf_sound.h:82](../include/flashvm/swf_sound.h#L82) |
+| `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
 | `FVM_SWFSoundEnvelope` | struct | [include/flashvm/swf_sound.h:48](../include/flashvm/swf_sound.h#L48) |
 | `FVM_SWFSoundEvent` | struct | [include/flashvm/swf_sound.h:36](../include/flashvm/swf_sound.h#L36) |
 | `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |

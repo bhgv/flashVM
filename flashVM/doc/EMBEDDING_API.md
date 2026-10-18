@@ -18,7 +18,7 @@ Register C callbacks with `fvm_register_function(context, name, callback, userda
 
 ## SWF / AVM1 inspection
 
-`flashvm/swf.h` exposes [`fvm_swf_inspect`](../include/flashvm/swf.h#L28) for inspecting uncompressed FWS files (versions 1–8); `flashvm/avm1.h` exposes [`fvm_avm1_inspect`](../include/flashvm/avm1.h#L34) for validating action record framing. Set each info struct's `struct_size` to `sizeof(info)` before use. Neither operation executes bytecode. [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) and [`fvm_advance`](../include/flashvm/flashvm.h#L74) are not yet a functional player interface.
+`flashvm/swf.h` exposes [`fvm_swf_inspect`](../include/flashvm/swf.h#L40) for inspecting uncompressed FWS files (versions 1–8); `flashvm/avm1.h` exposes [`fvm_avm1_inspect`](../include/flashvm/avm1.h#L34) for validating action record framing. Set each info struct's `struct_size` to `sizeof(info)` before use. Neither operation executes bytecode. [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) and [`fvm_advance`](../include/flashvm/flashvm.h#L74) are not yet a functional player interface.
 
 ## Safety
 
@@ -53,7 +53,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../include/flashvm/flashvm.h#L66) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../include/flashvm/value.h#L87) |
-| `fvm_swf_inspect` | function | [include/flashvm/swf.h:28](../include/flashvm/swf.h#L28) |
+| `fvm_swf_inspect` | function | [include/flashvm/swf.h:40](../include/flashvm/swf.h#L40) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../include/flashvm/value.h#L44) |
