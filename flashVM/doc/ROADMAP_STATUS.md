@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.594
+# FlashVM stage status / Состояние стадий — v0.595
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -425,6 +425,36 @@ an actual AVM1 observer and verifies committed focus plus restored GC/script/JIT
 state. Source-link HTML/determinism, source-link freshness and debugger tutorial
 checks pass. No new foreign native runtime/device/reference-player acceptance
 is claimed; all nine roadmap stages remain open.
+
+## v0.595 primary-pointer Mouse / События первичного указателя
+
+Explicit native registration/delivery and the SWF6–8 Mouse namespace support
+onMouseDown/onMouseMove/onMouseUp from host-supplied primary touch/stylus/mouse.
+Rooted receiver snapshots precede pointer publication; active drag updates before
+callback delivery. Recursive Mouse dispatch is rejected, while mutations affect
+later events. Native registrations survive namespace replacement independently
+of Key/Selection. [EN](MOUSE.md) / [RU](MOUSE.ru.md).
+
+Курсор/колесо, direct MovieClip/Button/ClipActions, автоматический focus/hit route,
+сырые касания, эталонный порядок и нативная/device/endurance приёмка не заявлены.
+Все девять стадий остаются открытыми.
+
+### v0.595 verification / Проверка
+
+Linux Release C89/C++98 AGG build with examples: 1263 registered, 1259 pass and
+four explicit native-macOS/native-Windows/SSIP skips. Eleven cached executables
+were materialized with execute permission before this run. No runtime/assertion
+or not-started failure remains. The strict-C89 tutorial prints all three event
+positions and successful removal without requiring an OS input device.
+
+Three new regressions pass ASan/UBSan with leak detection disabled: native Mouse
+snapshot/mutation/GC/drag/recursion guards, installation/dispatch allocation
+sweeps, and SWF6–8 interpreter/manual/automatic-JIT handlers including real GC and
+an AVM1 exception. One initially cached sanitizer executable lacked execute
+permission; the locally materialized executable passes directly. Source-link
+freshness/HTML/determinism and debugger tutorial checks pass. No new native
+Android/Windows/macOS run, touch device or original-player acceptance is claimed.
+All roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

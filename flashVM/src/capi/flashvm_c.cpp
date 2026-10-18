@@ -148,6 +148,7 @@ extern "C"
         context->keyboard.struct_size = sizeof(context->keyboard);
         context->keyboard_focus = 0; /* [GC:] No selected clip before host input setup. */
         context->keyboard_dispatching = false;
+        context->mouse_dispatching = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */
@@ -242,7 +243,7 @@ extern "C"
 
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         if (!context || context->destroying || context->gc_collecting ||
-            context->gc_native_depth || context->keyboard_dispatching)
+            context->gc_native_depth || context->keyboard_dispatching || context->mouse_dispatching)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;
 
@@ -255,6 +256,7 @@ extern "C"
         context->drag_clip = 0;
         /* [GC:] Drop listener roots before finalization destroys their graph. */
         context->keyboard_listeners.clear();
+        context->mouse_listeners.clear(); /* [GC:] Release pointer observers before finalization. */
         context->selection_listeners.clear(); /* [GC:] Drop focus observers before finalization. */
         context->keyboard_focus = 0; /* [GC:] Release selection before object finalization. */
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */

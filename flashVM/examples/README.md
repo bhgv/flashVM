@@ -63,6 +63,8 @@
       - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, явный выбор клипа и короткие нажатия</em></small>
       - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
       - [selection](#example-embedding-selection) — <small><em>Selection: выбор клипа, уведомления и наблюдатели</em></small>
+    - [mouse](#group-embedding-input-mouse)
+      - [mouse_listeners](#example-embedding-mouse_listeners) — <small><em>Слушатели указателя: касание, движение и отпускание</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
@@ -763,6 +765,24 @@ getFocus, уведомления onSetFocus/onKillFocus, регистрацию/
 [Контракт EN](../doc/SELECTION.md) / [RU](../doc/SELECTION.ru.md).
 
 **Файлы:** [main.c](embedding/selection/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-embedding-input-mouse"></a>
+#### mouse
+
+<a id="example-embedding-mouse_listeners"></a>
+##### mouse_listeners
+
+**Тип:** C89 — собираемый пример. **README:** [embedding/mouse_listeners/README.md](embedding/mouse_listeners/README.md).
+
+Регистрирует объект с onMouseDown/onMouseMove/onMouseUp и передаёт три перехода
+первичного контакта без промежуточного кадра. Показывает опубликованные координаты,
+сильное владение подпиской, временный pin и очистку после ошибки. Подходит для
+касания, пера или мыши; не требует устройства или окна.
+[Контракт EN](../doc/MOUSE.md) / [RU](../doc/MOUSE.ru.md).
+
+**Файлы:** [main.c](embedding/mouse_listeners/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1514,6 +1534,7 @@ Source line links describe the current checkout, including in historical notes.
 - [meta_call — extending/meta_call](#example-extending-meta_call)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
 - [movieclip — embedding/movieclip](#example-embedding-movieclip)
+- [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
 - [movieclip — extending/movieclip](#example-extending-movieclip)
 - [native_functions — extending/native_functions](#example-extending-native_functions)
 - [network — embedding/network](#example-embedding-network)

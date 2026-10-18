@@ -3269,6 +3269,15 @@ Mutation affects later transitions; handler errors preserve committed effects.
 Это развитие стадий 3/5/7/8; TextField/Button, автоматический выбор, точная
 совместимость broadcaster-массива и нативная приёмка ОС остаются открытыми.
 
+## v0.595 — explicit primary-pointer Mouse listeners
+
+Added C89 Mouse registration and down/move/up delivery, SWF6–8 namespace and
+independent inspection snapshots. Host-supplied primary touch/stylus/mouse
+coordinates update drag state before rooted receiver callbacks. Mutation, OOM,
+GC, recursion guards and real AVM1/JIT exception paths are covered.
+[EN](MOUSE.md) / [RU](MOUSE.ru.md). Это продвижение стадий 3/5/7/8;
+полная сцена, курсор/колесо, native-device и эталонная приёмка остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
