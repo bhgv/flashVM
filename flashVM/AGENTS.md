@@ -153,3 +153,8 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   under ~/storage/downloads with user.name=bhgv and user.email=bhgv@bhgv.bhgv,
   print author/committer for verification, then push master to that full URL.
   Put raw commands in a fenced shell block, without Markdown links or escaped ~/@.
+
+- Since v0.585 keep the disposable Android test signer across sessions. The current
+  artifact is FlashVM-android-test-signing-key-v0.585.keystore (alias flashvm-test;
+  test-only store/key password android), saved separately with deliverables.
+  Reuse it rather than generating a replacement. It is not a production identity.

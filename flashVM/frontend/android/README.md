@@ -94,3 +94,5 @@ your previous test APK. The packager copies the NDK toolchain NOTICE beside
 `--strip`; keep that NOTICE with the supplied NDK. Device listening remains required.
 
 v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+
+v0.585: SDL AudioTrack вместо AAudio; [диагноз, проверка и новый тестовый ключ](../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0585-переход-на-audiotrack). Старое тестовое приложение нужно удалить перед установкой APK с новым ключом.

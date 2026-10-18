@@ -4697,6 +4697,12 @@ is supplied; all roadmap stages remain open.
 bounded native recording, actual SDL geometry/operation order, private opt-in ZIP
 export. Not a crackling fix or phone/runtime acceptance. All stages remain open.
 
+## v0.585 Android audio workaround
+
+Real user diagnostics identify excessive AAudio consumption (20 seconds in
+825–1035 ms). Android manifest selects SDL AudioTrack. [Evidence and limits](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+New APK needs device confirmation; this does not close stages or certify JIT/audio.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -31,7 +31,7 @@ public final class MenuActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(24, 24, 24, 24);
         TextView help = new TextView(this);
-        help.setText("FlashVM 0.584 · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
+        help.setText("FlashVM 0.585 · ARM64\nВыберите тест и режим. Касание двигает розовый указатель. " +
                      "Для стрелок нужна физическая клавиатура. Назад — выйти из теста. " +
                      "Звук: PCM8 mono / PCM16 stereo / ADPCM. JIT может использовать fallback.");
         layout.addView(help);
@@ -84,7 +84,7 @@ public final class MenuActivity extends Activity {
                 String audioProperties = manager == null ? "unavailable" :
                     "rate=" + manager.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE) +
                     " frames=" + manager.getProperty(android.media.AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
-                String text = "FlashVM 0.584\nAndroid=" + Build.VERSION.RELEASE + " API=" +
+                String text = "FlashVM 0.585\nAndroid=" + Build.VERSION.RELEASE + " API=" +
                     Build.VERSION.SDK_INT + "\nmanufacturer=" + Build.MANUFACTURER +
                     " model=" + Build.MODEL + "\nABI=" + Arrays.toString(Build.SUPPORTED_ABIS) +
                     "\nAudioManager " + audioProperties + "\nNo microphone capture. WAV contains SDL-bound native PCM.\n";

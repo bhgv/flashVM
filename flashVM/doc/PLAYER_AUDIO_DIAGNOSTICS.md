@@ -98,3 +98,36 @@ non-clipped tone amplitudes/durations, interpreter/JIT peak equality, six source
 controls and StopSounds markers. It uses an explicit temporary output directory
 and removes it. Android JNI/provider/share execution still requires a real phone;
 Java/Dex compilation and APK signing checks do not validate that lifecycle.
+
+## v0.585: Android AudioTrack selection
+
+The submitted Samsung SM-S931B / Android 16 / API36 traces identify SDL's AAudio
+driver. All six runs fill the 960000-frame (20-second) capture in 825–1035 ms,
+with 12072–12248 omitted operation records. Source events remain at approximately
+0/1000/1084/1500/3000 ms. Nonzero captures have peak 6400; both 03 captures are
+silent because they fill before the next audible event. This is evidence of
+excessive queue consumption, not a JIT gain change. The queue clock measures
+SDL dequeue, not hardware playback, so it cannot detect samples dropped later.
+
+SDL 2.30.0's [AAudio write](https://github.com/libsdl-org/SDL/blob/release-2.30.0/src/audio/aaudio/SDL_aaudio.c#L301)
+uses a 1000000 ns (1 ms) timeout for a whole block and does not retain the unwritten
+suffix after a nonnegative partial write. This provides a concrete mechanism for
+the observed drop/compression. The exact partial-write count was not captured.
+The [Android manifest](../frontend/android/AndroidManifest.xml#L8) now sets SDL_ENV.SDL_AUDIODRIVER=android before audio init,
+using SDL's blocking Java AudioTrack bridge instead. Upstream SDL is unchanged;
+there is no dummy fallback. Device acceptance still requires another phone run.
+
+The v0.585 APK reuses the v0.584 native libraries/assets byte-for-byte: no VM/audio
+C implementation changed. Its manifest was rebuilt with Android SDK35 aapt2, and
+the two equal-length Java version labels were updated in DEX with SHA1/Adler32
+recalculated. Package/signature/16 KiB alignment were checked. Full native rebuild
+and device execution were not performed for this manifest-only checkpoint.
+A new disposable test signing key is used because the old transient build key
+was lost. Uninstall the preceding test app before installing v0.585; export any
+remaining diagnostic files first. Retain the v0.585 test keystore for future
+builds (alias flashvm-test, test-only store/key password android).
+
+After installation, repeat 01 and 03 in both modes with diagnostics. The report
+should say driver=android and a 15-second foreground run should no longer fill
+a 20-second capture in one second. WAV pitch/duration and physical output must
+both be checked; this is a targeted workaround, not claimed device acceptance.

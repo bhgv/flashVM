@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.584
+# FlashVM stage status / Состояние стадий — v0.585
 
 This is a bounded review of existing implementation reports and the current
 explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
@@ -168,3 +168,11 @@ Windows x64 and Android ARM64 player builds passed; APK Java/Dex, signature and
 16 KiB alignment checks passed. No new core semantic acceptance or actual Android
 listening/provider run is claimed.
 [EN](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+
+## v0.585 Android device evidence
+
+Samsung SM-S931B / Android16 user traces establish excessive AAudio queue drain,
+not general Android compatibility. The manifest selects the blocking AudioTrack
+backend. APK metadata/DEX checksums/signature/16 KiB alignment and identical native
+payloads verified; native rebuild, runtime playback and the new driver's phone
+acceptance remain pending. [Investigation](PLAYER_AUDIO_DIAGNOSTICS.md).

@@ -116,6 +116,9 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 
 v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md).
 
+
+v0.585: SDL AudioTrack вместо AAudio; [диагноз, проверка и новый тестовый ключ](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0585-переход-на-audiotrack). Старое тестовое приложение нужно удалить перед установкой APK с новым ключом.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -3179,6 +3179,14 @@ private Android ZIP sharing distinguish source/host corruption from native outpu
 The reported Android crackling is not declared fixed; phone evidence remains needed.
 No roadmap stage closes.
 
+## v0.585 — Android AudioTrack workaround
+
+User device traces show AAudio draining twenty seconds of submitted PCM in
+825–1035 ms. Select SDL's blocking android/AudioTrack driver through the app
+manifest. Native VM/player PCM code and upstream SDL are unchanged. Diagnosis,
+package validation and phone recheck: [EN](PLAYER_AUDIO_DIAGNOSTICS.md) /
+[RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md). No roadmap stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
