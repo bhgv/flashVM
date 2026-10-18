@@ -27,7 +27,7 @@ is claimed. VM source maps/debugger ownership retain their existing contracts.
 регистра. Цепочка frame pointer помогает исследовать стек, но не заменяет
 регистрацию DWARF/compact-unwind и не гарантирует полный нативный crash trace.
 
-[`fvm_jit_encode`](../src/jit/backend.hpp#L29) reuses the bounded call-plan driver and rel32 fixups; malformed
+[`fvm_jit_encode`](../src/jit/backend.hpp#L30) reuses the bounded call-plan driver and rel32 fixups; malformed
 branch destinations leave the previous output unchanged. v0.563 supplied the offline encoder; v0.564 adds desktop macOS x64 selection
 and classic RW-to-RX publication. Full native macOS acceptance remains pending.
 
@@ -181,7 +181,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
-| `fvm_jit_encode` | function | [src/jit/backend.hpp:29](../src/jit/backend.hpp#L29) |
+| `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
 | `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
 | `FVM_JIT_TARGET_MACOS_X64` | enum constant | [src/jit/backend.hpp:17](../src/jit/backend.hpp#L17) |
 | `FVM_MAC_CODE_SUPPORTED` | macro / define | [ports/mac/code_platform.h:7](../ports/mac/code_platform.h#L7) |

@@ -91,6 +91,7 @@ macOS execution and signing are not validated in this Linux workspace.
 Plist относится к classic Intel unsigned code; не включает Apple Silicon/MAP_JIT.
 Подпись и разрешения host задаёт явно; библиотека не меняет их сама. Результат и
 публичные compile/attach/invoke/source/destroy API примера остаются прежними.
+Offline Darwin ARM64 call encoding is documented in [JIT_MACOS_ARM64.md](../../../doc/JIT_MACOS_ARM64.md). Apple Silicon host execution remains disabled pending its own memory policy and native acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

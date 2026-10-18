@@ -33,6 +33,9 @@ void machine(FVM_JitTarget target, fvm_detail::vector<unsigned char> &b, FVM_Jit
     case FVM_JIT_TARGET_MACOS_X64:
         fvm_jit_machine_macos_x64(b, op, address, operand);
         break;
+    case FVM_JIT_TARGET_MACOS_ARM64:
+        fvm_jit_machine_macos_arm64(b, op, address, operand);
+        break;
     case FVM_JIT_TARGET_ARM:
         fvm_jit_machine_arm(b, op, address, operand);
         break;
@@ -66,7 +69,8 @@ FVM_Result fvm_jit_encode(FVM_JitTarget target, const FVM_JitCode &code,
                           void *userdata)
 {
     if (((target < FVM_JIT_TARGET_X86 || target > FVM_JIT_TARGET_RISCV64) &&
-         target != FVM_JIT_TARGET_WINDOWS_X64 && target != FVM_JIT_TARGET_MACOS_X64) || !resolver ||
+         target != FVM_JIT_TARGET_WINDOWS_X64 && target != FVM_JIT_TARGET_MACOS_X64 &&
+         target != FVM_JIT_TARGET_MACOS_ARM64) || !resolver ||
         code.actions.empty())
         return FVM_UNSUPPORTED;
     fvm_detail::vector<unsigned char> b;
@@ -126,7 +130,7 @@ FVM_Result fvm_jit_encode(FVM_JitTarget target, const FVM_JitCode &code,
                   read(b, p.at) | (((unsigned long)(dest - p.at - FVM_JIT_ARM_PC_BIAS) >>
                                     FVM_JIT_INSTRUCTION_SHIFT) &
                                    FVM_JIT_ARM_BRANCH_MASK));
-        else if (target == FVM_JIT_TARGET_ARM64)
+        else if (target == FVM_JIT_TARGET_ARM64 || target == FVM_JIT_TARGET_MACOS_ARM64)
             patch(b, p.at,
                   read(b, p.at) | (((unsigned long)(dest - p.at) >> FVM_JIT_INSTRUCTION_SHIFT) &
                                    FVM_JIT_ARM64_BRANCH_MASK));

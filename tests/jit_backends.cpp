@@ -38,18 +38,28 @@ int main(int argc, char **argv)
     code.actions[2].target = 1;
     code.actions[3].calls.push_back(FVM_JitCall(fvm_jit_push, 3));
     code.actions[3].branch = FVM_JIT_EXIT;
-    for (int t = FVM_JIT_TARGET_X86; t <= FVM_JIT_TARGET_RISCV64; ++t)
+    const FVM_JitTarget targets[] = {FVM_JIT_TARGET_X86, FVM_JIT_TARGET_ARM,
+        FVM_JIT_TARGET_ARM64, FVM_JIT_TARGET_RISCV, FVM_JIT_TARGET_RISCV64,
+        FVM_JIT_TARGET_MACOS_ARM64};
+    for (size_t target = 0; target < sizeof(targets)/sizeof(targets[0]); ++target)
     {
+        int t = targets[target];
         fvm_detail::vector<unsigned char> bytes;
         assert(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, 0) == FVM_OK);
         assert(bytes.size() > 32);
         save(argc == 2 ? argv[1] : 0, t, "", bytes);
-        if (t == FVM_JIT_TARGET_ARM64 || t == FVM_JIT_TARGET_RISCV64 || t == FVM_JIT_TARGET_ARM)
+        if (t == FVM_JIT_TARGET_MACOS_ARM64 || t == FVM_JIT_TARGET_ARM64 || t == FVM_JIT_TARGET_RISCV64 || t == FVM_JIT_TARGET_ARM)
         {
             unsigned mode = t == FVM_JIT_TARGET_ARM ? 2 : 1;
             assert(fvm_jit_encode((FVM_JitTarget)t, code, bytes, resolve, &mode)==FVM_OK);
             save(argc == 2 ? argv[1] : 0, t, mode == 1 ? "-high" : "-thumb", bytes);
         }
+        size_t prior = bytes.size();
+        unsigned char first = bytes[0];
+        code.actions[1].target = 999999;
+        assert(fvm_jit_encode((FVM_JitTarget)t,code,bytes,resolve,0)==FVM_INVALID_ARGUMENT);
+        assert(bytes.size()==prior && bytes[0]==first);
+        code.actions[1].target = 3;
         FVM_JitCode far;
         far.actions = code.actions;
         far.actions.resize(22004);

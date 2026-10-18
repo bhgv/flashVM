@@ -4571,6 +4571,24 @@ renders restart their ID state. The viewer HTTP/render suite passes six tests.
 Ручные HTML-якоря сохраняются; их уникальность остаётся обязанностью автора.
 Python 2.7.9 and foreign native OS acceptance were not rerun here. Stage 9 and
 all other roadmap stages remain open.
+### v0.568 — offline Darwin ARM64 linked-frame encoding
+
+Implemented / реализовано: separate private Darwin ARM64 target with a 32-byte
+aligned linked X29/LR frame, preserved X19/X20, untouched X18 and shared fixed
+integer helper calls/checked AArch64 relocation. Pointer width is explicitly eight
+bytes. Host selection deliberately remains disabled on Apple Silicon: no MAP_JIT,
+arm64e pointer authentication, signing entitlement or native OS run is claimed.
+See [JIT_MACOS_ARM64.md](JIT_MACOS_ARM64.md).
+
+Validation: fresh synthetic fixtures execute under Unicorn for six offline targets,
+including Darwin ARM64 normal/error exits, forward/backward/far branches, high
+helper/invocation pointers, unsigned operands, frame-record chain, X18/X19/X20/X29
+preservation and stack restoration. Invalid branch targets preserve output.
+Full Linux Release minimal-JIT CTest: 1176 passed, three explicit skips out of
+1179 (macOS native, Windows unwind, speech SSIP endpoint). Two focused encoder/
+width checks also pass under ASAN/UBSAN with LeakSanitizer disabled. The viewer's
+six Python 3 tests and source-link HTML/determinism checks pass separately.
+Это развитие этапов 8/9, а не нативная Apple-приёмка. Все этапы остаются открытыми.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

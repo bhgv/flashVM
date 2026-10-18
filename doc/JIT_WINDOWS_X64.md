@@ -4,7 +4,7 @@
 
 The private [`FVM_JIT_TARGET_WINDOWS_X64`](../src/jit/backend.hpp#L16) target is separate from Linux System V
 AMD64. It accepts the same decoded call plan and bounded source branches through
-[`fvm_jit_encode`](../src/jit/backend.hpp#L29). Its resolver supplies complete eight-byte helper addresses;
+[`fvm_jit_encode`](../src/jit/backend.hpp#L30). Its resolver supplies complete eight-byte helper addresses;
 no host-pointer truncation or foreign code execution is implicit in encoding.
 v0.560 added the encoder and Linux ABI evidence; v0.561 additionally selects
 `windows-x64` for ordinary Windows x64 builds and implements native memory/unwind
@@ -192,7 +192,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_available` | function | [include/flashvm/jit.h:13](../include/flashvm/jit.h#L13) |
 | `fvm_jit_backend_name` | function | [include/flashvm/jit.h:15](../include/flashvm/jit.h#L15) |
 | `fvm_jit_code_size` | function | [include/flashvm/jit.h:35](../include/flashvm/jit.h#L35) |
-| `fvm_jit_encode` | function | [src/jit/backend.hpp:29](../src/jit/backend.hpp#L29) |
+| `fvm_jit_encode` | function | [src/jit/backend.hpp:30](../src/jit/backend.hpp#L30) |
 | `fvm_jit_host_target` | function | [src/jit/backend.cpp:6](../src/jit/backend.cpp#L6) |
 | `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
 | `FVM_JIT_TARGET_WINDOWS_X64` | enum constant | [src/jit/backend.hpp:16](../src/jit/backend.hpp#L16) |

@@ -725,6 +725,7 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/jit/README.md](embedding/jit/README.md).
 Показывает ABI сборки; MANUAL и счётчик native entries подтверждают интерпретацию до привязки и реальный JIT после неё.
+Offline-генератор Darwin ARM64 и границы его проверки отдельно описаны в [JIT_MACOS_ARM64.md](../doc/JIT_MACOS_ARM64.md); пример не включает Apple Silicon native execution.
 Руководство также описывает macOS Intel backend, RW→RX, цепочку RBP и необязательную подготовку подписи через entitlement plist.
 Руководство описывает Windows x64 backend, W^X/unwind и Linux ms_abi evidence, отдельно отмечая ещё не выполненную нативную Windows приёмку.
 

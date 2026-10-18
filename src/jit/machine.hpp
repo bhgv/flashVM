@@ -28,6 +28,9 @@ void fvm_jit_machine_arm(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
 /* AArch64 AAPCS64 integer-call lowering. */
 void fvm_jit_machine_arm64(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
                            const unsigned char *, unsigned int);
+/* Darwin ARM64: linked X29 frame, untouched platform X18, fixed integer helper calls. */
+void fvm_jit_machine_macos_arm64(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
+                                const unsigned char *, unsigned int);
 /* RV32I/RV64I standard psABI; no compressed instructions or extension dependency. */
 void fvm_jit_machine_riscv(fvm_detail::vector<unsigned char> &, FVM_JitMachineOp,
                            const unsigned char *, unsigned int, bool);
