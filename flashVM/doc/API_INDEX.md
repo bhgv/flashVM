@@ -143,13 +143,23 @@ Full parameters, ownership, errors and restrictions:
 
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21) and [`FVM_MovieClipSoundCallback`](../include/flashvm/movieclip.h#L18) connect actual
 root StartSound entry to host mixing, before DoAction. [EN contracts](MOVIECLIP_SOUND.md) /
-[RU](MOVIECLIP_SOUND.ru.md). Sprite sound and device clocks remain unsupported.
+[RU](MOVIECLIP_SOUND.ru.md). Sprite sound and automatic device-clock scheduling remain unsupported.
 ## Explicit mixer rate/channel conversion
 
 [`fvm_swf_sound_mixer_create_configured`](../include/flashvm/swf_sound_mixer.h#L37), [`fvm_swf_sound_mixer_get_config`](../include/flashvm/swf_sound_mixer.h#L40),
 [`FVM_SWFSoundMixerConfig`](../include/flashvm/swf_sound_mixer.h#L26), [`FVM_SWF_SOUND_MIXER_CONVERT`](../include/flashvm/swf_sound_mixer.h#L21):
 [individual EN contracts](SWF_SOUND_CONVERSION.md) / [RU](SWF_SOUND_CONVERSION.ru.md).
 Legacy strict creation and info ABI remain unchanged; conversion is opt-in.
+
+## PCM output queue and consumed-frame clock
+
+[`FVM_AudioQueueBackend`](../include/flashvm/swf_sound_output.h#L16), [`FVM_SWFSoundOutputInfo`](../include/flashvm/swf_sound_output.h#L33), [`fvm_swf_sound_output_create`](../include/flashvm/swf_sound_output.h#L48),
+[`fvm_swf_sound_output_pump`](../include/flashvm/swf_sound_output.h#L52), [`fvm_swf_sound_output_pause`](../include/flashvm/swf_sound_output.h#L54), [`fvm_swf_sound_output_info`](../include/flashvm/swf_sound_output.h#L56),
+[`fvm_swf_sound_output_stop`](../include/flashvm/swf_sound_output.h#L58), [`fvm_swf_sound_output_close`](../include/flashvm/swf_sound_output.h#L61), [`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L68)
+and [`fvm_audio_sdl_queue_close`](../include/flashvm/swf_sound_output.h#L73): [individual EN contracts](SWF_SOUND_OUTPUT.md) /
+[RU](SWF_SOUND_OUTPUT.ru.md), [C89 tutorial](../examples/multimedia/swf_audio_queue/README.md).
+Host-owned queue integration and software FIFO clock; automatic desktop A/V
+synchronization and exact hardware position remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -168,7 +178,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_audio_linux_alsa_close` | function | [include/flashvm/multimedia.h:78](../include/flashvm/multimedia.h#L78) |
 | `fvm_audio_linux_alsa_open` | function | [include/flashvm/multimedia.h:76](../include/flashvm/multimedia.h#L76) |
 | `fvm_audio_mix_s16` | function | [include/flashvm/multimedia.h:130](../include/flashvm/multimedia.h#L130) |
+| `fvm_audio_sdl_queue_close` | function | [include/flashvm/swf_sound_output.h:73](../include/flashvm/swf_sound_output.h#L73) |
+| `fvm_audio_sdl_queue_open` | function | [include/flashvm/swf_sound_output.h:68](../include/flashvm/swf_sound_output.h#L68) |
 | `fvm_audio_stop_all` | function | [include/flashvm/multimedia.h:91](../include/flashvm/multimedia.h#L91) |
+| `FVM_AudioQueueBackend` | struct | [include/flashvm/swf_sound_output.h:16](../include/flashvm/swf_sound_output.h#L16) |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../include/flashvm/flashvm.h#L62) |
@@ -206,6 +219,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_mixer_read` | function | [include/flashvm/swf_sound_mixer.h:53](../include/flashvm/swf_sound_mixer.h#L53) |
 | `fvm_swf_sound_mixer_stop_all` | function | [include/flashvm/swf_sound_mixer.h:59](../include/flashvm/swf_sound_mixer.h#L59) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:48](../include/flashvm/swf_sound_mixer.h#L48) |
+| `fvm_swf_sound_output_close` | function | [include/flashvm/swf_sound_output.h:61](../include/flashvm/swf_sound_output.h#L61) |
+| `fvm_swf_sound_output_create` | function | [include/flashvm/swf_sound_output.h:48](../include/flashvm/swf_sound_output.h#L48) |
+| `fvm_swf_sound_output_info` | function | [include/flashvm/swf_sound_output.h:56](../include/flashvm/swf_sound_output.h#L56) |
+| `fvm_swf_sound_output_pause` | function | [include/flashvm/swf_sound_output.h:54](../include/flashvm/swf_sound_output.h#L54) |
+| `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:52](../include/flashvm/swf_sound_output.h#L52) |
+| `fvm_swf_sound_output_stop` | function | [include/flashvm/swf_sound_output.h:58](../include/flashvm/swf_sound_output.h#L58) |
 | `fvm_swf_sound_read_pcm` | function | [include/flashvm/swf_sound.h:93](../include/flashvm/swf_sound.h#L93) |
 | `fvm_swf_sound_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
 | `fvm_swf_sound_voice_close` | function | [include/flashvm/swf_sound.h:84](../include/flashvm/swf_sound.h#L84) |
@@ -217,6 +236,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SWFSoundEvent` | struct | [include/flashvm/swf_sound.h:36](../include/flashvm/swf_sound.h#L36) |
 | `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |
 | `FVM_SWFSoundMixerConfig` | struct | [include/flashvm/swf_sound_mixer.h:26](../include/flashvm/swf_sound_mixer.h#L26) |
+| `FVM_SWFSoundOutputInfo` | struct | [include/flashvm/swf_sound_output.h:33](../include/flashvm/swf_sound_output.h#L33) |
 | `FVM_SWFSoundVoice` | struct | [src/swf/sound_voice.cpp:9](../src/swf/sound_voice.cpp#L9) |
 | `FVM_SWFSoundVoiceInfo` | struct | [include/flashvm/swf_sound.h:63](../include/flashvm/swf_sound.h#L63) |
 | `fvm_table_set_metatable` | function | [include/flashvm/table.h:24](../include/flashvm/table.h#L24) |

@@ -1,10 +1,15 @@
-Версия разработки: **0.580** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.581** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
 новые коммиты отправляются только туда, с проверкой серверного HEAD.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.581: API очереди PCM с повтором записи, часы потребления и настоящий
+SDL2-вывод при явном включении SDK. [Руководство](doc/SWF_SOUND_OUTPUT.ru.md) /
+[EN](doc/SWF_SOUND_OUTPUT.md), [учебный пример C89](examples/multimedia/swf_audio_queue/README.md).
+Часы программной FIFO, не ЦАП; автоматическая desktop A/V синхронизация ещё открыта.
 
 ## Просмотр документации
 

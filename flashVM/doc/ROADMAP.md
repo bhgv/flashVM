@@ -3143,6 +3143,16 @@ stop/no-multiple, teardown and actual timeline/JIT integration are exercised.
 No band-limited filter, device clock, sprite sound or foreign native acceptance
 is supplied; all roadmap stages remain open.
 
+## v0.581 — replaceable playback FIFO and dequeue clock
+
+Explicit one-block pumping connects the converted mixer to a copied native queue
+ABI and optional real SDL2 playback adapter. Rejected writes retain exact PCM;
+clock observation measures software FIFO consumption, not DAC position. Stop,
+partial backend failure, source teardown and interpreter/JIT delivery are covered.
+[EN](SWF_SOUND_OUTPUT.md) / [RU](SWF_SOUND_OUTPUT.ru.md).
+Automatic desktop A/V scheduling, latency/underrun policy, compressed streams,
+sprite sound and native foreign-OS/device acceptance remain open. No stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

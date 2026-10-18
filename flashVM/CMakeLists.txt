@@ -44,6 +44,14 @@ if(FVM_ENABLE_MACOS_ARM64_JIT)
   target_compile_definitions(flashvm PUBLIC FVM_ENABLE_MACOS_ARM64_JIT=1)
 endif()
 
+# Optional host SDK: default core builds retain explicit UNSUPPORTED SDL audio stubs.
+option(FVM_ENABLE_SDL_AUDIO "Enable the real SDL2 copied-PCM output queue bridge" OFF)
+if(FVM_ENABLE_SDL_AUDIO)
+  find_package(SDL2 2.0.5 CONFIG REQUIRED)
+  target_compile_definitions(flashvm PUBLIC FVM_HAS_SDL_AUDIO=1)
+  target_link_libraries(flashvm PUBLIC SDL2::SDL2)
+endif()
+
 if(NOT WIN32)
   find_package(Threads REQUIRED)
   target_link_libraries(flashvm PUBLIC Threads::Threads m)
@@ -462,4 +470,19 @@ if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT 
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/swf_event_mixer_tutorial.py
       $<TARGET_FILE:flashvm_examples_multimedia_swf_event_mixer_main>)
   set_tests_properties(flashvm_swf_event_mixer_tutorial PROPERTIES TIMEOUT 30)
+endif()
+
+# This exercises actual SDL SDK queue/pause/consumption using an explicit dummy driver, not audible acceptance.
+option(FVM_SDL_AUDIO_DEVICE_TESTS "Run SDL2 dummy-driver queue protocol test" OFF)
+if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND FVM_SDL_AUDIO_DEVICE_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_sdl_queue_dummy COMMAND flashvm_tests_sdl_audio_queue --dummy)
+  set_tests_properties(flashvm_sdl_queue_dummy PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 10)
+endif()
+
+# Execute the annotated model tutorial without native device or SDK requirements.
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_swf_audio_queue_tutorial
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tests/swf_audio_queue_tutorial.py
+      $<TARGET_FILE:flashvm_examples_multimedia_swf_audio_queue_main>)
+  set_tests_properties(flashvm_swf_audio_queue_tutorial PROPERTIES TIMEOUT 30)
 endif()

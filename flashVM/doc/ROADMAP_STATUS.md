@@ -23,28 +23,37 @@ counts are historical unless explicitly rerun for this revision.
 
 ## Current Linux verification / Текущая проверка Linux
 
-v0.580: complete default Linux Release C89/C++98 build, including examples;
-1223 passing tests and 4 explicit skips out of 1227 registered. The skips require
+v0.581: complete default Linux Release C89/C++98 build, including examples;
+1230 passing tests and 4 explicit skips out of 1234 registered. The skips require
 native macOS ARM64/Intel, native Windows unwind, or an external speech SSIP endpoint.
-Eight focused conversion/timeline/tutorial tests additionally pass in the minimal-JIT ASan/UBSan
-build with LeakSanitizer disabled. Desktop SDL is OFF in this full run; earlier
-native X11/Cairo evidence below belongs to v0.577 and was not rerun here.
+Seven focused queue/timeline/tutorial tests additionally pass in the minimal-JIT
+ASan/UBSan build with LeakSanitizer disabled. Eight focused tests pass in an
+SDL2 2.30.0 SDK/runtime build, including an explicitly selected dummy-driver queue
+consumption test and forced native allocation failure/reset. The real tutorial
+also executes its --sdl path with that dummy driver. These are SDK/protocol
+checks, not audible hardware or foreign-OS acceptance. Desktop SDL is OFF in
+the full default run; earlier native X11/Cairo evidence below belongs to v0.577.
 
-Полная текущая Linux Release-сборка с examples: 1223 успешных, 4 пропуска из
-1227. ASan/UBSan: 8/8 новых проверок, LeakSanitizer выключен. Тесты окна SDL и
-foreign OS в этом прогоне не выполнялись. Числа не доказывают полноту SWF.
+Полная Linux Release-сборка с examples: 1230 успешных, 4 пропуска из 1234.
+ASan/UBSan: 7/7 новых проверок, LeakSanitizer выключен. Отдельная сборка с настоящим
+SDL2 SDK/runtime: 8/8, включая dummy FIFO и ошибку native allocation со сбросом.
+Это не проверка физического звука, окна или foreign OS. Числа не доказывают
+полноту SWF или завершение какой-либо стадии.
 
 ## Current work and next boundary / Текущая работа и следующий рубеж
 
-v0.580 adds opt-in linear rate/channel conversion with integer phase and bounded
-per-slot lookahead. Strict creation and info ABI remain compatible. Next: device
-clock/output integration, sprite sound/linkage, prepared source indexing and a
-band-limited resampler. Stream codecs/reference movies and native platform
-acceptance remain open.
+v0.581 connects converted mixing to an explicit copied native FIFO ABI with
+one-block pumping, stable retry PCM, pause/clear/reset and a consumed-frame clock.
+The optional SDL2 bridge uses real native queue functions, while default builds
+return UNSUPPORTED. [EN contracts](SWF_SOUND_OUTPUT.md) / [RU](SWF_SOUND_OUTPUT.ru.md).
+This clock observes software FIFO depletion, not DAC position. Next: automatic
+desktop A/V scheduling and latency/underrun policy, sprite sound/linkage, prepared
+source indexing and a band-limited resampler. Stream codecs/reference movies and
+native platform/device/endurance acceptance remain open.
 
-v0.580 явно преобразует разные частоты/каналы в общий output clock. Следующие
-рубежи — device clock/вывод, sprite/linkage, prepared source index и качественный
-anti-alias фильтр. Все девять стадий остаются открыты.
+v0.581 добавляет сменный PCM output, безопасный повтор блока и часы потребления.
+Автоматическое подключение desktop/timeline, политика задержек/underrun, sprite,
+compressed streams и нативная приёмка остаются открыты. Все девять стадий открыты.
 
 ## v0.577 desktop checkpoint / Десктопный запуск
 

@@ -1,10 +1,15 @@
-Development version: **0.580** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.580 ` and an English description. Increase the subversion before each
+Development version: **0.581** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.581 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.581: PCM queue/retry API, consumed-frame clock and optional real SDL2 output.
+[EN guide](doc/SWF_SOUND_OUTPUT.md) / [RU](doc/SWF_SOUND_OUTPUT.ru.md),
+[annotated C89 example](examples/multimedia/swf_audio_queue/README.md).
+Software FIFO clock, not DAC position; automatic desktop A/V scheduling remains open.
 
 ## Browse documentation
 
@@ -58,8 +63,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.580** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.580 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.581** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.581 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

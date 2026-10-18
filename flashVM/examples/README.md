@@ -115,6 +115,7 @@
   - [devices](#group-multimedia-devices)
     - [system_devices](#example-multimedia-system_devices) — <small><em>Свой опрос устройств через Linux evdev</em></small>
   - [mixing](#group-multimedia-mixing)
+    - [swf_audio_queue](#example-multimedia-swf_audio_queue) — <small><em>Сменная FIFO PCM, повтор записи, часы потребления и SDL2</em></small>
     - [swf_event_mixer](#example-multimedia-swf_event_mixer) — <small><em>StartSound-микшер: manual/timeline, 48 kHz stereo и stop</em></small>
     - [swf_mix](#example-multimedia-swf_mix) — <small><em>Два голоса в PCM-файл; StopSounds через interpreter/JIT</em></small>
     - [swf_polyphony](#example-multimedia-swf_polyphony) — <small><em>Несколько голосов, no-multiple и stop по ресурсу</em></small>
@@ -1238,6 +1239,18 @@ source geometry от advisory playback и среднего числа samples. �
 <a id="group-multimedia-mixing"></a>
 ### mixing
 
+<a id="example-multimedia-swf_audio_queue"></a>
+#### swf_audio_queue
+
+Исполняемый C89 учебник: [README](multimedia/swf_audio_queue/README.md),
+[main.c](multimedia/swf_audio_queue/main.c). Собственная модель FIFO показывает
+отклонение/повтор одного PCM-блока, pause/clear, копируемые часы потребления и
+отдельное владение producer/mixer/device. Явный `--sdl` использует настоящий SDL2
+bridge при включённом SDK; модель работает без устройства. Тишина и dummy-driver
+проверяют протокол, не слышимый вывод. README описывает подготовку Linux/Windows/
+macOS, ограничения Android и индивидуальные контракты функций. См.
+[EN](../doc/SWF_SOUND_OUTPUT.md) / [RU](../doc/SWF_SOUND_OUTPUT.ru.md).
+
 <a id="example-multimedia-swf_event_mixer"></a>
 #### swf_event_mixer
 
@@ -1435,6 +1448,7 @@ Source line links describe the current checkout, including in historical notes.
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
+- [swf_audio_queue — multimedia/swf_audio_queue](#example-multimedia-swf_audio_queue)
 - [swf_event_mixer — multimedia/swf_event_mixer](#example-multimedia-swf_event_mixer)
 - [swf_mix — multimedia/swf_mix](#example-multimedia-swf_mix)
 - [swf_polyphony — multimedia/swf_polyphony](#example-multimedia-swf_polyphony)
