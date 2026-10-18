@@ -22,10 +22,10 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 
 ## Демонстрируемые функции C API
 
-Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
-и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+Имена ведут к публичным декларациям. Во второй колонке описано действие каждой
+функции и дан переход к руководству; общие функции setup/cleanup включены для воспроизводимости.
 
-| Функция | Где читать подробнее |
+| Функция | Назначение и документация |
 | --- | --- |
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_construct`](../../../include/flashvm/value.h#L158) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
@@ -42,7 +42,7 @@ cmake --build build-examples --target flashvm_examples_embedding_standard_text_m
 | [`fvm_standard_text_register_font`](../../../include/flashvm/standard_text.h#L21) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
 | [`fvm_textfield_create`](../../../include/flashvm/standard_text.h#L27) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
 | [`fvm_textfield_path`](../../../include/flashvm/standard_text.h#L32) | [STANDARD_TEXT.md](../../../doc/STANDARD_TEXT.md) — TextField, шрифты и текстовые пути. |
-| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Записывает тег Boolean и нормализует значение: 0 становится false, любое ненулевое число — true. Подробнее: [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views). |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |

@@ -22,10 +22,10 @@ cmake --build build-examples --target flashvm_examples_embedding_shared_mutex_ma
 
 ## Демонстрируемые функции C API
 
-Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
-и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
+Имена ведут к публичным декларациям. Во второй колонке описано действие каждой
+функции и дан переход к руководству; общие функции setup/cleanup включены для воспроизводимости.
 
-| Функция | Где читать подробнее |
+| Функция | Назначение и документация |
 | --- | --- |
 | [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
 | [`fvm_channel_destroy`](../../../include/flashvm/channel.h#L49) | [CHANNELS.md#implemented-api](../../../doc/CHANNELS.md#implemented-api) — FIFO, передача значений и закрытие. |
@@ -39,7 +39,7 @@ cmake --build build-examples --target flashvm_examples_embedding_shared_mutex_ma
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Метод, receiver и аргументы. |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
+| [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Записывает тег Boolean и нормализует значение: 0 становится false, любое ненулевое число — true. Подробнее: [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views). |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L71) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 | [`fvm_worker_join`](../../../include/flashvm/worker.h#L45) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |

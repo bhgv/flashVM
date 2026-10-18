@@ -128,3 +128,11 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   services, static SDK/model paths, permissions/manifest/entitlements, native event loop,
   ownership and cleanup. Distinguish executable tutorials from app-integration sources
   and compile/protocol fixtures from actual audible/microphone/device acceptance.
+
+- Standing user instruction on 2026-10-18: GitHub https://github.com/bhgv/flashVM
+  is temporarily the primary repository. Commit directly on master and publish
+  only there; do not update the PythonAnywhere mirror. Author and committer
+  must both be bhgv <bhgv@bhgv.bhgv>. This supersedes earlier remote rules.
+- Example API tables must explain each individual function and its ownership/
+  blocking behavior, with a link to its contract; a repeated guide description
+  is not a function description.

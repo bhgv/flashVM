@@ -53,6 +53,10 @@ Markdown-ссылки. После сдвига строк исходника о�
 примера. Существующие main-программы, AS-исходники и концептуальные заметки
 должны различаться по типу и требованиям запуска.
 
+В таблице API описывайте конкретную функцию и её роль в примере: общая аннотация
+раздела руководства не заменяет назначение функции. Отдельно указывайте ссылку
+на контракт функции, владение и существенные блокировки.
+
 README каждого примера описывает:
 
 - зачем он нужен, что позволяет увидеть и какой результат ожидается;
@@ -86,6 +90,9 @@ or definitions, with current line anchors where supported. Refresh generated
 links after source changes and run the read-only check. Keep manual/TOC links,
 heading anchors and fenced example code intact. Never invent a source location
 for an unresolved/historical symbol; review automatic matches for relevance.
+
+API tables must describe each function, not repeat the guide section summary.
+Link the function contract and explain ownership and relevant blocking behavior.
 
 Every public API needs purpose, parameters, results/errors, ownership/lifetime,
 thread/GC/reentry restrictions and material limits. Every example needs a README
