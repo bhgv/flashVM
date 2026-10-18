@@ -6,6 +6,7 @@
 #define FVM_SWF_SOUND_STREAM_BLOCK 19U /* Root frame sound payload tag. */
 #define FVM_SWF_SOUND_STREAM_HEAD_BYTES 4U /* Playback flags, stream flags and UI16 average count. */
 #define FVM_SWF_SOUND_STREAM_MP3_BYTES 6U /* Base header plus signed MP3 latency. */
+#define FVM_SWF_SOUND_STREAM_MP3_PREFIX_BYTES 4U /* UI16 declared count followed by SI16 block seek. */
 #define FVM_SWF_SOUND_STREAM_RESERVED_MASK 240U /* Playback header high nibble must be zero. */
 #define FVM_SWF_SOUND_STREAM_HEAD2_VERSION 3U /* First SWF version permitting tag 45. */
 #define FVM_SWF_SOUND_STREAM_MP3 2U /* MP3 compression identity; decoding remains unsupported here. */

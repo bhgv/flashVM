@@ -438,3 +438,11 @@ if(FVM_ENABLE_LINUX_AUDIO AND TARGET flashvm_tests_swf_sound_alsa)
   set_tests_properties(flashvm_tests_swf_sound_alsa PROPERTIES
     ENVIRONMENT "ALSA_CONFIG_PATH=${PROJECT_SOURCE_DIR}/tests/alsa_null.conf")
 endif()
+
+# Execute the detached encoded-stream tutorial, not just its side-effect-free usage path.
+if(FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES)
+  add_test(NAME flashvm_swf_stream_mp3_tutorial
+    COMMAND flashvm_examples_multimedia_swf_stream_mp3_main --demo)
+  set_tests_properties(flashvm_swf_stream_mp3_tutorial PROPERTIES
+    PASS_REGULAR_EXPRESSION "frame=1 declared=576 seek=-3 bytes=3" TIMEOUT 30)
+endif()

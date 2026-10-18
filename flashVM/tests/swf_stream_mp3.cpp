@@ -1,0 +1,144 @@
+/* Prefix geometry, codec isolation, signed boundaries and detached compressed snapshots. */
+#define main stream_reference_main
+#include "swf_stream_sound.cpp"
+#undef main
+
+/* Construct independent wire bytes; the MPEG payload is intentionally not a real audio frame. */
+static Bytes mp3_movie(unsigned version, unsigned tag_id, unsigned stereo,
+                       unsigned samples, unsigned seek, size_t prefix = 4)
+{
+    Bytes tags, h = header(0x2e | stereo, 1), block;
+    word(h, 65534);
+    tag(tags, tag_id, h);
+    word(block, samples);
+    word(block, seek);
+    block.resize(prefix);
+    if (prefix == 4) { block.push_back(0xff); block.push_back(0x00); block.push_back(0x7e); }
+    tag(tags, 19, block);
+    return movie(tags, version);
+}
+
+#ifndef FVM_MP3_FIXTURE_ONLY
+int main()
+{
+    FVM_Config config;
+    FVM_Runtime *runtime = 0;
+    FVM_Context *context = 0;
+    assert(fvm_config_init(&config) == FVM_OK);
+    assert(fvm_runtime_create(&config, &runtime) == FVM_OK);
+    assert(fvm_context_create(runtime, &context) == FVM_OK);
+    FVM_SWFStreamSoundMP3Block view;
+    view.struct_size = sizeof(view);
+    view.frame = 99;
+    assert(fvm_swf_stream_sound_mp3_block_at(0, 0, 0, &view) == FVM_INVALID_ARGUMENT);
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_UNSUPPORTED);
+    const unsigned seeks[] = {0, 1, 32767, 32768, 65534, 65535};
+    const unsigned counts[] = {0, 1, 576, 1152, 65535};
+    for (unsigned version = 4; version <= 8; ++version)
+        for (unsigned tag_id = 18; tag_id <= 45; tag_id += 27)
+            for (unsigned stereo = 0; stereo < 2; ++stereo)
+                for (unsigned c = 0; c < sizeof(counts)/sizeof(counts[0]); ++c)
+                    for (unsigned s = 0; s < sizeof(seeks)/sizeof(seeks[0]); ++s)
+                    {
+                        load(context, mp3_movie(version, tag_id, stereo, counts[c], seeks[s]));
+                        assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_OK);
+                        assert(view.stream_index == 0 && view.block_index == 0 && view.frame == 1);
+                        assert(view.declared_samples == counts[c]);
+                        int expected = (int)(seeks[s] >= 32768 ? (long)seeks[s] - 65536 : (long)seeks[s]);
+                        assert(view.seek_samples == expected && view.data_size == 3);
+                        assert(view.data[0] == 0xff && view.data[1] == 0 && view.data[2] == 0x7e);
+                        FVM_SWFStreamSoundSnapshot *snapshot = 0;
+                        assert(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot) == FVM_OK);
+                        Bytes empty;
+                        load(context, movie(empty));
+                        assert(fvm_swf_stream_sound_snapshot_mp3_block_at(snapshot, 0, &view) == FVM_OK);
+                        assert(view.declared_samples == counts[c] && view.seek_samples == expected);
+                        assert(view.data_size == 3 && view.data[2] == 0x7e);
+                        size_t written = 99;
+                        short destination = 42;
+                        assert(fvm_swf_stream_sound_snapshot_read_pcm(snapshot, 0, (size_t)-1, 0,
+                            &destination, 1, &written) == FVM_UNSUPPORTED && !written && destination == 42);
+                        fvm_swf_stream_sound_snapshot_close(snapshot);
+                    }
+    /* Prefix failures leave the whole output byte-for-byte unchanged. */
+    std::memset(&view, 0x5a, sizeof(view));
+    view.struct_size = sizeof(view);
+    FVM_SWFStreamSoundMP3Block saved = view;
+    for (size_t prefix = 0; prefix < 4; ++prefix)
+    {
+        load(context, mp3_movie(4, 18, 0, 576, 65535, prefix));
+        assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_INVALID_ARGUMENT);
+        assert(!std::memcmp(&view, &saved, sizeof(view)));
+        FVM_SWFStreamSoundSnapshot *snapshot = 0;
+        assert(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot) == FVM_OK);
+        assert(fvm_swf_stream_sound_snapshot_mp3_block_at(snapshot, 0, &view) == FVM_INVALID_ARGUMENT);
+        assert(!std::memcmp(&view, &saved, sizeof(view)));
+        fvm_swf_stream_sound_snapshot_close(snapshot);
+    }
+    /* Segment-relative indices and movie frame gaps are not MPEG sample positions. */
+    {
+        Bytes tags, empty, h = header(0x2f), payload;
+        tag(tags, 45, header(12));
+        word(h, 65534); tag(tags, 18, h);
+        word(payload, 576); word(payload, 3); payload.push_back(0x7e);
+        tag(tags, 19, payload); tag(tags, 1, empty); tag(tags, 1, empty);
+        payload.clear(); word(payload, 0); word(payload, 0); tag(tags, 19, payload);
+        load(context, stream_movie(tags, 8, 3));
+        assert(fvm_swf_stream_sound_mp3_block_at(context, 1, 1, &view) == FVM_OK);
+        assert(view.stream_index == 1 && view.block_index == 1 && view.frame == 3);
+        assert(!view.declared_samples && !view.seek_samples && !view.data_size);
+        FVM_SWFStreamSoundSnapshot *snapshot = 0;
+        assert(fvm_swf_stream_sound_snapshot_open(context, 1, &snapshot) == FVM_OK);
+        assert(fvm_swf_stream_sound_snapshot_mp3_block_at(snapshot, 1, &view) == FVM_OK);
+        assert(view.stream_index == 1 && view.block_index == 1 && view.frame == 3);
+        fvm_swf_stream_sound_snapshot_close(snapshot);
+        /* A later malformed root header still rejects an earlier valid prefix atomically. */
+        tag(tags, 45, header(0x2e));
+        load(context, stream_movie(tags, 8, 3));
+        saved = view;
+        assert(fvm_swf_stream_sound_mp3_block_at(context, 1, 0, &view) == FVM_INVALID_ARGUMENT);
+        assert(!std::memcmp(&view, &saved, sizeof(view)));
+    }
+    /* Structural parsing does not invent MPEG-frame validation or reject empty MPEG spans. */
+    Bytes tags, h = header(0x2e), empty_payload;
+    word(h, 0); tag(tags, 18, h); word(empty_payload, 0); word(empty_payload, 0);
+    tag(tags, 19, empty_payload); load(context, movie(tags, 4));
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_OK);
+    assert(!view.declared_samples && !view.seek_samples && !view.data_size && view.data);
+    saved = view;
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 1, 0, &view) == FVM_NOT_FOUND);
+    assert(!std::memcmp(&view, &saved, sizeof(view)));
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 1, &view) == FVM_NOT_FOUND);
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, 0) == FVM_INVALID_ARGUMENT);
+    view.struct_size = 0;
+    assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_INVALID_ARGUMENT);
+    view.struct_size = sizeof(view);
+    /* Other encoded codecs retain their opaque bytes, never becoming accidental PCM. */
+    FVM_SWFStreamSoundSnapshot *survivor = 0;
+    for (unsigned format = 0; format < 16; ++format)
+    {
+        if (format == 2) continue;
+        tags.clear(); Bytes payload; payload.push_back(0); payload.push_back(255);
+        tag(tags, 45, header((format << 4) | 14)); tag(tags, 19, payload);
+        load(context, movie(tags, 8));
+        assert(fvm_swf_stream_sound_mp3_block_at(context, 0, 0, &view) == FVM_UNSUPPORTED);
+        FVM_SWFStreamSoundSnapshot *snapshot = 0;
+        assert(fvm_swf_stream_sound_snapshot_open(context, 0, &snapshot) == FVM_OK);
+        assert(fvm_swf_stream_sound_snapshot_mp3_block_at(snapshot, 0, &view) == FVM_UNSUPPORTED);
+        fvm_swf_stream_sound_snapshot_close(snapshot);
+    }
+    load(context, mp3_movie(8, 45, 1, 1152, 32768));
+    assert(fvm_swf_stream_sound_snapshot_open(context, 0, &survivor) == FVM_OK);
+    fvm_context_destroy(context); fvm_runtime_destroy(runtime);
+    assert(fvm_swf_stream_sound_snapshot_mp3_block_at(survivor, 0, &view) == FVM_OK);
+    assert(view.declared_samples == 1152 && view.seek_samples == -32768 && view.data_size == 3);
+    saved = view;
+    assert(fvm_swf_stream_sound_snapshot_mp3_block_at(survivor, 1, &view) == FVM_NOT_FOUND);
+    assert(!std::memcmp(&view, &saved, sizeof(view)));
+    assert(fvm_swf_stream_sound_snapshot_mp3_block_at(survivor, 0, 0) == FVM_INVALID_ARGUMENT);
+    assert(fvm_swf_stream_sound_snapshot_mp3_block_at(0, 0, &view) == FVM_INVALID_ARGUMENT);
+    fvm_swf_stream_sound_snapshot_close(survivor);
+    return 0;
+}
+
+#endif

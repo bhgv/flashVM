@@ -2,11 +2,15 @@
 
 Ориентир: [ROADMAP.md](ROADMAP.md). Базовый реестр уточняется по мере сравнения
 с нормативными SWF/AS API; это ещё не полный каталог совместимости.
+Текущее резюме всех девяти стадий: [ROADMAP_STATUS.md](ROADMAP_STATUS.md).
+Это навигация по доказательствам и открытым условиям, не полный новый аудит каждой функции.
+
 Статусы: отсутствует / реализовано / проверено / завершено. «Проверено» относится
 к перечисленным сценариям, а не ко всем возможным входам или платформам.
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/4/7: encoded stream snapshots and MP3 prefixes | Реализовано v0.576; Linux targeted checks | Independent opaque compressed bytes; UI16 declared count/SI16 seek, selected-prefix validation and source-VM-independent views. [SWF_STREAM_MP3.md](SWF_STREAM_MP3.md). No MPEG decoding, automatic MovieClip clock, physical audio or foreign-platform acceptance. |
 | 8/9: macOS Intel classic JIT publication | Реализовано v0.564, проверено Linux fixtures | Desktop x64 selection, page-rounded mmap RW→mprotect RX, cache sync and cleanup. Real Linux AVM1/GC/exception pipeline and SDK failure/size fixtures; C89/C++98 controlled SDK compilation. [JIT_MACOS_X64.md](JIT_MACOS_X64.md). Native macOS/signing/Rosetta, Apple Silicon/MAP_JIT and full platform acceptance remain open. |
 | 8/9: macOS x64 offline encoder | Проверено на Linux v0.563 | Darwin integer-call blocks, linked RBP, saved r12, stack alignment, volatile arguments, native branches/errors and >1 MiB forward span. [JIT_MACOS_X64.md](JIT_MACOS_X64.md). macOS SDK/runtime/memory policy acceptance remains open. |
 | 8/9: Windows x64 availability correction | Проверено v0.562 в Linux fixtures | Windows ABI now reports eight-byte pointers instead of zero, fixing the v0.561 availability gate. Actual production selector compiled under Windows macros and all target widths checked. [JIT_WINDOWS_X64.md](JIT_WINDOWS_X64.md). Native Windows acceptance remains pending. |

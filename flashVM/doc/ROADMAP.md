@@ -46,7 +46,12 @@ components. This layout change does not complete any roadmap stage.
 
 ## Этапы
 
-| № | Этап | Оставшаяся работа |
+Таблица ниже сохраняет исходные направления плана: её перечисления не являются
+актуальным списком полностью отсутствующих функций. Текущее резюме существующей
+реализации и незакрытой приёмки: [ROADMAP_STATUS.md](ROADMAP_STATUS.md).
+Подробные проверенные сценарии: [COMPATIBILITY_STATUS.md](COMPATIBILITY_STATUS.md).
+
+| № | Этап | Исходный объём плана (не текущий список отсутствующих функций) |
 | --- | --- | --- |
 | 1 | Простые типы и стандартные объекты | Полноценные UTF-16 строки, встроенный NUL, одиночные суррогаты, Unicode-регистр; оставшаяся семантика Object/Array, наследуемые индексы, заимствованные методы, registerClass. |
 | 2 | Интерпретатор AVM1 | DefineFunction2, регистры и preloads, связанность arguments с параметрами, области видимости, интерфейсы, исключения и точные правила преобразований для разных версий SWF. |
@@ -3081,6 +3086,23 @@ and four explicit skips (1185 total). The native ARM64/macOS and Windows unwind
 skips remain foreign-OS acceptance gaps; the speech SSIP endpoint is also skipped.
 Both actual tutorial modes and invalid CLI pass in Release and ASAN/UBSAN.
 Source-link, debugger tutorial and strict C89/C++98 port checks pass separately.
+### v0.576 — detached encoded sound streams and MP3 prefixes
+
+Encoded snapshots now preserve compressed/opaque payloads after source-VM teardown.
+Live/indexed MP3 prefix views expose declared UI16 sample frames and signed SI16
+seek independently of header latency, with atomic failure and no inspection
+allocations. PCM decoders still reject compressed formats. Annotated C89 tutorial,
+C89 ABI checks, prefix boundaries, lifecycle and OOM tests accompany the change.
+See [SWF_STREAM_MP3.md](SWF_STREAM_MP3.md) and the bounded stage summary
+[ROADMAP_STATUS.md](ROADMAP_STATUS.md). No MPEG decoder, audio clock, original-player
+or foreign native acceptance is claimed; all stages remain open.
+
+Validation v0.576: the complete current Linux C89/C++98 build and CTest run
+passes 1204 checks with four explicit skips (1208 registered). Three skips require
+Windows/macOS native runtimes and one requires the speech SSIP endpoint. New
+MP3/live/snapshot/OOM/strict-C89 tests and the actual --demo tutorial pass; source
+links and the existing multimedia tutorial contract pass. No sanitizer or foreign
+OS run is claimed for this checkpoint.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

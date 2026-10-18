@@ -32,7 +32,8 @@ int main()
   assert(fvm_swf_stream_sound_snapshot_block_count(s,&count)==FVM_OK && !count);fvm_swf_stream_sound_snapshot_close(s);
   assert(fvm_swf_stream_sound_snapshot_open(c,1,&s)==FVM_NOT_FOUND && !s);
   tags.clear();tag(tags,18,header(0x1e));load(c,movie(tags));
-  assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_UNSUPPORTED && !s);
+  assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_OK && s);
+  fvm_swf_stream_sound_snapshot_close(s);
   tags.clear();tag(tags,45,header(12));tag(tags,19,empty);tag(tags,19,empty);load(c,movie(tags));
   assert(fvm_swf_stream_sound_snapshot_open(c,0,&s)==FVM_INVALID_ARGUMENT && !s);
  }

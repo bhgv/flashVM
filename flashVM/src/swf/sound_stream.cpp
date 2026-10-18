@@ -1,4 +1,4 @@
-/* FlashVM: live root streaming-sound inspection and optional owned indexed PCM snapshots.
+/* FlashVM: live root streaming-sound inspection and optional owned indexed encoded snapshots.
  * This parser does not execute MovieClip clocks, compressed stream codecs or host output. */
 #include "../core/runtime.hpp"
 #include "flashvm/swf_stream_sound.h"
@@ -8,7 +8,7 @@
 #include <cstring>
 #include <new>
 
-/* Owned raw PCM block plus its offset into the immutable byte store. */
+/* Owned encoded block plus its offset into the immutable byte store. */
 struct FVM_SWFStreamSoundEntry
 {
     FVM_SWFStreamSoundBlock block; /* Copied wire metadata; data is reconstructed on lookup. */
@@ -19,7 +19,7 @@ struct FVM_SWFStreamSoundSnapshot
 {
     FVM_SWFStreamSoundInfo info; /* Copied source and playback header. */
     fvm_detail::vector<FVM_SWFStreamSoundEntry> blocks; /* Exact segment block index. */
-    fvm_detail::vector<unsigned char> bytes; /* Original wire PCM bytes, not expanded samples. */
+    fvm_detail::vector<unsigned char> bytes; /* Original wire bytes, not expanded samples. */
     unsigned char empty; /* Valid address for an entirely empty payload store. */
 };
 
@@ -202,6 +202,33 @@ FVM_Result scan(FVM_Context *context, size_t wanted, size_t block_ordinal, FVM_S
     }
     return FVM_INVALID_ARGUMENT;
 }
+/* Parse only the fixed SWF prefix, without certifying the enclosed MPEG frames.
+ * [GC:] Both spans are native immutable storage; no callback or allocation can invalidate them. */
+FVM_Result mp3_block(const FVM_SWFStreamSoundInfo &info, const FVM_SWFStreamSoundBlock &block,
+                     FVM_SWFStreamSoundMP3Block *out)
+{
+    if (info.format != FVM_SWF_SOUND_STREAM_MP3)
+        return FVM_UNSUPPORTED;
+    if (block.data_size < FVM_SWF_SOUND_STREAM_MP3_PREFIX_BYTES)
+        return FVM_INVALID_ARGUMENT;
+
+    /* Copy into a local record so malformed input cannot partially publish output. */
+    FVM_SWFReader reader(block.data, block.data_size);
+    FVM_SWFStreamSoundMP3Block value;
+    std::memset(&value, 0, sizeof(value));
+    value.struct_size = sizeof(value);
+    value.stream_index = block.stream_index;
+    value.block_index = block.block_index;
+    value.frame = block.frame;
+    value.declared_samples = (unsigned int)reader.integer(FVM_SWF_SOUND_UI16_BYTES);
+    unsigned long seek = reader.integer(FVM_SWF_SOUND_UI16_BYTES);
+    value.seek_samples = (int)(seek >= FVM_SWF_SOUND_SIGN_BIT
+        ? (long)seek - FVM_SWF_SOUND_SIGN_RANGE : (long)seek);
+    value.data = block.data + FVM_SWF_SOUND_STREAM_MP3_PREFIX_BYTES;
+    value.data_size = block.data_size - FVM_SWF_SOUND_STREAM_MP3_PREFIX_BYTES;
+    *out = value;
+    return FVM_OK;
+}
 } // namespace
 
 /* Count header segments without resolving nested sprite timelines or opening output. */
@@ -224,6 +251,17 @@ extern "C" FVM_Result fvm_swf_stream_sound_block_at(FVM_Context *context, size_t
                                                    FVM_SWFStreamSoundBlock *out)
 {
     return out && out->struct_size == sizeof(*out) ? scan(context, stream, ordinal, 0, out, 0, 0) : FVM_INVALID_ARGUMENT;
+}
+/* Resolve the current movie and selected block before publishing a borrowed MPEG span. */
+extern "C" FVM_Result fvm_swf_stream_sound_mp3_block_at(FVM_Context *context, size_t stream,
+                                                       size_t ordinal, FVM_SWFStreamSoundMP3Block *out)
+{
+    if (!out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFStreamSoundInfo info;
+    FVM_SWFStreamSoundBlock block;
+    FVM_Result result = scan(context, stream, ordinal, &info, &block, 0, 0);
+    return result == FVM_OK ? mp3_block(info, block, out) : result;
 }
 /* Re-resolve a current block before decoding so no retained payload address can become stale. */
 extern "C" FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *context, size_t stream, size_t ordinal,
@@ -253,7 +291,7 @@ extern "C" FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *context, size_t
     return fvm_swf_sound_decode_pcm(info, (unsigned long)first, frames, out, capacity, written);
 }
 
-/* Prepare an indexed immutable PCM segment in two linear scans, publishing only on success. */
+/* Prepare an indexed immutable encoded segment in two linear scans, publishing only on success. */
 extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, size_t stream,
                                                          FVM_SWFStreamSoundSnapshot **out)
 {
@@ -265,8 +303,6 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *context, s
     FVM_Result result = scan(context, stream, 0, &info, 0, 0, &count, &bytes);
     if (result != FVM_OK)
         return result;
-    if (info.format != FVM_SWF_SOUND_PCM_NATIVE && info.format != FVM_SWF_SOUND_PCM_LE)
-        return FVM_UNSUPPORTED;
     size_t limit = context->runtime->config.memory_limit_bytes ? context->runtime->config.memory_limit_bytes
                                                                : FVM_SWF_DEFAULT_LIMIT;
     if (bytes > limit || count > (limit - bytes) / sizeof(FVM_SWFStreamSoundEntry))
@@ -324,6 +360,17 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_block_at(const FVM_SWFStream
     out->data = snapshot->bytes.empty() ? &snapshot->empty : snapshot->bytes.begin() + entry.offset;
     return FVM_OK;
 }
+/* Inspect an owned compressed block without consulting the originating VM. */
+extern "C" FVM_Result fvm_swf_stream_sound_snapshot_mp3_block_at(const FVM_SWFStreamSoundSnapshot *snapshot,
+                                                                size_t ordinal, FVM_SWFStreamSoundMP3Block *out)
+{
+    if (!snapshot || !out || out->struct_size != sizeof(*out))
+        return FVM_INVALID_ARGUMENT;
+    FVM_SWFStreamSoundBlock block;
+    block.struct_size = sizeof(block);
+    FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, &block);
+    return result == FVM_OK ? mp3_block(snapshot->info, block, out) : result;
+}
 /* Decode only the requested range from the indexed source; no allocation, callback or VM access. */
 extern "C" FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStreamSoundSnapshot *snapshot,
                                                              size_t ordinal, size_t first, size_t frames,
@@ -337,6 +384,8 @@ extern "C" FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStream
     FVM_Result result = fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, &block);
     if (result != FVM_OK)
         return result;
+    if (snapshot->info.format != FVM_SWF_SOUND_PCM_NATIVE && snapshot->info.format != FVM_SWF_SOUND_PCM_LE)
+        return FVM_UNSUPPORTED;
     if (first > block.sample_count || block.sample_count > ULONG_MAX)
         return FVM_INVALID_ARGUMENT;
     FVM_SWFSoundInfo info;

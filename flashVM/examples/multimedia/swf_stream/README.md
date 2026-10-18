@@ -68,14 +68,14 @@ GC/registry mutation внутри callback. См. [MULTIMEDIA_BRIDGES.md](../../
 
 ## Демонстрируемые API
 
-- [`fvm_swf_stream_sound_count`](../../../include/flashvm/swf_stream_sound.h#L39), [`fvm_swf_stream_sound_at`](../../../include/flashvm/swf_stream_sound.h#L41) — сегменты и copied header:
+- [`fvm_swf_stream_sound_count`](../../../include/flashvm/swf_stream_sound.h#L53), [`fvm_swf_stream_sound_at`](../../../include/flashvm/swf_stream_sound.h#L55) — сегменты и copied header:
   [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_count),
   [header query](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_at).
-- [`fvm_swf_stream_sound_block_count`](../../../include/flashvm/swf_stream_sound.h#L43), [`fvm_swf_stream_sound_block_at`](../../../include/flashvm/swf_stream_sound.h#L45) — actual frame,
+- [`fvm_swf_stream_sound_block_count`](../../../include/flashvm/swf_stream_sound.h#L57), [`fvm_swf_stream_sound_block_at`](../../../include/flashvm/swf_stream_sound.h#L59) — actual frame,
   empty/missing blocks и borrowed payload:
   [block count](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_block_count),
   [block view](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_block_at).
-- [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L47) — bounded copies без callbacks/allocations:
+- [`fvm_swf_stream_sound_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L61) — bounded copies без callbacks/allocations:
   [range contract](../../../doc/SWF_STREAM_SOUND.md#fvm_swf_stream_sound_read_pcm).
 - [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L81), [`fvm_audio_channel_write`](../../../include/flashvm/multimedia.h#L83), [`fvm_audio_stop_all`](../../../include/flashvm/multimedia.h#L91) —
   copied output table, actual native writes, active state and stop:
@@ -148,12 +148,12 @@ block lookup instead of repeatedly scanning all root tags.
 Additional demonstrated API (contracts, limits and lifetime in
 [SWF_STREAM_SOUND.md](../../../doc/SWF_STREAM_SOUND.md#prepared-immutable-pcm-index--подготовленный-неизменяемый-индекс-pcm)):
 
-- [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L51): validate, budget and copy the selected segment.
-- [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L53): inspect the copied source/playback header.
-- [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L55): enumerate the prepared index.
-- [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L57): borrow original-wire bytes until close.
-- [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L59): convert bounded independent ranges.
-- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L61): release native storage even after VM teardown.
+- [`fvm_swf_stream_sound_snapshot_open`](../../../include/flashvm/swf_stream_sound.h#L65): validate, budget and copy the selected segment.
+- [`fvm_swf_stream_sound_snapshot_info`](../../../include/flashvm/swf_stream_sound.h#L67): inspect the copied source/playback header.
+- [`fvm_swf_stream_sound_snapshot_block_count`](../../../include/flashvm/swf_stream_sound.h#L69): enumerate the prepared index.
+- [`fvm_swf_stream_sound_snapshot_block_at`](../../../include/flashvm/swf_stream_sound.h#L71): borrow original-wire bytes until close.
+- [`fvm_swf_stream_sound_snapshot_read_pcm`](../../../include/flashvm/swf_stream_sound.h#L75): convert bounded independent ranges.
+- [`fvm_swf_stream_sound_snapshot_close`](../../../include/flashvm/swf_stream_sound.h#L77): release native storage even after VM teardown.
 
 The host checker runs both modes, compares exact stdout/native-S16 bytes and checks
 actual missing-directory write failure cleanup in both modes. This is file bridge
@@ -178,15 +178,15 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:67](../../../include/flashvm/multimedia.h#L67) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:41](../../../include/flashvm/swf_stream_sound.h#L41) |
-| `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:45](../../../include/flashvm/swf_stream_sound.h#L45) |
-| `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:43](../../../include/flashvm/swf_stream_sound.h#L43) |
-| `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:39](../../../include/flashvm/swf_stream_sound.h#L39) |
-| `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:47](../../../include/flashvm/swf_stream_sound.h#L47) |
-| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:57](../../../include/flashvm/swf_stream_sound.h#L57) |
-| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:61](../../../include/flashvm/swf_stream_sound.h#L61) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:53](../../../include/flashvm/swf_stream_sound.h#L53) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:51](../../../include/flashvm/swf_stream_sound.h#L51) |
-| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:59](../../../include/flashvm/swf_stream_sound.h#L59) |
+| `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../../../include/flashvm/swf_stream_sound.h#L55) |
+| `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:59](../../../include/flashvm/swf_stream_sound.h#L59) |
+| `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:57](../../../include/flashvm/swf_stream_sound.h#L57) |
+| `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:53](../../../include/flashvm/swf_stream_sound.h#L53) |
+| `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:61](../../../include/flashvm/swf_stream_sound.h#L61) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:71](../../../include/flashvm/swf_stream_sound.h#L71) |
+| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:69](../../../include/flashvm/swf_stream_sound.h#L69) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:77](../../../include/flashvm/swf_stream_sound.h#L77) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:67](../../../include/flashvm/swf_stream_sound.h#L67) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../../../include/flashvm/swf_stream_sound.h#L65) |
+| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:75](../../../include/flashvm/swf_stream_sound.h#L75) |
 <!-- source-links:end -->

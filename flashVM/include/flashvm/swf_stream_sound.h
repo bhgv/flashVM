@@ -35,6 +35,20 @@ extern "C"
         const unsigned char *data; /* Live view: until successful reload/context destruction; snapshot view: until snapshot_close. */
         size_t data_size; /* Complete block payload, including codec-specific prefixes when opaque. */
     } FVM_SWFStreamSoundBlock;
+    /* Copied MP3STREAMSOUNDDATA prefix plus borrowed MPEG bytes; no decoder is run. */
+    typedef struct FVM_SWFStreamSoundMP3Block
+    {
+        unsigned long struct_size; /* Required sizeof(FVM_SWFStreamSoundMP3Block). */
+        size_t stream_index; /* Header occurrence governing this block. */
+        size_t block_index; /* Encoded block ordinal within that segment. */
+        unsigned int frame; /* One-based root movie frame, independent of MPEG frames. */
+        unsigned int declared_samples; /* UI16 sample frames/pairs from the wire, not a verified decoded length. */
+        int seek_samples; /* Signed SI16 block seek adjustment; header latency is kept separate. */
+        const unsigned char *data; /* MPEG span after the four-byte prefix; follows the source view lifetime. */
+        size_t data_size; /* MPEG bytes only; zero is permitted without claiming playable audio. */
+    } FVM_SWFStreamSoundMP3Block;
+    /* Inspect the selected live MP3 prefix; no allocation/callback/decoding; preserve output on failure. */
+    FVM_API FVM_Result fvm_swf_stream_sound_mp3_block_at(FVM_Context *, size_t, size_t, FVM_SWFStreamSoundMP3Block *);
     /* Count header segments after validating all root stream controls and PCM block alignment. */
     FVM_API FVM_Result fvm_swf_stream_sound_count(FVM_Context *, size_t *);
     /* Copy one header segment; invalid/missing requests leave output unchanged. */
@@ -45,16 +59,18 @@ extern "C"
     FVM_API FVM_Result fvm_swf_stream_sound_block_at(FVM_Context *, size_t, size_t, FVM_SWFStreamSoundBlock *);
     /* Decode a bounded PCM range without allocations/callbacks; written counts channel values and is cleared first. */
     FVM_API FVM_Result fvm_swf_stream_sound_read_pcm(FVM_Context *, size_t, size_t, size_t, size_t, short *, size_t, size_t *);
-    /* Independent immutable native PCM segment, explicitly prepared and released by the host. */
+    /* Independent immutable native encoded segment, explicitly prepared and released by the host. */
     typedef struct FVM_SWFStreamSoundSnapshot FVM_SWFStreamSoundSnapshot;
-    /* Copy and index one PCM segment; clear *out first, subject to the runtime memory budget. */
+    /* Copy and index one encoded segment; clear *out first, subject to the runtime memory budget. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_open(FVM_Context *, size_t, FVM_SWFStreamSoundSnapshot **);
     /* Copy the original source/advisory header, preserving output on error. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_info(const FVM_SWFStreamSoundSnapshot *, FVM_SWFStreamSoundInfo *);
     /* Query the prepared block count without rescanning the movie. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_count(const FVM_SWFStreamSoundSnapshot *, size_t *);
-    /* Borrow an indexed original-wire PCM payload until snapshot_close. */
+    /* Borrow an indexed original-wire payload until snapshot_close. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundBlock *);
+    /* Inspect the indexed MP3 prefix after source VM teardown; the MPEG span lasts until close. */
+    FVM_API FVM_Result fvm_swf_stream_sound_snapshot_mp3_block_at(const FVM_SWFStreamSoundSnapshot *, size_t, FVM_SWFStreamSoundMP3Block *);
     /* Decode a requested range to native S16; written counts channel values and is cleared first. */
     FVM_API FVM_Result fvm_swf_stream_sound_snapshot_read_pcm(const FVM_SWFStreamSoundSnapshot *, size_t, size_t, size_t, short *, size_t, size_t *);
     /* Free the independent snapshot; null is a no-op. */

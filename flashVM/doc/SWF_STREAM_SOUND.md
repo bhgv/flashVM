@@ -199,6 +199,9 @@ audio playback or foreign-platform acceptance.
 
 ## Prepared immutable PCM index / Подготовленный неизменяемый индекс PCM
 
+Since v0.576 capture also preserves compressed segments without decoding them;
+see [MP3 prefix and encoded snapshot contracts](SWF_STREAM_MP3.md).
+
 The optional [`FVM_SWFStreamSoundSnapshot`](../src/swf/sound_stream.cpp#L18) removes repeated root scans for incremental
 reads. Open performs two linear scans of the loaded root: full validation and size
 measurement, then copying into an exact block index and raw byte store. It does
@@ -208,16 +211,16 @@ load or mutation. It invokes no host callback or collection.
 
 Необязательный снимок устраняет повторное сканирование SWF при чтении короткими
 порциями. Подготовка выполняет два линейных прохода: полную проверку и подсчёт,
-затем копирование индекса и исходных PCM-байтов. Чужие сегменты не копируются,
+затем копирование индекса и исходных закодированных байтов. Чужие сегменты не копируются,
 предварительного расширения в S16 нет. Подготовка выполняется в потоке владельца
 контекста; параллельные загрузка/изменение и терминальные фазы GC недопустимы.
 
-All six functions are declared in `include/flashvm/swf_stream_sound.h`:
+The snapshot functions are declared in `include/flashvm/swf_stream_sound.h`:
 
 - `fvm_swf_stream_sound_snapshot_open(context, stream, out)` requires a valid loaded
   context, zero-based segment and nonnull handle-output pointer. Clears `*out` on
   every failure; returns OK with a new independently owned handle, NOT_FOUND for
-  a missing segment, UNSUPPORTED for compressed PCM alternatives/unloaded context,
+  a missing segment, UNSUPPORTED for an unloaded context,
   INVALID_ARGUMENT for malformed controls or invalid context/output, OUT_OF_MEMORY
   for allocation failure or budget overflow. All later root controls validate
   before allocation. The budget is configured `memory_limit_bytes`, or the existing
@@ -233,15 +236,15 @@ All six functions are declared in `include/flashvm/swf_stream_sound.h`:
 - `fvm_swf_stream_sound_snapshot_block_at(snapshot, ordinal, out)` requires the
   exact [`FVM_SWFStreamSoundBlock`](../include/flashvm/swf_stream_sound.h#L27) struct size. Returns OK, NOT_FOUND for an absent
   ordinal, INVALID_ARGUMENT for null/bad size. Output is unchanged on error.
-  `data` points to original wire PCM, retaining source endian/width, until close;
+  `data` points to original encoded bytes, retaining PCM endian/width when applicable, until close;
   it is never a decoded S16 buffer. Empty blocks have a nonnull zero-length view.
-- `[fvm_swf_stream_sound_snapshot_read_pcm](../include/flashvm/swf_stream_sound.h#L59)(snapshot, ordinal, first, frames, out,
+- `[fvm_swf_stream_sound_snapshot_read_pcm](../include/flashvm/swf_stream_sound.h#L75)(snapshot, ordinal, first, frames, out,
   capacity, written)` decodes to caller-owned native interleaved S16. Block index
   is constant-time; conversion visits requested samples only. Offsets/counts are
   sample frames, capacity/written are channel values. Required `written` is
   cleared before validation. Returns OK, NOT_FOUND for absent ordinal,
   INVALID_ARGUMENT for null handle/written, range/capacity/required destination,
-  or UNSUPPORTED on an unsupported native representation. Destination is unchanged
+  or UNSUPPORTED for a compressed codec or unsupported native representation. Destination is unchanged
   on failure. Zero frames at the block end and a null destination are valid.
 - `fvm_swf_stream_sound_snapshot_close(snapshot)` releases the owned native index
   and bytes; returns void and accepts null. All borrowed views become invalid.
@@ -275,6 +278,12 @@ GC или переходники. Параллельное чтение допу
 
 The [swf_stream tutorial](../examples/multimedia/swf_stream/README.md) demonstrates
 `--prepared`: it destroys the source VM and exports through a new unloaded VM.
+## MP3 prefix inspection / MP3-префиксы
+
+[`fvm_swf_stream_sound_mp3_block_at`](../include/flashvm/swf_stream_sound.h#L51) and
+[`fvm_swf_stream_sound_snapshot_mp3_block_at`](../include/flashvm/swf_stream_sound.h#L73) inspect declared count, signed seek
+and the MPEG span after the prefix; they do not decode it. Полные контракты,
+владение, статусы и ограничения: [SWF_STREAM_MP3.md](SWF_STREAM_MP3.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -291,17 +300,19 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `fvm_swf_sound_decode_pcm` | function | [src/swf/sound_pcm.hpp:8](../src/swf/sound_pcm.hpp#L8) |
-| `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:41](../include/flashvm/swf_stream_sound.h#L41) |
-| `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:45](../include/flashvm/swf_stream_sound.h#L45) |
-| `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:43](../include/flashvm/swf_stream_sound.h#L43) |
-| `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:39](../include/flashvm/swf_stream_sound.h#L39) |
-| `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:47](../include/flashvm/swf_stream_sound.h#L47) |
-| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:57](../include/flashvm/swf_stream_sound.h#L57) |
-| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:55](../include/flashvm/swf_stream_sound.h#L55) |
-| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:61](../include/flashvm/swf_stream_sound.h#L61) |
-| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:53](../include/flashvm/swf_stream_sound.h#L53) |
-| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:51](../include/flashvm/swf_stream_sound.h#L51) |
-| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:59](../include/flashvm/swf_stream_sound.h#L59) |
+| `fvm_swf_stream_sound_at` | function | [include/flashvm/swf_stream_sound.h:55](../include/flashvm/swf_stream_sound.h#L55) |
+| `fvm_swf_stream_sound_block_at` | function | [include/flashvm/swf_stream_sound.h:59](../include/flashvm/swf_stream_sound.h#L59) |
+| `fvm_swf_stream_sound_block_count` | function | [include/flashvm/swf_stream_sound.h:57](../include/flashvm/swf_stream_sound.h#L57) |
+| `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:53](../include/flashvm/swf_stream_sound.h#L53) |
+| `fvm_swf_stream_sound_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:51](../include/flashvm/swf_stream_sound.h#L51) |
+| `fvm_swf_stream_sound_read_pcm` | function | [include/flashvm/swf_stream_sound.h:61](../include/flashvm/swf_stream_sound.h#L61) |
+| `fvm_swf_stream_sound_snapshot_block_at` | function | [include/flashvm/swf_stream_sound.h:71](../include/flashvm/swf_stream_sound.h#L71) |
+| `fvm_swf_stream_sound_snapshot_block_count` | function | [include/flashvm/swf_stream_sound.h:69](../include/flashvm/swf_stream_sound.h#L69) |
+| `fvm_swf_stream_sound_snapshot_close` | function | [include/flashvm/swf_stream_sound.h:77](../include/flashvm/swf_stream_sound.h#L77) |
+| `fvm_swf_stream_sound_snapshot_info` | function | [include/flashvm/swf_stream_sound.h:67](../include/flashvm/swf_stream_sound.h#L67) |
+| `fvm_swf_stream_sound_snapshot_mp3_block_at` | function | [include/flashvm/swf_stream_sound.h:73](../include/flashvm/swf_stream_sound.h#L73) |
+| `fvm_swf_stream_sound_snapshot_open` | function | [include/flashvm/swf_stream_sound.h:65](../include/flashvm/swf_stream_sound.h#L65) |
+| `fvm_swf_stream_sound_snapshot_read_pcm` | function | [include/flashvm/swf_stream_sound.h:75](../include/flashvm/swf_stream_sound.h#L75) |
 | `FVM_SWFStreamSoundBlock` | struct | [include/flashvm/swf_stream_sound.h:27](../include/flashvm/swf_stream_sound.h#L27) |
 | `FVM_SWFStreamSoundEntry` | struct | [src/swf/sound_stream.cpp:12](../src/swf/sound_stream.cpp#L12) |
 | `FVM_SWFStreamSoundInfo` | struct | [include/flashvm/swf_stream_sound.h:10](../include/flashvm/swf_stream_sound.h#L10) |
