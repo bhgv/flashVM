@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.592
+# FlashVM stage status / Состояние стадий — v0.593
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -363,6 +363,36 @@ uses the persisted v0.585 test signer, with signature and 16 KiB native/ZIP alig
 checked; all three embedded SWFs match current source assets. The new C ABI symbol
 is exported. This is build/runtime-fixture evidence, not physical keyboard or
 new Android audio acceptance. No Windows/macOS device execution is claimed.
+
+## v0.593 MovieClip focus notifications / Уведомления выбора клипа
+
+Accepted script Selection identity changes now publish focus, deliver
+onKillFocus(newClip), then onSetFocus(oldClip). Both endpoints remain rooted
+through synchronous getters/callbacks, collection and recursive focus changes.
+Nested changes persist; the outer endpoint snapshot still finishes delivery.
+Missing/noncallable handlers are ignored without global-function fallback.
+Actual handler errors propagate without rollback; C host setters remain silent.
+[EN](SELECTION.md#focus-notifications) / [RU](SELECTION.ru.md#уведомления-фокуса).
+
+Реализованы уведомления MovieClip, а не автоматический выбор касанием/Tab,
+Selection listeners, TextField/Button, IME или полная эталонная совместимость.
+Все девять этапов остаются открытыми. Результаты проверок приведены ниже.
+
+### v0.593 verification / Проверка
+
+Fresh Linux Release C89/C++98 AGG build with examples: 1257 registered,
+1253 pass and four explicit skips (native macOS ARM64/Intel, Windows unwind,
+external SSIP service). Thirteen cached test executables initially lacked execute
+permission; after full byte materialization and permission restoration their
+reruns pass. No assertion/runtime failure remains. The actual C89 tutorial prints
+set/kill notifications with null opposite endpoints and clears focus successfully.
+
+Three focused tests pass ASan/UBSan with leak detection disabled: endpoint
+notification/reentry/GC, allocation-failure sweeps before and after publication,
+and SWF6–8 interpreter/manual/automatic-JIT script callbacks collecting inside
+notification. Source-link HTML/determinism and debugger tutorial checks pass.
+This checkpoint supplies no new Android/Windows/macOS native execution or
+reference-player ordering comparison; all roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

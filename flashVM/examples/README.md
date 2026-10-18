@@ -62,7 +62,7 @@
     - [keyboard](#group-embedding-input-keyboard)
       - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, явный выбор клипа и короткие нажатия</em></small>
       - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
-      - [selection](#example-embedding-selection) — <small><em>Selection: допустимость выбора клипа, путь и сброс</em></small>
+      - [selection](#example-embedding-selection) — <small><em>Selection: выбор клипа, уведомления, путь и сброс</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
@@ -757,7 +757,7 @@ Key и очищает состояние как при потере фокуса
 
 Сравнивает штатный отказ выбора обычного клипа с успешным выбором после
 focusEnabled=true. Показывает явную установку Selection, counted-путь от
-getFocus, снятие фокуса через undefined, construction pin и освобождение
+getFocus, уведомления onSetFocus/onKillFocus, снятие через undefined, construction pin и освобождение
 ресурсов при ошибках. Не открывает окна и устройства.
 [Контракт EN](../doc/SELECTION.md) / [RU](../doc/SELECTION.ru.md).
 

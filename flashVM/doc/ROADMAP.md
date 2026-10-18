@@ -3249,6 +3249,16 @@ GC и JIT, а не завершение стадий. Полные clip/button k
 точное поведение мутаций/идентичности Array оригинального Flash и аппаратная
 приёмка платформ остаются открытыми. Все девять стадий открыты.
 
+## v0.593 — synchronous MovieClip focus transitions
+
+Selection.setFocus now notifies the old/new MovieClip after publishing focus,
+with rooted endpoint snapshots, inherited/getter dispatch, nested-change
+preservation and committed error semantics. Native host focus setters remain
+silent. The C89 tutorial and SWF6–8 interpreter/manual/automatic-JIT fixtures
+exercise notification delivery. [EN](SELECTION.md#focus-notifications) /
+[RU](SELECTION.ru.md#уведомления-фокуса). Это развитие стадий 3/5/7/8;
+полная совместимость и нативная платформенная приёмка остаются открытыми.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

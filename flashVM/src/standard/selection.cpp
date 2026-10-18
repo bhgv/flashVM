@@ -2,6 +2,7 @@
 #include "movieclip_state.hpp"
 #include "movieclip_scene.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/optional_method.hpp"
 #include "../core/property_lookup.hpp"
 #include "flashvm/keyboard.h"
 #include "flashvm/property.h"
@@ -49,6 +50,36 @@ FVM_Result eligible(FVM_Context *context, FVM_Object *clip, bool *out)
     return FVM_OK;
 }
 
+/* Publish before notifications; nested focus changes remain authoritative after callbacks. */
+FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
+{
+    FVM_Object *previous = 0;
+    FVM_Result result = fvm_input_get_keyboard_focus(context, &previous);
+    if (result != FVM_OK)
+        return result;
+    /* [GC:] Both transition endpoints survive script detachment, replacement and collection. */
+    FVM_ObjectRootScope previous_root(context, previous);
+    FVM_ObjectRootScope next_root(context, clip);
+    result = fvm_input_set_keyboard_focus(context, clip);
+    if (result != FVM_OK || previous == clip)
+        return result;
+    FVM_Value argument;
+    fvm_value_undefined(&argument);
+    argument.type = clip ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
+    argument.object = clip;
+    if (previous)
+    {
+        result = fvm_object_call_optional_args(context, previous, "onKillFocus", 1, &argument);
+        if (result != FVM_OK)
+            return result;
+    }
+    argument.type = previous ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
+    argument.object = previous;
+    if (clip)
+        result = fvm_object_call_optional_args(context, clip, "onSetFocus", 1, &argument);
+    return result;
+}
+
 /* Select an eligible native clip or clear through null/undefined; never fabricate text focus. */
 FVM_Result fvm_selection_set_focus(FVM_Context *context, FVM_Object *, unsigned int count,
                                    const FVM_Value *args, FVM_Value *out, void *)
@@ -58,7 +89,7 @@ FVM_Result fvm_selection_set_focus(FVM_Context *context, FVM_Object *, unsigned 
         return FVM_UNSUPPORTED;
     if (!count || args[0].type == FVM_VALUE_NULL || args[0].type == FVM_VALUE_UNDEFINED)
     {
-        FVM_Result result = fvm_input_set_keyboard_focus(context, 0);
+        FVM_Result result = change_focus(context, 0);
         if (result == FVM_OK)
             fvm_value_boolean(out, 1);
         return result;
@@ -89,9 +120,10 @@ FVM_Result fvm_selection_set_focus(FVM_Context *context, FVM_Object *, unsigned 
     if (result != FVM_OK || !allowed)
         return result;
     /* A getter can detach the candidate; validate again immediately before publication. */
-    result = fvm_input_set_keyboard_focus(context, clip);
-    if (result == FVM_INVALID_ARGUMENT)
-        return FVM_OK;
+    result = fvm_movieclip_scene_removed(context, clip, &removed);
+    if (result != FVM_OK || removed)
+        return result;
+    result = change_focus(context, clip);
     if (result == FVM_OK)
         fvm_value_boolean(out, 1);
     return result;

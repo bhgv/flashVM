@@ -61,6 +61,29 @@ int main()
         get.number(0); get.variable("Selection"); get.text("getFocus"); get.op(0x52); get.finish();
         value = run_selection(c, get);
         assert(value.type == FVM_VALUE_STRING && !std::strcmp(value.string, "_level0"));
+        /* Real AVM1 focus callbacks collect, preserve receiver and receive the old/new object. */
+        Program focus;
+        focus.variable("this"); focus.text("previous"); focus.variable("previous"); focus.op(0x4f);
+        focus.number(0); focus.text("collectFocus"); focus.op(0x3d); focus.finish();
+        const char *parameters[] = {"previous"};
+        FVM_Object *focus_handler = 0;
+        assert(fvm_function_create_avm1(c, focus.bytes.begin(), focus.bytes.size(), 1, parameters,
+                                        0, &focus_handler) == FVM_OK);
+        value = class_value(focus_handler);
+        assert(fvm_object_set(c, clip, "onSetFocus", &value) == FVM_OK);
+        assert(fvm_object_set(c, clip, "onKillFocus", &value) == FVM_OK);
+        assert(fvm_input_set_keyboard_focus(c, 0) == FVM_OK);
+        value = run_selection(c, set);
+        assert(value.boolean && c->keyboard_focus == clip);
+        assert(fvm_object_get(c, clip, "previous", &value) == FVM_OK && value.type == FVM_VALUE_NULL);
+        Program clear;
+        clear.op(0x96); clear.op(1); clear.op(0); clear.op(2); /* Raw Push null. */
+        clear.number(1); clear.variable("Selection"); clear.text("setFocus"); clear.op(0x52); clear.finish();
+        value = run_selection(c, clear);
+        assert(value.boolean && !c->keyboard_focus);
+        assert(fvm_object_get(c, clip, "previous", &value) == FVM_OK && value.type == FVM_VALUE_NULL);
+        value = run_selection(c, set);
+        assert(value.boolean && c->keyboard_focus == clip);
         Program callback;
         callback.variable("this"); callback.text("seen"); callback.number(99); callback.op(0x4f); callback.number(1); callback.finish();
         FVM_Object *handler = 0;

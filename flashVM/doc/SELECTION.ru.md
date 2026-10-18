@@ -67,9 +67,35 @@ Function. Невызываемое значение не делает клип �
 native-callback остаётся в силе. Getter может сменить фокус, свойства, удалить
 клип или бросить исключение. Эти эффекты сохраняются при неудаче внешнего выбора.
 При успехе внешняя попытка заменяет выбор, сделанный вложенным вызовом. Отката
-и очереди уведомлений о смене фокуса нет. setFocus и сброс сами не отправляют
-событий. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79) доставляются
+и очереди уведомлений о смене фокуса нет. Успешная смена отправляет синхронные
+уведомления, описанные ниже. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79) доставляются
 выбранному клипу перед независимыми слушателями Key по общей политике хоста.
+
+## Уведомления фокуса
+
+Начиная с v0.593 успешная смена идентичности сначала публикует новый выбор,
+затем вызывает `oldClip.onKillFocus(newClip)` и `newClip.onSetFocus(oldClip)`.
+Отсутствующий клип представлен null; отсутствующий receiver не вызывается.
+Повторный выбор того же клипа, отказ допустимости, C setter хоста и ленивое
+снятие удалённого выбора уведомлений не отправляют. Обычный версионный поиск
+поддерживает наследование и getters; receiver — соответствующий клип.
+Отсутствующий/невызываемый обработчик пропускается, глобальной подстановки нет.
+Возвращённое обработчиком значение игнорируется.
+
+Оба клипа защищены корнями до публикации и до конца синхронного уведомления.
+Скриптовые getters/обработчики могут вызывать GC; обычные native-барьеры сохраняются.
+Вложенная смена фокуса остаётся текущей; внешний вызов заканчивает уведомление
+своих первоначальных клипов. Поиск обработчика происходит при доставке, поэтому
+первый callback может заменить второй. Удаление клипа не отменяет уведомление
+снимка; следующий getFocus применит обычную проверку удаления. Для рекурсивных
+скриптовых вызовов действуют существующие ограничения глубины VM.
+
+Настоящая ошибка getter/обработчика, включая OOM и [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45),
+передаётся вызывающему коду и прерывает дальнейшую доставку. Уже опубликованный
+выбор и побочные эффекты не откатываются. OOM до публикации сохраняет старый
+фокус; OOM при доставке сохраняет новый, если callback не сменил его снова.
+Ошибка callback не превращается в штатный Boolean false. Очереди и отката нет.
+Это явная политика подмножества; сравнение граничного порядка с оригиналом открыто.
 
 ## getFocus
 
@@ -94,8 +120,7 @@ Selection и C API хоста разделяют один сильный кор�
 локально для хоста и не сериализуется; методы namespace не имеют переносимых
 serialization callback IDs, передача графа возвращает [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
 
-Открыты TextField/каретка/диапазоны, Button, слушатели Selection, onSetFocus /
-onKillFocus, рамки фокуса, автоматический выбор мышью/Tab, IME, security origins,
+Открыты TextField/каретка/диапазоны, Button, слушатели Selection, рамки фокуса, автоматический выбор мышью/Tab, IME, security origins,
 SWF ClipActions и сравнение граничных случаев/порядка с оригинальным плеером.
 Точечный формат getFocus и требование вызываемого кнопочного обработчика —
 описанная политика подмножества; полная эталонная приёмка ещё не выполнена.
@@ -122,7 +147,7 @@ SWF ClipActions и сравнение граничных случаев/поря
 Тесты VM/хоста и кросс-сборки не равны приёмке физической клавиатуры/устройств.
 См. [текущее состояние роудмапа](ROADMAP_STATUS.md).
 
-Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L53), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L101)
+Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L84), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L133)
 in [src/standard/selection.cpp](../src/standard/selection.cpp).
 
 <!-- source-links:start -->
@@ -140,9 +165,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:66](../src/standard/movieclip_constants.h#L66) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:101](../src/standard/selection.cpp#L101) |
+| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:133](../src/standard/selection.cpp#L133) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:53](../src/standard/selection.cpp#L53) |
+| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:84](../src/standard/selection.cpp#L84) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

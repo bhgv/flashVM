@@ -1,7 +1,7 @@
 # Selection: MovieClip eligibility / Допустимость выбора клипа
 
 Runnable C89 example comparing rejection of a plain MovieClip, acceptance after
-`focusEnabled=true`, counted target-path output and clearing with undefined.
+`focusEnabled=true`, counted target-path output, synchronous onSetFocus/onKillFocus callbacks and clearing with undefined.
 Useful for an embedding host that wants the script-level eligibility policy,
 rather than the lower-level unconditional host override. No window, SDL device,
 permissions or SWF compiler is required. Each nonempty C line is commented;
@@ -9,7 +9,7 @@ errors use status returns rather than assertions.
 
 Исполняемый C89-пример: сначала обычный клип отклоняется, затем разрешение
 focusEnabled позволяет его выбрать. Пример получает путь и снимает выбор через
-undefined. Он показывает правила скриптового Selection; для низкоуровневого
+undefined, получая onSetFocus/onKillFocus. Он показывает правила скриптового Selection; для низкоуровневого
 безусловного выбора см. соседний [пример слушателей](../keyboard_listeners/README.md).
 
 ## Build and run / Сборка и запуск
@@ -26,8 +26,10 @@ Expected / ожидается:
 
 ```text
 default accepted=0
+set other-null=1
 enabled accepted=1
 focus=_level0
+kill other-null=1
 cleared=1
 ```
 
@@ -61,6 +63,7 @@ pin и уничтожаются контекст/runtime. Владение ст�
 | [`fvm_get_global`](../../../include/flashvm/value.h#L85) | Borrow the installed namespace; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize values and request clearing without manufacturing a null pointer; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Invoke real script-visible methods with receiver/argument roots; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
+| [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Register synchronous native focus handlers with borrowed static userdata; callbacks retain the ordinary GC barrier; [SELECTION.md](../../../doc/SELECTION.md#focus-notifications). |
 | `Selection.setFocus` | Apply MovieClip eligibility or clear; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
 | `Selection.getFocus` | Obtain a borrowed counted target path or null; [SELECTION.md](../../../doc/SELECTION.md#getfocus). |
 | [`fvm_value_boolean`](../../../include/flashvm/value.h#L44) | Build the explicit focusEnabled flag; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
@@ -73,7 +76,7 @@ pin и уничтожаются контекст/runtime. Владение ст�
 ## Limits / Ограничения
 
 MovieClip-only host/SWF6–8 subset. No TextField caret/selection, Button, Selection
-listeners or onSetFocus/onKillFocus notifications, focus rectangles, automatic
+listeners, focus rectangles, automatic
 mouse/Tab navigation or security-origin policy. This example passes an object;
 activation-relative paths are demonstrated by the shipped interactive SWF and
 runtime fixtures. Ordinary native callbacks retain their collector barrier.
@@ -96,6 +99,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_get_global` | function | [include/flashvm/value.h:85](../../../include/flashvm/value.h#L85) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |

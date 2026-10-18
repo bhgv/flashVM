@@ -67,10 +67,38 @@ Trusted Selection entries permit collection in script getters; enclosing ordinar
 native barriers remain in force. A getter can change focus, mutate properties,
 remove clips or throw. Those side effects remain committed even if outer selection
 fails. A nested successful selection is overwritten if the outer attempt later
-succeeds; there is no rollback or focus-change event queue. No notification is
-emitted merely by setFocus or by clearing it. Selected clips receive subsequent
+succeeds; there is no rollback or focus-change event queue. Successful transitions use the
+synchronous notifications described below. Selected clips receive subsequent
 keyboard transitions through [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79), before independent
 Key listeners, according to the shared host policy.
+
+## Focus notifications
+
+Since v0.593, an accepted identity change first publishes the new focus, then
+calls `oldClip.onKillFocus(newClip)` and `newClip.onSetFocus(oldClip)`, omitting
+missing endpoints and representing no focus by null. Selecting the same identity,
+rejected eligibility, host C focus setters and lazy detachment clearing are silent.
+Methods use normal versioned/inherited/accessor lookup, preserving the actual
+receiver. Missing or noncallable handlers are ignored; global functions with the
+same name are never used as fallbacks. Handler return values are ignored.
+
+Both endpoints are rooted before publication through the complete synchronous
+transition. Script handlers/getters may collect; ordinary native callback barriers
+remain active. A callback may change focus recursively: that nested change remains
+current, while the outer transition finishes notifying its original endpoint
+snapshot. Handler lookup occurs at delivery time, so a first handler may replace
+the second handler. No notification queue or rollback is provided. Existing VM
+script recursion limits apply to recursive script callbacks.
+
+A real getter/handler error, including allocation failure, stops further delivery
+and propagates its original status. Already published focus and handler side
+effects remain committed. Thus an out-of-memory failure before publication keeps
+the previous selection; one during notification keeps the published selection
+unless a callback changed it. Even [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) from a real callback is
+an error, not the Boolean false used for an ineligible candidate. Removing a
+snapshot endpoint during a callback does not cancel its pending notification;
+subsequent getFocus applies the ordinary lazy detachment check. These are explicit
+subset ordering rules; original-player edge-case acceptance remains open.
 
 ## getFocus
 
@@ -95,8 +123,7 @@ context destruction, including across movie load and namespace replacement.
 It is unsynchronized, host-local and not serialized; namespace methods have no
 portable serialization callback IDs and graph transfer returns [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46).
 
-TextField/caret/range methods, Button objects, Selection listeners, onSetFocus /
-onKillFocus callbacks, focus rectangles, automatic mouse/Tab navigation, IME,
+TextField/caret/range methods, Button objects, Selection listeners, focus rectangles, automatic mouse/Tab navigation, IME,
 security origins, SWF ClipActions and original-player edge/order conformance
 remain open. The getFocus dot-path format and callable-handler eligibility are
 the documented subset policy; exhaustive reference-player acceptance is pending.
@@ -111,6 +138,8 @@ The original rules are described by Adobe's AS2 reference
 - [Interactive SWF](../examples/player/animation_audio/README.md): selects its
   root by `_root` path, separately counts focused clip and Key listener events,
   and increases the blue box height on root-focused releases.
+- `tests/selection_notifications.cpp`: arguments/order, identity no-op, committed
+  errors, recursive selection and collection after both persistent roots are removed.
 - `tests/selection.cpp`: Unicode paths, eligibility, invalid types, native getters,
   real failure propagation, removal during eligibility and lazy ancestor clearing.
 - `tests/selection_install_allocation.cpp`: fresh-context installation allocation
@@ -123,7 +152,7 @@ The original rules are described by Adobe's AS2 reference
 Host/runtime fixtures and cross-builds are distinct from physical keyboard/device
 acceptance. See [current roadmap status](ROADMAP_STATUS.md).
 
-Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L53), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L101)
+Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L84), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L133)
 in [src/standard/selection.cpp](../src/standard/selection.cpp).
 
 <!-- source-links:start -->
@@ -141,9 +170,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:66](../src/standard/movieclip_constants.h#L66) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:101](../src/standard/selection.cpp#L101) |
+| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:133](../src/standard/selection.cpp#L133) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:53](../src/standard/selection.cpp#L53) |
+| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:84](../src/standard/selection.cpp#L84) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

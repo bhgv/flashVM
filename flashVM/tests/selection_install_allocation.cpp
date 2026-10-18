@@ -82,9 +82,11 @@ int main()
     assert(fvm_object_set(context, candidate, "focusEnabled", &value) == FVM_OK);
     assert(fvm_get_global(context, "Selection", &selection) == FVM_OK);
     fvm_value_undefined(&value); value.type = FVM_VALUE_OBJECT; value.object = candidate;
+    unsigned before_publish = 0, after_publish = 0;
     completed = false; failures = 0;
     for (long allocation = 0; allocation < 256 && !completed; ++allocation)
     {
+        assert(fvm_input_set_keyboard_focus(context, previous) == FVM_OK);
         fail_after = allocation;
         FVM_Result result = fvm_object_call(context, selection.object, "setFocus", 1, &value, &out);
         fail_after = -1;
@@ -95,11 +97,15 @@ int main()
         }
         else
         {
-            assert(result == FVM_OUT_OF_MEMORY && context->keyboard_focus == previous);
+            assert(result == FVM_OUT_OF_MEMORY);
+            /* Preparation failures preserve old focus; notification failures keep publication. */
+            assert(context->keyboard_focus == previous || context->keyboard_focus == candidate);
+            if (context->keyboard_focus == previous) ++before_publish;
+            else ++after_publish;
             assert(!context->gc_frames && !context->gc_native_depth);
             ++failures;
         }
     }
-    assert(completed && failures);
+    assert(completed && failures && before_publish && after_publish);
     fvm_context_destroy(context); fvm_runtime_destroy(runtime);
 }

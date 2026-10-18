@@ -1372,6 +1372,16 @@ extern "C"
                     : FVM_INVALID_ARGUMENT;
     }
 
+    /* [GC:] Snapshot and root notification arguments before any getter or callback executes. */
+    FVM_Result fvm_object_call_optional_args(FVM_Context *c, FVM_Object *self, const char *name,
+                                             unsigned int argc, const FVM_Value *argv)
+    {
+        FVM_Value ignored;
+        return name ? call_method_dispatch(c, self, name, std::strlen(name), argc, argv,
+                                           &ignored, true)
+                    : FVM_INVALID_ARGUMENT;
+    }
+
     /* [GC:] Define object method rooted. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result fvm_object_define_method_rooted(
