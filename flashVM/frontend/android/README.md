@@ -108,3 +108,10 @@ test 02 uses it for arrows/Space. Physical/BT/USB keyboards are still required.
 Menu and exported device.txt now read PackageInfo.versionName from the installed
 APK instead of retaining a hard-coded previous version; the application label is
 the stable name FlashVM. The persisted v0.585 test signer remains unchanged.
+
+## v0.590 ordered key listeners
+
+The SDL host now retains short press/release pairs between movie ticks and
+delivers [Key listeners](../../doc/KEYBOARD_LISTENERS.md) ([RU](../../doc/KEYBOARD_LISTENERS.ru.md)).
+Test 02 grows/shifts the green marker through separate down/up counters.
+A physical/BT/USB keyboard is required; a new phone keyboard run is still pending.

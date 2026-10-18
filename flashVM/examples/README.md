@@ -59,7 +59,9 @@
     - [gesture_recognizer](#example-embedding-gesture_recognizer) — <small><em>Распознавание tap по событиям касания</em></small>
     - [input](#example-embedding-input) — <small><em>Правила преобразования tap и swipe</em></small>
     - [input_queue](#example-embedding-input_queue) — <small><em>Очередь ввода и обработка на VM-потоке</em></small>
-    - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
+    - [keyboard](#group-embedding-input-keyboard)
+      - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, короткие нажатия и владение callbacks</em></small>
+      - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
@@ -713,8 +715,25 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 
 [К оглавлению](#оглавление).
 
+<a id="group-embedding-input-keyboard"></a>
+#### keyboard
+
+<a id="example-embedding-keyboard_listeners"></a>
+##### keyboard_listeners
+
+**Тип:** C89 — собираемый пример. **README:** [embedding/keyboard_listeners/README.md](embedding/keyboard_listeners/README.md).
+
+Регистрирует один объект с native onKeyDown/onKeyUp, публикует полное нажатие и
+отпускание без промежуточного кадра, читает callback-visible состояние и снимает
+подписку. Показывает сильное владение контекстом, временный GC pin и время жизни
+borrowed userdata. Не требует окна или устройства. [Контракт](../doc/KEYBOARD_LISTENERS.ru.md).
+
+**Файлы:** [main.c](embedding/keyboard_listeners/main.c).
+
+[К оглавлению](#оглавление).
+
 <a id="example-embedding-keyboard_polling"></a>
-#### keyboard_polling
+##### keyboard_polling
 
 **Тип:** C89 — собираемый пример. **README:** [embedding/keyboard_polling/README.md](embedding/keyboard_polling/README.md).
 
@@ -1377,6 +1396,8 @@ assertions; [GC:] native sessions не входят в VM heap и освобож
 <a id="example-player-animation_audio"></a>
 ### animation_audio
 
+v0.590: ролик 02 содержит одноразовую регистрацию Key observer, считает оба перехода и показывает их зелёным маркером; [слушатели и очередь](../doc/KEYBOARD_LISTENERS.ru.md).
+
 v0.588: исправлены границы блоков тестового ADPCM-тона; [измерения и проверка](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0588-границы-блоков-тестового-adpcm-тона).
 
 v0.587: пяти-миллисекундное затухание явных остановок; [границы и ограничения](../doc/PLAYER_AUDIO_RELEASE.ru.md).
@@ -1461,6 +1482,7 @@ Source line links describe the current checkout, including in historical notes.
 - [jit_dump — debugger/jit_dump](#example-debugger-jit_dump)
 - [jit_instances — embedding/jit_instances](#example-embedding-jit_instances)
 - [jit_workers — embedding/jit_workers](#example-embedding-jit_workers)
+- [keyboard_listeners — embedding/keyboard_listeners](#example-embedding-keyboard_listeners)
 - [keyboard_polling — embedding/keyboard_polling](#example-embedding-keyboard_polling)
 - [live_variables — debugger/live_variables](#example-debugger-live_variables)
 - [lua_style — extending/lua_style](#example-extending-lua_style)

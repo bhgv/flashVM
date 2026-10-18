@@ -1,5 +1,6 @@
 /* FlashVM: explicit AS1/AS2 Key polling namespace over host-published native state. */
 #include "../core/runtime.hpp"
+#include "keyboard_listeners.hpp"
 #include "../core/object_root_scope.hpp"
 #include "../core/property_lookup.hpp"
 #include "flashvm/keyboard.h"
@@ -69,8 +70,12 @@ struct Method
     const char *name;            /* Static ActionScript method name. */
     FVM_NativeFunction callback; /* Stateless callback; reads the invoking context. */
 };
-const Method methods[] = {
-    {"getCode", get_code}, {"getAscii", get_ascii}, {"isDown", is_down}, {"isToggled", is_toggled}};
+const Method methods[] = {{"getCode", get_code},
+                          {"getAscii", get_ascii},
+                          {"isDown", is_down},
+                          {"isToggled", is_toggled},
+                          {"addListener", fvm_key_add_listener},
+                          {"removeListener", fvm_key_remove_listener}};
 
 /* Public Key constants correspond to documented virtual-key identities. */
 struct Constant
@@ -101,7 +106,12 @@ bool installed(FVM_Context *context, FVM_Object *object)
                 object->accessors.end())
             return false;
     }
-    return true;
+    fvm_detail::map<fvm_detail::string, FVM_AccessorEntry>::iterator listeners =
+        fvm_property_find(context, object->accessors, fvm_detail::string("_listeners"));
+    return listeners != object->accessors.end() &&
+           listeners->second.getter == fvm_key_listener_array && !listeners->second.setter &&
+           fvm_property_find(context, object->properties, fvm_detail::string("_listeners")) ==
+               object->properties.end();
 }
 } // namespace
 
@@ -146,6 +156,10 @@ extern "C" FVM_Result fvm_standard_keyboard_install(FVM_Context *context)
             object->methods[methods[i].name] = entry;
             object->attributes[methods[i].name] = FVM_PROPERTY_DONT_ENUM;
         }
+        FVM_AccessorEntry listeners;
+        listeners.getter = fvm_key_listener_array;
+        object->accessors["_listeners"] = listeners;
+        object->attributes["_listeners"] = FVM_PROPERTY_DONT_ENUM | FVM_PROPERTY_DONT_DELETE;
         for (size_t i = 0; i < sizeof(constants) / sizeof(constants[0]); ++i)
         {
             FVM_Value value;

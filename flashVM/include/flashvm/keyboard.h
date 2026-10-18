@@ -2,29 +2,30 @@
 #ifndef FLASHVM_KEYBOARD_H
 #define FLASHVM_KEYBOARD_H /* Guard the public C89 keyboard ABI. */
 #include "flashvm.h"
-#define FVM_KEYBOARD_FIRST_CODE 1U   /* Zero means no key and cannot be held. */
-#define FVM_KEYBOARD_CODE_COUNT 256U /* Virtual-key slots, indexed from zero through 255. */
-#define FVM_KEYBOARD_ASCII_MAX 127U  /* Highest accepted ASCII character value; IME is separate. */
-#define FVM_KEY_BACKSPACE 8U         /* Backspace virtual key. */
-#define FVM_KEY_TAB 9U               /* Tab virtual key. */
-#define FVM_KEY_ENTER 13U            /* Return/Enter virtual key. */
-#define FVM_KEY_SHIFT 16U            /* Either Shift key. */
-#define FVM_KEY_CONTROL 17U          /* Either Control key. */
-#define FVM_KEY_ALT 18U              /* Either Alt key; no Key.ALT constant is installed. */
-#define FVM_KEY_CAPSLOCK 20U         /* Caps Lock virtual key and toggle selector. */
-#define FVM_KEY_ESCAPE 27U           /* Escape virtual key. */
-#define FVM_KEY_SPACE 32U            /* Space virtual key. */
-#define FVM_KEY_PGUP 33U             /* Page Up virtual key. */
-#define FVM_KEY_PGDN 34U             /* Page Down virtual key. */
-#define FVM_KEY_END 35U              /* End virtual key. */
-#define FVM_KEY_HOME 36U             /* Home virtual key. */
-#define FVM_KEY_LEFT 37U             /* Left arrow virtual key. */
-#define FVM_KEY_UP 38U               /* Up arrow virtual key. */
-#define FVM_KEY_RIGHT 39U            /* Right arrow virtual key. */
-#define FVM_KEY_DOWN 40U             /* Down arrow virtual key. */
-#define FVM_KEY_INSERT 45U           /* Insert virtual key. */
-#define FVM_KEY_DELETE 46U           /* Delete virtual key. */
-#define FVM_KEY_DIGIT0 48U           /* Start of the contiguous digit virtual-key range. */
+#define FVM_KEYBOARD_MAX_LISTENERS 1024U /* Bounded unique listener objects per context. */
+#define FVM_KEYBOARD_FIRST_CODE 1U       /* Zero means no key and cannot be held. */
+#define FVM_KEYBOARD_CODE_COUNT 256U     /* Virtual-key slots, indexed from zero through 255. */
+#define FVM_KEYBOARD_ASCII_MAX 127U /* Highest accepted ASCII character value; IME is separate. */
+#define FVM_KEY_BACKSPACE 8U        /* Backspace virtual key. */
+#define FVM_KEY_TAB 9U              /* Tab virtual key. */
+#define FVM_KEY_ENTER 13U           /* Return/Enter virtual key. */
+#define FVM_KEY_SHIFT 16U           /* Either Shift key. */
+#define FVM_KEY_CONTROL 17U         /* Either Control key. */
+#define FVM_KEY_ALT 18U             /* Either Alt key; no Key.ALT constant is installed. */
+#define FVM_KEY_CAPSLOCK 20U        /* Caps Lock virtual key and toggle selector. */
+#define FVM_KEY_ESCAPE 27U          /* Escape virtual key. */
+#define FVM_KEY_SPACE 32U           /* Space virtual key. */
+#define FVM_KEY_PGUP 33U            /* Page Up virtual key. */
+#define FVM_KEY_PGDN 34U            /* Page Down virtual key. */
+#define FVM_KEY_END 35U             /* End virtual key. */
+#define FVM_KEY_HOME 36U            /* Home virtual key. */
+#define FVM_KEY_LEFT 37U            /* Left arrow virtual key. */
+#define FVM_KEY_UP 38U              /* Up arrow virtual key. */
+#define FVM_KEY_RIGHT 39U           /* Right arrow virtual key. */
+#define FVM_KEY_DOWN 40U            /* Down arrow virtual key. */
+#define FVM_KEY_INSERT 45U          /* Insert virtual key. */
+#define FVM_KEY_DELETE 46U          /* Delete virtual key. */
+#define FVM_KEY_DIGIT0 48U          /* Start of the contiguous digit virtual-key range. */
 #define FVM_KEY_LETTER_A 65U      /* Start of the contiguous uppercase letter virtual-key range. */
 #define FVM_KEY_NUMPAD0 96U       /* Start of the contiguous numeric-keypad virtual-key range. */
 #define FVM_KEY_F1 112U           /* Start of the contiguous F1 through F12 virtual-key range. */
@@ -55,12 +56,21 @@ extern "C"
         int caps_lock;  /* Boolean Caps Lock toggle, independent of physical key-down state. */
         int num_lock;   /* Boolean Num Lock toggle, independent of physical key-down state. */
     } FVM_KeyboardState;
-    /* Validate and copy the complete snapshot atomically; no allocation or event delivery. */
+    /* Validate all fields before copying the snapshot; no allocation or event delivery. */
     FVM_API FVM_Result fvm_input_set_keyboard(FVM_Context *, const FVM_KeyboardState *);
     /* Copy current state; require exact struct_size and preserve output on invalid input. */
     FVM_API FVM_Result fvm_input_get_keyboard(FVM_Context *, FVM_KeyboardState *);
     /* Clear held keys, latest codes and toggles; use on focus loss before accepting new input. */
     FVM_API FVM_Result fvm_input_reset_keyboard(FVM_Context *);
+    /* [GC:] Retain a same-context listener once; duplicate registration succeeds unchanged. */
+    FVM_API FVM_Result fvm_input_add_key_listener(FVM_Context *, FVM_Object *);
+    /* Remove by identity; require removed, set it to 0/1 on success and preserve it on error. */
+    FVM_API FVM_Result fvm_input_remove_key_listener(FVM_Context *, FVM_Object *, int *removed);
+    /* Publish a validated snapshot and synchronously notify a rooted registration-order list.
+     * pressed must be 0 or 1. Preparation failure preserves state; callback errors stop delivery
+     * after publication. Nested dispatch is rejected; listener edits affect later events. */
+    FVM_API FVM_Result fvm_input_dispatch_keyboard(FVM_Context *, const FVM_KeyboardState *,
+                                                   int pressed);
     /* Explicitly install the supported Key polling namespace, preserving conflicting bindings. */
     FVM_API FVM_Result fvm_standard_keyboard_install(FVM_Context *);
 #ifdef __cplusplus

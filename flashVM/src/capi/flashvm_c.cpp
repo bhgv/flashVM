@@ -146,6 +146,7 @@ extern "C"
         context->movieclip_sound_busy = false;
         std::memset(&context->keyboard, 0, sizeof(context->keyboard));
         context->keyboard.struct_size = sizeof(context->keyboard);
+        context->keyboard_dispatching = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */
@@ -239,7 +240,8 @@ extern "C"
             return;
 
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
-        if (!context || context->destroying || context->gc_collecting || context->gc_native_depth)
+        if (!context || context->destroying || context->gc_collecting ||
+            context->gc_native_depth || context->keyboard_dispatching)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;
 
@@ -250,6 +252,8 @@ extern "C"
         fvm_audio_context_cleanup(context); /* Host userdata remains borrowed through final output stopping. */
         /* [GC:] Release the native drag root before finalization destroys the object graph. */
         context->drag_clip = 0;
+        /* [GC:] Drop listener roots before finalization destroys their graph. */
+        context->keyboard_listeners.clear();
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         context->gc_collecting = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

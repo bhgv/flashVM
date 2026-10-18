@@ -113,9 +113,36 @@ def set_position(target, index, expression):
     return push(target) + push(index) + expression + b'\x23'
 
 
+def observer_member(name):
+    """Read a counter from the once-registered script listener object."""
+    return push('KeyObserver') + b'\x1c' + push(name) + b'\x4e'
+
+
+def observer_handler(counter):
+    """Define a parameterless AVM1 function that increments one listener-owned counter."""
+    body = (push('this') + b'\x1c' + push(counter) +
+            push('this') + b'\x1c' + push(counter) + b'\x4e' + push(1) + b'\x47\x4f\0')
+    header = b'\0' + struct.pack('<HH', 0, len(body))
+    # SWF ActionLength excludes the function body; CodeSize describes the following byte span.
+    return b'\x9b' + struct.pack('<H', len(header)) + header + body
+
+
+def observer_setup():
+    """Register once across timeline loops; do not accumulate a new listener every five seconds."""
+    initial = push('KeyObserver') + push(0) + push('Object') + b'\x40\x1d'
+    for counter in ('downs', 'ups'):
+        initial += push('KeyObserver') + b'\x1c' + push(counter) + push(0) + b'\x4f'
+    for event, counter in (('onKeyDown', 'downs'), ('onKeyUp', 'ups')):
+        initial += push('KeyObserver') + b'\x1c' + push(event) + observer_handler(counter) + b'\x4f'
+    initial += push('KeyObserver') + b'\x1c' + push(1) + push('Key') + b'\x1c' + push('addListener') + b'\x52\x17'
+    initial += push('KeyObserverReady') + push(1) + b'\x1d'
+    # If already initialized, skip the complete initializer using the signed relative branch.
+    return push('KeyObserverReady') + b'\x1c' + b'\x9d\x02\0' + struct.pack('<h', len(initial)) + initial
+
+
 def actions():
     """Move the marker to the pointer; move the blue box with held arrows/space."""
-    data = set_position('pointer', 0, host('x')) + set_position('pointer', 1, host('y'))
+    data = observer_setup() + set_position('pointer', 0, host('x')) + set_position('pointer', 1, host('y'))
     for index, positive, negative in ((0, 39, 37), (1, 40, 38)):
         old = push('box') + push(index) + b'\x22'
         delta = key_down(positive) + key_down(negative) + b'\x0b' + push(5) + b'\x0c'
@@ -124,6 +151,8 @@ def actions():
     data += set_position('pointer', 2, push(100) + host('buttons') + push(10) + b'\x0c\x0a')
     data += set_position('box', 2, push(100) + key_down(32) + push(80) + b'\x0c\x0a')
     data += set_position('key', 0, push(20) + key_code() + push(4) + b'\x0c\x0a')
+    data += set_position('key', 3, push(100) + observer_member('downs') + push(5) + b'\x0c\x0a')
+    data += set_position('key', 1, push(250) + observer_member('ups') + push(2) + b'\x0c\x0a')
     data += set_position('click', 0, push(20) + host('clicks') + push(20) + b'\x0c\x0a')
     return tag(DO_ACTION, data + b'\0')
 

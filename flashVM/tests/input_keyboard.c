@@ -75,6 +75,12 @@ int main(void)
     assert(result.type == FVM_VALUE_BOOLEAN && result.boolean);
     assert(fvm_value_serialize(context, &key, &bytes, &size) == FVM_UNSUPPORTED);
     assert(!bytes && !size);
+    assert(fvm_input_dispatch_keyboard(context, &saved, 1) == FVM_OK);
+    assert(fvm_input_add_key_listener(context, key.object) == FVM_OK);
+    {
+        int removed = 7;
+        assert(fvm_input_remove_key_listener(context, key.object, &removed) == FVM_OK && removed == 1);
+    }
     assert(fvm_gc_collect(context, 0) == FVM_OK);
     assert(fvm_input_reset_keyboard(context) == FVM_OK);
     assert(fvm_object_call(context, key.object, "isDown", 1, &argument, &result) == FVM_OK);

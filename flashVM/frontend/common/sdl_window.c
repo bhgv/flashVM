@@ -5,6 +5,12 @@
 #include <SDL.h>
 #include <stdlib.h>
 #include <string.h>
+/* Plain copied transition; contains no borrowed VM/SDL pointers. */
+typedef struct FVM_DesktopKeyEvent
+{
+    FVM_KeyboardState state; /* Complete post-transition polling state. */
+    int pressed;             /* One for physical down/repeat, zero for release. */
+} FVM_DesktopKeyEvent;
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
 struct FVM_DesktopWindow
 {
@@ -14,6 +20,11 @@ struct FVM_DesktopWindow
     int background;         /* Suspend timeline/audio while Android activity is not foreground. */
     FVM_DesktopInput
         input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
+    FVM_DesktopKeyEvent
+        pending_keys[FVM_DESKTOP_PENDING_KEYS]; /* Native bounded transition FIFO. */
+    size_t key_head, key_count; /* First pending transition and number of occupied slots. */
+    FVM_Result key_error; /* Latched overflow, never silently reported as successful delivery. */
+    int pumping_keys;     /* Reject recursive host pumping from a script/native handler. */
     int ready; /* Nonzero after a complete upload; permits repaint without another VM tick. */
 };
 
@@ -101,6 +112,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.buttons = 0;
         memset(&view->input.keyboard, 0, sizeof(view->input.keyboard));
         view->input.keyboard.struct_size = sizeof(view->input.keyboard);
+        view->key_head = view->key_count = 0;
     }
     if (event->type == SDL_MOUSEMOTION)
     {
@@ -155,6 +167,18 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
             view->input.space = down;
         view->input.key_code = code;
         view->input.key_down = down;
+        if (fvm_desktop_key_code(key))
+        {
+            if (view->key_count == FVM_DESKTOP_PENDING_KEYS)
+                view->key_error = FVM_ERROR;
+            else if (view->key_error == FVM_OK)
+            {
+                size_t slot = (view->key_head + view->key_count) % FVM_DESKTOP_PENDING_KEYS;
+                view->pending_keys[slot].state = view->input.keyboard;
+                view->pending_keys[slot].pressed = down;
+                ++view->key_count;
+            }
+        }
         if (down && !event->key.repeat)
             ++view->input.key_presses;
     }
@@ -163,6 +187,30 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
          event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
         draw_texture(view);
     return 1;
+}
+
+/* Dispatch only the entry batch; callbacks may enqueue later work without an unbounded loop. */
+FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *view, FVM_Context *context)
+{
+    size_t remaining;
+    FVM_Result result = FVM_OK;
+    if (!view || !context || view->pumping_keys)
+        return FVM_INVALID_ARGUMENT;
+    if (view->key_error != FVM_OK)
+        return view->key_error;
+    view->pumping_keys = 1;
+    remaining = view->key_count;
+    while (remaining-- && view->key_count)
+    {
+        FVM_DesktopKeyEvent event = view->pending_keys[view->key_head];
+        view->key_head = (view->key_head + 1) % FVM_DESKTOP_PENDING_KEYS;
+        --view->key_count;
+        result = fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
+        if (result != FVM_OK)
+            break;
+    }
+    view->pumping_keys = 0;
+    return result == FVM_OK ? view->key_error : result;
 }
 
 /* SDL_WaitEventTimeout removes an event: inspect it instead of accidentally losing close. */

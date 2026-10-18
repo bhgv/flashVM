@@ -6,12 +6,13 @@
 
 ## Установка
 
-Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L18), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L65).
+Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L18), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L75).
 Последняя публикует глобальный объект `Key` с методами `getCode`, `getAscii`,
 `isDown`, `isToggled` и константами BACKSPACE, TAB, ENTER, SHIFT, CONTROL, CAPSLOCK,
 ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 Значения соответствуют виртуальным кодам `FVM_KEY_*`, а не системным scancode.
-Конструктор, `isAccessible`, слушатели и семантика доменов безопасности отсутствуют.
+В v0.590 добавлены [слушатели и доставка](KEYBOARD_LISTENERS.ru.md).
+Конструктор, `isAccessible` и семантика доменов безопасности отсутствуют.
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L42) возвращается после полной подготовки объекта. Конфликт с собственным
 глобальным значением/accessor/native/script/constructor-регистрацией даёт
@@ -26,15 +27,15 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 
 ## API снимка
 
-[`FVM_KeyboardState`](../include/flashvm/keyboard.h#L48) — обычная память вызывающего кода. Обнулите её целиком,
+[`FVM_KeyboardState`](../include/flashvm/keyboard.h#L49) — обычная память вызывающего кода. Обнулите её целиком,
 затем задайте `struct_size = sizeof(FVM_KeyboardState)`.
 
 | Поле | Контракт |
 | --- | --- |
 | `struct_size` | Точный текущий размер структуры; иные размеры отклоняются. |
-| `down` | [`FVM_KEYBOARD_CODE_COUNT`](../include/flashvm/keyboard.h#L6) независимых байтов 0/1; нулевая ячейка всегда ноль. |
+| `down` | [`FVM_KEYBOARD_CODE_COUNT`](../include/flashvm/keyboard.h#L7) независимых байтов 0/1; нулевая ячейка всегда ноль. |
 | `last_code` | Последний код нажатия, 0..255; ноль означает отсутствие известного кода. Отпускание может сохранить его. |
-| `last_ascii` | Английский ASCII последнего перехода, 0..[`FVM_KEYBOARD_ASCII_MAX`](../include/flashvm/keyboard.h#L7); ноль при отсутствии. Не Unicode-ввод текста. |
+| `last_ascii` | Английский ASCII последнего перехода, 0..[`FVM_KEYBOARD_ASCII_MAX`](../include/flashvm/keyboard.h#L8); ноль при отсутствии. Не Unicode-ввод текста. |
 | `caps_lock`, `num_lock` | Строго 0/1, состояние переключателя независимо от удержания клавиши. |
 
 `fvm_input_set_keyboard(context, state)` проверяет все поля до копирования.
@@ -68,7 +69,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 | `Key.getCode()` | Number из `last_code` текущего контекста, изначально/после сброса ноль. Лишние аргументы игнорируются. |
 | `Key.getAscii()` | Number из `last_ascii`, изначально/после сброса ноль. Лишние аргументы игнорируются. |
 | `Key.isDown(code)` | Boolean удержания выбранной виртуальной клавиши; несколько клавиш независимы. |
-| `Key.isToggled(code)` | Boolean Caps Lock либо Num Lock по числовому [`FVM_KEY_NUMLOCK`](../include/flashvm/keyboard.h#L42); для прочих кодов false. |
+| `Key.isToggled(code)` | Boolean Caps Lock либо Num Lock по числовому [`FVM_KEY_NUMLOCK`](../include/flashvm/keyboard.h#L43); для прочих кодов false. |
 
 Запросы преобразуют первый аргумент через [`fvm_value_to_number`](../include/flashvm/standard.h#L23); ошибки и
 исключения преобразования распространяются. Нет аргумента, NaN, бесконечность,
@@ -100,8 +101,8 @@ IME, составной текст, точный перевод физическ
 Потеря фокуса/фон сбрасывают клавиши, коды и переключатели. Escape/Android Back
 сохраняют прежнее закрытие плеера. Очень короткое нажатие между movie ticks может
 не попасть в опрос удержания; счётчики HostInput сохраняют такие нажатия.
-Поля HostInput для указателя/кнопок/счётчиков остаются доступны. Key listeners и
-автоматические key-события кнопок/клипов ещё не доставляются.
+Поля HostInput для указателя/кнопок/счётчиков остаются доступны. Доставка Key listeners теперь описана [здесь](KEYBOARD_LISTENERS.ru.md).
+Автоматические key-события кнопок/клипов ещё не доставляются.
 
 ## Пример и проверки
 
@@ -118,7 +119,7 @@ IME, составной текст, точный перевод физическ
 Основа интерфейса: документ Adobe
 [ActionScript 2.0 Language Reference](https://homepage.cs.uiowa.edu/~slonnegr/flash/ActionScript2Reference.pdf),
 глава Key, копия исходного руководства издателя на сайте University of Iowa.
-Слушатели и ограничения безопасности остаются отдельной работой роудмапа.
+Ограничения безопасности и key-события кнопок/клипов остаются работой роудмапа.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -130,18 +131,18 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
-| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:59](../include/flashvm/keyboard.h#L59) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:62](../include/flashvm/keyboard.h#L62) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:64](../include/flashvm/keyboard.h#L64) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:60](../include/flashvm/keyboard.h#L60) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_KEY_NUMLOCK` | macro / define | [include/flashvm/keyboard.h:42](../include/flashvm/keyboard.h#L42) |
-| `FVM_KEYBOARD_ASCII_MAX` | macro / define | [include/flashvm/keyboard.h:7](../include/flashvm/keyboard.h#L7) |
-| `FVM_KEYBOARD_CODE_COUNT` | macro / define | [include/flashvm/keyboard.h:6](../include/flashvm/keyboard.h#L6) |
-| `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:48](../include/flashvm/keyboard.h#L48) |
+| `FVM_KEY_NUMLOCK` | macro / define | [include/flashvm/keyboard.h:43](../include/flashvm/keyboard.h#L43) |
+| `FVM_KEYBOARD_ASCII_MAX` | macro / define | [include/flashvm/keyboard.h:8](../include/flashvm/keyboard.h#L8) |
+| `FVM_KEYBOARD_CODE_COUNT` | macro / define | [include/flashvm/keyboard.h:7](../include/flashvm/keyboard.h#L7) |
+| `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:49](../include/flashvm/keyboard.h#L49) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `fvm_value_to_number` | function | [include/flashvm/standard.h:23](../include/flashvm/standard.h#L23) |
 <!-- source-links:end -->

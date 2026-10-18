@@ -18,6 +18,7 @@
 #include "../core/object_root_scope.hpp"
 #include "../core/value_vector_root_scope.hpp"
 #include "../core/runtime.hpp"
+#include "../core/optional_method.hpp"
 #include "../core/prototype_data.hpp"
 #include "../core/exception_internal.hpp"
 #include "flashvm/stack.h"
@@ -1186,8 +1187,9 @@ extern "C"
                     : FVM_INVALID_ARGUMENT;
     }
     /* Preserve a canonical counted name through the native dispatch bridge. */
-    FVM_Result fvm_object_call_bytes(FVM_Context *c, FVM_Object *self, const char *name, size_t size,
-                               unsigned int argc, const FVM_Value *argv, FVM_Value *out)
+    static FVM_Result call_method_dispatch(FVM_Context *c, FVM_Object *self, const char *name,
+                                           size_t size, unsigned int argc, const FVM_Value *argv,
+                                           FVM_Value *out, bool optional)
     {
         unsigned int i;
         if (!c || !self || self->owner != c || !name || !out || (argc && !argv))
@@ -1255,7 +1257,9 @@ extern "C"
                         return r;
                     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
                     if (member.type != FVM_VALUE_OBJECT)
-                        return FVM_UNSUPPORTED;
+                        return optional ? FVM_OK : FVM_UNSUPPORTED;
+                    if (optional && (!member.object || !member.object->invocable.callback))
+                        return FVM_OK;
                     /* [GC:] Retain the actual owner separately from the lookup depth captured
                      * before getter execution; own loaded methods have a minimum depth of one. */
                     FVM_CallScope scope(c, 0, member.object, cursor,
@@ -1296,7 +1300,9 @@ extern "C"
                     if (handled)
                     {
                         if (function.type != FVM_VALUE_OBJECT)
-                            return FVM_UNSUPPORTED;
+                            return optional ? FVM_OK : FVM_UNSUPPORTED;
+                        if (optional && (!function.object || !function.object->invocable.callback))
+                            return FVM_OK;
                         /* [GC:] A resolver result has no defining owner but still executes as
                          * a method with explicit depth one, even after prototype detachment. */
                         FVM_CallScope scope(c, 0, function.object, 0,
@@ -1304,6 +1310,8 @@ extern "C"
                         return fvm_function_invoke(c, function.object, self, argc, argv, out);
                     }
                 }
+                if (optional)
+                    return FVM_OK;
                 fvm_detail::map<fvm_detail::string, FVM_NativeEntry>::iterator it =
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                     fvm_property_find(c, c->functions, key);
@@ -1348,6 +1356,22 @@ extern "C"
             return FVM_ERROR;
         }
     }
+    /* Preserve ordinary C method-call semantics through the shared rooted dispatcher. */
+    FVM_Result fvm_object_call_bytes(FVM_Context *c, FVM_Object *self, const char *name, size_t size,
+                                    unsigned int argc, const FVM_Value *argv, FVM_Value *out)
+    {
+        return call_method_dispatch(c, self, name, size, argc, argv, out, false);
+    }
+
+    /* Invoke an optional event handler exactly once, without global-function fallback.
+     * Missing/noncallable members are ignored; errors from a real getter/callback propagate. */
+    FVM_Result fvm_object_call_optional(FVM_Context *c, FVM_Object *self, const char *name)
+    {
+        FVM_Value ignored;
+        return name ? call_method_dispatch(c, self, name, std::strlen(name), 0, 0, &ignored, true)
+                    : FVM_INVALID_ARGUMENT;
+    }
+
     /* [GC:] Define object method rooted. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result fvm_object_define_method_rooted(

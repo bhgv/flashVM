@@ -286,6 +286,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             }
             continue;
         }
+        if (!checked(fvm_desktop_window_pump_keyboard(window, context), "keyboard listeners", path))
+            goto cleanup;
         fvm_desktop_window_input(window, &input);
         if (!checked(publish_input(context, host_input, &input,
                                    (double)bounds.x_min / FVM_SWF_TWIPS_PER_PIXEL,

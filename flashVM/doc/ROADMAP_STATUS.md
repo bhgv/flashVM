@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.589
+# FlashVM stage status / Состояние стадий — v0.590
 
 This is a bounded review of existing implementation reports and the current
-explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
+keyboard polling/listener work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущей конвертации частоты/каналов, а не
+Это сводка существующих отчётов и текущего клавиатурного ввода, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -246,3 +246,42 @@ video/audio captures pass all three movies in both modes, including the updated
 physical keyboard acceptance. Android ARM64/API23 native build passes; Java/Dex
 APK packaging uses the persisted signer. Phone keyboard/foreign-OS runs remain
 open; the user's audio confirmation applies to the previous corrected assets.
+
+## v0.590 Key listeners / Слушатели клавиатуры
+
+Implemented explicit add/remove/dispatch APIs, strong registration roots, rooted
+recipient snapshots, optional inherited/getter/script/native method dispatch and
+ordered SDL transition buffering. Added Key.addListener/removeListener and a
+read-only `_listeners` Array snapshot. Repeated SWF 02 loops keep one observer;
+short taps reach both handlers before a movie tick.
+[EN contracts](KEYBOARD_LISTENERS.md) / [RU](KEYBOARD_LISTENERS.ru.md),
+[C89 tutorial](../examples/embedding/keyboard_listeners/README.md).
+
+Реализованы регистрация/удаление/рассылка, GC-корни и снимок получателей;
+изменения подписок действуют на следующее событие. Ошибки настоящих обработчиков
+распространяются без отката уже выполненных действий. Это продвижение ввода,
+GC и JIT, а не завершение стадий. Полные clip/button key events, security/IME,
+точное поведение мутаций/идентичности Array оригинального Flash и аппаратная
+приёмка платформ остаются открытыми. Все девять стадий открыты.
+
+### v0.590 verification / Проверка
+
+Lean AGG/JIT Linux SDL Release with examples: 1240 registered, 1236 passed and
+four explicit native-macOS/native-Windows/SSIP skips after restoring executable
+permissions for 28 initially unstarted cases and rerunning them successfully.
+No assertion failures remained. Five core keyboard/snapshot/install/listener
+regressions pass ASan/UBSan with LeakSanitizer disabled, including native C++
+exception containment, actual GC during mutation and the 1024-listener bound.
+The real SDL FIFO fixture also passes a separate strict-C89 ASan/UBSan build
+linked to the same minimal-JIT library and actual SDL2, without opening devices.
+The minimal NO_GRAPHICS CMake profile itself does not support the desktop target;
+this separate fixture compilation is not a full sanitized desktop player build.
+
+All three SDL dummy audio/video captures pass in interpreter/JIT, preserving
+source tone amplitudes and corrected ADPCM boundaries. The shipped SWF 02 also
+passes three loops and short taps in both modes with one observer and matching
+counters. The C89 listener tutorial prints down/up and removed=1 deliveries=2.
+Android ARM64/API23 native and Java/Dex APK builds pass, with the persisted test
+signer, signature and 16 KiB ELF/ZIP alignment checked. No new physical keyboard,
+Android playback or foreign-OS runtime acceptance is claimed. All nine stages
+remain open.

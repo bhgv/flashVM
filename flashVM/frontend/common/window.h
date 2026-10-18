@@ -3,6 +3,8 @@
 #define FVM_DESKTOP_WINDOW_H
 #include "flashvm/raster.h"
 #include "flashvm/keyboard.h"
+#define FVM_DESKTOP_PENDING_KEYS                                                                   \
+    128U /* Fixed main-thread FIFO capacity; overflow is an explicit error. */
 #define FVM_DESKTOP_MAX_PIXELS 4096U    /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U              /* Red offset in a packed RGBA pixel. */
 #define FVM_DESKTOP_GREEN 1U            /* Green offset in a packed RGBA pixel. */
@@ -42,6 +44,10 @@ int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *);
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
 /* Copy current input state without retaining caller storage or entering the VM. */
 void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
+/* Deliver queued native snapshots in order on the VM owner thread, before its next tick.
+ * Focus loss cancels pending transitions. Errors consume the current event and retain later ones.
+ */
+FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *, FVM_Context *);
 /* Read whether the Android application is foreground; ordinary desktop focus loss only clears held
  * input. */
 int fvm_desktop_window_active(FVM_DesktopWindow *);

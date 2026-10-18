@@ -28,6 +28,11 @@ v0.589: test 02 calls `Key.isDown` for arrows/Space and `Key.getCode` for its
 indicator. The host explicitly installs the polling subset before loading;
 [EN](../../../doc/KEYBOARD.md) / [RU](../../../doc/KEYBOARD.ru.md).
 
+v0.590: a movie-owned Key observer registers once across loops; presses grow the
+green marker vertically and releases shift it down. Short taps update both
+counters through [ordered listeners](../../../doc/KEYBOARD_LISTENERS.md) /
+[RU](../../../doc/KEYBOARD_LISTENERS.ru.md). Existing arrows/Space remain polled.
+
 ## Tests / Тесты
 
 | File | What to check / Что проверять |

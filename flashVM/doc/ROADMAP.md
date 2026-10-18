@@ -3232,6 +3232,23 @@ full reference/platform keyboard acceptance remain open. All nine stages remain
 open; this advances input support in stages 3/5 and accompanies GC/JIT/platform
 verification rather than claiming completion of the plan.
 
+## v0.590 Key listeners / Слушатели клавиатуры
+
+Implemented explicit add/remove/dispatch APIs, strong registration roots, rooted
+recipient snapshots, optional inherited/getter/script/native method dispatch and
+ordered SDL transition buffering. Added Key.addListener/removeListener and a
+read-only `_listeners` Array snapshot. Repeated SWF 02 loops keep one observer;
+short taps reach both handlers before a movie tick.
+[EN contracts](KEYBOARD_LISTENERS.md) / [RU](KEYBOARD_LISTENERS.ru.md),
+[C89 tutorial](../examples/embedding/keyboard_listeners/README.md).
+
+Реализованы регистрация/удаление/рассылка, GC-корни и снимок получателей;
+изменения подписок действуют на следующее событие. Ошибки настоящих обработчиков
+распространяются без отката уже выполненных действий. Это продвижение ввода,
+GC и JIT, а не завершение стадий. Полные clip/button key events, security/IME,
+точное поведение мутаций/идентичности Array оригинального Flash и аппаратная
+приёмка платформ остаются открытыми. Все девять стадий открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
