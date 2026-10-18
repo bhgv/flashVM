@@ -77,6 +77,18 @@ class ViewerTests(unittest.TestCase):
         for forbidden in ('<script', 'onerror=', 'href="javascript:'):
             self.assertNotIn(forbidden, html)
 
+    def test_heading_anchor_collisions(self):
+        """Suffix repeated headings without colliding with literal suffixed headings."""
+        html = render_markdown('# API\n\n# API-1\n\n# API\n\n# API-2\n\n# API\n')
+        import re
+        ids = re.findall(r'<h1 id="([^" ]+)"', html)
+        self.assertEqual(ids, ['api', 'api-1', 'api-2', 'api-2-1', 'api-3'])
+        self.assertEqual(len(ids), len(set(ids)))
+        # Slug state belongs to one document, never a previous render/request.
+        again = render_markdown('# API\n')
+        self.assertIn('id="api"', again)
+        self.assertNotIn('id="api-1"', again)
+
     def test_source_escape_and_physical_lines(self):
         """Keep physical source numbering and escape HTML inside highlighted strings."""
         html = render_source('/* one\ntwo */\nchar *x = "<script>";\n', 'x.c')

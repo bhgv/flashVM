@@ -40,6 +40,9 @@ pip не может обратиться к HTTPS-индексу, перенес
 - Markdown: таблицы, fenced code, списки, ссылки, изображения, зачёркивание,
   `<small>` и именованные HTML-якоря. Заголовки получают Unicode-якоря с
   сохранением подчёркиваний и суффиксами для повторяющихся названий.
+  Суффикс не может занять ID уже встреченного заголовка: последовательность
+  `API`, `API-1`, `API` даёт `api`, `api-1`, `api-2`. Каждый документ
+  начинает нумерацию заново.
 - Ссылки на `.h`, `.cpp`, `.c`, `.py`, `.java`, `.as` и другие текстовые
   исходники показывают Pygments-подсветку и физические номера строк.
   `#L123` прокручивает строку 123 в центр окна и выделяет её. Номер строки
@@ -107,3 +110,18 @@ math rendering and complete GitHub Markdown parity are outside this version.
 Run the same unittest module under each supported interpreter to verify HTTP,
 rendering and confinement. Third-party Python packages retain their own licenses;
 FlashVM's viewer code is covered by the root [MIT license](../LICENSE).
+
+## Unique heading IDs / уникальные якоря заголовков (v0.567)
+
+The browser tracks every emitted heading ID, including suffixes generated for
+previous headings. A repeated heading skips IDs already taken by literal suffixed
+headings. For example, API / API-1 / API becomes api / api-1 / api-2. State is
+local to each rendered document. Explicit authored HTML IDs remain unchanged;
+ensuring those authored IDs are unique is the document author's responsibility.
+The HTTP/renderer regression suite checks collisions and independent renders.
+This checkpoint was run on Python 3; Python 2.7.9 was not rerun in this environment.
+
+Проверка охватывает конфликты с автоматически созданными и буквальными суффиксами,
+а также повторный рендер другого документа. Ручные HTML id не переписываются;
+их уникальность обеспечивает автор. В этой контрольной точке выполнены проверки
+на Python 3; нового прогона Python 2.7.9 в данной среде нет.

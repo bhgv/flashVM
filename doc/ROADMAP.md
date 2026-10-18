@@ -2986,6 +2986,14 @@ attributes, while linking prose inside elements. Six-seed/idempotence regression
 cover anchors, quoted greater-than signs, comments and fenced HTML. The repository
 source-link check passes. Исправлена инфраструктура навигации документации этапа
 9; это не завершение этапа и не новая проверка чужих платформ.
+### v0.567 — unique documentation viewer heading anchors
+
+Implemented and tested on Python 3: generated heading suffixes skip IDs already
+used by earlier headings, including literal suffixed names. Independent document
+renders restart their ID state. The viewer HTTP/render suite passes six tests.
+Ручные HTML-якоря сохраняются; их уникальность остаётся обязанностью автора.
+Python 2.7.9 and foreign native OS acceptance were not rerun here. Stage 9 and
+all other roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

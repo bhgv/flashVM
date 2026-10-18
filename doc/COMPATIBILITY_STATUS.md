@@ -4563,6 +4563,14 @@ The regression exercises six hash seeds and idempotent refresh. This prevents
 function names in explicit anchors from becoming Markdown inside HTML attributes.
 Это исправление инфраструктуры документации этапа 9, не доказательство нативной
 приёмки другой ОС или полноты VM. Все этапы остаются открытыми.
+### v0.567 — unique documentation viewer heading anchors
+
+Implemented and tested on Python 3: generated heading suffixes skip IDs already
+used by earlier headings, including literal suffixed names. Independent document
+renders restart their ID state. The viewer HTTP/render suite passes six tests.
+Ручные HTML-якоря сохраняются; их уникальность остаётся обязанностью автора.
+Python 2.7.9 and foreign native OS acceptance were not rerun here. Stage 9 and
+all other roadmap stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

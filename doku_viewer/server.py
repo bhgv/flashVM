@@ -106,13 +106,24 @@ def render_markdown(text):
     import markdown2
     class RepositoryMarkdown(markdown2.Markdown):
         """Preserve Unicode and underscore heading anchors used by repository links."""
+        def __init__(self, *args, **kwargs):
+            """Track actual emitted IDs within this one document conversion."""
+            markdown2.Markdown.__init__(self, *args, **kwargs)
+            self.heading_ids = set()
+
         def header_id_from_text(self, heading, prefix, level):
             """Generate GitHub-style heading IDs, including duplicate suffixes."""
             label = unescape(re.sub('<[^>]*>', '', heading)).lower()
             label = re.sub(r'[^\w\- ]', '', label, flags=re.UNICODE).replace(' ', '-')
             count = self._count_from_header_id[label]
-            self._count_from_header_id[label] += 1
-            return label if not count else label + '-' + str(count)
+            candidate = label if not count else label + '-' + str(count)
+            # A literal heading such as API-1 can already own the next suffix.
+            while candidate in self.heading_ids:
+                count += 1
+                candidate = label + '-' + str(count)
+            self._count_from_header_id[label] = count + 1
+            self.heading_ids.add(candidate)
+            return candidate
     rendered = RepositoryMarkdown(extras=['fenced-code-blocks', 'tables',
                                           'strike', 'header-ids']).convert(text)
     parser = SafeMarkdown()
