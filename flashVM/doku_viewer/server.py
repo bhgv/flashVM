@@ -25,7 +25,7 @@ PROJECT_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardi
 ROOT = PROJECT_ROOT
 HOME = 'README.md'
 SOURCE_EXTENSIONS = ('.c', '.h', '.cpp', '.hpp', '.mm', '.m', '.py', '.java',
-                     '.as', '.txt', '.defs', '.cmake', '.json', '.sh', '.css', '.js')
+                     '.as', '.atg', '.txt', '.defs', '.cmake', '.json', '.sh', '.css', '.js')
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
                '.gif': 'image/gif', '.webp': 'image/webp', '.ico': 'image/x-icon'}
 
@@ -160,6 +160,10 @@ def navigation(root, component=""):
               ('Examples', os.path.join(component, 'examples'))]
     if component:
         groups.insert(0, ('Repository', ''))
+        # Workspace-only navigation: detached VM browsing never inspects siblings.
+        for title, folder in [('Compilers', 'compiler'), ('Linker', 'linker')]:
+            if os.path.isdir(os.path.join(root, folder)):
+                groups.append((title, folder))
     blocks = []
     for title, folder in groups:
         files = []

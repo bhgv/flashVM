@@ -1,0 +1,345 @@
+/*
+ * Читаемая грамматика и C99-предикаты синтаксического фронтенда.
+ * Правила ниже не создают AST и не выполняют проверку типов.
+ * main.c проверяет кодировку UTF-8 до запуска байтового сканера.
+ * Квадратные скобки — необязательная часть, фигурные — повторение.
+ * IF(...) проверяет выбор без потребления входного токена.
+ */
+/* AS2 syntax frontend. C99 target; no bytecode generation. */
+COMPILER As2
+
+/* LabelAhead: inspect the bytes after an identifier without consuming a token.
+ * Whitespace and both comment forms may separate the name from its colon.
+ * Returning zero leaves the identifier available to the expression production. */
+static int LabelAhead(void)
+{
+    /* S_NextLen counts bytes, including every UTF-8 byte in the identifier. */
+    long pos = S_NextPos + S_NextLen;
+    int ch; /* Current source byte; zero is the scanner's EOF sentinel. */
+
+    for (;;) {
+        ch = S_CurrentCh(pos);
+        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13) {
+            ++pos; /* Skip whitespace without altering source positions. */
+        } else if (ch == '/' && S_CurrentCh(pos + 1) == '*') {
+            pos += 2; /* Pass the block-comment opening delimiter. */
+            while (S_CurrentCh(pos) &&
+                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/')) {
+                ++pos; /* Ignore colons inside the comment. */
+            }
+            if (!S_CurrentCh(pos)) return 0; /* Unterminated comment is not a label. */
+            pos += 2; /* Pass the closing delimiter before checking again. */
+        } else if (ch == '/' && S_CurrentCh(pos + 1) == '/') {
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10) {
+                ++pos; /* Skip the line comment, including any apparent colon. */
+            }
+        } else {
+            return ch == ':'; /* Only the next non-comment byte decides. */
+        }
+    }
+}
+
+/* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
+CHARACTERS
+  /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$" + CHR(128)..CHR(255) .
+  /* Десятичные цифры. */
+  digit = "0123456789" .
+  /* Шестнадцатеричные цифры. */
+  hex = digit + "abcdefABCDEF" .
+  /* Содержимое двойных кавычек без переводов строки и обратной косой черты. */
+  dq = ANY - '"' - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  /* Содержимое одинарных кавычек без разделителей и переводов строки. */
+  sq = ANY - "'" - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  /* Байты однострочного комментария; исключён EOF, поэтому допустим конец без LF. */
+  linechar = ANY - CHR(10) - CHR(13) - CHR(0) .
+  /* Байт после обратной косой черты; интерпретация escape — будущий проход. */
+  escaped = ANY - CHR(0) - CHR(10) - CHR(13) .
+  /* Части блочного комментария: конечный разделитель не должен исчезать в теле.
+     Завершающий разделитель обязателен в токене, поэтому EOF без него — ошибка. */
+  nonstar = ANY - "*" - CHR(0) .
+  nonstarslash = ANY - "*" - "/" - CHR(0) .
+TOKENS
+  /* Идентификатор. Ключевые слова выделяются таблицей литералов Coco/R. */
+  ident = letter { letter | digit } .
+  /* Десятичное число с необязательной дробной частью и экспонентой. */
+  number =
+    ( digit {digit} [ "." {digit} ] | "." digit {digit} )
+    [ ("e" | "E") ["+" | "-"] digit {digit} ] .
+  /* Целое число AS с префиксом 0x или 0X. */
+  hexnum = "0" ("x" | "X") hex {hex} .
+  /* Строковый литерал; кавычки и обратная косая черта не поглощаются как текст. */
+  text = '"' { dq | "\\" escaped } '"' | "'" { sq | "\\" escaped } "'" .
+PRAGMAS
+  /* Полный ненестинговый комментарий, включая обязательный закрывающий разделитель. */
+  blockcomment = "/*" { nonstar | "*" { "*" } nonstarslash } "*" { "*" } "/" .
+  /* Комментарий пропускается как pragma и не попадает в правила синтаксиса. */
+  linecomment = "//" {linechar} .
+IGNORE CHR(9) + CHR(10) + CHR(13)
+
+/* Entry: consume the entire translation unit, including trailing-token checks. */
+PRODUCTIONS
+
+  /* Полная единица ввода AS2; декларации классов отделены от инструкций. */
+  As2 =
+    { Item } EOF
+    .
+
+  /* Элемент программы или тела: выбор между декларацией и инструкцией. */
+  Item =
+    Import
+    | Class
+    | Interface
+    | Statement
+    .
+
+  /* Блок ограничивает последовательность элементов фигурными скобками. */
+  Block =
+    "{" { Item } "}"
+    .
+
+  /* Инструкции языка. Метка проверяется до выражения; блок и объявление
+     функции выбираются явно, чтобы не спутать их с object/function expression.
+     Условие перед else связывает его с ближайшим незавершённым if. */
+  Statement =
+      IF(Sym == identSym && LabelAhead()) ident ":" Statement
+    | IF(Sym == LbraceSym) Block
+    | ";"
+    | "var" Variables ";"
+    | IF(Sym == functionSym) "function" ident FunctionTail
+    | IfStatement
+    | WhileStatement
+    | ForStatement
+    | SwitchStatement
+    | TryStatement
+    | "return" [ Expression ] ";"
+    | "throw" Expression ";"
+    | ( "break" | "continue" ) [ ident ] ";"
+    | "with" "(" Expression ")" Statement
+    | Expression ";"
+    .
+
+  /* else относится к ближайшему if; предикат не потребляет токен. */
+  IfStatement =
+    "if" "(" Expression ")" Statement
+    [ IF(Sym == elseSym) "else" Statement ]
+    .
+
+  /* Проверка до тела и проверка после тела используют одно правило Statement. */
+  WhileStatement =
+      "while" "(" Expression ")" Statement
+    | "do" Statement "while" "(" Expression ")" ";"
+    .
+
+  /* Общий префикс for; in отличает перебор свойств от трёхчастного цикла.
+     Оператор in внутри произвольных выражений здесь пока не поддержан. */
+  ForStatement =
+    "for" "(" [ "var" Variables | Expression ]
+    (
+      "in" Expression ")" Statement
+    | ";" [ Expression ] ";" [ Expression ] ")" Statement
+    )
+    .
+
+  /* Метки и тела ветвей вынесены в SwitchPart для читаемости. */
+  SwitchStatement =
+    "switch" "(" Expression ")" "{" { SwitchPart } "}"
+    .
+
+  /* try обязан иметь catch или finally; допускается их сочетание. */
+  TryStatement =
+    "try" Block
+    (
+      "catch" "(" ident [ ":" TypeName ] ")" Block [ "finally" Block ]
+    | "finally" Block
+    )
+    .
+
+  /* Метка case/default и её инструкции; следующая метка начинает новую ветвь. */
+  SwitchPart =
+    ( "case" Assignment ":" | "default" ":" ) { Item }
+    .
+
+  /* Список объявляемых переменных; запятая разделяет декларации, а не выражения. */
+  Variables =
+    Variable { "," Variable }
+    .
+
+  /* Имя переменной, необязательный тип AS2 и необязательный инициализатор. */
+  Variable =
+    ident [ ":" TypeName ] [ "=" Assignment ]
+    .
+
+  /* Параметры, необязательный возвращаемый тип AS2 и тело функции. */
+  FunctionTail =
+    "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] Block
+    .
+
+  /* Один формальный параметр; в AS2 после имени допускается аннотация типа. */
+  Parameter =
+    ident [ ":" TypeName ]
+    .
+
+  /* Самый низкий приоритет: последовательность выражений через запятую. */
+  Expression =
+    Assignment { "," Assignment }
+    .
+
+  /* Присваивание разбирается рекурсией справа: a = b = c.
+     Проверка допустимости левой части относится к будущему семантическому проходу. */
+  Assignment =
+    Conditional [ AssignOp Assignment ]
+    .
+
+  /* Обычное и составные присваивания; конкретные операции сохраняются в токенах. */
+  AssignOp =
+    "="
+    | "+="
+    | "-="
+    | "*="
+    | "/="
+    | "%="
+    | "<<="
+    | ">>="
+    | ">>>="
+    | "&="
+    | "|="
+    | "^="
+    .
+
+  /* Тернарный оператор. Правая ветвь рекурсивна, поэтому a?b:c?d:e
+     группируется как a?b:(c?d:e); средняя ветвь допускает присваивание. */
+  Conditional =
+    LogicalOr [ "?" Assignment ":" Conditional ]
+    .
+
+  /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
+  LogicalOr =
+    LogicalAnd { "||" LogicalAnd }
+    .
+
+  /* Логическое И; следующий уровень — побитовое ИЛИ. */
+  LogicalAnd =
+    BitOr { "&&" BitOr }
+    .
+
+  /* Побитовое ИЛИ. Повторение задаёт левую ассоциативность этого уровня. */
+  BitOr =
+    BitXor { "|" BitXor }
+    .
+
+  /* Побитовое исключающее ИЛИ; операнды имеют более высокий приоритет. */
+  BitXor =
+    BitAnd { "^" BitAnd }
+    .
+
+  /* Побитовое И; сравнения равенства связываются сильнее. */
+  BitAnd =
+    Equality { "&" Equality }
+    .
+
+  /* Сравнения равенства; каждый операнд сначала проходит относительные сравнения. */
+  Equality =
+    Relational { ( "==" | "!=" | "===" | "!==" | "eq" | "ne" ) Relational }
+    .
+
+  /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
+  Relational =
+    Shift { ( "<" | ">" | "<=" | ">=" | "instanceof" | "lt" | "gt" | "le" | "ge" ) Shift }
+    .
+
+  /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
+  Shift =
+    Additive { ( "<<" | ">>" | ">>>" ) Additive }
+    .
+
+  /* Сложение/вычитание: повторение — левая ассоциативность, Product — сильнее. */
+  Additive =
+    Product { ( "+" | "-" | "add" ) Product }
+    .
+
+  /* Умножение, деление и остаток: операнды разбираются как унарные выражения. */
+  Product =
+    Unary { ( "*" | "/" | "%" ) Unary }
+    .
+
+  /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
+  Unary =
+    ( "!" | "~" | "+" | "-" | "++" | "--" | "typeof" | "void" | "delete" | "new" ) Unary
+    | Postfix
+    .
+
+  /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
+  Postfix =
+    Primary { "." ident | "[" Expression "]" | Arguments } [ "++" | "--" ]
+    .
+
+  /* Аргументы разделены запятыми; запятая внутри аргумента требует скобок. */
+  Arguments =
+    "(" [ Assignment { "," Assignment } ] ")"
+    .
+
+  /* Атомы выражений: литералы, имена, группировка и составные литералы. */
+  Primary =
+    ident
+    | number
+    | hexnum
+    | text
+    | "true"
+    | "false"
+    | "null"
+    | "undefined"
+    | "this"
+    | "super"
+    | "(" Expression ")"
+    | "[" [ Assignment ] { "," [ Assignment ] } "]"
+    | "{" [ Property { "," Property } ] "}"
+    | "function" [ ident ] FunctionTail
+    .
+
+  /* Ключ и значение свойства object literal; разделитель — двоеточие. */
+  Property =
+    ( ident | text | number ) ":" Assignment
+    .
+
+  /* Квалифицированное имя типа AS2; разрешение имени будет отдельным проходом. */
+  TypeName =
+    ident { "." ident }
+    .
+
+  /* Импорт AS2; допускается последняя компонента-звёздочка. */
+  Import =
+    "import" ident { "." ( ident | "*" ) } ";"
+    .
+
+  /* Класс AS2 с базовым классом, интерфейсами и списком членов. */
+  Class =
+    { Modifier } "class" TypeName [ "extends" TypeName ] [ "implements" TypeName { "," TypeName
+      } ] "{" { Member } "}"
+    .
+
+  /* Интерфейс AS2 содержит сигнатуры методов, а не их реализации. */
+  Interface =
+    "interface" TypeName [ "extends" TypeName { "," TypeName } ] "{" { Signature } "}"
+    .
+
+  /* Модификаторы AS2; допустимость их сочетаний проверяется семантически. */
+  Modifier =
+    "public"
+    | "private"
+    | "static"
+    | "dynamic"
+    | "intrinsic"
+    .
+
+  /* Поле или метод класса; дополнительное имя используется для get/set. */
+  Member =
+    { Modifier } ( "var" Variables ";" | "function" ident [ ident ] FunctionTail | ";" )
+    .
+
+  /* Сигнатура метода интерфейса завершается точкой с запятой вместо тела. */
+  Signature =
+    "function" ident "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] ";"
+    .
+
+END As2.

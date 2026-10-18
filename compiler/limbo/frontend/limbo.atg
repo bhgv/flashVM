@@ -1,0 +1,368 @@
+/*
+ * Читаемая грамматика и C99-предикаты синтаксического фронтенда.
+ * Правила ниже не создают AST и не выполняют проверку типов.
+ * main.c проверяет кодировку UTF-8 до запуска байтового сканера.
+ * Квадратные скобки — необязательная часть, фигурные — повторение.
+ * IF(...) проверяет выбор без потребления входного токена.
+ */
+
+/* Limbo syntax frontend. C99 target; no Dis or SWF code generation. */
+COMPILER Limbo
+/* Scan ahead without changing Coco/R scanner state. Delimiters inside strings,
+   comments or nested expressions do not terminate the current qualifier. */
+static int AheadArrow(void)
+{
+    /* Begin at the lookahead token; never call the consuming S_Get here. */
+    long pos = S_NextPos;
+    int depth = 0; /* Parenthesis/subscript nesting hides inner arrows. */
+    int quote = 0; /* Zero outside a string, otherwise the opening quote. */
+    int ch;
+    while ((ch = S_CurrentCh(pos)) != 0) {
+        int next = S_CurrentCh(pos + 1);
+        if (quote) {
+            /* Skip the escaped byte so an escaped quote cannot end the string. */
+            if (ch == 92 && next) ++pos;
+            else if (ch == quote) quote = 0;
+        } else if (ch == 34 || ch == 39) {
+            quote = ch;
+        } else if (ch == '#') {
+            /* A comment may contain an arrow that is not a grammar separator. */
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10) ++pos;
+            continue;
+        } else if (ch == '(' || ch == '[') {
+            ++depth;
+        } else if (ch == ')' || ch == ']') {
+            if (!depth) return 0;
+            --depth;
+        } else if (!depth) {
+            /* Only an outer => starts a new case/alt/pick arm. */
+            if (ch == '=' && next == '>') return 1;
+            /* An ordinary statement ends or opens a block before any arm. */
+            if (ch == ';' || ch == '{' || ch == '}') return 0;
+        }
+        ++pos;
+    }
+    return 0;
+}
+
+CHARACTERS
+  /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" + CHR(128)..CHR(255) .
+  /* Продолжение последовательности UTF-8. */
+  trail = CHR(128)..CHR(191) .
+  /* Начальный байт двухбайтового UTF-8. */
+  lead2 = CHR(194)..CHR(223) .
+  /* Начальный байт трёхбайтового UTF-8. */
+  lead3 = CHR(224)..CHR(239) .
+  /* Начальный байт четырёхбайтового UTF-8. */
+  lead4 = CHR(240)..CHR(244) .
+  /* Один ASCII-символ для символьного литерала Limbo. */
+  ascii = CHR(1)..CHR(127) - "'" - "\\" - CHR(10) - CHR(13) .
+  /* Шестнадцатеричные цифры. */
+  hex = "0123456789abcdefABCDEF" .
+  /* Десятичные цифры. */
+  digit = "0123456789" .
+  /* Латинские буквы для записи чисел с явным основанием. */
+  alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" .
+  /* Содержимое двойных кавычек без переводов строки и обратной косой черты. */
+  dq = ANY - '"' - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  /* Содержимое одинарных кавычек без разделителей и переводов строки. */
+  sq = ANY - "'" - "\\" - CHR(10) - CHR(13) - CHR(0) .
+  /* Байты однострочного комментария; исключён EOF, поэтому допустим конец без LF. */
+  linechar = ANY - CHR(10) - CHR(13) - CHR(0) .
+  /* Байт после обратной косой черты; интерпретация escape — будущий проход. */
+  escaped = ANY - CHR(0) - CHR(10) - CHR(13) .
+TOKENS
+  /* Идентификатор. Ключевые слова выделяются таблицей литералов Coco/R. */
+  ident = letter {letter | digit} .
+  /* Десятичное число с необязательной дробной частью и экспонентой. */
+  number = digit {digit} [ "." {digit} ] [ ("e" | "E") ["+" | "-"] digit {digit} ] .
+  /* Целое Limbo: основание r цифры; допустимость цифр проверяется семантически. */
+  radix = digit {digit} ("r" | "R") (digit | alpha) {digit | alpha} .
+  /* Строковый литерал; кавычки и обратная косая черта не поглощаются как текст. */
+  text = '"' {dq | "\\" escaped} '"' .
+  /* Один символ Limbo: ASCII, UTF-8 либо поддерживаемая escape-последовательность. */
+  character = "'" ( ascii | lead2 trail | lead3 trail trail | lead4 trail trail trail
+    | "\\" ( "u" hex hex hex hex | "'" | '"' | "\\" | "n" | "r" | "t" | "a" | "b" | "v" | "0" ) ) "'" .
+PRAGMAS
+  /* Комментарий пропускается как pragma и не попадает в правила синтаксиса. */
+  linecomment = "#" {linechar} .
+IGNORE CHR(9) + CHR(10) + CHR(13)
+PRODUCTIONS
+
+  /* Единица Limbo: необязательный implement позволяет разбирать также интерфейсы .m. */
+  Limbo =
+    [ "implement" ident ";" ] { Top } EOF
+    .
+
+  /* Верхний уровень Limbo: include, объявление/функция или распаковка кортежа. */
+  Top =
+    "include" text ";"
+    | ident NamedTop
+    | "(" Names ")" ":=" Expression ";"
+    .
+
+  /* После общего имени различаются определение функции и объявление данных. */
+  NamedTop =
+    { "." ident } FunctionTail
+    | { "," ident } DeclarationTail
+    .
+
+  /* Объявление с типом, выводом типа := либо инициализацией =. */
+  DeclarationTail =
+    ":" DeclType ";"
+    | ( ":=" | "=" ) Expression ";"
+    .
+
+  /* Категории объявлений Limbo: константа, импорт, псевдоним, module, adt или тип. */
+  DeclType =
+    "con" Expression
+    | "import" ident
+    | "type" Type
+    | "module" "{" { Top } "}"
+    | "adt" "{" { AdtMember } "}"
+    | [ "cyclic" ] Type [ "=" Expression ]
+    .
+
+  /* Члены ADT, включая размеченные варианты pick.
+     Предпросмотр => не позволяет принять имя следующего варианта за поле. */
+  AdtMember =
+    Names ":" DeclType ";"
+    | "pick" "{" { Tags "=>" { IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym )
+      Names ":" DeclType ";" } } "}"
+    .
+
+  /* Группа имён, разделённых запятыми; используется в объявлениях и параметрах. */
+  /* Метки вариантов ADT соединяются ключевым словом or. */
+  Tags =
+    ident { "or" ident }
+    .
+
+  Names =
+    Name { "," Name }
+    .
+
+  /* Имя либо nil для безымянного параметра; проверка контекста — семантическая. */
+  Name =
+    ident
+    | "nil"
+    .
+
+  /* Базовые, составные и именованные типы Limbo. ref и контейнеры
+     рекурсивно охватывают внутренний тип; fn содержит отдельную сигнатуру. */
+  Type =
+    "byte"
+    | "int"
+    | "big"
+    | "real"
+    | "string"
+    | ( "array" | "list" | "chan" ) "of" Type
+    | "ref" Type
+    | "fn" Parameters [ IF(Sym == ColonSym ) ":" Type ]
+    | "(" Type { "," Type } ")"
+    | ident { "->" ident | "." ident }
+    .
+
+  /* Скобки вокруг необязательного списка формальных параметров Limbo. */
+  Parameters =
+    "(" [ Formal { "," Formal } ] ")"
+    .
+
+  /* Формальный параметр: группа имён и тип, self-параметр либо вариативная звёздочка. */
+  Formal =
+    "*"
+    | Names ":" ( "self" [ "ref" ] ident | Type )
+    .
+
+  /* Сигнатура определения Limbo и тело: возвращаемый тип необязателен. */
+  FunctionTail =
+    Parameters [ IF(Sym == ColonSym ) ":" Type ] Block
+    .
+
+  /* Блок ограничивает последовательность элементов фигурными скобками. */
+  Block =
+    "{" { Statement } "}"
+    .
+
+  /* Инструкции Limbo. Декларация локальной переменной использует общий
+     префикс выражения; после двоеточия разбирается DeclType.
+     Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
+  Statement =
+      Block
+    | ";"
+    | "include" text ";"
+    | IfStatement
+    | WhileStatement
+    | ForStatement
+    | CaseStatement
+    | AltStatement
+    | PickStatement
+    | "return" [ Expression ] ";"
+    | ( "break" | "continue" ) [ ident ] ";"
+    | "exit" ";"
+    | "spawn" Expression ";"
+    | Expression [ ":" DeclType ] ";"
+    .
+
+  /* Ближайший незавершённый if получает else; вход проверяется без Get(). */
+  IfStatement =
+    "if" "(" Expression ")" Statement
+    [ IF(Sym == elseSym) "else" Statement ]
+    .
+
+  /* В Limbo условие while может отсутствовать: такой цикл бесконечен. */
+  WhileStatement =
+      "while" "(" [ Expression ] ")" Statement
+    | "do" Statement "while" "(" [ Expression ] ")" ";"
+    .
+
+  /* Три части for разделены точками с запятой; каждая может отсутствовать. */
+  ForStatement =
+    "for" "(" [ Expression ] ";" [ Expression ] ";" [ Expression ] ")" Statement
+    .
+
+  /* case сравнивает выражение с условиями; alt выбирает доступную операцию
+     канала. Синтаксис ветвей общий, семантика будет проверяться отдельно. */
+  CaseStatement =
+    "case" Expression "{" { CaseArm } "}"
+    .
+
+  /* Выбор готовой операции канала; выражение после alt не требуется. */
+  AltStatement =
+    "alt" "{" { CaseArm } "}"
+    .
+
+  /* Тело ветви может быть пустым. Предикат отличает следующую метку =>
+     от начала инструкции; закрывающая скобка и EOF явно исключены. */
+  CaseArm =
+    Qualifiers "=>"
+    [ IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) ArmBody ]
+    .
+
+  /* pick связывает имя с выбранным вариантом ADT; типовая корректность
+     значения и существование перечисленных тегов здесь не проверяются. */
+  PickStatement =
+    "pick" ident ":=" Expression "{" { PickArm } "}"
+    .
+
+  /* Теги варианта соединяются or; звёздочка задаёт запасной вариант. */
+  PickArm =
+    ( Tags | "*" ) "=>"
+    [ IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) ArmBody ]
+    .
+
+  /* Первая инструкция обязательна: пустота разрешена в вызывающем правиле.
+     Продолжение не поглощает следующую метку или конец блока. */
+  ArmBody =
+    Statement
+    { IF(!AheadArrow() && Sym != RbraceSym && Sym != EOF_Sym) Statement }
+    .
+
+  /* Условия case/alt: выражение, диапазон to, объединение or либо звёздочка. */
+  Qualifiers =
+    ( "*" | Expression [ "to" Expression ] ) { "or" ( "*" | Expression [ "to" Expression ] ) }
+    .
+
+  /* Самый низкий приоритет: последовательность выражений через запятую. */
+  Expression =
+    Assignment { "," Assignment }
+    .
+
+  /* Присваивание разбирается рекурсией справа: a = b = c.
+     Проверка допустимости левой части относится к будущему семантическому проходу. */
+  Assignment =
+    Cons [ ( "=" | ":=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>="
+      | "<-=" | "<-" "=" ) Assignment ]
+    .
+
+  /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
+  Cons =
+    LogicalOr [ "::" Cons ]
+    .
+
+  /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
+  LogicalOr =
+    LogicalAnd { "||" LogicalAnd }
+    .
+
+  /* Логическое И; следующий уровень — побитовое ИЛИ. */
+  LogicalAnd =
+    BitOr { "&&" BitOr }
+    .
+
+  /* Побитовое ИЛИ. Повторение задаёт левую ассоциативность этого уровня. */
+  BitOr =
+    BitXor { "|" BitXor }
+    .
+
+  /* Побитовое исключающее ИЛИ; операнды имеют более высокий приоритет. */
+  BitXor =
+    BitAnd { "^" BitAnd }
+    .
+
+  /* Побитовое И; сравнения равенства связываются сильнее. */
+  BitAnd =
+    Equality { "&" Equality }
+    .
+
+  /* Сравнения равенства; каждый операнд сначала проходит относительные сравнения. */
+  Equality =
+    Relational { ( "==" | "!=" ) Relational }
+    .
+
+  /* Относительные сравнения; операции сдвига имеют более высокий приоритет. */
+  Relational =
+    Shift { ( "<" | ">" | "<=" | ">=" ) Shift }
+    .
+
+  /* Сдвиги; сложение и вычитание разбираются до выполнения сдвига. */
+  Shift =
+    Additive { ( "<<" | ">>" ) Additive }
+    .
+
+  /* Сложение/вычитание: повторение — левая ассоциативность, Product — сильнее. */
+  Additive =
+    Product { ( "+" | "-" ) Product }
+    .
+
+  /* Умножение, деление и остаток: операнды разбираются как унарные выражения. */
+  Product =
+    Unary { ( "*" | "/" | "%" ) Unary }
+    .
+
+  /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
+  /* chan/array создают составные значения; ref, <- и преобразования типов
+     являются префиксами. load содержит имя типа загружаемого модуля. */
+  Unary =
+    ( "!" | "~" | "+" | "-" | "++" | "--" | "<-" | "hd" | "tl" | "len" | "tagof" | "ref" |
+      "byte" | "int" | "big" | "real" | "string" ) Unary
+    | "load" ident Unary
+    | "chan" [ "[" Expression "]" ] "of" Type
+    | "array" "[" [ Expression ] "]" "of" ( Type | "{" [ Initializer { "," Initializer } ] "}" )
+    | Postfix
+    .
+
+  /* Элемент array initializer либо индекс => значение, включая * => значение. */
+  Initializer =
+    Assignment [ "=>" Assignment ]
+    | "*" "=>" Assignment
+    .
+
+  /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
+  Postfix =
+    Primary { "." ident | "->" ident | "[" [ Expression ] [ ":" [ Expression ] ] "]" | "(" [
+      Expression ] ")" } [ "++" | "--" ]
+    .
+
+  /* Атомы выражений: литералы, имена, группировка и составные литералы. */
+  Primary =
+    ident
+    | number
+    | radix
+    | text
+    | character
+    | "nil"
+    | "(" Expression ")"
+    .
+
+END Limbo.

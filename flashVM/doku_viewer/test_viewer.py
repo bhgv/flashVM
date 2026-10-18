@@ -58,6 +58,9 @@ class ViewerTests(unittest.TestCase):
             license_page = urlopen(match.group(0) + 'raw/LICENSE')
             self.assertIn('MIT License', license_page.read().decode('utf-8'))
             license_page.close()
+            grammar_page = urlopen(match.group(0) + 'view/compiler/as1/frontend/as1.atg')
+            self.assertIn('id="L1"', grammar_page.read().decode('utf-8'))
+            grammar_page.close()
         finally:
             process.terminate()
             process.communicate()
