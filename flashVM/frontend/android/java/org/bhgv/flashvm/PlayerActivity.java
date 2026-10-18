@@ -14,6 +14,13 @@ public final class PlayerActivity extends SDLActivity {
     @Override protected String[] getArguments() {
         String mode = getIntent().getBooleanExtra("jit", false) ? "--jit" : "--no-jit";
         String path = getIntent().getStringExtra("movie");
+        boolean diagnostics = getIntent().getBooleanExtra("diagnostics", false);
+        String base = new java.io.File(getFilesDir(), "audio-diagnostics/" +
+            new java.io.File(path).getName().replace(".swf", "") +
+            (getIntent().getBooleanExtra("jit", false) ? "-jit" : "-interpreter")).getAbsolutePath();
+        // SDL has loaded its JNI library before invoking getArguments; no VM has started yet.
+        nativeSetenv("FVM_AUDIO_TRACE", diagnostics ? base : "");
+        if (diagnostics) return new String[]{mode, "--stats", "--frames", "360", path};
         return getIntent().getBooleanExtra("mute", false) ?
             new String[]{mode, "--stats", "--mute", path} : new String[]{mode, "--stats", path};
     }

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.583
+# FlashVM stage status / Состояние стадий — v0.584
 
 This is a bounded review of existing implementation reports and the current
 explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
@@ -156,3 +156,15 @@ Eight focused tests pass in minimal-JIT ASan/UBSan with LeakSanitizer disabled.
 Legacy-header ABI client, source links, guide anchors, tutorial line comments/no
 assertions, catalog entries and debugger tutorial contracts pass separately.
 No native audio device, SDL window or foreign-platform rerun is claimed.
+
+## v0.584 diagnostic checkpoint
+
+Native frontend-only changes: optional bounded SDL-input capture and Android
+private read-only ZIP export. Ten frontend checks passed: nine SDL/X11/Xvfb checks plus bounded storage/error
+verification. Actual accepted WAV in both interpreter/JIT preserves expected stereo
+tones and matching non-clipped peaks; StopSounds markers are recorded. The storage
+fixture also passed strict C89 compilation and ASan/UBSan (leaks disabled).
+Windows x64 and Android ARM64 player builds passed; APK Java/Dex, signature and
+16 KiB alignment checks passed. No new core semantic acceptance or actual Android
+listening/provider run is claimed.
+[EN](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md).

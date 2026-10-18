@@ -29,3 +29,5 @@ snapshots and real root PCM/ADPCM event output through optional SDL2 audio.
 [Binary/test guide](../doc/PLAYER_TEST_BUILDS.md), [three SWFs](../examples/player/animation_audio/README.md).
 Automatic A/V clock sync, full Flash Key/Mouse/button routing and browser integration
 remain open. Windows/Android cross builds do not establish native runtime acceptance.
+
+v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../doc/PLAYER_AUDIO_DIAGNOSTICS.md).

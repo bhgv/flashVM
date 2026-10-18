@@ -4691,6 +4691,12 @@ stop/no-multiple, teardown and actual timeline/JIT integration are exercised.
 No band-limited filter, device clock, sprite sound or foreign native acceptance
 is supplied; all roadmap stages remain open.
 
+## v0.584 Android audio investigation
+
+[PCM evidence](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md):
+bounded native recording, actual SDL geometry/operation order, private opt-in ZIP
+export. Not a crackling fix or phone/runtime acceptance. All stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

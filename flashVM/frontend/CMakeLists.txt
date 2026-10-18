@@ -11,7 +11,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 else()
   message(FATAL_ERROR "Desktop frontend currently supports Linux, Windows and macOS")
 endif()
-set(frontend_sources ${frontend_os}/main.c common/player.c common/options.c common/sdl_window.c common/audio.c)
+set(frontend_sources ${frontend_os}/main.c common/player.c common/options.c common/sdl_window.c common/audio.c common/audio_trace.c)
 if(ANDROID)
   add_library(flashvm_player SHARED ${frontend_sources})
   set_target_properties(flashvm_player PROPERTIES OUTPUT_NAME flashvm_android)
@@ -82,7 +82,7 @@ endif()
 
 # Native-only producer progress is independent of a deliberately stalled VM/render thread.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
-  add_executable(flashvm_frontend_audio_worker tests/audio_worker.cpp common/audio.c)
+  add_executable(flashvm_frontend_audio_worker tests/audio_worker.cpp common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_audio_worker PRIVATE flashvm SDL2::SDL2)
   if(MSVC)
     target_compile_options(flashvm_frontend_audio_worker PRIVATE /UNDEBUG)
@@ -95,7 +95,7 @@ endif()
 
 # SDL/Android may enlarge the device block; reserve sizing must use obtained geometry.
 if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
-  add_executable(flashvm_frontend_audio_large_quantum tests/audio_worker.cpp tests/audio_large_quantum.c)
+  add_executable(flashvm_frontend_audio_large_quantum tests/audio_worker.cpp tests/audio_large_quantum.c common/audio_trace.c)
   target_compile_definitions(flashvm_frontend_audio_large_quantum PRIVATE FVM_TEST_NATIVE_QUANTUM=8192)
   target_link_libraries(flashvm_frontend_audio_large_quantum PRIVATE flashvm SDL2::SDL2)
   if(MSVC)
@@ -105,4 +105,27 @@ if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT
   endif()
   add_test(NAME flashvm_frontend_audio_large_quantum COMMAND flashvm_frontend_audio_large_quantum)
   set_tests_properties(flashvm_frontend_audio_large_quantum PROPERTIES ENVIRONMENT "SDL_AUDIODRIVER=dummy" TIMEOUT 10)
+endif()
+
+# Capture actual accepted SDL PCM, preserving source amplitude and StopSounds evidence in both modes.
+if(FVM_BUILD_TESTS AND FVM_DESKTOP_WINDOW_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_test(NAME flashvm_player_audio_trace COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_trace.py $<TARGET_FILE:flashvm_player>)
+  set_tests_properties(flashvm_player_audio_trace PROPERTIES TIMEOUT 90)
+endif()
+
+# Exercise endian conversion, bounded recording and file errors without an audio endpoint or window.
+if(FVM_BUILD_TESTS AND FVM_ENABLE_SDL_AUDIO AND NOT CMAKE_CROSSCOMPILING AND NOT ANDROID)
+  add_executable(flashvm_frontend_audio_trace_storage tests/audio_trace_storage.c common/audio_trace.c)
+  target_link_libraries(flashvm_frontend_audio_trace_storage PRIVATE flashvm SDL2::SDL2)
+  set_target_properties(flashvm_frontend_audio_trace_storage PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(MSVC)
+    target_compile_options(flashvm_frontend_audio_trace_storage PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_frontend_audio_trace_storage PRIVATE -UNDEBUG)
+  endif()
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME flashvm_frontend_audio_trace_storage COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_trace_storage.py $<TARGET_FILE:flashvm_frontend_audio_trace_storage>)
+  set_tests_properties(flashvm_frontend_audio_trace_storage PROPERTIES TIMEOUT 10)
 endif()

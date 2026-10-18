@@ -92,3 +92,5 @@ Three movies × two modes; the third exercises prepared StopSounds. Reuse the sa
 `--work` directory to retain the disposable keystore and install an update over
 your previous test APK. The packager copies the NDK toolchain NOTICE beside
 `--strip`; keep that NOTICE with the supplied NDK. Device listening remains required.
+
+v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md).

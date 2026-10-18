@@ -3171,6 +3171,14 @@ bindings for prepared output and a third runnable SWF. Native worker pause/resum
 Android crackling remains pending listening acceptance on the reporting device.
 [EN](AUDIO_STOP_BINDINGS.md) / [RU](AUDIO_STOP_BINDINGS.ru.md). No stage closes.
 
+## v0.584 — Android PCM evidence and explicit export
+
+Opt-in RAM capture of accepted SDL-bound PCM, timestamped operation report and
+private Android ZIP sharing distinguish source/host corruption from native output.
+[EN](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+The reported Android crackling is not declared fixed; phone evidence remains needed.
+No roadmap stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

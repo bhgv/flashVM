@@ -1,4 +1,4 @@
-Версия разработки: **0.583** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.584** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -13,6 +13,8 @@ SDL2-вывод при явном включении SDK. [Руководств�
 
 Тестовые плееры v0.582: [Linux x64, Windows x64, Android ARM64](doc/PLAYER_TEST_BUILDS.ru.md)
 и [три готовых SWF](examples/player/animation_audio/README.md).
+
+v0.584: [Android PCM/WAV diagnostics / диагностика звука](doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md).
 
 ## Просмотр документации
 

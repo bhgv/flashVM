@@ -113,6 +113,9 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 
 [Каталог](../../README.md#example-player-animation_audio).
 
+
+v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -126,7 +126,7 @@
     - [speech_stt](#example-multimedia-speech_stt) — <small><em>Системный STT: разрешения и захват настоящей речи</em></small>
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
-  - [animation_audio](#example-player-animation_audio) — <small><em>Два SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
 - [Глоссарий — алфавитный список всех примеров](#glossary)
 
@@ -1360,10 +1360,13 @@ assertions; [GC:] native sessions не входят в VM heap и освобож
 <a id="example-player-animation_audio"></a>
 ### animation_audio
 
-Два готовых исполняемых SWF8: [README](player/animation_audio/README.md),
+v0.584: [native PCM/WAV и Android ZIP-отчёт](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md) для сравнения interpreter/JIT.
+
+Три готовых исполняемых SWF8: [README](player/animation_audio/README.md),
 [генератор Python3](player/animation_audio/make_movies.py),
 [animation](player/animation_audio/01-animation-audio.swf),
-[input](player/animation_audio/02-input-audio.swf). Первый проверяет timeline
+[input](player/animation_audio/02-input-audio.swf),
+[StopSounds](player/animation_audio/03-stop-sounds.swf). Третий отменяет часть звуков через AVM1 StopSounds. Первый проверяет timeline
 движение; второй — AVM1 управление MovieClip через HostInput, стрелки/Space,
 указатель и сохранённые счётчики. Оба содержат тихие U8 PCM/S16 stereo/ADPCM тоны,
 loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLActivity
