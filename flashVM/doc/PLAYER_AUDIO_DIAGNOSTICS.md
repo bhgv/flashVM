@@ -131,3 +131,54 @@ After installation, repeat 01 and 03 in both modes with diagnostics. The report
 should say driver=android and a 15-second foreground run should no longer fill
 a 20-second capture in one second. WAV pitch/duration and physical output must
 both be checked; this is a targeted workaround, not claimed device acceptance.
+
+## v0.586: publish the negotiated device quantum
+
+The second SM-S931B / Android16 archive confirms driver=android, expected
+440/660/990/880 Hz tones, about 250 ms single voices, identical 6400 peaks in both
+execution modes, 18 controls per 15-second run and no capture truncation or
+omitted records. However, 01/02 submit only 604800 frames (12.6 seconds) during
+15 seconds of wall time; queue drains cluster around 119–120 ms. This is not
+proof of complete output acceptance. Physical listening confirmation was not
+provided with that archive.
+
+SDL can enlarge AudioTrack's block from the requested 1024 frames. With zero
+allowed-change flags SDL keeps the requested `obtained.samples` and builds an
+internal audio stream, hiding the larger consumer quantum. A target of 4800 frames
+can then be smaller than one native consumption block, resulting in silent gaps.
+The bridge now sets only SDL_AUDIO_ALLOW_SAMPLES_CHANGE. Sample rate, channels
+and S16 remain fixed at the application-facing interface; SDL may perform its
+normal hardware conversion. The negotiated callback quantum is published through
+[`fvm_audio_sdl_queue_info`](../include/flashvm/swf_sound_output.h#L81) and used by the existing four-block reserve/two-block
+resume policy. It is not a hardware latency measurement. SDL SDK >=2.0.9 is now
+required so the flag is available; disabled builds keep their usual unsupported
+behavior. The obtained quantum need not be a power of two even though the request
+is bounded to powers of two.
+
+The report also records `starved` when the worker observes a transition to an
+empty unpaused software FIFO. Its value/status are zero; this is an observation,
+not a backend error or a measurement of hardware silence. No extra PCM is inserted
+into the WAV for a gap. StopSounds still keeps previously accepted blocks in the
+capture, so compare its operation report when reading 03.
+
+v0.586 rebuilds native VM/player and SDL2 2.30.0 for Android ARM64/API23 with
+NDK r27c and Java/Dex with JDK17/SDK35. It reuses the persisted v0.585 test signer;
+installing over v0.585 should retain application data. The AAudio workaround stays.
+The new report should expose the enlarged quantum and corresponding reserve;
+for uninterrupted 01/02 playback the submitted-frame clock should approach 48000
+frames per second after startup, within queue/backlog and final-shutdown bounds.
+15 seconds of wall time is not required to produce exactly 15 seconds of WAV.
+Recheck 01/03 in interpreter/JIT and physical output. Device confirmation of this
+new behavior remains pending.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_audio_sdl_queue_info` | function | [include/flashvm/swf_sound_output.h:81](../include/flashvm/swf_sound_output.h#L81) |
+<!-- source-links:end -->

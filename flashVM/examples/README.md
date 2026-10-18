@@ -1360,6 +1360,8 @@ assertions; [GC:] native sessions не входят в VM heap и освобож
 <a id="example-player-animation_audio"></a>
 ### animation_audio
 
+v0.586: [размер системного аудиоблока и темп PCM](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0586-публикация-согласованного-блока-устройства) — повторная проверка 01/03 в обоих режимах.
+
 v0.584: [native PCM/WAV и Android ZIP-отчёт](../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md) для сравнения interpreter/JIT.
 
 Три готовых исполняемых SWF8: [README](player/animation_audio/README.md),

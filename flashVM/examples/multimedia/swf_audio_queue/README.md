@@ -39,7 +39,7 @@ Pause on create, one-block pumping, observation and explicit stop are visible in
 <a id="native-preparation"></a>
 ## Native preparation / Подготовка ОС
 
-Enable the optional installed SDL2 >=2.0.5 CMake CONFIG package:
+Enable the optional installed SDL2 >=2.0.9 CMake CONFIG package:
 
 ```sh
 cmake -S flashVM -B /tmp/flashvm-audio -DFVM_BUILD_EXAMPLES=ON -DFVM_ENABLE_SDL_AUDIO=ON

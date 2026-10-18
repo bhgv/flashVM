@@ -119,6 +119,9 @@ v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../.
 
 v0.585: SDL AudioTrack вместо AAudio; [диагноз, проверка и новый тестовый ключ](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0585-переход-на-audiotrack). Старое тестовое приложение нужно удалить перед установкой APK с новым ключом.
 
+
+v0.586: [согласование фактического audio quantum](../../../doc/PLAYER_AUDIO_DIAGNOSTICS.ru.md#v0586-публикация-согласованного-блока-устройства); обновление поверх 0.585 с тем же ключом подписи.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

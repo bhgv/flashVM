@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.585
+# FlashVM stage status / Состояние стадий — v0.586
 
 This is a bounded review of existing implementation reports and the current
 explicit rate/channel conversion work. It does not replace a complete per-API/SWF conformance matrix
@@ -176,3 +176,13 @@ not general Android compatibility. The manifest selects the blocking AudioTrack
 backend. APK metadata/DEX checksums/signature/16 KiB alignment and identical native
 payloads verified; native rebuild, runtime playback and the new driver's phone
 acceptance remain pending. [Investigation](PLAYER_AUDIO_DIAGNOSTICS.md).
+
+## v0.586 validation
+
+Second real Android user archive: fixed AAudio overconsumption and normal source
+tones, but incomplete 15-second PCM delivery. Native SDL bridge now exposes the
+negotiated quantum. Nine focused host SDK/frontend checks and direct four-run
+PCM trace integration use explicit dummy audio/video; these are not X11, physical
+audio or Android execution. The regression also rejects the old zero-change flag.
+Fresh Android ARM64 native/Java/Dex build, same v0.585 signer and 16 KiB ELF/ZIP
+checks; actual new phone playback pending. No roadmap stage closes.

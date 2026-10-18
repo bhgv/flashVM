@@ -84,7 +84,10 @@ static FVM_Result refill(FVM_DesktopAudio *audio)
     if (result != FVM_OK)
         return result;
     if (info.starved && !audio->was_starved)
+    {
         SDL_AtomicAdd(&audio->underruns, 1);
+        fvm_desktop_trace_event(audio->trace, "starved", 0, FVM_OK);
+    }
     audio->was_starved = info.starved;
     for (attempt = 0; attempt < FVM_DESKTOP_AUDIO_PUMPS; ++attempt)
     {

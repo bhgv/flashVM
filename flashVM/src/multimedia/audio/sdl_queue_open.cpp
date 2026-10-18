@@ -25,7 +25,7 @@ extern "C" FVM_Result fvm_audio_sdl_queue_open(unsigned int rate, unsigned int c
     desired.channels = (Uint8)channels; /* Require complete mono/stereo interleaving. */
     desired.format = AUDIO_S16SYS; /* Preserve native-endian signed-short mixer output. */
     desired.samples = (Uint16)samples; /* Select the bounded SDK playback buffer. */
-    SDL_AudioDeviceID device = SDL_OpenAudioDevice(0, 0, &desired, &obtained, 0); /* Open default output, allowing no format changes. */
+    SDL_AudioDeviceID device = SDL_OpenAudioDevice(0, 0, &desired, &obtained, SDL_AUDIO_ALLOW_SAMPLES_CHANGE); /* Expose actual native quantum without permitting format/rate/channel changes. */
     if (!device) { SDL_QuitSubSystem(SDL_INIT_AUDIO); return FVM_ERROR; } /* Balance initialization on native failure. */
     if (!obtained.samples || obtained.freq != desired.freq || obtained.channels != desired.channels || obtained.format != desired.format) /* Verify SDK contract. */
     { SDL_CloseAudioDevice(device); SDL_QuitSubSystem(SDL_INIT_AUDIO); return FVM_UNSUPPORTED; } /* Reject unexpected geometry. */

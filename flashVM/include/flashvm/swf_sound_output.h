@@ -63,7 +63,7 @@ FVM_API void fvm_swf_sound_output_close(FVM_SWFSoundOutput *);
 typedef struct FVM_SDLAudioQueue FVM_SDLAudioQueue;
 #define FVM_SDL_AUDIO_MIN_BUFFER 64U /* Smallest requested SDL callback buffer, in frames. */
 #define FVM_SDL_AUDIO_MAX_BUFFER 32768U /* Largest power-of-two SDL buffer frames. */
-/* OS: Linux/Windows/macOS via SDL2. Exact S16 geometry; starts paused. Disabled build returns
+/* OS: Linux/Windows/macOS/Android via SDL2. Exact S16 geometry; native block size may change. Starts paused. Disabled build returns
  * UNSUPPORTED. */
 FVM_API FVM_Result fvm_audio_sdl_queue_open(unsigned int rate, unsigned int channels,
                                             unsigned int device_buffer_frames,

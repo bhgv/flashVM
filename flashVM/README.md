@@ -1,5 +1,5 @@
-Development version: **0.585** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.585 ` and an English description. Increase the subversion before each
+Development version: **0.586** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.586 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -17,6 +17,8 @@ and [three runnable SWF demos](examples/player/animation_audio/README.md).
 v0.583: independent native audio worker and [prepared StopSounds](doc/AUDIO_STOP_BINDINGS.md); Android crackling remains under investigation after the device report.
 
 v0.584: [Android PCM/WAV diagnostics / диагностика звука](doc/PLAYER_AUDIO_DIAGNOSTICS.md).
+
+v0.586: [negotiated SDL audio block and reserve](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0586-publish-the-negotiated-device-quantum).
 
 ## Browse documentation
 
@@ -70,8 +72,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.585** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.585 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.586** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.586 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.
@@ -579,6 +581,8 @@ including any third-party material identified within project sources.
 v0.583: independent native audio worker and [prepared StopSounds](doc/AUDIO_STOP_BINDINGS.md); Android crackling remains under investigation after the device report.
 
 v0.584: [Android PCM/WAV diagnostics / диагностика звука](doc/PLAYER_AUDIO_DIAGNOSTICS.md).
+
+v0.586: [negotiated SDL audio block and reserve](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0586-publish-the-negotiated-device-quantum).
 
 ## Browse documentation locally
 

@@ -87,7 +87,7 @@ close выполняются до SDL_Quit, в том числе после ча
 Точные desktop команды: [EN раздел](PLAYER_TEST_BUILDS.md#reproduce-desktop-builds).
 Профиль [player-jit.defs](../cmake/profiles/player-jit.defs) включает AGG/JIT и
 исключает fonts/image codecs/FFmpeg/SQLite; SDK этих подсистем пакету не нужны.
-Нужны C89/C++98 compiler, CMake, SDL2 >=2.0.5 CONFIG/SDL2::SDL2. Для отдельного
+Нужны C89/C++98 compiler, CMake, SDL2 >=2.0.9 CONFIG/SDL2::SDL2. Для отдельного
 компонента использовать -S . и его абсолютный путь профиля; compiler/linker соседей
 не требуется. Linux ищет packaged SDL2 по $ORIGIN/lib, затем обычными путями ОС.
 

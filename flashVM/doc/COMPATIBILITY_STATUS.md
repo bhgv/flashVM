@@ -4703,6 +4703,13 @@ Real user diagnostics identify excessive AAudio consumption (20 seconds in
 825–1035 ms). Android manifest selects SDL AudioTrack. [Evidence and limits](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
 New APK needs device confirmation; this does not close stages or certify JIT/audio.
 
+## v0.586 AudioTrack quantum correction
+
+Second device trace gives correct tones with insufficient PCM delivery rate.
+Expose the negotiated SDL callback block and use it for queue reserve/resume;
+[diagnosis and limits](PLAYER_AUDIO_DIAGNOSTICS.ru.md). Focused SDK regression,
+source-built Android APK; phone confirmation remains open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

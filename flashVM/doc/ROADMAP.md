@@ -3187,6 +3187,15 @@ manifest. Native VM/player PCM code and upstream SDL are unchanged. Diagnosis,
 package validation and phone recheck: [EN](PLAYER_AUDIO_DIAGNOSTICS.md) /
 [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md). No roadmap stage closes.
 
+## v0.586 — expose real SDL callback quantum
+
+Allow sample-count negotiation while preserving exact PCM input. The second
+Android trace reveals underfilled AudioTrack consumption; enlarge reserve from
+the negotiated device block and report software starvation edges. Real SDL SDK
+acquisition regression and fresh ARM64 APK build; phone confirmation pending.
+[EN](PLAYER_AUDIO_DIAGNOSTICS.md) / [RU](PLAYER_AUDIO_DIAGNOSTICS.ru.md).
+No stage closes.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

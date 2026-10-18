@@ -10,7 +10,7 @@ v0.582 update: [test builds, HostInput, event audio and Android APK](PLAYER_TEST
 The application lives entirely in [frontend/](../frontend/README.md), with Linux,
 Windows and macOS entrypoints and shared C89 code. It is built inside the VM
 component and is optional; compiler/linker projects have no SDL dependency.
-Install a native C89/C++98 toolchain, CMake and an SDL2 2.0.5+ development package
+Install a native C89/C++98 toolchain, CMake and an SDL2 2.0.9+ development package
 providing its CMake config/`SDL2::SDL2` target. Then, from `flashVM`:
 
 ```sh

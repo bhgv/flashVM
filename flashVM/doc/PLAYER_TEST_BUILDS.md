@@ -98,7 +98,7 @@ cmake -S flashVM -B build-player-linux -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profi
 cmake --build build-player-linux --target flashvm_player --parallel
 ```
 
-Requires installed SDL2 >=2.0.5 CONFIG/SDL2::SDL2 and a C89/C++98 toolchain. Set
+Requires installed SDL2 >=2.0.9 CONFIG/SDL2::SDL2 and a C89/C++98 toolchain. Set
 SDL2_DIR if needed. The Linux executable loads a packaged SDL2 from $ORIGIN/lib,
 falling back to normal system lookup; keep its versioned SONAME filename.
 For a detached VM component replace -S flashVM with -S . and use that component's

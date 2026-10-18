@@ -172,7 +172,7 @@ cmake --build /tmp/flashvm-audio --target flashvm_examples_multimedia_swf_audio_
 /tmp/flashvm-audio/flashvm_examples_multimedia_swf_audio_queue_main --sdl
 ```
 
-Нужен установленный SDL2 >=2.0.5 с CMake CONFIG/SDL2::SDL2; для отдельного SDK
+Нужен установленный SDL2 >=2.0.9 с CMake CONFIG/SDL2::SDL2; для отдельного SDK
 задать SDL2_DIR. [Подготовка ОС](../examples/multimedia/swf_audio_queue/README.md#native-preparation).
 `FVM_SDL_AUDIO_DEVICE_TESTS=ON` явно добавляет SDK protocol test с
 audio driver dummy. Это не проверка слышимого вывода. Нативная приёмка остальных
@@ -194,6 +194,18 @@ audio driver dummy. Это не проверка слышимого вывода
 можно читать в worker при гарантированном времени жизни устройства; close не
 должен выполняться одновременно. Без SDL корректно оформленный вызов даёт
 [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46); живые устройства в такой сборке не создаются.
+
+## Согласование блока в v0.586
+
+[`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L68) разрешает только SDL_AUDIO_ALLOW_SAMPLES_CHANGE:
+`FVM_SDLAudioQueueInfo.device_buffer_frames` показывает согласованный callback-блок,
+а не скрытый conversion stream с запрошенным размером. Частота/каналы/native S16
+на входе очереди сохраняются. Запрос ограничен степенями двойки, но полученный
+ненулевой блок может быть больше и не обязан быть степенью двойки. Он нужен для
+запаса/resume очереди, не для определения позиции ЦАП или физической задержки.
+Требуется SDL SDK >=2.0.9; ABI структуры/очереди и владение не менялись. Явный
+real-SDK тест оборачивает acquisition устройством на 8192 frames и проверяет,
+что разрешено только согласование числа frames.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

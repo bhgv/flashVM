@@ -1,5 +1,5 @@
 # Optional VM host application. SDL is a host presentation SDK, not a bundled VM dependency.
-find_package(SDL2 2.0.5 CONFIG REQUIRED)
+find_package(SDL2 2.0.9 CONFIG REQUIRED)
 if(ANDROID)
   set(frontend_os android)
 elseif(WIN32)

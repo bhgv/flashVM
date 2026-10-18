@@ -177,7 +177,7 @@ cmake --build /tmp/flashvm-audio --target flashvm_examples_multimedia_swf_audio_
 /tmp/flashvm-audio/flashvm_examples_multimedia_swf_audio_queue_main --sdl
 ```
 
-Requires installed SDL2 >=2.0.5 with its CMake CONFIG package/SDL2::SDL2 target;
+Requires installed SDL2 >=2.0.9 with its CMake CONFIG package/SDL2::SDL2 target;
 set SDL2_DIR for a nonstandard SDK. [Per-OS preparation](../examples/multimedia/swf_audio_queue/README.md#native-preparation).
 `FVM_SDL_AUDIO_DEVICE_TESTS=ON` explicitly registers a real SDK queue protocol test
 with SDL_AUDIODRIVER=dummy. Dummy tests are not audible hardware acceptance; native
@@ -200,6 +200,18 @@ pointers/size return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45),
 immutable copy may be read on a worker while the owner guarantees device lifetime;
 close must never race. Disabled builds return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46) for otherwise
 valid-shaped arguments; they cannot create a valid device.
+
+## v0.586 block negotiation
+
+[`fvm_audio_sdl_queue_open`](../include/flashvm/swf_sound_output.h#L68) now permits only SDL_AUDIO_ALLOW_SAMPLES_CHANGE so
+`FVM_SDLAudioQueueInfo.device_buffer_frames` exposes the negotiated callback
+block instead of a hidden requested-size conversion stream. Rate/channels/native
+S16 at the queue input stay exact. The request keeps its power-of-two bounds;
+the obtained nonzero quantum may be larger and need not be a power of two.
+Use it to size queue reserve/resume, not as a DAC position or physical latency.
+SDL SDK >=2.0.9 is required; the info struct/queue ABI and ownership are unchanged.
+The explicit real-SDK quantum regression wraps acquisition with an enlarged
+8192-frame device and checks that only sample-count negotiation is enabled.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
