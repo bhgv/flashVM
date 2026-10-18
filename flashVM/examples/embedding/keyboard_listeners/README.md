@@ -25,6 +25,9 @@ Expected / ожидается:
 event 1: Left down
 event 2: Left up
 removed=1 deliveries=2
+focus selected=1
+event 3: Left down
+event 4: Left up
 ```
 
 ## Implementation and ownership / Реализация и владение
@@ -57,12 +60,12 @@ movie tick. Здесь очередь не нужна: синхронный C-х
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent state/registrations; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Install standard objects before Key; [KEYBOARD.md](../../../doc/KEYBOARD.md#installation). |
-| [`fvm_standard_keyboard_install`](../../../include/flashvm/keyboard.h#L75) | Explicitly publish Key methods and inspection getter; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#script-interface). |
+| [`fvm_standard_keyboard_install`](../../../include/flashvm/keyboard.h#L81) | Explicitly publish Key methods and inspection getter; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#script-interface). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | Create the managed callback receiver; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Protect construction-time object lifetime; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
 | [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Define zero-argument receiver-bound handlers, borrowing userdata; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_input_add_key_listener`](../../../include/flashvm/keyboard.h#L66) | Retain one unique same-context object; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#native-api). |
-| [`fvm_input_dispatch_keyboard`](../../../include/flashvm/keyboard.h#L72) | Publish a snapshot then deliver one transition synchronously; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#native-api). |
+| [`fvm_input_dispatch_keyboard`](../../../include/flashvm/keyboard.h#L78) | Publish a snapshot then deliver one transition synchronously; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#native-api). |
 | [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L62) | Read already published input without allocation; [KEYBOARD.md](../../../doc/KEYBOARD.md#snapshot-api). |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize the ignored callback result; [API_INDEX.md](../../../doc/API_INDEX.md#values-and-borrowed-views). |
 | [`fvm_input_remove_key_listener`](../../../include/flashvm/keyboard.h#L68) | Remove by identity before releasing borrowed host userdata; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#native-api). |
@@ -70,10 +73,29 @@ movie tick. Здесь очередь не нужна: синхронный C-х
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release remaining registrations and managed objects; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release the runtime after its context; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 
+## Explicit clip selection / Явный выбор клипа
+
+After unregistering the listener, create a native MovieClip, immediately select
+it as a strong context root, bind the same two callbacks and deliver another tap.
+The selected clip receives both calls with itself as `this`. Querying focus returns
+a borrowed pointer, then null clearing drops the selection root before cleanup.
+No automatic script eligibility or OS selection policy is exercised.
+
+После снятия слушателя пример создаёт клип, удерживает его выбором хоста,
+назначает те же callbacks, доставляет ещё одно нажатие/отпускание и снимает выбор.
+Проверка выбора возвращает заимствованный указатель. Автоматического выбора
+мышью/Tab и реализации Selection здесь нет.
+
+| Function | Purpose and contract / Назначение и контракт |
+| --- | --- |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | Create a native scene receiver; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
+| [`fvm_input_set_keyboard_focus`](../../../include/flashvm/keyboard.h#L71) | Replace/clear a strongly rooted native clip selection without sending events; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#fvm_input_set_keyboard_focus), [RU](../../../doc/KEYBOARD_FOCUS.ru.md#fvm_input_set_keyboard_focus). |
+| [`fvm_input_get_keyboard_focus`](../../../include/flashvm/keyboard.h#L74) | Borrow the selection, lazily clearing detached clips; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#fvm_input_get_keyboard_focus), [RU](../../../doc/KEYBOARD_FOCUS.ru.md#fvm_input_get_keyboard_focus). |
+
 ## Limits / Ограничения
 
-This demonstrates Key listeners, not automatic clip/button key events, input
-focus management, text/IME composition or cross-domain security. Key registration
+This demonstrates Key listeners and explicit host clip selection. Automatic
+clip/button selection, text/IME composition and cross-domain security remain open. Key registration
 and physical keyboard state are host-local, not transferred with serialized graphs.
 Native ordinary callbacks retain the normal GC barrier; script callbacks use the
 existing interpreter/JIT/GC rules. Neither this example nor the SDL FIFO is
@@ -94,14 +116,17 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:66](../../../include/flashvm/keyboard.h#L66) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:72](../../../include/flashvm/keyboard.h#L72) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:78](../../../include/flashvm/keyboard.h#L78) |
 | `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:62](../../../include/flashvm/keyboard.h#L62) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../../../include/flashvm/keyboard.h#L74) |
 | `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:68](../../../include/flashvm/keyboard.h#L68) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:75](../../../include/flashvm/keyboard.h#L75) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:81](../../../include/flashvm/keyboard.h#L81) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
 <!-- source-links:end -->

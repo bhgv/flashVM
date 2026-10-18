@@ -22,6 +22,7 @@ void operator delete[](void *memory, const std::nothrow_t &) throw() { std::free
 #include "../src/core/runtime.hpp"
 #include "flashvm/keyboard.h"
 #include "flashvm/standard.h"
+#include "flashvm/movieclip.h"
 #include "flashvm/gc.h"
 #include <cassert>
 #include <cstring>
@@ -51,6 +52,31 @@ int main()
     fail_after = 0;
     assert(fvm_input_remove_key_listener(context, listener, &removed) == FVM_OK && removed);
     assert(fvm_input_dispatch_keyboard(context, &state, 0) == FVM_OK);
+    fail_after = -1;
+    assert(fvm_gc_collect(context, 0) == FVM_OK);
+    assert(fvm_standard_install(context) == FVM_OK);
+    FVM_Object *focus = 0, *selected = 0;
+    assert(fvm_movieclip_create(context, "focused", 1, &focus) == FVM_OK);
+    assert(fvm_input_set_keyboard_focus(context, focus) == FVM_OK);
+    /* Every native-validation allocation failure preserves selection and caller output. */
+    for (long limit = 0; limit < 16; ++limit)
+    {
+        selected = 0;
+        fail_after = limit;
+        FVM_Result result = fvm_input_get_keyboard_focus(context, &selected);
+        fail_after = -1;
+        assert(result == FVM_OK || result == FVM_OUT_OF_MEMORY);
+        assert(context->keyboard_focus == focus);
+        assert(selected == (result == FVM_OK ? focus : 0));
+    }
+    state.last_code = FVM_KEY_RIGHT;
+    fail_after = 0;
+    assert(fvm_input_dispatch_keyboard(context, &state, 1) == FVM_OUT_OF_MEMORY);
+    fail_after = -1;
+    assert(context->keyboard.last_code == FVM_KEY_LEFT && context->keyboard_focus == focus);
+    fail_after = 0;
+    assert(fvm_input_set_keyboard_focus(context, 0) == FVM_OK);
+    assert(fvm_input_get_keyboard_focus(context, &selected) == FVM_OK && !selected);
     fail_after = -1;
     assert(fvm_gc_collect(context, 0) == FVM_OK);
     FVM_Object *first = 0;

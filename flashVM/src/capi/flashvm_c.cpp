@@ -146,6 +146,7 @@ extern "C"
         context->movieclip_sound_busy = false;
         std::memset(&context->keyboard, 0, sizeof(context->keyboard));
         context->keyboard.struct_size = sizeof(context->keyboard);
+        context->keyboard_focus = 0; /* [GC:] No selected clip before host input setup. */
         context->keyboard_dispatching = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
@@ -254,6 +255,7 @@ extern "C"
         context->drag_clip = 0;
         /* [GC:] Drop listener roots before finalization destroys their graph. */
         context->keyboard_listeners.clear();
+        context->keyboard_focus = 0; /* [GC:] Release selection before object finalization. */
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         context->gc_collecting = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

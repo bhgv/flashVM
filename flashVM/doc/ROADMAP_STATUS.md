@@ -1,7 +1,7 @@
-# FlashVM stage status / Состояние стадий — v0.590
+# FlashVM stage status / Состояние стадий — v0.591
 
 This is a bounded review of existing implementation reports and the current
-keyboard polling/listener work. It does not replace a complete per-API/SWF conformance matrix
+keyboard polling/listener/host-focus work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
@@ -285,3 +285,48 @@ Android ARM64/API23 native and Java/Dex APK builds pass, with the persisted test
 signer, signature and 16 KiB ELF/ZIP alignment checked. No new physical keyboard,
 Android playback or foreign-OS runtime acceptance is claimed. All nine stages
 remain open.
+
+
+## v0.591 explicit host keyboard focus / Выбор клипа хостом
+
+Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L71) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L74) for one native
+MovieClip, with a strong context root, private attachment validation and lazy
+clearing when the clip or a physical ancestor is removed. Keyboard dispatch
+snapshots the selected clip before Key listeners; callback selection changes
+apply to the next event, including when a callback collects removed listeners.
+The same clip in both channels deliberately receives two calls.
+[EN contract](KEYBOARD_FOCUS.md) / [RU](KEYBOARD_FOCUS.ru.md).
+
+Реализован явный C API выбора клипа, а не полный Selection: автоматический выбор
+мышью/Tab, правила focusEnabled, Button/TextField и SWF ClipActions остаются
+открытыми. Выбор хоста не сериализуется. Это продвижение стадий 3/5/7/8;
+все девять стадий по-прежнему открыты.
+
+### v0.591 verification / Проверка
+
+Linux Release AGG/JIT/SDL with examples: 1241 registered, 1237 passed and four
+explicit native-macOS/native-Windows/SSIP skips. Twenty-one initially unstarted
+cached executables lost execute permissions; after full materialization and
+permission restoration all 21 reruns pass. No runtime/assertion failures remain.
+
+Four focused regressions pass ASan/UBSan with leak detection disabled: native
+selection/GC/detached ancestry, listener mutation, dispatch allocation failure,
+and real SWF6–8 interpreter/manual-JIT/automatic-JIT clip callbacks. The strict
+C89 tutorial prints both listener events and both selected-clip events. The
+Android ARM64/API23 NDK/SDL player builds and exports both new C ABI functions;
+this is cross-build evidence, not device keyboard acceptance. RU/EN source links
+and commented/no-assert tutorial checks pass. No new Windows/macOS runtime or
+physical device acceptance is claimed.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../include/flashvm/keyboard.h#L74) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
+<!-- source-links:end -->

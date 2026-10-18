@@ -66,7 +66,13 @@ extern "C"
     FVM_API FVM_Result fvm_input_add_key_listener(FVM_Context *, FVM_Object *);
     /* Remove by identity; require removed, set it to 0/1 on success and preserve it on error. */
     FVM_API FVM_Result fvm_input_remove_key_listener(FVM_Context *, FVM_Object *, int *removed);
-    /* Publish a validated snapshot and synchronously notify a rooted registration-order list.
+    /* [GC:] Select a same-context native MovieClip or null; no script eligibility policy/events.
+     * Removed clips/prototypes are rejected. Success roots the selection until clear/replacement. */
+    FVM_API FVM_Result fvm_input_set_keyboard_focus(FVM_Context *, FVM_Object *clip);
+    /* Return a borrowed selection; clear and return null if it or its native ancestor was removed.
+     * Errors preserve output. Query may validate native storage but executes no script. */
+    FVM_API FVM_Result fvm_input_get_keyboard_focus(FVM_Context *, FVM_Object **out);
+    /* Publish a validated snapshot and notify the selected clip, then rooted listeners.
      * pressed must be 0 or 1. Preparation failure preserves state; callback errors stop delivery
      * after publication. Nested dispatch is rejected; listener edits affect later events. */
     FVM_API FVM_Result fvm_input_dispatch_keyboard(FVM_Context *, const FVM_KeyboardState *,

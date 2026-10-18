@@ -52,7 +52,7 @@ releases context before runtime on both success and failure. No assertions.
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire an isolated context/input owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Install ordinary standard objects before Key; [API_INDEX.md](../../../doc/API_INDEX.md). |
-| [`fvm_standard_keyboard_install`](../../../include/flashvm/keyboard.h#L75) | Transactionally publish polling methods without opening an input device; [KEYBOARD.md](../../../doc/KEYBOARD.md#installation). |
+| [`fvm_standard_keyboard_install`](../../../include/flashvm/keyboard.h#L81) | Transactionally publish polling methods without opening an input device; [KEYBOARD.md](../../../doc/KEYBOARD.md#installation). |
 | [`fvm_input_set_keyboard`](../../../include/flashvm/keyboard.h#L60) | Validate/copy all held slots, latest codes and toggles, with no event callback; [KEYBOARD.md](../../../doc/KEYBOARD.md#snapshot-api). |
 | [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L62) | Copy current context-local state into exact-layout caller storage; [KEYBOARD.md](../../../doc/KEYBOARD.md#snapshot-api). |
 | [`fvm_input_reset_keyboard`](../../../include/flashvm/keyboard.h#L64) | Clear held keys/codes/toggles on focus loss without listener delivery; [KEYBOARD.md](../../../doc/KEYBOARD.md#snapshot-api). |
@@ -92,6 +92,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:75](../../../include/flashvm/keyboard.h#L75) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:81](../../../include/flashvm/keyboard.h#L81) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 <!-- source-links:end -->

@@ -60,7 +60,7 @@
     - [input](#example-embedding-input) — <small><em>Правила преобразования tap и swipe</em></small>
     - [input_queue](#example-embedding-input_queue) — <small><em>Очередь ввода и обработка на VM-потоке</em></small>
     - [keyboard](#group-embedding-input-keyboard)
-      - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, короткие нажатия и владение callbacks</em></small>
+      - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, явный выбор клипа и короткие нажатия</em></small>
       - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
@@ -727,6 +727,9 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 отпускание без промежуточного кадра, читает callback-visible состояние и снимает
 подписку. Показывает сильное владение контекстом, временный GC pin и время жизни
 borrowed userdata. Не требует окна или устройства. [Контракт](../doc/KEYBOARD_LISTENERS.ru.md).
+
+Вторая часть выбирает нативный MovieClip через C API, доставляет ещё одно
+нажатие/отпускание и сбрасывает выбор. См. [контракт выбора](../doc/KEYBOARD_FOCUS.ru.md).
 
 **Файлы:** [main.c](embedding/keyboard_listeners/main.c).
 

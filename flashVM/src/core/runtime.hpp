@@ -354,6 +354,7 @@ struct FVM_Context
     double pointer_world_x; /* Last accepted host pointer X; no managed edges. */
     double pointer_world_y; /* Last accepted host pointer Y; no managed edges. */
     fvm_detail::vector<FVM_Object *> keyboard_listeners; /* [GC:] Strong owning-context listener registrations. */
+    FVM_Object *keyboard_focus; /* [GC:] Explicit host-selected native MovieClip; null means none. */
     bool keyboard_dispatching; /* Reject recursive keyboard notification and context destruction. */
     FVM_KeyboardState keyboard; /* Context-local native snapshot; no managed roots or serialized state. */
     bool pumping_input; /* [GC:] Whether input delivery is already in progress. */

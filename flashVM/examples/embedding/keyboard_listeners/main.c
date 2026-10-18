@@ -1,4 +1,5 @@
 /* Register a native keyboard listener and deliver a complete tap before any movie tick. */
+#include "flashvm/movieclip.h" /* Create a native clip for explicit host focus. */
 #include "flashvm/keyboard.h" /* Declare listener registration and snapshot dispatch. */
 #include "flashvm/standard.h" /* Install standard objects before the explicit Key bridge. */
 #include "flashvm/gc.h" /* Protect the listener during construction before registration. */
@@ -31,6 +32,7 @@ int main(void) /* Run all VM operations on the same owning thread. */
     FVM_Config config; /* Own default runtime configuration. */
     FVM_Runtime *runtime = 0; /* Acquire and destroy after the context. */
     FVM_Context *context = 0; /* Own native state and strong listener registrations. */
+    FVM_Object *clip = 0, *focused = 0; /* Borrow the selected clip from the context root. */
     FVM_Object *listener = 0; /* Borrow the managed object while pinned or registered. */
     FVM_KeyboardState state; /* Own the complete post-transition input snapshot. */
     unsigned int deliveries = 0; /* Keep native callback userdata alive through cleanup. */
@@ -72,6 +74,28 @@ int main(void) /* Run all VM operations on the same owning thread. */
         status = fvm_input_remove_key_listener(context, listener, &removed); /* Removed is one for this registered object. */
     if (status == FVM_OK) /* Show the cleanup result without tutorial assertions. */
         printf("removed=%d deliveries=%u\n", removed, deliveries); /* Expect one removal and two events. */
+    if (status == FVM_OK) /* Compare listener routing with explicit native MovieClip selection. */
+        status = fvm_movieclip_create(context, "focused", 1, &clip); /* Create one host-owned scene. */
+    if (status == FVM_OK) /* Select immediately, before further allocating setup. */
+        status = fvm_input_set_keyboard_focus(context, clip); /* [GC:] Retain the clip through focus. */
+    if (status == FVM_OK) /* Bind the same handler with the clip as its receiver. */
+        status = fvm_object_define_method_rooted(context, clip, "onKeyDown", /* Select press. */
+                                                receive, &deliveries, 0); /* Keep userdata in main. */
+    if (status == FVM_OK) /* Bind a release handler too. */
+        status = fvm_object_define_method_rooted(context, clip, "onKeyUp", /* Select release. */
+                                                receive, &deliveries, 0); /* Borrow the shared counter. */
+    if (status == FVM_OK) /* Query the host selection without executing script. */
+        status = fvm_input_get_keyboard_focus(context, &focused); /* Borrow until focus is cleared. */
+    if (status == FVM_OK) /* Show the selection before its two events. */
+        printf("focus selected=%d\n", focused == clip); /* Expect one, without assertions. */
+    state.down[FVM_KEY_LEFT] = 1; /* Prepare the second complete tap. */
+    if (status == FVM_OK) /* Deliver to the selected clip before any registered listeners. */
+        status = fvm_input_dispatch_keyboard(context, &state, 1); /* Notify onKeyDown on the clip. */
+    state.down[FVM_KEY_LEFT] = 0; /* Prepare the corresponding release. */
+    if (status == FVM_OK) /* No movie tick or device is required. */
+        status = fvm_input_dispatch_keyboard(context, &state, 0); /* Notify onKeyUp on the clip. */
+    if (status == FVM_OK) /* Release host focus before the native counter leaves scope. */
+        status = fvm_input_set_keyboard_focus(context, 0); /* [GC:] Drop the selection root. */
     if (status != FVM_OK) /* Report a real failure rather than a fabricated success. */
         fprintf(stderr, "keyboard listener failed: %d\n", (int)status); /* Preserve a useful status. */
     if (pinned) /* Release the temporary construction root before context destruction. */

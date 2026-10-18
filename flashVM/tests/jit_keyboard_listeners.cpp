@@ -2,6 +2,7 @@
 #define FVM_CLASS_FIXTURE_ONLY
 #include "jit_classes.cpp"
 #include "flashvm/keyboard.h"
+#include "flashvm/movieclip.h"
 int main()
 {
     if (!fvm_jit_available()) return 0;
@@ -46,6 +47,20 @@ int main()
         assert(fvm_object_get(context, listener, "seen", &value) == FVM_OK && value.number == 42);
         assert(!context->keyboard_dispatching && !context->gc_frames && !context->gc_native_depth);
         assert(fvm_input_dispatch_keyboard(context, &state, 0) == FVM_OK);
+        /* The same real script body also receives native MovieClip focus with the clip as this. */
+        FVM_Object *clip = 0;
+        assert(fvm_movieclip_create(context, "focused", 1, &clip) == FVM_OK);
+        assert(fvm_input_set_keyboard_focus(context, clip) == FVM_OK);
+        value = class_value(handler);
+        assert(fvm_object_set(context, clip, "onKeyDown", &value) == FVM_OK);
+        int removed = 0;
+        assert(fvm_input_remove_key_listener(context, listener, &removed) == FVM_OK && removed);
+        native = context->execution_mode.stats.native_entries;
+        assert(fvm_gc_collect(context, 0) == FVM_OK);
+        assert(fvm_input_dispatch_keyboard(context, &state, 1) == FVM_OK);
+        assert(context->execution_mode.stats.native_entries == native + (class_mode != 0));
+        assert(fvm_object_get(context, clip, "seen", &value) == FVM_OK && value.number == 42);
+        assert(fvm_input_set_keyboard_focus(context, 0) == FVM_OK);
         assert(fvm_function_set_body(context, handler, 0, 0, 0) == FVM_OK);
         if (code) assert(fvm_jit_destroy(code) == FVM_OK);
         assert(fvm_gc_collect(context, 0) == FVM_OK);

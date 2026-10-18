@@ -50,7 +50,9 @@ The host supplies consistent physical state, latest codes and lock toggles; this
 function does not infer them from the phase or query the OS. Repeats may be sent
 explicitly as another press. The snapshot is copied; its pointer is never retained.
 
-Preparation copies the registration list into a temporary rooted value vector.
+Since v0.591 preparation puts an explicitly selected native clip first, followed
+by the registration list, into a temporary rooted value vector. See
+[host selection, independent channels and detachment](KEYBOARD_FOCUS.md#delivery-and-lifetime).
 Only after successful preparation does it publish the new polling state and
 resolve each recipient's `onKeyDown` or `onKeyUp` method, with zero positional
 arguments and the listener as `this`. Registration order is deterministic.
@@ -85,7 +87,7 @@ subsequent handlers then see that explicitly updated polling state.
 
 ## Script interface
 
-Call [`fvm_standard_install`](../include/flashvm/standard.h#L18), then [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L75) as before.
+Call [`fvm_standard_install`](../include/flashvm/standard.h#L18), then [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L81) as before.
 Installation now also prepares these methods and the inspection getter atomically;
 reinstallation validates their unshadowed native identities. It neither clears
 nor duplicates existing registrations. Explicit installation exposes the subset;
@@ -145,6 +147,9 @@ These are bounded implementation tests, not physical keyboard/foreign-OS
 acceptance or original-player mutation semantics certification. The primary
 interface reference is Adobe's [AS2 Language Reference](https://homepage.cs.uiowa.edu/~slonnegr/flash/ActionScript2Reference.pdf), Key chapter.
 
+
+[Explicit host keyboard focus / Явный выбор клипа](KEYBOARD_FOCUS.md) ([RU](KEYBOARD_FOCUS.ru.md)): [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L71), [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L74).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -156,15 +161,17 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:66](../include/flashvm/keyboard.h#L66) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../include/flashvm/keyboard.h#L74) |
 | `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:68](../include/flashvm/keyboard.h#L68) |
 | `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:60](../include/flashvm/keyboard.h#L60) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_KEYBOARD_MAX_LISTENERS` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:49](../include/flashvm/keyboard.h#L49) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:81](../include/flashvm/keyboard.h#L81) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
