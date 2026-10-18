@@ -2,6 +2,7 @@
 #ifndef FLASHVM_KEYBOARD_H
 #define FLASHVM_KEYBOARD_H /* Guard the public C89 keyboard ABI. */
 #include "flashvm.h"
+#define FVM_SELECTION_MIN_SWF_VERSION 6U /* First supported MovieClip Selection contract. */
 #define FVM_KEYBOARD_MAX_LISTENERS 1024U /* Bounded unique listener objects per context. */
 #define FVM_KEYBOARD_FIRST_CODE 1U       /* Zero means no key and cannot be held. */
 #define FVM_KEYBOARD_CODE_COUNT 256U     /* Virtual-key slots, indexed from zero through 255. */
@@ -77,6 +78,9 @@ extern "C"
      * after publication. Nested dispatch is rejected; listener edits affect later events. */
     FVM_API FVM_Result fvm_input_dispatch_keyboard(FVM_Context *, const FVM_KeyboardState *,
                                                    int pressed);
+    /* Install explicit Selection.getFocus/setFocus for native MovieClips on SWF6--8;
+     * requires standard objects, preserves conflicts, and does not install Key. */
+    FVM_API FVM_Result fvm_standard_selection_install(FVM_Context *);
     /* Explicitly install the supported Key polling namespace, preserving conflicting bindings. */
     FVM_API FVM_Result fvm_standard_keyboard_install(FVM_Context *);
 #ifdef __cplusplus

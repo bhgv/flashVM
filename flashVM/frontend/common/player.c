@@ -4,6 +4,7 @@
 #include "audio.h"
 #include "flashvm/gc.h"
 #include "flashvm/input.h"
+#include "flashvm/keyboard.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
 #include "flashvm/swf.h"
@@ -197,6 +198,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     if (!checked(fvm_standard_install(context), "standard objects", path))
         goto cleanup;
     if (!checked(fvm_standard_keyboard_install(context), "Key polling namespace", path))
+        goto cleanup;
+    /* The explicit MovieClip Selection subset starts at SWF6; keep older movies playable. */
+    if (info.version >= FVM_SELECTION_MIN_SWF_VERSION &&
+        !checked(fvm_standard_selection_install(context), "Selection MovieClip namespace", path))
         goto cleanup;
     if (!checked(fvm_movieclip_load_swf(context, bytes, length, "_root", &clip), "scene import",
                  path))

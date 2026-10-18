@@ -23,7 +23,7 @@ root until removal or context destruction, even if script deletes the Key global
 or the listener's last ordinary reference.
 
 Returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) for invalid context/object/ownership;
-[`FVM_ERROR`](../include/flashvm/flashvm.h#L43) at [`FVM_KEYBOARD_MAX_LISTENERS`](../include/flashvm/keyboard.h#L5) unique registrations (1024), or for an
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L43) at [`FVM_KEYBOARD_MAX_LISTENERS`](../include/flashvm/keyboard.h#L6) unique registrations (1024), or for an
 unexpected contained C++ exception; [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44) if native vector growth
 fails. Failure preserves the previous registration list. Callers retaining a
 removed object must protect it with an ordinary GC root/pin.
@@ -44,8 +44,8 @@ to the end of the next event's order. No finalization is forced by removal.
 ### fvm_input_dispatch_keyboard
 
 `fvm_input_dispatch_keyboard(context, state, pressed)` borrows a complete
-post-transition [`FVM_KeyboardState`](../include/flashvm/keyboard.h#L49) and a Boolean `pressed` (exactly 0 or 1).
-It validates every snapshot field using the same rules as [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L60).
+post-transition [`FVM_KeyboardState`](../include/flashvm/keyboard.h#L50) and a Boolean `pressed` (exactly 0 or 1).
+It validates every snapshot field using the same rules as [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L61).
 The host supplies consistent physical state, latest codes and lock toggles; this
 function does not infer them from the phase or query the OS. Repeats may be sent
 explicitly as another press. The snapshot is copied; its pointer is never retained.
@@ -87,7 +87,7 @@ subsequent handlers then see that explicitly updated polling state.
 
 ## Script interface
 
-Call [`fvm_standard_install`](../include/flashvm/standard.h#L18), then [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L81) as before.
+Call [`fvm_standard_install`](../include/flashvm/standard.h#L18), then [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L85) as before.
 Installation now also prepares these methods and the inspection getter atomically;
 reinstallation validates their unshadowed native identities. It neither clears
 nor duplicates existing registrations. Explicit installation exposes the subset;
@@ -148,7 +148,7 @@ acceptance or original-player mutation semantics certification. The primary
 interface reference is Adobe's [AS2 Language Reference](https://homepage.cs.uiowa.edu/~slonnegr/flash/ActionScript2Reference.pdf), Key chapter.
 
 
-[Explicit host keyboard focus / Явный выбор клипа](KEYBOARD_FOCUS.md) ([RU](KEYBOARD_FOCUS.ru.md)): [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L71), [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L74).
+[Explicit host keyboard focus / Явный выбор клипа](KEYBOARD_FOCUS.md) ([RU](KEYBOARD_FOCUS.ru.md)): [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L72), [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L75).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -160,18 +160,18 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:66](../include/flashvm/keyboard.h#L66) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../include/flashvm/keyboard.h#L74) |
-| `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:68](../include/flashvm/keyboard.h#L68) |
-| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:60](../include/flashvm/keyboard.h#L60) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
+| `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:67](../include/flashvm/keyboard.h#L67) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:79](../include/flashvm/keyboard.h#L79) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:69](../include/flashvm/keyboard.h#L69) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_KEYBOARD_MAX_LISTENERS` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:49](../include/flashvm/keyboard.h#L49) |
+| `FVM_KEYBOARD_MAX_LISTENERS` | macro / define | [include/flashvm/keyboard.h:6](../include/flashvm/keyboard.h#L6) |
+| `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:81](../include/flashvm/keyboard.h#L81) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:85](../include/flashvm/keyboard.h#L85) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

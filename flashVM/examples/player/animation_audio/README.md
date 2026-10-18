@@ -13,6 +13,15 @@ This is not complete Flash Key/Mouse/button compatibility.
 [Full EN guide](../../../doc/PLAYER_TEST_BUILDS.md) /
 [RU](../../../doc/PLAYER_TEST_BUILDS.ru.md).
 
+v0.592: SWF 02 uses Selection.setFocus("_root") after focusEnabled setup.
+Root onKeyDown/onKeyUp counters are separate from the Key listener; root-focused
+releases increase the blue box height. The player installs the SWF6–8 subset.
+Audio assets/encoding are unchanged. [EN](../../../doc/SELECTION.md) / [RU](../../../doc/SELECTION.ru.md).
+
+v0.592: SWF 02 сам выбирает корень через Selection; отдельные счётчики корневых
+событий не смешиваются со слушателем Key. Отпускание увеличивает высоту синего
+квадрата. Это не автоматический выбор мышью/Tab. Звуковые данные прежние.
+
 v0.583: PCM подаётся отдельным worker с запасом по реальному блоку устройства;
 [причина изменения и ограничения](../../../doc/PLAYER_TEST_BUILDS.ru.md#исправление-звука-android-в-v0583).
 

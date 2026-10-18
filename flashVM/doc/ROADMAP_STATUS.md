@@ -1,7 +1,7 @@
-# FlashVM stage status / Состояние стадий — v0.591
+# FlashVM stage status / Состояние стадий — v0.592
 
 This is a bounded review of existing implementation reports and the current
-keyboard polling/listener/host-focus work. It does not replace a complete per-API/SWF conformance matrix
+keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
@@ -289,7 +289,7 @@ remain open.
 
 ## v0.591 explicit host keyboard focus / Выбор клипа хостом
 
-Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L71) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L74) for one native
+Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L72) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L75) for one native
 MovieClip, with a strong context root, private attachment validation and lazy
 clearing when the clip or a physical ancestor is removed. Keyboard dispatch
 snapshots the selected clip before Key listeners; callback selection changes
@@ -318,6 +318,52 @@ this is cross-build evidence, not device keyboard acceptance. RU/EN source links
 and commented/no-assert tutorial checks pass. No new Windows/macOS runtime or
 physical device acceptance is claimed.
 
+## v0.592 Selection MovieClip subset / Скриптовый выбор клипа
+
+Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L83) with atomic publication and
+versioned conflicts. Selection.setFocus accepts native clip objects or counted
+dot/slash paths, applies focusEnabled/button-handler eligibility and revalidates
+native attachment after getters. Selection.getFocus returns a counted native dot
+path or null and shares the C host focus root. Trusted rooted entries permit GC
+inside nested script getters without suspending enclosing ordinary native barriers.
+[EN](SELECTION.md) / [RU](SELECTION.ru.md),
+[C89 tutorial](../examples/embedding/selection/README.md).
+
+Реализовано подмножество для хоста/SWF6–8; SWF1–5 не выдаются за поддержанный
+текстовый Selection. SDL-плеер устанавливает namespace только для SWF6–8.
+Поставляемый SWF 02 сам выбирает корень путём `_root`; отдельные root/Key-счётчики
+сохраняются на трёх циклах в interpreter/JIT. Высота синего квадрата растёт при
+отпусканиях выбранного корня; звуковые данные не менялись.
+
+Открыты TextField/каретка/диапазоны, Button, Selection listeners и уведомления
+onSetFocus/onKillFocus, автоматический выбор мышью/Tab, IME/рамки/security,
+ClipActions, полная эталонная совместимость и платформенная приёмка. Все девять
+стадий остаются открытыми.
+
+### v0.592 focused verification / Целевые проверки
+
+Linux Release AGG/JIT/SDL with examples: 1245 registered, 1241 passed and four
+explicit native-macOS/native-Windows/SSIP skips. Nineteen cached executables lost
+execute permissions; one bitmap allocation test exceeded its 30-second limit in
+the parallel run. After permission restoration all 20 sequential reruns pass in
+7.95 seconds total. No runtime/assertion failures remain. Six real SDL dummy
+video/audio captures (three movies, interpreter/JIT) pass with peak 6400 and the
+previous stereo amplitudes/ADPCM boundaries. This is not physical speaker testing.
+
+Three new core regressions pass ASan/UBSan with leak detection disabled, including
+installation/setFocus allocation failures, Unicode paths, real getter errors,
+detachment during eligibility, versioned global conflicts, nested script GC and
+SWF6–8 interpreter/manual/automatic-JIT execution. The actual interactive SWF
+passes independent focus/listener counter checks over three loops in both modes.
+The C89 tutorial has comments on every nonempty line and per-function guide/source
+links; the catalog includes its grouped TOC and alphabetic glossary entry.
+
+Android ARM64/API23 NDK/SDL player and Java/Dex APK build successfully. The APK
+uses the persisted v0.585 test signer, with signature and 16 KiB native/ZIP alignment
+checked; all three embedded SWFs match current source assets. The new C ABI symbol
+is exported. This is build/runtime-fixture evidence, not physical keyboard or
+new Android audio acceptance. No Windows/macOS device execution is claimed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -327,6 +373,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../include/flashvm/keyboard.h#L74) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 <!-- source-links:end -->

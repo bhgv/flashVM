@@ -26,6 +26,7 @@ int main(int argc, char **argv)
         assert(fvm_context_create(runtime, &context) == FVM_OK);
         assert(fvm_load_memory(context, bytes, (size_t)length) == FVM_OK);
         assert(fvm_standard_install(context) == FVM_OK && fvm_standard_keyboard_install(context) == FVM_OK);
+        assert(fvm_standard_selection_install(context) == FVM_OK);
         assert(fvm_movieclip_load_swf(context, bytes, (size_t)length, "_root", &clip) == FVM_OK);
         assert(fvm_gc_pin(context, clip) == FVM_OK);
         assert(fvm_object_create(context, &host) == FVM_OK);
@@ -54,6 +55,10 @@ int main(int argc, char **argv)
             assert(fvm_object_get(context, observer.object, "ups", &value) == FVM_OK && value.number == cycle);
             assert(fvm_object_get(context, key.object, "_listeners", &listeners) == FVM_OK);
             assert(fvm_object_get(context, listeners.object, "length", &size) == FVM_OK && size.number == 1);
+            assert(fvm_object_get(context, clip, "FocusDowns", &value) == FVM_OK && value.number == cycle);
+            assert(fvm_object_get(context, clip, "FocusUps", &value) == FVM_OK && value.number == cycle);
+            FVM_Object *focused = 0;
+            assert(fvm_input_get_keyboard_focus(context, &focused) == FVM_OK && focused == clip);
             assert(fvm_gc_collect(context, 0) == FVM_OK);
         }
         fvm_context_destroy(context);

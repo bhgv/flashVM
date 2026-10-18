@@ -55,11 +55,11 @@ userdata не передаётся, обращения к устройствам
 
 ## Доставка и время жизни
 
-[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L78) проверяет снимок и удалённость выбранного клипа,
+[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79) проверяет снимок и удалённость выбранного клипа,
 затем подготавливает защищённый корнями список: выбранный клип первым, далее
 слушатели Key в порядке регистрации. Только после успешной подготовки публикует
 новое состояние клавиатуры. Каждый получает ноль аргументов и собственный объект
-в `this`; коды доступны через Key или [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L62). Если выбранный
+в `this`; коды доступны через Key или [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L63). Если выбранный
 клип также явно зарегистрирован слушателем Key, он получает оба вызова: каналы
 независимы, устранения повторов между ними нет. Выбор сам по себе не добавляет
 клип в Key._listeners и не расходует лимит регистраций.
@@ -78,7 +78,7 @@ userdata не передаётся, обращения к устройствам
 синхронизации. Уничтожение и сборка/освобождение GC запрещают оба вызова, обычный
 callback клавиатуры допускает их. Уничтожение контекста снимает корень и остаётся
 запрещённым во время доставки. Выбор, физическое состояние и регистрации не
-сериализуются; [`fvm_load_memory`](../include/flashvm/flashvm.h#L72), замена Key и [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L64) их
+сериализуются; [`fvm_load_memory`](../include/flashvm/flashvm.h#L72), замена Key и [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L65) их
 автоматически не снимают. Хост должен явно сбросить выбор при выгрузке ролика
 или передаче ввода другому интерфейсу. Потеря фокуса ОС отдельно сбрасывает
 физическое состояние клавиатуры.
@@ -100,6 +100,8 @@ callback клавиатуры допускает их. Уничтожение к
 памяти, ошибку подготовки и сброс null без выделения памяти. Это тесты VM/хоста,
 а не приёмка физической клавиатуры или полной совместимости фокуса Flash.
 
+[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L83).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -110,11 +112,11 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:62](../include/flashvm/keyboard.h#L62) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:74](../include/flashvm/keyboard.h#L74) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:64](../include/flashvm/keyboard.h#L64) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:79](../include/flashvm/keyboard.h#L79) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../include/flashvm/movieclip.h#L36) |
@@ -122,4 +124,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 <!-- source-links:end -->

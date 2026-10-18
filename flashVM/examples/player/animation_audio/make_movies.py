@@ -135,6 +135,13 @@ def observer_setup():
     for event, counter in (('onKeyDown', 'downs'), ('onKeyUp', 'ups')):
         initial += push('KeyObserver') + b'\x1c' + push(event) + observer_handler(counter) + b'\x4f'
     initial += push('KeyObserver') + b'\x1c' + push(1) + push('Key') + b'\x1c' + push('addListener') + b'\x52\x17'
+    # Root MovieClip focus is separate from the ordinary Key observer registration.
+    for counter in ('FocusDowns', 'FocusUps'):
+        initial += push(counter) + push(0) + b'\x1d'
+    initial += push('_root') + b'\x1c' + push('focusEnabled') + push(1) + b'\x4f'
+    for event, counter in (('onKeyDown', 'FocusDowns'), ('onKeyUp', 'FocusUps')):
+        initial += push('_root') + b'\x1c' + push(event) + observer_handler(counter) + b'\x4f'
+    initial += push('_root') + push(1) + push('Selection') + b'\x1c' + push('setFocus') + b'\x52\x17'
     initial += push('KeyObserverReady') + push(1) + b'\x1d'
     # If already initialized, skip the complete initializer using the signed relative branch.
     return push('KeyObserverReady') + b'\x1c' + b'\x9d\x02\0' + struct.pack('<h', len(initial)) + initial
@@ -150,6 +157,8 @@ def actions():
     # Alpha and scale make short taps visible through cumulative host counters.
     data += set_position('pointer', 2, push(100) + host('buttons') + push(10) + b'\x0c\x0a')
     data += set_position('box', 2, push(100) + key_down(32) + push(80) + b'\x0c\x0a')
+    # Each root-focused release increases the blue box height independently of the Key listener.
+    data += set_position('box', 3, push(100) + push('FocusUps') + b'\x1c' + push(5) + b'\x0c\x0a')
     data += set_position('key', 0, push(20) + key_code() + push(4) + b'\x0c\x0a')
     data += set_position('key', 3, push(100) + observer_member('downs') + push(5) + b'\x0c\x0a')
     data += set_position('key', 1, push(250) + observer_member('ups') + push(2) + b'\x0c\x0a')

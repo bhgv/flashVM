@@ -130,6 +130,21 @@ StopSounds и stopAllSounds теперь очищают prepared mixer/queue ч�
 сами: их нужно пересобрать. Новый APK нужно прослушать на проблемном телефоне в
 обоих режимах и проверить уход в фон/возврат. Linux dummy-тест этого не заменяет.
 
+## v0.592 Selection test / Проверка Selection
+
+SWF 02 now sets root focusEnabled and calls Selection.setFocus("_root") once.
+Root-focused press/release counters are independent of the Key listener; each
+focused release increases the blue box height. The root remains selected across
+loops. The player explicitly installs the MovieClip-only namespace for SWF6–8;
+automatic mouse/Tab focus and Android virtual-keyboard/IME input remain open.
+[EN contract](SELECTION.md) / [RU](SELECTION.ru.md).
+
+В SWF 02 отдельные обработчики выбранного корня и слушателя Key считают одно
+нажатие/отпускание независимо. Высота синего квадрата показывает отпускания корню.
+Установка Selection явная и только для SWF6–8. Это не автоматический выбор
+мышью/Tab и не реализация экранной IME-клавиатуры Android. Исходные звуковые
+данные и кодирование тонов сохранены.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
