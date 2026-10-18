@@ -1,6 +1,6 @@
 # FlashVM workspace
 
-Development version: **0.572**. [Русская версия](README.ru.md).
+Development version: **0.573**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -44,3 +44,26 @@ public headers, source layout and internal relative paths remain project-local.
 See [build definitions](flashVM/DEFS.txt), the [roadmap](flashVM/doc/ROADMAP.md)
 and [release acceptance](flashVM/doc/RELEASE_ACCEPTANCE.md). Moving files does
 not close any compatibility or platform acceptance stage.
+
+## Independent projects
+
+The workspace will contain separate projects: FlashVM, ActionScript compilers,
+a Limbo compiler, a SWF linker and, later, a Flash editor/IDE. Only FlashVM is
+implemented here today. Each project owns its source, dependencies, build entry
+point, version, documentation, examples and tests. No root build is required.
+Future workspace automation may orchestrate builds, but must remain optional.
+
+A project must remain buildable after copying its directory to another location
+or repository, including under a different directory name. Do not include sibling
+source trees through implicit `../` paths. Required dependencies must be documented
+and supplied as explicit SDK/library/tool paths or bundled where permitted.
+Compilers, linker and VM should exchange documented artifacts and public APIs.
+The editor consumes those tools through explicit interfaces.
+
+To separate FlashVM, copy `flashVM/` and place the shared root `LICENSE` in the
+new distribution root (beside that folder), preserving bundled license notices.
+Run CMake and `view_docs.py` inside the copied project. The component viewer serves
+only that project; the workspace launcher explicitly enables workspace navigation.
+The Git-history archive utility requires the original Git repository and is not
+needed to build or run the separated VM. Repository history and workspace helper
+files are not build dependencies.

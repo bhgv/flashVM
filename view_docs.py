@@ -3,7 +3,6 @@
 """Delegate documentation browsing to FlashVM on Python 2.7.9 or Python 3."""
 from __future__ import print_function
 import os
-import runpy
 import sys
 
 
@@ -13,7 +12,8 @@ def main():
     # The delegated launcher imports its own documentation engine from this folder.
     sys.path.insert(0, component)
     try:
-        runpy.run_path(os.path.join(component, 'view_docs.py'), run_name='__main__')
+        from doku_viewer.server import main as browse
+        browse(root=os.path.dirname(component), component='flashVM')
     finally:
         # Leave the caller's import search path unchanged after the viewer stops.
         sys.path.pop(0)

@@ -145,3 +145,11 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   Compiler components may be added alongside flashVM later; do not mix their
   implementation into the VM component. Keep both root READMEs and the delegation
   entry point current when changing repository-wide navigation or layout.
+
+- Independent-project rule (2026-10-18): FlashVM, AS compilers, Limbo compiler,
+  linker and future editor/IDE are separate, detachable projects. Each owns its
+  build, version, docs, tests and dependencies; root orchestration is optional.
+  Never assume sibling source paths or require the workspace root to build.
+  Use explicit documented SDK/tool/library dependencies and public formats/APIs.
+  Verify changed tooling with a renamed detached component when paths are involved.
+  Preserve the common MIT license in separated distributions and upstream notices.

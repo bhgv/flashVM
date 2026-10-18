@@ -44,7 +44,7 @@ class ViewerTests(unittest.TestCase):
         directory = tempfile.mkdtemp(prefix='flashvm-launcher-')
         environment = dict(os.environ, PYTHONUNBUFFERED='1')
         process = subprocess.Popen(
-            [sys.executable, os.path.join(ROOT, 'view_docs.py'),
+            [sys.executable, os.path.join(os.path.dirname(ROOT), 'view_docs.py'),
              '--no-browser', '--port', '0'], cwd=directory, env=environment,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         try:
@@ -63,11 +63,45 @@ class ViewerTests(unittest.TestCase):
             process.communicate()
             shutil.rmtree(directory)
 
+    def test_detached_component(self):
+        """Run a renamed component without workspace files or parent access."""
+        directory = tempfile.mkdtemp(prefix='detached-vm-')
+        component = os.path.join(directory, 'renamed-vm')
+        os.mkdir(component)
+        shutil.copytree(os.path.join(ROOT, 'doku_viewer'),
+                        os.path.join(component, 'doku_viewer'))
+        shutil.copy(os.path.join(ROOT, 'view_docs.py'), component)
+        with io.open(os.path.join(component, 'README.md'), 'w') as target:
+            target.write('# Independent VM')
+        with io.open(os.path.join(directory, 'secret.txt'), 'w') as target:
+            target.write('outside component')
+        process = subprocess.Popen(
+            [sys.executable, os.path.join(component, 'view_docs.py'),
+             '--no-browser', '--port', '0'], cwd=directory,
+            env=dict(os.environ, PYTHONUNBUFFERED='1'),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        try:
+            first = process.stdout.readline().decode('utf-8')
+            address = re.search(r'http://127\.0\.0\.1:[0-9]+/', first).group(0)
+            response = urlopen(address)
+            self.assertTrue(response.geturl().endswith('/view/README.md'))
+            self.assertIn('Independent VM', response.read().decode('utf-8'))
+            response.close()
+            for path in ('raw/secret.txt', 'raw/%2e%2e/secret.txt'):
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(address + path)
+                self.assertEqual(error.exception.code, 404)
+                error.exception.close()
+        finally:
+            process.terminate()
+            process.communicate()
+            shutil.rmtree(directory)
+
     def test_http_navigation(self):
         """Follow project, guide, example and exact source-line destinations."""
-        for path in ('/', '/view/README.md', '/view/flashVM/doc/STAGE_QUALITY.md',
-                     '/view/flashVM/examples/embedding/stage_quality/README.md',
-                     '/view/flashVM/include/flashvm/stage.h#L19'):
+        for path in ('/', '/view/README.md', '/view/doc/STAGE_QUALITY.md',
+                     '/view/examples/embedding/stage_quality/README.md',
+                     '/view/include/flashvm/stage.h#L19'):
             response = urlopen(self.base + path)
             self.assertEqual(response.getcode(), 200)
             self.assertIn('text/html', response.info().get('Content-Type'))
@@ -80,7 +114,7 @@ class ViewerTests(unittest.TestCase):
 
     def test_assets_raw_and_denials(self):
         """Serve local assets/raw text but reject hidden, escaping and executable files."""
-        for path in ('/assets/style.css', '/assets/viewer.js', '/raw/LICENSE'):
+        for path in ('/assets/style.css', '/assets/viewer.js', '/raw/VERSION.txt'):
             response = urlopen(self.base + path)
             self.assertTrue(response.read())
             self.assertIn("default-src 'none'", response.info().get('Content-Security-Policy'))

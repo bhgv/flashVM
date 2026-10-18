@@ -147,3 +147,15 @@ The server is confined to the repository, including symlink checks.
 FlashVM; общая лицензия доступна из корня. Доступ за пределы репозитория запрещён.
 The earlier project-local commands above remain valid after `cd flashVM`.
 Ранее приведённые команды проекта остаются верными после `cd flashVM`.
+
+## Independent component / Отдельный проект
+
+Launching `python view_docs.py` inside the VM project serves only that directory,
+even after it is renamed or moved. The workspace launcher explicitly selects the
+workspace root and the FlashVM navigation prefix; the component does not discover
+or expose its parent automatically. Neither mode requires Git.
+
+Запуск `python view_docs.py` внутри проекта VM обслуживает только его папку,
+включая после переноса или переименования. Корневой запуск явно задаёт корень
+рабочего пространства и префикс FlashVM. Компонент сам не ищет и не открывает
+родительскую папку. Git для обоих режимов не требуется.

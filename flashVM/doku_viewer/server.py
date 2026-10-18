@@ -20,10 +20,10 @@ except ImportError:
     from cgi import escape
     unescape = HTMLParser().unescape
 
-# The component stays below flashVM; shared documentation/license live one level up.
+# Default serving boundary is this component, even when renamed or detached.
 PROJECT_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir))
-ROOT = os.path.dirname(PROJECT_ROOT)
-HOME = 'flashVM/README.md'
+ROOT = PROJECT_ROOT
+HOME = 'README.md'
 SOURCE_EXTENSIONS = ('.c', '.h', '.cpp', '.hpp', '.mm', '.m', '.py', '.java',
                      '.as', '.txt', '.defs', '.cmake', '.json', '.sh', '.css', '.js')
 IMAGE_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -153,15 +153,18 @@ def render_source(text, filename):
     return '<pre class="source"><code>%s</code></pre>' % '\n'.join(lines)
 
 
-def navigation(root):
+def navigation(root, component=""):
     """Index Markdown guides and example READMEs in alphabetic folder order."""
-    groups = [('Repository', ''), ('FlashVM', 'flashVM'),
-              ('Documentation', 'flashVM/doc'), ('Examples', 'flashVM/examples')]
+    groups = [('FlashVM', component),
+              ('Documentation', os.path.join(component, 'doc')),
+              ('Examples', os.path.join(component, 'examples'))]
+    if component:
+        groups.insert(0, ('Repository', ''))
     blocks = []
     for title, folder in groups:
         files = []
         base = os.path.join(root, folder)
-        if folder in ('', 'flashVM'):
+        if folder in ('', component):
             files = [os.path.join(folder, name).replace(os.sep, '/')
                      for name in os.listdir(base) if name.lower().endswith('.md')]
         else:
@@ -182,7 +185,7 @@ def page(path, content, nav):
     return ('<!doctype html><html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width, initial-scale=1">'
             '<title>%s — FlashVM docs</title><link rel="stylesheet" href="/assets/style.css">'
-            '</head><body><aside><a class="brand" href="/view/flashVM/README.md">FlashVM docs</a>'
+            '</head><body><aside><a class="brand" href="/">FlashVM docs</a>'
             '<input id="filter" aria-label="Filter document paths" placeholder="Filter / Поиск">'
             '%s</aside><main><header><span>%s</span> <a href="/raw/%s">Raw</a></header>'
             '<article>%s</article></main><script src="/assets/viewer.js"></script></body></html>') % (
@@ -216,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
                 request = request.decode('utf-8', 'strict')
             if request == '/':
                 self.send_response(302)
-                self.send_header('Location', '/view/' + HOME)
+                self.send_header('Location', '/view/' + getattr(self.server, 'home', HOME))
                 self.end_headers()
                 return
             if request in ('/assets/style.css', '/assets/viewer.js'):
@@ -249,8 +252,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404, 'Document not available')
 
 
-def main():
+def main(root=None, component=""):
     """Validate dependencies and start an explicitly local server until Ctrl+C."""
+    root = os.path.realpath(root or ROOT)
     parser = argparse.ArgumentParser(description='Browse FlashVM Markdown and source locally')
     parser.add_argument('--port', type=int, default=8765, help='Loopback port; default 8765')
     parser.add_argument('--no-browser', action='store_true', help='Do not open a browser automatically')
@@ -261,16 +265,17 @@ def main():
         import markdown2
         import pygments
     except ImportError:
-        parser.exit(1, 'Install dependencies: from repository root: python -m pip install -r flashVM/doku_viewer/requirements.txt\n')
+        parser.exit(1, 'Install dependencies: python -m pip install -r %s\n' % os.path.join(PROJECT_ROOT, 'doku_viewer', 'requirements.txt'))
     try:
         server = HTTPServer(('127.0.0.1', args.port), Handler)
     except (IOError, OSError) as error:
         parser.exit(1, 'Cannot start server: %s\n' % error)
-    server.root = ROOT
-    server.nav = navigation(ROOT)
+    server.root = root
+    server.home = os.path.join(component, 'README.md').replace(os.sep, '/')
+    server.nav = navigation(root, component)
     address = 'http://127.0.0.1:%d/' % server.server_address[1]
     print('FlashVM documentation: ' + address)
-    print('Stop with Ctrl+C. Files are served read-only from: ' + ROOT)
+    print('Stop with Ctrl+C. Files are served read-only from: ' + root)
     if not args.no_browser:
         timer = threading.Timer(0.3, webbrowser.open, args=(address,))
         timer.daemon = True
