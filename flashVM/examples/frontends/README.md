@@ -141,6 +141,34 @@ wheel decoder here. Clutter SDK/device and other OS acceptance remain open.
 два события. Счётчики вывода показывают успешные доставки и последнюю дельту,
 не физические щелчки. Нажатие/фокус/scrollTarget и прокрутка содержимого не
 синтезируются. Сенсорный хост без колеса продолжает передавать основной контакт.
+## Cursor request application (v0.610) / Применение видимости
+
+SDL2, GTK3 and Qt5 poll the context's requested visibility on the native/VM owner
+before painting, then apply only changed requests. `--hide-cursor` requests hidden
+startup state; combine with `--smoke` for 120 frames. The public C89 API and
+[script Mouse.hide/show](../../doc/MOUSE.md#script-hide-and-show) are independent
+of a native mouse's presence. The raster marker is ordinary frame content and
+stays visible when the native cursor is hidden, like a custom cursor MovieClip.
+
+| API | Parameters, lifetime and meaning |
+| --- | --- |
+| [`fvm_input_get_cursor_visible`](../../include/flashvm/mouse.h#L38) | Live owner-thread context, mandatory writable int: copy requested 0/1, no allocation/GC/SDK call; preserve output on invalid input. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../include/flashvm/mouse.h#L43) | Context, visible=0/1, mandatory previous int: atomically request and return old logical 0/1; no native acknowledgement. [Contract](../../doc/MOUSE.md#cursor-visibility-request). |
+
+SDL_ShowCursor is global to SDL: this standalone one-window tutorial saves it
+before applying and restores it before SDK shutdown, including failure exits.
+Multiple independent SDL contexts/windows need an explicit active-owner policy.
+GTK uses its realized drawing-area GdkWindow, lazily owns a blank descriptor and
+restores inherited cursor with NULL. Qt uses a widget-local blank override and
+unsetCursor for inheritance. Void native SDK setters record issuance, not
+physical/compositor success. Query/SDL status and GTK acquisition failures stop
+the tutorial; repeated unchanged requests avoid redundant native updates.
+
+Русский: флаг --hide-cursor меняет запрос VM; реальный SDK применяется только
+потоком оконного хоста. После скрипта или ввода следующий native draw применяет
+запрос. Сенсорный/headless/direct-fb хост без отдельного нативного курсора может
+хранить запрос без создания мыши. Clutter-привязка пока не добавлена. Программные
+проверки SDK не подтверждают физический указатель, аппаратный экран или другие ОС.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -159,7 +187,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../../include/flashvm/host.h#L11) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../../include/flashvm/mouse.h#L26) |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../../include/flashvm/mouse.h#L33) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../include/flashvm/mouse.h#L38) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../include/flashvm/input.h#L75) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../include/flashvm/mouse.h#L43) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../include/flashvm/input.h#L72) |
 | `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:39](../../include/flashvm/raster.h#L39) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../../include/flashvm/flashvm.h#L40) |

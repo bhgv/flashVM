@@ -21,9 +21,9 @@ or a conflicting global/accessor/callable/method identity. Loaded SWF below
 [FVM_MOUSE_CURSOR_MIN_SWF_VERSION](../include/flashvm/mouse.h#L5) (5) returns [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Host contexts are supported.
 [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) and contained unexpected [FVM_ERROR](../include/flashvm/flashvm.h#L43) preserve the global binding.
 Unpublished intermediate objects remain ordinary context-owned garbage.
-Installation respects case-insensitive global lookup in SWF6 and case-sensitive
+Installation respects case-insensitive global lookup in SWF5–6 and case-sensitive
 lookup in SWF7–8/host contexts. Standard installation alone does not opt in.
-Namespace methods/getter also reject SWF1–5 if a host installed before loading.
+Listener methods/getter reject SWF1–5; hide/show reject SWF1–4, including namespaces installed before loading.
 
 ## Native host contract
 
@@ -185,7 +185,7 @@ A native host polls after script/input execution and applies the request to its
 own window using its SDK, reporting SDK errors separately. Applying a request
 does not acknowledge physical scanout. A global native cursor API must not be
 silently shared across independent windows/contexts without an owner policy.
-At this checkpoint script Mouse.hide/show and window SDK application are pending.
+Script hide/show are described below; native SDK application is documented in the frontend guide.
 
 ## Script hide and show
 
@@ -218,6 +218,18 @@ The test suite covers actual SWF5–8 interpreter/manual/automatic JIT calls,
 ignored argument coercion traps, repeated values, shadow conflicts, preloaded
 version guards and GC. Native window application and foreign/physical runtime
 acceptance are separate from these script semantics.
+
+## Native cursor hosts
+
+v0.610 SDL2/GTK3/Qt5 tutorials poll the request on the native VM owner before
+painting; --hide-cursor configures a startup request. SDL saves/restores its
+global original visibility under a single-window owner policy. GTK applies a
+same-display blank/inherited cursor to its realized drawing-area window and owns
+its blank descriptor until teardown. Qt applies a local widget override and
+restores inheritance. The common colored marker remains content, not the native
+cursor. See [frontend API and lifetime](../examples/frontends/README.md)
+and individual SDK READMEs. Native setters with no status report issuance only.
+Software SDK checks do not certify a physical cursor, device or foreign OS.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

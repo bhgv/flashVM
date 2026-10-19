@@ -1,5 +1,6 @@
 /* Qt5 frontend: SDK-native widget and QImage consumer around the public FlashVM C ABI. */
 #include "../common/wheel.h" /* Common VM/frame lifecycle; core remains C++98/C89. */
+#include <QCursor> /* Native widget-local blank/inherited cursor, independent of frame content. */
 #include <QApplication> /* Native GUI main-thread event loop. */
 #include <QWidget> /* Native owner with virtual event callbacks, no moc required. */
 #include <QPainter> /* Paint only within paintEvent. */
@@ -16,6 +17,7 @@ class DemoWidget : public QWidget { /* Qt SDK host; no managed object escapes. *
     QPainter *painter_; /* Borrowed only during paintEvent. */
     int timer_; /* Native timer ID, stopped before VM release. */
     bool smoke_; /* Stop after a bounded number of successful paints. */
+    int cursor_applied_; /* Last request issued to this widget, or -1 before synchronization. */
     /* Copying a live VM/native owner is forbidden. */
     DemoWidget(const DemoWidget &); /* No shallow ownership copies. */
     DemoWidget &operator=(const DemoWidget &); /* No owner reassignment. */
@@ -40,6 +42,14 @@ protected: /* Qt invokes these methods only on the widget owner thread. */
     /* Rasterize and consume within the native paint scope. */
     void paintEvent(QPaintEvent *event) { /* Qt owns event lifetime. */
         (void)event; /* Repaint the complete fixed logical image. */
+        int visible; /* Allocation-free VM request query before native painting. */
+        if (demo_.status == FVM_OK) demo_.status = fvm_input_get_cursor_visible(demo_.context, &visible); /* Owner only. */
+        if (demo_.status != FVM_OK) { close(); return; } /* Stop before using an invalid query result. */
+        if (visible != cursor_applied_) { /* Change only this widget's native cursor override. */
+            if (visible) unsetCursor(); /* Restore inherited cursor instead of replacing another owner's style. */
+            else setCursor(QCursor(Qt::BlankCursor)); /* Qt owns the copied native descriptor. */
+            cursor_applied_ = visible; /* Void SDK calls acknowledge issuance only, not physical scanout. */
+        } /* The raster marker remains independent content, useful as a custom cursor. */
         QPainter painter(this); /* Stack owner ends before this callback returns. */
         if (!painter.isActive()) { demo_.status = FVM_ERROR; close(); return; } /* Real paint failure. */
         painter_ = &painter; /* Temporarily expose sink for demo_frame. */
@@ -84,7 +94,7 @@ protected: /* Qt invokes these methods only on the widget owner thread. */
     } /* No managed owner is destroyed from event callbacks. */
 public: /* Main owns this stack widget until after QApplication::exec returns. */
     /* Acquire a portable VM before requesting any paints. */
-    explicit DemoWidget(bool smoke) : painter_(0), timer_(0), smoke_(smoke) { /* Zero native guards. */
+    explicit DemoWidget(bool smoke) : painter_(0), timer_(0), smoke_(smoke), cursor_applied_(-1) { /* Zero native guards. */
         demo_open(&demo_); /* Common helper initializes partial ownership before allocation. */
         resize(DEMO_WIDTH, DEMO_HEIGHT); /* Fixed world image, scalable native widget. */
         setMouseTracking(true); /* Receive motion without a pressed button. */
@@ -96,6 +106,14 @@ public: /* Main owns this stack widget until after QApplication::exec returns. *
         if (timer_) killTimer(timer_); /* Explicitly stop delivery before demo_close. */
         demo_close(&demo_); /* [GC:] No managed pointer escaped the context. */
     } /* QWidget base then releases its native resources. */
+    /* Configure the context request from native UI/startup, then let the paint owner apply it. */
+    FVM_Result request_cursor(int visible) { /* This convenience method does not directly call a cursor SDK. */
+        int previous; /* Mandatory previous-request output is local native storage. */
+        if (demo_.status != FVM_OK) return demo_.status; /* Preserve a prior failure. */
+        demo_.status = fvm_input_set_cursor_visible(demo_.context, visible, &previous); /* Validate 0/1 atomically. */
+        if (demo_.status == FVM_OK) update(); /* Repaint will synchronize the widget's native cursor. */
+        return demo_.status; /* Caller observes real VM validation status. */
+    } /* Method stays on the GUI/VM owner thread. */
     /* Return the first real failure without modifying ownership. */
     FVM_Result status() const { return demo_.status; } /* Main can report before destructor clears state. */
     /* Expose successful consumer count for a smoke-run assertion outside the widget. */
@@ -107,10 +125,15 @@ public: /* Main owns this stack widget until after QApplication::exec returns. *
 }; /* Qt types remain private to this host executable. */
 /* Run with --smoke or interactively, using the selected Qt platform plugin. */
 int main(int argc, char **argv) { /* QApplication must outlive every QWidget. */
-    bool smoke = argc == 2 && !strcmp(argv[1], "--smoke"); /* Parse tutorial arguments explicitly. */
-    if (argc > 1 && !smoke) return 1; /* Select Qt plugin through QT_QPA_PLATFORM environment. */
+    bool smoke = false, hide_cursor = false; /* Explicit frame and cursor-request options. */
+    for (int argument = 1; argument < argc; ++argument) { /* Qt SDK host alone uses C++11. */
+        if (!strcmp(argv[argument], "--smoke")) smoke = true; /* Finite owner loop. */
+        else if (!strcmp(argv[argument], "--hide-cursor")) hide_cursor = true; /* No synthetic mouse event. */
+        else return 1; /* Choose the native Qt plugin through QT_QPA_PLATFORM environment. */
+    } /* Known flags can be combined before QApplication consumes native options. */
     QApplication app(argc, argv); /* Initialize real SDK/platform integration. */
     DemoWidget widget(smoke); /* Stack teardown precedes application destruction. */
+    if (hide_cursor) widget.request_cursor(0); /* Initial request is applied by the first paint. */
     if (widget.status() != FVM_OK) return 1; /* Partial owners are still released by destructor. */
     widget.show(); /* Schedule a native paint only after valid initialization. */
     int result = app.exec(); /* Deliver all events on this same GUI/VM thread. */

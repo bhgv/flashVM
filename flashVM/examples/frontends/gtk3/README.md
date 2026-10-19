@@ -121,6 +121,33 @@ position, and ignored horizontal/stop input. No physical wheel acceptance follow
 Русский: колесо не требует изменения Mouse API в GTK и не меняет нажатие кнопки.
 Маска разрешает и дискретные, и smooth события. Умножение smooth-единиц на три —
 явная политика учебного хоста; настройка скорости прокрутки ОС не считывается.
+## Cursor visibility / Видимость курсора (v0.610)
+
+`--hide-cursor` requests hidden startup state; `--smoke --hide-cursor` performs
+120 paints. [gtk_cursor](main.c#L16)(host) reads the context on draw, obtains the realized area
+window, lazily creates one owned GDK_BLANK_CURSOR for that display and applies it.
+Showing passes NULL to restore parent inheritance. Main destroys native widgets
+before unref of its owned blank descriptor and Demo teardown. No global display
+cursor is changed. GTK acquisition/window/query failures latch a real status;
+set_cursor returns void, so success records issuance rather than compositor
+acknowledgement. The marker remains visible as ordinary frame content.
+
+| API | Parameters and ownership |
+| --- | --- |
+| [gtk_widget_get_window](https://docs.gtk.org/gtk3/method.Widget.get_window.html) | Realized drawing area: borrow GdkWindow; NULL is unusable and stops the tutorial. Never destroy/unref this borrowed window separately. |
+| [gtk_widget_get_display](https://docs.gtk.org/gtk3/method.Widget.get_display.html) | Drawing area: borrow its display for same-display cursor creation, no ownership transfer. |
+| [gdk_cursor_new_for_display](https://docs.gtk.org/gdk3/ctor.Cursor.new_for_display.html) | Borrowed display, GDK_BLANK_CURSOR: acquire one native blank cursor or fail; release owned reference after window teardown with g_object_unref. |
+| [gdk_window_set_cursor](https://docs.gtk.org/gdk3/method.Window.set_cursor.html) | Borrowed window, same-display blank descriptor or NULL: set local override/restore parent inheritance, retains native reference; void API does not confirm hardware state. |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L38) | Context, int output: query logical request before painting, without script/GC/OS work. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L43) | Context, 0, previous output: request hidden at startup before native realization. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+
+Русский: тест с настоящим GTK/Xvfb проверяет blank descriptor, повторное
+применение и возврат наследуемого курсора. Время жизни нативной ссылки отделено
+от VM; после остановки callbacks сначала разрушается окно, затем снимается ссылка.
+Курсор физического устройства, сенсорный экран и другие ОС не считаются принятыми.
+```sh
+./build-gtk3/examples/frontends/flashvm_example_gtk3 --smoke --hide-cursor
+```
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -132,4 +159,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../../include/flashvm/mouse.h#L43) |
 <!-- source-links:end -->

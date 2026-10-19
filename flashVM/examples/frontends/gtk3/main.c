@@ -9,7 +9,27 @@ typedef struct GtkHost { /* The stack owner outlives gtk_main and every source. 
     GtkWidget *area; /* Borrowed child, owned by the window. */
     cairo_t *cr; /* Borrowed only while handling draw. */
     int smoke; /* Explicit finite rendering mode. */
+    GdkCursor *hidden_cursor; /* Owned blank native descriptor, acquired only if a hidden request is applied. */
+    int cursor_applied; /* Last request issued to this drawing area's GdkWindow, or -1 before first apply. */
 } GtkHost; /* No managed script pointers need GC pins. */
+/* Apply requested cursor only to the realized drawing area, leaving the marker/content visible. */
+static FVM_Result gtk_cursor(GtkHost *host) /* Native paint/event owner thread only. */
+{ /* A request is independent of native device presence. */
+    int visible; /* Query output is used only on success. */
+    GdkWindow *window; /* Borrow the live realized widget window. */
+    if (host->demo.status != FVM_OK) return host->demo.status; /* Keep the first error. */
+    host->demo.status = fvm_input_get_cursor_visible(host->demo.context, &visible); /* No GC or SDK inside VM. */
+    if (host->demo.status != FVM_OK || visible == host->cursor_applied) return host->demo.status; /* No repeat. */
+    window = gtk_widget_get_window(host->area); /* Valid only after native realization. */
+    if (!window) return host->demo.status = FVM_ERROR; /* Do not claim an unapplied native request. */
+    if (!visible && !host->hidden_cursor) { /* Lazily acquire only the required native resource. */
+        host->hidden_cursor = gdk_cursor_new_for_display(gtk_widget_get_display(host->area), GDK_BLANK_CURSOR); /* Owned. */
+        if (!host->hidden_cursor) return host->demo.status = FVM_ERROR; /* SDK acquisition failure. */
+    } /* GDK retains its own cursor reference when applying below. */
+    gdk_window_set_cursor(window, visible ? NULL : host->hidden_cursor); /* NULL restores inherited cursor. */
+    host->cursor_applied = visible; /* Void SDK API records issuance, not a compositor/device acknowledgement. */
+    return FVM_OK; /* Host keeps its blank descriptor until native window teardown. */
+} /* No global display cursor or other window's request is modified. */
 /* Consume the frame before its producer may overwrite the bytes. */
 static FVM_Result gtk_present(const FVM_RasterSurface *frame, void *data) /* Synchronous sink. */
 { /* The demo is opaque, so straight/premultiplied alpha coincide. */
@@ -31,11 +51,12 @@ static gboolean gtk_draw(GtkWidget *widget, cairo_t *cr, gpointer data) /* Borro
 { /* Repaint requests may be coalesced by GTK. */
     GtkHost *host = (GtkHost *)data; /* Lifetime is bounded by the native loop. */
     (void)widget; /* The stored drawing area is the same signal sender. */
+    gtk_cursor(host); /* Apply current script/host request on the native paint owner. */
     host->cr = cr; /* Borrow only until this callback returns. */
     demo_frame(&host->demo, gtk_present, host); /* Draw and synchronously upload through public ABI. */
     host->cr = NULL; /* Make the temporary borrowing boundary explicit. */
     if (host->demo.status != FVM_OK || (host->smoke && host->demo.frames >= DEMO_MAX_STEPS)) /* End finite run. */
-        gtk_main_quit(); /* Main stops the timer before destroying the VM. */
+        if (gtk_main_level()) gtk_main_quit(); /* Main stops the timer before destroying the VM. */
     return TRUE; /* This handler has painted the drawing area. */
 } /* GTK retains ownership of its Cairo context. */
 /* Convert widget logical coordinates back into the fixed world once. */
@@ -103,12 +124,19 @@ int main(int argc, char **argv) /* GTK owns all native dispatch on this thread. 
     GtkHost host; /* Zeroed before partial resource acquisition. */
     GtkWidget *window; /* Explicitly referenced native owner. */
     guint timer; /* Source ID removed after the loop. */
-    int result; /* Preserve the failure before clearing Demo. */
+    int result, argument, hide_cursor = 0, previous; /* Native options and mandatory previous-request output. */
     memset(&host, 0, sizeof(host)); /* Initialize callbacks and VM ownership. */
-    host.smoke = argc == 2 && !strcmp(argv[1], "--smoke"); /* No implicit finite run. */
-    if (argc > 1 && !host.smoke) return 1; /* Reject unknown tutorial arguments. */
+    host.cursor_applied = -1; /* Native inherited cursor has not yet been synchronized with the context. */
+    for (argument = 1; argument < argc; ++argument) { /* Parse flags before initializing the SDK. */
+        if (!strcmp(argv[argument], "--smoke")) host.smoke = 1; /* Bound successful draw callbacks. */
+        else if (!strcmp(argv[argument], "--hide-cursor")) hide_cursor = 1; /* Independent VM request. */
+        else { fprintf(stderr, "usage: %s [--smoke] [--hide-cursor]\n", argv[0]); return 1; } /* No native owners. */
+    } /* A hidden-cursor software run can combine both options. */
     if (!gtk_init_check(NULL, NULL)) { fprintf(stderr, "GTK display unavailable\n"); return 1; } /* Real SDK. */
     if (demo_open(&host.demo) != FVM_OK) { demo_close(&host.demo); return 1; } /* Partial cleanup. */
+    if (hide_cursor && fvm_input_set_cursor_visible(host.demo.context, 0, &previous) != FVM_OK) { /* Startup request. */
+        demo_close(&host.demo); return 1; /* No native window has been acquired yet. */
+    } /* The next draw callback applies this request after realization. */
     window = gtk_window_new(GTK_WINDOW_TOPLEVEL); /* Own a real native top-level window. */
     g_object_ref_sink(window); /* Keep the object valid even after a destroy signal. */
     host.area = gtk_drawing_area_new(); /* Window owns its child once added. */
@@ -131,6 +159,7 @@ int main(int argc, char **argv) /* GTK owns all native dispatch on this thread. 
     printf("GTK3 frames=%u wheels=%u last_delta=%.3f status=%d\n", host.demo.frames, host.demo.wheel_events, host.demo.last_wheel_delta, (int)host.demo.status); /* Observable result. */
     gtk_widget_destroy(window); /* Remove native signal senders before destroying VM. */
     g_object_unref(window); /* Release the explicit native owner. */
+    if (host.hidden_cursor) g_object_unref(host.hidden_cursor); /* Release owned descriptor after window teardown. */
     demo_close(&host.demo); /* [GC:] Release context/runtime after native callbacks stop. */
     return result; /* Initialization/backend failures remain nonzero. */
 } /* This is an embedding frontend, not a complete SWF player. */

@@ -12,18 +12,18 @@ SDL-мост плеера v0.596 передаёт первичный палец 
 
 `fvm_standard_mouse_install(context)` принимает живой заимствованный контекст с
 установленными стандартными объектами. Вызов в потоке-владельце, вне GC и
-уничтожения. Атомарно готовятся Mouse.addListener/removeListener и _listeners.
+уничтожения. Атомарно готовятся Mouse.hide/show, addListener/removeListener и _listeners.
 Key/Selection не устанавливаются, координаты не меняются, скрипт не выполняется.
 
 [FVM_OK](../include/flashvm/flashvm.h#L42) означает успешную публикацию или целую прежнюю установку.
 [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) — неверный контекст/состояние, отсутствие стандартных
 объектов или конфликт глобального descriptor/callable/идентичности методов.
-Загруженный SWF ниже [FVM_MOUSE_MIN_SWF_VERSION](../include/flashvm/mouse.h#L6) (6) даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
+Загруженный SWF ниже [FVM_MOUSE_CURSOR_MIN_SWF_VERSION](../include/flashvm/mouse.h#L5) (5) даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46);
 хост-контекст поддерживается. [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) и пойманный неожиданный [FVM_ERROR](../include/flashvm/flashvm.h#L43)
 сохраняют прежний global. Промежуточные объекты остаются мусором контекста.
-В SWF6 имена глобалов нечувствительны к регистру, в SWF7–8/host чувствительны.
+В SWF5–6 имена глобалов нечувствительны к регистру, в SWF7–8/host чувствительны.
 Обычная установка стандартных объектов не включает Mouse автоматически.
-Методы/getter также отвергают SWF1–5 после установки до загрузки ролика.
+Методы/getter слушателей отвергают SWF1–5; hide/show отвергают SWF1–4, в том числе после предварительной установки.
 
 ## Нативный контракт
 
@@ -109,7 +109,7 @@ OOM установки, до/после публикации. `tests/jit_mouse.c
 скриптовые регистрация/обработчики, interpreter/manual/automatic JIT, GC и
 настоящее AVM1-исключение обработчика.
 
-Открыты hide/show курсора, колесо, прямая рассылка MovieClip/Button/ClipActions,
+Открыты оставшиеся порты/эталонная проверка курсора, прямая рассылка MovieClip/Button/ClipActions,
 автоматический выбор фокуса/цели, сырые мультитач/жесты, security origins,
 граничный порядок оригинала и нативная/device/endurance приёмка. Базовые
 сигнатуры соответствуют [справочнику Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/Mouse.html).
@@ -215,6 +215,17 @@ addListener/removeListener/_listeners присутствуют и в SWF5, но 
 конфликты, ограничения версии и GC. Нативное окно и устройства проверяются
 отдельно; готовность всех ОС отсюда не выводится.
 
+## Нативные хосты курсора
+
+С v0.610 примеры SDL2/GTK3/Qt5 читают запрос перед рисованием на потоке-владельце
+VM/окна. --hide-cursor задаёт начальный запрос. SDL сохраняет/восстанавливает
+глобальное состояние при явном владении единственным окном. GTK применяет blank
+или наследуемый курсор к реализованному окну drawing area и освобождает свою
+ссылку после native teardown. Qt меняет override только своего widget. Цветной
+маркер остаётся содержимым, не системным курсором. [API и время жизни](../examples/frontends/README.md)
+описаны в README фронтендов. Void-setter SDK подтверждает только выдачу запроса;
+программная проверка не подтверждает физический курсор, устройство или другую ОС.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -240,7 +251,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_EVENT_MOVE` | enum constant | [include/flashvm/mouse.h:14](../include/flashvm/mouse.h#L14) |
 | `FVM_MOUSE_EVENT_UP` | enum constant | [include/flashvm/mouse.h:16](../include/flashvm/mouse.h#L16) |
 | `FVM_MOUSE_MAX_LISTENERS` | macro / define | [include/flashvm/mouse.h:7](../include/flashvm/mouse.h#L7) |
-| `FVM_MOUSE_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:6](../include/flashvm/mouse.h#L6) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:47](../include/flashvm/mouse.h#L47) |

@@ -12,7 +12,21 @@ typedef struct SDLHost /* Keep native ownership separate from Demo. */
     SDL_TouchID device; /* Numeric device identity of the first active finger. */
     SDL_FingerID finger; /* Numeric finger identity of that contact. */
     int touching; /* Additional fingers are ignored until the selected finger ends. */
+    int cursor_applied; /* Last request applied by this standalone one-window SDL owner, or -1. */
+    int cursor_original; /* Original SDL-global visibility restored before SDL_Quit, or -1 if unacquired. */
 } SDLHost; /* Texture/renderer/window are released in that order. */
+/* Apply the VM request to SDL's global cursor under this standalone single-window owner. */
+static FVM_Result sdl_cursor(SDLHost *host, Demo *demo) /* Call only on the SDL/VM owner thread. */
+{ /* Do not infer visibility from pointer/contact events. */
+    int visible; /* Requested 0/1 from the context, not a device query. */
+    if (demo->status != FVM_OK) return demo->status; /* Preserve earlier native/VM failure. */
+    demo->status = fvm_input_get_cursor_visible(demo->context, &visible); /* Allocation-free query. */
+    if (demo->status == FVM_OK && visible != host->cursor_applied) { /* Avoid redundant SDK calls. */
+        if (SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE) < 0) demo->status = FVM_ERROR; /* Real SDK status. */
+        else host->cursor_applied = visible; /* Cache only an accepted native request. */
+    } /* SDL acceptance is not physical screen acknowledgement. */
+    return demo->status; /* Main stops drawing after any query/SDK error. */
+} /* Multiple SDL windows need an explicit global cursor owner policy beyond this tutorial. */
 /* Copy borrowed RGBA bytes into the SDL-owned texture and present synchronously. */
 static FVM_Result sdl_present(const FVM_RasterSurface *frame, void *userdata) /* Borrow frame. */
 { /* All SDL rendering remains on the window/VM owner thread. */
@@ -92,20 +106,23 @@ int main(int argc, char **argv) /* Desktop launcher; Android supplies SDLActivit
     SDLHost host; /* Zero before partial native acquisition. */
     Demo demo; /* Shared portable VM/frame owner. */
     SDL_Event event; /* Reused copied native event storage. */
-    int running = 1, smoke = argc == 2 && !strcmp(argv[1], "--smoke"); /* Explicit bounded mode. */
+    int running = 1, smoke = 0, hide_cursor = 0, argument, previous; /* Explicit bounded mode. */
     int result = 1; /* Fail unless the entire requested run succeeds. */
     memset(&host, 0, sizeof(host)); /* Partial cleanup is safe. */
+    host.cursor_applied = host.cursor_original = -1; /* Zero is a valid acquired hidden state. */
     memset(&demo, 0, sizeof(demo)); /* Even an SDL failure leaves VM cleanup safe. */
-    if (argc > 1 && !smoke) /* Reject unknown options instead of silently ignoring them. */
-    { /* Report the tutorial's intentionally small interface. */
-        fprintf(stderr, "usage: %s [--smoke]\n", argv[0]); /* Normal interactive use needs no options. */
-        return 1; /* No resources have been acquired yet. */
-    } /* End argument validation. */
+    for (argument = 1; argument < argc; ++argument) { /* Explicit finite and cursor-request options. */
+        if (!strcmp(argv[argument], "--smoke")) smoke = 1; /* Bounded frame loop. */
+        else if (!strcmp(argv[argument], "--hide-cursor")) hide_cursor = 1; /* Context request, not synthetic input. */
+        else { fprintf(stderr, "usage: %s [--smoke] [--hide-cursor]\n", argv[0]); return 1; } /* No owners yet. */
+    } /* Flags can be combined for the finite hidden-cursor SDK smoke run. */
     SDL_SetMainReady(); /* Pair with SDL_MAIN_HANDLED for explicit main ownership. */
     SDL_SetHint("SDL_TOUCH_MOUSE_EVENTS", "0"); /* Real touch events are handled directly once. */
     SDL_SetHint("SDL_MOUSE_TOUCH_EVENTS", "0"); /* Physical mouse does not create fake fingers. */
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) /* Acquire only the required native subsystems. */
         goto cleanup; /* Report SDL's diagnostic below. */
+    host.cursor_original = SDL_ShowCursor(SDL_QUERY); /* Save the native global state before applying a request. */
+    if (host.cursor_original < 0) goto cleanup; /* Cannot safely restore an unknown SDK state. */
     host.window = SDL_CreateWindow("FlashVM SDL tutorial", SDL_WINDOWPOS_UNDEFINED, /* Native title/position. */
                                    SDL_WINDOWPOS_UNDEFINED, DEMO_WIDTH, DEMO_HEIGHT, SDL_WINDOW_RESIZABLE); /* Size. */
     if (host.window) /* Acquire renderer only for a valid window. */
@@ -118,12 +135,14 @@ int main(int argc, char **argv) /* Desktop launcher; Android supplies SDLActivit
         goto cleanup; /* Destroy only acquired owners. */
     if (demo_open(&demo) != FVM_OK) /* Create VM/frame after native setup. */
         goto cleanup; /* Report actual VM status. */
+    if (hide_cursor) demo.status = fvm_input_set_cursor_visible(demo.context, 0, &previous); /* Explicit startup request. */
     while (running && demo.status == FVM_OK) /* No worker may enter the VM or graphics APIs. */
     { /* Process events before generating each visible frame. */
         while (running && demo.status == FVM_OK && SDL_PollEvent(&event)) /* Drain pending events in order. */
             running = sdl_event(&host, &demo, &event); /* Dispatch only on this owning thread. */
         if (!running || demo.status != FVM_OK) /* Do not render after close/error. */
             break; /* Cleanup happens after no callback can run. */
+        if (sdl_cursor(&host, &demo) != FVM_OK) break; /* Apply requests made by script/input before painting. */
         demo_frame(&demo, sdl_present, &host); /* Borrow frame bytes until synchronous upload returns. */
         if (smoke && demo.frames >= DEMO_MAX_STEPS) /* Deterministic finite software test mode. */
             running = 0; /* Interactive mode instead waits for a native close event. */
@@ -133,6 +152,7 @@ int main(int argc, char **argv) /* Desktop launcher; Android supplies SDLActivit
     if (!result) /* Distinguish completed presentation from initialization failure. */
         printf("SDL frames=%u wheels=%u last_delta=%.3f\n", demo.frames, demo.wheel_events, demo.last_wheel_delta); /* Smoke expects 120 frames. */
 cleanup: /* All exits share reverse ownership cleanup. */
+    if (host.cursor_original >= 0 && SDL_ShowCursor(host.cursor_original) < 0) result = 1; /* Restore global SDK state. */
     if (result) /* Print both diagnostic domains without hiding the original status. */
         fprintf(stderr, "SDL tutorial: VM=%d SDL=%s\n", (int)demo.status, SDL_GetError()); /* Borrow error text. */
     demo_close(&demo); /* No managed state survives the owner loop. */

@@ -16,6 +16,11 @@ int main(int argc,char **argv)
     DemoWidget widget(false);
     assert(widget.status()==FVM_OK);
     widget.resize(640,400); widget.show(); app.processEvents();
+    assert(widget.cursor().shape()==Qt::ArrowCursor);
+    assert(widget.request_cursor(0)==FVM_OK);widget.grab();
+    assert(widget.cursor().shape()==Qt::BlankCursor);
+    assert(widget.request_cursor(1)==FVM_OK);widget.grab();
+    assert(widget.cursor().shape()==Qt::ArrowCursor);
     QMouseEvent move(QEvent::MouseMove,QPointF(480.5,300.25),Qt::NoButton,Qt::NoButton,Qt::NoModifier);
     QApplication::sendEvent(&widget,&move); marker(widget,DEMO_RELEASED_RED,DEMO_RELEASED_GREEN);
     QMouseEvent down(QEvent::MouseButtonPress,QPointF(480.5,300.25),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);

@@ -116,3 +116,41 @@ Exit diagnostics include wheels and last_delta; no wheel is fabricated by smoke.
 новая привязка к нативным mouseX/mouseY не заявляется. Проверка на настоящем SDK
 с dummy-video покрывает дробь, FLIPPED, дубли и активное касание; это не физический
 тест колеса. Колесо необязательно для работы сенсорного фронтенда.
+
+## Cursor visibility / Видимость курсора (v0.610)
+
+Run with `--hide-cursor`, optionally with `--smoke`. After events and before each
+frame, [sdl_cursor](main.c#L19)(host,demo) reads requested visibility and calls SDL_ShowCursor
+only on change. Initialization saves SDL's global original state; every acquired
+cleanup path restores it before SDL_Quit. Negative query/apply/restore status is
+a real failure. This executable is a single-window native owner; do not reuse its
+global cursor policy unchanged for independent multi-window contexts. The colored
+marker is content, not SDL's cursor, and remains visible. The real SDK dummy-video
+fixture checks enable/hide/repeat/show via SDL_QUERY; no physical cursor is inferred.
+
+| API | Parameters, result and ownership |
+| --- | --- |
+| [SDL_ShowCursor](https://wiki.libsdl.org/SDL2/SDL_ShowCursor) | SDL_QUERY returns current global 0/1 without changing it; SDL_ENABLE/SDL_DISABLE apply requested visibility. Negative means failure with SDL_GetError; save original and restore only an acquired state. |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L38) | Context, visible output: read logical requested 0/1 on owner thread, preserve first demo error. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L43) | Context, 0 at startup, mandatory previous output: request hidden without SDK/callback; applied later by native owner. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+
+Русский: с --hide-cursor скрывается системный SDL-курсор, а не маркер кадра.
+Исходная глобальная видимость восстанавливается при закрытии. Успех SDK не
+выдаётся за видимость аппаратного курсора. Режим физического устройства/ОС
+и автоматическое владение при нескольких окнах этим не приняты.
+```sh
+./build-sdl/examples/frontends/flashvm_example_sdl --smoke --hide-cursor
+```
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../../include/flashvm/mouse.h#L43) |
+<!-- source-links:end -->

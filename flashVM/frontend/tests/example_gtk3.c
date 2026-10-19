@@ -9,6 +9,7 @@ int main(void)
     GtkWidget *window;
     GdkEvent event;
     double x,y;
+    int previous;
     memset(&host,0,sizeof(host));
     assert(gtk_init_check(NULL,NULL));
     assert(demo_open(&host.demo)==FVM_OK);
@@ -21,6 +22,16 @@ int main(void)
     while(!host.demo.frames) gtk_main_iteration_do(TRUE);
     assert(gtk_widget_get_allocated_width(host.area)==640);
     assert(gtk_widget_get_allocated_height(host.area)==400);
+    host.cursor_applied=-1;
+    assert(gtk_cursor(&host)==FVM_OK);
+    assert(gdk_window_get_cursor(gtk_widget_get_window(host.area))==NULL);
+    assert(fvm_input_set_cursor_visible(host.demo.context,0,&previous)==FVM_OK && previous==1);
+    assert(gtk_cursor(&host)==FVM_OK && host.hidden_cursor);
+    assert(gdk_window_get_cursor(gtk_widget_get_window(host.area))==host.hidden_cursor);
+    assert(gdk_cursor_get_cursor_type(host.hidden_cursor)==GDK_BLANK_CURSOR);
+    assert(gtk_cursor(&host)==FVM_OK);
+    assert(fvm_input_set_cursor_visible(host.demo.context,1,&previous)==FVM_OK && previous==0);
+    assert(gtk_cursor(&host)==FVM_OK && !gdk_window_get_cursor(gtk_widget_get_window(host.area)));
     memset(&event,0,sizeof(event)); event.type=GDK_MOTION_NOTIFY;
     event.motion.x=480.5; event.motion.y=300.25;
     assert(gtk_pointer(host.area,&event,&host));
@@ -44,6 +55,8 @@ int main(void)
     event.scroll.direction=GDK_SCROLL_LEFT;assert(!gtk_scroll(host.area,&event.scroll,&host));
     assert(host.demo.wheel_events==2);
     assert(host.demo.status==FVM_OK);
-    gtk_widget_destroy(window); g_object_unref(window); demo_close(&host.demo);
+    gtk_widget_destroy(window); g_object_unref(window);
+    if(host.hidden_cursor)g_object_unref(host.hidden_cursor);
+    demo_close(&host.demo);
     return 0;
 }

@@ -121,3 +121,42 @@ older/foreign SDK runtime acceptance remain open.
 Конструкторы QWheelEvent в тесте выбраны по версии SDK (современный с 5.12);
 ядро FlashVM по-прежнему не зависит от Qt. Печатный результат содержит wheels
 и last_delta, ноль означает отсутствие успешной доставки, а не ошибку SDK.
+
+## Cursor visibility / Видимость курсора (v0.610)
+
+`--hide-cursor` sets the context request before show; combine with `--smoke`.
+[DemoWidget::request_cursor](main.cpp#L110)(visible) borrows 0/1, calls the public VM setter with a
+local previous output, latches errors and schedules update. paintEvent reads the
+current request and applies changed values through widget-local setCursor(blank)
+or unsetCursor (restore inheritance). Native setters return void; no physical
+cursor/scanout acknowledgement is claimed. The colored raster marker is content
+and remains visible. QCursor is a native copied descriptor, not a GC object.
+
+| API | Parameters and ownership |
+| --- | --- |
+| [QCursor](https://doc.qt.io/archives/qt-5.15/qcursor.html) | Qt::BlankCursor: construct scoped native blank descriptor; QWidget copies/owns its cursor state, no VM pointer retained. |
+| [QWidget::setCursor](https://doc.qt.io/archives/qt-5.15/qwidget.html#cursor-prop) | Borrowed native blank descriptor: set this widget's override on GUI owner; no global cursor owner or status result. |
+| [QWidget::unsetCursor](https://doc.qt.io/archives/qt-5.15/qwidget.html#cursor-prop) | No arguments: remove this widget's override and use inherited/native default cursor. |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L38) | Context, writable int: poll requested 0/1 before starting native painter; preserve error status. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L43) | Context, visible=0/1, previous output: set logical request only, update schedules application. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+
+Русский: настоящий Qt offscreen-тест проверяет свойство Arrow→Blank→Arrow после
+смены запроса и рисования. Это проверка SDK, не аппаратного курсора. Каждый widget
+применяет свой запрос, обычное содержимое кадра не скрывается. Для headless или
+сенсорного хоста создавать физический курсор не требуется.
+```sh
+QT_QPA_PLATFORM=offscreen ./build-qt5/examples/frontends/flashvm_example_qt5 --smoke --hide-cursor
+```
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../../include/flashvm/mouse.h#L43) |
+<!-- source-links:end -->

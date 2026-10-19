@@ -11,6 +11,7 @@ static void position(Demo *d, double x, double y)
 }
 int main(void)
 {
+    int previous;
     SDLHost h; Demo d; SDL_Event e; unsigned char pixels[DEMO_WIDTH * DEMO_HEIGHT * 4];
     memset(&h, 0, sizeof(h)); memset(&e, 0, sizeof(e));
     SDL_SetMainReady(); SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
@@ -21,6 +22,13 @@ int main(void)
     h.texture = SDL_CreateTexture(h.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING,
                                   DEMO_WIDTH, DEMO_HEIGHT); assert(h.texture);
     assert(demo_open(&d) == FVM_OK);
+    h.cursor_applied=-1;
+    assert(sdl_cursor(&h,&d)==FVM_OK && SDL_ShowCursor(SDL_QUERY)==SDL_ENABLE);
+    assert(fvm_input_set_cursor_visible(d.context,0,&previous)==FVM_OK && previous==1);
+    assert(sdl_cursor(&h,&d)==FVM_OK && SDL_ShowCursor(SDL_QUERY)==SDL_DISABLE);
+    assert(sdl_cursor(&h,&d)==FVM_OK);
+    assert(fvm_input_set_cursor_visible(d.context,1,&previous)==FVM_OK && previous==0);
+    assert(sdl_cursor(&h,&d)==FVM_OK && SDL_ShowCursor(SDL_QUERY)==SDL_ENABLE);
     assert(demo_frame(&d, sdl_present, &h) == FVM_OK && d.frames == 1);
     assert(SDL_RenderCopy(h.renderer, h.texture, NULL, NULL) == 0);
     assert(SDL_RenderReadPixels(h.renderer, NULL, SDL_PIXELFORMAT_RGBA32, pixels, DEMO_WIDTH * 4) == 0);

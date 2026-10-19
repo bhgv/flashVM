@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.609
+# FlashVM stage status / Состояние стадий — v0.610
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,29 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.610 native cursor application / Курсор оконных хостов
+
+SDL2, GTK3 and Qt5 tutorials now poll the context request before paint and apply
+changed visibility through their actual native SDK. --hide-cursor sets a startup
+request and combines with --smoke. SDL saves/restores its global visibility under
+a standalone one-window policy. GTK owns a lazy same-display blank descriptor,
+restores inheritance, and releases its reference after native window teardown.
+Qt uses widget-local blank/inherited cursor. Frame marker/content is unchanged.
+
+Three current real Linux SDK adapter tests pass (SDL dummy-video, GTK3/Xvfb,
+Qt5 offscreen), including enable/hide/repeat/show state and native descriptor/
+property queries. Each host completes both ordinary and hidden 120-frame smoke
+runs (six total runs). Source-link determinism, C89/C++98 core / SDK-specific
+compilation, tutorial/API checks and version-refresh checks pass. Native SDK
+setters returning void prove issuance/property change, not hardware/compositor
+acknowledgement. No full-suite or foreign-platform retest is inferred.
+
+Русский: видимость применяется к системному курсору отдельно от собственного
+цветного маркера. Проверены настоящие SDK в программной среде; физическая мышь,
+тачскрин, Clutter/direct-fb cursor adapters, другие ОС, многооконное владение
+SDL-курсором и полная приёмка стадий остаются открытыми.
+[Frontend API/lifetime](../examples/frontends/README.md).
 
 ## v0.609 Mouse.hide/show / Скриптовая видимость курсора
 
