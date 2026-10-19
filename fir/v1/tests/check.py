@@ -136,6 +136,20 @@ with tempfile.TemporaryDirectory() as directory:
     exercise(module('%a: i32 = const.i32 1\n%b: i32 = copy %a\n%z: i32 = const.i32 0\n%c: i32 = i32.add.wrap %b, %z\ntrace %c\nreturn'), '1\n')
     exercise(module('%f: bool = const.bool false\nif %f, ^yes, ^no\n^yes:\nreturn\n^no:\n%v: string = const.string "false arm"\ntrace %v\nreturn'), 'false arm\n')
 
+    # Prune a known-false arm containing effects and an otherwise live cycle.
+    cfg = module('%f: bool = const.bool false\nif %f, ^dead, ^live\n^dead:\n%s: string = const.string "unexecuted"\ntrace %s\njump ^cycle\n^cycle:\njump ^cycle\n^live:\n%n: i32 = const.i32 42\ntrace %n\nreturn')
+    exercise(cfg, '42\n')
+    rewritten = opt.read_text()
+    assert '^dead' not in rewritten and '^cycle' not in rewritten and 'if ' not in rewritten
+    # CSE is ordered and local; FP arithmetic is never folded or reassociated.
+    exercise(module('%a: f64 = const.f64 1.5\n%b: f64 = const.f64 2\n%x: f64 = f64.add %a, %b\n%y: f64 = f64.add %a, %b\ntrace %x\ntrace %y\nreturn'), '3.5\n3.5\n')
+    assert opt.read_text().count('f64.add') == 1
+    exercise(module('%a: string = const.string "4"\n%x: f64 = as.to_number %a\n%y: f64 = as.to_number %a\nreturn'), '')
+    assert opt.read_text().count('as.to_number') == 2
+    # No x + 0 identity for strict f64 or dynamic AS addition.
+    exercise(module('%a: f64 = const.f64 -0\n%b: f64 = const.f64 0\n%x: f64 = f64.add %a, %b\n%y: any = as.add %a, %b\ntrace %x\nreturn'), '0\n')
+    assert 'f64.add' in opt.read_text() and 'as.add' in opt.read_text()
+
     bad = [
         module('trace %missing\nreturn'),
         module('%x: i32 = const.i32 1\n%x: i32 = const.i32 2\nreturn'),

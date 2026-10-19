@@ -15,6 +15,13 @@ typedef enum {
     O_FADD, O_FSUB, O_FMUL, O_ASADD, O_NUMBER,
     O_CHANNEL, O_RECEIVE, O_TRACE, O_SEND, O_CLOSE, O_IF, O_JUMP, O_RETURN
 } FirOp;
+/* Conservative operation effects. Unknown opcodes have every flag set. */
+enum {
+    FIR_READS_MEMORY = 1, FIR_WRITES_MEMORY = 2, FIR_ALLOCATES = 4,
+    FIR_MAY_THROW = 8, FIR_MAY_CALL_USER = 16, FIR_MAY_SUSPEND = 32,
+    FIR_ALL_EFFECTS = 63
+};
+unsigned fir_effects(FirOp op);
 /* Operands are symbol-table indices; -1 means absent. Source lines survive
  * optimisation. Strings are UTF-8 bytes without embedded NUL. */
 typedef struct {

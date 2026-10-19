@@ -11,8 +11,9 @@
 
 Unsigned compiler arithmetic defines modulo-2^32 folding without C signed
 integer overflow. Uses are symbol indices, not text replacement. Iteration
-continues until no change. Control flow remains intact: this initial pass does
-not fold if, remove unreachable blocks, perform CSE, move loads or inline calls.
+continues until no change. The pass also folds constant if, removes unreachable blocks/cycles and reuses
+identical ordered arithmetic expressions within one block. It does not move
+loads, merge blocks or inline calls.
 Dynamic addition/conversion, trace and channel effects are preserved even when
 the result is unused. f64 identities and constant folding are deliberately
 absent, preserving negative zero and runtime FP behaviour.
@@ -34,3 +35,12 @@ IR pass, independent of a future AVM1 instruction peephole. See
 
 Local CMake entry: configure this directory with the same COCOR_ROOT and
 COCOR_EXECUTABLE flags; tool executables are under the build directory’s `v1/`.
+
+## 0.2.1
+
+`effects.c` defines six effect flags; unknown operations receive all flags.
+DCE consults that table instead of enum ordering. A constant `if` becomes `jump`;
+unreachable blocks, including cycles, are removed and labels remapped. Effects
+are removed only on a proven unexecuted path. CSE reuses identical ordered
+arithmetic in one block, without constant-folding f64. Dynamic conversions,
+channels and trace remain even when their results are unused.
