@@ -30,10 +30,13 @@ def prepare(repository, output):
             # Git-controlled paths still receive tarfile's traversal/symlink protections.
             tree.extractall(output, filter="data")
     patch = pathlib.Path(__file__).resolve().parent / "patches" / "linux-android-config.patch"
-    subprocess.check_call(["patch", "--batch", "-p1", "-i", str(patch)], cwd=output)
+    actor_patch = patch.parent / "actor-subpixel.patch"
+    for selected in (patch, actor_patch):
+        subprocess.check_call(["patch", "--batch", "-p1", "-i", str(selected)], cwd=output)
     manifest = {"repository": REPOSITORY, "revision": REVISION, "included": list(PATHS),
                 "excluded": ["inferno-os"],
-                "patch_sha256": hashlib.sha256(patch.read_bytes()).hexdigest()}
+                "patch_sha256": hashlib.sha256(patch.read_bytes()).hexdigest(),
+                "actor_patch_sha256": hashlib.sha256(actor_patch.read_bytes()).hexdigest()}
     (output / "clutter3d-source.json").write_text(json.dumps(manifest, indent=2) + "\n")
     if (output / "inferno-os").exists():
         raise RuntimeError("unexpected excluded client in export")

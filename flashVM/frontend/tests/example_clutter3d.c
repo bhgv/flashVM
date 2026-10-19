@@ -7,6 +7,8 @@ static void position(Demo *d, double x, double y)
 {
     double a, b;
     assert(fvm_input_get_pointer(d->context, &a, &b) == FVM_OK);
+    if (!(a > x - .01 && a < x + .01 && b > y - .01 && b < y + .01))
+        fprintf(stderr, "position got %.9f,%.9f expected %.9f,%.9f\n", a, b, x, y);
     assert(a > x - .01 && a < x + .01 && b > y - .01 && b < y + .01);
 }
 int main(void)
@@ -15,6 +17,8 @@ int main(void)
     int first, other; unsigned i;
     unsigned char pixels[DEMO_WIDTH * DEMO_HEIGHT * FVM_HOST_RGBA_BYTES];
     CoglHandle texture;
+    ClutterVertex local = {40.125f, 25.0625f, 0}, projected;
+    ClutterActorBox fractional = {20.25f, 10.5f, 180.75f, 110.75f};
     memset(&h, 0, sizeof(h)); h.touch_only = 1;
     assert(clutter_init(NULL, NULL) == CLUTTER_INIT_SUCCESS);
     assert(demo_open(&h.demo) == FVM_OK);
@@ -55,6 +59,16 @@ int main(void)
     assert(clutter_input(h.stage, e, &h) == CLUTTER_EVENT_STOP && h.demo.held);
     g_signal_emit_by_name(h.stage, "deactivate");
     assert(!h.demo.held && !h.sequence); position(&h.demo, 80, 50);
+    /* The same inverse pipeline must work for a genuinely projected 3D actor. */
+    clutter_actor_allocate(h.texture, &fractional, CLUTTER_ALLOCATION_NONE);
+    clutter_actor_set_rotation(h.texture, CLUTTER_Y_AXIS, 25, 0, 0, 0);
+    clutter_actor_apply_transform_to_point(h.texture, &local, &projected);
+    e->type = CLUTTER_TOUCH_BEGIN; e->touch.x = projected.x; e->touch.y = projected.y;
+    assert(clutter_input(h.stage, e, &h) == CLUTTER_EVENT_STOP && h.demo.held);
+    position(&h.demo, 80, 50);
+    e->type = CLUTTER_TOUCH_CANCEL;
+    assert(clutter_input(h.stage, e, &h) == CLUTTER_EVENT_STOP && !h.demo.held);
+    position(&h.demo, 80, 50);
     clutter_event_free(e);
     e = clutter_event_new(CLUTTER_BUTTON_PRESS); e->button.button = 1;
     e->button.x = 100; e->button.y = 80;

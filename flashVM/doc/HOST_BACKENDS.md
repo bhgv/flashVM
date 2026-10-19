@@ -81,7 +81,8 @@ uses that repository's actual Clutter/Cogl library source through an explicit
 Both libraries build statically after two configure fixes; the Linux example
 uploads frames and tests native actor-coordinate conversion under Xvfb/Mesa.
 This is a tutorial host, not a completed full player or Android device
-acceptance. The SDK's Android backend and GLES surface lifecycle remain
+acceptance. The SDK now also has a tested Linux EGL/GLES2 profile and a subpixel actor
+inverse fix; see its guide. The Android backend and GLES surface lifecycle remain
 separate native validation. Direct GPU scene rendering, zero-copy textures,
 full multitouch and keyboard/IME mapping remain open; so do roadmap stages 1–9.
 

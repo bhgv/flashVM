@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.600
+# FlashVM stage status / Состояние стадий — v0.601
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -21,6 +21,30 @@ counts are historical unless explicitly rerun for this revision.
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
 
+## v0.601 GLES2 and projected input / GLES2 и проекция ввода
+
+The same selected fork now builds a separate static Cogl/Clutter Linux SDK
+with Xlib-EGL/GLES2 enabled and desktop GL/GLX disabled. Its source/prefix
+renderer guard rejects mixed Autotools trees, and CMake requires both Cogl
+packages to come from the same explicit SDK as Clutter.
+
+The real 3D fixture exposed integer truncation in the fork's actor inverse.
+The new upstream-source patch preserves fractional event coordinates and
+allocation dimensions without changing ABI. Both SDK profiles rebuilt with
+that fix; CMake verifies its hash. Linux Xvfb/Mesa GLX and EGL/GLES2 fixtures
+passed RGBA texture readback, first-touch/cancellation and inversion of a
+25-degree Y-rotated actor with fractional allocation. GLES2 touch-only smoke
+completed 120 uploads. The GLX fixture passed again in the ASan/UBSan host/VM
+build (SDK uninstrumented, leak detection disabled); SDL/headless and two
+Python checks also passed in that build. Guard rejection and documentation
+checks passed. These are bounded Linux/software results, not Android, hardware
+GLES or complete original-player/platform acceptance. All stages remain open.
+
+Проверены именно исходники выбранной библиотеки на GLX и EGL/GLES2, включая
+исправленную дробную обратную проекцию 3D-актёра. SDK не содержит inferno-os.
+Телефон, ANativeWindow/Activity и аппаратный GLES пока не проверены.
+[SDK details](../external/clutter3d/README.md), [tutorial](../examples/frontends/clutter3d/README.md).
+
 ## v0.600 frontend tutorials / Примеры фронтендов
 
 SDL and the selected bhgv Clutter/Cogl fork now have annotated C89 tutorials
@@ -33,7 +57,7 @@ A clean export rebuilt both fork Cogl/Clutter 1.14.1 as static libraries. The
 example and actual SDK actor/input/texture-readback fixture passed under Linux
 Xvfb/Mesa, plus two independent 120-frame runs (normal and touch-only). SDL
 software pixels/first-contact/reset tests and the 120-frame dummy-video run
-passed. Four targeted ASan/UBSan CTest checks plus the separate Clutter SDK
+passed. Four targeted CTest checks in the ASan/UBSan build plus the separate Clutter SDK
 fixture passed (leak detection disabled; third-party SDK remains uninstrumented).
 Three checks passed from a renamed detached VM component (SDL, headless,
 tutorial contracts). Four default-core checks passed (headless, version refresh,

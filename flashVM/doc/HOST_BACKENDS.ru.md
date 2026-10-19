@@ -73,8 +73,8 @@ clutter_event_get_coords. Отдельный хост сможет переда�
 [SDK](../external/clutter3d/README.md). Экспорт физически исключает inferno-os.
 После двух исправлений configure обе библиотеки собраны статически; Linux-пример
 передаёт кадры и проверяет координаты actor под Xvfb/Mesa. Это учебный host,
-не полный player и не приёмка Android/GLES на устройстве. Surface lifecycle,
-прямой GPU-рендер сцены, zero-copy, полный multitouch и IME остаются открытыми,
+не полный player и не приёмка Android/GLES на устройстве. С v0.601 проверен также Linux EGL/GLES2 и исправлена потеря дробных координат
+в actor inverse. Android surface lifecycle, прямой GPU-рендер сцены, zero-copy, полный multitouch и IME остаются открытыми,
 как и все девять стадий.
 
 ## Проверки

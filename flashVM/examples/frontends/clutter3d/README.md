@@ -142,6 +142,22 @@ ClutterTexture is deprecated in newer system Clutter but intentionally matches
 the requested fork/shell API. Modern system-SDK deprecation warnings do not
 justify silently replacing the user-selected library. The SDK and its upstream
 licenses stay external and separate from FlashVM's first-party MIT code.
+## EGL/GLES2 and subpixel SDK (v0.601)
+
+The [EGL/GLES2 profile](../../../external/clutter3d/README.md#linux-eglgles2-profile-v0601)
+builds the selected fork with desktop GL/GLX disabled and EGL-Xlib/GLES2 enabled.
+The same tutorial code uses it without an SDL dependency. Select a separate SDK
+prefix/CMake build directory; the runtime renderer is egl_xlib and driver gles2.
+The SDK includes the actor inverse fix preserving fractional event coordinates
+and allocation dimensions. The real SDK regression now projects a point through
+a 25-degree Y-rotated actor with fractional allocation and verifies the inverse
+returns the original world point. CMake checks both fork providers and the fix
+hash; it refuses mixed Clutter/Cogl SDKs or a pre-fix marker.
+
+Русский: профиль EGL/GLES2 и исправление дробных координат описаны в SDK-guide.
+Код примера тот же; дополнительного frontend на SDL здесь нет. Для смены
+рендерера нужны отдельные каталоги исходников/SDK/сборки. Проверка охватывает
+3D-поворот и дробный allocation; нативный Android всё ещё отдельная приёмка.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

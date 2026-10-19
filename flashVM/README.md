@@ -1,5 +1,5 @@
-Development version: **0.600** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.600 ` and an English description. Increase the subversion before each
+Development version: **0.601** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.601 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -25,6 +25,8 @@ v0.587: [optional stop release / затухание остановки](doc/PLAY
 v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 v0.589: [Key polling and host keyboard snapshots / клавиатурный ввод](doc/KEYBOARD.md) ([RU](doc/KEYBOARD.ru.md)).
+
+v0.601: [Clutter fork subpixel inverse and Linux EGL/GLES2 SDK / дробные координаты и EGL/GLES2](external/clutter3d/README.md#linux-eglgles2-profile-v0601).
 
 v0.600: [Frontend tutorials / примеры фронтендов](examples/frontends/README.md): SDL2, selected Clutter/Cogl fork, relocated headless host; [SDK source and fixes](external/clutter3d/README.md).
 
@@ -100,8 +102,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.600** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.600 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.601** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.601 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

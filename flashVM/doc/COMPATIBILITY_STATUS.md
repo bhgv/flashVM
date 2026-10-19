@@ -4840,6 +4840,16 @@ component builds/runs SDL/headless. Full compatibility, physical GLES, Android
 and foreign-OS native acceptance remain open.
 Проверена именно библиотечная часть выбранного Git, клиент не используется.
 [Frontends](../examples/frontends/README.md), [source SDK](../external/clutter3d/README.md).
+## v0.601 selected fork EGL/GLES2 and subpixel input
+
+Verified on Linux Xvfb/Mesa: separate static fork Cogl/Clutter EGL-Xlib/GLES2
+SDK with GL/GLX disabled; RGBA texture readback, fractional actor allocation
+and 25-degree Y-rotation input inverse, primary touch/cancel, 120-frame GLES2
+smoke. The fork's integer truncation is repaired by actor-subpixel.patch,
+without ABI changes; SDK provenance and renderer/provider guards prevent
+mixing old or unrelated SDKs. GLX and ASan/UBSan host/VM fixtures also pass.
+Проверка не является приёмкой Android, физического GLES или всех стадий.
+[SDK](../external/clutter3d/README.md), [frontend](../examples/frontends/clutter3d/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

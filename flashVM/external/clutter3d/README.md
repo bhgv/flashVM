@@ -2,7 +2,7 @@
 
 Source: **https://github.com/bhgv/Inferno-OS_Android-Clutter3d**.
 Pinned revision: **2a616b264f0045a3ba00ce77aa1930ca905956ea**.
-This directory contains source selection/build instructions and a minimal patch,
+This directory contains source selection/build instructions and minimal patches,
 not another unrelated Clutter implementation. The upstream library remains an
 independent SDK. `inferno-os` is excluded from the exported SDK source tree,
 compilation and linking. No libinterp/libdraw/client symbols are used by FlashVM.
@@ -53,9 +53,9 @@ cmake --build build-clutter --target flashvm_example_clutter3d
 
 The script builds **both fork Cogl and fork Clutter statically**, preferring
 matching installed Cogl headers/pkg-config over system versions. Other SDK
-libraries may remain shared in this validation profile. This is a Linux
-X11/OpenGL/GLX profile, not a certified static-all-dependencies release or
-GLES/Android build. Failure aborts immediately; only a successful pair gets the
+libraries may remain shared in this validation profile. The default is a Linux
+X11/OpenGL/GLX profile; v0.601 also adds the separate EGL/GLES2 profile below.
+Neither is a certified static-all-dependencies release or Android build. Failure aborts immediately; only a successful pair gets the
 SDK provenance marker accepted by the example's default CMake route.
 
 For an explicitly auxiliary system-SDK compatibility test only, set
@@ -87,6 +87,22 @@ are not included in this patch.
 исправление Windows-порта. Исходники и зависимости библиотеки принадлежат
 отдельному SDK, не соседнему inferno-os.
 
+### Subpixel actor fix (v0.601)
+
+[actor-subpixel.patch](patches/actor-subpixel.patch) preserves floating-point
+stage input and allocation dimensions in clutter_actor_transform_stage_point.
+The fork previously cast both to integers before evaluating its inverse
+homography. Under a Y-rotated actor, projected local point (40,25) returned
+world (79.0787,48.4229) instead of (80,50). The patch removes those truncations;
+the fixture also checks fractional allocations and a real 25-degree 3D rotation.
+It changes no public ABI or ownership. Both patch hashes are recorded in the
+prepared source manifest; CMake requires the actor-fix hash so it cannot silently
+use an old SDK with the known loss. Re-export/rebuild a pre-v0.601 SDK.
+
+Русский: исправлены потери дробной части координат события и размеров actor в
+обратной гомографии. Поворот вокруг Y делал ошибку заметной. Патч не меняет ABI;
+проверка SDK требует hash исправления. Старый SDK нужно подготовить заново.
+
 ## Android / GLES
 
 The export retains the fork's clutter/android backend, its native glue,
@@ -112,3 +128,42 @@ normal and touch-only smoke runs each completed 120 uploads. The host/VM fixture
 also passed ASan/UBSan (SDK uninstrumented, leak detection disabled). The system
 Clutter 1.26 compatibility run was separate auxiliary evidence. No actual Android,
 EGL/GLES backend, physical GPU or full static-dependency release is claimed.
+
+## Linux EGL/GLES2 profile (v0.601)
+
+Use a **separate newly prepared source directory and SDK prefix** for a different
+renderer: Autotools does not track every compiler-option change in old objects.
+Provide EGL and GLESv2 development headers/libraries in addition to the Linux
+dependencies above (Ubuntu/Debian examples: libegl-dev and libgles-dev).
+
+```sh
+python3 external/clutter3d/prepare_sources.py --repository /absolute/clutter3d-git --output /absolute/clutter3d-src-gles2
+sh external/clutter3d/build_linux.sh /absolute/clutter3d-src-gles2 /absolute/clutter3d-sdk-gles2 4 gles2
+cmake -S . -B build-clutter-gles2 -DFVM_EXAMPLE_CLUTTER3D=ON -DFVM_CLUTTER3D_SDK=/absolute/clutter3d-sdk-gles2
+cmake --build build-clutter-gles2 --target flashvm_example_clutter3d flashvm_example_clutter3d_input
+COGL_RENDERER=egl_xlib COGL_DRIVER=gles2 CLUTTER_BACKEND=x11 ./build-clutter-gles2/examples/frontends/flashvm_example_clutter3d --smoke --touch-only
+```
+
+The fourth script argument chooses glx (default) or gles2. The latter disables
+desktop GL/GLX, enables the fork's Xlib-EGL winsys and GLES2 driver, and disables
+the unrelated public Cogl-GLES2 frontend library. The script refuses source/prefix renderer mismatches to prevent stale object reuse.
+A build marker records which
+Linux renderer was installed. Runtime selection is explicit; no substitution
+with a system Clutter provider or silent GLX fallback is intended.
+
+Русский: для GLES2 используйте новый исходный каталог и отдельный SDK prefix,
+чтобы не смешивать старые Autotools-объекты. Четвёртый аргумент выбирает glx или
+gles2; для второго нужны EGL/GLESv2 SDK. Это Linux X11/EGL/GLES2, не Android: ABI,
+ANativeWindow и жизненный цикл Activity по-прежнему проверяются отдельно.
+
+### Executed GLES2 validation
+
+Both selected-fork static SDKs rebuilt with actor-subpixel.patch. The actual
+C89 regression passed under GLX and under explicit COGL_RENDERER=egl_xlib,
+COGL_DRIVER=gles2 on Linux Xvfb/Mesa. It reads RGBA back from the Cogl texture
+and inverts a real 25-degree Y rotation with fractional allocation. The GLES2
+SDK has desktop GL/GLX disabled; its touch-only smoke completed 120 uploads.
+The GLX host/VM regression also passed ASan/UBSan with the uninstrumented SDK
+and leak detection disabled. Renderer-mismatch rejection was exercised before
+rebuilding/overwriting an SDK. This remains software Linux validation, not
+Android or physical GPU acceptance.
