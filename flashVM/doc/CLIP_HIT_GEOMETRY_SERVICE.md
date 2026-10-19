@@ -9,7 +9,7 @@ operand stacks, activation scopes or script method names. The output is a
 Boolean value on success; errors preserve it. Empty geometry yields false.
 Nonfinite point coordinates yield false. The existing painted-point coordinate
 limit remains in effect; native bounds/paint recursion now has a documented
-[FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH](../src/standard/movieclip_constants.h#L90) macro.
+[FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH](../src/standard/movieclip_constants.h#L92) macro.
 
 Both services validate context ownership and reject ordinary objects and the
 MovieClip class prototype. They root their native inputs and use the existing
@@ -63,5 +63,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_exec_clip_hit_object` | function | [include/flashvm/execution.h:311](../include/flashvm/execution.h#L311) |
 | `fvm_exec_clip_hit_point` | function | [include/flashvm/execution.h:313](../include/flashvm/execution.h#L313) |
-| `FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:90](../src/standard/movieclip_constants.h#L90) |
+| `FVM_MOVIECLIP_GEOMETRY_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:92](../src/standard/movieclip_constants.h#L92) |
 <!-- source-links:end -->

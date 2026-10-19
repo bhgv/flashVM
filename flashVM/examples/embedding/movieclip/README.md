@@ -103,6 +103,7 @@ is shown above. [EN](../../../doc/INITIALIZER_PROGRESS.md) / [RU](../../../doc/I
 | Added API / API | Purpose and ownership / Назначение и владение |
 | --- | --- |
 | [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Synchronously validate/import caller-owned bytes, retain copied code and return a borrowed context-owned clip; no initializer runs until advance. Pin the graph before later host GC. / Копирует код без исполнения; закрепить возвращённый граф до GC. |
+Loaded-scene control snapshots are described in the [contract](../../../doc/SCENE_CONTROLS.md). This example does not edit private metadata; mutation fixtures live in tests/.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

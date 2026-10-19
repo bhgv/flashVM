@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.633
+# FlashVM stage status / Состояние стадий — v0.634
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,20 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.634 captured scene controls / Снимки управляющих записей
+
+Per-frame dense, bounded control snapshots precede constructors; scalar/list
+mutation cannot replace the current batch. [EN](SCENE_CONTROLS.md) /
+[RU](SCENE_CONTROLS.ru.md). Shared resources and prior side effects remain explicit.
+
+Validation: 11 selected minimal Linux Release CTests passed, including three new
+snapshot/invalid/OOM regressions, existing scene/JIT/frame/initializer tests and
+the C89 tick tutorial. One emitted test lacked execution permission; its permission
+was repaired before the successful rerun. Exact v0.633 scene source linked with
+the new mutation test fails its expected-depth assertion; current source passes.
+No original-Player, physical-device or foreign-platform run is claimed. All nine
+stages remain open. Все девять стадий открыты.
 
 ## v0.633 stable platform source evidence / Стабильность исходников
 

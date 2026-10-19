@@ -25,7 +25,7 @@
 или отдельного action segment. AVM1-инструкции сохраняют свой учёт. Записи детей
 оплачиваются до выделения снимка. Однокадровый клип без scripts и детей расходует
 две единицы на tick, даже без обработчика. Ноль ticks ничего не исполняет.
-Пределы [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L35) и [FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L29)
+Пределы [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L37) и [FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L31)
 ограничивают размер запроса и глубину; превышение даёт [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
 
 Это границы учёта и кооперативной остановки, а не real-time preemption. Внутренняя
@@ -114,8 +114,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
-| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:35](../src/standard/movieclip_constants.h#L35) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:31](../src/standard/movieclip_constants.h#L31) |
+| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:37](../src/standard/movieclip_constants.h#L37) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1368](../src/capi/value_c.cpp#L1368) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

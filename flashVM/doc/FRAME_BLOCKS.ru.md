@@ -51,7 +51,7 @@ debug cursor и вложенность, сохранённые на входе �
 реальный script GC после удаления исходной таблицы callback-ом. У tick сохраняется
 другое ограничение существующего native barrier. Указатели host callbacks не передаются
 при сериализации; в получающем контексте их регистрируют заново.
-[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L27) именует прежнюю границу рекурсии 64 activation.
+[`FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH`](../src/standard/movieclip_constants.h#L29) именует прежнюю границу рекурсии 64 activation.
 Конкурентный доступ к контексту и новый C ABI не добавляются.
 
 Проверки охватывают private/public native входы, интерпретатор, настоящий native JIT
@@ -96,7 +96,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3346](../src/standard/movieclip.cpp#L3346) |
-| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
+| `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
 | `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

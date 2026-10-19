@@ -26,7 +26,7 @@ ClipActions. SDL-плеер сам не выбирает клип. Хост мо
 и регистрации слушателя сохраняются. Скрипт не исполняется, состояние клавиатуры
 не меняется, уведомлений нет. Сброс через null не выделяет память. Проверка
 ненулевого клипа может выделять временные нативные строки поиска. Обход
-ограничен [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L78): 256 посещённых узлов, включая
+ограничен [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L80): 256 посещённых узлов, включая
 сам выбранный клип.
 
 [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) — неверный контекст, чужой объект, тип/прототип, удалённый
@@ -120,7 +120,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../include/flashvm/movieclip.h#L36) |
-| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:78](../src/standard/movieclip_constants.h#L78) |
+| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:80](../src/standard/movieclip_constants.h#L80) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

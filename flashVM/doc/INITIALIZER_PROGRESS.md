@@ -14,7 +14,7 @@ two-unit budget. The private [`run_initializers`](../src/standard/movieclip.cpp#
 ordinal suffix; a completed table contributes no copy/entry work or code-snapshot allocation.
 The ordinary node/optional-handler costs and later scene/frame/input work remain.
 
-The whole table is bounded by [`FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS`](../src/standard/movieclip_constants.h#L25) (65536), separate
+The whole table is bounded by [`FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS`](../src/standard/movieclip_constants.h#L27) (65536), separate
 from the ordinary frame action bound. Validate same-context library/table/source
 root edges before preparation, even when the cursor is already complete. For a
 captured table size N and monotonic cursor P < N, copy ordinals P..N-1 into a native
@@ -110,7 +110,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
-| `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
+| `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

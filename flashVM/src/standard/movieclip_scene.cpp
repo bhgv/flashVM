@@ -1,5 +1,6 @@
 /* FlashVM: incremental and seek reconstruction of managed SWF display lists. */
 #include "movieclip_scene.hpp"
+#include "movieclip_constants.h"
 #include "../swf/clip_action_constants.h"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/movieclip.h"
@@ -15,25 +16,37 @@ typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
 typedef fvm_detail::map<unsigned long, Properties> Display;
 
 /* Read one private property without invoking script or inserting a missing field. */
-FVM_Result field(FVM_Object *o, const char *key, FVM_Value &out)
+FVM_Result field(const Properties &properties, const char *key, FVM_Value &out)
 {
-    Properties::iterator i = o->properties.find(key);
-    if (i == o->properties.end())
+    Properties::const_iterator i = properties.find(key);
+    if (i == properties.end())
         return FVM_INVALID_ARGUMENT;
     out = i->second;
     return FVM_OK;
 }
 
+/* Read a field on an existing private managed record. */
+FVM_Result field(FVM_Object *o, const char *key, FVM_Value &out)
+{
+    return field(o->properties, key, out);
+}
+
 /* Read a bounded integer from a private control record. */
-FVM_Result integer(FVM_Object *o, const char *key, unsigned long limit, unsigned long &out)
+FVM_Result integer(const Properties &properties, const char *key, unsigned long limit, unsigned long &out)
 {
     FVM_Value value;
-    FVM_Result r = field(o, key, value);
+    FVM_Result r = field(properties, key, value);
     if (r != FVM_OK || value.type != FVM_VALUE_NUMBER ||
         !(value.number >= 0 && value.number <= limit) || value.number != std::floor(value.number))
         return FVM_INVALID_ARGUMENT;
     out = (unsigned long)value.number;
     return FVM_OK;
+}
+
+/* Read bounded metadata from a private managed object. */
+FVM_Result integer(FVM_Object *o, const char *key, unsigned long limit, unsigned long &out)
+{
+    return integer(o->properties, key, limit, out);
 }
 
 /* [GC:] Read a managed object edge, checking its context before following it. */
@@ -64,7 +77,7 @@ FVM_Object *child(FVM_Object *children, unsigned long depth)
 }
 
 /* Project optional fields; absent ratio/name/matrix/color must not become updates. */
-FVM_Result project(FVM_Context *c, FVM_Object *control, unsigned long flags, Properties &out)
+FVM_Result project(FVM_Context *c, const Properties &control, unsigned long flags, Properties &out)
 {
     const char *base[] = {"depth", "token", "character"};
     for (unsigned int i = 0; i < 3; ++i)
@@ -100,7 +113,7 @@ FVM_Result record(FVM_Context *c, const Properties &properties, FVM_Object **out
 }
 
 /* Select the first encountered opaque SWF color, preserving a host or earlier movie selection. */
-FVM_Result background(FVM_Context *context, FVM_Object *control)
+FVM_Result background(FVM_Context *context, const Properties &control)
 {
     unsigned long rgb = 0;
     FVM_Result status = integer(control, "background", 0xffffffUL, rgb);
@@ -119,7 +132,7 @@ FVM_Result background(FVM_Context *context, FVM_Object *control)
 }
 
 /* Apply one live control; sprite replacement changes pose while preserving the live timeline. */
-FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, FVM_Object *control)
+FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, const Properties &control)
 {
     unsigned long op = 0, depth = 0, flags = 0;
     FVM_Result r = integer(control, "op", 28, op);
@@ -199,7 +212,7 @@ bool shape_symbol(FVM_Object *symbol)
 }
 
 /* Compose authored controls without running constructors or any skipped frame actions. */
-FVM_Result accumulate(FVM_Context *c, FVM_Object *control, Display &display)
+FVM_Result accumulate(FVM_Context *c, const Properties &control, Display &display)
 {
     unsigned long op = 0, depth = 0, flags = 0;
     FVM_Result r = integer(control, "op", 28, op);
@@ -268,6 +281,37 @@ FVM_Result controls(FVM_Context *c, FVM_Object *frames, unsigned long frame, FVM
         return FVM_OK;
     return object(c, record, "controls", out);
 }
+/* [GC:] Copy only semantic control fields before any constructor can mutate their source.
+ * Managed values remain live under scene_run's native barrier, including after source deletion.
+ * Resource objects (symbol/matrix/color/clip actions) retain their shared identities. */
+FVM_Result snapshot_controls(FVM_Context *c, FVM_Object *list,
+                              fvm_detail::vector<Properties> &snapshot)
+{
+    if (!list)
+        return FVM_OK;
+    if (list->owner != c || list->indexed.size() > FVM_MOVIECLIP_MAX_SCENE_CONTROLS)
+        return FVM_INVALID_ARGUMENT;
+    const char *keys[] = {"op", "depth", "token", "character", "flags", "background",
+                          "symbol", "matrix", "color", "ratio", "name", "clip_actions"};
+    const unsigned long count = (unsigned long)list->indexed.size();
+    for (unsigned long index = 0; index < count; ++index)
+    {
+        Slots::const_iterator found = list->indexed.find(index);
+        if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
+            !found->second.object || found->second.object->owner != c)
+            return FVM_INVALID_ARGUMENT;
+        Properties fields;
+        const Properties &source = found->second.object->properties;
+        for (size_t key = 0; key < sizeof(keys) / sizeof(keys[0]); ++key)
+        {
+            Properties::const_iterator value = source.find(keys[key]);
+            if (value != source.end())
+                fields[keys[key]] = value->second;
+        }
+        snapshot.push_back(fields);
+    }
+    return FVM_OK;
+}
 } // namespace
 
 /* Apply a forward frame incrementally or reconstruct its authored state after a seek/loop. */
@@ -300,17 +344,16 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
         r = controls(c, frames, frame, list);
         if (r != FVM_OK)
             return r;
-        if (list)
-            for (unsigned long i = 0; i < list->indexed.size(); ++i)
-            {
-                Slots::iterator found = list->indexed.find(i);
-                if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
-                    !found->second.object || found->second.object->owner != c)
-                    return FVM_INVALID_ARGUMENT;
-                r = apply(c, parent, children, found->second.object);
-                if (r != FVM_OK)
-                    return r;
-            }
+        fvm_detail::vector<Properties> snapshot;
+        r = snapshot_controls(c, list, snapshot);
+        if (r != FVM_OK)
+            return r;
+        for (size_t i = 0; i < snapshot.size(); ++i)
+        {
+            r = apply(c, parent, children, snapshot[i]);
+            if (r != FVM_OK)
+                return r;
+        }
     }
     else
     {
@@ -321,17 +364,16 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
             r = controls(c, frames, current, list);
             if (r != FVM_OK)
                 return r;
-            if (list)
-                for (unsigned long i = 0; i < list->indexed.size(); ++i)
-                {
-                    Slots::iterator found = list->indexed.find(i);
-                    if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
-                        !found->second.object || found->second.object->owner != c)
-                        return FVM_INVALID_ARGUMENT;
-                    r = accumulate(c, found->second.object, desired);
-                    if (r != FVM_OK)
-                        return r;
-                }
+            fvm_detail::vector<Properties> snapshot;
+            r = snapshot_controls(c, list, snapshot);
+            if (r != FVM_OK)
+                return r;
+            for (size_t i = 0; i < snapshot.size(); ++i)
+            {
+                r = accumulate(c, snapshot[i], desired);
+                if (r != FVM_OK)
+                    return r;
+            }
         }
         /* [GC:] Snapshot child edges before unlinking changes the live table. */
         Slots old = children->indexed;

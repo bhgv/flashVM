@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/6/7/8/9: captured scene controls | Проверено v0.634 в ограниченных Linux tests | Bounded ordinal scalar snapshots before constructors; mutation/OOM/owner cases. [EN](SCENE_CONTROLS.md) / [RU](SCENE_CONTROLS.ru.md). Shared-resource mutation and full lifecycle/reference/platform acceptance remain open. |
 | 3/6/7/8/9: timeline depth snapshots | Реализовано v0.629; проверки в ROADMAP_STATUS.md | Actual ascending child-depth tick order, immutable local receiver identity, owner/alias/bound checks, effective removed-ancestor skip and shared budgeted heap sort. [EN](TIMELINE_DEPTH_ORDER.md) / [RU](TIMELINE_DEPTH_ORDER.ru.md). Whole-tree lifecycle, original Player and physical/foreign-platform acceptance remain open. |
 | 3/5/6/7/8/9: retained KeyPress input | Реализовано v0.628; проверки в ROADMAP_STATUS.md | Pure copied-key mapping, exact selected tree delivery, source gates, shared work/GC/OOM/stop and SDL snapshot/order/reset behavior. [EN](CLIP_KEYPRESS.md) / [RU](CLIP_KEYPRESS.ru.md). DefineButton conditions, target/lifecycle/IME/reference/device acceptance remain open. |
 | 3/5/6/7/8/9: MovieClip input methods | Реализовано v0.627; проверки в ROADMAP_STATUS.md | Separate combined record/method API, source gates, live optional lookup, repeated ancestry check, shared work/GC/OOM/stop and actual SDL/player coverage. [EN](CLIP_INPUT_METHODS.md) / [RU](CLIP_INPUT_METHODS.ru.md). Targeted/lifecycle/reference/device acceptance remains open. |
