@@ -60,6 +60,20 @@ extern "C" FVM_Result fvm_input_enqueue_mouse(FVM_Context *context, FVM_MouseEve
     return append(context, item);
 }
 
+/* Capture normalized wheel Number and position atomically with the common bounded FIFO. */
+extern "C" FVM_Result fvm_input_enqueue_mouse_wheel(FVM_Context *context, double delta,
+                                                     double world_x, double world_y)
+{
+    if (!fvm_mouse_context_usable(context) || !fvm_mouse_wheel_valid(delta, world_x, world_y))
+        return FVM_INVALID_ARGUMENT;
+    FVM_QueuedInput item = FVM_QueuedInput();
+    item.kind = FVM_QUEUED_MOUSE_WHEEL;
+    item.wheel_delta = delta;
+    item.event.x = world_x;
+    item.event.y = world_y;
+    return append(context, item);
+}
+
 /* Retain complete native key state and its pointer position by value, never by pointer. */
 extern "C" FVM_Result fvm_input_enqueue_keyboard(FVM_Context *context,
                                                   const FVM_KeyboardState *state, int pressed,
@@ -118,6 +132,8 @@ extern "C" FVM_Result fvm_input_pump(FVM_Context *context, unsigned int limit,
             result = fvm_input_dispatch(context, &item.event, item.phase);
         else if (item.kind == FVM_QUEUED_MOUSE)
             result = fvm_input_dispatch_mouse(context, item.mouse_type, item.event.x, item.event.y);
+        else if (item.kind == FVM_QUEUED_MOUSE_WHEEL)
+            result = fvm_input_dispatch_mouse_wheel(context, item.wheel_delta, item.event.x, item.event.y);
         else
         {
             result = fvm_input_set_pointer(context, item.event.x, item.event.y);

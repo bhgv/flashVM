@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.605
+# FlashVM stage status / Состояние стадий — v0.606
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,27 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.606 queued wheel and native execution / Колесо в FIFO и JIT
+
+Wheel is now a native copied variant in the shared 1024-entry FIFO, with event-
+time world position and finite signed/fractional delta. Eight targeted Linux
+Release tests pass: mouse_wheel_queue, jit_mouse, mouse_wheel, input_mixed_queue,
+input_queue, mouse_allocation, mouse_listeners and the extended mouse_wheel C89
+tutorial. Five tests also pass ASan/UBSan without leak detection: wheel queue,
+wheel direct, mixed queue, jit_mouse and allocation. Allocation denial covers
+empty-queue append and growth with old entries retained.
+
+The real SWF6–8 fixture reads the wheel parameter under interpreter/manual JIT/
+automatic JIT, checks actual native entry counters, collects inside handlers,
+and validates direct/queued script exception recovery. Native queue tests cover
+mixed Key/gesture/pointer/wheel ordering, entry limits, callback additions,
+cancel/refill epochs, failed-event consumption, remaining work and saturation.
+
+Русский: колесо встроено в общую очередь без объектов/указателей событий внутри
+записи. Проверены последовательность, ошибки/OOM, GC и интерпретатор/JIT на
+SWF6–8. Эталонный scrollTarget, устройства, новые оконные SDK и чужие ОС этим
+блоком не приняты. [Queue contract](INPUT_QUEUE.md).
 
 ## v0.605 direct wheel delivery / Прямая доставка колеса
 

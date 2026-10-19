@@ -34,7 +34,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
-| `FVM_Context` | struct | [src/core/runtime.hpp:245](../src/core/runtime.hpp#L245) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:246](../src/core/runtime.hpp#L246) |
 | `fvm_get_global` | function | [include/flashvm/value.h:85](../include/flashvm/value.h#L85) |
 | `FVM_NativeFunction` | callback typedef | [include/flashvm/value.h:37](../include/flashvm/value.h#L37) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |

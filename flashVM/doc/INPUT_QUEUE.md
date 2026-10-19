@@ -1,9 +1,9 @@
 # Deferred mixed input queue / Отложенная смешанная очередь ввода
 
-## English contract (v0.603)
+## English contract (v0.603, wheel extension v0.606)
 
 `flashvm/input_queue.h` exposes one per-context FIFO for recognized gestures,
-primary Mouse transitions and complete Key snapshots. All variants preserve
+primary Mouse transitions, wheel deltas and complete Key snapshots. All variants preserve
 capture order together. It contains native copies only, no borrowed event,
 managed object, SDK handle or callback userdata. No window SDK is required.
 Capacity is [`FVM_INPUT_MAX_PENDING_EVENTS`](../include/flashvm/input_limits.h#L7) (1024 total entries, not per variant).
@@ -25,7 +25,7 @@ payloads. Script recipients/GC roots remain the normal dispatchers' responsibili
 | --- | --- |
 | [`fvm_input_enqueue`](../include/flashvm/input_queue.h#L22) | Context, borrowed finite [`FVM_InputEvent`](../include/flashvm/input.h#L42), supported phase: copy a recognized gesture. Existing native gesture callback/mouse-rule mapping is used on dispatch; no automatic Mouse broadcaster notification is implied. |
 | [`fvm_input_enqueue_mouse`](../include/flashvm/input_queue.h#L25) | Context, [`FVM_MouseEventType`](../include/flashvm/mouse.h#L11) DOWN/MOVE/UP, finite world x/y: copy a primary contact transition. The ordinary Mouse dispatcher updates pointer/drag before registered listeners on delivery. |
-| [`fvm_input_enqueue_keyboard`](../include/flashvm/input_queue.h#L29) | Context, borrowed valid [`FVM_KeyboardState`](../include/flashvm/keyboard.h#L50), pressed exactly 0/1, finite event-time world x/y: copy all native key fields and pointer coordinates. On delivery publish the saved pointer, then call the normal rooted Key dispatcher (selected clip before listeners). |
+| [`fvm_input_enqueue_keyboard`](../include/flashvm/input_queue.h#L34) | Context, borrowed valid [`FVM_KeyboardState`](../include/flashvm/keyboard.h#L50), pressed exactly 0/1, finite event-time world x/y: copy all native key fields and pointer coordinates. On delivery publish the saved pointer, then call the normal rooted Key dispatcher (selected clip before listeners). |
 
 No capture call runs a handler or changes polling/pointer state. Producer
 storage may be reused immediately after return. Coordinates must already be
@@ -98,7 +98,7 @@ Key. В очереди только копии нативных данных, б
 [`fvm_input_enqueue`](../include/flashvm/input_queue.h#L22) копирует конечное событие распознанного жеста и phase.
 При доставке используется прежний callback жестов и его mouse-rule mapping,
 а не автоматическая рассылка Mouse. [`fvm_input_enqueue_mouse`](../include/flashvm/input_queue.h#L25) копирует DOWN,
-MOVE или UP с конечными мировыми координатами. [`fvm_input_enqueue_keyboard`](../include/flashvm/input_queue.h#L29)
+MOVE или UP с конечными мировыми координатами. [`fvm_input_enqueue_keyboard`](../include/flashvm/input_queue.h#L34)
 копирует проверенный полный снимок клавиш, pressed=0/1 и мировую позицию
 указателя в момент этого перехода. При доставке сначала публикуется сохранённая
 позиция, затем вызывается обычная Key-доставка с фокусным клипом и слушателями.
@@ -113,7 +113,7 @@ MOVE или UP с конечными мировыми координатами. 
 append преобразуется в [`FVM_ERROR`](../include/flashvm/flashvm.h#L43). Переполнение не теряется молча и не
 делает очередь навсегда неисправной: хост обрабатывает ошибку и выбирает политику.
 
-[`fvm_input_pump`](../include/flashvm/input_queue.h#L40) обрабатывает только начальный пакет: max_events ограничивает
+[`fvm_input_pump`](../include/flashvm/input_queue.h#L45) обрабатывает только начальный пакет: max_events ограничивает
 число доставок, ноль означает весь пакет на входе. Это намеренное изменение
 v0.603: обработчик больше не может бесконечно продлевать один pump новыми
 событиями. Добавленное во время доставки ждёт следующего pump.
@@ -125,8 +125,8 @@ v0.603: обработчик больше не может бесконечно �
 Защита pump снимается и при ошибке. Скриптовое исключение очищает владелец
 через обычный exception API, а не очередь. Пустая очередь успешно даёт ноль.
 
-[`fvm_input_pending`](../include/flashvm/input_queue.h#L43) возвращает общее число записей через ненулевой count;
-ошибка сохраняет выход. [`fvm_input_clear_queue`](../include/flashvm/input_queue.h#L34) без callbacks и выделений
+[`fvm_input_pending`](../include/flashvm/input_queue.h#L48) возвращает общее число записей через ненулевой count;
+ошибка сохраняет выход. [`fvm_input_clear_queue`](../include/flashvm/input_queue.h#L39) без callbacks и выделений
 удаляет все ожидающие виды и отменяет остаток активного пакета. Новые записи,
 добавленные после clear внутри callback, ждут нового pump. Текущий callback
 завершается и учитывается, если успешен. Clear не создаёт UP/click/cancel,
@@ -134,6 +134,40 @@ v0.603: обработчик больше не может бесконечно �
 это отдельная политика хоста. Не добавлены IME, wheel, ClipActions,
 распознавание multitouch и опрос OS. Нативный SDL FIFO и прямые SDK-примеры
 автоматически не мигрированы. Приёмка телефонов и всех стадий не заявляется.
+
+## Queued wheel / Колесо в очереди (v0.606)
+
+[fvm_input_enqueue_mouse_wheel](../include/flashvm/input_queue.h#L30)(context, delta, world_x, world_y) borrows an owning-
+thread live context outside GC/release/destruction, and copies finite signed
+line `delta` plus finite event-time world coordinates. No callback, pointer
+publication or drag update occurs at enqueue. Fractional/zero delta is retained.
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) preserves the FIFO for invalid context/state or NaN/Infinity
+in any input. [FVM_ERROR](../include/flashvm/flashvm.h#L43) at the shared 1024-item capacity and [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44)
+on append preserve every existing entry. Unexpected native exceptions map to
+[FVM_ERROR](../include/flashvm/flashvm.h#L43). No managed pointer, native platform event or scrollTarget is stored.
+
+Wheel shares **one ordered FIFO** with gestures, primary pointer and Key entries.
+Pump uses the normal rooted [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32), including its actual
+handler status/exception. The failing event is consumed, processed counts only
+successful events, and later entries remain queued. Clear the VM exception
+explicitly before retry where required. Entry-batch limit, callback additions,
+cancellation epoch, recursion/teardown guards and clear_queue behavior are the
+same for all variants. Clear drops queued wheel too, but never synthesizes a
+counter-wheel, button release, focus change or keyboard reset. No coalescing or
+delta summation occurs; even opposite deltas remain separate ordered events.
+
+Русский: новая функция копирует конечные delta (строки со знаком) и координаты
+на момент события. Очередь общая с жестами, Mouse и Key; заимствованных указателей
+и новых корней GC нет. Enqueue не меняет текущую позицию и не вызывает скрипт.
+Неверный ввод, переполнение и OOM не портят уже поставленные события. При pump
+доставка проходит через обычный укоренённый Mouse-dispatcher. Ошибочное событие
+снимается, последующие остаются; счётчик processed учитывает только успешные.
+Добавленные из обработчика события ждут следующего pump; отмена прерывает старую
+партию и сохраняет события, добавленные после отмены. Противоположные дельты
+не схлопываются. Самостоятельный хост нормализует единицы до enqueue.
+
+[C89 wheel tutorial](../examples/embedding/mouse_wheel/README.md),
+[direct wheel contract](MOUSE.md#wheel-events), [RU](MOUSE.ru.md#колесо-прокрутки).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -146,13 +180,15 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../include/flashvm/host.h#L26) |
-| `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:34](../include/flashvm/input_queue.h#L34) |
+| `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:39](../include/flashvm/input_queue.h#L39) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
 | `fvm_input_enqueue` | function | [include/flashvm/input_queue.h:22](../include/flashvm/input_queue.h#L22) |
-| `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:29](../include/flashvm/input_queue.h#L29) |
+| `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:34](../include/flashvm/input_queue.h#L34) |
 | `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:25](../include/flashvm/input_queue.h#L25) |
+| `fvm_input_enqueue_mouse_wheel` | function | [include/flashvm/input_queue.h:30](../include/flashvm/input_queue.h#L30) |
 | `FVM_INPUT_MAX_PENDING_EVENTS` | macro / define | [include/flashvm/input_limits.h:7](../include/flashvm/input_limits.h#L7) |
-| `fvm_input_pending` | function | [include/flashvm/input_queue.h:43](../include/flashvm/input_queue.h#L43) |
-| `fvm_input_pump` | function | [include/flashvm/input_queue.h:40](../include/flashvm/input_queue.h#L40) |
+| `fvm_input_pending` | function | [include/flashvm/input_queue.h:48](../include/flashvm/input_queue.h#L48) |
+| `fvm_input_pump` | function | [include/flashvm/input_queue.h:45](../include/flashvm/input_queue.h#L45) |
 | `FVM_InputEvent` | struct | [include/flashvm/input.h:42](../include/flashvm/input.h#L42) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |

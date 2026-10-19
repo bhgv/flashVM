@@ -93,7 +93,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:245](../src/core/runtime.hpp#L245) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:246](../src/core/runtime.hpp#L246) |
 | `fvm_exec_detach_clip` | function | [include/flashvm/execution.h:237](../include/flashvm/execution.h#L237) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_scene_remove` | function | [src/standard/movieclip_remove.cpp:7](../src/standard/movieclip_remove.cpp#L7) |

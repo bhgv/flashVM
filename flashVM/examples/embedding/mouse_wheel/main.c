@@ -1,5 +1,6 @@
 /* Deliver explicit signed wheel lines without an OS wheel; see MOUSE.md#wheel-events. */
 #include "flashvm/mouse.h" /* Register receivers and dispatch finite wheel deltas on the owner thread. */
+#include "flashvm/input_queue.h" /* Copy wheel events into the shared owner-thread FIFO. */
 #include "flashvm/input.h" /* Read the callback-visible world coordinates. */
 #include "flashvm/standard.h" /* Install ordinary objects before the optional Mouse namespace. */
 #include "flashvm/gc.h" /* Pin partial setup until the registration owns the receiver. */
@@ -30,6 +31,7 @@ int main(void) /* Use one owning thread for every VM operation. */
     FVM_Runtime *runtime = 0; /* Release after the context. */
     FVM_Context *context = 0; /* Own all managed receiver and namespace state. */
     FVM_Object *listener = 0; /* Borrow while pinned or registered. */
+    unsigned int pending = 0, processed = 0; /* Queue counts are native outputs, not managed objects. */
     unsigned int calls = 0; /* Borrowed userdata remains live until the context is destroyed. */
     int pinned = 0, registered = 0, removed = 0; /* Track acquired resources for partial cleanup. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the supported configuration layout. */
@@ -59,6 +61,16 @@ int main(void) /* Use one owning thread for every VM operation. */
         status = fvm_input_dispatch_mouse_wheel(context, 3.0, 10, 20); /* Positive means upward scroll. */
     if (status == FVM_OK) /* Fractional smooth input is preserved, not truncated to integer ticks. */
         status = fvm_input_dispatch_mouse_wheel(context, -1.5, 30, 40); /* Negative means downward scroll. */
+    if (status == FVM_OK) /* Queue captures the delta and position, without immediate delivery. */
+        status = fvm_input_enqueue_mouse_wheel(context, -0.5, 50, 60); /* Shares order with Key/Mouse/gestures. */
+    if (status == FVM_OK) /* Inspect the copied FIFO before consuming it. */
+        status = fvm_input_pending(context, &pending); /* Expect one pending event and still two callbacks. */
+    if (status == FVM_OK) /* Show the capture/delivery boundary in ordinary tutorial output. */
+        printf("queued=%u delivered=%u\n", pending, calls); /* Expect queued=1 delivered=2. */
+    if (status == FVM_OK) /* Deliver only the entry batch, on this same VM owner thread. */
+        status = fvm_input_pump(context, 0, &processed); /* Zero limit means the initial queued batch. */
+    if (status == FVM_OK && processed != 1) /* A successful pump must consume our one valid event. */
+        status = FVM_ERROR; /* Surface unexpected protocol state without an assertion. */
     if (registered) /* Release the registration on success and every later failure. */
     { /* Removal itself performs no allocation or callback. */
         FVM_Result cleanup = fvm_input_remove_mouse_listener(context, listener, &removed); /* Remove by identity. */
@@ -66,7 +78,7 @@ int main(void) /* Use one owning thread for every VM operation. */
             status = cleanup; /* Otherwise expose cleanup failure. */
     } /* End registration cleanup. */
     if (status == FVM_OK) /* Confirm the complete tutorial result with ordinary error handling. */
-        printf("delivered=%u removed=%d\n", calls, removed); /* Expect two and one. */
+        printf("delivered=%u removed=%d\n", calls, removed); /* Expect three and one. */
     else /* Keep the real status visible to the embedding developer. */
         fprintf(stderr, "Wheel example failed: %d\n", (int)status); /* Do not hide errors behind assertions. */
     if (pinned) /* Release construction ownership after the last receiver access. */

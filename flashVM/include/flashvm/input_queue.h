@@ -24,6 +24,11 @@ extern "C"
      * publication occurs until pump. Same capacity/owner-thread restrictions as gestures. */
     FVM_API FVM_Result fvm_input_enqueue_mouse(FVM_Context *, FVM_MouseEventType,
                                                double world_x, double world_y);
+    /* Copy a finite signed line delta and event-time world coordinates without dispatch.
+     * Shares capacity/order/cancellation with gestures, pointer transitions and keyboard.
+     * No managed objects or borrowed native event pointers are retained. */
+    FVM_API FVM_Result fvm_input_enqueue_mouse_wheel(FVM_Context *, double delta,
+                                                     double world_x, double world_y);
     /* Copy a validated key snapshot, pressed=0/1, and finite event-time world pointer.
      * Pump publishes that position before invoking the normal rooted keyboard dispatcher. */
     FVM_API FVM_Result fvm_input_enqueue_keyboard(FVM_Context *, const FVM_KeyboardState *,

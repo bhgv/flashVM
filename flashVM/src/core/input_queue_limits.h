@@ -4,4 +4,5 @@
 #define FVM_QUEUED_GESTURE 1U /* Recognized gesture delivered through the host callback. */
 #define FVM_QUEUED_MOUSE 2U /* Primary-pointer transition delivered through Mouse listeners. */
 #define FVM_QUEUED_KEYBOARD 3U /* Complete key snapshot plus event-time pointer position. */
+#define FVM_QUEUED_MOUSE_WHEEL 4U /* Signed normalized wheel lines plus captured world position. */
 #endif

@@ -10,9 +10,9 @@ static FVM_Result collect_mouse(FVM_Context *c, FVM_Object *, unsigned, const FV
     assert(!c->gc_native_depth && fvm_gc_collect(c, 0) == FVM_OK);
     fvm_value_undefined(out); return FVM_OK;
 }
-static FVM_Object *script(FVM_Context *c, const Program &p, FVM_JitCode **code) {
+static FVM_Object *script(FVM_Context *c, const Program &p, FVM_JitCode **code, const char *parameter = 0) {
     FVM_Object *fn = 0;
-    assert(fvm_function_create_avm1(c, p.bytes.begin(), p.bytes.size(), 0, 0, 0, &fn) == FVM_OK);
+    assert(fvm_function_create_avm1(c, p.bytes.begin(), p.bytes.size(), parameter ? 1 : 0, parameter ? &parameter : 0, 0, &fn) == FVM_OK);
     assert(fvm_gc_pin(c, fn) == FVM_OK);
     assert(fvm_jit_compile(p.bytes.begin(), p.bytes.size(), code) == FVM_OK);
     if (class_mode == 1) assert(fvm_function_set_body(c, fn, fvm_jit_body, *code, 0) == FVM_OK);
@@ -74,6 +74,27 @@ int main() {
             if (class_mode) assert(c->execution_mode.stats.native_entries > entries);
             assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 40 + i);
         }
+        Program wheel;
+        wheel.number(0); wheel.text("collectMouse"); wheel.op(0x3d); wheel.op(0x17);
+        wheel.variable("this"); wheel.text("wheelDelta"); wheel.variable("delta"); wheel.op(0x4f);
+        wheel.variable("this"); wheel.text("pointerX");
+        wheel.variable("movie"); wheel.text("_xmouse"); wheel.op(0x4e); wheel.op(0x4f);
+        wheel.finish();
+        FVM_JitCode *wheel_code = 0; FVM_Object *wheel_fn = script(c, wheel, &wheel_code, "delta");
+        value = class_value(wheel_fn); assert(fvm_object_set(c, observer, "onMouseWheel", &value) == FVM_OK);
+        unsigned long wheel_entries = c->execution_mode.stats.native_entries;
+        assert(fvm_input_dispatch_mouse_wheel(c, 2.5, 90, 91) == FVM_OK);
+        if (class_mode) assert(c->execution_mode.stats.native_entries > wheel_entries);
+        assert(fvm_object_get(c, observer, "wheelDelta", &value) == FVM_OK && value.number == 2.5);
+        assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 90);
+        wheel_entries = c->execution_mode.stats.native_entries;
+        assert(fvm_input_enqueue_mouse_wheel(c, -1.25, 92, 93) == FVM_OK);
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
+        unsigned wheel_processed = 99;
+        assert(fvm_input_pump(c, 0, &wheel_processed) == FVM_OK && wheel_processed == 1);
+        if (class_mode) assert(c->execution_mode.stats.native_entries > wheel_entries);
+        assert(fvm_object_get(c, observer, "wheelDelta", &value) == FVM_OK && value.number == -1.25);
+        assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 92);
         Program throwing; throwing.text("pointer failure"); throwing.op(0x2a); throwing.op(0);
         FVM_JitCode *throw_code = 0; FVM_Object *throw_fn = script(c, throwing, &throw_code);
         value = class_value(throw_fn); assert(fvm_object_set(c, observer, "onMouseUp", &value) == FVM_OK);
@@ -88,6 +109,17 @@ int main() {
         assert(c->pointer_world_x == 80 && fvm_exception_clear(c) == FVM_OK);
         assert(fvm_input_pump(c, 0, &processed) == FVM_OK && processed == 1);
         assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 82);
+        value = class_value(throw_fn); assert(fvm_object_set(c, observer, "onMouseWheel", &value) == FVM_OK);
+        assert(fvm_input_dispatch_mouse_wheel(c, 1, 101, 102) == FVM_EXCEPTION);
+        assert(c->pointer_world_x == 101 && fvm_exception_clear(c) == FVM_OK);
+        assert(fvm_input_enqueue_mouse_wheel(c, -1, 103, 104) == FVM_OK);
+        assert(fvm_input_enqueue_mouse(c, FVM_MOUSE_EVENT_MOVE, 105, 106) == FVM_OK);
+        assert(fvm_input_pump(c, 0, &processed) == FVM_EXCEPTION && !processed);
+        assert(!c->pumping_input && !c->mouse_dispatching && !c->gc_frames && !c->gc_native_depth);
+        assert(c->pointer_world_x == 103 && fvm_input_pending(c, &pending) == FVM_OK && pending == 1);
+        assert(fvm_exception_clear(c) == FVM_OK && fvm_input_pump(c, 0, &processed) == FVM_OK && processed == 1);
+        assert(c->pointer_world_x == 105);
+        assert(fvm_function_set_body(c, wheel_fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(wheel_code) == FVM_OK);
         assert(fvm_function_set_body(c, handler, 0, 0, 0) == FVM_OK && fvm_jit_destroy(handler_code) == FVM_OK);
         assert(fvm_function_set_body(c, add_fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(add_code) == FVM_OK);
         assert(fvm_function_set_body(c, throw_fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(throw_code) == FVM_OK);

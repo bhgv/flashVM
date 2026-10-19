@@ -3,6 +3,7 @@
 #include "selection_install_allocation.cpp"
 #undef main
 #include "flashvm/mouse.h"
+#include "flashvm/input_queue.h"
 int main() {
     bool done = false; unsigned failed = 0;
     for (long allocation = 0; allocation < 512 && !done; ++allocation) {
@@ -60,6 +61,26 @@ int main() {
         assert(fvm_gc_collect(c, 0) == FVM_OK);
     }
     assert(done && before && after);
+    fail_after = 0;
+    assert(fvm_input_enqueue_mouse_wheel(c, 1.25, 7, 8) == FVM_OUT_OF_MEMORY);
+    fail_after = -1;
+    unsigned pending = 99, growth_failures = 0;
+    assert(fvm_input_pending(c, &pending) == FVM_OK && !pending);
+    assert(fvm_input_enqueue_mouse_wheel(c, 1.25, 7, 8) == FVM_OK);
+    for (unsigned i = 1; i < FVM_INPUT_MAX_PENDING_EVENTS; ++i) {
+        fail_after = 0;
+        FVM_Result status = fvm_input_enqueue_mouse_wheel(c, -0.5, i, 9);
+        fail_after = -1;
+        if (status == FVM_OUT_OF_MEMORY) {
+            ++growth_failures;
+            assert(fvm_input_pending(c, &pending) == FVM_OK && pending == i);
+            assert(c->queued_input.front().wheel_delta == 1.25 && c->queued_input.front().event.x == 7);
+            assert(fvm_input_enqueue_mouse_wheel(c, -0.5, i, 9) == FVM_OK);
+        } else assert(status == FVM_OK);
+    }
+    assert(growth_failures && fvm_input_pending(c, &pending) == FVM_OK && pending == FVM_INPUT_MAX_PENDING_EVENTS);
+    assert(fvm_input_enqueue_mouse_wheel(c, 1, 0, 0) == FVM_ERROR);
+    assert(fvm_input_clear_queue(c) == FVM_OK);
     fail_after = 0; int removed = 0;
     assert(fvm_input_remove_mouse_listener(c, listener, &removed) == FVM_OK && removed);
     fail_after = -1;

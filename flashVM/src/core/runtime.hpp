@@ -200,11 +200,12 @@ struct FVM_ScriptFunction
 /* Define FVM_QueuedInput struct and its representation. */
 struct FVM_QueuedInput
 {
-    unsigned int kind; /* Private discriminant: gesture, primary pointer or keyboard. */
+    unsigned int kind; /* Private discriminant: gesture, primary pointer, keyboard or wheel. */
     FVM_InputEvent event; /* Gesture payload; x/y carry event-time world pixels for all variants. */
     FVM_KeyboardState keyboard; /* Copied native state, with no managed pointers. */
     FVM_MouseEventType mouse_type; /* Down/move/up for the primary-pointer variant. */
     int pressed; /* Keyboard transition polarity, normalized to zero or one. */
+    double wheel_delta; /* Native copied scroll lines for the wheel variant; no managed edges. */
     FVM_InputPhase phase; /* Input event delivery phase. */
 };
 
