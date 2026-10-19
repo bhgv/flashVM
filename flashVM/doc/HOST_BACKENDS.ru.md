@@ -50,7 +50,7 @@ NULL, совпадающие выходные указатели, непредс
 независимые данные можно обрабатывать независимо в разных потоках.
 Совместно изменять одни аргументы одновременно нельзя.
 
-Результат передавайте в [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L25) на потоке владельца VM,
+Результат передавайте в [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L26) на потоке владельца VM,
 полные снимки клавиатуры — в [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79). Выбор первого
 контакта, отмена, подавление синтетических событий, потеря фокуса и порядок
 остаются обязанностью хоста. Из рабочего потока ввода копируйте события,
@@ -109,7 +109,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:8](../include/flashvm/host.h#L8) |
 | `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../include/flashvm/host.h#L11) |
 | `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:79](../include/flashvm/keyboard.h#L79) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |

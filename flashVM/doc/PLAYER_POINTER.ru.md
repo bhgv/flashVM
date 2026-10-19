@@ -41,7 +41,7 @@ FVM_DESKTOP_PENDING_EVENTS ограничивает FIFO 128 событиями.
 обрабатывает входную порцию в общем потоке-владельце перед кадром ролика.
 Нулевые владельцы, неконечный origin и вложенный pump дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45)
 до изъятия события. Клавиатурный callback видит позицию своего события и его
-keyboard snapshot; pointer event вызывает [fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L25) с drag до
+keyboard snapshot; pointer event вызывает [fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L26) с drag до
 обработчиков. Перестановки «сначала все клавиши/потом указатель» нет.
 Итоговые HostInput/polling публикуются затем по прежнему циклу плеера.
 
@@ -116,7 +116,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -2,6 +2,7 @@
 #ifndef FLASHVM_MOUSE_H
 #define FLASHVM_MOUSE_H /* Guard the public C89 Mouse listener ABI. */
 #include "flashvm.h"
+#define FVM_MOUSE_CURSOR_MIN_SWF_VERSION 5U /* First supported Mouse.hide/show script version. */
 #define FVM_MOUSE_MIN_SWF_VERSION 6U /* First supported Mouse listener namespace. */
 #define FVM_MOUSE_MAX_LISTENERS 1024U /* Maximum unique registered objects per context. */
 #ifdef __cplusplus
@@ -40,8 +41,9 @@ FVM_API FVM_Result fvm_input_get_cursor_visible(FVM_Context *, int *visible);
  * A host applies the queried request to its own window on its native owner thread.
  * Position, button, focus, listener registrations and pending input remain unchanged. */
 FVM_API FVM_Result fvm_input_set_cursor_visible(FVM_Context *, int visible, int *previous);
-/* Atomically install the SWF6--8 addListener/removeListener/_listeners subset after standard
- * objects. Existing conflicting bindings are preserved. Does not install Key or Selection. */
+/* Atomically install Mouse.hide/show for SWF5--8 and the SWF6--8 listener subset after standard
+ * objects. Listener members are present but return UNSUPPORTED in SWF5, including preinstalled
+ * namespaces. Conflicts are preserved. No physical cursor is owned; does not install Key/Selection. */
 FVM_API FVM_Result fvm_standard_mouse_install(FVM_Context *);
 #ifdef __cplusplus
 }

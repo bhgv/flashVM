@@ -33,7 +33,14 @@ int main() {
         FVM_Context *c = 0; assert(fvm_context_create(rt, &c) == FVM_OK);
         unsigned char swf[] = {'F','W','S',8,16,0,0,0,8,0,0,12,1,0,0,0}; swf[3] = (unsigned char)version;
         assert(fvm_load_memory(c, swf, sizeof(swf)) == FVM_OK && fvm_standard_install(c) == FVM_OK);
-        if (version < 6) { assert(fvm_standard_mouse_install(c) == FVM_UNSUPPORTED); fvm_context_destroy(c); continue; }
+        if (version < 6) {
+            assert(fvm_standard_mouse_install(c) == FVM_OK);
+            FVM_Value mouse, out;
+            assert(fvm_get_global(c, "Mouse", &mouse) == FVM_OK);
+            assert(fvm_object_call(c, mouse.object, "hide", 0, 0, &out) == FVM_OK && out.number == 1);
+            assert(fvm_object_call(c, mouse.object, "addListener", 0, 0, &out) == FVM_UNSUPPORTED);
+            fvm_context_destroy(c); continue;
+        }
         FVM_Value value; fvm_value_number(&value, 77);
         assert(fvm_set_global(c, "mouse", &value) == FVM_OK);
         assert(fvm_standard_mouse_install(c) == (version == 6 ? FVM_INVALID_ARGUMENT : FVM_OK));

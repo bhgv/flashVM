@@ -1,4 +1,4 @@
-/* FlashVM: explicit SWF6--8 Mouse listener namespace over host-delivered pointer events. */
+/* FlashVM: explicit SWF5--8 cursor methods and version-gated Mouse listener namespace over host-delivered pointer events. */
 #include "../core/runtime.hpp"
 #include "mouse_listeners.hpp"
 #include "../core/object_root_scope.hpp"
@@ -16,7 +16,8 @@ struct Method
     const char *name;            /* Static ActionScript method name. */
     FVM_NativeFunction callback; /* Stateless callback; reads the invoking context. */
 };
-const Method methods[] = {{"addListener", fvm_mouse_add_listener},
+const Method methods[] = {{"hide", fvm_mouse_hide}, {"show", fvm_mouse_show},
+                          {"addListener", fvm_mouse_add_listener},
                           {"removeListener", fvm_mouse_remove_listener}};
 
 /* Recognize our unshadowed methods without executing getters or allocating a new namespace. */
@@ -52,7 +53,7 @@ extern "C" FVM_Result fvm_standard_mouse_install(FVM_Context *context)
     if (!context || context->destroying || context->gc_collecting || context->gc_releasing ||
         !context->standard_library)
         return FVM_INVALID_ARGUMENT;
-    if (context->swf_loaded && context->swf_info.version < FVM_MOUSE_MIN_SWF_VERSION)
+    if (context->swf_loaded && context->swf_info.version < FVM_MOUSE_CURSOR_MIN_SWF_VERSION)
         return FVM_UNSUPPORTED;
     try
     {

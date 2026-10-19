@@ -24,7 +24,7 @@ payloads. Script recipients/GC roots remain the normal dispatchers' responsibili
 | Function | Arguments and behavior |
 | --- | --- |
 | [`fvm_input_enqueue`](../include/flashvm/input_queue.h#L22) | Context, borrowed finite [`FVM_InputEvent`](../include/flashvm/input.h#L42), supported phase: copy a recognized gesture. Existing native gesture callback/mouse-rule mapping is used on dispatch; no automatic Mouse broadcaster notification is implied. |
-| [`fvm_input_enqueue_mouse`](../include/flashvm/input_queue.h#L25) | Context, [`FVM_MouseEventType`](../include/flashvm/mouse.h#L11) DOWN/MOVE/UP, finite world x/y: copy a primary contact transition. The ordinary Mouse dispatcher updates pointer/drag before registered listeners on delivery. |
+| [`fvm_input_enqueue_mouse`](../include/flashvm/input_queue.h#L25) | Context, [`FVM_MouseEventType`](../include/flashvm/mouse.h#L12) DOWN/MOVE/UP, finite world x/y: copy a primary contact transition. The ordinary Mouse dispatcher updates pointer/drag before registered listeners on delivery. |
 | [`fvm_input_enqueue_keyboard`](../include/flashvm/input_queue.h#L34) | Context, borrowed valid [`FVM_KeyboardState`](../include/flashvm/keyboard.h#L50), pressed exactly 0/1, finite event-time world x/y: copy all native key fields and pointer coordinates. On delivery publish the saved pointer, then call the normal rooted Key dispatcher (selected clip before listeners). |
 
 No capture call runs a handler or changes polling/pointer state. Producer
@@ -147,7 +147,7 @@ on append preserve every existing entry. Unexpected native exceptions map to
 [FVM_ERROR](../include/flashvm/flashvm.h#L43). No managed pointer, native platform event or scrollTarget is stored.
 
 Wheel shares **one ordered FIFO** with gestures, primary pointer and Key entries.
-Pump uses the normal rooted [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32), including its actual
+Pump uses the normal rooted [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L33), including its actual
 handler status/exception. The failing event is consumed, processed counts only
 successful events, and later entries remain queued. Clear the VM exception
 explicitly before retry where required. Entry-batch limit, callback additions,
@@ -181,7 +181,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../include/flashvm/host.h#L26) |
 | `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:39](../include/flashvm/input_queue.h#L39) |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../include/flashvm/mouse.h#L33) |
 | `fvm_input_enqueue` | function | [include/flashvm/input_queue.h:22](../include/flashvm/input_queue.h#L22) |
 | `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:34](../include/flashvm/input_queue.h#L34) |
 | `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:25](../include/flashvm/input_queue.h#L25) |
@@ -192,7 +192,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_InputEvent` | struct | [include/flashvm/input.h:42](../include/flashvm/input.h#L42) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
-| `FVM_MouseEventType` | enum | [include/flashvm/mouse.h:11](../include/flashvm/mouse.h#L11) |
+| `FVM_MouseEventType` | enum | [include/flashvm/mouse.h:12](../include/flashvm/mouse.h#L12) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

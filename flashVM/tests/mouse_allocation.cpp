@@ -4,6 +4,7 @@
 #undef main
 #include "flashvm/mouse.h"
 #include "flashvm/input_queue.h"
+#include "../src/standard/mouse_listeners.hpp"
 int main() {
     bool done = false; unsigned failed = 0;
     for (long allocation = 0; allocation < 512 && !done; ++allocation) {
@@ -86,6 +87,9 @@ int main() {
     assert(fvm_input_set_cursor_visible(c, 0, &previous) == FVM_OK && previous == 1);
     assert(fvm_input_get_cursor_visible(c, &visible) == FVM_OK && visible == 0);
     assert(fvm_input_set_cursor_visible(c, 1, &previous) == FVM_OK && previous == 0);
+    FVM_Value cursor_result;
+    assert(fvm_mouse_hide(c, 0, 0, 0, &cursor_result, 0) == FVM_OK && cursor_result.number == 1);
+    assert(fvm_mouse_show(c, 0, 0, 0, &cursor_result, 0) == FVM_OK && cursor_result.number == 0);
     fail_after = -1;
     fail_after = 0; int removed = 0;
     assert(fvm_input_remove_mouse_listener(c, listener, &removed) == FVM_OK && removed);

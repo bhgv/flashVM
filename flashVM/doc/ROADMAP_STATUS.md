@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.608
+# FlashVM stage status / Состояние стадий — v0.609
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,25 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.609 Mouse.hide/show / Скриптовая видимость курсора
+
+Explicit Mouse installation now includes hide/show. Both ignore arguments without
+coercion, change the context request and return previous 0/1 as a Number. Cursor
+methods support SWF5–8; listener callbacks retain their SWF6 guard. Listener members
+remain present but unsupported in SWF5, an explicit reflection limitation.
+
+Six targeted Linux Release tests pass: jit_mouse_cursor, jit_mouse,
+mouse_allocation, mouse_cursor, mouse_listeners and the extended C89 tutorial.
+The two JIT fixtures and allocation fixture also pass ASan/UBSan without leak
+detection. Real SWF5–8 AVM1 calls execute in interpreter/manual/automatic JIT with
+native-entry evidence, previous-state sequence 1/0/0/1, ignored coercion traps,
+GC, shadow conflicts and preinstalled SWF4 rejection. Namespace installation OOM
+remains atomic; direct cursor callbacks work under allocation denial.
+
+Русский: скриптовый запрос проверен, физический курсор не заявляется. Точное
+историческое наличие членов Mouse в SWF5 и нативные окна/ОС остаются отдельной
+приёмкой. [Script contract](MOUSE.md#script-hide-and-show).
 
 ## v0.608 context cursor request / Контекстный запрос курсора
 
@@ -89,7 +108,7 @@ SWF6–8. Эталонный scrollTarget, устройства, новые ок
 
 ## v0.605 direct wheel delivery / Прямая доставка колеса
 
-[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32) adds finite signed/fractional line deltas through
+[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L33) adds finite signed/fractional line deltas through
 onMouseWheel(delta), reusing rooted Mouse snapshots, coordinate/drag publication
 and cross-event recursion/lifecycle protection. Six targeted Linux Release tests
 pass: mouse_wheel, mouse_listeners, mouse_allocation, jit_mouse (existing pointer
@@ -761,7 +780,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../include/flashvm/mouse.h#L33) |
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
