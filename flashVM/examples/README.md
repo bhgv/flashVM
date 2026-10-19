@@ -109,10 +109,14 @@
     - [prototypes](#example-extending-prototypes) — <small><em>Native-объекты на прототипах — заметка</em></small>
     - [sqlite](#example-extending-sqlite) — <small><em>SQLite в памяти и целочисленный запрос</em></small>
 - [frontends](#group-frontends)
+  - [devices](#group-frontends-devices)
+    - [linux_fb](#example-frontends-linux_fb) — <small><em>fbdev, evdev/mousedev и MMAP V4L2</em></small>
   - [memory](#group-frontends-memory)
     - [headless](#example-frontends-headless) — <small><em>Кадр и ввод без оконного SDK</em></small>
   - [windows](#group-frontends-windows)
     - [clutter3d](#example-frontends-clutter3d) — <small><em>Текстура и касания в Clutter/Cogl из выбранного Git</em></small>
+    - [gtk3](#example-frontends-gtk3) — <small><em>GTK3: RGBA DrawingArea и масштабируемый ввод</em></small>
+    - [qt5](#example-frontends-qt5) — <small><em>Qt5: QWidget, QImage и нативный цикл</em></small>
     - [sdl](#example-frontends-sdl) — <small><em>SDL2: streaming RGBA, мышь и первое касание</em></small>
 - [multimedia](#group-multimedia)
   - [bridges](#group-multimedia-bridges)
@@ -1213,6 +1217,18 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 
 [Общее руководство и FlashVM API](frontends/README.md). Самостоятельные хосты вывода/ввода; общая часть common/demo.h — не отдельный frontend. Headless перенесён из embedding/host_backend; его CMake-target теперь flashvm_examples_frontends_headless_main. Других самостоятельных фронтендов в примерах не найдено.
 
+<a id="group-frontends-devices"></a>
+### devices
+
+<a id="example-frontends-linux_fb"></a>
+### linux_fb
+
+**Тип:** исполняемый учебный frontend. **README:** [frontends/linux_fb/README.md](frontends/linux_fb/README.md).
+
+**Назначение:** Реальные fbdev, evdev/mousedev и MMAP V4L2; проверенные границы и явные пути устройств. Публичный ABI FlashVM, поток владельца и подробные комментарии каждой строки. Не полная приёмка платформы/SWF.
+
+**Файлы:** [main.c](frontends/linux_fb/main.c), [общая часть](frontends/common/demo.h).
+
 <a id="group-frontends-memory"></a>
 ### memory
 
@@ -1240,6 +1256,24 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 **Файлы:** [main.c](frontends/clutter3d/main.c), [общий demo.h](frontends/common/demo.h).
 
 [К оглавлению](#оглавление).
+
+<a id="example-frontends-gtk3"></a>
+### gtk3
+
+**Тип:** исполняемый учебный frontend. **README:** [frontends/gtk3/README.md](frontends/gtk3/README.md).
+
+**Назначение:** GtkDrawingArea, GdkPixbuf/Cairo, координаты окна и снятие нажатия при потере фокуса. Публичный ABI FlashVM, поток владельца и подробные комментарии каждой строки. Не полная приёмка платформы/SWF.
+
+**Файлы:** [main.c](frontends/gtk3/main.c), [общая часть](frontends/common/demo.h).
+
+<a id="example-frontends-qt5"></a>
+### qt5
+
+**Тип:** исполняемый учебный frontend. **README:** [frontends/qt5/README.md](frontends/qt5/README.md).
+
+**Назначение:** QWidget/QImage, дробные координаты, масштабирование и деактивация окна. Публичный ABI FlashVM, поток владельца и подробные комментарии каждой строки. Не полная приёмка платформы/SWF.
+
+**Файлы:** [main.cpp](frontends/qt5/main.cpp), [общая часть](frontends/common/demo.h).
 
 <a id="example-frontends-sdl"></a>
 #### sdl
@@ -1581,6 +1615,7 @@ Source line links describe the current checkout, including in historical notes.
 - [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
 - [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
 - [gradients — embedding/gradients](#example-embedding-gradients)
+- [gtk3 — frontends/gtk3](#example-frontends-gtk3)
 - [headless — frontends/headless](#example-frontends-headless)
 - [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
 - [input — embedding/input](#example-embedding-input)
@@ -1592,6 +1627,7 @@ Source line links describe the current checkout, including in historical notes.
 - [jit_workers — embedding/jit_workers](#example-embedding-jit_workers)
 - [keyboard_listeners — embedding/keyboard_listeners](#example-embedding-keyboard_listeners)
 - [keyboard_polling — embedding/keyboard_polling](#example-embedding-keyboard_polling)
+- [linux_fb — frontends/linux_fb](#example-frontends-linux_fb)
 - [live_variables — debugger/live_variables](#example-debugger-live_variables)
 - [lua_style — extending/lua_style](#example-extending-lua_style)
 - [main — embedding/main](#example-embedding-main)
@@ -1616,6 +1652,7 @@ Source line links describe the current checkout, including in historical notes.
 - [property_resolve — embedding/property_resolve](#example-embedding-property_resolve)
 - [prototypes — embedding/prototypes](#example-embedding-prototypes)
 - [prototypes — extending/prototypes](#example-extending-prototypes)
+- [qt5 — frontends/qt5](#example-frontends-qt5)
 - [resource_broker — embedding/resource_broker](#example-embedding-resource_broker)
 - [resource_exceptions.as — actionscript/resource_exceptions.as](#example-actionscript-resource_exceptions-as)
 - [resource_snapshots — debugger/resource_snapshots](#example-debugger-resource_snapshots)

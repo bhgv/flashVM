@@ -11,13 +11,13 @@ def check():
     """Keep new tutorials discoverable and their API/ownership explanations reviewable."""
     assert not (ROOT / "examples/embedding/host_backend").exists(), "old host directory remains"
     catalog = (ROOT / "examples/README.md").read_text()
-    for name in ("clutter3d", "headless", "sdl"):
-        source = FRONTENDS / name / "main.c"
+    for name in ("clutter3d", "gtk3", "headless", "linux_fb", "qt5", "sdl"):
+        source = FRONTENDS / name / ("main.cpp" if name == "qt5" else "main.c")
         readme = FRONTENDS / name / "README.md"
         assert source.is_file() and readme.is_file(), name
         assert catalog.count("example-frontends-" + name) == 3, name
         assert "frontends/" + name + "/README.md" in catalog, name
-    for source in list(FRONTENDS.rglob("*.c")) + list(FRONTENDS.rglob("*.h")):
+    for source in list(FRONTENDS.rglob("*.c")) + list(FRONTENDS.rglob("*.cpp")) + list(FRONTENDS.rglob("*.h")):
         for number, line in enumerate(source.read_text().splitlines(), 1):
             assert not line.strip() or "/*" in line or "*/" in line, (source, number)
         assert "assert(" not in source.read_text(), source
@@ -26,10 +26,11 @@ def check():
     for api in set(re.findall(r"\b(fvm_\w+)\s*\(", common)):
         assert api in docs and re.search(r"\|.*" + api + r".*\|.*\]", docs), api
     for name, pattern in (("sdl", r"\b(SDL_\w+)\s*\("),
-                          ("clutter3d", r"\b((?:clutter_|g_)\w+)\s*\(")):
+                          ("clutter3d", r"\b((?:clutter_|g_)\w+)\s*\("),
+                          ("gtk3", r"\b((?:gtk_|gdk_|g_|cairo_)\w+)\s*\(")):
         source = (FRONTENDS / name / "main.c").read_text()
         docs = (FRONTENDS / name / "README.md").read_text()
-        local = set(re.findall(r"^static [^\n]*\b((?:clutter_|sdl_)\w+)\(", source, re.M))
+        local = set(re.findall(r"^static [^\n]*\b((?:clutter_|sdl_|gtk_)\w+)\(", source, re.M))
         for api in set(re.findall(pattern, source)) - local:
             assert "[" + api + "](" in docs, (name, api)
     # Every local Markdown file/anchor source target must still exist after the move.

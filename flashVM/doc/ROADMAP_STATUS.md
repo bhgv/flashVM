@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.603
+# FlashVM stage status / Состояние стадий — v0.604
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,40 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.604 GTK3, Qt5 and Linux devices / Новые фронтенды
+
+Three opt-in executable tutorials now live in examples/frontends/gtk3, qt5 and
+linux_fb. GTK3 consumes opaque RGBA through GdkPixbuf/Cairo and handles logical
+resize/pointer/focus loss. Qt5 uses scoped QImage/QPainter and native QWidget
+events/deactivation; only this SDK host uses C++11, while the VM remains C++98
+and its public ABI C89. Direct Linux uses actual fbdev mmap, one explicit
+evdev or mousedev stream, and optional single-plane progressive YUYV V4L2
+MMAP capture with independent copied grayscale preview. No SDK becomes a core
+dependency; NO_GRAPHICS and non-Linux device configurations fail explicitly.
+
+Current Linux evidence: all three production hosts and all three adapter fixtures
+build. The GTK3 input/paint fixture passes with a real Xvfb X11 display; the Qt5
+fixture passes with its real offscreen SDK plugin and verifies actual painted
+marker colors after native events. Both window examples complete 120-frame
+smoke runs with status=0. The Linux device layout/decoder fixture passes in
+Release and ASan/UBSan (leak detection disabled): bitfield/span checks, virtual
+row offset/padding writes, YUYV pitch/truncation, partial signed mousedev packets,
+evdev movement and SYN_DROPPED cancellation. Invalid Linux options and /dev/null
+as framebuffer are rejected. A renamed detached component configures without
+window SDKs; requesting GTK under NO_GRAPHICS fails before SDK discovery.
+Build-version refresh, source-link determinism and tutorial checkers pass.
+
+Русский: три новых исполняемых примера собраны и документированы на двух языках,
+каждая строка исходника пояснена, API перечислены с параметрами и ссылками.
+Проверены настоящий GTK3/Xvfb и Qt5 offscreen, по 120 кадров в оконных примерах;
+Linux-проверка использует тестовые структуры/буферы, а не физические устройства.
+Реальные /dev/fb0, evdev/mousedev, камера, аппаратный экран/тачскрин, Android,
+Windows/macOS и статические релизные SDK этим блоком не приняты. Камера даёт
+только копию сырой яркости Y, не цветное преобразование. Все стадии остаются
+открытыми; готовность полной Flash/SWF системы не заявляется.
+
+See [frontend catalog and API](../examples/frontends/README.md).
 
 ## v0.603 mixed input FIFO / Общая очередь ввода
 

@@ -1,0 +1,117 @@
+/* GTK3 owner-thread frontend: opaque RGBA drawing, scaled pointer and focus cancellation. */
+#include "../common/demo.h" /* Reuse public C89 VM/frame ownership and rendering. */
+#include "limits.h" /* Native channel precision used for GdkPixbuf. */
+#include <gtk/gtk.h> /* External GTK3/GDK/GObject/Cairo SDK. */
+#include <stdio.h> /* Print actual status and bounded smoke results. */
+/* Native callback state never escapes the main thread. */
+typedef struct GtkHost { /* The stack owner outlives gtk_main and every source. */
+    Demo demo; /* Independent runtime/context/pixel owners. */
+    GtkWidget *area; /* Borrowed child, owned by the window. */
+    cairo_t *cr; /* Borrowed only while handling draw. */
+    int smoke; /* Explicit finite rendering mode. */
+} GtkHost; /* No managed script pointers need GC pins. */
+/* Consume the frame before its producer may overwrite the bytes. */
+static FVM_Result gtk_present(const FVM_RasterSurface *frame, void *data) /* Synchronous sink. */
+{ /* The demo is opaque, so straight/premultiplied alpha coincide. */
+    GtkHost *host = (GtkHost *)data; /* Borrow the live main-thread host. */
+    GdkPixbuf *image = gdk_pixbuf_new_from_data(frame->pixels, GDK_COLORSPACE_RGB, TRUE, /* Borrow RGBA. */
+        GTK_DEMO_CHANNEL_BITS, (int)frame->width, (int)frame->height, (int)frame->stride, NULL, NULL); /* No destroy callback. */
+    if (!image) return FVM_OUT_OF_MEMORY; /* No retained pixel allocation on failure. */
+    cairo_save(host->cr); /* Preserve GTK's clip and transform. */
+    cairo_scale(host->cr, (double)gtk_widget_get_allocated_width(host->area) / frame->width, /* Logical X. */
+        (double)gtk_widget_get_allocated_height(host->area) / frame->height); /* Same scale as input inverse. */
+    gdk_cairo_set_source_pixbuf(host->cr, image, 0, 0); /* Cairo borrows a reference through painting. */
+    cairo_paint(host->cr); /* Paint the opaque frame inside GTK's existing clip. */
+    cairo_restore(host->cr); /* Release the source before producer reuse. */
+    g_object_unref(image); /* Release descriptor; pixel storage remains owned by Demo. */
+    return cairo_status(host->cr) == CAIRO_STATUS_SUCCESS ? FVM_OK : FVM_ERROR; /* Real sink status. */
+} /* No source pointer survives this synchronous call. */
+/* Draw only in the GTK paint callback, where the Cairo context is valid. */
+static gboolean gtk_draw(GtkWidget *widget, cairo_t *cr, gpointer data) /* Borrow paint parameters. */
+{ /* Repaint requests may be coalesced by GTK. */
+    GtkHost *host = (GtkHost *)data; /* Lifetime is bounded by the native loop. */
+    (void)widget; /* The stored drawing area is the same signal sender. */
+    host->cr = cr; /* Borrow only until this callback returns. */
+    demo_frame(&host->demo, gtk_present, host); /* Draw and synchronously upload through public ABI. */
+    host->cr = NULL; /* Make the temporary borrowing boundary explicit. */
+    if (host->demo.status != FVM_OK || (host->smoke && host->demo.frames >= DEMO_MAX_STEPS)) /* End finite run. */
+        gtk_main_quit(); /* Main stops the timer before destroying the VM. */
+    return TRUE; /* This handler has painted the drawing area. */
+} /* GTK retains ownership of its Cairo context. */
+/* Convert widget logical coordinates back into the fixed world once. */
+static gboolean gtk_pointer(GtkWidget *widget, GdkEvent *event, gpointer data) /* Unified pointer signal. */
+{ /* Only primary mouse transitions are demonstrated here. */
+    GtkHost *host = (GtkHost *)data; /* Main owns the callback target. */
+    FVM_Affine transform = {1, 0, 0, 1, 0, 0}; /* World to widget logical pixels. */
+    FVM_MouseEventType type; /* Set only for the handled GDK variants. */
+    double x, y; /* Position in the sender widget, not device pixels. */
+    transform.xx = (double)gtk_widget_get_allocated_width(widget) / DEMO_WIDTH; /* Forward X scale. */
+    transform.yy = (double)gtk_widget_get_allocated_height(widget) / DEMO_HEIGHT; /* Forward Y scale. */
+    if (event->type == GDK_MOTION_NOTIFY) { /* Motion requires no button to update the pointer. */
+        type = FVM_MOUSE_EVENT_MOVE; x = event->motion.x; y = event->motion.y; /* Copy event data. */
+    } else if ((event->type == GDK_BUTTON_PRESS || event->type == GDK_BUTTON_RELEASE) && /* Button events. */
+               event->button.button == DEMO_PRIMARY_BUTTON) { /* Ignore other buttons/double-click signals. */
+        type = event->type == GDK_BUTTON_PRESS ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP; /* Transition. */
+        x = event->button.x; y = event->button.y; /* Local logical pixels. */
+    } else return FALSE; /* Unhandled signals remain available to GTK. */
+    demo_pointer(&host->demo, type, &transform, x, y); /* Owner-thread VM entry and status latch. */
+    if (host->demo.status != FVM_OK) gtk_main_quit(); /* Surface mapping/VM errors to main. */
+    return TRUE; /* This pointer signal was consumed. */
+} /* No keyboard, IME or touch recognizer is implied. */
+/* Cancel an active pointer when the native window loses focus. */
+static gboolean gtk_focus(GtkWidget *widget, GdkEventFocus *event, gpointer data) /* Focus-out signal. */
+{ /* The common helper releases at the last valid VM coordinate. */
+    GtkHost *host = (GtkHost *)data; /* Borrow callback owner. */
+    (void)widget; (void)event; /* Cancel does not require fresh pointer coordinates. */
+    demo_cancel(&host->demo); /* Explicit synthetic-UP policy. */
+    return FALSE; /* Let GTK continue its own focus processing. */
+} /* The VM does not automatically change script Selection. */
+/* Request a repaint; never store a Cairo context across ticks. */
+static gboolean gtk_tick(gpointer data) /* GLib timer on the same main context. */
+{ /* Sources are removed before the stack host is released. */
+    GtkHost *host = (GtkHost *)data; /* Live callback target. */
+    gtk_widget_queue_draw(host->area); /* Native loop schedules paint when drawable. */
+    return G_SOURCE_CONTINUE; /* Main explicitly removes this source at shutdown. */
+} /* Timer pacing is not a movie/audio clock. */
+/* Native close ends the main loop without destroying Demo inside the signal. */
+static void gtk_closed(GtkWidget *widget, gpointer data) /* Window destroy signal. */
+{ /* Main retains a window reference until cleanup. */
+    (void)widget; (void)data; /* No callback owner is released here. */
+    if (gtk_main_level()) gtk_main_quit(); /* Cleanup may also destroy after the native loop already ended. */
+} /* No timer can run after main removes it. */
+/* Run interactively or with --smoke for 120 successful draw callbacks. */
+int main(int argc, char **argv) /* GTK owns all native dispatch on this thread. */
+{ /* Validate options before GTK can consume its own arguments. */
+    GtkHost host; /* Zeroed before partial resource acquisition. */
+    GtkWidget *window; /* Explicitly referenced native owner. */
+    guint timer; /* Source ID removed after the loop. */
+    int result; /* Preserve the failure before clearing Demo. */
+    memset(&host, 0, sizeof(host)); /* Initialize callbacks and VM ownership. */
+    host.smoke = argc == 2 && !strcmp(argv[1], "--smoke"); /* No implicit finite run. */
+    if (argc > 1 && !host.smoke) return 1; /* Reject unknown tutorial arguments. */
+    if (!gtk_init_check(NULL, NULL)) { fprintf(stderr, "GTK display unavailable\n"); return 1; } /* Real SDK. */
+    if (demo_open(&host.demo) != FVM_OK) { demo_close(&host.demo); return 1; } /* Partial cleanup. */
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL); /* Own a real native top-level window. */
+    g_object_ref_sink(window); /* Keep the object valid even after a destroy signal. */
+    host.area = gtk_drawing_area_new(); /* Window owns its child once added. */
+    gtk_widget_set_size_request(host.area, DEMO_WIDTH, DEMO_HEIGHT); /* Minimum logical extent. */
+    gtk_widget_add_events(host.area, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | /* Enable input. */
+        GDK_BUTTON_RELEASE_MASK); /* Listen to releases as well as presses. */
+    gtk_container_add(GTK_CONTAINER(window), host.area); /* Transfer child ownership to window. */
+    g_signal_connect(host.area, "draw", G_CALLBACK(gtk_draw), &host); /* Paint context lifetime. */
+    g_signal_connect(host.area, "motion-notify-event", G_CALLBACK(gtk_pointer), &host); /* Hover/drag. */
+    g_signal_connect(host.area, "button-press-event", G_CALLBACK(gtk_pointer), &host); /* Primary down. */
+    g_signal_connect(host.area, "button-release-event", G_CALLBACK(gtk_pointer), &host); /* Primary up. */
+    g_signal_connect(window, "focus-out-event", G_CALLBACK(gtk_focus), &host); /* Cancel stale hold. */
+    g_signal_connect(window, "destroy", G_CALLBACK(gtk_closed), NULL); /* Stop native dispatch. */
+    timer = g_timeout_add(DEMO_FRAME_MS, gtk_tick, &host); /* Coarse owner-thread pacing. */
+    gtk_widget_show_all(window); /* Realize native resources before processing callbacks. */
+    gtk_main(); /* Run until native close, smoke completion or VM failure. */
+    g_source_remove(timer); /* No callback may access host after cleanup starts. */
+    result = host.demo.status == FVM_OK ? 0 : 1; /* Capture status before demo_close resets it. */
+    printf("GTK3 frames=%u status=%d\n", host.demo.frames, (int)host.demo.status); /* Observable result. */
+    gtk_widget_destroy(window); /* Remove native signal senders before destroying VM. */
+    g_object_unref(window); /* Release the explicit native owner. */
+    demo_close(&host.demo); /* [GC:] Release context/runtime after native callbacks stop. */
+    return result; /* Initialization/backend failures remain nonzero. */
+} /* This is an embedding frontend, not a complete SWF player. */

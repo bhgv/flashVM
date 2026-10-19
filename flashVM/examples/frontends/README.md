@@ -7,7 +7,10 @@ player compatibility. The VM never owns a window, actor or GLES context.
 | Frontend | Purpose / Назначение | Build target |
 | --- | --- | --- |
 | [clutter3d](clutter3d/README.md) | Clutter/Cogl texture actor, stage→actor→world input, first touch | flashvm_example_clutter3d (opt-in SDK) |
+| [gtk3](gtk3/README.md) | GTK3 DrawingArea/Cairo, scaled pointer and focus loss | flashvm_example_gtk3 (opt-in SDK) |
 | [headless](headless/README.md) | Synchronous memory consumer, raster/pointer checks without a window | flashvm_examples_frontends_headless_main |
+| [linux_fb](linux_fb/README.md) | Linux fbdev, evdev/mousedev, optional V4L2 MMAP preview | flashvm_example_linux_fb (Linux opt-in) |
+| [qt5](qt5/README.md) | Qt5 QWidget/QImage, scaled pointer and deactivation | flashvm_example_qt5 (opt-in SDK) |
 | [sdl](sdl/README.md) | SDL2 streaming texture, logical mouse and first-contact touch | flashvm_example_sdl (opt-in SDK) |
 
 `common/demo.h` is shared tutorial implementation, not a separate frontend.
@@ -30,7 +33,7 @@ SDL/Clutter показывают квадрат: зелёный без конт�
 
 ## Build dependencies / Зависимости
 
-Ordinary builds need neither SDL nor Clutter. SDK options default OFF and are
+Ordinary builds need no window SDK or direct device access. GTK3, Qt5 and Linux device options also default OFF. SDK options default OFF and are
 read only with FVM_BUILD_EXAMPLES=ON. A graphical tutorial requires GRAPHICS_AGG
 or GRAPHICS_CAIRO; enabling one under NO_GRAPHICS is a configure error. The
 headless example instead explicitly returns/skips 77 without a raster backend.
@@ -93,6 +96,21 @@ These tutorials do not install Mouse script namespaces or register receivers.
 For that next integration step use [mouse_listeners](../embedding/mouse_listeners/README.md).
 Полные контракты на русском: [host](../../doc/HOST_BACKENDS.ru.md),
 [Mouse](../../doc/MOUSE.ru.md). Ошибки не подменяются успешным пустым кадром.
+## GTK3, Qt5 and direct Linux additions / Дополнительные фронтенды
+
+The [GTK3](gtk3/README.md), [Qt5](qt5/README.md) and [Linux devices](linux_fb/README.md)
+examples share the same portable Demo and public ABI. Each owns its event loop and
+native resources, explains each source line and lists every native API with
+parameters and documentation. GTK3/Qt5 demonstrate real SDK paint paths; linux_fb
+uses actual kernel device protocols, never a simulated successful device.
+Qt5's host alone uses its SDK-required C++11 dialect; VM implementation remains
+C++98 and public ABI C89. Direct Linux device validation does not certify hardware.
+
+Русский: GTK3/Qt5 — отдельные исполняемые оконные примеры, Linux — консольный
+frontend без оконного SDK. Каждый включается собственной опцией CMake и не
+становится обязательной зависимостью VM. Подробности, ограничения и команды
+находятся в README каждого примера. Общая часть по-прежнему использует прямую
+доставку Mouse; миграция на общую очередь — отдельный шаг.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

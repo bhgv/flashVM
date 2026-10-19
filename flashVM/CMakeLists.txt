@@ -219,7 +219,7 @@ if(FVM_BUILD_TESTS)
 endif()
 function(fvm_add_program source)
   file(RELATIVE_PATH relative ${PROJECT_SOURCE_DIR} ${source})
-  if(relative MATCHES "^examples/frontends/(sdl|clutter3d)/")
+  if(relative MATCHES "^examples/frontends/(sdl|clutter3d|gtk3|qt5|linux_fb)/")
     return() # SDK-specific tutorial targets are registered by examples/frontends/CMakeLists.txt.
   endif()
   if(relative MATCHES "font_libraries" AND NOT FVM_ENABLE_FONTS)
