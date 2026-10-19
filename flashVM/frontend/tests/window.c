@@ -18,7 +18,14 @@ int main(void)
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
     view = fvm_desktop_window_open("FlashVM presentation test", 2, 2);
     assert(view);
-    assert(fvm_desktop_window_present(view, &surface));
+    assert(!fvm_desktop_window_present(0, &surface, sizeof(source)));
+    assert(!fvm_desktop_window_present(view, &surface, sizeof(source) - 1));
+    assert(!view->ready);
+    surface.width = 1;
+    assert(!fvm_desktop_window_present(view, &surface, sizeof(source)));
+    assert(!view->ready);
+    surface.width = 2;
+    assert(fvm_desktop_window_present(view, &surface, sizeof(source)));
     /* Redraw/read before present: SDL does not guarantee backbuffer contents after present. */
     assert(SDL_RenderCopy(view->renderer, view->texture, 0, 0) == 0);
     assert(SDL_RenderReadPixels(view->renderer, 0, SDL_PIXELFORMAT_RGBA32, result, 8) == 0);

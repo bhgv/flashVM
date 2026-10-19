@@ -1,7 +1,7 @@
 /* SDL2 presentation boundary; VM and command parsing do not depend on SDL types. */
 #ifndef FVM_DESKTOP_WINDOW_H
 #define FVM_DESKTOP_WINDOW_H
-#include "flashvm/raster.h"
+#include "flashvm/host.h"
 #include "flashvm/keyboard.h"
 #include "flashvm/mouse.h"
 #include "flashvm/input.h"
@@ -45,7 +45,7 @@ typedef struct FVM_DesktopWindow FVM_DesktopWindow;
 /* Initialize SDL/video on the calling main thread and own window/renderer/texture. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned int);
 /* Upload an RGBA frame and present it; source bytes are borrowed only during this call. */
-int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *);
+int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);
 /* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
 /* Copy current input state without retaining caller storage or entering the VM. */

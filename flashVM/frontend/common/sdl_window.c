@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
+#include <limits.h>
 /* Plain copied transition; contains no borrowed VM/SDL pointers. */
 typedef struct FVM_DesktopEvent
 {
@@ -97,13 +98,30 @@ static int draw_texture(FVM_DesktopWindow *view)
     return 1;
 }
 
-/* Render the complete logical stage; caller storage is never retained by this adapter. */
-int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface *surface)
+/* Consume a validated frame using the SDL-owned texture on the main thread. */
+static FVM_Result present_sdl(const FVM_RasterSurface *surface, void *userdata)
 {
+    FVM_DesktopWindow *view = (FVM_DesktopWindow *)userdata;
+    if (surface->width != view->logical_width || surface->height != view->logical_height ||
+        surface->stride > INT_MAX)
+    {
+        SDL_SetError("FlashVM frame does not match the texture extent or pitch");
+        return FVM_INVALID_ARGUMENT;
+    }
     if (SDL_UpdateTexture(view->texture, 0, surface->pixels, (int)surface->stride) != 0)
-        return 0;
+        return FVM_ERROR;
     view->ready = 1;
-    return draw_texture(view);
+    return draw_texture(view) ? FVM_OK : FVM_ERROR;
+}
+
+/* Share the bounded frame contract with non-SDL hosts; retain no source storage. */
+int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface *surface,
+                                size_t byte_count)
+{
+    if (!view) return 0;
+    if (fvm_host_present(surface, byte_count, present_sdl, view) == FVM_OK) return 1;
+    if (!SDL_GetError()[0]) SDL_SetError("FlashVM frame presentation failed");
+    return 0;
 }
 
 /* Queue one copied event in shared key/pointer order; overflow is latched until close. */

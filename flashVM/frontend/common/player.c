@@ -329,7 +329,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         if (!checked(fvm_movieclip_render_view(context, clip, &surface, &viewport), "raster render",
                      path))
             goto cleanup;
-        if (!fvm_desktop_window_present(window, &surface))
+        if (!fvm_desktop_window_present(window, &surface, surface.stride * surface.height))
         {
             fprintf(stderr, "%s: presentation: %s\n", path, fvm_desktop_window_error());
             goto cleanup;

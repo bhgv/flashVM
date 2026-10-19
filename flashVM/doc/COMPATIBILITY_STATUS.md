@@ -4813,6 +4813,14 @@ Android ARM64/API23 native and Java/Dex APK builds pass, with the persisted test
 signer, signature and 16 KiB ELF/ZIP alignment checked. No new physical keyboard,
 Android playback or foreign-OS runtime acceptance is claimed. All nine stages
 remain open.
+## v0.598 host boundary / Граница хоста
+
+Verified: backend-neutral borrowed RGBA frame submission, checked spans/stride,
+callback errors and exceptions, inverse host event coordinates, and SDL integration.
+Seven targeted Linux Release tests passed, including software SDL pixels and
+muted interpreter/JIT movies; no new native Android/Clutter/GLES acceptance.
+Проверен общий контракт и SDL software path; Clutter остаётся будущим адаптером.
+[EN](HOST_BACKENDS.md) / [RU](HOST_BACKENDS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

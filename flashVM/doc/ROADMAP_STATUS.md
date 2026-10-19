@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.597
+# FlashVM stage status / Состояние стадий — v0.598
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,24 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.598 independent host / Независимый хост
+
+The C89 frame consumer ABI and inverse affine event mapping are independent of
+SDL/Clutter/GLES; the SDL player now uses the same bounded frame submission.
+Seven targeted Linux Release tests pass: host geometry/buffer/error contract,
+SDL pointer and keyboard delivery, actual software texture pixels under dummy
+video, and three shipped sound-bearing movies in each execution mode with mute.
+Six targeted ASan/UBSan checks also pass (host, SDL pointer/movie keyboard,
+software pixels and muted interpreter/JIT), with leak detection disabled.
+This is software/backend acceptance, not a native window or Android/GPU run.
+[EN contract](HOST_BACKENDS.md) / [RU](HOST_BACKENDS.ru.md). The referenced
+Clutter shell was inspected outside inferno-os; its actual adapter remains future
+work. All stages remain open. Historical full-suite counts are not a new run.
+
+Проверены семь целевых тестов Linux Release, включая реальный SDL с dummy-video
+и оба режима исполнения роликов. Это не запуск на Android/GPU; адаптер Clutter
+ещё не реализован. Полный прежний набор тестов заново не заявляется.
 
 ## v0.583 verification / Проверка v0.583
 
