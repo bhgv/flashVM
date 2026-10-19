@@ -49,6 +49,7 @@
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
     - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
+    - [host_backend](#example-embedding-host_backend) — <small><em>Кадр и ввод через независимый хост без SDL</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
     - [movieclip](#example-embedding-movieclip) — <small><em>Управление MovieClip — AS-эскиз</em></small>
@@ -606,6 +607,17 @@ AS2-исходник использует Point, Matrix и Rectangle: перен
 Создаёт редактируемый прямоугольный путь и линейную красно-синюю заливку, затем печатает центральный RGBA. Показывает матрицу градиента, диапазон stop ratios и владение массивом остановок; графический backend выбирается в DEFS.
 
 **Файлы:** [example_as2.as](embedding/gradients/example_as2.as), [main.c](embedding/gradients/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-host_backend"></a>
+#### host_backend
+
+**Тип:** C89 — собираемый пример. **README:** [embedding/host_backend/README.md](embedding/host_backend/README.md).
+
+Растеризует квадрат в собственный RGBA-буфер и передаёт его синхронному consumer без SDL. Обращает масштаб и перенос координат события, затем доставляет down/up на потоке VM. Проверяет пиксель и итоговые мировые координаты; при NO_GRAPHICS явно пропускается. Это общий host-контракт, не готовый адаптер Clutter.
+
+**Файлы:** [main.c](embedding/host_backend/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1518,6 +1530,7 @@ Source line links describe the current checkout, including in historical notes.
 - [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
 - [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
 - [gradients — embedding/gradients](#example-embedding-gradients)
+- [host_backend — embedding/host_backend](#example-embedding-host_backend)
 - [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
 - [input — embedding/input](#example-embedding-input)
 - [input_queue — embedding/input_queue](#example-embedding-input_queue)

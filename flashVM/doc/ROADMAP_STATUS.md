@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.598
+# FlashVM stage status / Состояние стадий — v0.599
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,22 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.599 runnable host / Исполняемый хост
+
+The no-SDL C89 tutorial renders and consumes a real frame, maps host coordinates,
+and delivers down/up into the VM. SDL's mixed FIFO now uses that same inverse
+mapping. Three targeted default Release checks pass (host, tutorial, build-version
+refresh), seven lean SDL Release checks pass, and seven targeted ASan/UBSan
+checks pass with leak detection disabled. A separately configured NO_GRAPHICS
+build, without SDL, passes the host contract test and explicitly skips the
+raster tutorial (77). Documentation links, debugger tutorials and the new
+example's comments/catalog ordering pass. No full-suite or foreign-device
+rerun is claimed. [Tutorial](../examples/embedding/host_backend/README.md).
+
+Пример и общее преобразование ввода проверены в Release и ASan/UBSan;
+отдельная сборка NO_GRAPHICS без SDL проверяет host API и явно пропускает
+растровый пример. Полный набор и чужие платформы заново не заявляются.
 
 ## v0.598 independent host / Независимый хост
 

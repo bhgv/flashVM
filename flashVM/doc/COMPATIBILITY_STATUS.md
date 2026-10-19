@@ -4821,6 +4821,14 @@ Seven targeted Linux Release tests passed, including software SDL pixels and
 muted interpreter/JIT movies; no new native Android/Clutter/GLES acceptance.
 Проверен общий контракт и SDL software path; Clutter остаётся будущим адаптером.
 [EN](HOST_BACKENDS.md) / [RU](HOST_BACKENDS.ru.md).
+## v0.599 no-SDL executable host / Исполняемый хост без SDL
+
+[Headless tutorial](../examples/embedding/host_backend/README.md): real raster
+frame and mapped pointer dispatch pass default Release and ASan/UBSan; SDL
+FIFO mapping passes seven targeted Release checks. Separate NO_GRAPHICS core
+build passes host contract and explicitly skips the raster tutorial. No native
+Clutter/GLES or Android acceptance, no full-suite rerun.
+Проверены исполняемый хост и общий перевод координат, а не новый GPU backend.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

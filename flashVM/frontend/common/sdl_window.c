@@ -303,29 +303,37 @@ FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *c
     size_t remaining;
     unsigned long epoch;
     FVM_Result result = FVM_OK;
+    FVM_Affine world_to_event = {1, 0, 0, 1, 0, 0};
     if (!view || !context || view->pumping_events ||
         !(origin_x >= -DBL_MAX && origin_x <= DBL_MAX &&
           origin_y >= -DBL_MAX && origin_y <= DBL_MAX))
         return FVM_INVALID_ARGUMENT;
     if (view->event_error != FVM_OK)
         return view->event_error;
+    /* SDL already supplied logical pixels; only restore the authored stage origin. */
+    world_to_event.x0 = -origin_x;
+    world_to_event.y0 = -origin_y;
     view->pumping_events = 1;
     remaining = view->event_count;
     epoch = view->event_epoch;
     while (remaining-- && view->event_count && epoch == view->event_epoch)
     {
         FVM_DesktopEvent event = view->pending_events[view->event_head];
+        double world_x, world_y;
         view->event_head = (view->event_head + 1) % FVM_DESKTOP_PENDING_EVENTS;
         --view->event_count;
+        result = fvm_host_pointer_to_world(&world_to_event, event.x, event.y, &world_x, &world_y);
+        if (result != FVM_OK)
+            break;
         if (event.kind == FVM_DESKTOP_EVENT_KEY)
         {
-            result = fvm_input_set_pointer(context, event.x + origin_x, event.y + origin_y);
+            result = fvm_input_set_pointer(context, world_x, world_y);
             if (result == FVM_OK)
                 result = fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
         }
         else
             result = fvm_input_dispatch_mouse(context, event.mouse_type,
-                                               event.x + origin_x, event.y + origin_y);
+                                               world_x, world_y);
         if (result != FVM_OK)
             break;
     }

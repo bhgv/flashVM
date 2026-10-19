@@ -90,6 +90,15 @@ callback failure/exception containment, singular/nonfinite transforms, rotation,
 shear and large scales. `flashvm_frontend_window` tests the actual SDL
 consumer's bounds rejection and byte-correct pixels. The frontend is C89 and
 the implementation is C++98. See the current stage report for executed runs.
+## Executable host tutorial (v0.599)
+
+[Headless C89 host](../examples/embedding/host_backend/README.md) renders a
+real raster square, validates/consumes its borrowed RGBA frame, converts a
+scaled/translated event, and dispatches down/up into a context without SDL.
+The SDL FIFO now uses [fvm_host_pointer_to_world](../include/flashvm/host.h#L26) for each saved event as well;
+SDL has already normalized its coordinates, so its remaining matrix restores
+only the authored stage origin. Event batching/error/focus-reset rules stay
+the same. The example needs a raster backend and explicitly skips without one.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
