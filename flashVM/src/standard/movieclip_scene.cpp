@@ -1,6 +1,9 @@
 /* FlashVM: incremental and seek reconstruction of managed SWF display lists. */
 #include "movieclip_scene.hpp"
 #include "movieclip_constants.h"
+#include "scene_constants.h"
+#include "../swf/format_constants.h"
+#include "../core/execution_work_scope.hpp"
 #include "../swf/clip_action_constants.h"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/movieclip.h"
@@ -89,7 +92,9 @@ FVM_Result project(FVM_Context *c, const Properties &control, unsigned long flag
         out[base[i]] = value;
     }
     const char *keys[] = {"symbol", "matrix", "color", "ratio", "name", "clip_actions"};
-    const unsigned long masks[] = {2, 4, 8, 16, 32, FVM_SWF_PLACE_HAS_CLIP_ACTIONS};
+    const unsigned long masks[] = {FVM_SCENE_PLACE_CHARACTER, FVM_SCENE_PLACE_MATRIX,
+                                    FVM_SCENE_PLACE_COLOR, FVM_SCENE_PLACE_RATIO,
+                                    FVM_SCENE_PLACE_NAME, FVM_SWF_PLACE_HAS_CLIP_ACTIONS};
     for (unsigned int i = 0; i < 6; ++i)
         if (flags & masks[i])
         {
@@ -116,16 +121,16 @@ FVM_Result record(FVM_Context *c, const Properties &properties, FVM_Object **out
 FVM_Result background(FVM_Context *context, const Properties &control)
 {
     unsigned long rgb = 0;
-    FVM_Result status = integer(control, "background", 0xffffffUL, rgb);
+    FVM_Result status = integer(control, "background", FVM_SCENE_MAX_RGB, rgb);
     if (status != FVM_OK)
         return status;
     if (!context->stage_background_set)
     {
         FVM_RasterColor color;
-        color.r = (unsigned char)(rgb >> 16);
-        color.g = (unsigned char)(rgb >> 8);
+        color.r = (unsigned char)(rgb >> FVM_SCENE_RED_SHIFT);
+        color.g = (unsigned char)(rgb >> FVM_SCENE_GREEN_SHIFT);
         color.b = (unsigned char)rgb;
-        color.a = 255;
+        color.a = FVM_SCENE_OPAQUE_ALPHA;
         return fvm_stage_set_background(context, color);
     }
     return FVM_OK;
@@ -135,23 +140,23 @@ FVM_Result background(FVM_Context *context, const Properties &control)
 FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, const Properties &control)
 {
     unsigned long op = 0, depth = 0, flags = 0;
-    FVM_Result r = integer(control, "op", 28, op);
-    if (r == FVM_OK && op == 9)
+    FVM_Result r = integer(control, "op", FVM_SWF_TAG_REMOVE_OBJECT2, op);
+    if (r == FVM_OK && op == FVM_SWF_TAG_SET_BACKGROUND_COLOR)
         return background(c, control);
     if (r == FVM_OK)
-        r = integer(control, "depth", 65535, depth);
+        r = integer(control, "depth", FVM_MOVIECLIP_MAX_AUTHORED_DEPTH, depth);
     if (r != FVM_OK || !depth)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *old = child(children, depth);
-    if (op == 5 || op == 28)
+    if (op == FVM_SWF_TAG_REMOVE_OBJECT || op == FVM_SWF_TAG_REMOVE_OBJECT2)
     {
         if (!old)
             return FVM_OK;
-        if (op == 5)
+        if (op == FVM_SWF_TAG_REMOVE_OBJECT)
         {
             FVM_Object *data = 0, *symbol = 0;
             unsigned long expected = 0, actual = 0;
-            r = integer(control, "character", 65535, expected);
+            r = integer(control, "character", FVM_SCENE_MAX_CHARACTER_ID, expected);
             if (r == FVM_OK)
                 r = fvm_movieclip_scene_state(old, &data);
             if (r != FVM_OK)
@@ -160,7 +165,7 @@ FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, const
                 return FVM_OK;
             r = object(c, data, "scene_symbol", symbol);
             if (r == FVM_OK)
-                r = integer(symbol, "id", 65535, actual);
+                r = integer(symbol, "id", FVM_SCENE_MAX_CHARACTER_ID, actual);
             if (r != FVM_OK)
                 return r;
             if (expected != actual)
@@ -168,16 +173,16 @@ FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, const
         }
         return fvm_movieclip_scene_remove(c, old);
     }
-    if (op != 4 && op != 26)
+    if (op != FVM_SWF_TAG_PLACE_OBJECT && op != FVM_SWF_TAG_PLACE_OBJECT2)
         return FVM_INVALID_ARGUMENT;
     r = integer(control, "flags", FVM_SWF_PLACE_SUPPORTED_FLAGS, flags);
-    if (r != FVM_OK || !(flags & 3) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
+    if (r != FVM_OK || !(flags & FVM_SCENE_PLACE_MODE_MASK) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
         return FVM_INVALID_ARGUMENT;
     Properties properties;
     r = project(c, control, flags, properties);
     if (r != FVM_OK)
         return r;
-    if (!(flags & 2))
+    if (!(flags & FVM_SCENE_PLACE_CHARACTER))
     {
         if (!old)
             return FVM_OK;
@@ -187,7 +192,7 @@ FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, const
         r = record(c, properties, &update);
         return r == FVM_OK ? fvm_movieclip_scene_update(c, old, update) : r;
     }
-    if (flags & 1)
+    if (flags & FVM_SCENE_PLACE_MOVE)
     {
         /* Replace does not exchange a MovieClip's definition; static art is handled separately. */
         if (!old)
@@ -208,28 +213,28 @@ bool shape_symbol(FVM_Object *symbol)
 {
     FVM_Value kind;
     return symbol && field(symbol, "kind", kind) == FVM_OK && kind.type == FVM_VALUE_NUMBER &&
-           kind.number == 2;
+           kind.number == FVM_SCENE_SYMBOL_SHAPE;
 }
 
 /* Compose authored controls without running constructors or any skipped frame actions. */
 FVM_Result accumulate(FVM_Context *c, const Properties &control, Display &display)
 {
     unsigned long op = 0, depth = 0, flags = 0;
-    FVM_Result r = integer(control, "op", 28, op);
-    if (r == FVM_OK && op == 9)
+    FVM_Result r = integer(control, "op", FVM_SWF_TAG_REMOVE_OBJECT2, op);
+    if (r == FVM_OK && op == FVM_SWF_TAG_SET_BACKGROUND_COLOR)
         return background(c, control);
     if (r == FVM_OK)
-        r = integer(control, "depth", 65535, depth);
+        r = integer(control, "depth", FVM_MOVIECLIP_MAX_AUTHORED_DEPTH, depth);
     if (r != FVM_OK || !depth)
         return FVM_INVALID_ARGUMENT;
-    if (op == 5 || op == 28)
+    if (op == FVM_SWF_TAG_REMOVE_OBJECT || op == FVM_SWF_TAG_REMOVE_OBJECT2)
     {
-        if (op == 28)
+        if (op == FVM_SWF_TAG_REMOVE_OBJECT2)
             display.erase(depth);
         else
         {
             unsigned long id = 0;
-            r = integer(control, "character", 65535, id);
+            r = integer(control, "character", FVM_SCENE_MAX_CHARACTER_ID, id);
             if (r != FVM_OK)
                 return r;
             Display::iterator old = display.find(depth);
@@ -238,26 +243,26 @@ FVM_Result accumulate(FVM_Context *c, const Properties &control, Display &displa
         }
         return FVM_OK;
     }
-    if (op != 4 && op != 26)
+    if (op != FVM_SWF_TAG_PLACE_OBJECT && op != FVM_SWF_TAG_PLACE_OBJECT2)
         return FVM_INVALID_ARGUMENT;
     r = integer(control, "flags", FVM_SWF_PLACE_SUPPORTED_FLAGS, flags);
-    if (r != FVM_OK || !(flags & 3) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
+    if (r != FVM_OK || !(flags & FVM_SCENE_PLACE_MODE_MASK) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
         return FVM_INVALID_ARGUMENT;
     Display::iterator previous = display.find(depth);
-    if ((flags & 1) && previous == display.end())
+    if ((flags & FVM_SCENE_PLACE_MOVE) && previous == display.end())
         return FVM_OK;
-    if (!(flags & 1))
+    if (!(flags & FVM_SCENE_PLACE_MOVE))
         display.erase(depth);
     Properties projected;
     r = project(c, control, flags, projected);
     if (r != FVM_OK)
         return r;
     Properties &target = display[depth];
-    bool replace_shape = (flags & 3) == 3 && shape_symbol(target["symbol"].object) &&
+    bool replace_shape = (flags & FVM_SCENE_PLACE_MODE_MASK) == FVM_SCENE_PLACE_MODE_MASK && shape_symbol(target["symbol"].object) &&
                          shape_symbol(projected["symbol"].object);
     for (Properties::iterator i = projected.begin(); i != projected.end(); ++i)
     {
-        if ((flags & 1) && (i->first == "name" ||
+        if ((flags & FVM_SCENE_PLACE_MOVE) && (i->first == "name" ||
                             (!replace_shape && (i->first == "token" || i->first == "character" ||
                                                 i->first == "symbol"))))
             continue;
@@ -285,7 +290,7 @@ FVM_Result controls(FVM_Context *c, FVM_Object *frames, unsigned long frame, FVM
  * Managed values remain live under scene_run's native barrier, including after source deletion.
  * Resource objects (symbol/matrix/color/clip actions) retain their shared identities. */
 FVM_Result snapshot_controls(FVM_Context *c, FVM_Object *list,
-                              fvm_detail::vector<Properties> &snapshot)
+                              fvm_detail::vector<Properties> &snapshot, FVM_ExecutionWorkScope &work)
 {
     if (!list)
         return FVM_OK;
@@ -296,6 +301,9 @@ FVM_Result snapshot_controls(FVM_Context *c, FVM_Object *list,
     const unsigned long count = (unsigned long)list->indexed.size();
     for (unsigned long index = 0; index < count; ++index)
     {
+        FVM_Result charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         Slots::const_iterator found = list->indexed.find(index);
         if (found == list->indexed.end() || found->second.type != FVM_VALUE_OBJECT ||
             !found->second.object || found->second.object->owner != c)
@@ -318,10 +326,11 @@ FVM_Result snapshot_controls(FVM_Context *c, FVM_Object *list,
 FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned long frame,
                                    bool loop)
 {
-    if (!c || !parent || parent->owner != c || frame < 1 || frame > 65535)
+    if (!c || !parent || parent->owner != c || frame < 1 || frame > FVM_MOVIECLIP_MAX_FRAMES)
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Temporary projections retain managed pointers while constructors execute. */
     FVM_NativeCallGuard guard(c);
+    FVM_ExecutionWorkScope work(c);
     FVM_Object *data = 0, *frames = 0, *children = 0;
     FVM_Result r = fvm_movieclip_scene_state(parent, &data);
     if (r == FVM_OK)
@@ -331,7 +340,7 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
     unsigned long previous = 0;
     if (data->properties.find("scene_frame") != data->properties.end())
     {
-        r = integer(data, "scene_frame", 65535, previous);
+        r = integer(data, "scene_frame", FVM_MOVIECLIP_MAX_FRAMES, previous);
         if (r != FVM_OK)
             return r;
     }
@@ -345,11 +354,14 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
         if (r != FVM_OK)
             return r;
         fvm_detail::vector<Properties> snapshot;
-        r = snapshot_controls(c, list, snapshot);
+        r = snapshot_controls(c, list, snapshot, work);
         if (r != FVM_OK)
             return r;
         for (size_t i = 0; i < snapshot.size(); ++i)
         {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
             r = apply(c, parent, children, snapshot[i]);
             if (r != FVM_OK)
                 return r;
@@ -360,25 +372,42 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
         Display desired;
         for (unsigned long current = 1; current <= frame; ++current)
         {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
             FVM_Object *list = 0;
             r = controls(c, frames, current, list);
             if (r != FVM_OK)
                 return r;
             fvm_detail::vector<Properties> snapshot;
-            r = snapshot_controls(c, list, snapshot);
+            r = snapshot_controls(c, list, snapshot, work);
             if (r != FVM_OK)
                 return r;
             for (size_t i = 0; i < snapshot.size(); ++i)
             {
+                r = work.step();
+                if (r != FVM_OK)
+                    return r;
                 r = accumulate(c, snapshot[i], desired);
                 if (r != FVM_OK)
                     return r;
             }
         }
         /* [GC:] Snapshot child edges before unlinking changes the live table. */
+        if (children->owner != c || children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
+            return FVM_INVALID_ARGUMENT;
+        for (Slots::const_iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+        {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
+        }
         Slots old = children->indexed;
         for (Slots::iterator i = old.begin(); i != old.end(); ++i)
         {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
             if (i->second.type != FVM_VALUE_OBJECT || !i->second.object ||
                 i->second.object->owner != c)
                 return FVM_INVALID_ARGUMENT;
@@ -389,7 +418,7 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
             if (state->properties.find("scene_token") == state->properties.end())
                 continue;
             unsigned long token = 0;
-            r = integer(state, "scene_token", 0xffffffffUL, token);
+            r = integer(state, "scene_token", FVM_SCENE_MAX_TOKEN, token);
             if (r != FVM_OK)
                 return r;
             if (!token)
@@ -405,6 +434,9 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
         }
         for (Display::iterator i = desired.begin(); i != desired.end(); ++i)
         {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
             FVM_Object *placement = 0;
             r = record(c, i->second, &placement);
             if (r != FVM_OK)

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.634
+# FlashVM stage status / Состояние стадий — v0.635
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,19 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.635 shared scene work / Общий бюджет сцены
+
+Incremental controls and seek/loop composition now share AVM1 work with nested
+constructors. Copy/apply, authored-frame gaps, old-child snapshots and desired
+placements are charged; numeric zero still polls worker stops. [EN](SCENE_CONTROLS.md#scene-work-v0635) /
+[RU](SCENE_CONTROLS.ru.md#бюджет-сцены-v0635).
+
+Validation: 13 selected minimal Linux Release CTests passed, including exact
+budget/nesting/saturation/gap boundaries, two real workers and the previous
+snapshot/OOM/scene/JIT/frame/initializer/tutorial checks. Exact v0.634 scene source
+fails the new work-counter assertion; current source passes. No foreign-platform,
+original-Player or stage-completion claim follows. Все девять стадий открыты.
 
 ## v0.634 captured scene controls / Снимки управляющих записей
 

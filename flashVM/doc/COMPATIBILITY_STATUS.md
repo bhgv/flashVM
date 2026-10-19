@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/6/7/8/9: scene traversal work | Проверено v0.635 в ограниченных Linux tests | Shared control/seek/gap/child work, nested budgets and two OS-worker stops. [EN](SCENE_CONTROLS.md#scene-work-v0635) / [RU](SCENE_CONTROLS.ru.md#бюджет-сцены-v0635). Logical units are not real-time preemption or complete placement/resource accounting. |
 | 3/6/7/8/9: captured scene controls | Проверено v0.634 в ограниченных Linux tests | Bounded ordinal scalar snapshots before constructors; mutation/OOM/owner cases. [EN](SCENE_CONTROLS.md) / [RU](SCENE_CONTROLS.ru.md). Shared-resource mutation and full lifecycle/reference/platform acceptance remain open. |
 | 3/6/7/8/9: timeline depth snapshots | Реализовано v0.629; проверки в ROADMAP_STATUS.md | Actual ascending child-depth tick order, immutable local receiver identity, owner/alias/bound checks, effective removed-ancestor skip and shared budgeted heap sort. [EN](TIMELINE_DEPTH_ORDER.md) / [RU](TIMELINE_DEPTH_ORDER.ru.md). Whole-tree lifecycle, original Player and physical/foreign-platform acceptance remain open. |
 | 3/5/6/7/8/9: retained KeyPress input | Реализовано v0.628; проверки в ROADMAP_STATUS.md | Pure copied-key mapping, exact selected tree delivery, source gates, shared work/GC/OOM/stop and SDL snapshot/order/reset behavior. [EN](CLIP_KEYPRESS.md) / [RU](CLIP_KEYPRESS.ru.md). DefineButton conditions, target/lifecycle/IME/reference/device acceptance remain open. |

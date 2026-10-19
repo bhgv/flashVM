@@ -44,6 +44,37 @@ matrix/color/clip_actions этот поверхностный снимок не 
 Все девять стадий остаются открытыми. Эти проверки FlashVM не подтверждают lifecycle
 оригинального Player или запуск на чужих ОС и физических устройствах.
 
+## Бюджет сцены (v0.635)
+
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) охватывает подготовку сцены и callbacks, наследуя общий
+бюджет AVM1/tick вместо сброса на каждом control или конструкторе. Прямой переход
+расходует по единице за копирование записи и перед её применением. Сбой capture
+не применяет ни одной записи локального списка. Отсутствующий/пустой список прямого
+перехода не добавляет работы, сохраняя стоимость обычного пустого tick.
+
+Восстановление расходует единицу за каждый посещённый кадр, включая пропуски,
+по единице за копирование и композицию control, за копирование и проверку каждого
+старого child и перед применением каждого итогового размещения/обновления.
+Для F кадров, K controls, M старых children и D итоговых элементов стоимость равна
+F+2K+2M+D без вложенных конструкторов и прочей работы исполнения. Старый список
+ограничен [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32), копирование предварительно оплачено.
+Сортировка глубин в эту версию не входит. Протокольные флаги, цвета и идентификаторы
+именованы в [scene_constants.h](../src/standard/scene_constants.h) отдельно от лимитов обхода.
+
+Исчерпание лимита даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) без превышения счётчика; насыщенный унаследованный
+счётчик не обнуляется и не переполняется. Нулевой числовой лимит сохраняет проверку
+кооперативной остановки worker. Время native callback, все map operations, копии
+ресурсов и размеры внутренних allocations размещения отдельно не измеряются и
+не оплачиваются. Это единицы логической работы, а не ограничение реального времени.
+
+Ранние размещения, выбранный фон, эффекты конструкторов и внешнее состояние кадра
+сохраняются при последующей ошибке. Маркер завершённого кадра сцены публикуется
+только при успехе; повторный вызов может повторно оценивать уже применённые controls.
+Атомарного отката всей сцены или нового lifecycle scheduler нет. Проверка
+`scene_controls_budget` охватывает точные границы forward/reconstruction/старых
+children/пропусков/вложенности/насыщения. Два настоящих OS workers в
+`scene_controls_worker` останавливаются до обхода и между native-only controls.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -53,8 +84,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

@@ -51,6 +51,37 @@ ctest --test-dir build-scene -R '^flashvm_tests_scene_controls_' --output-on-fai
 All nine roadmap stages remain open. These tests compare FlashVM behavior and do
 not establish original-Player lifecycle rules or foreign-platform/device acceptance.
 
+## Scene work (v0.635)
+
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) now spans scene preparation and callbacks, inheriting
+an outer AVM1/tick budget instead of resetting it per control or constructor.
+Incremental delivery charges one unit per captured control and one before each
+application. Capture failure changes no display control from that local list.
+An absent/empty incremental list adds zero work, preserving ordinary empty ticks.
+
+Reconstruction charges one per visited authored frame (including gaps), one per
+captured control and one per composition, one per old-child copy and one per
+old-child inspection, and one before each desired placement/update. For F visited
+frames, K controls, M old children and D desired entries, this is F+2K+2M+D native
+units, excluding nested constructors and other existing execution work. Old child
+snapshots are bounded by [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32); copying is precharged.
+Depth sorting is not part of this revision. Private protocol/color/identity values
+are named in [scene_constants.h](../src/standard/scene_constants.h) separately from traversal limits.
+
+Numeric ceiling exhaustion returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) without incrementing beyond that
+ceiling; saturated inherited counters fail without wrap. Zero numeric limit still
+polls cooperative worker cancellation. Native callback wall time, all map operations,
+resource copies and internal placement allocation sizes are not individually timed
+or charged. This is logical work accounting, not a real-time bound.
+
+Earlier placements, background selection, constructor side effects and outer frame
+state remain committed on later failure. The scene-frame completion marker is
+published only after success; retry can reevaluate previously applied placements.
+No transactional whole-scene rollback or new lifecycle scheduler is introduced.
+Exact forward/reconstruction/existing-child/gap/nested/saturated boundaries are
+covered by `scene_controls_budget`; two real OS workers stop before traversal and
+between native-only control applications in `scene_controls_worker`.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -60,8 +91,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->
