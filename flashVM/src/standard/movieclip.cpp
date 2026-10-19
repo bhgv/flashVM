@@ -2,6 +2,9 @@
  * File: src/standard/movieclip.cpp.
  */
 #include "movieclip_quality.hpp"
+#include "../swf/clip_action_policy.hpp"
+#include "flashvm/clip_actions.h"
+#include "stage_update.hpp"
 #include "../render/quality_internal.hpp"
 
 
@@ -766,6 +769,10 @@ FVM_Result duplicate_instance(FVM_Context *c, FVM_Object *o, unsigned int n, con
     /* [GC:] Retain the resource library for future descendant attachments and serialization. */
     if (library)
         child->resource_result.object->properties["library"] = object(library);
+    /* [GC:] Authored placement handlers are immutable records; duplicates retain their table
+     * while later placement updates replace only the receiving instance's edge. */
+    if (data->properties.find("clip_actions") != data->properties.end())
+        child->resource_result.object->properties["clip_actions"] = data->properties["clip_actions"];
     if (has_linkage)
     {
         r = fvm_object_set(c, child->resource_result.object, "linkage", &linkage);
@@ -2318,6 +2325,101 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
     return fvm_avm1_execute_block_receiver(c, bytes.begin(), bytes.size(), o);
 }
 
+/* Snapshot scalar selectors and a borrowed managed code value before the first callback.
+ * [GC:] The enclosing native barrier retains code even when callbacks replace its owner table. */
+struct ClipActionCall
+{
+    unsigned long events; /* Captured single-record event mask. */
+    unsigned int key; /* Captured raw KeyPress selector. */
+    FVM_Value code; /* [GC:] Captured owned managed string, retained by the native barrier. */
+};
+
+/* Prepare bounded record metadata/hex before delivering the selected event bytecode. */
+FVM_Result dispatch_clip_actions(FVM_Context *c, FVM_Object *clip, unsigned long event,
+                                 unsigned int key, FVM_ExecutionWorkScope &work)
+{
+    FVM_Object *data = 0;
+    FVM_Result r = state(clip, data);
+    if (r != FVM_OK || static_art(clip))
+        return FVM_INVALID_ARGUMENT;
+    if (data->properties.find("clip_actions") == data->properties.end())
+        return FVM_OK;
+    FVM_Object *events = 0;
+    r = private_object(data, "clip_actions", events);
+    if (r != FVM_OK || events->owner != c || events->indexed.size() > FVM_SWF_CLIP_ACTION_MAX_RECORDS)
+        return FVM_INVALID_ARGUMENT;
+    unsigned int version = 0;
+    r = fvm_movieclip_movie_version(c, clip, &version);
+    if (r != FVM_OK)
+        return r;
+    const unsigned long allowed = fvm_swf_clip_action_mask(version);
+    for (Slots::const_iterator i = events->indexed.begin(); i != events->indexed.end(); ++i)
+    {
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
+    }
+    /* [GC:] Capture every selector/code value before bytecode may seek or replace records. */
+    fvm_detail::vector<ClipActionCall> snapshot;
+    snapshot.reserve(events->indexed.size());
+    unsigned long expected = 0, total = 0;
+    for (Slots::const_iterator i = events->indexed.begin(); i != events->indexed.end(); ++i, ++expected)
+    {
+        if (i->first != expected || i->second.type != FVM_VALUE_OBJECT || !i->second.object ||
+            i->second.object->owner != c)
+            return FVM_INVALID_ARGUMENT;
+        FVM_Object *record = i->second.object;
+        unsigned long selector = 0;
+        ClipActionCall call;
+        r = integer_field(record, "events", FVM_SWF_CLIP_ACTION_KNOWN_MASK, call.events);
+        if (r == FVM_OK)
+            r = integer_field(record, "key", FVM_SWF_CLIP_ACTION_MAX_KEY, selector);
+        if (r != FVM_OK || !call.events || (call.events & ~allowed) ||
+            (!(call.events & FVM_CLIP_EVENT_KEY_PRESS) && selector) || record->indexed.size() != 1)
+            return FVM_INVALID_ARGUMENT;
+        call.key = (unsigned int)selector;
+        Slots::const_iterator code = record->indexed.find(0);
+        if (code == record->indexed.end() || code->second.type != FVM_VALUE_STRING)
+            return FVM_INVALID_ARGUMENT;
+        call.code = code->second;
+        const size_t size = fvm_string_size(call.code);
+        if (size % FVM_SWF_CLIP_ACTION_HEX_PER_BYTE ||
+            size / FVM_SWF_CLIP_ACTION_HEX_PER_BYTE > FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES ||
+            size / FVM_SWF_CLIP_ACTION_HEX_PER_BYTE > FVM_SWF_CLIP_ACTION_MAX_BYTES - total)
+            return FVM_INVALID_ARGUMENT;
+        total += (unsigned long)(size / FVM_SWF_CLIP_ACTION_HEX_PER_BYTE);
+        for (size_t j = 0; j < size; ++j)
+        {
+            if (!(j % FVM_SWF_CLIP_ACTION_HEX_PER_BYTE))
+            {
+                r = work.step();
+                if (r != FVM_OK)
+                    return r;
+            }
+            const char ch = call.code.string[j];
+            if (!((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')))
+                return FVM_INVALID_ARGUMENT;
+        }
+        snapshot.push_back(call);
+    }
+    const unsigned long eligible = FVM_CLIP_EVENT_MOUSE_MOVE | FVM_CLIP_EVENT_MOUSE_DOWN |
+                                  FVM_CLIP_EVENT_MOUSE_UP | FVM_CLIP_EVENT_KEY_DOWN | FVM_CLIP_EVENT_KEY_UP;
+    FVM_StageUpdateEventScope redraw(c, (event & eligible) != 0);
+    for (size_t i = 0; i < snapshot.size(); ++i)
+    {
+        const ClipActionCall &call = snapshot[i];
+        if (!(call.events & event) || (event == FVM_CLIP_EVENT_KEY_PRESS && call.key != key))
+            continue;
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
+        r = execute_frame_block(c, clip, call.code);
+        if (r != FVM_OK)
+            return r;
+    }
+    return FVM_OK;
+}
+
 /* Run source-library init blocks before placement/frame actions, once per graph.
  * Progress is private context state, so transferred libraries initialize afresh.
  * A failed block is not retried: its script side effects cannot be rolled back. */
@@ -2484,6 +2586,11 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
                 return r;
         }
     }
+    /* Retained onClipEvent(enterFrame) bytecode precedes the optional named handler.
+     * No table means no additional work, preserving native-only tick accounting. */
+    r = dispatch_clip_actions(c, o, FVM_CLIP_EVENT_ENTER_FRAME, 0, work);
+    if (r != FVM_OK)
+        return r;
     /* Resolve once through the method dispatcher, retaining the defining owner for super.
      * Missing/noncallable handlers are ignored without global fallback. */
     r = work.step();
@@ -2717,6 +2824,17 @@ FVM_Result fvm_movieclip_scene_update(FVM_Context *c, FVM_Object *o, FVM_Object 
     FVM_Result r = state(o, data);
     if (r != FVM_OK)
         return r;
+    if (placement->properties.find("clip_actions") != placement->properties.end())
+    {
+        if (static_art(o))
+            return FVM_UNSUPPORTED;
+        FVM_Object *events = 0;
+        r = private_object(placement, "clip_actions", events);
+        if (r != FVM_OK || events->owner != c)
+            return FVM_INVALID_ARGUMENT;
+        /* [GC:] Replacement publishes a managed edge; an active delivery keeps its own snapshot. */
+        data->properties["clip_actions"] = object(events);
+    }
     if (placement->properties.find("matrix") != placement->properties.end())
     {
         FVM_Object *record = 0;
@@ -3492,6 +3610,39 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
         if (field(data, "frame", current) == FVM_OK && current.number == frame)
             data->properties["entered"] = number(0);
         return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Explicit clip-action delivery never changes host input state or selects a scene target. */
+extern "C" FVM_Result fvm_movieclip_dispatch_clip_actions(FVM_Context *c, FVM_Object *clip,
+                                                         unsigned long event, unsigned int key)
+{
+    if (!c || !clip || clip->owner != c || c->destroying || c->gc_collecting || c->gc_releasing ||
+        c->movieclip_sound_busy || !event || (event & (event - 1)) ||
+        (event & ~FVM_SWF_CLIP_ACTION_KNOWN_MASK) || key > FVM_SWF_CLIP_ACTION_MAX_KEY ||
+        (event != FVM_CLIP_EVENT_KEY_PRESS && key))
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        FVM_Object *data = 0;
+        FVM_Result r = state(clip, data);
+        if (r != FVM_OK || static_art(clip))
+            return FVM_INVALID_ARGUMENT;
+        unsigned int version = 0;
+        r = fvm_movieclip_movie_version(c, clip, &version);
+        if (r != FVM_OK)
+            return r;
+        if (event & ~fvm_swf_clip_action_mask(version))
+            return FVM_UNSUPPORTED;
+        /* [GC:] Preserve all raw scene/record values through bytecode and native callbacks. */
+        FVM_NativeCallGuard guard(c);
+        FVM_ExecutionWorkScope work(c);
+        r = work.step();
+        return r == FVM_OK ? dispatch_clip_actions(c, clip, event, key, work) : r;
     }
     catch (const std::bad_alloc &)
     {

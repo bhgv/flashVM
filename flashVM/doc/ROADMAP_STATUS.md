@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.624
+# FlashVM stage status / Состояние стадий — v0.625
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,30 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.625 retained ClipActions / Сохраняемые события sprite
+
+PlaceObject2 sprite handlers now decode under strict SWF5–8 masks and bounded
+record/action lengths. Managed code and selector graphs survive scene replacement,
+duplication and transport. EnterFrame runs at the existing tick boundary; the C89
+selected-event API delivers other records explicitly, without native onX/input or
+automatic lifecycle scheduling. Prepared selectors/code survive callback mutation.
+
+Preparation/action bytes, delivery and AVM1 share work and cooperative OS-worker
+stop. Malformed metadata/hex and OOM unwind native/root/eligibility scopes; later
+handler errors preserve completed effects. [EN](CLIP_ACTIONS.md) /
+[RU](CLIP_ACTIONS.ru.md), [C89](../examples/embedding/clip_actions/README.md).
+
+Validation: 251 selected Release CTest checks passed (232 core/example checks,
+18 frontend checks and version refresh), plus 74 ASan/UBSan runtime checks with
+LeakSanitizer disabled. The new tutorial also compiled as strict C89 and ran against
+the instrumented core. Old v0.624 loader linkage rejects the positive wire fixture.
+Source-link/determinism, tutorial comments, relative links and sorted glossary checks
+passed. Native SDL dummy-video results are not visible-device acceptance.
+
+Это развитие стадий 3/5/6/7/8 и Linux player-проверок стадии 9. Автоматические
+load/unload/input targets, полный порядок оригинального Player, clipDepth и приёмка
+видимых устройств/чужих ОС не добавлены. Все девять этапов остаются открытыми.
 
 ## v0.624 shared MovieClip ticks / Общий бюджет ticks
 

@@ -73,3 +73,12 @@ is unchanged. Contracts: [EN](../doc/UPDATE_AFTER_EVENT.md) / [RU](../doc/UPDATE
 ```sh
 ctest --test-dir build -R '^flashvm_(player|capture)_update_' --output-on-failure
 ```
+
+## Сохраняемые ClipActions v0.625
+
+PlaceObject2 сохраняет records sprite; плеер автоматически доставляет только
+EnterFrame во время ticks. Load/unload/construct/data/input требуют явной host
+интеграции [C89 API](../doc/CLIP_ACTIONS.ru.md). Native onX, hit testing и lifecycle
+scheduler автоматически не добавлены. Optional tests flashvm_player_clip_actions_
+interpreter/jit исполняют SWF5–8 на настоящем SDL dummy video и отвергают wrong-value
+controls; это не видимый экран или приёмка другой ОС.

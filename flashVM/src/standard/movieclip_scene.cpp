@@ -1,5 +1,6 @@
 /* FlashVM: incremental and seek reconstruction of managed SWF display lists. */
 #include "movieclip_scene.hpp"
+#include "../swf/clip_action_constants.h"
 #include "../core/native_call_guard.hpp"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
@@ -74,9 +75,9 @@ FVM_Result project(FVM_Context *c, FVM_Object *control, unsigned long flags, Pro
             return r;
         out[base[i]] = value;
     }
-    const char *keys[] = {"symbol", "matrix", "color", "ratio", "name"};
-    const unsigned long masks[] = {2, 4, 8, 16, 32};
-    for (unsigned int i = 0; i < 5; ++i)
+    const char *keys[] = {"symbol", "matrix", "color", "ratio", "name", "clip_actions"};
+    const unsigned long masks[] = {2, 4, 8, 16, 32, FVM_SWF_PLACE_HAS_CLIP_ACTIONS};
+    for (unsigned int i = 0; i < 6; ++i)
         if (flags & masks[i])
         {
             FVM_Value value;
@@ -156,8 +157,8 @@ FVM_Result apply(FVM_Context *c, FVM_Object *parent, FVM_Object *children, FVM_O
     }
     if (op != 4 && op != 26)
         return FVM_INVALID_ARGUMENT;
-    r = integer(control, "flags", 63, flags);
-    if (r != FVM_OK || !(flags & 3))
+    r = integer(control, "flags", FVM_SWF_PLACE_SUPPORTED_FLAGS, flags);
+    if (r != FVM_OK || !(flags & 3) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
         return FVM_INVALID_ARGUMENT;
     Properties properties;
     r = project(c, control, flags, properties);
@@ -226,8 +227,8 @@ FVM_Result accumulate(FVM_Context *c, FVM_Object *control, Display &display)
     }
     if (op != 4 && op != 26)
         return FVM_INVALID_ARGUMENT;
-    r = integer(control, "flags", 63, flags);
-    if (r != FVM_OK || !(flags & 3))
+    r = integer(control, "flags", FVM_SWF_PLACE_SUPPORTED_FLAGS, flags);
+    if (r != FVM_OK || !(flags & 3) || (flags & ~FVM_SWF_PLACE_SUPPORTED_FLAGS))
         return FVM_INVALID_ARGUMENT;
     Display::iterator previous = display.find(depth);
     if ((flags & 1) && previous == display.end())

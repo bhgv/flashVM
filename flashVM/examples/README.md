@@ -47,6 +47,7 @@
     - [resurrection](#example-embedding-resurrection) — <small><em>Возврат объекта из финализатора — заметка</em></small>
   - [graphics](#group-embedding-graphics)
     - [bitmap_fill](#example-embedding-bitmap_fill) — <small><em>Живой BitmapData как заливка клипа</em></small>
+    - [clip_actions](#example-embedding-clip_actions) — <small><em>Явная доставка Load из сохранённого ClipActions</em></small>
     - [color_matrix_filter](#example-embedding-color_matrix_filter) — <small><em>Изменение RGBA через матрицу цвета</em></small>
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
@@ -610,6 +611,17 @@ link demonstrated API functions to public headers and feature guides.
 Создаёт BitmapData из двух пикселей, использует живой bitmap как заливку MovieClip и рендерит результат. Показывает сохранение GC-корней для удерживаемых объектов и порядок освобождения ресурсов.
 
 **Файлы:** [main.c](embedding/bitmap_fill/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-clip_actions"></a>
+#### clip_actions
+
+**Тип:** исполняемый C89 host. **README:** [EN](embedding/clip_actions/README.md) / [RU](embedding/clip_actions/README.ru.md).
+
+Загружает встроенный SWF8 sprite с placement handlers: обычный tick исполняет EnterFrame, затем host выбирает actor и явно доставляет Load. Показывает удержание root/library/code, отсутствие автоматического lifecycle cursor и проверку marker без окна, input adapter, компилятора или внешнего файла.
+
+**Файлы:** [main.c](embedding/clip_actions/main.c), [clip_action_movie.h](embedding/clip_actions/clip_action_movie.h).
 
 [К оглавлению](#оглавление).
 
@@ -1717,6 +1729,7 @@ Source line links describe the current checkout, including in historical notes.
 - [channel_values — embedding/channel_values](#example-embedding-channel_values)
 - [channel_worker — extending/channel_worker](#example-extending-channel_worker)
 - [channels — embedding/channels](#example-embedding-channels)
+- [clip_actions — embedding/clip_actions](#example-embedding-clip_actions)
 - [clutter3d — frontends/clutter3d](#example-frontends-clutter3d)
 - [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
 - [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)

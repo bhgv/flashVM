@@ -94,6 +94,18 @@ class FVM_SWFReader
         ++position_;
         return true;
     }
+    /* Skip a bounded byte-aligned range without reading or allocating its contents. */
+    bool skip(size_t count)
+    {
+        align();
+        if (!valid_ || position_ > size_ || count > size_ - position_)
+        {
+            valid_ = false;
+            return false;
+        }
+        position_ += count;
+        return true;
+    }
     /* Report the current byte offset without aligning partial bits; validate good() before using fields. */
     size_t position() const
     {

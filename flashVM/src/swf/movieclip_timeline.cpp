@@ -1,6 +1,7 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
 #include "format_constants.h"
+#include "clip_actions.hpp"
 #include "sound_event_constants.h"
 #include "../standard/movieclip_sound_constants.h"
 #include "decode.hpp"
@@ -52,6 +53,7 @@ struct Placement
     FVM_Affine matrix;           /* Decoded pixel-space affine transform. */
     FVM_SWFColorTransform color; /* Optional RGBA color transform. */
     fvm_detail::string name;     /* Optional instance name. */
+    fvm_detail::vector<FVM_SWFClipAction> events; /* Owned placement-specific event records. */
     /* Initialize omitted placement fields without inventing presence flags. */
     Placement() : frame(0), tag(0), flags(0), depth(0), character(0), token(0), ratio(0), background(0)
     {
@@ -100,7 +102,7 @@ FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned i
         out.depth = (unsigned int)reader.integer(2);
         if (!(out.flags & 3))
             return FVM_INVALID_ARGUMENT;
-        if (out.flags & 0xc0)
+        if (out.flags & FVM_SWF_PLACE_HAS_CLIP_DEPTH)
             return FVM_UNSUPPORTED;
         if (out.flags & 2)
             out.character = (unsigned int)reader.integer(2);
@@ -112,6 +114,12 @@ FVM_Result inspect_placement(const unsigned char *bytes, size_t size, unsigned i
             out.ratio = (unsigned int)reader.integer(2);
         if ((out.flags & 32) && !reader.string(out.name))
             return FVM_INVALID_ARGUMENT;
+        if (out.flags & FVM_SWF_PLACE_HAS_CLIP_ACTIONS)
+        {
+            FVM_Result result = fvm_swf_read_clip_actions(reader, bytes, version, out.events);
+            if (result != FVM_OK)
+                return result;
+        }
     }
     if (!reader.finished() || !out.depth ||
         ((out.flags & 2) &&
@@ -558,6 +566,39 @@ FVM_Result build_control(FVM_Context *c, const Placement &control, FVM_Object *d
         r = fvm_object_set(c, record, "name", &name);
         if (r != FVM_OK)
             return r;
+    }
+    if (control.flags & FVM_SWF_PLACE_HAS_CLIP_ACTIONS)
+    {
+        if (control.flags & 2)
+        {
+            FVM_Value symbol = definitions->indexed[control.character];
+            if (symbol.type != FVM_VALUE_OBJECT || !symbol.object)
+                return FVM_INVALID_ARGUMENT;
+            if (symbol.object->properties.find("kind") != symbol.object->properties.end())
+                return FVM_UNSUPPORTED;
+        }
+        FVM_Object *events = 0;
+        r = fvm_object_create(c, &events);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] Link the complete handler container before allocating records and owned code. */
+        record->properties["clip_actions"] = managed(events);
+        for (size_t i = 0; i < control.events.size(); ++i)
+        {
+            FVM_Object *event = 0;
+            r = fvm_object_create(c, &event);
+            if (r != FVM_OK)
+                return r;
+            events->indexed[(unsigned long)i] = managed(event);
+            FVM_Value value;
+            fvm_value_number(&value, control.events[i].events);
+            event->properties["events"] = value;
+            fvm_value_number(&value, control.events[i].key);
+            event->properties["key"] = value;
+            r = store_block(c, event, 0, control.events[i].code.begin(), control.events[i].code.size());
+            if (r != FVM_OK)
+                return r;
+        }
     }
     *out = record;
     return FVM_OK;

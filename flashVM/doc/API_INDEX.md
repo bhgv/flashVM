@@ -9,6 +9,7 @@
 - `include/flashvm/function.h`: first-class native/AVM1 functions, invoke/construct.
 - `include/flashvm/avm1.h`: actions, rooted trace/URL sinks and borrowed active-target introspection.
 - [stage.h](../include/flashvm/stage.h): host background/quality plus [fvm_stage_request_update](../include/flashvm/stage.h#L38), [fvm_stage_get_update](../include/flashvm/stage.h#L41) and [fvm_stage_take_update](../include/flashvm/stage.h#L45) ([EN](UPDATE_AFTER_EVENT.md) / [RU](UPDATE_AFTER_EVENT.ru.md)).
+- [clip_actions.h](../include/flashvm/clip_actions.h): [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L37) and individual FVM_CLIP_EVENT_* selectors ([EN](CLIP_ACTIONS.md) / [RU](CLIP_ACTIONS.ru.md)).
 - [movieclip.h](../include/flashvm/movieclip.h): host-authored clip frames, vector rendering and [fvm_movieclip_advance](../include/flashvm/movieclip.h#L62) ([EN ticks](MOVIECLIP_TICKS.md) / [RU](MOVIECLIP_TICKS.ru.md)).
 - `include/flashvm/standard.h`: standard installation and primitive conversion.
 - [timers.h](../include/flashvm/timers.h): [fvm_timers_poll](../include/flashvm/timers.h#L19), explicit owning-thread scheduled callback delivery ([EN](TIMERS.md) / [RU](TIMERS.ru.md)).
@@ -233,6 +234,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../include/flashvm/clip_actions.h#L37) |
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:67](../include/flashvm/movieclip.h#L67) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |

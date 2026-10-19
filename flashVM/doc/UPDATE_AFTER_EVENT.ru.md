@@ -101,6 +101,9 @@ interval и проверяет объединение явных запросо�
 полные MovieClip/ClipActions-маршруты и другие платформы/устройства остаются
 открытыми. Целая стадия роудмапа этим ограниченным профилем не закрывается.
 
+С v0.625 выбранные retained MouseMove/Down/Up и KeyDown/Up ClipActions также
+дают eligibility; остальные retained events её не дают. [ClipActions](CLIP_ACTIONS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

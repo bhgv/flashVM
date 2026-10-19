@@ -104,6 +104,9 @@ use with rendering independent of the movie FPS. Exact original-player behavior,
 complete MovieClip/ClipActions routes and foreign-platform/device acceptance remain open.
 No whole roadmap stage is closed by this bounded implementation.
 
+Since v0.625 selected retained MouseMove/Down/Up and KeyDown/Up ClipActions also
+grant eligibility; other retained events do not grant it. [ClipActions](CLIP_ACTIONS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
