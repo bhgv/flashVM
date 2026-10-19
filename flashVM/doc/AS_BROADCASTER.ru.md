@@ -10,8 +10,9 @@
 
 Подключите `flashvm/broadcaster.h`. В потоке владельца VM после
 [`fvm_standard_install`](../include/flashvm/standard.h#L18) вызовите `fvm_standard_broadcaster_install(context)`:
-появится обычный объект AsBroadcaster с методом initialize(object). Автоматически
-стандартная установка и плееры его не включают; конструктора нет. Повторная
+появится обычный объект AsBroadcaster с методом initialize(object). Стандартная установка ABI
+его не включает; с v0.616 поставляемый плеер явно устанавливает namespace для
+SWF6–8 до выполнения сцены. Конструктора нет. Повторная
 неповреждённая установка возвращает [`FVM_OK`](../include/flashvm/flashvm.h#L42). Конфликтующие глобальные свойства,
 методы, аксессоры и реестры функций сохраняются; результат — [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
 
@@ -95,6 +96,34 @@ Array, общие ссылки, циклы и корень аксессора; �
 код при доступном JIT. Это Linux fixtures, а не приёмка других ОС, физических
 устройств или полной совместимости Flash.
 
+## Перенос и плеер v0.616
+
+C89-пример теперь копирует broadcaster через [`fvm_channel_send_value`](../include/flashvm/transfer.h#L22) и
+[`fvm_channel_receive_value`](../include/flashvm/transfer.h#L25) между двумя контекстами одного потока владельца.
+Нативный callback отдельно регистрируется в каждой куче: оригинал получает 42,
+копия — 84 после сборки GC получателя. Владение и каждое API описаны в README.
+
+Fixture broadcaster_transport проверяет SWF6–8 через память, файлы и локальный
+TCP broker: циклический граф со скриптовым обработчиком и общей сохранённой
+Function отправляется, исходный broadcaster сбрасывается и его контекст
+разрушается. Получатель собирает GC и выполняет копию в интерпретаторе,
+ручном/автоматическом JIT при его наличии. Обработчик вызывает gc.collect;
+проверяются this, payload, счётчики, идентичность Function, remove/reset и реальные
+нативные входы. Отдельные процессы записи/чтения дополнительно проверяют файл
+между независимыми адресными пространствами. Переносятся копии скриптового кода,
+а не живые удалённые функции или произвольная нативная userdata.
+
+Общий код поставляемого плеера явно устанавливает AsBroadcaster для SWF6–8.
+CLI-fixture создаёт самопроверяющиеся SWF этих версий и контроль запуска SWF5;
+исполняет их интерпретатором/JIT с SDL dummy video и отключённым звуком.
+Намеренно неправильный payload обязан прерывать воспроизведение. Это проверка
+интеграции и программного протокола, не приёмка физического вывода или других ОС.
+Namespace не зависит от SDK отображения; другие хосты используют тот же C89 API.
+Изменений Clutter3d или inferno-os здесь нет.
+
+Гонки worker, длительные/удалённые сетевые сбои и полная историческая семантика
+Flash остаются открытыми. Эти ограниченные сценарии не закрывают этапы 6–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -106,6 +135,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../include/flashvm/broadcaster.h#L19) |
 | `FVM_BROADCASTER_MAX_LISTENERS` | macro / define | [include/flashvm/broadcaster.h:6](../include/flashvm/broadcaster.h#L6) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

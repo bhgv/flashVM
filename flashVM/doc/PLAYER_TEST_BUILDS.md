@@ -1,5 +1,11 @@
 # Player test builds — v0.582
 
+v0.616: the common player explicitly installs AsBroadcaster for SWF6–8 before
+scene execution; older movies skip it. [Contract EN](AS_BROADCASTER.md#transport-and-player-v0616) /
+[контракт RU](AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). Native target rebuilds
+and physical playback acceptance are separate from the Linux software CLI fixtures.
+
+
 [Русское руководство](PLAYER_TEST_BUILDS.ru.md).
 This checkpoint delivers Linux x64/Windows x64 binary packages and a separately
 packaged Android ARM64 test APK, plus [two runnable SWF8 movies](../examples/player/animation_audio/README.md).

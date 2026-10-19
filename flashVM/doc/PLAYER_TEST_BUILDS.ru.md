@@ -1,5 +1,11 @@
 # Тестовые сборки плеера — v0.582
 
+v0.616: общий плеер явно устанавливает AsBroadcaster для SWF6–8 до выполнения
+сцены; более старые ролики пропускают установку. [Контракт EN](AS_BROADCASTER.md#transport-and-player-v0616) /
+[RU](AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). Нативные пересборки целевых ОС и
+приёмка физического воспроизведения отделены от программных Linux CLI-fixtures.
+
+
 [English](PLAYER_TEST_BUILDS.md). Подготовлены Linux x64/Windows x64 пакеты и
 отдельный Android ARM64 APK, [два исполняемых SWF8](../examples/player/animation_audio/README.md).
 Это тест поддерживаемого подмножества, не полный Flash Player и не закрытие стадии 9.

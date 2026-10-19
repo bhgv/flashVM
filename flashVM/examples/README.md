@@ -903,7 +903,7 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 **Тип:** исполняемый C89 и скриптовый AS-спутник. **README:** [EN](embedding/broadcaster/README.md) / [RU](embedding/broadcaster/README.ru.md).
 
 Пользовательский объект событий независимо от frontend: явная установка,
-инициализация, сильная регистрация слушателя, onValue(42), снятие подписки и
+инициализация, сильная регистрация слушателя, onValue(42), FIFO-копия во второй контекст с onValue(84), снятие подписки и
 очистка после ошибки. Показывает живой Array и рассылку по снимку; не плеер.
 [Контракт EN](../doc/AS_BROADCASTER.md) / [RU](../doc/AS_BROADCASTER.ru.md).
 

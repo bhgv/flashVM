@@ -364,6 +364,10 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_broadcaster_independent_processes
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_broadcaster_process.py
+            $<TARGET_FILE:flashvm_tests_broadcaster_transport>)
+  set_tests_properties(flashvm_broadcaster_independent_processes PROPERTIES TIMEOUT 90)
   add_test(NAME flashvm_objects_independent_processes
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_objects_process.py
             $<TARGET_FILE:flashvm_tests_objects_transfer_process>)

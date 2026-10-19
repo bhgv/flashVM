@@ -1,10 +1,12 @@
-Версия разработки: **0.615** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.616** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
 новые коммиты отправляются только туда, с проверкой серверного HEAD.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.616: [Broadcaster transports and player integration](doc/AS_BROADCASTER.md#transport-and-player-v0616) / [каналы и плеер](doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616), [two-context C89 tutorial](examples/embedding/broadcaster/README.md).
 
 v0.615: [AsBroadcaster: generic application events](doc/AS_BROADCASTER.md) / [пользовательские события](doc/AS_BROADCASTER.ru.md), [C89/AS tutorial](examples/embedding/broadcaster/README.md).
 

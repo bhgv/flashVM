@@ -7,7 +7,8 @@ The AS source is not a SWF: use a separate compatible AS2 compiler to produce
 SWF6–8; this tutorial assumes no particular external compiler command.
 
 The host creates source/listener, installs onValue, registers the object,
-synchronously sends 42 and removes registration. Use this for application events
+synchronously sends 42, snapshots its graph through a FIFO into a second context,
+delivers 84 through the copy and removes the original registration. Use this for application events
 above any frontend. It does not poll devices or replace Key/Mouse/Selection.
 
 ## Build and expected result
@@ -23,6 +24,7 @@ cmake --build build --target flashvm_examples_embedding_broadcaster_main -j2
 
 ```text
 onValue: 42
+onValue: 84
 ```
 
 ## Execution, ownership and limits
@@ -36,6 +38,15 @@ to stderr and return process code 1; success returns 0. Ordinary error handling
 preserves failures without assertions. See the [guide](../../../doc/AS_BROADCASTER.md)
 for snapshot ordering, mutation, the 4096 bound, version policy and open acceptance.
 This is an embedding tutorial, not a player, compiler or historical conformance gate.
+
+
+The second context installs its own standard objects and independently registers
+receive under the same stable identity. No machine code or object addresses travel.
+It needs no AsBroadcaster namespace: prepared methods and the live Array are
+imported. Pin the imported root before collection; after dispatch unpin it, release
+the queue and destroy the second context. This is sequential exchange between two
+heaps on one owner thread, not a threading test. Separate fixtures cover files,
+processes and network transport.
 
 ## Every demonstrated C API
 
@@ -57,6 +68,12 @@ This is an embedding tutorial, not a player, compiler or historical conformance 
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | context, object: drop one acquired root after last native access. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | context: release heap, registrations and namespace, ending borrowed object lifetimes. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | runtime: release outer owner after context teardown. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
+| [`fvm_serialization_register_callback`](../../../include/flashvm/serialization.h#L30) | context, stable name, callback: bind local code in each heap; no native userdata is copied. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | channel output: acquire one unbounded FIFO handle, released after receive. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | source context, queue, root, blocking=0: copy graph before enqueue; no source pointers retained. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | destination, queue, output, blocking=0: decode one message into destination-owned objects; empty open queue returns [FVM_NOT_FOUND](../../../include/flashvm/flashvm.h#L47). [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | destination, optional freed count=NULL: explicitly collect unreachable state while the imported root is pinned. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
+| [`fvm_channel_release`](../../../include/flashvm/channel.h#L47) | queue: release acquired handle after operations stop; last owner frees pending messages. [Guide](../../../doc/AS_BROADCASTER.md#transport-and-player-v0616). |
 
 ## Callback and values
 
@@ -93,13 +110,19 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../../../include/flashvm/broadcaster.h#L19) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
+| `fvm_channel_release` | function | [include/flashvm/channel.h:47](../../../include/flashvm/channel.h#L47) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../../../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `FVM_Context` | struct | [src/core/runtime.hpp:246](../../../src/core/runtime.hpp#L246) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../../../include/flashvm/gc.h#L44) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../../../include/flashvm/flashvm.h#L47) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:121](../../../src/core/runtime.hpp#L121) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
@@ -108,6 +131,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Runtime` | struct | [src/core/runtime.hpp:174](../../../src/core/runtime.hpp#L174) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../../../include/flashvm/serialization.h#L30) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../../../include/flashvm/broadcaster.h#L13) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |

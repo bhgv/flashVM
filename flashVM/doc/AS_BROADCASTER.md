@@ -11,8 +11,9 @@ their own documented contracts. [Русский](AS_BROADCASTER.ru.md).
 Include `flashvm/broadcaster.h`. On the VM owner thread, after
 [`fvm_standard_install`](../include/flashvm/standard.h#L18), call `fvm_standard_broadcaster_install(context)` to publish
 the ordinary namespace object `AsBroadcaster`, with native `initialize(object)`.
-The namespace is opt-in; standard installation and players do not enable it
-implicitly. No constructor is supplied. Installation returns [`FVM_OK`](../include/flashvm/flashvm.h#L42) for an
+The namespace is opt-in in the embedding ABI. Since v0.616 the shipped player
+explicitly installs it for SWF6–8 before scene execution; standard installation
+alone does not enable it. No constructor is supplied. Installation returns [`FVM_OK`](../include/flashvm/flashvm.h#L42) for an
 intact prior installation; conflicting global properties, methods, accessors or
 function registries return [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) without replacement.
 
@@ -97,6 +98,35 @@ interpreter/manual/automatic JIT and nested script GC, actual native entry check
 when JIT is available). These are Linux acceptance fixtures, not evidence for
 physical devices, other operating systems or complete Flash compatibility.
 
+## Transport and player v0.616
+
+The C89 tutorial now clones a broadcaster between two owner-thread contexts using
+[`fvm_channel_send_value`](../include/flashvm/transfer.h#L22) and [`fvm_channel_receive_value`](../include/flashvm/transfer.h#L25), with explicit native callback
+registration in each heap. Payload 42 reaches the original, 84 reaches the copied
+listener after destination collection. See the tutorial's ownership/API table.
+
+The broadcaster_transport fixture covers SWF6–8 across memory queues, durable
+files and local TCP broker channels. It sends a cyclic graph containing a script
+handler and shared cached Function wrapper, resets/destroys the sender, then
+collects and invokes the imported graph in interpreter, manual and automatic JIT
+modes when native JIT is available. The handler calls gc.collect; recipient counters,
+receiver identity, payload, wrapper identity, removal/reset and actual native
+entries are checked. Independent writer/reader processes additionally verify file
+records across separate address spaces. These tests use cloned function bodies,
+not live remote function references or arbitrary native userdata.
+
+The shipped common player explicitly installs AsBroadcaster for SWF6–8. A separate
+CLI fixture generates self-checking movies for those versions, plus a SWF5 startup
+guard, and checks interpreter/JIT execution with SDL dummy video and muted audio.
+A wrong-payload negative control must fail playback. This is host integration and
+software-protocol evidence, not physical display/audio or foreign-OS acceptance.
+The namespace is independent of the display API; other hosts choose installation
+through the same C89 entry. No changes to Clutter3d or inferno-os are required.
+
+Worker races, long-running/remote-network failure acceptance and full historical
+Flash broadcaster semantics remain open; bounded loopback/file cases do not close
+roadmap stages 6–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -108,6 +138,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../include/flashvm/broadcaster.h#L19) |
 | `FVM_BROADCASTER_MAX_LISTENERS` | macro / define | [include/flashvm/broadcaster.h:6](../include/flashvm/broadcaster.h#L6) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

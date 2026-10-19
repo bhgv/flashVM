@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.615
+# FlashVM stage status / Состояние стадий — v0.616
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,40 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.616 broadcaster transports and player / Каналы событий и плеер
+
+Broadcaster graph acceptance now includes bounded memory FIFO, durable files and
+loopback TCP queues across SWF6–8 in interpreter/manual/automatic JIT modes. A
+script listener calls gc.collect after the sender was reset and destroyed; cyclic
+edges, shared cached Function identity, payload/counters and subscription reset
+are checked. Separate file writer/reader processes test independent address spaces.
+The annotated C89 tutorial copies a native-listener broadcaster into a second
+context with explicit callback registration and destination GC.
+
+The shipped common player installs the opt-in AsBroadcaster namespace for SWF6–8.
+Self-checking CLI movies cover those versions and SWF5 startup in interpreter/JIT
+modes, plus a wrong-payload negative control. SDL dummy video/muted audio evidence
+is software integration, not native device or foreign-OS acceptance. Core objects
+remain independent of SDL/Clutter3d/GTK/Qt; no Clutter3d library changes are needed.
+[EN](AS_BROADCASTER.md#transport-and-player-v0616) /
+[RU](AS_BROADCASTER.ru.md#перенос-и-плеер-v0616).
+
+Validation: 22 targeted CTest cases pass on Linux x64, including broadcaster
+transport/process cases, prior graph/channel codecs, independent standard-object
+file/network processes, player input/options and muted sound-bearing movies,
+new player interpreter/JIT fixtures and version/tutorial checks. Strict C89 builds
+and the updated two-output tutorial pass. ASan/UBSan transport/process and player
+fixtures pass with the broadcaster bridge and player/fixture code instrumented,
+ordinary VM/SDL libraries and leak detection disabled. Documentation source links
+and individual API/comment coverage pass; no full-suite or hardware claim.
+
+Worker races, remote network failures/endurance, historical Flash semantics and
+full platform acceptance remain open. All nine roadmap stages remain open.
+
+Русский: продолжена приёмка этапов 5–8 через реальные каналы и отдельные процессы;
+общий плеер получил установку namespace, а пример — независимую копию графа.
+Программные smoke-проверки не означают приёмку Android/Windows/macOS или устройств.
 
 ## v0.615 generic application broadcasters / Пользовательские события
 

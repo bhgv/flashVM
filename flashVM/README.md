@@ -1,10 +1,12 @@
-Development version: **0.615** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.615 ` and an English description. Increase the subversion before each
+Development version: **0.616** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.616 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.616: [Broadcaster transports and player integration](doc/AS_BROADCASTER.md#transport-and-player-v0616) / [каналы и плеер](doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616), [two-context C89 tutorial](examples/embedding/broadcaster/README.md).
 
 v0.615: [AsBroadcaster: generic application events](doc/AS_BROADCASTER.md) / [пользовательские события](doc/AS_BROADCASTER.ru.md), [C89/AS tutorial](examples/embedding/broadcaster/README.md).
 
@@ -122,8 +124,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.615** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.615 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.616** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.616 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

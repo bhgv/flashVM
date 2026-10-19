@@ -3,6 +3,7 @@
 #include "player.h"
 #include "audio.h"
 #include "flashvm/gc.h"
+#include "flashvm/broadcaster.h"
 #include "flashvm/input.h"
 #include "flashvm/keyboard.h"
 #include "flashvm/mouse.h"
@@ -218,6 +219,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         goto cleanup;
     if (info.version >= FVM_SELECTION_MIN_SWF_VERSION &&
         !checked(fvm_standard_selection_install(context), "Selection MovieClip namespace", path))
+        goto cleanup;
+    /* Generic user events share no native Key/Mouse/Selection registration state. */
+    if (info.version >= FVM_BROADCASTER_MIN_SWF_VERSION &&
+        !checked(fvm_standard_broadcaster_install(context), "AsBroadcaster namespace", path))
         goto cleanup;
     if (!checked(fvm_movieclip_load_swf(context, bytes, length, "_root", &clip), "scene import",
                  path))

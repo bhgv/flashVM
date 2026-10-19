@@ -7,7 +7,8 @@ AsBroadcaster. Каждый непустой кодовый ряд снабжё�
 в SWF6–8; команда конкретного внешнего компилятора здесь не предполагается.
 
 Пример создаёт source и listener, устанавливает onValue, подписывает объект,
-синхронно посылает 42 и снимает подписку. Подходит для прикладных уведомлений
+синхронно посылает 42, переносит граф через FIFO во второй контекст,
+вызывает копию с 84 и снимает исходную подписку. Подходит для прикладных уведомлений
 поверх любого frontend. Не читает устройства и не заменяет Key/Mouse/Selection.
 
 ## Сборка и ожидаемый результат
@@ -23,6 +24,7 @@ cmake --build build --target flashvm_examples_embedding_broadcaster_main -j2
 
 ```text
 onValue: 42
+onValue: 84
 ```
 
 ## Выполнение, владение и ограничения
@@ -36,6 +38,15 @@ pin защищают частичное построение и позднее �
 заменяется assert. Контракт снимка, порядок изменений, предел 4096, версии и
 открытые условия описаны в [руководстве](../../../doc/AS_BROADCASTER.ru.md).
 Это учебный хост, не плеер, компилятор или приёмка исторической совместимости.
+
+
+Второй контекст имеет собственную стандартную библиотеку и отдельно регистрирует
+код receive под тем же стабильным именем. Машинный код и адреса объектов не
+передаются. Namespace AsBroadcaster получателю не нужен: импортированы готовые
+методы и живой Array. Импортированный корень закрепляется перед GC; после
+рассылки снимается pin, освобождается очередь и разрушается второй контекст.
+Это последовательный обмен между двумя кучами одного потока; межпоточный тест
+из этого примера не следует. Файлы/процессы/сеть проверяются отдельными fixtures.
 
 ## Каждое используемое C API
 
@@ -57,6 +68,12 @@ pin защищают частичное построение и позднее �
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | context, object: снять один полученный корень после последнего доступа. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | context: освободить кучу, подписки и пространство имён; заимствованные указатели перестают действовать. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | runtime: освободить внешнего владельца после разрушения контекста. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
+| [`fvm_serialization_register_callback`](../../../include/flashvm/serialization.h#L30) | context, стабильное имя, callback: привязать локальный код в каждой куче; userdata не копируется. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_create`](../../../include/flashvm/channel.h#L23) | выход channel: получить один неограниченный FIFO; освободить после получения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_send_value`](../../../include/flashvm/transfer.h#L22) | исходный context, очередь, root, blocking=0: скопировать граф до отправки; ссылки на исходную кучу не удерживаются. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_receive_value`](../../../include/flashvm/transfer.h#L25) | получатель, очередь, выход, blocking=0: восстановить сообщение в куче получателя; пустая открытая очередь даёт [FVM_NOT_FOUND](../../../include/flashvm/flashvm.h#L47). [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | получатель, необязательный счётчик freed=NULL: собрать недостижимое при закреплённом импортированном корне. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
+| [`fvm_channel_release`](../../../include/flashvm/channel.h#L47) | queue: освободить handle после остановки операций; последний владелец удаляет оставшиеся сообщения. [Guide](../../../doc/AS_BROADCASTER.ru.md#перенос-и-плеер-v0616). |
 
 ## Callback и значения
 
@@ -93,13 +110,19 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_broadcaster_initialize` | function | [include/flashvm/broadcaster.h:19](../../../include/flashvm/broadcaster.h#L19) |
+| `fvm_channel_create` | function | [include/flashvm/channel.h:23](../../../include/flashvm/channel.h#L23) |
+| `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../../../include/flashvm/transfer.h#L25) |
+| `fvm_channel_release` | function | [include/flashvm/channel.h:47](../../../include/flashvm/channel.h#L47) |
+| `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../../../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
 | `FVM_Context` | struct | [src/core/runtime.hpp:246](../../../src/core/runtime.hpp#L246) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../../../include/flashvm/gc.h#L44) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../../../include/flashvm/flashvm.h#L47) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:121](../../../src/core/runtime.hpp#L121) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
@@ -108,6 +131,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Runtime` | struct | [src/core/runtime.hpp:174](../../../src/core/runtime.hpp#L174) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../../../include/flashvm/serialization.h#L30) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../../../include/flashvm/broadcaster.h#L13) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |

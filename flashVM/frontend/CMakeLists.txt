@@ -74,6 +74,12 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/../examples/player/animation_audio --${mode})
       set_tests_properties(flashvm_player_muted_${mode} PROPERTIES TIMEOUT 60)
     endforeach()
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_player_broadcaster_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/broadcaster.py $<TARGET_FILE:flashvm_player> --${mode})
+      set_tests_properties(flashvm_player_broadcaster_${mode} PROPERTIES TIMEOUT 90)
+    endforeach()
+    set_tests_properties(flashvm_player_broadcaster_jit PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(flashvm_player_muted_jit PROPERTIES SKIP_RETURN_CODE 77)
   endif()
   add_test(NAME flashvm_player_audio_assets COMMAND ${Python3_EXECUTABLE}
