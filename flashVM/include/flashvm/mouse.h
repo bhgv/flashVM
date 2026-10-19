@@ -31,6 +31,15 @@ FVM_API FVM_Result fvm_input_dispatch_mouse(FVM_Context *, FVM_MouseEventType,
  * No hit-test target is supplied, no focus/scroll action or OS wheel scaling is inferred. */
 FVM_API FVM_Result fvm_input_dispatch_mouse_wheel(FVM_Context *, double delta,
                                                  double world_x, double world_y);
+/* Read the context's requested cursor visibility (initially 1). Require non-null output.
+ * Owner-thread only, outside GC/release/teardown. Invalid calls preserve output.
+ * No allocation, script, device query or guarantee that a physical cursor exists. */
+FVM_API FVM_Result fvm_input_get_cursor_visible(FVM_Context *, int *visible);
+/* Request visible=0/1 and return the previous request through mandatory previous output.
+ * Invalid arguments preserve state/output; no allocation/callback/OS operation occurs.
+ * A host applies the queried request to its own window on its native owner thread.
+ * Position, button, focus, listener registrations and pending input remain unchanged. */
+FVM_API FVM_Result fvm_input_set_cursor_visible(FVM_Context *, int visible, int *previous);
 /* Atomically install the SWF6--8 addListener/removeListener/_listeners subset after standard
  * objects. Existing conflicting bindings are preserved. Does not install Key or Selection. */
 FVM_API FVM_Result fvm_standard_mouse_install(FVM_Context *);

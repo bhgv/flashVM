@@ -54,7 +54,7 @@ See [full wheel contract](../../../doc/MOUSE.md#wheel-events) and
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | initialized config, runtime output: acquire outer owner, destroy after context. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | live runtime, context output: acquire independent input/listener state. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | context: explicitly install ordinary Object/Array support before optional Mouse. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
-| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L36) | context: install SWF6–8 listener namespace atomically; retain conflicts unchanged; not required for direct native delivery. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
+| [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L45) | context: install SWF6–8 listener namespace atomically; retain conflicts unchanged; not required for direct native delivery. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | context, receiver output: context-managed object; temporarily pin before allocating its method. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | context, receiver: retain construction graph until cleanup; [GC:] pair only acquired pins with unpin. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
 | [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | context, receiver, onMouseWheel, receive callback, counter userdata, null capture: receiver-bound native handler, borrow userdata until no delivery can occur. [Embedding](../../../doc/EMBEDDING_API.md), [Mouse](../../../doc/MOUSE.md). |
@@ -115,6 +115,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:36](../../../include/flashvm/mouse.h#L36) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:45](../../../include/flashvm/mouse.h#L45) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
 <!-- source-links:end -->

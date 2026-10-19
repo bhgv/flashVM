@@ -149,6 +149,7 @@ extern "C"
         context->keyboard_focus = 0; /* [GC:] No selected clip before host input setup. */
         context->keyboard_dispatching = false;
         context->mouse_dispatching = false;
+        context->cursor_visible = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->script_depth = 0;
         /* [GC:] A new context has no active script caller identity. */

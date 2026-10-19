@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.607
+# FlashVM stage status / Состояние стадий — v0.608
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,20 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.608 context cursor request / Контекстный запрос курсора
+
+Allocation-free C89 get/set cursor visibility APIs now own a per-context requested
+0/1, initially visible. Invalid lifecycle/arguments preserve state/output;
+requests neither call an OS nor mutate input, focus or subscriptions. Five Linux
+Release tests pass: mouse_cursor, mouse_allocation, mouse_listeners,
+mouse_wheel_queue and the mouse_cursor C89 tutorial. The first two also pass
+ASan/UBSan without leak detection. Tests cover context isolation, repeated sets,
+movie-load persistence, callback/GC use and allocation denial.
+
+Русский: это запрос VM, не подтверждение видимости на экране. Скриптовые hide/show
+и оконное применение на этой точке ещё не заявляются; устройства и все стадии
+остаются открытыми. [Contract](MOUSE.md#cursor-visibility-request).
 
 ## v0.607 native wheel adapters / Колесо во фронтендах
 

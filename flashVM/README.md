@@ -1,5 +1,5 @@
-Development version: **0.607** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.607 ` and an English description. Increase the subversion before each
+Development version: **0.608** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.608 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -25,6 +25,8 @@ v0.587: [optional stop release / затухание остановки](doc/PLAY
 v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 v0.589: [Key polling and host keyboard snapshots / клавиатурный ввод](doc/KEYBOARD.md) ([RU](doc/KEYBOARD.ru.md)).
+
+v0.608: [Context-owned cursor visibility / запрос видимости курсора](doc/MOUSE.md#cursor-visibility-request).
 
 v0.607: [Native wheel normalization in SDL2, GTK3, Qt5 and evdev / колесо во фронтендах](examples/frontends/README.md).
 
@@ -114,8 +116,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.607** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.607 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.608** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.608 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

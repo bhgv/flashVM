@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 5/7/9: context cursor request | Проверено v0.608, Linux | Allocation-free independent requested visibility, previous-state return, lifecycle/output atomicity and callback/GC use. [EN](MOUSE.md#cursor-visibility-request) / [RU](MOUSE.ru.md#запрос-видимости-курсора). Script and physical window cursor application remain pending at this checkpoint. |
 | 5/9: native wheel tutorial adapters | Проверено v0.607, Linux software SDKs | SDL2, GTK3, Qt5 and evdev unit normalization, fractional input, duplicates/cancellation, real paint and three 120-frame smoke runs; Linux decoder/common helper also ASan/UBSan. [Frontends](../examples/frontends/README.md). No physical wheel, foreign OS, Clutter wheel or full release acceptance. |
 | 3/5/7/8: queued wheel and script execution | Проверено v0.606, Linux | Shared copied FIFO, signed delta/coordinates, mutation/cancellation/GC/OOM, SWF6–8 interpreter/manual/automatic native JIT and script exception recovery. [Queue](INPUT_QUEUE.md). Target picking, historical reference ordering, native wheel devices and foreign OS acceptance remain open. |
 | 3/5/7: direct Mouse wheel | Проверено v0.605, Linux | Explicit finite signed/fractional line delta, rooted optional receiver delivery, drag/coordinates, mutation/GC/teardown guards and OOM. [EN](MOUSE.md#wheel-events) / [RU](MOUSE.ru.md#колесо-прокрутки). No automatic scrollTarget, queue/frontend or wheel-specific JIT acceptance at this checkpoint. |

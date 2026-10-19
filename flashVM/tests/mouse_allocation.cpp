@@ -81,6 +81,12 @@ int main() {
     assert(growth_failures && fvm_input_pending(c, &pending) == FVM_OK && pending == FVM_INPUT_MAX_PENDING_EVENTS);
     assert(fvm_input_enqueue_mouse_wheel(c, 1, 0, 0) == FVM_ERROR);
     assert(fvm_input_clear_queue(c) == FVM_OK);
+    fail_after = 0;
+    int previous = -1, visible = -1;
+    assert(fvm_input_set_cursor_visible(c, 0, &previous) == FVM_OK && previous == 1);
+    assert(fvm_input_get_cursor_visible(c, &visible) == FVM_OK && visible == 0);
+    assert(fvm_input_set_cursor_visible(c, 1, &previous) == FVM_OK && previous == 0);
+    fail_after = -1;
     fail_after = 0; int removed = 0;
     assert(fvm_input_remove_mouse_listener(c, listener, &removed) == FVM_OK && removed);
     fail_after = -1;

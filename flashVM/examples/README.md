@@ -65,7 +65,8 @@
       - [selection](#example-embedding-selection) — <small><em>Selection: выбор клипа, уведомления и наблюдатели</em></small>
     - [mixed_input](#example-embedding-mixed_input) — <small><em>Одна очередь Mouse/Key, снимки и отмена пакета</em></small>
     - [mouse](#group-embedding-input-mouse)
-      - [mouse_listeners](#example-embedding-mouse_listeners) — <small><em>Слушатели указателя: касание, движение и отпускание</em></small>
+      - [mouse_cursor](#example-embedding-mouse_cursor) — <small><em>Запрос видимости курсора без оконного SDK</em></small>
+    - [mouse_listeners](#example-embedding-mouse_listeners) — <small><em>Слушатели указателя: касание, движение и отпускание</em></small>
     - [mouse_wheel](#example-embedding-mouse_wheel) — <small><em>Знаковые строки колеса и onMouseWheel</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
@@ -793,6 +794,15 @@ getFocus, уведомления onSetFocus/onKillFocus, регистрацию/
 
 <a id="group-embedding-input-mouse"></a>
 #### mouse
+
+<a id="example-embedding-mouse_cursor"></a>
+### mouse_cursor
+
+**Тип:** исполняемый C89. **README:** [embedding/mouse_cursor/README.md](embedding/mouse_cursor/README.md).
+
+**Назначение:** запрос видимости в независимом контексте, прежнее значение и повторный hide; без устройства, скрипта и оконного SDK.
+
+**Файл:** [main.c](embedding/mouse_cursor/main.c).
 
 <a id="example-embedding-mouse_listeners"></a>
 ##### mouse_listeners
@@ -1657,6 +1667,7 @@ Source line links describe the current checkout, including in historical notes.
 - [meta_call — extending/meta_call](#example-extending-meta_call)
 - [mixed_input — embedding/mixed_input](#example-embedding-mixed_input)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
+- [mouse_cursor — embedding/mouse_cursor](#example-embedding-mouse_cursor)
 - [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
 - [mouse_wheel — embedding/mouse_wheel](#example-embedding-mouse_wheel)
 - [movieclip — embedding/movieclip](#example-embedding-movieclip)

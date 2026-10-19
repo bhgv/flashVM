@@ -159,6 +159,34 @@ was Windows-specific. FlashVM exposes explicit platform-neutral host delivery.
 This is bounded delta-only support, not acceptance of target picking, historical
 Windows event order or native wheel/trackpad/device behavior on every OS.
 
+## Cursor visibility request
+
+v0.608 exposes a context-local requested visibility, initially 1. The VM does not
+own a native cursor. Hosts without a physical pointer can retain this request
+without creating a mouse or cursor. Input coordinates, button/focus state, pending
+FIFO entries, subscriptions and script execution are independent of visibility.
+
+[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L37)(context, visible_output) requires a live context on
+its owner thread outside collector/release/destruction and a non-null writable
+int output. [FVM_OK](../include/flashvm/flashvm.h#L42) writes 0/1; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) preserves output. It queries
+the VM request, not an OS cursor or proof that the display applied it.
+
+[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L42)(context, visible, previous_output) accepts only
+visible=0 or 1 and requires a non-null writable previous int. [FVM_OK](../include/flashvm/flashvm.h#L42) publishes
+the new request and writes the old 0/1 request, including repeated hide/show.
+Invalid context/lifecycle/value/output returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) preserving
+both request and output. Both functions allocate nothing, run no script/host
+callback and cannot produce OOM or an OS error. They may be called during Mouse
+callbacks on the same thread; there is no recursive event delivery. The scalar
+has no managed edges or GC pin requirement. State persists for the context,
+including movie loads; hosts can explicitly request visible when replacing a movie.
+
+A native host polls after script/input execution and applies the request to its
+own window using its SDK, reporting SDK errors separately. Applying a request
+does not acknowledge physical scanout. A global native cursor API must not be
+silently shared across independent windows/contexts without an owner policy.
+At this checkpoint script Mouse.hide/show and window SDK application are pending.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -173,8 +201,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
 | `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:20](../include/flashvm/mouse.h#L20) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:42](../include/flashvm/mouse.h#L42) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MOUSE_EVENT_DOWN` | enum constant | [include/flashvm/mouse.h:14](../include/flashvm/mouse.h#L14) |
@@ -184,6 +214,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:45](../include/flashvm/mouse.h#L45) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

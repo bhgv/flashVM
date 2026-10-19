@@ -157,6 +157,33 @@ Flash-совместимость. Ни один этап не закрывает
 для delta. Автоматическая цель, точный порядок событий старого проигрывателя,
 физические колёса/тачпады и все ОС этой реализацией не приняты.
 
+## Запрос видимости курсора
+
+С v0.608 контекст хранит желаемую видимость, изначально 1. VM не владеет нативным
+курсором. Сенсорный/headless хост может хранить запрос, не создавая физическую
+мышь или курсор. Положение указателя, кнопка/фокус, очередь событий, подписки
+и исполнение скрипта не зависят от видимости.
+
+[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L37)(context, visible_output) требует живой контекст
+потока владельца вне GC/освобождения/разрушения и непустой выходной int-указатель.
+[FVM_OK](../include/flashvm/flashvm.h#L42) записывает 0/1; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) сохраняет выход. Это запрос VM,
+не проверка существования курсора ОС или успешного применения к экрану.
+
+[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L42)(context, visible, previous_output) принимает только
+visible=0 или 1, previous_output обязателен. [FVM_OK](../include/flashvm/flashvm.h#L42) меняет запрос и записывает
+прежнее 0/1, в том числе при повторном hide/show. Неверные контекст, состояние,
+значение или выход дают [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) без изменения запроса и выхода.
+Обе функции не выделяют память, не вызывают скрипт/хост/ОС, не дают OOM или
+ошибку устройства. Их можно вызвать из обработчика Mouse на том же потоке;
+рекурсивной доставки событий нет. Скаляр не требует корня GC. Значение живёт
+весь срок контекста и сохраняется при загрузке фильма; хост может явно включить
+видимость при смене фильма.
+
+Оконный хост читает запрос после скрипта/ввода и применяет к собственному окну
+средствами SDK, отдельно сообщает ошибки SDK. Это не подтверждение физического
+вывода. Глобальная функция курсора ОС/SDK требует явного владельца при нескольких
+окнах/контекстах. На этой точке Mouse.hide/show и привязка SDK ещё не заявляются.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -171,8 +198,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:37](../include/flashvm/mouse.h#L37) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
 | `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:20](../include/flashvm/mouse.h#L20) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:42](../include/flashvm/mouse.h#L42) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MOUSE_EVENT_DOWN` | enum constant | [include/flashvm/mouse.h:14](../include/flashvm/mouse.h#L14) |
@@ -182,6 +211,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:45](../include/flashvm/mouse.h#L45) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
