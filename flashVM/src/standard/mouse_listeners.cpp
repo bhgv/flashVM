@@ -1,6 +1,7 @@
 /* FlashVM: Mouse listener registration methods and independent inspection snapshots. */
 #include "mouse_listeners.hpp"
 #include "base_state.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "../core/mouse_state.hpp"
 #include "../core/object_root_scope.hpp"
 #include "flashvm/mouse.h"
@@ -46,6 +47,7 @@ FVM_Result fvm_mouse_listener_array(FVM_Context *context, FVM_Object *, unsigned
         return FVM_INVALID_ARGUMENT;
     if (context->swf_loaded && context->swf_info.version < FVM_MOUSE_MIN_SWF_VERSION)
         return FVM_UNSUPPORTED;
+    FVM_ExecutionWorkScope work(context);
     FVM_Object *array = 0;
     FVM_Result result = fvm_array_create_like(
         context, 0, (unsigned long)context->mouse_listeners.size(), &array, true);
@@ -55,6 +57,9 @@ FVM_Result fvm_mouse_listener_array(FVM_Context *context, FVM_Object *, unsigned
     FVM_ObjectRootScope root(context, array);
     for (size_t i = 0; i < context->mouse_listeners.size(); ++i)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         FVM_Value value;
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;

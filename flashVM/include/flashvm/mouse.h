@@ -15,6 +15,9 @@ typedef enum FVM_MouseEventType
     FVM_MOUSE_EVENT_DOWN = 2, /* Primary button/contact began. */
     FVM_MOUSE_EVENT_UP = 3    /* Primary button/contact ended. */
 } FVM_MouseEventType;
+/* Registration and dispatch share the context work budget with nested AVM1.
+ * Exhaustion/cancellation returns FVM_ERROR; preparation preserves published state,
+ * while delivery failure preserves new input and completed callbacks. */
 /* [GC:] Retain a same-context listener once; duplicate registration succeeds unchanged. */
 FVM_API FVM_Result fvm_input_add_mouse_listener(FVM_Context *, FVM_Object *listener);
 /* Remove by identity; require removed, set it to 0/1 on success and preserve it on error. */

@@ -137,8 +137,8 @@ and remains visible. QCursor is a native copied descriptor, not a GC object.
 | [QCursor](https://doc.qt.io/archives/qt-5.15/qcursor.html) | Qt::BlankCursor: construct scoped native blank descriptor; QWidget copies/owns its cursor state, no VM pointer retained. |
 | [QWidget::setCursor](https://doc.qt.io/archives/qt-5.15/qwidget.html#cursor-prop) | Borrowed native blank descriptor: set this widget's override on GUI owner; no global cursor owner or status result. |
 | [QWidget::unsetCursor](https://doc.qt.io/archives/qt-5.15/qwidget.html#cursor-prop) | No arguments: remove this widget's override and use inherited/native default cursor. |
-| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L38) | Context, writable int: poll requested 0/1 before starting native painter; preserve error status. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L43) | Context, visible=0/1, previous output: set logical request only, update schedules application. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L41) | Context, writable int: poll requested 0/1 before starting native painter; preserve error status. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L46) | Context, visible=0/1, previous output: set logical request only, update schedules application. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
 
 Русский: настоящий Qt offscreen-тест проверяет свойство Arrow→Blank→Arrow после
 смены запроса и рисования. Это проверка SDK, не аппаратного курсора. Каждый widget
@@ -157,6 +157,6 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../../include/flashvm/mouse.h#L43) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../../include/flashvm/mouse.h#L46) |
 <!-- source-links:end -->

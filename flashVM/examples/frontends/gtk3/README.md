@@ -138,8 +138,8 @@ acknowledgement. The marker remains visible as ordinary frame content.
 | [gtk_widget_get_display](https://docs.gtk.org/gtk3/method.Widget.get_display.html) | Drawing area: borrow its display for same-display cursor creation, no ownership transfer. |
 | [gdk_cursor_new_for_display](https://docs.gtk.org/gdk3/ctor.Cursor.new_for_display.html) | Borrowed display, GDK_BLANK_CURSOR: acquire one native blank cursor or fail; release owned reference after window teardown with g_object_unref. |
 | [gdk_window_set_cursor](https://docs.gtk.org/gdk3/method.Window.set_cursor.html) | Borrowed window, same-display blank descriptor or NULL: set local override/restore parent inheritance, retains native reference; void API does not confirm hardware state. |
-| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L38) | Context, int output: query logical request before painting, without script/GC/OS work. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
-| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L43) | Context, 0, previous output: request hidden at startup before native realization. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_get_cursor_visible`](../../../include/flashvm/mouse.h#L41) | Context, int output: query logical request before painting, without script/GC/OS work. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
+| [`fvm_input_set_cursor_visible`](../../../include/flashvm/mouse.h#L46) | Context, 0, previous output: request hidden at startup before native realization. [Contract](../../../doc/MOUSE.md#cursor-visibility-request). |
 
 Русский: тест с настоящим GTK/Xvfb проверяет blank descriptor, повторное
 применение и возврат наследуемого курсора. Время жизни нативной ссылки отделено
@@ -159,6 +159,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../../../include/flashvm/mouse.h#L43) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../../../include/flashvm/mouse.h#L46) |
 <!-- source-links:end -->

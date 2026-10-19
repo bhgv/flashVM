@@ -43,7 +43,7 @@ window/context on their common owner thread and synchronously processes the
 entry batch before a movie tick. Null owners, nonfinite origin or recursive
 pumping return [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) before consumption. Key callbacks see that
 key's saved pointer position and keyboard snapshot; pointer events use
-[fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L26), including native drag update before handlers.
+[fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L29), including native drag update before handlers.
 No separate keyboard-first/pointer-first reordering occurs. HostInput/final
 polling state is published afterwards using the existing player loop.
 
@@ -121,7 +121,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -4,6 +4,7 @@
 #include "../core/value_vector_root_scope.hpp"
 #include "../standard/movieclip_scene.hpp"
 #include "../standard/movieclip_state.hpp"
+#include "../core/listener_work.hpp"
 #include <new>
 
 namespace
@@ -33,24 +34,7 @@ extern "C" FVM_Result fvm_input_add_key_listener(FVM_Context *context, FVM_Objec
 {
     if (!fvm_keyboard_context_usable(context) || !listener || listener->owner != context)
         return FVM_INVALID_ARGUMENT;
-    for (size_t i = 0; i < context->keyboard_listeners.size(); ++i)
-        if (context->keyboard_listeners[i] == listener)
-            return FVM_OK;
-    if (context->keyboard_listeners.size() >= FVM_KEYBOARD_MAX_LISTENERS)
-        return FVM_ERROR;
-    try
-    {
-        context->keyboard_listeners.push_back(listener);
-        return FVM_OK;
-    }
-    catch (const std::bad_alloc &)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
-    catch (...)
-    {
-        return FVM_ERROR;
-    }
+    return fvm_listener_add_budgeted(context, context->keyboard_listeners, listener, FVM_KEYBOARD_MAX_LISTENERS);
 }
 
 /* Remove a current registration without allocating; an active delivery retains its own snapshot. */
@@ -60,15 +44,7 @@ extern "C" FVM_Result fvm_input_remove_key_listener(FVM_Context *context, FVM_Ob
     if (!fvm_keyboard_context_usable(context) || !listener || listener->owner != context ||
         !removed)
         return FVM_INVALID_ARGUMENT;
-    for (size_t i = 0; i < context->keyboard_listeners.size(); ++i)
-        if (context->keyboard_listeners[i] == listener)
-        {
-            context->keyboard_listeners.erase(context->keyboard_listeners.begin() + i);
-            *removed = 1;
-            return FVM_OK;
-        }
-    *removed = 0;
-    return FVM_OK;
+    return fvm_listener_remove_budgeted(context, context->keyboard_listeners, listener, removed);
 }
 
 /* Select only native instances; private attachment checks never invoke script getters. */
@@ -143,6 +119,7 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
         return FVM_INVALID_ARGUMENT;
     try
     {
+        FVM_ExecutionWorkScope work(context);
         fvm_detail::vector<FVM_Value> recipients;
         /* [GC:] Link the snapshot before any handler can remove a later listener and collect. */
         FVM_ValueVectorRootScope roots(context, recipients);
@@ -153,6 +130,9 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
         recipients.reserve(context->keyboard_listeners.size() + (focus ? 1 : 0));
         if (focus)
         {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             FVM_Value value;
             fvm_value_undefined(&value);
             value.type = FVM_VALUE_OBJECT;
@@ -161,17 +141,26 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
         }
         for (size_t i = 0; i < context->keyboard_listeners.size(); ++i)
         {
+            FVM_Result charged = work.step();
+            if (charged != FVM_OK)
+                return charged;
             FVM_Value value;
             fvm_value_undefined(&value);
             value.type = FVM_VALUE_OBJECT;
             value.object = context->keyboard_listeners[i];
             recipients.push_back(value);
         }
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         context->keyboard = *state;
         DeliveryScope delivery(context);
         for (size_t i = 0; i < recipients.size(); ++i)
         {
-            FVM_Result result = fvm_object_call_optional(context, recipients[i].object,
+            FVM_Result result = work.step();
+            if (result != FVM_OK)
+                return result;
+            result = fvm_object_call_optional(context, recipients[i].object,
                                                          pressed ? "onKeyDown" : "onKeyUp");
             if (result != FVM_OK)
                 return result;

@@ -53,8 +53,8 @@ double arithmetic, not SWF binary32 matrix emulation. No allocation, VM call,
 callback, event dispatch or GC occurs, so independent storage may be used on
 independent threads. Do not mutate the same arguments concurrently.
 
-Feed successful results to [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L26) on the VM owner thread;
-use [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79) for complete key snapshots. Hosts own first
+Feed successful results to [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L29) on the VM owner thread;
+use [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) for complete key snapshots. Hosts own first
 contact selection, cancellation, synthesized-event suppression, focus reset
 and event ordering. Do not enter the VM from a platform input worker: copy
 native events and drain them on its owner thread. SDL already normalizes
@@ -118,8 +118,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_host_present` | function | [include/flashvm/host.h:18](../include/flashvm/host.h#L18) |
 | `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:8](../include/flashvm/host.h#L8) |
 | `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:79](../include/flashvm/keyboard.h#L79) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_RasterSurface` | struct | [include/flashvm/raster.h:16](../include/flashvm/raster.h#L16) |

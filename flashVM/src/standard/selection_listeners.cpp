@@ -1,6 +1,8 @@
 /* FlashVM: Selection focus observers, independent from Key listener registrations. */
 #include "selection_listeners.hpp"
 #include "base_state.hpp"
+#include "../core/execution_work_scope.hpp"
+#include "../core/listener_work.hpp"
 #include "../core/keyboard_state.hpp"
 #include "../core/object_root_scope.hpp"
 #include "flashvm/keyboard.h"
@@ -25,13 +27,8 @@ FVM_Result fvm_selection_add_listener(FVM_Context *context, FVM_Object *, unsign
         return FVM_UNSUPPORTED;
     if (!count || args[0].type != FVM_VALUE_OBJECT || !args[0].object)
         return FVM_OK;
-    for (size_t i = 0; i < context->selection_listeners.size(); ++i)
-        if (context->selection_listeners[i] == args[0].object)
-            return FVM_OK;
-    if (context->selection_listeners.size() >= FVM_SELECTION_MAX_LISTENERS)
-        return FVM_ERROR;
-    context->selection_listeners.push_back(args[0].object);
-    return FVM_OK;
+    return fvm_listener_add_budgeted(context, context->selection_listeners,
+                                     args[0].object, FVM_SELECTION_MAX_LISTENERS);
 }
 
 /* Removal changes later transition snapshots, never an already prepared notification. */
@@ -45,14 +42,12 @@ FVM_Result fvm_selection_remove_listener(FVM_Context *context, FVM_Object *, uns
         return FVM_UNSUPPORTED;
     if (!count || args[0].type != FVM_VALUE_OBJECT || !args[0].object)
         return FVM_OK;
-    for (size_t i = 0; i < context->selection_listeners.size(); ++i)
-        if (context->selection_listeners[i] == args[0].object)
-        {
-            context->selection_listeners.erase(context->selection_listeners.begin() + i);
-            fvm_value_boolean(out, 1);
-            break;
-        }
-    return FVM_OK;
+    int removed = 0;
+    FVM_Result result = fvm_listener_remove_budgeted(context, context->selection_listeners,
+                                                    args[0].object, &removed);
+    if (result == FVM_OK)
+        fvm_value_boolean(out, removed);
+    return result;
 }
 
 /* [GC:] Use native Array storage and root the result through every allocating element store. */
@@ -64,6 +59,7 @@ FVM_Result fvm_selection_listener_array(FVM_Context *context, FVM_Object *, unsi
         return FVM_INVALID_ARGUMENT;
     if (!supported(context))
         return FVM_UNSUPPORTED;
+    FVM_ExecutionWorkScope work(context);
     FVM_Object *array = 0;
     FVM_Result result = fvm_array_create_like(
         context, 0, (unsigned long)context->selection_listeners.size(), &array, true);
@@ -73,6 +69,9 @@ FVM_Result fvm_selection_listener_array(FVM_Context *context, FVM_Object *, unsi
     FVM_ObjectRootScope root(context, array);
     for (size_t i = 0; i < context->selection_listeners.size(); ++i)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         FVM_Value value;
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;

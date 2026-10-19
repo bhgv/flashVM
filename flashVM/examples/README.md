@@ -55,6 +55,7 @@
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
   - [input](#group-embedding-input)
+    - [event_work_budget](#example-embedding-event_work_budget) — <small><em>Общий бюджет события и сохранение опубликованной позиции</em></small>
     - [gesture_dispatch](#example-embedding-gesture_dispatch) — <small><em>Жест преобразуется в C callback мыши</em></small>
     - [gesture_recognizer](#example-embedding-gesture_recognizer) — <small><em>Распознавание tap по событиям касания</em></small>
     - [input](#example-embedding-input) — <small><em>Правила преобразования tap и swipe</em></small>
@@ -687,6 +688,20 @@ AVM1 ToggleQuality и повторяет отрисовку в LOW. Печата
 
 <a id="group-embedding-input"></a>
 ### input
+
+<a id="example-embedding-event_work_budget"></a>
+#### event_work_budget
+
+**Тип:** исполняемый C89 без устройств. **README:** [EN](embedding/event_work_budget/README.md) / [RU](embedding/event_work_budget/README.ru.md).
+
+Общий бюджет Mouse-события: три слушателя, один завершённый callback, ошибка
+перед вторым и сохранённая опубликованная позиция. Показывает pin при построении,
+сильную регистрацию и cleanup без автоматического повторения события.
+[Контракт EN](../doc/INPUT_EVENT_BUDGET.md) / [RU](../doc/INPUT_EVENT_BUDGET.ru.md).
+
+**Файлы:** [main.c](embedding/event_work_budget/main.c), [tutorial_limits.h](embedding/event_work_budget/tutorial_limits.h) — локальные пределы примера.
+
+[К оглавлению](#оглавление).
 
 <a id="example-embedding-gesture_dispatch"></a>
 #### gesture_dispatch
@@ -1663,6 +1678,7 @@ Source line links describe the current checkout, including in historical notes.
 - [drawing — embedding/drawing](#example-embedding-drawing)
 - [drawing — extending/drawing](#example-extending-drawing)
 - [error.as — actionscript/error.as](#example-actionscript-error-as)
+- [event_work_budget — embedding/event_work_budget](#example-embedding-event_work_budget)
 - [execution_modes — embedding/execution_modes](#example-embedding-execution_modes)
 - [ffmpeg_decode — multimedia/ffmpeg_decode](#example-multimedia-ffmpeg_decode)
 - [file_channels — embedding/file_channels](#example-embedding-file_channels)
@@ -1754,3 +1770,6 @@ Source line links describe the current checkout, including in historical notes.
 - [worker_lifecycle — embedding/worker_lifecycle](#example-embedding-worker_lifecycle)
 - [worker_stop — embedding/worker_stop](#example-embedding-worker_stop)
 - [workers — embedding/workers](#example-embedding-workers)
+
+Execution budgets and worker-stop behavior for Key/Mouse/Selection tutorials:
+[EN](../doc/INPUT_EVENT_BUDGET.md) / [RU](../doc/INPUT_EVENT_BUDGET.ru.md).

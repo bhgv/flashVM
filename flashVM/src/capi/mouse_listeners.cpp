@@ -3,6 +3,7 @@
 #include "../core/optional_method.hpp"
 #include "../core/mouse_limits.h"
 #include "../core/value_vector_root_scope.hpp"
+#include "../core/listener_work.hpp"
 #include <new>
 
 namespace
@@ -32,24 +33,7 @@ extern "C" FVM_Result fvm_input_add_mouse_listener(FVM_Context *context, FVM_Obj
 {
     if (!fvm_mouse_context_usable(context) || !listener || listener->owner != context)
         return FVM_INVALID_ARGUMENT;
-    for (size_t i = 0; i < context->mouse_listeners.size(); ++i)
-        if (context->mouse_listeners[i] == listener)
-            return FVM_OK;
-    if (context->mouse_listeners.size() >= FVM_MOUSE_MAX_LISTENERS)
-        return FVM_ERROR;
-    try
-    {
-        context->mouse_listeners.push_back(listener);
-        return FVM_OK;
-    }
-    catch (const std::bad_alloc &)
-    {
-        return FVM_OUT_OF_MEMORY;
-    }
-    catch (...)
-    {
-        return FVM_ERROR;
-    }
+    return fvm_listener_add_budgeted(context, context->mouse_listeners, listener, FVM_MOUSE_MAX_LISTENERS);
 }
 
 /* Remove a current registration without allocating; an active delivery retains its own snapshot. */
@@ -59,15 +43,7 @@ extern "C" FVM_Result fvm_input_remove_mouse_listener(FVM_Context *context, FVM_
     if (!fvm_mouse_context_usable(context) || !listener || listener->owner != context ||
         !removed)
         return FVM_INVALID_ARGUMENT;
-    for (size_t i = 0; i < context->mouse_listeners.size(); ++i)
-        if (context->mouse_listeners[i] == listener)
-        {
-            context->mouse_listeners.erase(context->mouse_listeners.begin() + i);
-            *removed = 1;
-            return FVM_OK;
-        }
-    *removed = 0;
-    return FVM_OK;
+    return fvm_listener_remove_budgeted(context, context->mouse_listeners, listener, removed);
 }
 
 namespace
@@ -78,26 +54,36 @@ FVM_Result dispatch(FVM_Context *context, const char *handler, double x, double 
 {
     try
     {
+        FVM_ExecutionWorkScope work(context);
         fvm_detail::vector<FVM_Value> recipients;
         /* [GC:] Pending receivers survive unsubscription and collection inside earlier handlers. */
         FVM_ValueVectorRootScope roots(context, recipients);
         recipients.reserve(context->mouse_listeners.size());
         for (size_t i = 0; i < context->mouse_listeners.size(); ++i)
         {
+            FVM_Result charged = work.step();
+            if (charged != FVM_OK)
+                return charged;
             FVM_Value value;
             fvm_value_undefined(&value);
             value.type = FVM_VALUE_OBJECT;
             value.object = context->mouse_listeners[i];
             recipients.push_back(value);
         }
+        FVM_Result result = work.step();
+        if (result != FVM_OK)
+            return result;
         DeliveryScope delivery(context);
-        FVM_Result result = fvm_input_set_pointer(context, x, y);
+        result = fvm_input_set_pointer(context, x, y);
         if (result == FVM_OK)
             result = fvm_exec_drag_update(context);
         if (result != FVM_OK)
             return result;
         for (size_t i = 0; i < recipients.size(); ++i)
         {
+            result = work.step();
+            if (result != FVM_OK)
+                return result;
             result = fvm_object_call_optional_args(context, recipients[i].object, handler, argc, args);
             if (result != FVM_OK)
                 return result;

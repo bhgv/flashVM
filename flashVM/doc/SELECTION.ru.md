@@ -69,7 +69,7 @@ native-callback остаётся в силе. Getter может сменить �
 клип или бросить исключение. Эти эффекты сохраняются при неудаче внешнего выбора.
 При успехе внешняя попытка заменяет выбор, сделанный вложенным вызовом. Отката
 и очереди уведомлений о смене фокуса нет. Успешная смена отправляет синхронные
-уведомления, описанные ниже. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L79) доставляются
+уведомления, описанные ниже. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) доставляются
 выбранному клипу перед независимыми слушателями Key по общей политике хоста.
 
 ## Уведомления фокуса
@@ -190,8 +190,15 @@ SWF ClipActions и сравнение граничных случаев/поря
 Тесты VM/хоста и кросс-сборки не равны приёмке физической клавиатуры/устройств.
 См. [текущее состояние роудмапа](ROADMAP_STATUS.md).
 
-Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L113), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L162)
+Implementation / Реализация: [`fvm_selection_set_focus`](../src/standard/selection.cpp#L128), [`fvm_selection_get_focus`](../src/standard/selection.cpp#L178)
 in [src/standard/selection.cpp](../src/standard/selection.cpp).
+
+
+## v0.618 shared event budget / Общий бюджет событий
+
+Registration, inspection and delivery share nested AVM1 work limits. Preparation
+failure preserves valid state; later failure keeps committed input and callbacks.
+[EN contract](INPUT_EVENT_BUDGET.md) / [RU](INPUT_EVENT_BUDGET.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -203,16 +210,16 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:79](../include/flashvm/keyboard.h#L79) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:66](../src/standard/movieclip_constants.h#L66) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:162](../src/standard/selection.cpp#L162) |
+| `fvm_selection_get_focus` | function | [src/standard/selection.cpp:178](../src/standard/selection.cpp#L178) |
 | `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:6](../src/standard/selection_listeners.hpp#L6) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
-| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:113](../src/standard/selection.cpp#L113) |
+| `fvm_selection_set_focus` | function | [src/standard/selection.cpp:128](../src/standard/selection.cpp#L128) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

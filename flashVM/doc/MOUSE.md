@@ -120,7 +120,7 @@ not full Flash compatibility. No roadmap stage closes; see [status](ROADMAP_STAT
 
 ## Wheel events
 
-v0.605 adds [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L33)(context, delta, world_x, world_y).
+v0.605 adds [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36)(context, delta, world_x, world_y).
 `context` is a borrowed live VM owner, outside collection/release/teardown;
 `delta` is a finite Number measured in **host-normalized scroll lines**: positive
 up, negative down. Fractional values and explicit zero are preserved. `world_x`
@@ -166,12 +166,12 @@ own a native cursor. Hosts without a physical pointer can retain this request
 without creating a mouse or cursor. Input coordinates, button/focus state, pending
 FIFO entries, subscriptions and script execution are independent of visibility.
 
-[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L38)(context, visible_output) requires a live context on
+[fvm_input_get_cursor_visible](../include/flashvm/mouse.h#L41)(context, visible_output) requires a live context on
 its owner thread outside collector/release/destruction and a non-null writable
 int output. [FVM_OK](../include/flashvm/flashvm.h#L42) writes 0/1; [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) preserves output. It queries
 the VM request, not an OS cursor or proof that the display applied it.
 
-[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L43)(context, visible, previous_output) accepts only
+[fvm_input_set_cursor_visible](../include/flashvm/mouse.h#L46)(context, visible, previous_output) accepts only
 visible=0 or 1 and requires a non-null writable previous int. [FVM_OK](../include/flashvm/flashvm.h#L42) publishes
 the new request and writes the old 0/1 request, including repeated hide/show.
 Invalid context/lifecycle/value/output returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) preserving
@@ -242,6 +242,13 @@ native cursor. [Contract / Контракт](../examples/frontends/clutter3d/REA
 Русский: курсор применяется на потоке владельца stage; это запрос SDK, не
 подтверждение устройства. Физическая и Android-приёмка остаётся открытой.
 
+
+## v0.618 shared event budget / Общий бюджет событий
+
+Registration, inspection and delivery share nested AVM1 work limits. Preparation
+failure preserves valid state; later failure keeps committed input and callbacks.
+[EN contract](INPUT_EVENT_BUDGET.md) / [RU](INPUT_EVENT_BUDGET.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -252,14 +259,14 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:19](../include/flashvm/mouse.h#L19) |
+| `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:22](../include/flashvm/mouse.h#L22) |
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
-| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:26](../include/flashvm/mouse.h#L26) |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../include/flashvm/mouse.h#L33) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../include/flashvm/mouse.h#L38) |
+| `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../include/flashvm/mouse.h#L41) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
-| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:21](../include/flashvm/mouse.h#L21) |
-| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:43](../include/flashvm/mouse.h#L43) |
+| `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:24](../include/flashvm/mouse.h#L24) |
+| `fvm_input_set_cursor_visible` | function | [include/flashvm/mouse.h:46](../include/flashvm/mouse.h#L46) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MOUSE_CURSOR_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
@@ -269,6 +276,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_MAX_LISTENERS` | macro / define | [include/flashvm/mouse.h:7](../include/flashvm/mouse.h#L7) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:47](../include/flashvm/mouse.h#L47) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

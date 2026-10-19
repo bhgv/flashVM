@@ -1,6 +1,7 @@
 /* FlashVM: Key listener registration methods and independent inspection snapshots. */
 #include "keyboard_listeners.hpp"
 #include "base_state.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "../core/object_root_scope.hpp"
 #include "flashvm/keyboard.h"
 
@@ -31,6 +32,7 @@ FVM_Result fvm_key_remove_listener(FVM_Context *context, FVM_Object *, unsigned 
 FVM_Result fvm_key_listener_array(FVM_Context *context, FVM_Object *, unsigned int,
                                   const FVM_Value *, FVM_Value *out, void *)
 {
+    FVM_ExecutionWorkScope work(context);
     FVM_Object *array = 0;
     FVM_Result result = fvm_array_create_like(
         context, 0, (unsigned long)context->keyboard_listeners.size(), &array, true);
@@ -40,6 +42,9 @@ FVM_Result fvm_key_listener_array(FVM_Context *context, FVM_Object *, unsigned i
     FVM_ObjectRootScope root(context, array);
     for (size_t i = 0; i < context->keyboard_listeners.size(); ++i)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         FVM_Value value;
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;

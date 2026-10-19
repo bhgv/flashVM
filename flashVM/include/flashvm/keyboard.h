@@ -63,6 +63,9 @@ extern "C"
     FVM_API FVM_Result fvm_input_get_keyboard(FVM_Context *, FVM_KeyboardState *);
     /* Clear held keys, latest codes and toggles; use on focus loss before accepting new input. */
     FVM_API FVM_Result fvm_input_reset_keyboard(FVM_Context *);
+    /* Registration and dispatch share the context instruction/work budget with nested AVM1.
+     * Exhaustion/cancellation returns FVM_ERROR; preparation preserves published state,
+     * while delivery failure preserves already published input and completed callbacks. */
     /* [GC:] Retain a same-context listener once; duplicate registration succeeds unchanged. */
     FVM_API FVM_Result fvm_input_add_key_listener(FVM_Context *, FVM_Object *);
     /* Remove by identity; require removed, set it to 0/1 on success and preserve it on error. */

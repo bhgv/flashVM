@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.617
+# FlashVM stage status / Состояние стадий — v0.618
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,39 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.618 input event budgets / Общий бюджет событий ввода
+
+Key, Mouse and Selection now share one work scope across registration, detached
+inspection, recipient capture, publication and handlers. Native/AVM1/JIT nested
+calls cannot reset the enclosing budget. Add/remove precharge relocation or
+compaction; failed registration preserves roots/order and native remove output.
+Before-publication failure preserves valid state; later failure preserves new
+input/focus and completed effects. Polling honors real worker stop requests even
+when the numeric limit is disabled. [EN](INPUT_EVENT_BUDGET.md) /
+[RU](INPUT_EVENT_BUDGET.ru.md), [C89 tutorial](../examples/embedding/event_work_budget/README.md).
+
+Linux x86-64 Release AGG with static dependencies: all 25 selected event/listener,
+allocation, focus, wheel/queue and JIT regressions pass. Four new tests exercise
+135 version/namespace/route/failure combinations, publication boundaries with GC,
+36 version/mode/event cases with real script handlers and checked native entries,
+and ten actual OS workers stopped before or between callbacks. Numeric-limit
+exhaustion and worker cancellation both restore delivery/GC/execution scopes.
+The strict-C89 tutorial's actual CMake target runs with three listeners and a
+five-unit budget, prints callbacks=1 pointer=23,45, and cleans up correctly.
+The independent build-version-refresh check passes as well.
+
+A minimal Debug VM compiled throughout with ASan/UBSan passes the same 25
+regressions; LeakSanitizer is explicitly disabled. The tutorial also runs against the instrumented VM. Source-link freshness,
+deterministic HTML/link checks, annotated tutorial/catalog/link validation and
+debugger tutorial checks pass. This is selected
+regression evidence, not a fresh full-core suite or native foreign-platform,
+physical-device, original-player, cancellation-race/endurance certification.
+All nine stages remain open.
+
+Русский: это продвижение стадий 3/5/6/7/8 — общий бюджет исполнения событий,
+сохранность состояния при ошибке, реальные worker-потоки, GC и JIT. Оно не
+закрывает пункт 9 или полную совместимость SWF8.
 
 ## v0.617 registration work budget / Бюджет регистрации слушателей
 
@@ -291,7 +324,7 @@ SWF6–8. Эталонный scrollTarget, устройства, новые ок
 
 ## v0.605 direct wheel delivery / Прямая доставка колеса
 
-[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L33) adds finite signed/fractional line deltas through
+[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36) adds finite signed/fractional line deltas through
 onMouseWheel(delta), reusing rooted Mouse snapshots, coordinate/drag publication
 and cross-event recursion/lifecycle protection. Six targeted Linux Release tests
 pass: mouse_wheel, mouse_listeners, mouse_allocation, jit_mouse (existing pointer
@@ -723,7 +756,7 @@ remain open.
 
 ## v0.591 explicit host keyboard focus / Выбор клипа хостом
 
-Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L72) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L75) for one native
+Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L75) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L78) for one native
 MovieClip, with a strong context root, private attachment validation and lazy
 clearing when the clip or a physical ancestor is removed. Keyboard dispatch
 snapshots the selected clip before Key listeners; callback selection changes
@@ -754,7 +787,7 @@ physical device acceptance is claimed.
 
 ## v0.592 Selection MovieClip subset / Скриптовый выбор клипа
 
-Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L83) with atomic publication and
+Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L86) with atomic publication and
 versioned conflicts. Selection.setFocus accepts native clip objects or counted
 dot/slash paths, applies focusEnabled/button-handler eligibility and revalidates
 native attachment after getters. Selection.getFocus returns a counted native dot
@@ -963,8 +996,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../include/flashvm/mouse.h#L33) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
 <!-- source-links:end -->

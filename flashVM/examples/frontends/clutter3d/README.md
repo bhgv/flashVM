@@ -241,5 +241,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:41](../../../include/flashvm/mouse.h#L41) |
 <!-- source-links:end -->

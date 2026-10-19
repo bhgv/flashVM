@@ -6,6 +6,7 @@
 #include "../core/optional_method.hpp"
 #include "../core/value_vector_root_scope.hpp"
 #include "../core/property_lookup.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "flashvm/keyboard.h"
 #include "flashvm/property.h"
 #include <new>
@@ -53,7 +54,7 @@ FVM_Result eligible(FVM_Context *context, FVM_Object *clip, bool *out)
 }
 
 /* Publish before notifications; nested focus changes remain authoritative after callbacks. */
-FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
+FVM_Result change_focus(FVM_Context *context, FVM_Object *clip, FVM_ExecutionWorkScope &work)
 {
     FVM_Object *previous = 0;
     FVM_Result result = fvm_input_get_keyboard_focus(context, &previous);
@@ -70,12 +71,18 @@ FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
     listeners.reserve(context->selection_listeners.size());
     for (size_t i = 0; i < context->selection_listeners.size(); ++i)
     {
+        result = work.step();
+        if (result != FVM_OK)
+            return result;
         FVM_Value value;
         fvm_value_undefined(&value);
         value.type = FVM_VALUE_OBJECT;
         value.object = context->selection_listeners[i];
         listeners.push_back(value);
     }
+    result = work.step();
+    if (result != FVM_OK)
+        return result;
     result = fvm_input_set_keyboard_focus(context, clip);
     if (result != FVM_OK)
         return result;
@@ -85,14 +92,20 @@ FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
     argument.object = clip;
     if (previous)
     {
-        result = fvm_object_call_optional_args(context, previous, "onKillFocus", 1, &argument);
+        result = work.step();
+        if (result == FVM_OK)
+            result = fvm_object_call_optional_args(context, previous, "onKillFocus", 1, &argument);
         if (result != FVM_OK)
             return result;
     }
     argument.type = previous ? FVM_VALUE_OBJECT : FVM_VALUE_NULL;
     argument.object = previous;
     if (clip)
-        result = fvm_object_call_optional_args(context, clip, "onSetFocus", 1, &argument);
+    {
+        result = work.step();
+        if (result == FVM_OK)
+            result = fvm_object_call_optional_args(context, clip, "onSetFocus", 1, &argument);
+    }
     if (result != FVM_OK)
         return result;
     FVM_Value args[2];
@@ -102,7 +115,9 @@ FVM_Result change_focus(FVM_Context *context, FVM_Object *clip)
     args[1].object = clip;
     for (size_t i = 0; i < listeners.size(); ++i)
     {
-        result = fvm_object_call_optional_args(context, listeners[i].object, "onSetFocus", 2, args);
+        result = work.step();
+        if (result == FVM_OK)
+            result = fvm_object_call_optional_args(context, listeners[i].object, "onSetFocus", 2, args);
         if (result != FVM_OK)
             return result;
     }
@@ -116,9 +131,10 @@ FVM_Result fvm_selection_set_focus(FVM_Context *context, FVM_Object *, unsigned 
     fvm_value_boolean(out, 0);
     if (!supported(context))
         return FVM_UNSUPPORTED;
+    FVM_ExecutionWorkScope work(context);
     if (!count || args[0].type == FVM_VALUE_NULL || args[0].type == FVM_VALUE_UNDEFINED)
     {
-        FVM_Result result = change_focus(context, 0);
+        FVM_Result result = change_focus(context, 0, work);
         if (result == FVM_OK)
             fvm_value_boolean(out, 1);
         return result;
@@ -152,7 +168,7 @@ FVM_Result fvm_selection_set_focus(FVM_Context *context, FVM_Object *, unsigned 
     result = fvm_movieclip_scene_removed(context, clip, &removed);
     if (result != FVM_OK || removed)
         return result;
-    result = change_focus(context, clip);
+    result = change_focus(context, clip, work);
     if (result == FVM_OK)
         fvm_value_boolean(out, 1);
     return result;

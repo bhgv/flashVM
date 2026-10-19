@@ -3374,6 +3374,15 @@ native callback, real-time cancellation or foreign-platform acceptance is claime
 [RU](AS_BROADCASTER.ru.md#ограничение-работы-регистрации-v0617).
 Все девять этапов остаются открытыми. Проверки: [status](ROADMAP_STATUS.md).
 
+## v0.618 input event work and cancellation / Бюджет событий и остановка
+
+Key/Mouse/Selection registration, detached listener inspection and event delivery
+share nested AVM1 work. Precharged mutation is transactional; committed input and
+completed callbacks survive later errors. Ten actual OS workers exercise stops
+before and between native recipients. [EN](INPUT_EVENT_BUDGET.md) /
+[RU](INPUT_EVENT_BUDGET.ru.md), [verification](ROADMAP_STATUS.md).
+Все девять стадий открыты; полная приёмка пункта 9 не заявляется.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

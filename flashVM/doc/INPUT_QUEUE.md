@@ -147,7 +147,7 @@ on append preserve every existing entry. Unexpected native exceptions map to
 [FVM_ERROR](../include/flashvm/flashvm.h#L43). No managed pointer, native platform event or scrollTarget is stored.
 
 Wheel shares **one ordered FIFO** with gestures, primary pointer and Key entries.
-Pump uses the normal rooted [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L33), including its actual
+Pump uses the normal rooted [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L36), including its actual
 handler status/exception. The failing event is consumed, processed counts only
 successful events, and later entries remain queued. Clear the VM exception
 explicitly before retry where required. Entry-batch limit, callback additions,
@@ -181,7 +181,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../include/flashvm/host.h#L26) |
 | `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:39](../include/flashvm/input_queue.h#L39) |
-| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:33](../include/flashvm/mouse.h#L33) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `fvm_input_enqueue` | function | [include/flashvm/input_queue.h:22](../include/flashvm/input_queue.h#L22) |
 | `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:34](../include/flashvm/input_queue.h#L34) |
 | `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:25](../include/flashvm/input_queue.h#L25) |
