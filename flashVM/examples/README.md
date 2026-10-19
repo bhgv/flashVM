@@ -38,7 +38,7 @@
     - [object_methods](#example-embedding-object_methods) — <small><em>Native-метод, receiver и аргументы</em></small>
     - [script_functions](#example-embedding-script_functions) — <small><em>Объявление script-функции — AS-исходник</em></small>
     - [script_methods](#example-embedding-script_methods) — <small><em>Метод объекта и this — AS-исходник</em></small>
-    - [timers](#example-embedding-timers) — <small><em>Явный poll callback и отмена interval</em></small>
+    - [timers](#example-embedding-timers) — <small><em>Время пробуждения, явный poll и отмена interval</em></small>
   - [gc](#group-embedding-gc)
     - [cycle_collection](#example-embedding-cycle_collection) — <small><em>Недостижимые циклы — заметка о GC</em></small>
     - [gc](#example-embedding-gc) — <small><em>Pin/unpin объекта и ручная сборка</em></small>
@@ -531,7 +531,8 @@ link demonstrated API functions to public headers and feature guides.
 **Тип:** исполняемый C89 с необязательным интерактивным ожиданием. **README:** [EN](embedding/timers/README.md) / [RU](embedding/timers/README.ru.md).
 
 Регистрирует native Function через setInterval, явно опрашивает реальные часы и
-отменяет запись. По умолчанию не ждёт; `--wait` позволяет нажать Enter после
+отменяет запись. Запрашивает время до ближайшего callback без доставки; после
+отмены проверяет пустую очередь. По умолчанию не ждёт; `--wait` позволяет нажать Enter после
 секунды для наблюдения callback. Host-счётчики живут дольше pending-вызовов.
 [Контракт EN](../doc/TIMERS.md) / [RU](../doc/TIMERS.ru.md).
 

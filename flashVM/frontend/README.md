@@ -34,3 +34,24 @@ v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../d
 
 v0.596: [Primary touch and shared key/pointer queue](../doc/PLAYER_POINTER.md)
 ([RU](../doc/PLAYER_POINTER.ru.md)); one touch contact needs no physical mouse.
+
+## Timer wakeups / Пробуждение таймеров (v0.622)
+
+The active loop delivers scheduled callbacks between timeline frames and caps
+SDL waits with fvm_timers_next_delay. Input runs before timer polling; safe GC
+steps also reclaim callback activations between slow frames. Rendering keeps its
+frame cadence. Background/final-frame waits retain their existing suspension.
+
+Активный цикл доставляет таймеры между кадрами и ограничивает ожидание SDL
+ближайшим deadline. Ввод обрабатывается до poll; callback-активации могут
+собираться между редкими кадрами. Rendering остаётся по частоте фильма.
+
+Contracts / Контракты: [EN](../doc/TIMER_WAKEUP.md) / [RU](../doc/TIMER_WAKEUP.ru.md).
+Actual SDL dummy-video regression (no visible-window/device acceptance):
+
+```sh
+ctest --test-dir build -R '^flashvm_player_timers_' --output-on-failure
+```
+
+SWF6–8, interpreter/native JIT, 10 ms interval at 2 fps; a second-frame script
+checks multiple deliveries, and a damaged count fixture must fail.

@@ -5,7 +5,11 @@ struct StopProbe { unsigned calls;bool midway;StopProbe():calls(0),midway(false)
 static FVM_Result stop_callback(FVM_Context *c,FVM_Object *,unsigned,const FVM_Value *,FVM_Value *out,void *raw)
 {
     StopProbe *p=(StopProbe *)raw;++p->calls;
-    if(p->midway && p->calls==1) {FVM_Worker *self=0;assert(fvm_worker_current(c,&self)==FVM_OK && fvm_worker_stop(self)==FVM_OK);}
+    if(p->midway && p->calls==1) {
+        FVM_Worker *self=0;assert(fvm_worker_current(c,&self)==FVM_OK && fvm_worker_stop(self)==FVM_OK);
+        unsigned long wait=777;int pending=99;
+        assert(fvm_timers_next_delay(c,1000,&wait,&pending)==FVM_ERROR && wait==777 && pending==99);
+    }
     fvm_value_undefined(out);return FVM_OK;
 }
 static FVM_Result worker(FVM_Context *c,const FVM_Value *input,FVM_Value *out,void *)
@@ -14,7 +18,11 @@ static FVM_Result worker(FVM_Context *c,const FVM_Value *input,FVM_Value *out,vo
     FVM_Object *fn=0;assert(fvm_function_create_native(c,stop_callback,&state,0,&fn)==FVM_OK);FVM_Value args[]={timer_object(fn),timer_number(1)};
     unsigned count=state.midway?70:3;
     for(unsigned i=0;i<count;++i)timer_call(c,"setTimeout",2,args);
-    if(!state.midway){FVM_Worker *self=0;assert(fvm_worker_current(c,&self)==FVM_OK && fvm_worker_stop(self)==FVM_OK);}
+    if(!state.midway) {
+        FVM_Worker *self=0;assert(fvm_worker_current(c,&self)==FVM_OK && fvm_worker_stop(self)==FVM_OK);
+        unsigned long wait=777;int pending=99;
+        assert(fvm_timers_next_delay(c,1000,&wait,&pending)==FVM_ERROR && wait==777 && pending==99);
+    }
     unsigned delivered=timer_poll(c,1001,FVM_ERROR);
     if(state.midway)assert(delivered>0 && delivered<count && state.calls==delivered);
     else assert(!delivered && !state.calls);

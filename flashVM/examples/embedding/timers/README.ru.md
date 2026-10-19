@@ -19,6 +19,10 @@ cmake --build build --target flashvm_examples_embedding_timers_main
 интерактивно. Медленная установка/быстрый ввод меняют готовность; за poll этот
 interval всё равно вызывается не более одного раза. CTest запускает обычный режим.
 
+Перед poll печатается `next poll in at most N ms (pending=1)`, N от нуля до
+предела 1000 мс. Запрос не вызывает callback; после отмены проверяются pending=0
+и исходный предел host. [Контракт](../../../doc/TIMER_WAKEUP.ru.md).
+
 ## API, время жизни и ожидания
 
 | Функция | Назначение в примере |
@@ -31,6 +35,7 @@ interval всё равно вызывается не более одного р�
 | [fvm_value_undefined](../../../include/flashvm/value.h#L40) | Инициализировать поля Function-значения или игнорируемый результат callback без буфера. |
 | [fvm_value_number](../../../include/flashvm/value.h#L42) | Подготовить числовую задержку без управляемой памяти. |
 | [fvm_call](../../../include/flashvm/value.h#L138) | Синхронно зарегистрировать/отменить через setInterval/clearInterval; возможны память/coercion, ожидания deadline нет. |
+| [fvm_timers_next_delay](../../../include/flashvm/timers.h#L29) | Получить ограниченную подсказку без памяти/callback; при ошибке сохранить оба результата, для пустой очереди вернуть предел host. |
 | [fvm_timers_poll](../../../include/flashvm/timers.h#L19) | Синхронно доставить due-снимок с user code/выделением; счётчик включает ошибочную зафиксированную доставку. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Снять pending-корни и освободить heap до выхода host-счётчиков из области жизни. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Освободить внешнего владельца после уничтожения контекстов. |
@@ -60,6 +65,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../../../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../../../include/flashvm/timers.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |

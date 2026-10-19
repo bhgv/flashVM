@@ -165,7 +165,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     size_t length = 0;
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
-    unsigned int timer_callbacks = 0; /* Receive each frame poll's attempted delivery count. */
+    unsigned int timer_callbacks = 0; /* Receive each active-loop poll's attempted delivery count. */
+    unsigned long timer_wait = 0; /* Cap SDL waiting at the nearest pending timer deadline. */
+    int timers_pending = 0; /* Receive the queue hint without retaining any managed state. */
     int status = 1, pinned = 0, input_pinned = 0;
     memset(&input, 0, sizeof(input));
     memset(&audio, 0, sizeof(audio));
@@ -303,21 +305,6 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         }
         if (!checked(fvm_desktop_audio_tick(&audio), "PCM queue", path))
             goto cleanup;
-        now = fvm_desktop_now();
-        if (now < next)
-        {
-            int wait = (int)(next - now);
-            if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
-                wait = FVM_DESKTOP_AUDIO_WAIT;
-            if (wait < 1)
-                wait = 1;
-            if (!fvm_desktop_window_events(window, wait))
-            {
-                *quit = 1;
-                break;
-            }
-            continue;
-        }
         if (!checked(fvm_desktop_window_pump_input(window, context, -viewport.x0, -viewport.y0),
                      "input listeners", path))
             goto cleanup;
@@ -327,6 +314,34 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                                    (double)bounds.y_min / FVM_SWF_TWIPS_PER_PIXEL),
                      "host input", path))
             goto cleanup;
+        /* Input may register timers; deliver due work even between timeline frames. */
+        if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
+            goto cleanup;
+        /* [GC:] Reclaim callback activations at a safe host boundary even before a slow frame. */
+        if (timer_callbacks && !checked(fvm_gc_step(context, 0), "timer GC step", path))
+            goto cleanup;
+        now = fvm_desktop_now();
+        if (now < next)
+        {
+            int wait = (int)(next - now);
+            if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
+                wait = FVM_DESKTOP_AUDIO_WAIT;
+            if (wait < 1)
+                wait = 1;
+            /* Do not sleep past a pending deadline when the authored frame rate is low. */
+            if (!checked(fvm_timers_next_delay(context, (unsigned long)wait, &timer_wait,
+                                               &timers_pending), "timer wakeup", path))
+                goto cleanup;
+            wait = (int)timer_wait;
+            if (!wait)
+                continue; /* A deadline became due after polling; retry without a blocking wait. */
+            if (!fvm_desktop_window_events(window, wait))
+            {
+                *quit = 1;
+                break;
+            }
+            continue;
+        }
         if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline tick", path))
             goto cleanup;
         /* Deliver timers on the VM thread before rendering callback-driven scene changes. */

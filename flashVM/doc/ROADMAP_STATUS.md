@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.621
+# FlashVM stage status / Состояние стадий — v0.622
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,28 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.622 timer wakeup hints / Подсказки пробуждения
+
+Added allocation-free [fvm_timers_next_delay](../include/flashvm/timers.h#L29) with atomic outputs, upward-rounded
+capped waits, empty-queue clock independence, shared budgets and worker stop.
+The desktop active loop now delivers timers and input between frames, caps SDL
+waiting at a pending deadline and permits safe GC after interframe callbacks.
+Timeline/render cadence and background suspension retain their existing policy.
+
+Проверяются реальные SWF6–8 в SDL dummy-video player при 2 fps: интервал 10 мс
+должен сработать несколько раз до второго кадра. Положительный фильм проходит
+в interpreter/native JIT и отвергается временным player с прежним циклом v0.621.
+Это подтверждение исправления цикла Linux, а не видимого окна, latency benchmark
+или приёмки другой ОС/устройства. Контракты: [EN](TIMER_WAKEUP.md) /
+[RU](TIMER_WAKEUP.ru.md), [C89](../examples/embedding/timers/README.md).
+
+Validation: 78 selected Release CTest checks passed (65 core/example checks,
+12 frontend checks and version refresh), plus 48 ASan/UBSan runtime checks with
+LeakSanitizer disabled. The updated strict-C89 tutorial also ran both immediate
+and real-clock interactive paths against the instrumented core. Source-link
+freshness/determinism, tutorial comments/links and debugger checks passed.
+All nine stages remain open; dummy video is not visible-device acceptance.
 
 ## v0.621 scheduled callbacks / Таймеры
 
@@ -1080,5 +1102,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
 <!-- source-links:end -->

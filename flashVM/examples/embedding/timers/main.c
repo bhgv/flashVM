@@ -22,6 +22,8 @@ int main(int argc, char **argv) /* Build as C89 with the FlashVM static library.
     FVM_Context *context = 0; /* Own callback objects and pending timer records. */
     FVM_Object *function = 0; /* Borrowed Function pointer retained by the timer after registration. */
     FVM_Value args[2], id, ignored; /* Prepare Function/delay and retain the plain numeric ID. */
+    unsigned long wait_ms = 0; /* Receive a capped hint without invoking the callback. */
+    int pending = 0; /* Distinguish an empty queue from a timer at the wait ceiling. */
     unsigned int calls = 0, delivered = 0; /* Host-owned counters; no cross-thread access occurs. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
     if (status == FVM_OK) /* Acquire the outer owner first. */
@@ -39,6 +41,10 @@ int main(int argc, char **argv) /* Build as C89 with the FlashVM static library.
         fvm_value_number(&args[1], FVM_TUTORIAL_TIMER_DELAY_MS); /* Use the explicit millisecond delay. */
         status = fvm_call(context, "setInterval", 2, args, &id); /* [GC:] Pending registration now retains the callback. */
     } /* The numeric ID owns no managed storage. */
+    if (status == FVM_OK) /* Query after registration; the host remains responsible for waiting. */
+        status = fvm_timers_next_delay(context, FVM_TUTORIAL_TIMER_WAIT_CAP_MS, &wait_ms, &pending); /* See README.md and TIMER_WAKEUP.md. */
+    if (status == FVM_OK) /* Report a hint; querying does not deliver or consume the interval. */
+        printf("next poll in at most %lu ms (pending=%d)\n", wait_ms, pending); /* The hint can reach zero if setup was slow. */
     if (status == FVM_OK && argc > 1 && strcmp(argv[1], "--wait") == 0) /* Waiting is an optional host event, outside VM execution. */
     { /* The default noninteractive run never blocks for input. */
         printf("Wait at least one second, then press Enter to poll.\n"); /* Explain when the callback becomes due. */
@@ -48,6 +54,10 @@ int main(int argc, char **argv) /* Build as C89 with the FlashVM static library.
         status = fvm_timers_poll(context, &delivered); /* A late interval is coalesced rather than replayed in a burst. */
     if (status == FVM_OK) /* Release the pending callback root explicitly when finished. */
         status = fvm_call(context, "clearInterval", 1, &id, &ignored); /* Cancellation returns undefined. */
+    if (status == FVM_OK) /* An empty queue returns the host ceiling without reading the clock. */
+        status = fvm_timers_next_delay(context, FVM_TUTORIAL_TIMER_WAIT_CAP_MS, &wait_ms, &pending); /* Cancellation removes the pending root. */
+    if (status == FVM_OK && (pending || wait_ms != FVM_TUTORIAL_TIMER_WAIT_CAP_MS)) /* Validate the empty-queue contract with ordinary error handling. */
+        status = FVM_ERROR; /* Preserve one cleanup path on an unexpected scheduler result. */
     if (status == FVM_OK) /* Report actual timing rather than requiring an exact platform clock sample. */
         printf("cancelled interval; callbacks: %u; attempted: %u\n", calls, delivered); /* Normally 0 by default, 1 after --wait. */
     else /* Preserve clock, callback, allocation and budget errors. */

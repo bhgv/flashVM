@@ -5,7 +5,8 @@
 Availability is checked on each call, including installation before SWF loading.
 These functions use the existing [context clock](GET_TIMER.md). The public
 [fvm_timers_poll](../include/flashvm/timers.h#L19) supplies explicit owning-thread delivery; the common desktop
-player polls once after each timeline tick, before rendering.
+player polls during active event-loop iterations, including between frames, and
+after timeline ticks before rendering. See [wakeup hints](TIMER_WAKEUP.md) (v0.622).
 
 ## Registration and cancellation
 

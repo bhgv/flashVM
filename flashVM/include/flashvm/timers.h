@@ -17,6 +17,17 @@ extern "C" {
  * OOM, execution-work cancellation/limit and clock errors propagate. No arbitrary C callback preemption.
  * See doc/TIMERS.md for bounded delay/argument/ID limits and unaccepted original-player behavior. */
 FVM_API FVM_Result fvm_timers_poll(FVM_Context *, unsigned int *delivered);
+/* Query the nearest pending deadline without delivering, allocating, sleeping or changing the queue.
+ * max_wait_ms is the host's ceiling (including zero); wait_ms and pending are required outputs.
+ * Empty queues return max_wait_ms and pending=0 without reading the clock. Otherwise pending=1 and
+ * wait_ms is min(max_wait_ms, ceil(nonnegative remaining milliseconds)); due entries return zero.
+ * Call on the owner thread; a query during a callback is allowed and shares its execution budget.
+ * Clock/work/cancellation failures preserve both outputs; lifecycle guards match polling.
+ * Clock sampling can advance the context's retained elapsed sample even on a later work error.
+ * This is a hint: process host events, query again after queue changes, and call poll when awake.
+ * [GC:] The query invokes no user code and retains no new values or borrowed pointers. */
+FVM_API FVM_Result fvm_timers_next_delay(FVM_Context *, unsigned long max_wait_ms,
+                                       unsigned long *wait_ms, int *pending);
 #ifdef __cplusplus
 }
 #endif

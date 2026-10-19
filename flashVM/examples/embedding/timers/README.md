@@ -19,6 +19,11 @@ wait at least one second to make the interval due. Expected output:
 in interactive mode. Slow setup/quick input can change eligibility; a poll still
 attempts at most one delivery of this interval. CTest uses the default mode.
 
+Before polling it prints `next poll in at most N ms (pending=1)`, with N between
+zero and the 1000 ms ceiling. A query does not invoke the callback; after
+cancellation the example verifies pending=0 and the unchanged host ceiling.
+[Wakeup contract](../../../doc/TIMER_WAKEUP.md).
+
 ## API, lifetime and blocking
 
 | Function | Demonstrated contract |
@@ -31,6 +36,7 @@ attempts at most one delivery of this interval. CTest uses the default mode.
 | [fvm_value_undefined](../../../include/flashvm/value.h#L40) | Initialize Function value fields or produce the ignored callback result; allocates no buffer. |
 | [fvm_value_number](../../../include/flashvm/value.h#L42) | Prepare the delay Number; no managed storage is acquired. |
 | [fvm_call](../../../include/flashvm/value.h#L138) | Synchronously register/cancel via setInterval/clearInterval; may allocate/coerce, but does not wait for due time. |
+| [fvm_timers_next_delay](../../../include/flashvm/timers.h#L29) | Read an allocation-free capped wakeup hint without callbacks; preserve both outputs on errors and return the host ceiling for an empty queue. |
 | [fvm_timers_poll](../../../include/flashvm/timers.h#L19) | Attempt the due snapshot synchronously; may call user code/allocate and returns attempted count, including a failing delivery. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Drop pending roots and free the heap before host callback counters leave scope. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after all contexts have been destroyed. |
@@ -60,6 +66,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../../../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../../../include/flashvm/timers.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |

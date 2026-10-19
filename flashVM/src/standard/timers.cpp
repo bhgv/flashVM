@@ -10,6 +10,7 @@
 #include "../avm1/coercion.hpp"
 #include <cmath>
 #include <new>
+#include <limits>
 
 namespace
 {
@@ -212,6 +213,47 @@ void fvm_timers_cleanup(FVM_Context *c)
          it != c->scheduled_calls.end(); ++it)
         delete it->second;
     c->scheduled_calls.clear();
+}
+/* Return a capped, upward-rounded wakeup hint without mutating or invoking pending calls. */
+extern "C" FVM_Result fvm_timers_next_delay(FVM_Context *c, unsigned long max_wait_ms,
+                                           unsigned long *wait_ms, int *pending)
+{
+    if (!usable(c) || !wait_ms || !pending)
+        return FVM_INVALID_ARGUMENT;
+    FVM_ExecutionWorkScope work(c);
+    unsigned long wait = max_wait_ms;
+    if (!c->scheduled_calls.empty())
+    {
+        FVM_Value clock;
+        FVM_Result result = fvm_exec_get_time(c, &clock);
+        if (result != FVM_OK)
+            return result;
+        /* Start with a real deadline: large elapsed values can round an accepted delay upward. */
+        double nearest = c->scheduled_calls.begin()->second->deadline - c->timer_elapsed_ms;
+        for (fvm_detail::map<unsigned long, FVM_ScheduledCall *>::iterator it =
+                 c->scheduled_calls.begin(); it != c->scheduled_calls.end(); ++it)
+        {
+            result = work.step();
+            if (result != FVM_OK)
+                return result;
+            double remaining = it->second->deadline - c->timer_elapsed_ms;
+            if (remaining < nearest)
+                nearest = remaining;
+        }
+        /* A due record returns zero; submillisecond remainders must not cause an early busy loop. */
+        double rounded = nearest <= 0 ? 0 : std::ceil(nearest);
+        /* Keep conversion inside the host integer range, including unusually large clock steps. */
+        if (rounded < (double)std::numeric_limits<unsigned long>::max())
+        {
+            unsigned long candidate = (unsigned long)rounded;
+            if (candidate < wait)
+                wait = candidate;
+        }
+    }
+    /* Publish both outputs only after the entire clock/scan/work operation succeeds. */
+    *wait_ms = wait;
+    *pending = c->scheduled_calls.empty() ? 0 : 1;
+    return FVM_OK;
 }
 /* Snapshot eligibility once, then consume/rearm each still-live call before invoking user code. */
 extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
