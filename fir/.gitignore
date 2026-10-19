@@ -1,0 +1,3 @@
+# Python viewer/test caches and optional in-component CMake build directories.
+__pycache__/
+build*/

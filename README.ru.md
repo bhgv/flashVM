@@ -1,6 +1,6 @@
 # Рабочее пространство FlashVM
 
-Версия разработки: **0.610**. [English](README.md).
+Версия разработки: **0.611**. [English](README.md).
 
 ## Просмотр документации
 
@@ -94,3 +94,7 @@ cmake -S flashVM -B flashVM/build-desktop -DFVM_BUILD_DESKTOP_FRONTEND=ON
 cmake --build flashVM/build-desktop --target flashvm_player --parallel
 ./flashVM/build-desktop/frontend/flashvm_player --help
 ```
+
+## FIR v1
+
+[Формат, C99/Coco-R инструменты и примеры](fir/v1/README.ru.md).

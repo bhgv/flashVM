@@ -162,14 +162,16 @@ def navigation(root, component=""):
     if component:
         groups.insert(0, ('Repository', ''))
         # Workspace-only navigation: detached VM browsing never inspects siblings.
-        for title, folder in [('Compilers', 'compiler'), ('Linker', 'linker')]:
+        for title, folder in [('Compilers', 'compiler'), ('Linker', 'linker'),
+                              ('FIR', 'fir')]:
             if os.path.isdir(os.path.join(root, folder)):
                 groups.append((title, folder))
     blocks = []
     for title, folder in groups:
         files = []
         base = os.path.join(root, folder)
-        if folder in ('', component):
+        # FIR may itself be the selected component; still index every version.
+        if folder in ('', component) and title != 'FIR':
             files = [os.path.join(folder, name).replace(os.sep, '/')
                      for name in os.listdir(base) if name.lower().endswith('.md')]
         else:

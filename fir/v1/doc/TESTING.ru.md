@@ -1,0 +1,39 @@
+# Проверки
+
+[English](TESTING.md). [check.py](../tests/check.py) — acceptance suite компилятора.
+CTest проверяет отрицательные синтаксические/семантические случаи, все примеры
+до/после peephole, round trip и независимо разбирает framing SWF/actions.
+Проверяются повторы SSA, доминирование, метки, типы, версия, UTF-8, комментарии,
+границы, неподдержанный source, дальние переходы и сохранение прежнего выхода.
+
+Реальное исполнение проверяется отдельно и явно отмечается:
+
+```sh
+cc -std=c99 -IflashVM/include -c fir/v1/tests/run_flashvm.c -o /tmp/fir-run.o
+c++ /tmp/fir-run.o VM_BUILD/libflashvm.a VM_BUILD/libfvm_agg.a \
+  VM_BUILD/libfvm_zlib.a -lpthread -ldl -lm -o /tmp/fir-run
+FIR_FLASHVM_RUNNER=/tmp/fir-run ctest --test-dir build/fir1 --output-on-failure
+```
+
+`VM_BUILD` — каталог существующей совместимой Linux static сборки FlashVM;
+её параметры могут потребовать дополнительные зависимости. Хост устанавливает
+расширения и callback ActionTrace, загружает SWF и выполняет DoAction через
+публичный C API. Trace сравнивается с ожиданиями до и после оптимизации:
+16 пар полноразрядного знакового умножения, динамическая конкатенация, double,
+оба исхода if и передача по каналу. Хост не линкуется в компилятор и не требуется
+для отдельной сборки. Без FIR_FLASHVM_RUNNER CTest не заявляет runtime-проверку.
+
+Для sanitizer-сборки задайте C/linker flags
+`-fsanitize=address,undefined -fno-omit-frame-pointer` и запустите тот же suite.
+Инструкции Termux/Windows не означают свежей проверки на физических устройствах.
+
+## Проверки v0.611
+
+Linux/C99: прошли 335 запусков с реальным хостом FlashVM, для исходного и
+оптимизированного SWF. ASan/UBSan: те же 335 проверок прошли с
+`ASAN_OPTIONS=detect_leaks=0`; LeakSanitizer недоступен при трассировке процессов
+в этой среде. Проверка утечек этим не заявляется. Прошли сборка переименованной
+отдельной копии в пути с пробелами и локальная сборка из compiler/.
+Корневой и шесть локальных launchers отдали по loopback HTTP главную, русский
+формат, пример каналов и грамматику; все локальные ссылки FIR разрешились.
+Использована ревизия внешнего Coco/R: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.
