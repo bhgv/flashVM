@@ -1,0 +1,82 @@
+From 632e1d86b49f2d4f38186558ace2fc855e4b4a57 Mon Sep 17 00:00:00 2001
+From: bhgv <bhgv@bhgv.bhgv>
+Date: Mon, 19 Oct 2026 02:18:19 -0300
+Subject: [PATCH] Fix Linux libtool initialization and preserve subpixel actor
+ coordinates
+
+---
+ .../clutter-android/clutter/clutter-actor.c   | 20 +++++++++----------
+ sources/clutter-android/configure.ac          |  4 +++-
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/sources/clutter-android/clutter/clutter-actor.c b/sources/clutter-android/clutter/clutter-actor.c
+index 0fc8df6..2d4633d 100644
+--- a/sources/clutter-android/clutter/clutter-actor.c
++++ b/sources/clutter-android/clutter/clutter-actor.c
+@@ -14812,7 +14812,7 @@ clutter_actor_transform_stage_point (ClutterActor *self,
+   ClutterVertex v[4];
+   float ST[3][3];
+   float RQ[3][3];
+-  int du, dv, xi, yi;
++  float du, dv;
+   float px, py;
+   float xf, yf, wf, det;
+   ClutterActorPrivate *priv;
+@@ -14838,11 +14838,11 @@ clutter_actor_transform_stage_point (ClutterActor *self,
+ 
+   clutter_actor_get_abs_allocation_vertices (self, v);
+ 
+-  /* Keeping these as ints simplifies the multiplication (no significant
+-   * loss of precision here).
++  /* Preserve fractional actor allocation dimensions. The projection and
++   * event coordinates are floating point, including transformed touch input.
+    */
+-  du = (int) (priv->allocation.x2 - priv->allocation.x1);
+-  dv = (int) (priv->allocation.y2 - priv->allocation.y1);
++  du = priv->allocation.x2 - priv->allocation.x1;
++  dv = priv->allocation.y2 - priv->allocation.y1;
+ 
+   if (!du || !dv)
+     return FALSE;
+@@ -14939,12 +14939,10 @@ clutter_actor_transform_stage_point (ClutterActor *self,
+    * Now transform our point with the ST matrix; the notional w
+    * coordinate is 1, hence the last part is simply added.
+    */
+-  xi = (int) x;
+-  yi = (int) y;
+-
+-  xf = xi * ST[0][0] + yi * ST[1][0] + ST[2][0];
+-  yf = xi * ST[0][1] + yi * ST[1][1] + ST[2][1];
+-  wf = xi * ST[0][2] + yi * ST[1][2] + ST[2][2];
++  /* Do not truncate stage input to integer pixels before unprojection. */
++  xf = x * ST[0][0] + y * ST[1][0] + ST[2][0];
++  yf = x * ST[0][1] + y * ST[1][1] + ST[2][1];
++  wf = x * ST[0][2] + y * ST[1][2] + ST[2][2];
+ 
+   if (x_out)
+     *x_out = xf / wf;
+diff --git a/sources/clutter-android/configure.ac b/sources/clutter-android/configure.ac
+index 7fbfa4d..e11e54b 100644
+--- a/sources/clutter-android/configure.ac
++++ b/sources/clutter-android/configure.ac
+@@ -126,6 +126,9 @@ dnl = Dependencies =========================================================
+ 
+ # Checks for programs.
+ AM_PROG_CC_C_O
++# Automake selects CXXLINK for the optional Android C++ sources even on Linux.
++# Initialize the C++ libtool tag unconditionally before LT_INIT.
++AC_PROG_CXX
+ 
+ # require libtool >= 2.2
+ LT_PREREQ([2.2.6])
+@@ -1191,7 +1194,6 @@ AC_CONFIG_FILES([
+ 	build/win32/vs10/Makefile
+ 
+ 	clutter/Makefile
+-	clutter/config.h.win32
+         clutter/clutter-config.h
+ 	clutter/clutter-version.h
+ 	clutter/clutter-$CLUTTER_API_VERSION.pc:clutter/clutter.pc.in
+-- 
+2.51.1
+

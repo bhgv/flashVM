@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.601
+# FlashVM stage status / Состояние стадий — v0.602
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix

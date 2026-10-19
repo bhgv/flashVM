@@ -16,6 +16,13 @@ fork's source or proof that its Android backend works.
 своим stage, Activity и GLES-контекстом, как описано ниже. Полные параметры
 FlashVM API: [общее руководство](../README.md#public-flashvm-api-used-by-the-shared-host).
 
+## Separate patch for the library / Отдельный патч библиотеки
+
+[Standalone git am patch](clutter3d-library-fixes-v0.1.patch),
+[application instructions / инструкция](LIBRARY_PATCH.md). Apply it in the
+library Git, not FlashVM. It contains the same configure and subpixel fixes
+previously applied by the prepared SDK route. The inferno-os client is untouched.
+
 ## Build and run / Сборка и запуск
 
 Provide the explicit fork SDK described in the external guide. Point its pkg-config
