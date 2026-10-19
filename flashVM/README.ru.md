@@ -1,4 +1,4 @@
-Версия разработки: **0.606** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.607** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -23,6 +23,8 @@ v0.587: [optional stop release / затухание остановки](doc/PLAY
 v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 v0.589: [Опрос Key и клавиатурные снимки хоста](doc/KEYBOARD.ru.md).
+
+v0.607: [Native wheel normalization in SDL2, GTK3, Qt5 and evdev / колесо во фронтендах](examples/frontends/README.md).
 
 v0.606: [Wheel events in the mixed FIFO / колесо в общей очереди](doc/INPUT_QUEUE.md), SWF6–8 interpreter/JIT checks.
 

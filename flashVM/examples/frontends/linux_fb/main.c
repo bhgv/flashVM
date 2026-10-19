@@ -13,6 +13,10 @@ typedef struct PointerDevice { /* Only one input descriptor is selected per run.
     int absolute; /* Both ABS_X and ABS_Y queried successfully with nonempty ranges. */
     unsigned char packet[FB_DEMO_MOUSE_BYTES]; /* Preserve partial PS/2 packet reads. */
     unsigned int used; /* Number of packet bytes collected so far. */
+    double wheel_legacy; /* Legacy vertical detents accumulated until SYN_REPORT. */
+    double wheel_highres; /* High-resolution vertical counts accumulated for the same report. */
+    int wheel_has_highres; /* Detect high-resolution report data in device-free decoder fixtures too. */
+    int wheel_highres_available; /* Queried capability: ignore legacy detents even in separate native reports. */
 } PointerDevice; /* Multi-touch slots and keyboard translation are intentionally separate work. */
 /* Composed output owners outlive each synchronous frame callback. */
 typedef struct LinuxHost { /* Main zeroes all fields before opening native resources. */
@@ -62,6 +66,12 @@ static int evdev_event(PointerDevice *pointer, Demo *demo, const struct input_ev
     } /* Never interpret subsequent stale records as a continuous drag. */
     if (event->type == EV_REL && event->code == REL_X) pointer->x += event->value; /* Relative X motion. */
     if (event->type == EV_REL && event->code == REL_Y) pointer->y += event->value; /* Relative Y motion. */
+    if (event->type == EV_REL && event->code == REL_WHEEL) pointer->wheel_legacy += event->value; /* Detents. */
+#ifdef REL_WHEEL_HI_RES /* Preserve compatibility with kernel SDKs predating high-resolution wheel codes. */
+    if (event->type == EV_REL && event->code == REL_WHEEL_HI_RES) { /* Same packet may also carry legacy detents. */
+        pointer->wheel_highres += event->value; pointer->wheel_has_highres = 1; /* Keep fractional detent counts. */
+    } /* Do not dispatch legacy and high-resolution movement twice. */
+#endif /* Older kernel headers retain the documented legacy path. */
     if (event->type == EV_ABS && pointer->absolute && event->code == ABS_X) /* Legacy calibrated absolute X. */
         pointer->x = ((double)event->value - pointer->ax.minimum) * (DEMO_WIDTH - 1) / /* Avoid signed overflow. */
             ((double)pointer->ax.maximum - pointer->ax.minimum); /* Full calibrated device range. */
@@ -71,8 +81,16 @@ static int evdev_event(PointerDevice *pointer, Demo *demo, const struct input_ev
     if (event->type == EV_KEY && (event->code == BTN_LEFT || event->code == BTN_TOUCH) && /* One primary stream. */
         (event->value == FB_DEMO_KEY_RELEASED || event->value == FB_DEMO_KEY_PRESSED)) /* Ignore autorepeat and unrelated keyboard events. */
         return pointer_send(pointer, demo, event->value ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP); /* Ordered. */
-    if (event->type == EV_SYN && event->code == SYN_REPORT) /* Commit accumulated relative/ABS position. */
-        return pointer_send(pointer, demo, FVM_MOUSE_EVENT_MOVE); /* Button records retain their native order. */
+    if (event->type == EV_SYN && event->code == SYN_REPORT) { /* Commit one completed native packet. */
+        FVM_Affine identity = {1, 0, 0, 1, 0, 0}; /* Framebuffer rectangle and world have equal pixel units. */
+        double delta = ((pointer->wheel_highres_available || pointer->wheel_has_highres) ? /* Select one representation for this report. */
+            pointer->wheel_highres / FB_DEMO_WHEEL_HI_RES_PER_DETENT : pointer->wheel_legacy) * /* Detents. */
+            DEMO_WHEEL_LINES_PER_DETENT; /* Explicit tutorial line policy, independent of OS preferences. */
+        pointer->wheel_legacy = pointer->wheel_highres = 0; pointer->wheel_has_highres = 0; /* End packet. */
+        if (!pointer_send(pointer, demo, FVM_MOUSE_EVENT_MOVE)) return 0; /* Clamp/publish completed position first. */
+        if (delta != 0) return demo_wheel(demo, &identity, pointer->x, pointer->y, delta) == FVM_OK; /* Vertical lines. */
+        return 1; /* No wheel event for horizontal-only, zero or ordinary motion reports. */
+    } /* Legacy button notifications retain their documented native record order. */
     return 1; /* Other records have no defined mapping in this pointer tutorial. */
 } /* ABS_MT_SLOT/TRACKING_ID protocols are not decoded here. */
 /* Assemble default three-byte mousedev packets, preserving partial reads and sign bits. */
@@ -113,6 +131,13 @@ static int pointer_open(PointerDevice *pointer, const char *path, int mouse) { /
     pointer->mouse = mouse; pointer->x = DEMO_WIDTH / 2; pointer->y = DEMO_HEIGHT / 2; /* Initial center. */
     if (!mouse) { /* Never issue evdev ioctls against a PS/2 byte stream. */
         int version; /* EVIOCGVERSION rejects ordinary files and non-evdev device nodes. */
+#ifdef REL_WHEEL_HI_RES /* Select one authoritative wheel protocol per device, not only per report. */
+        unsigned char relative[FB_DEMO_REL_BITS_BYTES]; /* Zero unused capability bits before ioctl. */
+        memset(relative, 0, sizeof(relative)); /* Older kernels may return a shorter bit span. */
+        if (ioctl(pointer->fd, EVIOCGBIT(EV_REL, sizeof(relative)), relative) < 0) return 0; /* Query actual axes. */
+        pointer->wheel_highres_available = (relative[REL_WHEEL_HI_RES / CHAR_BIT] & /* High-resolution axis bit. */
+            (1U << (REL_WHEEL_HI_RES % CHAR_BIT))) != 0; /* Do not count its legacy compatibility packets. */
+#endif /* Older header SDKs explicitly use legacy detents only. */
         if (ioctl(pointer->fd, EVIOCGVERSION, &version) < 0) return 0; /* Validate selected ABI. */
         pointer->absolute = ioctl(pointer->fd, EVIOCGABS(ABS_X), &pointer->ax) == 0 && /* Optional legacy X. */
             ioctl(pointer->fd, EVIOCGABS(ABS_Y), &pointer->ay) == 0 && /* Both calibrated axes required. */
@@ -170,7 +195,7 @@ int main(int argc, char **argv) { /* Real Linux device integration, no display s
     } /* Stop input/capture work before releasing the VM. */
     demo_cancel(&demo); /* Finish a held contact while context is still live. */
     if (demo.status != FVM_OK) result = 1; /* Cancellation errors remain visible. */
-    printf("linux_fb frames=%lu camera_frames=%u status=%d\n", frames, host.video.frames, (int)demo.status); /* Evidence. */
+    printf("linux_fb frames=%lu camera_frames=%u wheels=%u last_delta=%.3f status=%d\n", frames, host.video.frames, demo.wheel_events, demo.last_wheel_delta, (int)demo.status); /* Evidence. */
     goto cleanup; /* Both normal and failure paths release all owners. */
 usage: /* Invalid arguments open no devices. */
     fprintf(stderr, "usage: %s [--fb /dev/fb0] [--evdev /dev/input/eventN | --mouse /dev/input/mouse0] [--video /dev/videoN] [--frames N]\n", argv[0]); /* Exact ABI. */

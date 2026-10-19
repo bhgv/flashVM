@@ -1,5 +1,5 @@
 /* GTK3 owner-thread frontend: opaque RGBA drawing, scaled pointer and focus cancellation. */
-#include "../common/demo.h" /* Reuse public C89 VM/frame ownership and rendering. */
+#include "../common/wheel.h" /* Reuse public C89 VM/frame ownership and rendering. */
 #include "limits.h" /* Native channel precision used for GdkPixbuf. */
 #include <gtk/gtk.h> /* External GTK3/GDK/GObject/Cairo SDK. */
 #include <stdio.h> /* Print actual status and bounded smoke results. */
@@ -58,6 +58,24 @@ static gboolean gtk_pointer(GtkWidget *widget, GdkEvent *event, gpointer data) /
     if (host->demo.status != FVM_OK) gtk_main_quit(); /* Surface mapping/VM errors to main. */
     return TRUE; /* This pointer signal was consumed. */
 } /* No keyboard, IME or touch recognizer is implied. */
+/* Convert GDK vertical wheel/smooth units with an explicit three-line tutorial policy. */
+static gboolean gtk_scroll(GtkWidget *widget, GdkEventScroll *event, gpointer data) /* Borrow event. */
+{ /* GDK down-positive smooth deltas are inverted into the VM up-positive line convention. */
+    GtkHost *host = (GtkHost *)data; /* Main owns the callback target. */
+    FVM_Affine transform = {1, 0, 0, 1, 0, 0}; /* Same logical scale as Cairo painting. */
+    double delta, dx, dy; /* Native smooth outputs are valid only when the query succeeds. */
+    if (event->direction == GDK_SCROLL_UP) delta = DEMO_WHEEL_LINES_PER_DETENT; /* Discrete upward step. */
+    else if (event->direction == GDK_SCROLL_DOWN) delta = -DEMO_WHEEL_LINES_PER_DETENT; /* Discrete down. */
+    else if (event->direction == GDK_SCROLL_SMOOTH && /* Stop/zero/horizontal-only input is not a vertical event. */
+        gdk_event_get_scroll_deltas((const GdkEvent *)event, &dx, &dy) && dy != 0) /* Borrow scalar deltas. */
+        delta = -dy * DEMO_WHEEL_LINES_PER_DETENT; /* Explicit smooth-unit policy, not pixel-to-line inference. */
+    else return FALSE; /* Let GTK handle horizontal or unsupported scroll protocols. */
+    transform.xx = (double)gtk_widget_get_allocated_width(widget) / DEMO_WIDTH; /* Forward widget X scale. */
+    transform.yy = (double)gtk_widget_get_allocated_height(widget) / DEMO_HEIGHT; /* Forward widget Y scale. */
+    demo_wheel(&host->demo, &transform, event->x, event->y, delta); /* Fractional event position maps once. */
+    if (host->demo.status != FVM_OK && gtk_main_level()) gtk_main_quit(); /* Stop a live native loop on error. */
+    return TRUE; /* A recognized vertical wheel event was consumed. */
+} /* No click, focus change or scrollTarget is synthesized. */
 /* Cancel an active pointer when the native window loses focus. */
 static gboolean gtk_focus(GtkWidget *widget, GdkEventFocus *event, gpointer data) /* Focus-out signal. */
 { /* The common helper releases at the last valid VM coordinate. */
@@ -96,12 +114,13 @@ int main(int argc, char **argv) /* GTK owns all native dispatch on this thread. 
     host.area = gtk_drawing_area_new(); /* Window owns its child once added. */
     gtk_widget_set_size_request(host.area, DEMO_WIDTH, DEMO_HEIGHT); /* Minimum logical extent. */
     gtk_widget_add_events(host.area, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | /* Enable input. */
-        GDK_BUTTON_RELEASE_MASK); /* Listen to releases as well as presses. */
+        GDK_BUTTON_RELEASE_MASK | GDK_SCROLL_MASK | GDK_SMOOTH_SCROLL_MASK); /* Listen to releases as well as presses. */
     gtk_container_add(GTK_CONTAINER(window), host.area); /* Transfer child ownership to window. */
     g_signal_connect(host.area, "draw", G_CALLBACK(gtk_draw), &host); /* Paint context lifetime. */
     g_signal_connect(host.area, "motion-notify-event", G_CALLBACK(gtk_pointer), &host); /* Hover/drag. */
     g_signal_connect(host.area, "button-press-event", G_CALLBACK(gtk_pointer), &host); /* Primary down. */
     g_signal_connect(host.area, "button-release-event", G_CALLBACK(gtk_pointer), &host); /* Primary up. */
+    g_signal_connect(host.area, "scroll-event", G_CALLBACK(gtk_scroll), &host); /* Vertical wheel/smooth units. */
     g_signal_connect(window, "focus-out-event", G_CALLBACK(gtk_focus), &host); /* Cancel stale hold. */
     g_signal_connect(window, "destroy", G_CALLBACK(gtk_closed), NULL); /* Stop native dispatch. */
     timer = g_timeout_add(DEMO_FRAME_MS, gtk_tick, &host); /* Coarse owner-thread pacing. */
@@ -109,7 +128,7 @@ int main(int argc, char **argv) /* GTK owns all native dispatch on this thread. 
     gtk_main(); /* Run until native close, smoke completion or VM failure. */
     g_source_remove(timer); /* No callback may access host after cleanup starts. */
     result = host.demo.status == FVM_OK ? 0 : 1; /* Capture status before demo_close resets it. */
-    printf("GTK3 frames=%u status=%d\n", host.demo.frames, (int)host.demo.status); /* Observable result. */
+    printf("GTK3 frames=%u wheels=%u last_delta=%.3f status=%d\n", host.demo.frames, host.demo.wheel_events, host.demo.last_wheel_delta, (int)host.demo.status); /* Observable result. */
     gtk_widget_destroy(window); /* Remove native signal senders before destroying VM. */
     g_object_unref(window); /* Release the explicit native owner. */
     demo_close(&host.demo); /* [GC:] Release context/runtime after native callbacks stop. */

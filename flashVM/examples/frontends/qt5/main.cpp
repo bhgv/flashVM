@@ -1,9 +1,11 @@
 /* Qt5 frontend: SDK-native widget and QImage consumer around the public FlashVM C ABI. */
-#include "../common/demo.h" /* Common VM/frame lifecycle; core remains C++98/C89. */
+#include "../common/wheel.h" /* Common VM/frame lifecycle; core remains C++98/C89. */
 #include <QApplication> /* Native GUI main-thread event loop. */
 #include <QWidget> /* Native owner with virtual event callbacks, no moc required. */
 #include <QPainter> /* Paint only within paintEvent. */
 #include <QImage> /* Byte-ordered RGBA8888 view over borrowed native bytes. */
+#include "limits.h" /* Qt angle-unit normalization, separate from generic VM scroll lines. */
+#include <QWheelEvent> /* Native angle deltas and fractional widget event position. */
 #include <QMouseEvent> /* Logical widget pointer coordinates. */
 #include <QFocusEvent> /* Explicit focus-loss cancellation. */
 #include <QTimerEvent> /* Timer ownership without signal/slot glue. */
@@ -59,6 +61,22 @@ protected: /* Qt invokes these methods only on the widget owner thread. */
     void mouseReleaseEvent(QMouseEvent *event) { /* The common owner tracks held state. */
         if (event->button() == Qt::LeftButton) pointer(event, FVM_MOUSE_EVENT_UP); /* Native release. */
     } /* Input status is latched by common/demo.h. */
+    /* Convert vertical angle units into explicit lines; do not relabel pixelDelta as line units. */
+    void wheelEvent(QWheelEvent *event) { /* Qt owns this event until the native callback returns. */
+        if (!event->angleDelta().y()) { event->ignore(); return; } /* Horizontal/pixel-only input remains native. */
+        FVM_Affine transform = {1, 0, 0, 1, 0, 0}; /* Match drawImage's logical coordinate transform. */
+        transform.xx = (double)width() / DEMO_WIDTH; /* DPR is already handled by Qt. */
+        transform.yy = (double)height() / DEMO_HEIGHT; /* Nonuniform resize remains consistent with input. */
+        double delta = event->angleDelta().y() / QT_DEMO_ANGLE_PER_DETENT * DEMO_WHEEL_LINES_PER_DETENT; /* Lines. */
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0) /* Prefer the current API without dropping earlier Qt5 headers. */
+        QPointF event_position = event->position(); /* Borrow/copy event-time logical widget coordinates. */
+#else /* Qt5 5.5--5.13 expose the equivalent fractional legacy accessor. */
+        QPointF event_position = event->posF(); /* Avoid integer rounding on supported older SDKs. */
+#endif /* Position is converted to world exactly once below. */
+        demo_wheel(&demo_, &transform, event_position.x(), event_position.y(), delta); /* Preserve fraction/sign. */
+        event->accept(); /* Consume only a recognized vertical angle stream. */
+        if (demo_.status != FVM_OK) close(); /* End native delivery before VM cleanup. */
+    } /* Qt's delivered sign is honored without applying its natural-scroll inversion a second time. */
     /* Release a stale hold on window deactivation, even if widget focus never changed. */
     bool event(QEvent *event) { /* Override the generic native lifecycle dispatcher. */
         if (event->type() == QEvent::WindowDeactivate) demo_cancel(&demo_); /* Explicit synthetic UP. */
@@ -82,6 +100,10 @@ public: /* Main owns this stack widget until after QApplication::exec returns. *
     FVM_Result status() const { return demo_.status; } /* Main can report before destructor clears state. */
     /* Expose successful consumer count for a smoke-run assertion outside the widget. */
     unsigned int frames() const { return demo_.frames; } /* Not a physical scanout count. */
+    /* Report successful wheel deliveries for host diagnostics and adapter fixtures. */
+    unsigned int wheel_events() const { return demo_.wheel_events; } /* Native scalar snapshot only. */
+    /* Report the last normalized line value without retaining a native event. */
+    double last_wheel_delta() const { return demo_.last_wheel_delta; } /* Zero before first accepted wheel. */
 }; /* Qt types remain private to this host executable. */
 /* Run with --smoke or interactively, using the selected Qt platform plugin. */
 int main(int argc, char **argv) { /* QApplication must outlive every QWidget. */
@@ -92,6 +114,6 @@ int main(int argc, char **argv) { /* QApplication must outlive every QWidget. */
     if (widget.status() != FVM_OK) return 1; /* Partial owners are still released by destructor. */
     widget.show(); /* Schedule a native paint only after valid initialization. */
     int result = app.exec(); /* Deliver all events on this same GUI/VM thread. */
-    std::printf("Qt5 frames=%u status=%d\n", widget.frames(), (int)widget.status()); /* Observable smoke. */
+    std::printf("Qt5 frames=%u wheels=%u last_delta=%.3f status=%d\n", widget.frames(), widget.wheel_events(), widget.last_wheel_delta(), (int)widget.status()); /* Observable smoke. */
     return result || widget.status() != FVM_OK ? 1 : 0; /* Preserve native and VM failures. */
 } /* Qt5 SDK may require C++11; no C++11 is added to the VM library. */

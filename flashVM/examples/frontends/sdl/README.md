@@ -92,3 +92,27 @@ SDLHost retains native resources and numeric contact identities only. Physical
 mouse buttons use SDL_BUTTON_LEFT; SDL_TOUCH_MOUSEID identifies synthetic
 mouse events, and SDL_MOUSE_TOUCHID is checked only when exposed by the SDK.
 The example is SDK-compilable C89, with no STL or sibling-project dependency.
+
+## Vertical wheel / Вертикальная прокрутка (v0.607)
+
+sdl_event handles real SDL_MOUSEWHEEL only when no primary touch owns the stream;
+SDL_TOUCH_MOUSEID wheel duplicates are ignored. y is the legacy detent count,
+preciseY replaces it when SDK >=2.0.18. SDL_MOUSEWHEEL_FLIPPED negates once, then
+multiply by the explicit 3-lines-per-detent policy. Horizontal/zero events do not
+enter VM. For compatibility with baseline SDL2 2.0.9 event layouts, position is
+**the last successfully accepted logical VM pointer**, not a claim of exact native
+wheel event-time position. No SDL_GetMouseState physical/window coordinate poll
+or second logical-size transform is performed. Handler/mapping errors are latched.
+Exit diagnostics include wheels and last_delta; no wheel is fabricated by smoke.
+
+| API/field | Parameters, behavior and ownership |
+| --- | --- |
+| [SDL_MouseWheelEvent](https://wiki.libsdl.org/SDL2/SDL_MouseWheelEvent) | Borrowed SDL event: y/preciseY vertical units, direction inversion flag and which source; native scalar copies only. preciseY is compiled only for SDK >=2.0.18. |
+| [SDL_VERSION_ATLEAST](https://wiki.libsdl.org/SDL2/SDL_VERSION_ATLEAST) | Major/minor/patch compile-time test: guard access to newer event fields; does not certify execution with older runtimes. |
+| [demo_wheel](../common/wheel.h) | Demo, identity logical transform, last-known world x/y, normalized line delta: actual synchronous VM dispatcher, native diagnostics and first-error retention. [Contract](../../../doc/MOUSE.md#wheel-events). |
+
+Русский: SDL переводит вертикаль в строки и не дублирует основное касание.
+Для старого ABI позиция колеса — последняя принятая логическая позиция VM;
+новая привязка к нативным mouseX/mouseY не заявляется. Проверка на настоящем SDK
+с dummy-video покрывает дробь, FLIPPED, дубли и активное касание; это не физический
+тест колеса. Колесо необязательно для работы сенсорного фронтенда.

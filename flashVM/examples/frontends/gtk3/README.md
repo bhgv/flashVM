@@ -25,7 +25,7 @@ cmake --build build-gtk3 --target flashvm_example_gtk3 -j2
 
 GTK3 >=3.22 and a real X11/Wayland display are required. For software CI use
 `xvfb-run -a ... --smoke`; it checks SDK painting, not physical input/hardware.
-Expected final output: `GTK3 frames=120 status=0`. Native close exits normally
+Expected final output: `GTK3 frames=120 wheels=0 last_delta=0.000 status=0`. Native close exits normally
 with the actual frame count. Missing display or initialization error is nonzero.
 Linux is the exercised SDK target; foreign GTK3 ports/Android are not accepted.
 
@@ -102,6 +102,25 @@ focus cancellation. It requires an actual SDK display (Xvfb is software only),
 not a mock Gtk header. `--smoke` additionally exercises the native timer/main loop.
 Русский: тест проверяет перевод событий в VM и реальное рисование SDK; физическая
 мышь/тачскрин и чужие ОС этим не проверяются.
+## Vertical wheel / Вертикальная прокрутка (v0.607)
+
+The drawing area requests GDK_SCROLL_MASK|GDK_SMOOTH_SCROLL_MASK and connects
+scroll-event to gtk_scroll(widget,event,host). UP/DOWN are ±3 lines; smooth Y
+is multiplied by -3 (explicit tutorial units, not an inferred pixel distance).
+Zero/stop/horizontal-only events return FALSE without VM entry. Event x/y are
+logical widget pixels, inverse-scaled like pointer input. demo_wheel preserves
+fractions, latches real errors and never changes held contact. Successful counter
+and last delta are printed at exit. The GTK fixture checks +3 and -0.75, fractional
+position, and ignored horizontal/stop input. No physical wheel acceptance follows.
+
+| API | Parameters and behavior |
+| --- | --- |
+| [gdk_event_get_scroll_deltas](https://docs.gtk.org/gdk3/method.Event.get_scroll_deltas.html) | Borrowed GdkEvent, writable double dx/dy outputs: TRUE only for smooth information; use dy only after success; ignore horizontal-only/zero. |
+| [demo_wheel](../common/wheel.h) | Demo, world→widget transform, event x/y, signed normalized lines: synchronous public Mouse wheel dispatch, first-error latch, native scalar diagnostics; full [API contract](../../../doc/MOUSE.md#wheel-events). |
+
+Русский: колесо не требует изменения Mouse API в GTK и не меняет нажатие кнопки.
+Маска разрешает и дискретные, и smooth события. Умножение smooth-единиц на три —
+явная политика учебного хоста; настройка скорости прокрутки ОС не считывается.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

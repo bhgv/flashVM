@@ -23,6 +23,20 @@ int main(int argc,char **argv)
     QEvent deactivate(QEvent::WindowDeactivate);
     QApplication::sendEvent(&widget,&deactivate); marker(widget,DEMO_RELEASED_RED,DEMO_RELEASED_GREEN);
     assert(widget.status()==FVM_OK && widget.frames()>=3);
+#if QT_VERSION >= QT_VERSION_CHECK(5,12,0)
+    QWheelEvent wheel(QPointF(480.5,300.25),QPointF(480.5,300.25),QPoint(),QPoint(0,60),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
+#else
+    QWheelEvent wheel(QPointF(480.5,300.25),QPointF(480.5,300.25),QPoint(),QPoint(0,60),60,Qt::Vertical,Qt::NoButton,Qt::NoModifier);
+#endif
+    QApplication::sendEvent(&widget,&wheel);
+    assert(widget.wheel_events()==1 && widget.last_wheel_delta()==1.5);
+#if QT_VERSION >= QT_VERSION_CHECK(5,12,0)
+    QWheelEvent pixels(QPointF(480.5,300.25),QPointF(480.5,300.25),QPoint(0,8),QPoint(),Qt::NoButton,Qt::NoModifier,Qt::ScrollUpdate,false);
+#else
+    QWheelEvent pixels(QPointF(480.5,300.25),QPointF(480.5,300.25),QPoint(0,8),QPoint(),0,Qt::Vertical,Qt::NoButton,Qt::NoModifier);
+#endif
+    QApplication::sendEvent(&widget,&pixels);assert(widget.wheel_events()==1 && !pixels.isAccepted());
+    marker(widget,DEMO_RELEASED_RED,DEMO_RELEASED_GREEN);
     widget.close();
     return 0;
 }

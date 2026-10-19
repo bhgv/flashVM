@@ -1,7 +1,7 @@
 /* Linux-only framebuffer, evdev/mousedev and single-plane V4L2 helpers for this tutorial. */
 #ifndef FVM_LINUX_DEMO_DEVICE_H /* Keep native helpers private to one host executable. */
 #define FVM_LINUX_DEMO_DEVICE_H /* No kernel structure crosses the FlashVM ABI. */
-#include "../common/demo.h" /* Portable VM/frame owner. */
+#include "../common/wheel.h" /* Portable VM/frame owner. */
 #include <linux/fb.h> /* Native framebuffer layout queries. */
 #include <linux/input.h> /* evdev records, relative axes and primary button. */
 #include <time.h> /* Supply timespec before the V4L2 ABI header. */
@@ -20,6 +20,8 @@
 #define FB_DEMO_POLL_SOURCES 2U /* One pointer and one optional camera descriptor. */
 #define FB_DEMO_KEY_RELEASED 0 /* evdev primary button release value. */
 #define FB_DEMO_KEY_PRESSED 1 /* evdev primary button press value; repeat is not a transition. */
+#define FB_DEMO_REL_BITS_BYTES ((REL_MAX + CHAR_BIT) / CHAR_BIT) /* Byte span for relative-axis capability bits. */
+#define FB_DEMO_WHEEL_HI_RES_PER_DETENT 120.0 /* evdev high-resolution counts for one wheel detent. */
 #define FB_DEMO_MAX_BUFFERS 8U /* Bound native camera mappings regardless of driver count. */
 #define FB_DEMO_REQUEST_BUFFERS 2U /* Minimum useful streaming queue for this example. */
 #define FB_DEMO_MAX_VIDEO_WIDTH 1920U /* Bound negotiated capture dimensions and row arithmetic. */

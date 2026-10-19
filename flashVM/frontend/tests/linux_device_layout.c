@@ -14,7 +14,8 @@ int main(void)
     struct input_event e;
     LinuxHost host;
     unsigned char *output;
-    unsigned int x;
+    unsigned int x, before_loss;
+    FVM_Affine singular={0,0,0,0,0,0};
     memset(&f,0,sizeof(f)); memset(&v,0,sizeof(v));
     f.type=FB_TYPE_PACKED_PIXELS; f.visual=FB_VISUAL_TRUECOLOR;
     f.line_length=DEMO_WIDTH*4+32; f.smem_len=f.line_length*(DEMO_HEIGHT+1)+DEMO_WIDTH*4;
@@ -60,8 +61,38 @@ int main(void)
     assert(pointer.x==99 && pointer.y==98 && demo.held);
     memset(&e,0,sizeof(e)); e.type=EV_REL; e.code=REL_X; e.value=5;
     assert(evdev_event(&pointer,&demo,&e)); assert(pointer.x==104);
+    e.type=EV_REL;e.code=REL_WHEEL;e.value=1;assert(evdev_event(&pointer,&demo,&e));
+#ifdef REL_WHEEL_HI_RES
+    e.code=REL_WHEEL_HI_RES;e.value=60;assert(evdev_event(&pointer,&demo,&e));
+#endif
+    assert(!demo.wheel_events);
+    e.type=EV_SYN;e.code=SYN_REPORT;assert(evdev_event(&pointer,&demo,&e));
+#ifdef REL_WHEEL_HI_RES
+    assert(demo.wheel_events==1 && demo.last_wheel_delta==1.5);
+#else
+    assert(demo.wheel_events==1 && demo.last_wheel_delta==3);
+#endif
+    e.type=EV_REL;e.code=REL_WHEEL;e.value=-1;assert(evdev_event(&pointer,&demo,&e));
+    e.type=EV_SYN;e.code=SYN_REPORT;assert(evdev_event(&pointer,&demo,&e));
+    assert(demo.wheel_events==2 && demo.last_wheel_delta==-3);
+#ifdef REL_WHEEL_HI_RES
+    pointer.wheel_highres_available=1;
+    e.type=EV_REL;e.code=REL_WHEEL;e.value=1;assert(evdev_event(&pointer,&demo,&e));
+    e.type=EV_SYN;e.code=SYN_REPORT;assert(evdev_event(&pointer,&demo,&e));
+    assert(demo.wheel_events==2);
+    e.type=EV_REL;e.code=REL_WHEEL_HI_RES;e.value=-30;assert(evdev_event(&pointer,&demo,&e));
+    e.type=EV_SYN;e.code=SYN_REPORT;assert(evdev_event(&pointer,&demo,&e));
+    assert(demo.wheel_events==3 && demo.last_wheel_delta==-0.75);
+#endif
+    before_loss=demo.wheel_events;
+    e.type=EV_REL;e.code=REL_WHEEL;e.value=1;assert(evdev_event(&pointer,&demo,&e));
     e.type=EV_SYN; e.code=SYN_DROPPED;
-    assert(!evdev_event(&pointer,&demo,&e)); assert(!demo.held);
+    assert(!evdev_event(&pointer,&demo,&e)); assert(!demo.held && demo.wheel_events==before_loss);
+    before_loss=demo.wheel_events;
+    assert(demo_wheel(&demo,&singular,0,0,1)==FVM_INVALID_ARGUMENT);
+    assert(demo.wheel_events==before_loss);
+    singular.xx=singular.yy=1;
+    assert(demo_wheel(&demo,&singular,0,0,1)==FVM_INVALID_ARGUMENT && demo.wheel_events==before_loss);
     demo_close(&demo);
     return 0;
 }

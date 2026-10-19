@@ -46,6 +46,21 @@ int main(void)
     e.type = SDL_WINDOWEVENT; e.window.event = SDL_WINDOWEVENT_FOCUS_LOST;
     assert(sdl_event(&h, &d, &e) && !h.touching && !d.held); position(&d, 30, 40);
     assert(demo_frame(&d, sdl_present, &h) == FVM_OK && d.frames == 2);
+    memset(&e,0,sizeof(e));e.type=SDL_MOUSEWHEEL;e.wheel.y=2;
+#if SDL_VERSION_ATLEAST(2,0,18)
+    e.wheel.preciseY=0.5f;
+#endif
+    assert(sdl_event(&h,&d,&e));
+#if SDL_VERSION_ATLEAST(2,0,18)
+    assert(d.wheel_events==1 && d.last_wheel_delta==1.5);
+#else
+    assert(d.wheel_events==1 && d.last_wheel_delta==6);
+#endif
+    position(&d,30,40);
+    e.wheel.direction=SDL_MOUSEWHEEL_FLIPPED;assert(sdl_event(&h,&d,&e));
+    assert(d.wheel_events==2 && d.last_wheel_delta<0);
+    e.wheel.which=SDL_TOUCH_MOUSEID;assert(sdl_event(&h,&d,&e) && d.wheel_events==2);
+    e.wheel.which=0;h.touching=1;assert(sdl_event(&h,&d,&e) && d.wheel_events==2);h.touching=0;
     e.type = SDL_QUIT; assert(!sdl_event(&h, &d, &e));
     demo_close(&d); demo_close(&d);
     SDL_DestroyTexture(h.texture); SDL_DestroyRenderer(h.renderer); SDL_DestroyWindow(h.window); SDL_Quit();

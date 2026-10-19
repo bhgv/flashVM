@@ -67,7 +67,7 @@ usage fails before opening devices. Never feed /dev/input/eventN to --mouse.
 | --video PATH | Explicit camera capture: single-plane MMAP progressive YUYV only, requested 320×200, negotiated size capped at 1920×1080. |
 | --frames N | Positive bounded presentation count; default runs until SIGINT/SIGTERM. Count is writes, not physical scanout or camera frames. |
 
-Expected finite output: `linux_fb frames=120 camera_frames=N status=0`.
+Expected finite output: `linux_fb frames=120 camera_frames=N wheels=W last_delta=D status=0`.
 A camera can produce zero frames before a very short presentation run ends;
 inspect the independent camera_frames count rather than claiming capture from
 presentation success. Disconnect, permission, unsupported layout/format, malformed
@@ -164,3 +164,27 @@ pointer_open selects one ABI, pointer_read bounds read work, evdev_event and
 mouse_byte decode their own protocols, pointer_send clamps/publishes coordinates.
 request_stop only sets a signal flag; frame_limit validates decimal input; main
 parses options, owns the loop, reports errors and performs all cleanup.
+
+## evdev wheel / Колесо evdev (v0.607)
+
+pointer_open queries relative-axis capabilities. If REL_WHEEL_HI_RES is advertised,
+its high-resolution counts are authoritative (120 counts/detent) and REL_WHEEL
+compatibility events are ignored even in separate reports. Otherwise legacy
+REL_WHEEL detents are used; the decoder also prefers explicit high-res data found
+in a report. Accumulate until SYN_REPORT, publish the completed pointer position,
+then deliver nonzero vertical lines using 3 lines/detent. Reset packet accumulators
+before callbacks. REL_HWHEEL remains unsupported; three-byte mousedev does not
+acquire wheel bytes or negotiate IntelliMouse mode. SYN_DROPPED stops without
+publishing pending wheel. No native worker or VM keyboard policy is introduced.
+
+| API/code | Parameters and behavior |
+| --- | --- |
+| [EVIOCGBIT](https://docs.kernel.org/input/event-codes.html) | EV_REL, exact writable byte-mask span: query supported relative axes on selected evdev node; setup fails on query error instead of guessing the active wheel protocol. |
+| [REL_WHEEL / REL_WHEEL_HI_RES](https://docs.kernel.org/input/event-codes.html#ev-rel) | Scalar relative records: detents vs high-resolution counts, not pixel distances; select one representation to avoid duplicates. |
+| [demo_wheel](../common/wheel.h) | Demo, identity affine, clamped completed pointer, finite normalized line delta: real VM delivery and first-error latch; no button transition. [Contract](../../../doc/MOUSE.md#wheel-events). |
+
+Русский: режим high-res выбирается по возможностям устройства. Legacy-копии не
+считаются второй прокруткой, даже если пришли в отдельном SYN_REPORT. Колесо
+доставляется только после полного пакета; потерянный пакет прекращает пример.
+Тест использует искусственные input_event и проверяет дробь, выбор high-res,
+отдельные legacy-пакеты и отмену — физический evdev этим не подтверждается.

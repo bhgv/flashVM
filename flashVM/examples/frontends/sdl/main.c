@@ -1,6 +1,6 @@
 /* SDL2 frontend tutorial: real frame upload and first-contact input, without private player APIs. */
 #define SDL_MAIN_HANDLED /* This desktop tutorial supplies its own portable main entrypoint. */
-#include "../common/demo.h" /* Share the platform-independent VM/frame owner. */
+#include "../common/wheel.h" /* Share the platform-independent VM/frame owner. */
 #include <SDL.h> /* Explicit external SDK; no SDL types enter FlashVM public headers. */
 #include <stdio.h> /* Report backend/VM failures and bounded smoke completion. */
 /* SDL resources belong to the application, not the VM. */
@@ -63,6 +63,21 @@ static int sdl_event(SDLHost *host, Demo *demo, const SDL_Event *event) /* Borro
     } /* End native finger handling. */
     if (host->touching) /* A physical mouse cannot steal an active finger contact. */
         return 1; /* The selected touch stream alone drives the pointer. */
+    if (event->type == SDL_MOUSEWHEEL && event->wheel.which != SDL_TOUCH_MOUSEID) /* Real vertical wheel only. */
+    { /* The baseline SDL2 protocol has no event position: use the last accepted logical VM pointer. */
+        double x, y, delta = event->wheel.y; /* Legacy integer detents on SDL2 before 2.0.18. */
+        if (demo->status != FVM_OK) return 1; /* Preserve an already latched failure before querying position. */
+#if SDL_VERSION_ATLEAST(2, 0, 18) /* Newer SDKs expose fractional vertical wheel units. */
+        delta = event->wheel.preciseY; /* Keep native fractional resolution instead of truncating. */
+#endif /* Older supported SDK headers never reference unavailable fields. */
+        if (event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED) delta = -delta; /* Normalize direction once. */
+        if (delta != 0) { /* Horizontal-only/stop events do not create a synthetic vertical wheel. */
+            demo->status = fvm_input_get_pointer(demo->context, &x, &y); /* Explicit last-known-position policy. */
+            if (demo->status == FVM_OK) /* Do not use uninitialized position on query failure. */
+                demo_wheel(demo, &identity, x, y, delta * DEMO_WHEEL_LINES_PER_DETENT); /* Detents to lines. */
+        } /* No physical mouse poll or duplicate logical-size transform is applied. */
+        return 1; /* Native owner loop checks the actual VM status. */
+    } /* Active touch suppression above also prevents wheel takeover of its primary stream. */
     if (event->type == SDL_MOUSEMOTION && event->motion.which != SDL_TOUCH_MOUSEID) /* Ignore generated mouse. */
         demo_pointer(demo, FVM_MOUSE_EVENT_MOVE, &identity, event->motion.x, event->motion.y); /* Logical pixels. */
     if ((event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) && /* Primary button only. */
@@ -116,7 +131,7 @@ int main(int argc, char **argv) /* Desktop launcher; Android supplies SDLActivit
     } /* End frame/event loop before resource release. */
     result = demo.status == FVM_OK ? 0 : 1; /* Backend/VM failures stay visible. */
     if (!result) /* Distinguish completed presentation from initialization failure. */
-        printf("SDL frames=%u\n", demo.frames); /* Smoke expects 120 frames. */
+        printf("SDL frames=%u wheels=%u last_delta=%.3f\n", demo.frames, demo.wheel_events, demo.last_wheel_delta); /* Smoke expects 120 frames. */
 cleanup: /* All exits share reverse ownership cleanup. */
     if (result) /* Print both diagnostic domains without hiding the original status. */
         fprintf(stderr, "SDL tutorial: VM=%d SDL=%s\n", (int)demo.status, SDL_GetError()); /* Borrow error text. */

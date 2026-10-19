@@ -59,11 +59,11 @@ may bound invisible marker geometry but preserves raw outside-world VM input.
 
 | Helper | Parameters and behavior / Параметры и действие |
 | --- | --- |
-| [demo_open](common/demo.h#L46) | `demo`: fresh caller-owned structure; allocates a 320×200 RGBA span and independent VM/context; returns/stores first status. Caller cleans partial acquisition. |
-| [demo_close](common/demo.h#L36) | `demo`: initialized or zeroed structure; releases context, runtime, pixels, clears fields; call only after callbacks stop. |
-| [demo_pointer](common/demo.h#L67) | `demo`, event `type`, borrowed `world_to_event`, finite event `x,y`: invert exactly once, synchronously dispatch, update held color state on success; preserve first failure. |
-| [demo_cancel](common/demo.h#L81) | `demo`: if held, synthesize UP at last valid VM position and clear native hold. Cancellation policy is explicit, no automatic click or contact promotion. |
-| [demo_frame](common/demo.h#L92) | `demo`, `present`, `userdata`: query VM position, draw initialized RGBA, submit real span; sink runs synchronously, error stops loop, count increments only on success. |
+| [demo_open](common/demo.h#L48) | `demo`: fresh caller-owned structure; allocates a 320×200 RGBA span and independent VM/context; returns/stores first status. Caller cleans partial acquisition. |
+| [demo_close](common/demo.h#L38) | `demo`: initialized or zeroed structure; releases context, runtime, pixels, clears fields; call only after callbacks stop. |
+| [demo_pointer](common/demo.h#L69) | `demo`, event `type`, borrowed `world_to_event`, finite event `x,y`: invert exactly once, synchronously dispatch, update held color state on success; preserve first failure. |
+| [demo_cancel](common/demo.h#L83) | `demo`: if held, synthesize UP at last valid VM position and clear native hold. Cancellation policy is explicit, no automatic click or contact promotion. |
+| [demo_frame](common/demo.h#L94) | `demo`, `present`, `userdata`: query VM position, draw initialized RGBA, submit real span; sink runs synchronously, error stops loop, count increments only on success. |
 
 `Demo.frame` describes width/height in pixels and stride in bytes; byte_count
 is the actual allocation span. `frames` counts successful uploads, not GPU
@@ -85,6 +85,7 @@ return/ownership and links to the detailed contract and real declarations.
 | [fvm_input_set_pointer](../../include/flashvm/input.h#L72) | `context`, finite world `x,y`: silently publish initial center, no callback/OS query; invalid input preserves state. [Input](../../include/flashvm/input.h). |
 | [fvm_host_pointer_to_world](../../include/flashvm/host.h#L26) | borrowed world→event affine, finite event `x,y`, distinct writable world outputs: inverse conversion, no allocation; invalid/singular input preserves outputs. [Host coordinates](../../doc/HOST_BACKENDS.md#event-coordinates). |
 | [fvm_input_dispatch_mouse](../../include/flashvm/mouse.h#L25) | live `context`, DOWN/MOVE/UP `type`, finite world `x,y`: publish coordinates and synchronously deliver existing Mouse listeners/drag; returns real VM status. No listener is needed to publish position. [Mouse](../../doc/MOUSE.md#delivery). |
+| [`fvm_input_dispatch_mouse_wheel`](../../include/flashvm/mouse.h#L32) | Live owner-thread context, finite signed scroll-line delta and world x/y: snapshot/GC-safe onMouseWheel(delta), pointer/drag publication; invalid input or preparation OOM preserves state, callback errors retain committed effects. [Wheel contract](../../doc/MOUSE.md#wheel-events). |
 | [fvm_input_get_pointer](../../include/flashvm/input.h#L75) | `context`, distinct writable `x,y`: copy latest world pixels without OS call/allocation. [Input](../../include/flashvm/input.h). |
 | [fvm_raster_fill_polygon](../../include/flashvm/raster.h#L39) | borrowed writable `surface`, finite `points`, vertex `count`, straight-alpha `color`: synchronous nonzero fill clipped to image; retains nothing, unsupported without graphics. [Raster](../../include/flashvm/raster.h). |
 | [fvm_host_present](../../include/flashvm/host.h#L18) | borrowed `surface`, actual available `byte_count`, synchronous `callback`, borrowed `userdata`: validate span/stride then call once; return real consumer status; no retained frame. [Frame contract](../../doc/HOST_BACKENDS.md#frame-delivery). |
@@ -111,6 +112,35 @@ frontend без оконного SDK. Каждый включается собс
 становится обязательной зависимостью VM. Подробности, ограничения и команды
 находятся в README каждого примера. Общая часть по-прежнему использует прямую
 доставку Mouse; миграция на общую очередь — отдельный шаг.
+## Wheel normalization (v0.607) / Единицы колеса
+
+[common/wheel.h](common/wheel.h) supplies demo_wheel(demo, world_to_event, x, y,
+delta): borrow live Demo/forward transform, inverse-map native event position once,
+and synchronously dispatch finite normalized lines through the public VM API.
+It latches the first error and records successful wheel_events/last_wheel_delta;
+button held state is unchanged. No wheel script listener is installed by the
+marker demo; the separate [wheel tutorial](../embedding/mouse_wheel/README.md)
+demonstrates receivers and the copied FIFO. These GUI examples retain direct
+owner-thread delivery, not an implicit pump or cross-thread producer.
+
+All four adapters use an explicit **3 lines per detent** tutorial policy, without
+querying OS scroll preferences. SDL2 converts vertical wheel units, honors FLIPPED,
+uses preciseY when SDK >=2.0.18 and last accepted logical VM position for baseline
+SDK compatibility. GTK3 converts UP/DOWN and negated smooth Y units at event
+coordinates. Qt5 converts angleDelta.y/120 into detents; zero-angle/pixel-only and
+horizontal-only streams remain unhandled, not relabeled as lines. evdev prefers
+advertised REL_WHEEL_HI_RES (120 counts/detent), ignores its legacy compatibility
+packets even in separate reports, otherwise uses REL_WHEEL detents. Completed
+SYN_REPORT publishes position then vertical wheel; partial/drop packets do not
+produce a wheel. Three-byte mousedev, headless and Clutter adapters gain no native
+wheel decoder here. Clutter SDK/device and other OS acceptance remain open.
+
+Русский: единицы ОС не попадают в VM без явного перевода. Дробь сохраняется,
+горизонталь и пиксельный-only Qt поток не выдаются за строки. В evdev источник
+выбирается по capabilities устройства, чтобы legacy и high-resolution не дали
+два события. Счётчики вывода показывают успешные доставки и последнюю дельту,
+не физические щелчки. Нажатие/фокус/scrollTarget и прокрутка содержимого не
+синтезируются. Сенсорный хост без колеса продолжает передавать основной контакт.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -128,6 +158,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_host_present` | function | [include/flashvm/host.h:18](../../include/flashvm/host.h#L18) |
 | `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../../include/flashvm/host.h#L11) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../../include/flashvm/mouse.h#L25) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../../include/flashvm/mouse.h#L32) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../include/flashvm/input.h#L75) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../include/flashvm/input.h#L72) |
 | `fvm_raster_fill_polygon` | function | [include/flashvm/raster.h:39](../../include/flashvm/raster.h#L39) |

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.606
+# FlashVM stage status / Состояние стадий — v0.607
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,37 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.607 native wheel adapters / Колесо во фронтендах
+
+SDL2, GTK3, Qt5 and direct Linux evdev tutorials normalize their native vertical
+wheel protocols into the explicit VM line-delta API. Common native diagnostics
+record successful deliveries and last delta without changing held-button state.
+The tutorial policy is three lines per detent; this does not query OS scroll
+preferences. SDL preserves preciseY when available, handles FLIPPED and uses last
+accepted logical VM position for baseline protocol compatibility. GTK uses event
+position and signed smooth/discrete conversion. Qt converts angle units and leaves
+zero/horizontal/pixel-only input unhandled. evdev queries high-resolution axis
+capabilities, suppresses legacy duplicates even across separate reports, and
+commits wheel only at SYN_REPORT. Three-byte mousedev and Clutter gain no native
+wheel decoder in this block.
+
+Four current Linux SDK/adapter tests pass: example_sdl_input (real SDK dummy
+video), example_gtk3_input (real SDK/Xvfb), example_qt5_input (real SDK offscreen)
+and linux_device_layout (synthetic device records/layout). Assertions cover
+fractional scale/line conversion, SDL inversion/touch duplicate suppression, Qt
+pixel-only rejection, evdev high-res/legacy selection and dropped packets.
+GTK3, Qt5 and SDL tutorials each complete a real 120-frame software smoke run.
+The Linux decoder/common wheel failure-latch fixture also passes ASan/UBSan
+without leak detection. Strict C89 Linux syntax, source-link determinism, tutorial
+checkers and version-refresh checks pass. No whole-suite or foreign-device run
+is inferred from these targeted checks.
+
+Русский: нативные единицы переводятся явно, дробь сохраняется. Четыре целевых
+адаптерных проверки прошли, три оконных примера завершили по 120 кадров. Физические
+колёса/тачпады, framebuffer/камера, Android, Windows/macOS, старые SDK и Clutter
+этим блоком не приняты. Полный scrollTarget/сцена и релизная приёмка стадий
+остаются открытыми. [Frontend guide](../examples/frontends/README.md).
 
 ## v0.606 queued wheel and native execution / Колесо в FIFO и JIT
 

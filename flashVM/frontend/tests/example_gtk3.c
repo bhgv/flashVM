@@ -32,6 +32,17 @@ int main(void)
     event.type=GDK_2BUTTON_PRESS;
     assert(!gtk_pointer(host.area,&event,&host));
     gtk_focus(window,NULL,&host); assert(!host.demo.held);
+    memset(&event,0,sizeof(event));event.type=GDK_SCROLL;
+    event.scroll.x=480.5;event.scroll.y=300.25;event.scroll.direction=GDK_SCROLL_UP;
+    assert(gtk_scroll(host.area,&event.scroll,&host));
+    assert(host.demo.wheel_events==1 && host.demo.last_wheel_delta==3);
+    assert(fvm_input_get_pointer(host.demo.context,&x,&y)==FVM_OK && x==240.25 && y==150.125);
+    event.scroll.direction=GDK_SCROLL_SMOOTH;event.scroll.delta_y=0.25;
+    assert(gtk_scroll(host.area,&event.scroll,&host));
+    assert(host.demo.wheel_events==2 && host.demo.last_wheel_delta==-0.75);
+    event.scroll.delta_y=0;assert(!gtk_scroll(host.area,&event.scroll,&host));
+    event.scroll.direction=GDK_SCROLL_LEFT;assert(!gtk_scroll(host.area,&event.scroll,&host));
+    assert(host.demo.wheel_events==2);
     assert(host.demo.status==FVM_OK);
     gtk_widget_destroy(window); g_object_unref(window); demo_close(&host.demo);
     return 0;

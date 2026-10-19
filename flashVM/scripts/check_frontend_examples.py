@@ -22,7 +22,7 @@ def check():
             assert not line.strip() or "/*" in line or "*/" in line, (source, number)
         assert "assert(" not in source.read_text(), source
     docs = (FRONTENDS / "README.md").read_text()
-    common = (FRONTENDS / "common/demo.h").read_text()
+    common = (FRONTENDS / "common/demo.h").read_text() + (FRONTENDS / "common/wheel.h").read_text()
     for api in set(re.findall(r"\b(fvm_\w+)\s*\(", common)):
         assert api in docs and re.search(r"\|.*" + api + r".*\|.*\]", docs), api
     for name, pattern in (("sdl", r"\b(SDL_\w+)\s*\("),

@@ -31,6 +31,8 @@ typedef struct Demo /* One independent VM and frame per frontend instance. */
     FVM_Result status; /* First failure stops rendering and event delivery. */
     int held; /* Primary-contact state used only for marker color/cancel policy. */
     unsigned int frames; /* Number of successfully submitted frames. */
+    unsigned int wheel_events; /* Successful explicit wheel deliveries, independent of marker color. */
+    double last_wheel_delta; /* Most recent successfully delivered normalized scroll lines. */
 } Demo; /* [GC:] No GC pin is needed because there are no exposed managed objects. */
 /* Release VM owners and pixel storage after event/timer callbacks have stopped. */
 static void demo_close(Demo *demo) /* Accept partially initialized ownership. */

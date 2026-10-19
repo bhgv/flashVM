@@ -24,7 +24,7 @@ cmake --build build-qt5 --target flashvm_example_qt5 -j2
 QT_QPA_PLATFORM=offscreen ./build-qt5/examples/frontends/flashvm_example_qt5 --smoke
 ```
 
-Expected smoke: `Qt5 frames=120 status=0`. Offscreen checks actual Qt software
+Expected smoke: `Qt5 frames=120 wheels=0 last_delta=0.000 status=0`. Offscreen checks actual Qt software
 painting, not a native display or physical input. Only this SDK host target uses
 C++11, required by current Qt5 headers; the VM remains C++98 and its embedding
 ABI C89. No Qt type enters public FlashVM headers. Supply `CMAKE_PREFIX_PATH`
@@ -93,3 +93,31 @@ button press and WindowDeactivate. `--smoke` separately runs the timer/main loop
 [test fixture APIs](https://doc.qt.io/archives/qt-5.15/qcoreapplication.html#sendEvent),
 not extra FlashVM APIs; [grab](https://doc.qt.io/archives/qt-5.15/qwidget.html#grab)
 returns an owned snapshot, never the borrowed Demo frame.
+
+## Vertical wheel / Вертикальная прокрутка (v0.607)
+
+wheelEvent(event) consumes nonzero angleDelta.y: lines = y/120 * 3, preserving
+fractional partial detents and Qt's delivered sign. No extra inverted() sign flip
+is applied. Zero-angle phase, horizontal-only and pixel-only streams call ignore()
+and do not enter VM. Qt's event-time fractional position uses position() on SDK
+>=5.14 and posF() on earlier supported headers, then the painting scale is inverted
+once. This explicit angle-to-line policy does not claim pixel scrolling or OS
+scroll-preference matching. Diagnostics expose successful wheel_events and last
+line delta. The real offscreen fixture verifies a half-detent = 1.5 lines, ignored
+pixel-only input, and marker position after wheel delivery. Physical devices and
+older/foreign SDK runtime acceptance remain open.
+
+| API | Parameters and behavior |
+| --- | --- |
+| [QWheelEvent::angleDelta](https://doc.qt.io/archives/qt-5.15/qwheelevent.html#angleDelta) | Borrowed event, no arguments: copy vertical angle units (120 per usual detent); horizontal-only remains unhandled. |
+| [QWheelEvent::position](https://doc.qt.io/archives/qt-5.15/qwheelevent.html#position) | No arguments: event-time logical QPointF on SDK >=5.14; x/y inverse-scaled once. |
+| [QWheelEvent::posF](https://doc.qt.io/archives/qt-5.15/qwheelevent-obsolete.html#posF) | Older Qt5 fractional position accessor; used only when position() is unavailable. |
+| [QEvent::accept](https://doc.qt.io/archives/qt-5.15/qevent.html#accept) | No arguments: mark recognized vertical event consumed, no ownership transfer. |
+| [QEvent::ignore](https://doc.qt.io/archives/qt-5.15/qevent.html#ignore) | No arguments: let Qt propagate unsupported pixel/horizontal/zero stream; no VM wheel callback. |
+| [demo_wheel](../common/wheel.h) | Demo, world→widget affine, event x/y, line delta: synchronous rooted VM dispatch and first-error latch; no held-button mutation. [Contract](../../../doc/MOUSE.md#wheel-events). |
+
+Русский: полщелчка колеса даёт 1.5 строки; пиксельную дельту пример не выдаёт за
+строки. Позиция берётся из самого события, без дополнительного масштаба DPI.
+Конструкторы QWheelEvent в тесте выбраны по версии SDK (современный с 5.12);
+ядро FlashVM по-прежнему не зависит от Qt. Печатный результат содержит wheels
+и last_delta, ноль означает отсутствие успешной доставки, а не ошибку SDK.
