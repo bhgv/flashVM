@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 /* Validate CLI arguments, run the selected pipeline, and stage output on success. */
+extern FILE *fir_temporary(void);
 int main(int argc, char **argv)
 {
     FirModule *module;
@@ -31,7 +32,7 @@ int main(int argc, char **argv)
     if (!ok) { fprintf(stderr, "%s: %s\n", argv[2], error); free(module); return 1; }
     if (check) { free(module); return 0; }
     /* tmpfile also protects against aliases/hard links to the input file. */
-    output = tmpfile();
+    output = fir_temporary();
     if (!output) { perror("temporary output"); free(module); return 2; }
     ok = compile || raw ? fir_swf(output, module, raw, error, sizeof(error)) : fir_print(output, module);
     if (ok && (fflush(output) || fseek(output, 0, SEEK_SET))) ok = 0;

@@ -6,9 +6,9 @@
 | --- | --- | --- |
 | FIR reader | Coco/R grammar, UTF-8, comments, exact version | Future versions, binary encoding |
 | Verifier | SSA uniqueness, dominance, types, targets, reachability, terminators | Interprocedural analysis |
-| AS1/AS2/AS3 teaching adapters | One or more `trace(expression);`; literals, parentheses, +, -, * | Variables, strings, classes, properties, full source semantics |
+| AS1/AS2/AS3 teaching adapters | One or more `trace(expression);`; literals, parentheses, +, -, * | Strings, classes, properties, full source semantics |
 | Limbo teaching adapter | Exact `implement Name; Name: module { value: fn(): int; }; value(): int { return expression; }` | General modules, channels/source operators, procedures, imports |
-| Expressions | Decimal literals, unary minus on literals; * before +/-, left associative | Division, exponents in source adapters, unary minus on groups |
+| Expressions | Decimal literals, unary minus on literals; * before +/-, left associative | Division, unary minus on groups |
 | FIR channels | Create/send/receive/close mapped to existing extension | Source Limbo channel lowering, alt, spawn, capacity, typed graphs |
 | SWF backend | FWS8, one trace-only frame, DoAction AVM1 | ABC/AVM2, visual assets, linker/imports, exceptions |
 
@@ -24,3 +24,7 @@ with their own broader syntax acceptance; these adapters do not replace them.
 The separate [linker](../../../linker/README.md) is not bypassed for future
 multi-object builds: this initial emitter handles one self-contained module.
 Future FIR types/operations must preserve language semantics before LLVM export.
+
+## 0.2.0 update
+
+Numeric adapters now accept initialized declarations (`var x = 1;` in AS, `x: int = 1;` inside Limbo), assignments and variable reads. AS2/AS3 allow only `:Number` annotations; AS1 rejects annotations. One program-wide environment holds at most 256 names. Duplicate declarations, reads before initialization and implicit globals fail. This restricted profile does not implement AS hoisting or nested scopes. AS accepts decimal exponents; Limbo requires integer spellings. Semantics live in `compiler/lower.c`, syntax in `compiler/src1.atg`.

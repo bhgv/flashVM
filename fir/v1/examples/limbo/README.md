@@ -21,3 +21,5 @@ Example API: `trace(value)` prints the computed number; `value` is its single
 argument. [FIR operations](../../doc/FORMAT.md), [CLI](../../compiler/README.md),
 [optimisation](../../optimiser/README.md), [execution checks](../../doc/TESTING.md).
 Local viewer: `python fir/v1/view_docs.py`.
+
+`variables.b` demonstrates initialized declarations and reassignment with fresh SSA values. The tutorial entry prints 36.

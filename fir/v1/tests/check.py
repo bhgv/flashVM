@@ -97,6 +97,31 @@ with tempfile.TemporaryDirectory() as directory:
         else:
             exercise((folder / 'main.fir').read_text(), (folder / 'expected.txt').read_text())
 
+    # Every source profile lowers mutable names into fresh SSA definitions.
+    for language in ('as1', 'as2', 'as3', 'limbo'):
+        if language == 'limbo':
+            program = 'implement V; V: module { value: fn(): int; }; value(): int { x: int = 6; y: int = x * 7; x = y - x; return x; }'
+        else:
+            annotation = '' if language == 'as1' else ':Number'
+            program = f'var x{annotation} = 6; var y = x * 7; x = y - x; trace(x); trace(y);'
+        inp.write_text(program)
+        call(SOURCE, language, '--input', inp, opt)
+        exercise(opt.read_text(), '36\n' if language == 'limbo' else '36\n42\n')
+    for program in ('var x = x + 1;', 'x = 1;', 'var x = 1; var x = 2;',
+                    'var x:String = 1;', 'var x = 1; trace(y);',
+                    'var x;', 'var x = 1; x += 2;',
+                    'var ' + 'x' * 256 + ' = 1;',
+                    ' '.join(f'var x{i} = {i};' for i in range(257))):
+        inp.write_text(program)
+        opt.write_bytes(b'keep-output')
+        call(SOURCE, 'as2', '--input', inp, opt, good=False)
+        assert opt.read_bytes() == b'keep-output'
+    inp.write_text('var x:Number = 1; trace(x);')
+    call(SOURCE, 'as1', '--input', inp, opt, good=False)
+    inp.write_text('trace(1e2 - 2 * 3);')
+    call(SOURCE, 'as3', '--input', inp, opt)
+    exercise(opt.read_text(), '94\n')
+
     # Full-width integer products catch double precision loss and shift mistakes.
     random.seed(611)
     pairs = [(2147483647, 2147483647), (-2147483648, -1), (-65537, 65539), (0, -1)]

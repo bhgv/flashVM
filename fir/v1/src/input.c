@@ -1,3 +1,39 @@
+/* POSIX temporary-file declarations are available on Linux and Termux. */
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+/* Honor an explicit TMPDIR without insecure predictable temporary names.
+ * Unlink immediately: the stream alone owns the staged output. */
+FILE *fir_temporary(void)
+{
+#ifndef _WIN32
+    const char *directory = getenv("TMPDIR");
+    if (directory && *directory) {
+        size_t length = strlen(directory);
+        char *path;
+        int fd;
+        FILE *stream;
+        if (length > 4096) return NULL;
+        path = (char *)malloc(length + 24);
+        if (!path) return NULL;
+        snprintf(path, length + 24, "%s/fir1-XXXXXX", directory);
+        fd = mkstemp(path);
+        if (fd < 0) { free(path); return NULL; }
+        if (unlink(path)) { close(fd); free(path); return NULL; }
+        free(path);
+        stream = fdopen(fd, "w+b");
+        if (!stream) close(fd);
+        return stream;
+    }
+#endif
+    return tmpfile();
+}
 /* Shared input encoding check, independent of either generated parser. */
 #include <stddef.h>
 /* UTF-8 validation rejects overlong sequences, surrogates and values above

@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.16)
-project(fir1 VERSION 0.1.0 LANGUAGES C)
+project(fir1 VERSION 0.2.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -49,7 +49,8 @@ add_custom_command(OUTPUT "${generated}/src1p.c" "${generated}/src1s.c"
 add_library(fir1_source_generated OBJECT "${generated}/src1p.c" "${generated}/src1s.c")
 target_compile_definitions(fir1_source_generated PUBLIC CUSTOM_BUFF)
 target_include_directories(fir1_source_generated PUBLIC "${generated}")
-add_executable(fir1_source compiler/source.c src/input.c)
+add_executable(fir1_source compiler/source.c compiler/lower.c src/input.c)
+target_include_directories(fir1_source_generated PRIVATE compiler)
 target_link_libraries(fir1_source PRIVATE fir1_source_generated)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(fir1_source PRIVATE -Wall -Wextra -Wpedantic -Werror)

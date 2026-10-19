@@ -2,67 +2,15 @@
  * This grammar intentionally accepts only the documented tutorial subset.
  * Generated globals belong to fir1_source, separate from the FIR parser. */
 COMPILER Src1
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <math.h>
-#include <stdint.h>
-static FILE *destination;
-static int integer_mode, serial, depth, failed;
-static char module_name[256];
-/* Configure one translation unit; each process owns one generated parser. */
-void source_config(FILE *out, int limbo)
+#include "lower.h"
+/* Only scanner access lives here; C99 lowering is in lower.c. */
+static void capture(void)
 {
-    destination = out; integer_mode = limbo; serial = depth = failed = 0;
+    char text[256] = "";
+    if (S_Len < 256) S_GetString(S_Pos, S_Len, text, 255);
+    source_token(text, S_Line, S_Len >= 256);
 }
-/* Query semantic rejection separately from generated syntax diagnostics. */
-int source_failed(void) { return failed; }
-/* Report the first semantic failure without producing a deliverable file. */
-static void reject(const char *message)
-{
-    if (!failed) fprintf(stderr, "source line %d: %s\n", S_Line, message);
-    failed = 1;
-}
-/* Capture a complete spelling; never silently truncate a long token. */
-static void spelling(char *out)
-{
-    if (S_Len >= 256) { reject("token exceeds 255 bytes"); out[0] = 0; }
-    else S_GetString(S_Pos, S_Len, out, 255);
-}
-/* Emit a finite literal with explicit language arithmetic semantics. */
-static int constant(int negative)
-{
-    char text[256], *end;
-    double value;
-    int result = serial++;
-    spelling(text); errno = 0; value = strtod(text, &end);
-    if (negative) value = -value;
-    if (!text[0] || *end || errno || !isfinite(value)) reject("invalid literal");
-    if (integer_mode && strchr(text, '.')) reject("Limbo int literal must not have a decimal point");
-    if (integer_mode && (value < INT32_MIN || value > INT32_MAX || value != (double)(int32_t)value))
-        reject("Limbo literal outside i32 range");
-    if (serial > 1000) reject("expression size limit exceeded");
-    if (failed) return result;
-    fprintf(destination, "    %%v%d: %s = const.%s ", result,
-            integer_mode ? "i32" : "f64", integer_mode ? "i32" : "f64");
-    if (integer_mode) fprintf(destination, "%ld\n", (long)(int32_t)value);
-    else fprintf(destination, "%.17g\n", value);
-    return result;
-}
-/* Emit a three-address instruction; source operators are left associative. */
-static int binary(int left, int right, int op)
-{
-    int result = serial++;
-    if (serial > 1000) reject("expression size limit exceeded");
-    if (!failed) fprintf(destination, "    %%v%d: %s = %s.%s%s %%v%d, %%v%d\n", result,
-        integer_mode ? "i32" : "f64", integer_mode ? "i32" : "f64",
-        op == '+' ? "add" : op == '-' ? "sub" : "mul", integer_mode ? ".wrap" : "", left, right);
-    return result;
-}
-/* Legacy frames use errno as a parameter name after these declarations.
- * Numeric helpers above already expanded the system errno macro. */
-#undef errno
+static int depth;
 CHARACTERS
   /* Portable module identifiers. */
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" .
@@ -77,7 +25,8 @@ TOKENS
   /* Module name; keywords are distinguished by the generated scanner. */
   ident = letter {letter | digit} .
   /* Nonnegative number; unary minus belongs to Primary. */
-  numeral = digit {digit} ["." digit {digit}] .
+  numeral = digit {digit} ["." digit {digit}]
+            [("e" | "E") ["+" | "-"] digit {digit}] .
 PRAGMAS
   /* Human-readable tutorial comments are ignored by parsing. */
   linecomment = "//" {linebyte} .
@@ -87,34 +36,41 @@ IGNORE CHR(9) + CHR(10) + CHR(13)
 PRODUCTIONS
   /* Entire input must match exactly one supported tutorial profile. */
   Src1 = ( TraceProgram | LimboProgram ) EOF .
-  /* At least one ActionScript trace, preserving statement order. */
-  TraceProgram = (. if (integer_mode) reject("expected Limbo module"); .)
-                 TraceStatement {TraceStatement} .
-  /* A numeric-only trace; no dynamic identifiers or method dispatch. */
-  TraceStatement = (. int value = 0; .)
-      "trace" "(" Expression<&value> ")" ";"
-      (. fprintf(destination, "    trace %%v%d\n", value); .) .
-  /* A real Limbo module returning int. The SWF tutorial harness prints the
-   * returned value; this is explicitly not an Inferno loader ABI. */
-  LimboProgram = (. int value = 0; char name[256];
-                    if (!integer_mode) reject("expected ActionScript trace"); .)
-      "implement" ident (. spelling(module_name); .) ";"
-      ident (. spelling(name); if (strcmp(name, module_name)) reject("module name mismatch"); .)
+  /* Numeric statements have one function-wide binding environment. */
+  TraceProgram = (. source_language(0); .) Statement {Statement} .
+  /* Initialized declaration, assignment or trace. No implicit globals. */
+  Statement = (. int name = 0, value = 0; .)
+      ( "trace" "(" Expression<&value> ")" ";" (. source_trace(value); .)
+      | "var" Name<&name> [ ":" ident (. capture(); source_annotation(); .) ]
+        "=" Expression<&value> ";" (. source_bind(name, value, 1); .)
+      | Name<&name> "=" Expression<&value> ";" (. source_bind(name, value, 0); .) ) .
+  /* Intern a source identifier separately from reading its current binding. */
+  Name<int *name> = ident (. capture(); *name = source_name(); .) .
+  /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
+  LimboProgram = (. int value = 0; source_language(1); .)
+      "implement" ident (. capture(); source_module(1); .) ";"
+      ident (. capture(); source_module(0); .)
       ":" "module" "{" "value" ":" "fn" "(" ")" ":" "int" ";" "}" ";"
-      "value" "(" ")" ":" "int" "{" "return" Expression<&value> ";" "}"
-      (. fprintf(destination, "    trace %%v%d // Tutorial harness prints value().\n", value); .) .
+      "value" "(" ")" ":" "int" "{" {LimboStatement}
+      "return" Expression<&value> ";" "}" (. source_trace(value); .) .
+  /* Explicit initialized int declarations and reassignment, in source order. */
+  LimboStatement = (. int name = 0, value = 0; .)
+      Name<&name>
+      ( ":" "int" "=" Expression<&value> ";" (. source_bind(name, value, 1); .)
+      | "=" Expression<&value> ";" (. source_bind(name, value, 0); .) ) .
   /* Addition/subtraction bind less tightly than multiplication, left to right. */
   Expression<int *result> = (. int right = 0, op = 0; .)
       Product<result>
       { ("+" (. op = '+'; .) | "-" (. op = '-'; .)) Product<&right>
-        (. *result = binary(*result, right, op); .) } .
+        (. *result = source_binary(*result, right, op); .) } .
   /* Multiplication is left associative. */
   Product<int *result> = (. int right = 0; .)
-      Primary<result> { "*" Primary<&right> (. *result = binary(*result, right, '*'); .) } .
+      Primary<result> { "*" Primary<&right> (. *result = source_binary(*result, right, '*'); .) } .
   /* Parentheses recurse only within the documented 64-level limit.
    * The resolver tests depth without consuming tokens. Minus applies to a
    * literal, not an arbitrary subexpression, in this first subset. */
-  Primary<int *result> = (. int negative = 0; .)
+  Primary<int *result> = (. int negative = 0, name = 0; .)
       ( IF(Sym == LparenSym && depth < 64) "(" (. ++depth; .) Expression<result> ")" (. --depth; .)
-      | ["-" (. negative = 1; .)] numeral (. *result = constant(negative); .) ) .
+      | Name<&name> (. *result = source_read(name); .)
+      | ["-" (. negative = 1; .)] numeral (. capture(); *result = source_constant(negative); .) ) .
 END Src1.
