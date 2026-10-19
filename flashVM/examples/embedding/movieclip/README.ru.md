@@ -24,6 +24,7 @@ after next call: 3 callbacks
 depth order: low middle high
 render: no timeline callbacks
 frame call: frame 2 actions; playhead 1; callbacks 0
+initializers: next two ticks fit five units
 ```
 
 [main.c](main.c) исполняется; [tutorial_limits.h](tutorial_limits.h) именует границы.
@@ -92,6 +93,17 @@ The fifth output line is shown above. / Пятая строка показана
 | [`fvm_exec_call_frame`](../../../include/flashvm/execution.h#L342) | Borrow a rooted receiver and scalar operand synchronously; selected actions share one limit, preserve earlier effects on failure, and do not seek/tick. / Синхронно заимствует receiver/операнд; эффекты до ошибки сохраняются, playhead не меняется. |
 | [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read committed scalar properties into caller-owned values; callbacks/errors follow normal property semantics. / Читает числовой результат и playhead; обычные getters могут вернуть ошибку. |
 
+v0.632 adds a fourth independent runtime / четвёртый независимый runtime. A raw
+33-byte SWF8 holds an empty sprite and one End-only DoInitAction. Loading runs no code.
+The first tick fits five units; the next outer call completes two ticks in four units,
+with three total onEnterFrame callbacks. / Первый tick укладывается в пять единиц,
+следующие два вместе — в четыре; итого три onEnterFrame callback. Sixth output line
+is shown above. [EN](../../../doc/INITIALIZER_PROGRESS.md) / [RU](../../../doc/INITIALIZER_PROGRESS.ru.md).
+
+| Added API / API | Purpose and ownership / Назначение и владение |
+| --- | --- |
+| [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Synchronously validate/import caller-owned bytes, retain copied code and return a borrowed context-owned clip; no initializer runs until advance. Pin the graph before later host GC. / Копирует код без исполнения; закрепить возвращённый граф до GC. |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -110,6 +122,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
 | `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../../../include/flashvm/movieclip.h#L51) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |

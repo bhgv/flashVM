@@ -54,7 +54,7 @@
     - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
-    - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall, глубины и отрисовка</em></small>
+    - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall/init, глубины и отрисовка</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
   - [input](#group-embedding-input)
@@ -696,7 +696,7 @@ AS2-эскиз Sound/Video и заметка о подключении меди�
 
 **Тип:** исполняемый C89 и отдельный AS2-эскиз. **README:** [EN](embedding/movieclip/README.md) / [RU](embedding/movieclip/README.ru.md).
 
-C89 host останавливает однокадровый MovieClip, регистрирует onEnterFrame и запрашивает три ticks с общим бюджетом пяти единиц. Два callback сохраняются после [FVM_ERROR](../include/flashvm/flashvm.h#L43); следующий внешний вызов получает свежий бюджет. Отдельный runtime затем создаёт high/low/middle не по глубине и проверяет low/middle/high с конечным бюджетом. Затем рисует пустую сцену в память host и проверяет отсутствие новых timeline callbacks. Третий независимый runtime исполняет действия кадра два дважды с отдельными бюджетами по пять единиц, сохраняя playhead один и ноль tick callbacks. Это пример частичного выполнения и сортировки без автоматического replay, без графического устройства. Отдельный AS2-файл остаётся эскизом для внешнего компилятора.
+C89 host останавливает однокадровый MovieClip, регистрирует onEnterFrame и запрашивает три ticks с общим бюджетом пяти единиц. Два callback сохраняются после [FVM_ERROR](../include/flashvm/flashvm.h#L43); следующий внешний вызов получает свежий бюджет. Отдельный runtime затем создаёт high/low/middle не по глубине и проверяет low/middle/high с конечным бюджетом. Затем рисует пустую сцену в память host и проверяет отсутствие новых timeline callbacks. Третий независимый runtime исполняет действия кадра два дважды с отдельными бюджетами по пять единиц, сохраняя playhead один и ноль tick callbacks. Четвёртый загружает End-only DoInitAction: первый tick требует пять единиц, следующие два вместе укладываются в четыре. Это пример частичного выполнения и сортировки без автоматического replay, без графического устройства. Отдельный AS2-файл остаётся эскизом для внешнего компилятора.
 
 **Файлы:** [main.c](embedding/movieclip/main.c), [tutorial_limits.h](embedding/movieclip/tutorial_limits.h), [example_as2.as](embedding/movieclip/example_as2.as).
 

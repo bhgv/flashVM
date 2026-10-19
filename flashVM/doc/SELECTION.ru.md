@@ -58,7 +58,7 @@ Function. Невызываемое значение не делает клип �
 клип — Boolean false без публикации кандидата. Побочные эффекты поиска/getter
 не откатываются. Закрытое нативное состояние проверяется
 до чтения допустимости и перед публикацией: getter мог удалить клип.
-[`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L76) ограничивает обход предков, resolver путей
+[`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L78) ограничивает обход предков, resolver путей
 сохраняет собственные пределы. Повреждённое состояние и настоящие ошибки
 пути/getter/resolver передаются статусом VM, а не подменяются штатным false.
 Отказ выделения памяти возвращает [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44).
@@ -212,7 +212,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:76](../src/standard/movieclip_constants.h#L76) |
+| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:78](../src/standard/movieclip_constants.h#L78) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_selection_get_focus` | function | [src/standard/selection.cpp:178](../src/standard/selection.cpp#L178) |

@@ -11,7 +11,7 @@ created; the Action adapter discards that result.
 Depth converts to signed Int32 first, name to versioned AVM1 string second, and
 source resolves third (native instances bypass string conversion). Temporary
 roots retain all inputs through collecting callbacks. Absolute clone depth
-subtracts [FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS](../src/standard/movieclip_constants.h#L96) before native sibling construction;
+subtracts [FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS](../src/standard/movieclip_constants.h#L98) before native sibling construction;
 this bias is distinct from authored SWF placement and child-slot encoding.
 The operation bypasses replaced duplicateMovieClip methods.
 
@@ -70,6 +70,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_exec_duplicate_target` | function | [include/flashvm/execution.h:294](../include/flashvm/execution.h#L294) |
-| `FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS` | macro / define | [src/standard/movieclip_constants.h:96](../src/standard/movieclip_constants.h#L96) |
+| `FVM_MOVIECLIP_DUPLICATE_DEPTH_BIAS` | macro / define | [src/standard/movieclip_constants.h:98](../src/standard/movieclip_constants.h#L98) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

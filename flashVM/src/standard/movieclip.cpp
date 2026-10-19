@@ -2493,6 +2493,8 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data, FVM_ExecutionWorkS
     if (holder.type != FVM_VALUE_OBJECT || !holder.object)
         return FVM_INVALID_ARGUMENT;
     FVM_Object *library = holder.object;
+    if (library->owner != c)
+        return FVM_INVALID_ARGUMENT;
     /* Imported graphs from earlier versions contain no initializer metadata. */
     if (library->properties.find("initializers") == library->properties.end())
         return FVM_OK;
@@ -2501,6 +2503,10 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data, FVM_ExecutionWorkS
         return r;
     if (holder.type != FVM_VALUE_OBJECT || !holder.object)
         return FVM_INVALID_ARGUMENT;
+    FVM_Object *initializers = holder.object;
+    if (initializers->owner != c ||
+        initializers->indexed.size() > FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS)
+        return FVM_INVALID_ARGUMENT;
     if (library->swf_initializer_running)
         return FVM_OK;
     FVM_Value source;
@@ -2508,6 +2514,12 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data, FVM_ExecutionWorkS
     if (r != FVM_OK || source.type != FVM_VALUE_OBJECT || !source.object ||
         source.object->owner != c || source.object->resource_kind != CLIP)
         return FVM_INVALID_ARGUMENT;
+    const unsigned long first = library->swf_initializer_next;
+    const unsigned long count = (unsigned long)initializers->indexed.size();
+    /* Completed libraries do not copy or charge already consumed blocks on later ticks.
+     * Progress never rewinds when a host replaces/shrinks private initializer metadata. */
+    if (first >= count)
+        return FVM_OK;
     /* Restore the reentry guard on every interpreter/exception/OOM result. */
     struct InitScope
     {
@@ -2523,27 +2535,27 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data, FVM_ExecutionWorkS
             library->swf_initializer_running = false;
         }
     } scope(library);
-    /* [GC:] Snapshot retained strings before callbacks can alter library properties. */
-    /* Charge retained initializer entries before allocating their detached snapshot. */
-    for (Slots::const_iterator i = holder.object->indexed.begin(); i != holder.object->indexed.end(); ++i)
+    /* [GC:] The outer tick barrier retains copied code and the captured source root.
+     * Only the remaining dense ordinal suffix is prepared; callbacks cannot replace this batch. */
+    fvm_detail::vector<FVM_Value> blocks;
+    for (unsigned long index = first; index < count; ++index)
     {
         r = work.step();
         if (r != FVM_OK)
             return r;
-    }
-    Slots blocks = holder.object->indexed;
-    if (blocks.size() > ULONG_MAX)
-        return FVM_INVALID_ARGUMENT;
-    for (unsigned long index = library->swf_initializer_next; index < blocks.size(); ++index)
-    {
-        Slots::iterator block = blocks.find(index);
-        if (block == blocks.end() || index == ULONG_MAX)
+        Slots::const_iterator block = initializers->indexed.find(index);
+        if (block == initializers->indexed.end())
             return FVM_INVALID_ARGUMENT;
+        blocks.push_back(block->second);
+    }
+    for (size_t offset = 0; offset < blocks.size(); ++offset)
+    {
         r = work.step();
         if (r != FVM_OK)
             return r;
-        library->swf_initializer_next = index + 1;
-        r = execute_frame_block(c, source.object, block->second);
+        /* Commit attempt progress before decode/execution: failures must not replay side effects. */
+        library->swf_initializer_next = first + (unsigned long)offset + 1;
+        r = execute_frame_block(c, source.object, blocks[offset]);
         if (r != FVM_OK)
             return r;
     }

@@ -21,6 +21,8 @@
 #define FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES 65536UL
 /* Maximum independent DoAction blocks retained by one frame snapshot. */
 #define FVM_MOVIECLIP_MAX_FRAME_BLOCKS 65536UL
+/* Per-library initializer table bound, independent of ordinary frame action limits. */
+#define FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS 65536UL
 /* Nested ActionCall depth, independent of display-tree recursion. */
 #define FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH 64U
 /* Maximum descendant depth visited by one native timeline traversal. */

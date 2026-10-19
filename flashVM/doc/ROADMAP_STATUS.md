@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.631
+# FlashVM stage status / Состояние стадий — v0.632
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,24 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.632 pending initializer work / Бюджет оставшейся инициализации
+
+Completed library initializers no longer copy/charge their consumed prefix on every
+tick. Remaining ordinals use bounded, owner-checked snapshots and keep the existing
+at-most-once attempt cursor, reentry guard and fresh progress after graph transport.
+[EN](INITIALIZER_PROGRESS.md) / [RU](INITIALIZER_PROGRESS.ru.md).
+
+Это продвижение стадий 2/3/6/7/8/9; общий lifecycle, original Player timing, все CPU/JIT
+и физическая приёмка платформ остаются открытыми вместе со всеми стадиями 1–9.
+
+Validation v0.632: 204 selected Linux Release CTests (AGG/static dependencies) and
+147 minimal whole-core ASan/UBSan CTests passed. The latter run is serial, without
+raster and with LeakSanitizer disabled. Six new regressions plus earlier init/action,
+frame/graph/input/timer/JIT tests passed. Strict C89 tutorial linked to sanitizer core
+and printed six lines; documentation checks passed. A source-linked v0.631/current
+control reproduces/fixes a completed table exhausting an empty tick's two-unit budget.
+No full original-Player, SDL/device/foreign-OS or stage-completion claim follows.
 
 ## v0.631 bounded frame-action snapshots / Блоки действий кадра
 

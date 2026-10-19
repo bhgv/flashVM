@@ -154,6 +154,53 @@ static int frame_call_demo(void) /* Public C89 execution service needs no SWF fi
         fvm_runtime_destroy(runtime); /* No asynchronous native work remains. */
     return status == FVM_OK; /* Preserve failure for the main program. */
 } /* End the independent frame-action demonstration. */
+/* Completed DoInitAction tables must not consume the later tick batches' work budget; see README.md. */
+static int initializer_demo(void) /* Raw SWF8 fixture requires no compiler, renderer or device. */
+{ /* Keep all C89 declarations before executable statements. */
+    FVM_Config config; /* Each external advance shares this runtime's fixed five-unit limit. */
+    FVM_Runtime *runtime = 0; /* Outlive the context. */
+    FVM_Context *context = 0; /* Own the imported library, code and clip. */
+    FVM_Object *root = 0; /* Pin the borrowed graph across host calls. */
+    unsigned int calls = 0; /* Count only ordinary onEnterFrame callbacks. */
+    const unsigned char swf[] = { /* Independent serialized SWF8: empty sprite plus one End-only initializer. */
+        'F','W','S',8,33,0,0,0, /* Uncompressed header and complete 33-byte file length. */
+        8,0,0,12,1,0, /* Minimal RECT, 12 fps, one root frame. */
+        0xc8,9,1,0,1,0,0x40,0,0,0, /* DefineSprite id 1, one empty sprite frame and End. */
+        0xc3,14,1,0,0, /* DoInitAction for sprite id 1: ActionEnd only. */
+        0x40,0,0,0 /* Root ShowFrame and End tags. */
+    }; /* Loading copies retained bytes and executes no initializer. */
+    FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
+    if (status == FVM_OK) /* Keep this budget separate from the earlier independent runtimes. */
+    { /* The first tick uses node, capture, entry, ActionEnd and optional-handler units. */
+        config.instruction_limit = FVM_TUTORIAL_INIT_WORK_LIMIT; /* Five work units, never milliseconds. */
+        status = fvm_runtime_create(&config, &runtime); /* No worker or device is created. */
+    } /* Runtime retains a copy of config. */
+    if (status == FVM_OK) /* Acquire the managed owner-thread heap. */
+        status = fvm_context_create(runtime, &context); /* Use this thread for every following call. */
+    if (status == FVM_OK) /* Install native MovieClip methods before importing its timeline. */
+        status = fvm_standard_install(context); /* Preserve errors for normal cleanup. */
+    if (status == FVM_OK) /* Retain a deferred initializer and a single empty root frame. */
+        status = fvm_movieclip_load_swf(context, swf, sizeof(swf), "initializers", &root); /* No code runs during parsing. */
+    if (status == FVM_OK) /* Retain library/root cycles across outer host calls. */
+        status = fvm_gc_pin(context, root); /* [GC:] Context destruction releases this pin. */
+    if (status == FVM_OK) /* Observe ordinary ticks independently from initializer work. */
+        status = fvm_object_define_method_rooted(context, root, "onEnterFrame", tick, &calls, 0); /* Borrow the stack counter until cleanup. */
+    if (status == FVM_OK) /* Attempt the initializer once, then enter the empty root frame. */
+        status = fvm_movieclip_advance(context, root, 1); /* Exactly five units; one ordinary callback. */
+    if (status == FVM_OK) /* A completed init table contributes no copying/entry units. */
+        status = fvm_movieclip_advance(context, root, FVM_TUTORIAL_INIT_LATER_TICKS); /* Two later ticks use four units within the same five-unit limit. */
+    if (status == FVM_OK && calls != 3) /* Verify all three ordinary callbacks completed. */
+        status = FVM_INVALID_ARGUMENT; /* Preserve an unexpected result for cleanup and exit. */
+    if (status == FVM_OK) /* Report only verified work-budget behavior. */
+        puts("initializers: next two ticks fit five units"); /* Sixth deterministic tutorial output line. */
+    else /* Earlier initialization/callback effects may remain after a failure. */
+        fprintf(stderr, "MovieClip initializer tutorial failed: %d\n", (int)status); /* Do not replay a failed batch automatically. */
+    if (context) /* Release registrations before borrowed callback storage expires. */
+        fvm_context_destroy(context); /* [GC:] No managed pointer is used after return. */
+    if (runtime) /* Release the outer owner last. */
+        fvm_runtime_destroy(runtime); /* No asynchronous work remains. */
+    return status == FVM_OK; /* Preserve demonstration failure for main. */
+} /* End the independent initializer-work example. */
 /* Demonstrate partial completion and the fresh budget of a later outer host call. */
 int main(void) /* Build with the independent FlashVM component's examples option. */
 { /* Set partial owners before any fallible acquisition. */
@@ -206,5 +253,7 @@ int main(void) /* Build with the independent FlashVM component's examples option
         status = FVM_INVALID_ARGUMENT; /* Propagate the second demonstration's failure. */
     if (status == FVM_OK && !frame_call_demo()) /* Run selected frame actions after the previous independent demos. */
         status = FVM_INVALID_ARGUMENT; /* Propagate frame-call demonstration failure. */
+    if (status == FVM_OK && !initializer_demo()) /* Verify completed-library work after the other independent demos. */
+        status = FVM_INVALID_ARGUMENT; /* Propagate initializer demonstration failure. */
     return status == FVM_OK ? 0 : 1; /* Let CTest or a shell observe the result. */
 } /* End the standalone host. */

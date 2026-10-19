@@ -4956,6 +4956,14 @@ native work limits and preserve selected code through source mutation. Public na
 frame calls include operand coercion; labels choose the lowest stored exact match.
 [EN](FRAME_BLOCKS.md) / [RU](FRAME_BLOCKS.ru.md). Это не закрывает стадии 1–9.
 
+
+## v0.632 pending initializer snapshots / Оставшаяся инициализация
+
+Completed initializer tables contribute zero copy/entry units to later ticks;
+only pending ordinals are captured under the shared work limit. Bound/owner checks,
+monotonic failure progress and transferred-library reset remain explicit.
+[EN](INITIALIZER_PROGRESS.md) / [RU](INITIALIZER_PROGRESS.ru.md). Все стадии открыты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

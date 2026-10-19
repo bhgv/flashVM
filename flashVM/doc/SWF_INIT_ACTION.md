@@ -67,3 +67,10 @@ Subsequent script-prototype inheritance permits original AS2 v6/v8 execution
 to finish; trace differences remain. See [AVM1_FUNCTION_OBJECT_PROTOTYPE.md](AVM1_FUNCTION_OBJECT_PROTOTYPE.md).
 Последующая правка наследования позволяет закончить исполнение AS2 v6/v8;
 отличия трасс от эталона ещё остаются.
+
+## v0.632 pending initializer snapshots / Оставшаяся инициализация
+
+Completed initializer tables contribute zero copy/entry units to later ticks;
+only pending ordinals are captured under the shared work limit. Bound/owner checks,
+monotonic failure progress and transferred-library reset remain explicit.
+[EN](INITIALIZER_PROGRESS.md) / [RU](INITIALIZER_PROGRESS.ru.md). Все стадии открыты.

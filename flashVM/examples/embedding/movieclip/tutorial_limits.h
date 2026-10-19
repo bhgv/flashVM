@@ -9,4 +9,6 @@
 #define FVM_TUTORIAL_RASTER_STRIDE 8U /* Two RGBA pixels per caller-owned row. */
 #define FVM_TUTORIAL_RASTER_BYTES 16U /* Two complete rows of RGBA storage. */
 #define FVM_TUTORIAL_FRAME_CALL_WORK_LIMIT 5UL /* Selected frame entry plus four AVM1 instructions. */
+#define FVM_TUTORIAL_INIT_WORK_LIMIT 5UL /* First init tick fits five units; later two-tick batch fits four. */
+#define FVM_TUTORIAL_INIT_LATER_TICKS 2U /* Demonstrate one shared budget across the completed library. */
 #endif /* End the example's private constants. */
