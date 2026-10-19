@@ -28,6 +28,8 @@
 #include "function_state.hpp"
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
+#include "../core/optional_method.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
 #include "flashvm/serialization.h"
 #include "flashvm/movieclip.h"
@@ -2319,7 +2321,7 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
 /* Run source-library init blocks before placement/frame actions, once per graph.
  * Progress is private context state, so transferred libraries initialize afresh.
  * A failed block is not retried: its script side effects cannot be rolled back. */
-FVM_Result run_initializers(FVM_Context *c, FVM_Object *data)
+FVM_Result run_initializers(FVM_Context *c, FVM_Object *data, FVM_ExecutionWorkScope &work)
 {
     if (data->properties.find("library") == data->properties.end())
         return FVM_OK;
@@ -2363,6 +2365,13 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data)
         }
     } scope(library);
     /* [GC:] Snapshot retained strings before callbacks can alter library properties. */
+    /* Charge retained initializer entries before allocating their detached snapshot. */
+    for (Slots::const_iterator i = holder.object->indexed.begin(); i != holder.object->indexed.end(); ++i)
+    {
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
+    }
     Slots blocks = holder.object->indexed;
     if (blocks.size() > ULONG_MAX)
         return FVM_INVALID_ARGUMENT;
@@ -2371,6 +2380,9 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data)
         Slots::iterator block = blocks.find(index);
         if (block == blocks.end() || index == ULONG_MAX)
             return FVM_INVALID_ARGUMENT;
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
         library->swf_initializer_next = index + 1;
         r = execute_frame_block(c, source.object, block->second);
         if (r != FVM_OK)
@@ -2380,11 +2392,14 @@ FVM_Result run_initializers(FVM_Context *c, FVM_Object *data)
 }
 
 /* Advance one timeline tick, execute its independent action blocks, then visit children. */
-FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
+FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_ExecutionWorkScope &work)
 {
+    FVM_Result charged = work.step();
+    if (charged != FVM_OK)
+        return charged;
     if (static_art(o))
         return FVM_OK;
-    if (depth > 64)
+    if (depth > FVM_MOVIECLIP_ADVANCE_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
@@ -2405,7 +2420,7 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
     r = integer_field(data, "total", FVM_MOVIECLIP_MAX_FRAMES, total);
     if (r != FVM_OK || !total || current < 1 || current > total)
         return FVM_INVALID_ARGUMENT;
-    r = run_initializers(c, data);
+    r = run_initializers(c, data, work);
     if (r != FVM_OK)
         return r;
     FVM_Value entered, playing;
@@ -2442,9 +2457,19 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
             if (r == FVM_OK && segments.type == FVM_VALUE_OBJECT)
             {
                 /* [GC:] Copy the managed block values before script callbacks can change state. */
+                /* Precharge the snapshot so an exhausted caller cannot copy an unbounded list. */
+                for (Slots::const_iterator i = segments.object->indexed.begin(); i != segments.object->indexed.end(); ++i)
+                {
+                    r = work.step();
+                    if (r != FVM_OK)
+                        return r;
+                }
                 Slots blocks = segments.object->indexed;
                 for (Slots::iterator i = blocks.begin(); i != blocks.end(); ++i)
                 {
+                    r = work.step();
+                    if (r != FVM_OK)
+                        return r;
                     r = execute_frame_block(c, o, i->second);
                     if (r != FVM_OK)
                         return r;
@@ -2459,14 +2484,19 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
                 return r;
         }
     }
-    FVM_Value handler;
-    r = fvm_object_get(c, o, "onEnterFrame", &handler);
+    /* Resolve once through the method dispatcher, retaining the defining owner for super.
+     * Missing/noncallable handlers are ignored without global fallback. */
+    r = work.step();
     if (r != FVM_OK)
         return r;
-    if (handler.type == FVM_VALUE_OBJECT && handler.object->invocable.callback)
+    r = fvm_object_call_optional(c, o, "onEnterFrame");
+    if (r != FVM_OK)
+        return r;
+    /* Charge every child before allocating the post-handler, depth-ordered snapshot.
+     * [GC:] The enclosing native barrier retains removed snapshot objects throughout this tick. */
+    for (Slots::const_iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
     {
-        FVM_Value result;
-        r = fvm_function_invoke(c, handler.object, o, 0, 0, &result);
+        r = work.step();
         if (r != FVM_OK)
             return r;
     }
@@ -2477,7 +2507,7 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth)
             return FVM_INVALID_ARGUMENT;
         if (parent(i->second.object) != o)
             continue;
-        r = advance(c, i->second.object, depth + 1);
+        r = advance(c, i->second.object, depth + 1, work);
         if (r != FVM_OK)
             return r;
     }
@@ -3475,8 +3505,8 @@ extern "C" FVM_Result fvm_movieclip_advance(FVM_Context *c, FVM_Object *o, unsig
 /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
 {
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-    if (!c || !o || o->owner != c || c->movieclip_sound_busy ||
-        ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
+    if (!c || !o || o->owner != c || c->destroying || c->gc_collecting || c->gc_releasing ||
+        c->movieclip_sound_busy || ticks > FVM_MOVIECLIP_MAX_TICKS_PER_CALL)
         /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
         return FVM_INVALID_ARGUMENT;
     /* [GC:] Сохраняем корректное состояние сборщика при исключениях. */
@@ -3485,12 +3515,14 @@ extern "C" FVM_Result fvm_movieclip_advance(FVM_Context *c, FVM_Object *o, unsig
     {
         /* [GC:] Защищаем время выполнения нативного обработчика от повторного входа в сборщик. */
         FVM_NativeCallGuard guard(c);
+        /* All requested ticks and nested AVM1 callbacks consume the same outer work budget. */
+        FVM_ExecutionWorkScope work(c);
         /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
         for (unsigned int i = 0; i < ticks; ++i)
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         {
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-            FVM_Result r = advance(c, o, 0);
+            FVM_Result r = advance(c, o, 0, work);
             /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
             if (r != FVM_OK)
                 /* [GC:] Возвращаем результат операции сборщика или защиты корней. */

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.623
+# FlashVM stage status / Состояние стадий — v0.624
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,31 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.624 shared MovieClip ticks / Общий бюджет ticks
+
+MovieClip advancement now shares one outer work scope across ticks, child staging,
+initializers, frame segments and nested callbacks. Exhaustion/worker stop preserves
+committed effects and skips the rest. Optional onEnterFrame delivery retains method
+owner metadata through the existing event dispatcher; native/script handlers were
+already callable. The native GC barrier remains active throughout traversal.
+
+New tests cover owner/getter routes, lifecycle guards, exact/nested budgets, actual
+OS worker stops, allocation failures, child mutation, transferred AVM1 handlers and
+interpreter/native JIT scripts. Old v0.623 rejects owner-metadata and budget controls;
+the superclass-call fixture passes old/new and is regression evidence only.
+[EN](MOVIECLIP_TICKS.md) / [RU](MOVIECLIP_TICKS.ru.md),
+[C89](../examples/embedding/movieclip/README.md).
+
+Validation: 236 selected Release CTest checks passed (219 core/example checks,
+16 frontend checks and version refresh), plus 62 ASan/UBSan runtime checks with
+LeakSanitizer disabled. The new example also compiled as strict C89 and ran against
+the instrumented core. Documentation source-link, relative-file, version metadata
+and debugger tutorial checks passed.
+
+Это ограниченная проверка стадий 3/5/6/7/8. Native helpers не становятся real-time
+preemptible; полная приёмка ClipActions, оригинального Player и чужих ОС/устройств
+не заявляется. Все девять стадий открыты.
 
 ## v0.623 updateAfterEvent and redraw / Внеочередная отрисовка
 

@@ -54,7 +54,7 @@ The callback runs synchronously on the VM thread, under the existing native-call
 GC barrier. It can query metadata and submit to a host-owned mixer. It must not
 mutate the clip/frame graph, execute script or destroy runtime/host resources in
 use. Context destruction is already refused during the native barrier. Recursive
-[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L54), callback replacement and [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) are rejected
+[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L62), callback replacement and [`fvm_load_memory`](../include/flashvm/flashvm.h#L72) are rejected
 with INVALID_ARGUMENT during sound delivery. Host userdata must outlive the call.
 A C++ bad_alloc becomes OUT_OF_MEMORY; other escaped exceptions become ERROR;
 returned VM statuses are propagated unchanged. Busy state resets on every exit.
@@ -108,7 +108,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:54](../include/flashvm/movieclip.h#L54) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |

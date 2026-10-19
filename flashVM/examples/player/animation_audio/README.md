@@ -127,8 +127,8 @@ these individual C APIs; ownership and error contracts are in the linked guides.
 
 | API | Behavior / Где читать |
 | --- | --- |
-| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L54) | Выполняет очередной реальный кадр и его AVM1; [desktop host](../../../doc/DESKTOP_FRONTEND.md). |
-| [`fvm_movieclip_render_view`](../../../include/flashvm/movieclip.h#L59) | Растеризует сцену с отдельной viewport-проекцией; [render contract](../../../doc/DESKTOP_FRONTEND.md#new-public-vm-api). |
+| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L62) | Выполняет очередной реальный кадр и его AVM1; [desktop host](../../../doc/DESKTOP_FRONTEND.md). |
+| [`fvm_movieclip_render_view`](../../../include/flashvm/movieclip.h#L67) | Растеризует сцену с отдельной viewport-проекцией; [render contract](../../../doc/DESKTOP_FRONTEND.md#new-public-vm-api). |
 | [`fvm_input_set_pointer`](../../../include/flashvm/input.h#L72) | Публикует scene/world координаты без callback; [input](../../../doc/INPUT_POINTER.md). |
 | [`fvm_set_global`](../../../include/flashvm/value.h#L87) | Привязывает HostInput в context; [API index](../../../doc/API_INDEX.md). |
 | [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Обновляет отдельные scalar-поля host-снимка перед кадром; [API index](../../../doc/API_INDEX.md). |
@@ -184,8 +184,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:54](../../../include/flashvm/movieclip.h#L54) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:59](../../../include/flashvm/movieclip.h#L59) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../../../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:67](../../../include/flashvm/movieclip.h#L67) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../../../include/flashvm/movieclip.h#L21) |
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_set_global` | function | [include/flashvm/value.h:87](../../../include/flashvm/value.h#L87) |

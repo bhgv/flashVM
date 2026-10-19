@@ -1,10 +1,12 @@
-Development version: **0.623** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.623 ` and an English description. Increase the subversion before each
+Development version: **0.624** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.624 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.624: [MovieClip ticks](doc/MOVIECLIP_TICKS.md) / [Общий бюджет ticks](doc/MOVIECLIP_TICKS.ru.md), [C89](examples/embedding/movieclip/README.md).
 
 v0.623: [updateAfterEvent and redraw requests](doc/UPDATE_AFTER_EVENT.md) / [Внеочередная отрисовка](doc/UPDATE_AFTER_EVENT.ru.md), [C89](examples/embedding/timers/README.md).
 
@@ -134,12 +136,13 @@ WaitForFrame/WaitForFrame2: [contracts and checks](doc/JIT_WAIT_FRAMES.md).
 GetURL/GetURL2/Call and stored-frame JIT: [contracts and checks](doc/JIT_DISPATCH.md).
 
 The current primary repository is [GitHub](https://github.com/bhgv/flashVM).
-Use its full URL for authorized updates:
-`git push https://github.com/bhgv/flashVM.git master`. Do not force push.
-Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
+Development commits are prepared on local work branches for downloadable format-patch
+files. The agent does not commit on master or push. The user applies each patch
+with git am --3way and publishes master from Termux. Author and committer must
+both be `bhgv <bhgv@bhgv.bhgv>`. Each delivered patch includes the exact commands.
 
-Версия разработки: **0.623** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.623 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.624** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.624 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

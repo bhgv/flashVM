@@ -27,7 +27,7 @@ no extra pin is needed while it remains selected. The previous selection loses
 only this root, not other globals, pins or listener registrations. No script
 runs, no keyboard state changes and no event is sent. Null clearing performs no
 allocation. Non-null validation may allocate temporary native lookup strings. The native
-ancestry walk is bounded by [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L66) (256 visited
+ancestry walk is bounded by [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L68) (256 visited
 nodes, including the selected clip).
 
 [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) means invalid context, wrong ownership/type/prototype,
@@ -121,7 +121,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../include/flashvm/movieclip.h#L36) |
-| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:66](../src/standard/movieclip_constants.h#L66) |
+| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:68](../src/standard/movieclip_constants.h#L68) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

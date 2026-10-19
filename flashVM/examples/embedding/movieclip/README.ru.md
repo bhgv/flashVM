@@ -1,0 +1,82 @@
+# Ticks остановленного MovieClip с общим бюджетом
+
+[English](README.md). Исполняемый C89 host показывает onEnterFrame и частичное
+выполнение [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L62). Остановленный однокадровый клип получает handlers.
+Три ticks делят пять единиц: два callback выполняются, вход в третий узел расходует
+остаток и его обработчик пропускается. Следующий внешний вызов получает свежий
+бюджет и выполняет ещё один callback.
+
+## Сборка и запуск
+
+Из корня независимого компонента FlashVM; renderer/SDL/устройство не нужны:
+
+```sh
+cmake -S . -B build-ticks -DDEFS=INTERPRETER -DFVM_BUILD_EXAMPLES=ON
+cmake --build build-ticks --target flashvm_examples_embedding_movieclip_main
+./build-ticks/flashvm_examples_embedding_movieclip_main
+```
+
+Ожидаются exit code 0 и:
+
+```text
+bounded batch: 2 callbacks retained
+after next call: 3 callbacks
+```
+
+[main.c](main.c) исполняется; [tutorial_limits.h](tutorial_limits.h) именует границы.
+[example_as2.as](example_as2.as) остаётся отдельным эскизом для внешнего AS-компилятора;
+этот CMake target его не исполняет. Пример не рисует, не загружает SWF, не делает
+poll таймеров и не проверяет OS input.
+
+## API и владение
+
+Контракт: [MovieClip ticks](../../../doc/MOVIECLIP_TICKS.ru.md). Все вызовы идут в
+потоке владельца. Host-счётчик живёт до конца уничтожения контекста, callback только
+заимствует его. Клип удерживается pin; context_destroy освобождает pin, registration
+и граф до выхода счётчика из scope. Нативный GC barrier сохраняется. Неудачный пакет
+автоматически не повторяется.
+
+| API | Назначение и время жизни |
+| --- | --- |
+| [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Заполнить ABI host-конфигурации до изменения instruction_limit. |
+| [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Скопировать конфигурацию в новый runtime; синхронно, без потока/устройства. |
+| [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Создать независимую managed heap под runtime; использовать в потоке владельца. |
+| [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Установить стандартные классы/методы; ошибки передаются до создания клипа. |
+| [fvm_movieclip_create](../../../include/flashvm/movieclip.h#L36) | Создать однокадровый context-owned клип; возвращённый указатель заимствован. |
+| [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Удержать граф между host-вызовами; pin примера снимается уничтожением контекста. |
+| [fvm_object_call](../../../include/flashvm/value.h#L126) | Синхронно вызвать stop с receiver=clip; заимствованный результат игнорируется. |
+| [fvm_object_define_method_rooted](../../../include/flashvm/value.h#L115) | Зарегистрировать native onEnterFrame; userdata заимствует счётчик, managed capture отсутствует. |
+| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L62) | Синхронные ticks с общим native/AVM1 бюджетом; ошибка сохраняет выполненное и пропускает остаток. |
+| [fvm_value_undefined](../../../include/flashvm/value.h#L40) | Инициализировать результат callback без выделения и передачи владения. |
+| [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Освободить граф/registration до конца жизни userdata; не вызывать из callback. |
+| [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Освободить внешний runtime после контекста; callbacks/устройства уже отсутствуют. |
+
+Пять единиц — намеренно точный регрессионный пример, не длительность и не общий
+расход любой сцены со scripts/детьми. [FVM_ERROR](../../../include/flashvm/flashvm.h#L43) ожидается только на заданной границе
+пакета; прочие ошибки проходят обычный cleanup. Полный эталонный порядок, ClipActions,
+media, JIT/platform acceptance и все этапы роудмапа остаются открытыми.
+[Каталог](../../README.md#example-embedding-movieclip).
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
+| `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
+| `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
+| `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../../../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
+| `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
+| `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
+| `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
+| `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
+| `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
+<!-- source-links:end -->

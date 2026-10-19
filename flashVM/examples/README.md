@@ -53,7 +53,7 @@
     - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
-    - [movieclip](#example-embedding-movieclip) — <small><em>Управление MovieClip — AS-эскиз</em></small>
+    - [movieclip](#example-embedding-movieclip) — <small><em>Бюджет ticks и onEnterFrame остановленного клипа</em></small>
     - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
   - [input](#group-embedding-input)
@@ -682,11 +682,11 @@ AS2-эскиз Sound/Video и заметка о подключении меди�
 <a id="example-embedding-movieclip"></a>
 #### movieclip
 
-**Тип:** ActionScript — исходник/эскиз для внешнего компилятора. **README:** [embedding/movieclip/README.md](embedding/movieclip/README.md).
+**Тип:** исполняемый C89 и отдельный AS2-эскиз. **README:** [EN](embedding/movieclip/README.md) / [RU](embedding/movieclip/README.ru.md).
 
-AS2-эскиз манипуляций MovieClip и заметка о host-интеграции display list. Его назначение — показать идею использования; наличие файла не означает приёмку всех операций таймлайна.
+C89 host останавливает однокадровый MovieClip, регистрирует onEnterFrame и запрашивает три ticks с общим бюджетом пяти единиц. Два callback сохраняются после [FVM_ERROR](../include/flashvm/flashvm.h#L43); следующий внешний вызов получает свежий бюджет. Это пример частичного выполнения без автоматического replay, без графического устройства. Отдельный AS2-файл остаётся эскизом для внешнего компилятора.
 
-**Файлы:** [example_as2.as](embedding/movieclip/example_as2.as).
+**Файлы:** [main.c](embedding/movieclip/main.c), [tutorial_limits.h](embedding/movieclip/tutorial_limits.h), [example_as2.as](embedding/movieclip/example_as2.as).
 
 [К оглавлению](#оглавление).
 
@@ -1689,6 +1689,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:102](../include/flashvm/multimedia.h#L102) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |

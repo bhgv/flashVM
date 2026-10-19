@@ -1,10 +1,15 @@
-Версия разработки: **0.623** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.624** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
-новые коммиты отправляются только туда, с проверкой серверного HEAD.
+изменения готовятся в локальной рабочей ветке и выдаются format-patch. Агент не
+коммитит в master и не делает push. Пользователь применяет патч через git am --3way
+и публикует master из Termux; точные команды выдаются с каждым патчем.
+Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.624: [MovieClip ticks](doc/MOVIECLIP_TICKS.md) / [Общий бюджет ticks](doc/MOVIECLIP_TICKS.ru.md), [C89](examples/embedding/movieclip/README.md).
 
 v0.623: [updateAfterEvent and redraw requests](doc/UPDATE_AFTER_EVENT.md) / [Внеочередная отрисовка](doc/UPDATE_AFTER_EVENT.ru.md), [C89](examples/embedding/timers/README.md).
 

@@ -50,7 +50,15 @@ extern "C"
     /* Define movieclip frame. */
     FVM_API FVM_Result fvm_movieclip_define_frame(FVM_Context *, FVM_Object *, unsigned int,
                                                   const char *label, const void *actions, size_t);
-    /* Implement movieclip advance for this subsystem. */
+    /* Owner-thread synchronous ticks, including onEnterFrame on stopped/single-frame clips.
+       Optional handlers use receiver/defining-owner method lookup; missing/noncallable is ignored.
+       All ticks, callback AVM1 and charged native traversal share the outer instruction/work limit
+       (zero disables the numeric limit, not cooperative worker cancellation). On error/OOM/exception
+       completed actions, playhead changes and callbacks remain committed; later work is skipped.
+       No rendering or timer polling occurs. [GC:] The native barrier retains the traversed graph;
+       explicit collect returns INVALID_ARGUMENT and gc_step does no collection until return.
+       Null/foreign clips, lifecycle phases, sound
+       callback reentry and excessive tick counts return INVALID_ARGUMENT. Zero ticks does no work. */
     FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
     /* Render movieclip. */
     FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterSurface *);
