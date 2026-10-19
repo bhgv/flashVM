@@ -3714,11 +3714,34 @@ extern "C" FVM_Result fvm_movieclip_define_frame(FVM_Context *c, FVM_Object *o, 
         r = fvm_object_set(c, record, "label", &v);
         if (r != FVM_OK)
             return r;
-        frames->indexed[frame] = object(record);
-        /* Re-enter a replaced current frame once, including single-frame clips. */
+        /* [GC:] Replacing actions must retain a valid imported frame's sound-list identity.
+         * The old record roots the table until the fully prepared replacement is published. */
+        Slots::const_iterator previous = frames->indexed.find(frame);
+        if (previous != frames->indexed.end() && previous->second.type == FVM_VALUE_OBJECT &&
+            previous->second.object && previous->second.object->owner == c)
+        {
+            Properties::const_iterator sounds = previous->second.object->properties.find("sounds");
+            if (sounds != previous->second.object->properties.end())
+                record->properties["sounds"] = sounds->second;
+        }
+        /* Prepare a missing reentry field before publishing the frame: adding it can fail.
+         * Existing scalar slots need no new map and can be assigned after publication. */
         FVM_Value current;
-        if (field(data, "frame", current) == FVM_OK && current.number == frame)
-            data->properties["entered"] = number(0);
+        const bool reenter = field(data, "frame", current) == FVM_OK && current.number == frame;
+        Properties::iterator entered = data->properties.find("entered");
+        const bool staged_state = reenter && entered == data->properties.end();
+        Properties next_state;
+        if (staged_state)
+        {
+            next_state = data->properties;
+            next_state["entered"] = number(FVM_MOVIECLIP_FRAME_PENDING);
+        }
+        frames->indexed[frame] = object(record);
+        /* Re-enter once; nothing after frame publication can allocate or fail. */
+        if (staged_state)
+            data->properties.swap(next_state);
+        else if (reenter)
+            entered->second = number(FVM_MOVIECLIP_FRAME_PENDING);
         return FVM_OK;
     }
     catch (const std::bad_alloc &)

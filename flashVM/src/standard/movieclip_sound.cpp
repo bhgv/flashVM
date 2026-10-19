@@ -4,6 +4,7 @@
 #include "movieclip_constants.h"
 #include "../core/execution_work_scope.hpp"
 #include "../swf/sound_event_constants.h"
+#include "../swf/sound_event_index.hpp"
 #include <cmath>
 #include <cstring>
 #include <new>
@@ -50,19 +51,27 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
         frame < 1 || frame > FVM_MOVIECLIP_MAX_FRAMES)
         return FVM_INVALID_ARGUMENT;
     FVM_ExecutionWorkScope work(context);
+    if (context->movieclip_sound_busy)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Object *list = 0;
     Slots::iterator selected = frames->indexed.find(frame);
-    if (selected == frames->indexed.end())
-        return FVM_OK;
-    if (selected->second.type != FVM_VALUE_OBJECT || !selected->second.object ||
-        selected->second.object->owner != context)
-        return FVM_INVALID_ARGUMENT;
-    Properties::iterator sounds = selected->second.object->properties.find("sounds");
-    if (sounds == selected->second.object->properties.end())
-        return FVM_OK;
-    if (sounds->second.type != FVM_VALUE_OBJECT || !sounds->second.object ||
-        sounds->second.object->owner != context)
-        return FVM_INVALID_ARGUMENT;
+    if (selected != frames->indexed.end())
+    {
+        if (selected->second.type != FVM_VALUE_OBJECT || !selected->second.object ||
+            selected->second.object->owner != context)
+            return FVM_INVALID_ARGUMENT;
+        Properties::iterator sounds = selected->second.object->properties.find("sounds");
+        if (sounds != selected->second.object->properties.end())
+        {
+            if (sounds->second.type != FVM_VALUE_OBJECT || !sounds->second.object ||
+                sounds->second.object->owner != context)
+                return FVM_INVALID_ARGUMENT;
+            list = sounds->second.object;
+        }
+    }
     Properties::iterator source = frames->properties.find("sound_source");
+    if (source == frames->properties.end())
+        return list ? FVM_INVALID_ARGUMENT : FVM_OK;
     if (source == frames->properties.end() || source->second.type != FVM_VALUE_STRING ||
         !source->second.string || !context->swf_loaded ||
         fvm_value_string_size(&source->second) % FVM_MOVIECLIP_SOUND_HEX_PER_BYTE ||
@@ -82,19 +91,14 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
                 digits[byte & FVM_MOVIECLIP_SOUND_NIBBLE_MASK])
             return FVM_INVALID_ARGUMENT;
     }
-    if (!context->movieclip_sound_callback)
-        return FVM_UNSUPPORTED;
-    if (context->movieclip_sound_busy)
-        return FVM_INVALID_ARGUMENT;
     try
     {
         /* [GC:] The caller's native barrier retains source values through host callbacks.
          * Capture by ordinal rather than map insertion order and validate the entire batch
          * before publishing its first external effect. */
-        FVM_Object *list = sounds->second.object;
-        if (list->indexed.size() > FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS)
+        if (list && list->indexed.size() > FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS)
             return FVM_INVALID_ARGUMENT;
-        const size_t count = list->indexed.size();
+        const size_t count = list ? list->indexed.size() : 0;
         fvm_detail::vector<size_t> ordinals;
         for (size_t index = 0; index < count; ++index)
         {
@@ -109,6 +113,26 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
                 return FVM_INVALID_ARGUMENT;
             ordinals.push_back((size_t)event->second.number);
         }
+        /* Validate membership, order and completeness in one canonical scan, not K rescans.
+         * Missing tables on a sound-bound root are empty candidates, not a silent bypass. */
+        fvm_detail::vector<size_t> canonical;
+        FVM_Result checked = fvm_swf_sound_frame_ordinals(context, (unsigned int)frame, canonical);
+        if (checked != FVM_OK)
+            return checked;
+        if (canonical.size() != ordinals.size())
+            return FVM_INVALID_ARGUMENT;
+        for (size_t index = 0; index < ordinals.size(); ++index)
+        {
+            checked = work.step();
+            if (checked != FVM_OK)
+                return checked;
+            if (ordinals[index] != canonical[index])
+                return FVM_INVALID_ARGUMENT;
+        }
+        if (ordinals.empty())
+            return FVM_OK;
+        if (!context->movieclip_sound_callback)
+            return FVM_UNSUPPORTED;
         for (size_t index = 0; index < ordinals.size(); ++index)
         {
             FVM_Result charged = work.step();

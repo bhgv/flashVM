@@ -10,8 +10,8 @@ indices in ordinal order, independent of hash insertion order. Every selected va
 must be an integral, nonnegative Number below the existing canonical byte-derived
 ceiling. Holes, wrong types, nonfinite/fractional/out-of-range values and oversized
 lists reject capture with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) before its first host callback.
-A truncated dense prefix is structurally valid in this revision; this does not yet
-prove canonical frame membership, completeness or uniqueness of the indices.
+A truncated dense prefix was structurally valid in v0.637–v0.639. Canonical frame
+membership, completeness and uniqueness are additionally enforced in v0.640 below.
 
 The complete native vector is prepared before external effects. A malformed later
 entry cannot follow an already delivered earlier event. Native snapshot allocation
@@ -53,8 +53,9 @@ foreign-platform or full SWF8 compatibility claim follows from these fixtures.
 It inherits an outer AVM1/tick budget and nested cooperative host work rather than
 resetting it. One unit is charged before comparing each canonical source byte,
 one before copying each ordinal and one before each callback. With N source bytes
-and K captured events this is N+2K native units, excluding outer timeline work and
-cooperating host queries. A frame with no sound metadata adds zero sound work.
+and K captured events the v0.638–v0.639 cost is N+2K native units, excluding outer
+timeline work and cooperating host queries. v0.640 adds canonical work below. A
+purely visual root without a sound-source marker/list adds zero sound work.
 
 Exhaustion returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) before the next native unit; counters never wrap or
 reset when already saturated. Preparation failure yields no sound callbacks;
@@ -110,6 +111,75 @@ uses six actual OS workers with numeric limits disabled. `sound_metadata_recover
 checks late malformed-envelope failure/retry and missing ordinals;
 `sound_metadata_allocation` rejects every new allocation while querying all routes.
 
+## Canonical frame binding (v0.640)
+
+A root carrying `sound_source` now validates every actual frame entry against its
+matching canonical SWF, including an entry whose frame record/sounds table is
+missing. A single independent root-stream scan builds the global StartSound indices
+for the selected canonical frame. The captured managed list must equal that native
+sequence exactly: wrong-frame/nonexistent indices, reordering, duplicates, extra
+entries, truncation, cleared/deleted tables and deleted frame records are rejected
+with [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45) before the first host callback. Correct ordinal tables
+can still be inserted in arbitrary hash order. Callback mutation defense remains a
+shallow native snapshot and does not permit editing metadata from host callbacks.
+
+The private [`fvm_swf_sound_frame_ordinals`](../src/swf/sound_event_index.hpp#L8) helper validates root framing/SOUNDINFO,
+shares metadata work, and collects at most [`FVM_SWF_SOUND_MAX_FRAME_ORDINALS`](../src/swf/sound_event_constants.h#L12) entries.
+Its caller vector changes only on success; parsing/work/allocation/cap failures
+retain the old vector and release partial native storage. It does not resolve every
+resource ID, decode codecs or cache context/source pointers. The imported source
+already supplies the existing resource validation. This is not authentication of an
+arbitrary graph after all identifying source metadata has been deliberately removed.
+Pure visual graphs without sound metadata keep their independent-import behavior.
+
+For a valid sound-bound entry with N source bytes, T root tags, E root StartSounds,
+P total envelope points and K selected events, source/capture/canonical-collection/
+comparison/delivery cost N+4K+T+E+P, plus outer work and host metadata queries.
+Collection and matching add one unit per selected event each. No K-times full-file
+rescanning is introduced. A canonically empty frame still compares/parses its bound
+source; it needs no callback and delivers nothing. Nonempty validated frames without
+a callback return [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Corrupt list/source and work errors can now
+precede the missing-callback result. Reloading unrelated source bytes can fail even
+an empty frame of a sound-bound root, so the host must keep its source consistent.
+Native scratch is bounded by the per-frame caps, not a new aggregate memory budget.
+Entry consumption, committed earlier visual/host effects and explicit seek/recovery
+remain unchanged. Source/frame validation is not a whole-movie lifecycle scheduler.
+
+`sound_frame_binding` tests all mismatches, removed records and empty-frame/callback
+policies. `sound_canonical_index` tests exact work, preserved outputs, late malformed
+envelopes and the full bound; `sound_canonical_index_allocation` fails each allocation
+boundary. `sound_binding_graph` transfers SWF6–8 through serialization and memory
+channels, destroys the source context, collects traced strings, checks rejection and
+explicit repair/retry with destination-owned callbacks in interpreter/native JIT.
+The existing full delivery allocation sweep also covers index preparation.
+
+[`fvm_movieclip_define_frame`](../include/flashvm/movieclip.h#L51) retains the sound-table identity of a valid existing
+imported frame when replacing its actions/label. The new record is fully prepared
+before publication; allocation failure leaves the old frame/sound table intact.
+This prevents a supported action replacement from silently dropping sounds or
+failing canonical completeness checks. It does not reconstruct already-corrupt
+metadata or change the existing replacement policy for visual controls/other fields.
+Reentering the replaced current frame still evaluates its sound entry again.
+`sound_define_frame_allocation` sweeps replacement OOM boundaries and the binding
+test verifies successful action replacement with retained canonical sound events.
+
+The current-frame reentry field is also prepared before frame publication. If it
+already exists, a nonallocating scalar update follows publication; if missing, its
+replacement state map is staged first. Thus OOM cannot report failure after the
+new frame is already visible merely because adding `entered` failed. A source-linked
+control retaining the old publication order reproduces this failure in the OOM test.
+
+## Series validation (v0.637–v0.640)
+
+141 minimal Linux Release CTests and 141 matching whole-core heap/global ASan +
+UBSan CTests passed. The final sanitizer run is serial; stack instrumentation and
+LeakSanitizer are disabled. Fourteen new regression executables, existing scene/
+sound/input/frame/initializer/timer/JIT tests, actual PCM tutorial modes/files and
+strict C89 constants headers are covered. Final binaries match the final core;
+execute permissions were repaired before the final runs. Source-linked controls
+reproduce the earlier defects. [Evidence and limits](ROADMAP_STATUS.md).
+These software checks close no roadmap stage and do not certify devices/other OS.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -123,6 +193,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
+| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../include/flashvm/movieclip.h#L51) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS` | macro / define | [src/standard/movieclip_sound_constants.h:8](../src/standard/movieclip_sound_constants.h#L8) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
@@ -132,7 +203,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:61](../include/flashvm/swf_sound.h#L61) |
 | `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
 | `fvm_swf_sound_event_envelope` | function | [include/flashvm/swf_sound.h:63](../include/flashvm/swf_sound.h#L63) |
+| `fvm_swf_sound_frame_ordinals` | function | [src/swf/sound_event_index.hpp:8](../src/swf/sound_event_index.hpp#L8) |
 | `fvm_swf_sound_info` | function | [include/flashvm/swf_sound.h:93](../include/flashvm/swf_sound.h#L93) |
+| `FVM_SWF_SOUND_MAX_FRAME_ORDINALS` | macro / define | [src/swf/sound_event_constants.h:12](../src/swf/sound_event_constants.h#L12) |
 | `FVM_SWFSoundInfo` | struct | [include/flashvm/swf_sound.h:13](../include/flashvm/swf_sound.h#L13) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.639
+# FlashVM stage status / Состояние стадий — v0.640
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,49 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.640 canonical root sound frames / Канонические звуковые кадры
+
+One bounded root-stream index binds captured lists to their canonical frame:
+order, membership and completeness are validated before host callbacks, including
+missing tables/records on a source-bound root. Empty canonical frames need no
+callback. Frame action replacement retains a valid imported sound list and stages
+a missing reentry state field before publishing the frame. [EN](SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) /
+[RU](SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
+
+Five new regressions cover membership/omissions/callback policy, index work/cap/
+malformed tails, transactional index OOM, SWF6–8 queue/serialization/source destruction/
+traced GC/native JIT/repair-retry, and action replacement/OOM publication. The
+updated sound snapshot work/invalid tests retain their earlier coverage with the
+new canonical checks. Exact v0.639 sound source reproduces wrong-frame/duplicate
+acceptance; a source-linked pre-staged-entry control reproduces frame publication
+before a later OOM. The current implementations reject/preserve as specified.
+All nine stages remain open. Все девять стадий открыты.
+
+Validation for v0.640: all 141 selected minimal Linux Release CTests and all 141
+matching whole-core heap/global ASan + UBSan CTests passed in complete final runs.
+The sanitizer run is serial, with stack-ASan and LeakSanitizer disabled in this
+traced host. Final test binaries were linked against one final core; stale/mixed
+preparation builds were rejected, and executable permissions were repaired before
+final runs. Fourteen new regression executables cover this series. The C89 mixer
+tutorial oracle checks --demo/--timeline-demo/--convert-demo and exact native PCM
+files; constants/header, source-link, deterministic documentation, debugger-example
+and 26 existing platform-tool tests passed. Exact old-source controls reproduce
+ordinal ordering, uncharged work, canonical mismatch and late frame-publication OOM.
+These are software/minimal-backend results: ALSA unsupported-stub checks are not
+physical audio, and no AGG/Cairo/SDL, original-Player, device or foreign-OS acceptance
+is claimed. All nine roadmap stages remain open.
+
+Проверки v0.640: успешны все 141 выбранных Linux Release CTest и все 141 matching
+whole-core heap/global ASan + UBSan CTest полными финальными прогонами. Sanitizer run
+последовательный; stack-ASan/LeakSanitizer отключены в traced-среде. Бинарники
+согласованы с окончательным ядром; устаревшие/смешанные сборки не считались успешными,
+права исполнения исправлены до финального прогона. Добавлено 14 regression programs.
+C89 mixer tutorial проверяет три режима и точные PCM-файлы. Header/source/doc checks
+и 26 прежних platform-tool tests успешны. Контрольные старые исходники воспроизводят
+исправленные ошибки порядка, бюджета, canonical binding и публикации кадра до OOM.
+Minimal backend/ALSA stubs не подтверждают физический звук, AGG/Cairo/SDL, оригинальный
+Player, устройства или другие ОС. Все девять стадий остаются открытыми.
 
 ## v0.639 sound metadata work / Бюджет звуковых metadata
 

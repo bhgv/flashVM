@@ -5,6 +5,8 @@
 #include "reader.hpp"
 #include "sound_constants.h"
 #include "sound_event_constants.h"
+#include "sound_event_index.hpp"
+#include <new>
 #include <climits>
 #include <cstring>
 
@@ -52,7 +54,8 @@ FVM_Result event_body(const unsigned char *bytes, size_t size, unsigned int fram
 
 /* Scan all root controls before publishing an event, count or envelope pointer. */
 FVM_Result event_lookup(FVM_Context *context, size_t ordinal, FVM_SWFSoundEvent *out, const unsigned char **envelope,
-                        size_t *count)
+                        size_t *count, unsigned int selected_frame = 0,
+                        fvm_detail::vector<size_t> *frame_ordinals = 0)
 {
     /* [GC:] Canonical bytes are context-owned; refuse reads during terminal collector phases. */
     if (!context || context->destroying || context->gc_collecting || context->gc_releasing)
@@ -107,6 +110,15 @@ FVM_Result event_lookup(FVM_Context *context, size_t ordinal, FVM_SWFSoundEvent 
                 selected = current;
                 selected_envelope = points;
                 found = true;
+            }
+            if (frame_ordinals && frame == selected_frame)
+            {
+                if (frame_ordinals->size() >= FVM_SWF_SOUND_MAX_FRAME_ORDINALS)
+                    return FVM_INVALID_ARGUMENT;
+                result = work.step();
+                if (result != FVM_OK)
+                    return result;
+                frame_ordinals->push_back(events);
             }
             ++events;
         }
@@ -184,4 +196,28 @@ extern "C" FVM_Result fvm_swf_sound_event_envelope(FVM_Context *context, size_t 
     value.right_level = (unsigned int)reader.integer(FVM_SWF_SOUND_UI16_BYTES);
     *out = value;
     return FVM_OK;
+}
+
+/* Build one canonical frame index transactionally; parsing and collection share native work. */
+FVM_Result fvm_swf_sound_frame_ordinals(FVM_Context *context, unsigned int frame,
+                                        fvm_detail::vector<size_t> &out)
+{
+    if (!context || context->destroying || context->gc_collecting || context->gc_releasing || !frame)
+        return FVM_INVALID_ARGUMENT;
+    if (!context->swf_loaded)
+        return FVM_UNSUPPORTED;
+    if (frame > context->swf_info.frame_count)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        fvm_detail::vector<size_t> pending;
+        FVM_Result result = event_lookup(context, 0, 0, 0, 0, frame, &pending);
+        if (result == FVM_OK)
+            out.swap(pending);
+        return result;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
 }

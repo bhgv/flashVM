@@ -19,9 +19,8 @@ int main()
         if(kind==9){FVM_Object *foreign=0;FVM_Context *other=tick_context(rt);assert(fvm_object_create(other,&foreign)==FVM_OK);
             root->resource_result.object->properties["frames"].object->indexed[1].object->properties["sounds"]=tick_object(foreign);
             assert(fvm_movieclip_advance(c,root,1)==FVM_INVALID_ARGUMENT && !p.count);fvm_context_destroy(c);fvm_context_destroy(other);continue;}
-        /* A removed last index leaves a shorter dense prefix and is not a structural hole. */
-        FVM_Result expected=kind==0?FVM_OK:FVM_INVALID_ARGUMENT;
-        assert(fvm_movieclip_advance(c,root,1)==expected && p.count==(kind==0?1U:0U));
+        /* A dense prefix is structurally valid but incomplete for the canonical frame. */
+        assert(fvm_movieclip_advance(c,root,1)==FVM_INVALID_ARGUMENT && !p.count);
         tick_clean(c);assert(!c->movieclip_sound_busy);fvm_context_destroy(c);
     }
     fvm_runtime_destroy(rt);

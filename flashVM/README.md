@@ -1,10 +1,12 @@
-Development version: **0.639** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.639 ` and an English description. Increase the subversion before each
+Development version: **0.640** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.640 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.640: [Canonical sound frames](doc/SOUND_SNAPSHOT.md#canonical-frame-binding-v0640) / [Канонические звуковые кадры](doc/SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
 
 v0.639: [Sound metadata work](doc/SOUND_SNAPSHOT.md#metadata-work-v0639) / [Бюджет звуковых metadata](doc/SOUND_SNAPSHOT.ru.md#бюджет-метаданных-v0639).
 

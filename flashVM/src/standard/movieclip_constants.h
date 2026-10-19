@@ -33,6 +33,8 @@
 /* Independent raster recursion and per-node child-snapshot bounds. */
 #define FVM_MOVIECLIP_RENDER_MAX_DEPTH 64U
 #define FVM_MOVIECLIP_RENDER_MAX_CHILDREN 65536UL
+/* Replaced current frame has not yet executed its new entry. */
+#define FVM_MOVIECLIP_FRAME_PENDING 0.0
 /* Maximum timeline steps accepted by one native tick call. */
 #define FVM_MOVIECLIP_MAX_TICKS_PER_CALL 65536UL
 /* Resource bounds for stored geometry commands and path groups. */

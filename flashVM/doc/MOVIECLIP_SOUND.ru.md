@@ -90,6 +90,8 @@ support exists; it is never installed as an undefined visual symbol.
 
 [Снимки звуковых событий](SOUND_SNAPSHOT.ru.md) — v0.637.
 
+Каноническая проверка всех sound-bound входов, включая пустые кадры: [v0.640](SOUND_SNAPSHOT.ru.md#канонический-кадр-v0640).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

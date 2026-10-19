@@ -100,6 +100,8 @@ support exists; it is never installed as an undefined visual symbol.
 
 [Ordinal snapshots](SOUND_SNAPSHOT.md) — v0.637.
 
+Canonical validation of every sound-bound entry, including empty frames: [v0.640](SOUND_SNAPSHOT.md#canonical-frame-binding-v0640).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
