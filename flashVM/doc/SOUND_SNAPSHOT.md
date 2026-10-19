@@ -47,6 +47,30 @@ applicable. The tutorial uses only supported public APIs and never edits metadat
 All roadmap stages remain open. No original-Player scheduling, audio hardware,
 foreign-platform or full SWF8 compatibility claim follows from these fixtures.
 
+## Delivery work (v0.638)
+
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) spans source comparison, ordinal capture and delivery.
+It inherits an outer AVM1/tick budget and nested cooperative host work rather than
+resetting it. One unit is charged before comparing each canonical source byte,
+one before copying each ordinal and one before each callback. With N source bytes
+and K captured events this is N+2K native units, excluding outer timeline work and
+cooperating host queries. A frame with no sound metadata adds zero sound work.
+
+Exhaustion returns [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) before the next native unit; counters never wrap or
+reset when already saturated. Preparation failure yields no sound callbacks;
+delivery exhaustion preserves completed callbacks. Source mismatch can fail after
+charging the compared prefix. A finite ceiling can now stop source comparison
+before the missing-callback check. An instruction limit of zero removes the numeric
+ceiling while retaining periodic worker cancellation. Arbitrary host callback wall
+time is not preempted; byte comparison and local list work are logical units.
+Existing root-entry consumption and explicit seek/recovery policies are unchanged.
+
+`sound_snapshot_budget` checks every exact boundary, nested callback work and
+saturated inherited counters. `sound_snapshot_worker` uses two actual OS workers:
+one stops at the first source-comparison unit, and another stops during a real
+200-event canonical batch after its first callback. These are software notifications,
+not audio playback or original-Player scheduling evidence.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -56,6 +80,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |

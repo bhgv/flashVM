@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.637
+# FlashVM stage status / Состояние стадий — v0.638
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,20 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.638 shared root sound work / Общий бюджет звуковой доставки
+
+Full-source comparison, ordinal capture and host dispatch share the AVM1/tick
+counter and periodic worker stops. [EN](SOUND_SNAPSHOT.md#delivery-work-v0638) /
+[RU](SOUND_SNAPSHOT.ru.md#бюджет-доставки-v0638). Earlier host effects and consumed
+frame entries remain committed; native callback wall time is not preempted.
+
+Validation: ten selected minimal Linux Release CTests passed. New exact work,
+nested/saturated and two actual OS-worker cases passed with earlier snapshot,
+OOM, lifecycle/validation/transport and C89 tutorial checks. Exact v0.637 source
+fails the new work-counter assertion; current source passes. Metadata lookup and
+canonical frame binding remain separate work. All nine stages remain open.
+Все девять стадий открыты; audio devices/original Player/foreign OS не проверены.
 
 ## v0.637 root sound ordinal capture / Снимки звуковых событий
 

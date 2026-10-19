@@ -2,6 +2,7 @@
 #include "movieclip_sound.hpp"
 #include "movieclip_sound_constants.h"
 #include "movieclip_constants.h"
+#include "../core/execution_work_scope.hpp"
 #include "../swf/sound_event_constants.h"
 #include <cmath>
 #include <cstring>
@@ -48,6 +49,7 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
     if (!context || !clip || clip->owner != context || !frames || frames->owner != context ||
         frame < 1 || frame > FVM_MOVIECLIP_MAX_FRAMES)
         return FVM_INVALID_ARGUMENT;
+    FVM_ExecutionWorkScope work(context);
     Slots::iterator selected = frames->indexed.find(frame);
     if (selected == frames->indexed.end())
         return FVM_OK;
@@ -70,6 +72,9 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
     const char *digits = "0123456789abcdef";
     for (size_t i = 0; i < context->swf_bytes.size(); ++i)
     {
+        FVM_Result charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         unsigned char byte = context->swf_bytes[i];
         if (source->second.string[i * FVM_MOVIECLIP_SOUND_HEX_PER_BYTE] !=
                 digits[byte >> FVM_MOVIECLIP_SOUND_NIBBLE_SHIFT] ||
@@ -93,6 +98,9 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
         fvm_detail::vector<size_t> ordinals;
         for (size_t index = 0; index < count; ++index)
         {
+            FVM_Result charged = work.step();
+            if (charged != FVM_OK)
+                return charged;
             Slots::const_iterator event = list->indexed.find((unsigned long)index);
             if (event == list->indexed.end() || event->second.type != FVM_VALUE_NUMBER ||
                 !(event->second.number >= 0 &&
@@ -103,6 +111,9 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
         }
         for (size_t index = 0; index < ordinals.size(); ++index)
         {
+            FVM_Result charged = work.step();
+            if (charged != FVM_OK)
+                return charged;
             DeliveryScope scope(context);
             FVM_Result result = context->movieclip_sound_callback(
                 context, clip, ordinals[index], context->movieclip_sound_userdata);

@@ -47,6 +47,29 @@ JIT, защитный снимок при изменении полей/спис
 Все стадии роудмапа открыты. Это не подтверждает scheduling оригинального Player,
 аудиоустройство, другие ОС или полную совместимость SWF8.
 
+## Бюджет доставки (v0.638)
+
+[`FVM_ExecutionWorkScope`](../src/core/execution_work_scope.hpp#L9) охватывает сравнение source, захват ordinal и доставку,
+наследуя внешний бюджет AVM1/tick и вложенную кооперативную работу host без сброса.
+Расходуется единица перед сравнением каждого канонического байта, перед копированием
+каждого ordinal и перед callback. Для N байтов source и K событий стоимость N+2K
+без внешнего timeline и кооперативных host queries. Кадр без звуковых metadata не
+добавляет работы доставки.
+
+Исчерпание даёт [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) до следующей native единицы; насыщенный счётчик не
+обнуляется и не переполняется. Ошибка подготовки не вызывает sound callbacks;
+ошибка доставки сохраняет выполненные callbacks. Несовпадение source может
+обнаружиться после оплаты сравнённого префикса. Конечный бюджет может остановить
+сравнение раньше проверки отсутствующего callback. Нулевой числовой лимит сохраняет
+периодическую остановку worker. Время произвольного host callback не прерывается;
+это единицы логической работы. Потребление входа кадра и явный seek/recovery прежние.
+
+`sound_snapshot_budget` проверяет все точные границы, вложенную host работу и
+насыщение унаследованного счётчика. `sound_snapshot_worker` использует два настоящих
+OS workers: остановку на первой единице сравнения source и остановку после первого
+callback канонического пакета из 200 событий. Это software notifications, не
+прослушивание звука или доказательство scheduling оригинального Player.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -56,6 +79,8 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
