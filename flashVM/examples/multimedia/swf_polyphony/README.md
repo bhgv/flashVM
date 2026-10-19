@@ -66,7 +66,7 @@ ALSA описана в [ALSA_AUDIO_OUTPUT.md](../../../doc/ALSA_AUDIO_OUTPUT.md)
 
 ## Демонстрируемые API и руководство
 
-- [`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L97) — overlap, global no-multiple и stop-by-ID:
+- [`fvm_swf_sound_event_submit`](../../../include/flashvm/swf_sound.h#L100) — overlap, global no-multiple и stop-by-ID:
   [SWF_SOUND_PLAYBACK.md](../../../doc/SWF_SOUND_PLAYBACK.md#fvm_swf_sound_event_submit).
 - [`fvm_audio_channel_create`](../../../include/flashvm/multimedia.h#L82) — copied registration и host ownership:
   [AUDIO_CHANNELS.md](../../../doc/AUDIO_CHANNELS.md#fvm_audio_channel_create).
@@ -116,5 +116,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../../../include/flashvm/swf_sound.h#L97) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../../../include/flashvm/swf_sound.h#L100) |
 <!-- source-links:end -->

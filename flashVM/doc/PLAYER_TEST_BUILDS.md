@@ -77,7 +77,7 @@ The API is per-frame state: a down/up between frames may only change counters.
 
 ## Audio ownership and scheduling (v0.582; see v0.583 correction below)
 
-[audio.c](../frontend/common/audio.c) queries [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L56). With root
+[audio.c](../frontend/common/audio.c) queries [`fvm_swf_sound_event_count`](../include/flashvm/swf_sound.h#L59). With root
 controls and no --mute it opens a real 48000 Hz stereo SDL device, a 32-voice
 configured mixer and a 512-frame producer with a 2048-frame FIFO target. Registers
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); each actual entry submits its ordinal to
@@ -187,7 +187,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
-| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:56](../include/flashvm/swf_sound.h#L56) |
+| `fvm_swf_sound_event_count` | function | [include/flashvm/swf_sound.h:59](../include/flashvm/swf_sound.h#L59) |
 | `fvm_swf_sound_mixer_submit` | function | [include/flashvm/swf_sound_mixer.h:50](../include/flashvm/swf_sound_mixer.h#L50) |
 | `fvm_swf_sound_output_pump` | function | [include/flashvm/swf_sound_output.h:55](../include/flashvm/swf_sound_output.h#L55) |
 <!-- source-links:end -->

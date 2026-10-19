@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/4/6/7/8/9: sound metadata work | Проверено v0.639 в ограниченных Linux tests | Six allocation-free queries share root/header/envelope work; SWF1–8 boundaries, unchanged outputs and six OS-worker stops. [EN](SOUND_SNAPSHOT.md#metadata-work-v0639) / [RU](SOUND_SNAPSHOT.ru.md#бюджет-метаданных-v0639). Complete decode/output work, canonical frame binding and platform/reference acceptance remain open. |
 | 3/4/6/7/8/9: root sound delivery work | Проверено v0.638 в ограниченных Linux tests | Shared source-byte/capture/callback work and two real worker stops. [EN](SOUND_SNAPSHOT.md#delivery-work-v0638) / [RU](SOUND_SNAPSHOT.ru.md#бюджет-доставки-v0638). No real-time callback preemption, metadata-scan budget or canonical frame binding claim. |
 | 3/4/6/7/8/9: sound ordinal snapshots | Проверено v0.637 в ограниченных Linux tests | Dense ordered bounded scalar capture and complete local preflight before host effects. [EN](SOUND_SNAPSHOT.md) / [RU](SOUND_SNAPSHOT.ru.md). Canonical frame membership, complete budgets, device/reference/platform acceptance remain open. |
 | 3/6/7/8/9: scene graph and legacy migration | Проверено v0.636 в ограниченных Linux tests | Owner checks before migration, bounded/precharged legacy work, whole-local-child topology preflight, serialized/queued scene retry after source destruction. [EN](SCENE_CONTROLS.md#graph-validation-and-legacy-depths-v0636) / [RU](SCENE_CONTROLS.ru.md#граф-сцены-и-старые-глубины-v0636). Original-Player lifecycle/order and foreign/device acceptance remain open. |
@@ -4489,7 +4490,7 @@ API StartSound/SOUNDINFO копирует метаданные без проиг
 
 ### v0.552 — explicit styled StartSound voice output
 
-Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L97) renders PCM/ADPCM in/out
+Implemented / реализовано: [fvm_swf_sound_event_submit](../include/flashvm/swf_sound.h#L100) renders PCM/ADPCM in/out
 ranges, repetitions and linear mono/stereo envelopes before one guarded output
 callback. Fixed-clock 44100 Hz positions convert without integer overflow;
 explicit zero loops produce no voice. Source/output/envelope storage share a
@@ -4992,7 +4993,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../include/flashvm/flashvm.h#L40) |
-| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:97](../include/flashvm/swf_sound.h#L97) |
+| `fvm_swf_sound_event_submit` | function | [include/flashvm/swf_sound.h:100](../include/flashvm/swf_sound.h#L100) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `FVM_WatchWriteScope` | class | [src/core/watch_write_scope.hpp:8](../src/core/watch_write_scope.hpp#L8) |
 <!-- source-links:end -->

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.638
+# FlashVM stage status / Состояние стадий — v0.639
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,22 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.639 sound metadata work / Бюджет звуковых metadata
+
+Six read-only definition/event/envelope queries account root tags, headers and
+points under shared work, including both definition-at scans and event-to-ID
+resolution. Error outputs remain untouched and the queries allocate nothing.
+[EN](SOUND_SNAPSHOT.md#metadata-work-v0639) /
+[RU](SOUND_SNAPSHOT.ru.md#бюджет-метаданных-v0639).
+
+Validation: twelve selected minimal Linux Release CTests passed. Four new exact
+SWF1–8/nested/saturated/output/recovery/allocation-free/worker tests include six
+actual OS workers; previous event edges/submission/OOM, root delivery/transport
+and snapshot work/stop tests passed. Exact v0.638 dictionary source fails the new
+work-counter assertion. All nine stages remain open; decoder/output aggregate
+work, canonical frame binding, reference/device/foreign-OS acceptance remain open.
+Все девять стадий открыты; эти результаты не подтверждают прослушивание звука.
 
 ## v0.638 shared root sound work / Общий бюджет звуковой доставки
 

@@ -1,6 +1,7 @@
 /* FlashVM: allocation-free DefineSound lookup and bounded native-S16 extraction.
  * Parsing is independent of MovieClip timeline import and never opens an output. */
 #include "../core/runtime.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "flashvm/swf_sound.h"
 #include "sound_pcm.hpp"
 #include "sound_constants.h"
@@ -64,6 +65,7 @@ static FVM_Result sound_lookup(FVM_Context *context, unsigned int id, size_t ord
         return FVM_INVALID_ARGUMENT;
     if (!context->swf_loaded)
         return FVM_UNSUPPORTED;
+    FVM_ExecutionWorkScope work(context);
     const fvm_detail::vector<unsigned char> &bytes = context->swf_bytes;
     if (CHAR_BIT != FVM_SWF_SOUND_BYTE_BITS)
         return FVM_UNSUPPORTED;
@@ -84,6 +86,9 @@ static FVM_Result sound_lookup(FVM_Context *context, unsigned int id, size_t ord
     FVM_SWFSoundInfo selected;
     while (at < bytes.size())
     {
+        FVM_Result charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         if (bytes.size() - at < FVM_SWF_SOUND_UI16_BYTES)
             return FVM_INVALID_ARGUMENT;
         unsigned int header = (unsigned int)sound_integer(data + at, FVM_SWF_SOUND_UI16_BYTES);
@@ -101,6 +106,9 @@ static FVM_Result sound_lookup(FVM_Context *context, unsigned int id, size_t ord
             return FVM_INVALID_ARGUMENT;
         if (tag == FVM_SWF_TAG_DEFINE_SOUND)
         {
+            charged = work.step();
+            if (charged != FVM_OK)
+                return charged;
             FVM_SWFSoundInfo current;
             FVM_Result result = sound_header(data + at, count, context->swf_info.version, current);
             if (result != FVM_OK)
@@ -156,6 +164,10 @@ extern "C" FVM_Result fvm_swf_sound_at(FVM_Context *context, size_t index, FVM_S
 {
     if (!out || out->struct_size != sizeof(*out))
         return FVM_INVALID_ARGUMENT;
+    if (!sound_context(context))
+        return FVM_INVALID_ARGUMENT;
+    /* Both full scans belong to the same public ordinal query. */
+    FVM_ExecutionWorkScope work(context);
     FVM_SWFSoundInfo selected;
     FVM_Result result = sound_lookup(context, 0, index, true, &selected, 0);
     if (result != FVM_OK)

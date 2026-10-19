@@ -52,6 +52,9 @@ extern "C"
         unsigned int left_level; /* Left gain, 0..32768 inclusive. */
         unsigned int right_level; /* Right gain, 0..32768 inclusive; mono playback averages both gains. */
     } FVM_SWFSoundEnvelope;
+    /* Read-only sound/event metadata queries share native execution work and worker stops.
+     * Exhaustion returns ERROR with unchanged caller outputs; see SOUND_SNAPSHOT.md.
+     * These queries allocate nothing and run on the context owner thread. */
     /* Count syntactically valid root StartSound occurrences; no resource resolution or playback. */
     FVM_API FVM_Result fvm_swf_sound_event_count(FVM_Context *, size_t *);
     /* Copy a zero-based StartSound occurrence after resolving its unique sound definition. */

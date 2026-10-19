@@ -1,6 +1,7 @@
 /* FlashVM: allocation-free root StartSound/SOUNDINFO inspection.
  * These APIs preserve control records for host scheduling; they never play audio. */
 #include "../core/runtime.hpp"
+#include "../core/execution_work_scope.hpp"
 #include "reader.hpp"
 #include "sound_constants.h"
 #include "sound_event_constants.h"
@@ -11,8 +12,11 @@ namespace
 {
 /* Parse one exact StartSound body and retain the envelope span only for this call. */
 FVM_Result event_body(const unsigned char *bytes, size_t size, unsigned int frame, FVM_SWFSoundEvent &event,
-                      const unsigned char *&envelope)
+                      const unsigned char *&envelope, FVM_ExecutionWorkScope &work)
 {
+    FVM_Result charged = work.step();
+    if (charged != FVM_OK)
+        return charged;
     if (size < FVM_SWF_SOUND_EVENT_MIN_BYTES)
         return FVM_INVALID_ARGUMENT;
     FVM_SWFReader reader(bytes, size);
@@ -34,6 +38,9 @@ FVM_Result event_body(const unsigned char *bytes, size_t size, unsigned int fram
     envelope = bytes + reader.position();
     for (unsigned int i = 0; i < event.envelope_count; ++i)
     {
+        charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         reader.integer(FVM_SWF_SOUND_UI32_BYTES);
         unsigned long left = reader.integer(FVM_SWF_SOUND_UI16_BYTES);
         unsigned long right = reader.integer(FVM_SWF_SOUND_UI16_BYTES);
@@ -52,6 +59,7 @@ FVM_Result event_lookup(FVM_Context *context, size_t ordinal, FVM_SWFSoundEvent 
         return FVM_INVALID_ARGUMENT;
     if (!context->swf_loaded)
         return FVM_UNSUPPORTED;
+    FVM_ExecutionWorkScope work(context);
     if (CHAR_BIT != FVM_SWF_SOUND_BYTE_BITS)
         return FVM_UNSUPPORTED;
     const fvm_detail::vector<unsigned char> &bytes = context->swf_bytes;
@@ -73,6 +81,9 @@ FVM_Result event_lookup(FVM_Context *context, size_t ordinal, FVM_SWFSoundEvent 
     const unsigned char *selected_envelope = 0;
     while (at < bytes.size())
     {
+        FVM_Result charged = work.step();
+        if (charged != FVM_OK)
+            return charged;
         FVM_SWFReader reader(bytes.begin() + at, bytes.size() - at);
         unsigned int header = (unsigned int)reader.integer(FVM_SWF_SOUND_UI16_BYTES);
         unsigned int tag = header >> FVM_SWF_TAG_CODE_SHIFT;
@@ -88,7 +99,7 @@ FVM_Result event_lookup(FVM_Context *context, size_t ordinal, FVM_SWFSoundEvent 
                 return FVM_INVALID_ARGUMENT;
             FVM_SWFSoundEvent current;
             const unsigned char *points = 0;
-            FVM_Result result = event_body(bytes.begin() + at, (size_t)length, frame, current, points);
+            FVM_Result result = event_body(bytes.begin() + at, (size_t)length, frame, current, points, work);
             if (result != FVM_OK)
                 return result;
             if (events == ordinal && out)
