@@ -17,3 +17,5 @@ The separate [linker project](../linker/README.md) is a reserved project boundar
 
 For detached distribution, carry the common root MIT LICENSE and any generated
 upstream notices. Root workspace orchestration and Git history are optional.
+
+[AS3 core syntax subset](as3/README.md), standalone C99/Coco-R; no ABC backend.
