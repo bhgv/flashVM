@@ -31,7 +31,7 @@ static FVM_Result scene_control_constructor(FVM_Context *c,FVM_Object *self,unsi
     assert(fvm_gc_collect(c,0)==FVM_INVALID_ARGUMENT);
     fvm_value_undefined(out);return FVM_OK;
 }
-static FVM_Object *scene_control_root(FVM_Context *c,SceneControlProbe &p,unsigned version=8)
+static FVM_Object *scene_control_root(FVM_Context *c,SceneControlProbe &p,unsigned version=8,bool bind=true)
 {
     Bytes tags,empty,exports;definition(tags);u16(exports,1);u16(exports,7);text(exports,"Hero");tag(tags,56,exports);
     tag(tags,26,place(2|4|32,1,7,0,0,"first"));
@@ -49,6 +49,7 @@ static FVM_Object *scene_control_root(FVM_Context *c,SceneControlProbe &p,unsign
     FVM_Value v;fvm_value_number(&v,4);p.replacement->properties["depth"]=v;
     assert(fvm_value_string(&v,"late")==FVM_OK);assert(fvm_object_set(c,p.replacement,"name",&v)==FVM_OK);
     assert(fvm_gc_pin(c,p.replacement)==FVM_OK);
+    if(!bind)return root;
     FVM_Object *fn=0;assert(fvm_function_create_native(c,scene_control_constructor,&p,0,&fn)==FVM_OK);
     FVM_Value mc;assert(fvm_get_global(c,"MovieClip",&mc)==FVM_OK);v=get(c,mc.object,"prototype");
     assert(fvm_object_set(c,fn,"prototype",&v)==FVM_OK);

@@ -74,7 +74,9 @@ FVM_Result capture(FVM_Context *c, FVM_Object *clip, size_t parent, unsigned int
     batch.push_back(value);
     FVM_Object *children = 0;
     result = fvm_movieclip_scene_children(clip, &children);
-    if (result != FVM_OK || !children || children->owner != c)
+    if (result != FVM_OK)
+        return result;
+    if (!children || children->owner != c)
         return FVM_INVALID_ARGUMENT;
     if (children->indexed.size() > FVM_CLIP_INPUT_MAX_CHILDREN)
         return FVM_INVALID_ARGUMENT;

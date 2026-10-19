@@ -6,7 +6,7 @@
 селектор приводится к Uint32, остальные — к строке по правилам AVM1. Counted-путь
 `clip:frame` разрешается до выбора действий. Отсутствующий target/кадр — no-op;
 неподдерживаемая slash-only форма даёт [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46). Внутренний
-[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3346) получает уже выбранный клип и число/строку.
+[`fvm_movieclip_call_frame`](../src/standard/movieclip.cpp#L3371) получает уже выбранный клип и число/строку.
 Оба пути не перемещают playhead, не применяют scene controls, не вызывают onEnterFrame,
 не опрашивают таймеры и не двигают детей. Контекст и аргументы сохраняются до возврата.
 
@@ -95,7 +95,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../include/flashvm/execution.h#L342) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3346](../src/standard/movieclip.cpp#L3346) |
+| `fvm_movieclip_call_frame` | function | [src/standard/movieclip.cpp:3371](../src/standard/movieclip.cpp#L3371) |
 | `FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
 | `FVM_MOVIECLIP_MAX_FRAME_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

@@ -75,6 +75,49 @@ F+2K+2M+D без вложенных конструкторов и прочей �
 children/пропусков/вложенности/насыщения. Два настоящих OS workers в
 `scene_controls_worker` останавливаются до обхода и между native-only controls.
 
+## Граф сцены и старые глубины (v0.636)
+
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2890) проверяет владельца private state/таблицы и лимит
+[`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32) до нормализации старых глубин. Выходной указатель
+публикуется только при успехе. Непустая ненормализованная таблица предварительно
+расходует единицу на child; исчерпание бюджета сохраняет прежние индексы и отсутствие
+bias. Существующая миграция готовит новую map до публикации bias и swap slots.
+Нормализованная таблица не добавляет работы миграции. Общий внешний бюджет сохраняется,
+а нулевой лимит не отключает остановку worker. Этот helper также используется
+подготовкой retained scene input; ошибка бюджета/остановки сохраняется как
+[`FVM_ERROR`](../include/flashvm/flashvm.h#L43), а не преобразуется в [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+
+Восстановление проверяет все локальные старые children в ходе прежней предоплаты
+копирования: native clip/state из того же контекста, отсутствие самого parent и
+повторной идентичности на другой глубине. Поздняя ошибочная запись отвергается до
+удаления любого старого child. Identity set выделяет память; отказ также предшествует
+удалениям и освобождается под native GC barrier. Ранние эффекты фона при композиции
+сохраняются; это не проверка всего ролика и не атомарная транзакция сцены. Прежние
+единицы visit/remove/apply и порядок конструкторов не меняются. Порядок оригинального
+Player при seek требует эталонных доказательств, а не вывода из hash-контейнера.
+
+`scene_graph_ownership` проверяет чужие state/frame/child tables, duplicate/self/
+nonclip/foreign/value child edges и сохранение ранних children. `scene_legacy_budget`
+проверяет точные границы миграции, повтор после ошибки и отсутствие новой платы после
+нормализации. `scene_graph_allocation` перебирает сбои allocations восстановления и
+миграции, проверяет повтор и счётчик удержанных выделений. `scene_controls_graph`
+переносит SWF6–8 сериализацией и memory channel, уничтожает исходный контекст,
+собирает traced strings, заново регистрирует native конструктор получателя и проверяет
+ошибку бюджета/повтор и scalar snapshot mutation в интерпретаторе/native JIT.
+Пользовательские native userdata намеренно не сериализуются.
+
+## Проверки серии (v0.634–v0.636)
+
+Девять новых test executables и выбранные прежние тесты/tutorial дали 87 успешных
+minimal Linux Release проверок и 87 whole-core heap/global ASan + UBSan проверок.
+Финальный sanitizer run последовательный; stack instrumentation и LeakSanitizer
+отключены в traced-среде. Проверены доступность JIT и реальные native entries.
+У двух sanitizer бинарников восстановлено право исполнения до финального полного
+успешного прогона. Строгие C89 header/tutorial и документация проверены. Контрольные
+сборки с прежними исходниками воспроизводят исправленные snapshot/work/ownership
+ошибки. [Подробные границы доказательств](ROADMAP_STATUS.md). Это не подтверждает
+оригинальный Player, AGG/Cairo/SDL, физические устройства или другие ОС.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -90,5 +133,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2890](../src/standard/movieclip.cpp#L2890) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

@@ -333,8 +333,9 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
     FVM_ExecutionWorkScope work(c);
     FVM_Object *data = 0, *frames = 0, *children = 0;
     FVM_Result r = fvm_movieclip_scene_state(parent, &data);
-    if (r == FVM_OK)
-        r = object(c, data, "frames", frames);
+    if (r != FVM_OK || data->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    r = object(c, data, "frames", frames);
     if (r != FVM_OK)
         return r;
     unsigned long previous = 0;
@@ -396,11 +397,22 @@ FVM_Result fvm_movieclip_scene_run(FVM_Context *c, FVM_Object *parent, unsigned 
         /* [GC:] Snapshot child edges before unlinking changes the live table. */
         if (children->owner != c || children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
             return FVM_INVALID_ARGUMENT;
+        fvm_detail::map<size_t, bool> seen;
         for (Slots::const_iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
         {
             r = work.step();
             if (r != FVM_OK)
                 return r;
+            /* Reject the whole local topology before removing even its first old instance.
+             * [GC:] These identities stay rooted by the enclosing native scene barrier. */
+            FVM_Object *candidate = i->second.type == FVM_VALUE_OBJECT ? i->second.object : 0;
+            FVM_Object *candidate_state = 0;
+            if (!candidate || candidate == parent || candidate->owner != c ||
+                fvm_movieclip_scene_state(candidate, &candidate_state) != FVM_OK ||
+                candidate_state->owner != c ||
+                seen.find(reinterpret_cast<size_t>(candidate)) != seen.end())
+                return FVM_INVALID_ARGUMENT;
+            seen[reinterpret_cast<size_t>(candidate)] = true;
         }
         Slots old = children->indexed;
         for (Slots::iterator i = old.begin(); i != old.end(); ++i)

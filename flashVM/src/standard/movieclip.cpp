@@ -2889,14 +2889,39 @@ FVM_Result fvm_movieclip_scene_state(FVM_Object *o, FVM_Object **out)
 /* [GC:] Normalize the parent's child slot table before direct SWF depth lookup. */
 FVM_Result fvm_movieclip_scene_children(FVM_Object *o, FVM_Object **out)
 {
-    if (!out)
+    if (!out || !o || !o->owner)
         return FVM_INVALID_ARGUMENT;
-    FVM_Object *data = 0;
+    FVM_Object *data = 0, *children = 0;
     FVM_Result r = state(o, data);
+    if (r != FVM_OK || data->owner != o->owner)
+        return FVM_INVALID_ARGUMENT;
+    r = private_object(data, "children", children);
+    if (r != FVM_OK || children->owner != o->owner)
+        return FVM_INVALID_ARGUMENT;
+    unsigned long bias = 0;
+    r = slot_bias(data, bias);
+    if (r != FVM_OK)
+        return r;
+    /* Normalized tables keep their caller's existing snapshot-bound timing. */
+    if (!bias && children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
+        return FVM_INVALID_ARGUMENT;
+    /* A legacy table is copied by ensure_slot_bias. Precharge the full bounded copy
+     * before any migration so exhausted work/worker stop leaves both maps untouched. */
+    if (!bias && !children->indexed.empty())
+    {
+        FVM_ExecutionWorkScope work(o->owner);
+        for (Slots::const_iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+        {
+            r = work.step();
+            if (r != FVM_OK)
+                return r;
+        }
+        r = ensure_slot_bias(data, children);
+    }
+    else
+        r = ensure_slot_bias(data, children);
     if (r == FVM_OK)
-        r = private_object(data, "children", *out);
-    if (r == FVM_OK)
-        r = ensure_slot_bias(data, *out);
+        *out = children;
     return r;
 }
 

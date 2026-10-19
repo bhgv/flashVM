@@ -82,6 +82,51 @@ Exact forward/reconstruction/existing-child/gap/nested/saturated boundaries are
 covered by `scene_controls_budget`; two real OS workers stop before traversal and
 between native-only control applications in `scene_controls_worker`.
 
+## Graph validation and legacy depths (v0.636)
+
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2890) validates same-context private state/table ownership
+and [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32) before normalizing any legacy depths.
+Its output pointer is published only on success. An unnormalized nonempty table
+charges one unit per child before migration; insufficient work leaves the old
+indices and missing bias untouched. The existing migration builds its replacement
+map before publishing bias and swapping slots. Normalized tables add no migration
+units. Outer traversal work remains shared; zero limit retains worker cancellation.
+The check also protects retained scene-input preparation, which uses this helper
+and propagates its work/stop error as [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) rather than converting it to
+[`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45).
+
+Reconstruction now validates *all* local old-child identities during the existing
+copy precharge: same-context native clip/state, no parent-as-child and no duplicate
+identity at different depths. A malformed late entry is rejected before any old
+child is removed. The identity set can allocate; an allocation failure likewise
+precedes removal and unwinds under the native GC barrier. Earlier composition
+background effects remain committed; this does not validate the entire movie
+or turn scene evaluation into a transaction. The existing visit/removal/apply work
+charges and constructor order remain unchanged. Original-Player seek constructor
+order still requires reference evidence and is not inferred from a hash container.
+
+`scene_graph_ownership` covers foreign state/frame/child tables, duplicate/self/
+nonclip/foreign/value child edges and preservation of early children.
+`scene_legacy_budget` covers exact migration limits, retry and zero cost after
+normalization. `scene_graph_allocation` sweeps reconstruction and legacy-migration
+allocation failures, retries and retained allocation counts. `scene_controls_graph`
+uses serialization and memory channels for SWF6–8, destroys the source context,
+collects traced strings, re-registers a destination-owned native constructor,
+exercises budget failure/retry and scalar snapshot mutation in interpreter/native
+JIT. Custom native userdata is deliberately not serialized.
+
+## Series validation (v0.634–v0.636)
+
+Nine new regression executables plus the selected existing tests/tutorial produce
+87 passing minimal Linux Release checks and 87 passing whole-core heap/global
+ASan + UBSan checks. The final sanitizer run is serial; stack instrumentation and
+LeakSanitizer are disabled on the traced host. Native JIT availability and real
+native entries are checked. Two sanitizer executable permissions were repaired
+before the final complete pass. Strict C89 header/tutorial and documentation checks
+passed. Source-linked earlier implementations reproduce the snapshot, work and
+ownership defects. [Detailed limits and evidence](ROADMAP_STATUS.md).
+No original-Player, AGG/Cairo/SDL/device or foreign-platform acceptance is implied.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -97,5 +142,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2890](../src/standard/movieclip.cpp#L2890) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

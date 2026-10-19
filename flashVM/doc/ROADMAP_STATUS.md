@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.635
+# FlashVM stage status / Состояние стадий — v0.636
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,45 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.636 scene graph boundaries / Границы графа сцены
+
+Same-context state/table checks precede legacy slot migration; a bounded migration
+precharges copying before publication and preserves output on error. Normalized
+tables keep the caller's existing check timing. Reconstruction rejects every local
+invalid/duplicate/self/foreign child identity before old-child removal. Scene-input
+preparation preserves helper work errors. [EN](SCENE_CONTROLS.md#graph-validation-and-legacy-depths-v0636) /
+[RU](SCENE_CONTROLS.ru.md#граф-сцены-и-старые-глубины-v0636).
+
+Four new regressions cover ownership, exact/nested legacy/input work boundaries,
+allocation sweeps/retry/retained allocation counts, and SWF6–8 serialization/channel
+transfer with source destruction, traced strings, interpreter/native JIT and
+receiver-owned native callback registration. Exact v0.635 MovieClip source fails
+the new foreign-table boundary assertion; the current source passes. Constructor
+ordering at seek remains unchanged pending original-Player reference evidence.
+All nine stages remain open. Все девять стадий остаются открытыми.
+
+Validation for v0.636: all 87 selected minimal Linux Release CTests passed; all
+87 matching whole-core heap/global ASan + UBSan CTests passed in a final serial
+run after relinking against the final core. Stack-ASan and LeakSanitizer are
+disabled because this traced host cannot provide reliable stack/process metadata.
+Two sanitizer executables needed execute-bit repairs; the final complete run
+passed. The earlier unmodified-stack/LSan run is not counted as passing evidence.
+The new nine series regressions, old scene/input/timer/frame/initializer/JIT tests,
+C89 tutorial, strict C89 constants-header probe and documentation checks passed.
+A C89 probe reported native JIT availability=1; tests assert actual native entries.
+These results do not include AGG/Cairo pixel, SDL/device, original-Player or foreign
+OS acceptance and close no roadmap stage.
+
+Проверки v0.636: успешно 87 выбранных Linux Release CTest и 87 соответствующих
+whole-core heap/global ASan + UBSan CTest последовательным финальным прогоном.
+Stack-ASan и LeakSanitizer отключены из-за ограничений traced-среды. Два sanitizer
+бинарника потребовали восстановления executable-бита; финальный полный прогон
+успешен. Старый прогон с полной stack/LSan-проверкой не считается успешным.
+Проверены девять новых regressions серии, старые scene/input/timer/frame/initializer/
+JIT tests, C89 tutorial, строгий C89 header probe и документация. JIT доступен,
+тесты проверяют native entries. AGG/Cairo/SDL, физические устройства, оригинальный
+Player и другие ОС этим прогоном не подтверждены. Все девять стадий открыты.
 
 ## v0.635 shared scene work / Общий бюджет сцены
 

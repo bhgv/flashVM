@@ -5,7 +5,8 @@
 
 /* [GC:] Return validated private clip state owned by its managed resource edge. */
 FVM_Result fvm_movieclip_scene_state(FVM_Object *, FVM_Object **);
-/* [GC:] Return the parent's child table, migrating legacy slots before authored placements. */
+/* [GC:] Return a same-context child table; errors preserve output.
+ * Bounded legacy-slot migration shares native work and precharges copies before mutation. */
 FVM_Result fvm_movieclip_scene_children(FVM_Object *, FVM_Object **);
 /* Place a new symbol with its decoded pose before invoking its registered constructor. */
 FVM_Result fvm_movieclip_scene_insert(FVM_Context *, FVM_Object *parent, FVM_Object *placement,
