@@ -1,4 +1,5 @@
 /* FlashVM: strongly rooted Mouse registrations and mutation-safe synchronous notification. */
+#include "../standard/stage_update.hpp"
 #include "../core/mouse_state.hpp"
 #include "../core/optional_method.hpp"
 #include "../core/mouse_limits.h"
@@ -50,7 +51,7 @@ namespace
 {
 /* [GC:] Prepare a strong receiver snapshot before publishing coordinates; arguments are native Numbers. */
 FVM_Result dispatch(FVM_Context *context, const char *handler, double x, double y,
-                    unsigned int argc, const FVM_Value *args)
+                    unsigned int argc, const FVM_Value *args, bool redraw_eligible)
 {
     try
     {
@@ -84,6 +85,7 @@ FVM_Result dispatch(FVM_Context *context, const char *handler, double x, double 
             result = work.step();
             if (result != FVM_OK)
                 return result;
+            FVM_StageUpdateEventScope redraw(context, redraw_eligible);
             result = fvm_object_call_optional_args(context, recipients[i].object, handler, argc, args);
             if (result != FVM_OK)
                 return result;
@@ -111,7 +113,7 @@ extern "C" FVM_Result fvm_input_dispatch_mouse(FVM_Context *context, FVM_MouseEv
         return FVM_INVALID_ARGUMENT;
     const char *handler = type == FVM_MOUSE_EVENT_MOVE ? "onMouseMove"
                           : type == FVM_MOUSE_EVENT_DOWN ? "onMouseDown" : "onMouseUp";
-    return dispatch(context, handler, x, y, 0, 0);
+    return dispatch(context, handler, x, y, 0, 0, true);
 }
 
 /* Preserve a signed finite line delta as a Number; hit testing and platform normalization belong to host. */
@@ -123,5 +125,5 @@ extern "C" FVM_Result fvm_input_dispatch_mouse_wheel(FVM_Context *context, doubl
         return FVM_INVALID_ARGUMENT;
     FVM_Value value;
     fvm_value_number(&value, delta);
-    return dispatch(context, "onMouseWheel", x, y, FVM_MOUSE_WHEEL_DELTA_ARGS, &value);
+    return dispatch(context, "onMouseWheel", x, y, FVM_MOUSE_WHEEL_DELTA_ARGS, &value, false);
 }

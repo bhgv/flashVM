@@ -64,7 +64,7 @@ These names are not native Windows/macOS acceptance evidence from this workspace
 | [`fvm_jit_destroy`](../../../include/flashvm/jit.h#L28) | [JIT.md#lifetime-gc-and-failures](../../../doc/JIT.md#lifetime-gc-and-failures) — JIT-код, исходное тело и время жизни. |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md) — Стандартные классы и объектная модель. |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md) — Стандартные классы и объектная модель. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-jit).
@@ -133,6 +133,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../../../src/jit/internal.hpp#L59) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 <!-- source-links:end -->

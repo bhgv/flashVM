@@ -92,6 +92,22 @@ static int clear_stage(FVM_Context *context, FVM_RasterSurface *surface)
     return 1;
 }
 
+/* Render the current scene without advancing timeline, input, timers or the authored frame count. */
+static int present_stage(FVM_Context *context, FVM_Object *clip, FVM_DesktopWindow *window,
+                          FVM_RasterSurface *surface, const FVM_Affine *viewport, const char *path)
+{
+    if (!clear_stage(context, surface))
+        return 0;
+    if (!checked(fvm_movieclip_render_view(context, clip, surface, viewport), "raster render", path))
+        return 0;
+    if (!fvm_desktop_window_present(window, surface, surface->stride * surface->height))
+    {
+        fprintf(stderr, "%s: presentation: %s\n", path, fvm_desktop_window_error());
+        return 0;
+    }
+    return 1;
+}
+
 /* Copy a scalar without retaining borrowed storage or invoking user-defined input listeners. */
 static FVM_Result input_number(FVM_Context *context, FVM_Object *object, const char *name,
                                double number)
@@ -165,6 +181,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     size_t length = 0;
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
+    unsigned long presentations = 0, refreshes = 0; /* Count successful draws separately from timeline ticks. */
+    int update_requested = 0; /* Consume coalesced requests before presentation, preserving later requests. */
     unsigned int timer_callbacks = 0; /* Receive each active-loop poll's attempted delivery count. */
     unsigned long timer_wait = 0; /* Cap SDL waiting at the nearest pending timer deadline. */
     int timers_pending = 0; /* Receive the queue hint without retaining any managed state. */
@@ -323,7 +341,23 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         now = fvm_desktop_now();
         if (now < next)
         {
-            int wait = (int)(next - now);
+            int wait;
+            if (!checked(fvm_stage_take_update(context, &update_requested), "redraw request", path))
+                goto cleanup;
+            if (update_requested)
+            {
+                if (!present_stage(context, clip, window, &surface, &viewport, path))
+                    goto cleanup;
+                ++presentations;
+                ++refreshes;
+                /* A new request made during rendering must not be lost behind a long frame wait. */
+                if (!checked(fvm_stage_get_update(context, &update_requested), "redraw state", path))
+                    goto cleanup;
+                now = fvm_desktop_now();
+                if (update_requested || now >= next)
+                    continue;
+            }
+            wait = (int)(next - now);
             if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
                 wait = FVM_DESKTOP_AUDIO_WAIT;
             if (wait < 1)
@@ -349,16 +383,11 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             goto cleanup;
         if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
             goto cleanup;
-        if (!clear_stage(context, &surface))
+        if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request", path))
             goto cleanup;
-        if (!checked(fvm_movieclip_render_view(context, clip, &surface, &viewport), "raster render",
-                     path))
+        if (!present_stage(context, clip, window, &surface, &viewport, path))
             goto cleanup;
-        if (!fvm_desktop_window_present(window, &surface, surface.stride * surface.height))
-        {
-            fprintf(stderr, "%s: presentation: %s\n", path, fvm_desktop_window_error());
-            goto cleanup;
-        }
+        ++presentations;
         ++ticks;
         /* [GC:] Collect only at a safe host boundary; the root and its library remain pinned. */
         if (!checked(fvm_gc_step(context, 0), "GC step", path))
@@ -391,6 +420,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                 "audio_underruns=%d\n",
                 input.key_presses, input.clicks, audio.events, audio.stops, audio.device != 0,
                 SDL_AtomicGet(&audio.underruns));
+        fprintf(stderr, "presentations=%lu refreshes=%lu\n", presentations, refreshes);
         fprintf(stderr, "frames=%lu native=%lu interpreter=%lu fallbacks=%lu\n", ticks,
                 stats.native_entries, stats.interpreter_entries, stats.fallbacks);
     }

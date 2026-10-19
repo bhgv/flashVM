@@ -8,7 +8,7 @@
 - `include/flashvm/property.h`: property flags, deletion and enumerable-name snapshots.
 - `include/flashvm/function.h`: first-class native/AVM1 functions, invoke/construct.
 - `include/flashvm/avm1.h`: actions, rooted trace/URL sinks and borrowed active-target introspection.
-- `include/flashvm/stage.h`: host RGBA background selection and query.
+- [stage.h](../include/flashvm/stage.h): host background/quality plus [fvm_stage_request_update](../include/flashvm/stage.h#L38), [fvm_stage_get_update](../include/flashvm/stage.h#L41) and [fvm_stage_take_update](../include/flashvm/stage.h#L45) ([EN](UPDATE_AFTER_EVENT.md) / [RU](UPDATE_AFTER_EVENT.ru.md)).
 - `include/flashvm/movieclip.h`: host-authored clip frames and vector rendering.
 - `include/flashvm/standard.h`: standard installation and primitive conversion.
 - [timers.h](../include/flashvm/timers.h): [fvm_timers_poll](../include/flashvm/timers.h#L19), explicit owning-thread scheduled callback delivery ([EN](TIMERS.md) / [RU](TIMERS.ru.md)).
@@ -243,7 +243,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../include/flashvm/flashvm.h#L66) |
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../include/flashvm/stage.h#L19) |
+| `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../include/flashvm/stage.h#L41) |
+| `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../include/flashvm/stage.h#L38) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
+| `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |

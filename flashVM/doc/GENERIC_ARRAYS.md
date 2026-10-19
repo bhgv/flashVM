@@ -23,7 +23,7 @@ Object.registerClass(symbolId, constructor) returns a Boolean, replaces a bindin
 or unregisters it for null/undefined. Invalid constructors return false without
 removing a previous binding. The static method retains a private traced registry,
 so constructor graphs survive GC and travel with Object and its captured methods.
-[fvm_registered_class](../include/flashvm/standard.h#L37) resolves a borrowed constructor through the current Object
+[fvm_registered_class](../include/flashvm/standard.h#L38) resolves a borrowed constructor through the current Object
 class global and returns NOT_FOUND if absent. Imported registries are independent
 of the sender; importing the Object class does not install it as a global until
 the host/script explicitly binds it. Integrating registrations with SWF
@@ -52,7 +52,7 @@ Concat обычного объекта помещает сам объект пе
 Object.registerClass создаёт/заменяет привязку символа к функции, возвращает bool;
 null/undefined снимают привязку. Некорректная функция не удаляет прежнюю запись.
 Хранилище отслеживается GC и переносится с Object/захваченным методом. Получатель
-имеет отдельное хранилище. C API [fvm_registered_class](../include/flashvm/standard.h#L37) ищет класс через текущий
+имеет отдельное хранилище. C API [fvm_registered_class](../include/flashvm/standard.h#L38) ищет класс через текущий
 глобальный Object; импорт не устанавливает глобальные имена автоматически.
 Связь с ExportAssets/attachMovieClip предстоит реализовать на этапе 3.
 
@@ -77,5 +77,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_registered_class` | function | [include/flashvm/standard.h:37](../include/flashvm/standard.h#L37) |
+| `fvm_registered_class` | function | [include/flashvm/standard.h:38](../include/flashvm/standard.h#L38) |
 <!-- source-links:end -->

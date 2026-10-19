@@ -52,7 +52,7 @@ JIT-helper; этот пример по-прежнему вызывает root [f
 - [`fvm_stage_set_quality`](../../../include/flashvm/stage.h#L22), [`fvm_stage_get_quality`](../../../include/flashvm/stage.h#L19) — настройка и чтение политики: [STAGE_QUALITY.md](../../../doc/STAGE_QUALITY.md#fvm_stage_set_quality), [getter](../../../doc/STAGE_QUALITY.md#fvm_stage_get_quality).
 - [`fvm_avm1_execute`](../../../include/flashvm/avm1.h#L38) — настоящий ToggleQuality и переход к LOW: [контракт действия](../../../doc/STAGE_QUALITY.md#contract).
 - [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36), [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L56) — host clip и RGBA-рендер: [renderer integration](../../../doc/STAGE_QUALITY.md#renderer-integration-and-limits).
-- [`fvm_standard_install`](../../../include/flashvm/standard.h#L19), [`fvm_object_call`](../../../include/flashvm/value.h#L126), [`fvm_value_number`](../../../include/flashvm/value.h#L42) — drawing API через обычные native-методы: [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md#movieclip-model).
+- [`fvm_standard_install`](../../../include/flashvm/standard.h#L20), [`fvm_object_call`](../../../include/flashvm/value.h#L126), [`fvm_value_number`](../../../include/flashvm/value.h#L42) — drawing API через обычные native-методы: [STANDARD_OBJECTS.md](../../../doc/STANDARD_OBJECTS.md#movieclip-model).
 - [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62), [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64), [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68), [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70), [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) — ownership и порядок очистки: [API_INDEX.md](../../../doc/API_INDEX.md#runtime-and-context).
 
 - [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48), [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) — явный корень удерживаемого C-хостом clip: [GC API](../../../doc/GARBAGE_COLLECTION.md#api).
@@ -95,7 +95,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_stage_get_quality` | function | [include/flashvm/stage.h:19](../../../include/flashvm/stage.h#L19) |
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../../../include/flashvm/stage.h#L22) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
 | `fvm_value_string` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
 <!-- source-links:end -->

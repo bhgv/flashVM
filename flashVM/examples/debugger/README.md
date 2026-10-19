@@ -25,7 +25,7 @@ runtime после возврата всех синхронных callback/call.
 Общие используемые API:
 
 - [`fvm_config_init`, `fvm_runtime_create`, `fvm_runtime_destroy`, `fvm_context_create`, `fvm_context_destroy`](../../include/flashvm/flashvm.h) — инициализация ABI и ownership.
-- [`fvm_standard_install`](../../include/flashvm/standard.h#L19) — стандартные классы для инспекции.
+- [`fvm_standard_install`](../../include/flashvm/standard.h#L20) — стандартные классы для инспекции.
 - [`fvm_function_create_avm1`, `fvm_function_invoke`, `fvm_function_set_body`](../../include/flashvm/function.h) — обычные управляемые функции/подключения.
 - [`fvm_value_number`](../../include/flashvm/value.h#L42) — заполнение typed input без allocation/coercion.
 - [`fvm_exception_clear`](../../include/flashvm/exception.h#L65) — отдельная обработка намеренного script throw.
@@ -81,6 +81,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../../include/flashvm/flashvm.h#L40) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../include/flashvm/standard.h#L20) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../include/flashvm/value.h#L42) |
 <!-- source-links:end -->

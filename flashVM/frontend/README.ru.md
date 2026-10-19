@@ -55,3 +55,21 @@ ctest --test-dir build -R '^flashvm_player_timers_' --output-on-failure
 
 SWF6–8, interpreter/native JIT, 10 ms interval at 2 fps; a second-frame script
 checks multiple deliveries, and a damaged count fixture must fail.
+
+## updateAfterEvent (v0.623)
+
+Eligible interval/Mouse/focused-clip callbacks can request a coalesced redraw
+between frames. The player presents the current scene without advancing timeline;
+`--stats` reports `presentations` and interframe `refreshes` separately from `frames`.
+Requests made during drawing remain pending. Background/final-frame hold policy
+is unchanged. Contracts: [EN](../doc/UPDATE_AFTER_EVENT.md) / [RU](../doc/UPDATE_AFTER_EVENT.ru.md).
+
+Допустимые interval/Mouse/focused-clip callback запрашивают объединяемый redraw
+между кадрами без продвижения timeline. Счётчики presentations/refreshes отделены
+от frames. Запросы во время рисования не теряются; политика фона и финального
+ожидания прежняя. Тесты разделяют настоящий SDL dummy-video и протокольный capture
+с реальными raster-пикселями; это не приёмка видимого окна/устройства.
+
+```sh
+ctest --test-dir build -R '^flashvm_(player|capture)_update_' --output-on-failure
+```

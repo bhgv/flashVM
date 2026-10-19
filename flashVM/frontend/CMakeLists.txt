@@ -84,6 +84,22 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/timers.py $<TARGET_FILE:flashvm_player> --${mode})
       set_tests_properties(flashvm_player_timers_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
+    add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c
+      common/options.c common/audio.c common/audio_trace.c tests/update_capture.c)
+    target_link_libraries(flashvm_frontend_update_capture PRIVATE flashvm SDL2::SDL2)
+    if(WIN32)
+      target_link_libraries(flashvm_frontend_update_capture PRIVATE shell32)
+    endif()
+    set_target_properties(flashvm_frontend_update_capture PROPERTIES
+      C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_player_update_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_after_event.py $<TARGET_FILE:flashvm_player> --${mode} sdl)
+      add_test(NAME flashvm_capture_update_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/update_after_event.py $<TARGET_FILE:flashvm_frontend_update_capture> --${mode} capture)
+      set_tests_properties(flashvm_player_update_${mode} flashvm_capture_update_${mode} PROPERTIES TIMEOUT 90)
+    endforeach()
+    set_tests_properties(flashvm_player_update_jit flashvm_capture_update_jit PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(flashvm_player_timers_jit PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(flashvm_player_broadcaster_jit PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(flashvm_player_muted_jit PROPERTIES SKIP_RETURN_CODE 77)

@@ -1,6 +1,7 @@
 /* FlashVM: bounded, explicitly polled AS1/AS2 timers with strong pending and active roots. */
 #include "timers.hpp"
 #include "timer_constants.h"
+#include "stage_update.hpp"
 #include "flashvm/timers.h"
 #include "flashvm/execution.h"
 #include "../core/runtime.hpp"
@@ -317,6 +318,7 @@ extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
             FVM_Value ignored;
             unsigned argc = (unsigned)(active.values.size() - FVM_TIMERS_ARGUMENT_OFFSET);
             const FVM_Value *argv = argc ? &active.values[FVM_TIMERS_ARGUMENT_OFFSET] : 0;
+            FVM_StageUpdateEventScope redraw(c, active.repeat);
             if (active.method)
                 result = fvm_exec_call_method(c, 0, &active.values[0], &active.values[1], 0, argc, argv, &ignored);
             else

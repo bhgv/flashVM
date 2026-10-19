@@ -8,7 +8,7 @@ v0.592 добавляет явные Selection.getFocus/setFocus для нати
 ## Установка
 
 `fvm_standard_selection_install(context)` принимает заимствованный ненулевой живой
-контекст с уже установленными через [`fvm_standard_install`](../include/flashvm/standard.h#L19) стандартными объектами.
+контекст с уже установленными через [`fvm_standard_install`](../include/flashvm/standard.h#L20) стандартными объектами.
 Вызывать в потоке-владельце VM, вне уничтожения и сборки/освобождения GC.
 Синхронно готовит namespace с getFocus/setFocus/addListener/removeListener и
 accessor-снимком _listeners и атомарно публикует
@@ -219,7 +219,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:6](../src/standard/selection_listeners.hpp#L6) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
 | `fvm_selection_set_focus` | function | [src/standard/selection.cpp:128](../src/standard/selection.cpp#L128) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

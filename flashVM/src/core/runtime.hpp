@@ -340,6 +340,8 @@ struct FVM_Context
     fvm_detail::vector<FVM_AudioStopBinding *> audio_stop_bindings; /* Context-owned, always-called native stop controls. */
     fvm_detail::vector<FVM_AudioChannel *> audio_channels; /* Context-owned registrations; callbacks borrow host userdata. */
     bool audio_busy; /* Reject nested channel mutation while a host output callback runs. */
+    bool stage_update_pending; /* Coalesced host presentation request; never a GC edge. */
+    bool stage_update_allowed; /* Dynamic eligibility of supported input/interval callback chains. */
     FVM_StageQuality stage_quality; /* Context-wide vector rendering policy, default HIGH. */
     bool stage_quality_best; /* Remember BEST across LOW transitions from ToggleQuality. */
     bool stage_background_set; /* Whether a host or encountered SWF control selected a color. */

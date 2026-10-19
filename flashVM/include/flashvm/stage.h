@@ -32,6 +32,17 @@ extern "C"
     /* Remove the override/selection so the next encountered SWF background control may select a
      * color. */
     FVM_API FVM_Result fvm_stage_clear_background(FVM_Context *);
+    /* Coalesce an explicit host redraw request, independently of ActionScript event eligibility.
+     * Owner thread only; no allocation, callbacks, GC roots, rendering or timeline advancement.
+     * INVALID_ARGUMENT during destruction/collection/release; existing pending state is preserved. */
+    FVM_API FVM_Result fvm_stage_request_update(FVM_Context *);
+    /* Read the pending flag into required output without clearing it. Errors preserve output.
+     * Lifecycle/thread restrictions match request_update; plain integer results own no memory. */
+    FVM_API FVM_Result fvm_stage_get_update(FVM_Context *, int *requested);
+    /* Read and clear the pending flag atomically on the owner thread; errors preserve both.
+     * Consume before drawing: a request made during presentation then survives for a later render.
+     * A host which retries a failed presentation must request_update again. No rendering occurs here. */
+    FVM_API FVM_Result fvm_stage_take_update(FVM_Context *, int *requested);
 #ifdef __cplusplus
 }
 #endif

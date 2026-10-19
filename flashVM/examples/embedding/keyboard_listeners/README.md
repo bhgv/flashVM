@@ -59,7 +59,7 @@ movie tick. Здесь очередь не нужна: синхронный C-х
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned defaults; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime owner; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent state/registrations; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Install standard objects before Key; [KEYBOARD.md](../../../doc/KEYBOARD.md#installation). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install standard objects before Key; [KEYBOARD.md](../../../doc/KEYBOARD.md#installation). |
 | [`fvm_standard_keyboard_install`](../../../include/flashvm/keyboard.h#L88) | Explicitly publish Key methods and inspection getter; [KEYBOARD_LISTENERS.md](../../../doc/KEYBOARD_LISTENERS.md#script-interface). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | Create the managed callback receiver; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Protect construction-time object lifetime; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
@@ -131,7 +131,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../../../include/flashvm/keyboard.h#L88) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
 <!-- source-links:end -->

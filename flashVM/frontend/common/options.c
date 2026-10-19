@@ -205,7 +205,7 @@ void fvm_desktop_help(const char *program)
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
     puts("  --mute                  Disable event-sound device opening/playback");
-    puts("  --stats                 Print actual interpreter/JIT counters after playback");
+    puts("  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");

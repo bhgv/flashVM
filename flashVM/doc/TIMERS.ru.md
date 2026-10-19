@@ -1,6 +1,6 @@
 # Явно опрашиваемые таймеры AS1/AS2 — v0.621
 
-[English](TIMERS.md). [fvm_standard_install](../include/flashvm/standard.h#L19) добавляет `setInterval`, `clearInterval`
+[English](TIMERS.md). [fvm_standard_install](../include/flashvm/standard.h#L20) добавляет `setInterval`, `clearInterval`
 для host/SWF6–8 и `setTimeout`, `clearTimeout` для host/SWF8. Версия проверяется
 при каждом вызове, в том числе после установки до загрузки SWF. Используются
 существующие [часы контекста](GET_TIMER.ru.md). [fvm_timers_poll](../include/flashvm/timers.h#L19) выполняет явную
@@ -122,7 +122,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exception_clear` | function | [include/flashvm/exception.h:65](../include/flashvm/exception.h#L65) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `FVM_TIMERS_MAX_ARGUMENTS` | macro / define | [src/standard/timer_constants.h:5](../src/standard/timer_constants.h#L5) |
 | `FVM_TIMERS_MAX_DELAY` | macro / define | [src/standard/timer_constants.h:7](../src/standard/timer_constants.h#L7) |
 | `FVM_TIMERS_MAX_ID` | macro / define | [src/standard/timer_constants.h:8](../src/standard/timer_constants.h#L8) |

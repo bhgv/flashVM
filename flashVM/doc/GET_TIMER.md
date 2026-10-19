@@ -22,7 +22,7 @@ not implement `setInterval`, `clearInterval` or `setTimeout`.
 
 ## Calls, errors and ownership
 
-Call [fvm_standard_install](../include/flashvm/standard.h#L19) before [fvm_call](../include/flashvm/value.h#L138) with name `getTimer`, zero arguments
+Call [fvm_standard_install](../include/flashvm/standard.h#L20) before [fvm_call](../include/flashvm/value.h#L138) with name `getTimer`, zero arguments
 and a non-null output. Installation preserves conflicting own names using active
 SWF case rules and returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45); repeated installation validates
 registered identities. Loaded versions below SWF4 are unsupported by the callback.
@@ -75,6 +75,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `FVM_TIME_GET_TIMER_CALLBACK` | macro / define | [src/standard/time_constants.h:5](../src/standard/time_constants.h#L5) |
 <!-- source-links:end -->

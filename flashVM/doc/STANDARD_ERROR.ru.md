@@ -1,6 +1,6 @@
 # Error и преобразование в строку — v0.9
 
-[`fvm_standard_install`](../include/flashvm/standard.h#L19) атомарно устанавливает метаданные конструктора AS2 Error
+[`fvm_standard_install`](../include/flashvm/standard.h#L20) атомарно устанавливает метаданные конструктора AS2 Error
 вместе с Math и Boolean. [`fvm_construct`](../include/flashvm/value.h#L158) с именем Error и AVM1 NewObject создают
 объект с обычным изменяемым прототипом. Поля Error.prototype.name и message
 по умолчанию равны строке «Error». Пропущенный аргумент и undefined оставляют
@@ -14,8 +14,8 @@ Error.toString преобразует message в строку и не добав
 
 ## API и AVM1
 
-В C89-заголовке `flashvm/standard.h` добавлены [`fvm_value_to_string`](../include/flashvm/standard.h#L29) и
-[`fvm_value_instance_of`](../include/flashvm/standard.h#L33). Преобразование копирует входные строки в память контекста,
+В C89-заголовке `flashvm/standard.h` добавлены [`fvm_value_to_string`](../include/flashvm/standard.h#L30) и
+[`fvm_value_instance_of`](../include/flashvm/standard.h#L34). Преобразование копирует входные строки в память контекста,
 допускает совпадение входа и выхода, форматирует примитивы и вызывает нативные
 методы toString/valueOf объектов. Глубина рекурсии ограничена 64 вызовами.
 Для конечного числа подбирается до 17 значащих цифр с проверкой обратного
@@ -76,7 +76,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_construct` | function | [include/flashvm/value.h:158](../include/flashvm/value.h#L158) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
-| `fvm_value_instance_of` | function | [include/flashvm/standard.h:33](../include/flashvm/standard.h#L33) |
-| `fvm_value_to_string` | function | [include/flashvm/standard.h:29](../include/flashvm/standard.h#L29) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_value_instance_of` | function | [include/flashvm/standard.h:34](../include/flashvm/standard.h#L34) |
+| `fvm_value_to_string` | function | [include/flashvm/standard.h:30](../include/flashvm/standard.h#L30) |
 <!-- source-links:end -->

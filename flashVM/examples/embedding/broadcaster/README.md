@@ -55,7 +55,7 @@ processes and network transport.
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | config output: initialize ABI defaults; no resource acquired. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | config input, runtime output: acquire outer owner; destroy after context. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | runtime, context output: acquire a separate managed heap. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | context: install Object/Array prerequisite; may allocate synchronously. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | context: install Object/Array prerequisite; may allocate synchronously. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_standard_broadcaster_install`](../../../include/flashvm/broadcaster.h#L13) | context: opt-in script namespace; preserve conflicting bindings. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_broadcaster_initialize`](../../../include/flashvm/broadcaster.h#L19) | context, same-context source: atomically prepare three methods/live Array after binding validation. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | context, object output: create context-owned object; output is borrowed. [Guide](../../../doc/AS_BROADCASTER.md#installation-and-ownership). |
@@ -136,7 +136,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../../../include/flashvm/serialization.h#L30) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../../../include/flashvm/broadcaster.h#L13) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |
 | `FVM_VALUE_NUMBER` | enum constant | [include/flashvm/value.h:19](../../../include/flashvm/value.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |

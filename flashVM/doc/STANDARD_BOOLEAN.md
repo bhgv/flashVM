@@ -1,6 +1,6 @@
 # Boolean wrappers and native prototype methods
 
-[`fvm_standard_install`](../include/flashvm/standard.h#L19) now installs global Boolean class metadata and a dedicated
+[`fvm_standard_install`](../include/flashvm/standard.h#L20) now installs global Boolean class metadata and a dedicated
 Boolean constructor alongside the existing numeric functions. `Boolean(value)`
 through [fvm_call](../include/flashvm/value.h#L138)/AVM1 CallFunction still returns a primitive; `new Boolean(value)`
 through [fvm_construct](../include/flashvm/value.h#L158)/AVM1 NewObject returns a GC-owned object. Fixed-arity
@@ -94,5 +94,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../include/flashvm/value.h#L72) |
 | `fvm_object_has_own` | function | [include/flashvm/value.h:70](../include/flashvm/value.h#L70) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 <!-- source-links:end -->

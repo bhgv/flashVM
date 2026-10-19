@@ -20,6 +20,8 @@
 #include "time_constants.h"
 #include "timers.hpp"
 #include "timer_constants.h"
+#include "stage_update.hpp"
+#include "stage_update_constants.h"
 #include "flashvm/execution.h"
 #include "number_state.hpp"
 #include "../avm1/coercion.hpp"
@@ -725,7 +727,8 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"setInterval", fvm_builtin_set_interval},
                                    {"clearInterval", fvm_builtin_clear_interval},
                                    {"setTimeout", fvm_builtin_set_timeout},
-                                   {"clearTimeout", fvm_builtin_clear_timeout}};
+                                   {"clearTimeout", fvm_builtin_clear_timeout},
+                                   {"updateAfterEvent", fvm_builtin_update_after_event}};
 } // namespace
 /* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
@@ -816,6 +819,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == fvm_builtin_update_after_event)
+        return FVM_STAGE_UPDATE_CALLBACK;
     if (callback == fvm_builtin_set_interval)
         return FVM_TIMERS_SET_INTERVAL_CALLBACK;
     if (callback == fvm_builtin_clear_interval)
@@ -854,6 +859,8 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == FVM_STAGE_UPDATE_CALLBACK)
+        return fvm_builtin_update_after_event;
     if (id == FVM_TIMERS_SET_INTERVAL_CALLBACK)
         return fvm_builtin_set_interval;
     if (id == FVM_TIMERS_CLEAR_INTERVAL_CALLBACK)
@@ -967,6 +974,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "clearInterval",
                                "setTimeout",
                                "clearTimeout",
+                               "updateAfterEvent",
                                "String",
                                "Object",
                                "Array",

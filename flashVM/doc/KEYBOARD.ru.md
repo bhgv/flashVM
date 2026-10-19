@@ -6,7 +6,7 @@
 
 ## Установка
 
-Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L19), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L88).
+Сначала вызывается [`fvm_standard_install`](../include/flashvm/standard.h#L20), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L88).
 Последняя публикует глобальный объект `Key` с методами `getCode`, `getAscii`,
 `isDown`, `isToggled` и константами BACKSPACE, TAB, ENTER, SHIFT, CONTROL, CAPSLOCK,
 ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
@@ -23,7 +23,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 объект может остаться обычным мусором до GC. Прочие C++ исключения превращаются
 в [`FVM_ERROR`](../include/flashvm/flashvm.h#L43) и не пересекают ABI. Нужен живой контекст с установленной стандартной
 библиотекой; повторный вход из GC/разрушения отклоняется. Основная функция
-[`fvm_standard_install`](../include/flashvm/standard.h#L19) не подключает это подмножество автоматически.
+[`fvm_standard_install`](../include/flashvm/standard.h#L20) не подключает это подмножество автоматически.
 
 ## API снимка
 
@@ -71,7 +71,7 @@ ESCAPE, SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY.
 | `Key.isDown(code)` | Boolean удержания выбранной виртуальной клавиши; несколько клавиш независимы. |
 | `Key.isToggled(code)` | Boolean Caps Lock либо Num Lock по числовому [`FVM_KEY_NUMLOCK`](../include/flashvm/keyboard.h#L44); для прочих кодов false. |
 
-Запросы преобразуют первый аргумент через [`fvm_value_to_number`](../include/flashvm/standard.h#L24); ошибки и
+Запросы преобразуют первый аргумент через [`fvm_value_to_number`](../include/flashvm/standard.h#L25); ошибки и
 исключения преобразования распространяются. Нет аргумента, NaN, бесконечность,
 отрицательное значение, число меньше 1 или >=256 дают false. Допустимая дробная
 часть отбрасывается к нулю. Преобразование может выполнить скрипт; состояние
@@ -141,8 +141,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:24](../include/flashvm/standard.h#L24) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
 <!-- source-links:end -->

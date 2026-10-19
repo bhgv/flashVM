@@ -6,7 +6,7 @@ an OS device. [Русский контракт](KEYBOARD.ru.md).
 
 ## Installation
 
-Call [`fvm_standard_install`](../include/flashvm/standard.h#L19) first, then `fvm_standard_keyboard_install(context)`.
+Call [`fvm_standard_install`](../include/flashvm/standard.h#L20) first, then `fvm_standard_keyboard_install(context)`.
 The second function installs the global `Key` object with `getCode`, `getAscii`,
 `isDown`, `isToggled` and BACKSPACE, TAB, ENTER, SHIFT, CONTROL, CAPSLOCK, ESCAPE,
 SPACE, PGUP, PGDN, END, HOME, LEFT, UP, RIGHT, DOWN, INSERT, DELETEKEY constants.
@@ -23,7 +23,7 @@ attributes. Replacing/shadowing a polling method makes that validation fail.
 object is ordinary collectible garbage. Other C++ exceptions become [`FVM_ERROR`](../include/flashvm/flashvm.h#L43).
 No foreign C++ exception escapes this API. It requires a live context with the
 ordinary standard library installed and rejects collector/teardown reentry.
-The original [`fvm_standard_install`](../include/flashvm/standard.h#L19) does not implicitly install this subset.
+The original [`fvm_standard_install`](../include/flashvm/standard.h#L20) does not implicitly install this subset.
 
 ## Snapshot API
 
@@ -68,7 +68,7 @@ snapshot prevents partial validation updates; it is not cross-thread atomicity.
 | `Key.isDown(code)` | Boolean for one held virtual slot; simultaneous keys remain independent. |
 | `Key.isToggled(code)` | Boolean toggle for CAPSLOCK or numeric Num Lock code [`FVM_KEY_NUMLOCK`](../include/flashvm/keyboard.h#L44); false for other slots. |
 
-The two queries convert their first argument through [`fvm_value_to_number`](../include/flashvm/standard.h#L24);
+The two queries convert their first argument through [`fvm_value_to_number`](../include/flashvm/standard.h#L25);
 conversion errors/exceptions propagate. Missing arguments, NaN, infinities,
 negative values, values below 1 and values >=256 return false. Accepted fractional
 values truncate toward zero. Conversion can execute script: the state is read
@@ -138,8 +138,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_KeyboardState` | struct | [include/flashvm/keyboard.h:50](../include/flashvm/keyboard.h#L50) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:24](../include/flashvm/standard.h#L24) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
 <!-- source-links:end -->

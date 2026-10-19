@@ -7,7 +7,7 @@ needed. Only its own stored `prototype` data is read, without invoking an access
 or inheriting that field. The prototype value is then boxed if necessary. The
 prototype field spelling uses the SWF4–6 Flash case policy and exact SWF7–8 names.
 The class operand need not itself be callable. Host-only calls retain the strict
-existing [`fvm_value_instance_of`](../include/flashvm/standard.h#L33) class API policy.
+existing [`fvm_value_instance_of`](../include/flashvm/standard.h#L34) class API policy.
 
 Ordinary prototype links are walked separately from interface edges. Interface
 membership follows declared interface edges, not the ordinary prototype chains
@@ -65,5 +65,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_exec_instance_of` | function | [include/flashvm/execution.h:226](../include/flashvm/execution.h#L226) |
-| `fvm_value_instance_of` | function | [include/flashvm/standard.h:33](../include/flashvm/standard.h#L33) |
+| `fvm_value_instance_of` | function | [include/flashvm/standard.h:34](../include/flashvm/standard.h#L34) |
 <!-- source-links:end -->

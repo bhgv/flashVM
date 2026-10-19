@@ -14,7 +14,7 @@ boolean до SWF 5 — "1"/"0". Переданный undefined-разделит�
 
 Существующий помощник преобразования строк AVM1 вынесен из интерпретатора
 для общего применения; addProperty теперь использует его в загруженных SWF.
-Публичное [`fvm_value_to_string`](../include/flashvm/standard.h#L29) остаётся версионно независимым C-преобразованием.
+Публичное [`fvm_value_to_string`](../include/flashvm/standard.h#L30) остаётся версионно независимым C-преобразованием.
 Общий бюджет обхода/байтов/callbacks и очистка рекурсивного guard сохранены.
 Проверки array_legacy_join загружают настоящие минимальные SWF 4..8 и проверяют
 собственные данные, невызванные getter, разделитель, signed length и бюджет.
@@ -55,5 +55,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_value_to_string` | function | [include/flashvm/standard.h:29](../include/flashvm/standard.h#L29) |
+| `fvm_value_to_string` | function | [include/flashvm/standard.h:30](../include/flashvm/standard.h#L30) |
 <!-- source-links:end -->

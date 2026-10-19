@@ -26,7 +26,7 @@ roundtrip units: 8 (including NUL)
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration before creating its runtime. |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime; copies configuration and outlives the context. |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire the owning-thread heap for bindings and result strings. |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Publish standard objects and the two URL functions transactionally; preserves conflicts and reports errors. |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Publish standard objects and the two URL functions transactionally; preserves conflicts and reports errors. |
 | [`fvm_value_string_utf16`](../../../include/flashvm/value.h#L55) | Copy every supplied unit, including NUL, into a context-owned counted string. |
 | [`fvm_call`](../../../include/flashvm/value.h#L138) | Synchronously call `escape` or `unescape` with one rooted argument; conversion can allocate or execute user ToString but opens no network/device. |
 | [`fvm_value_get_utf16`](../../../include/flashvm/value.h#L60) | Copy decoded units into caller-owned bounded storage and return their counted length. |
@@ -55,7 +55,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_value_get_utf16` | function | [include/flashvm/value.h:60](../../../include/flashvm/value.h#L60) |
 | `fvm_value_string_utf16` | function | [include/flashvm/value.h:55](../../../include/flashvm/value.h#L55) |
 <!-- source-links:end -->

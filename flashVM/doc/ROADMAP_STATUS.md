@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.622
+# FlashVM stage status / Состояние стадий — v0.623
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,32 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.623 updateAfterEvent and redraw / Внеочередная отрисовка
+
+Standard installation now exposes a SWF5+ updateAfterEvent callback with stable
+graph identity. Eligible interval, native Mouse move/down/up and focused MovieClip
+keyboard call chains coalesce a host redraw flag; ordinary calls, standalone
+Key/wheel/timeout routes do not grant eligibility. OOM/error/exception exits restore
+the enclosing scope. Context-local flags remain stable through GC and do not export
+with Function graphs. Three allocation-free C89 stage APIs expose host request/read/take.
+
+Desktop redraw presents the current scene between frames without timeline ticks.
+Separate actual SDL dummy-video tests and an actual-raster protocol capture fixture
+verify requests/no-request controls in interpreter/JIT. The deterministic fixture
+requires exactly 49 white redraws between red frames at 0/500 ms, despite two requests
+per interval callback. A temporary v0.622 player loop misses every white redraw.
+
+Validation: 88 selected Release CTest checks passed (71 core/example checks,
+16 frontend checks and version refresh), plus 54 ASan/UBSan runtime checks with
+LeakSanitizer disabled. The strict-C89 tutorial ran both immediate and real-clock
+interactive paths against the instrumented core. Documentation source-link and
+debugger example checks passed.
+
+Контракты, ошибки, GC/графы и ограничения: [EN](UPDATE_AFTER_EVENT.md) /
+[RU](UPDATE_AFTER_EVENT.ru.md), [C89](../examples/embedding/timers/README.md).
+Это не полная ClipActions/target fanout или приёмка оригинального Player,
+видимых устройств и Windows/macOS/Android. Все девять стадий остаются открытыми.
 
 ## v0.622 timer wakeup hints / Подсказки пробуждения
 

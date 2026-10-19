@@ -1,6 +1,6 @@
 # Глобальные преобразования и разбор числового префикса — v0.11
 
-[`fvm_standard_install`](../include/flashvm/standard.h#L19) добавляет нативные функции parseInt, parseFloat и String.
+[`fvm_standard_install`](../include/flashvm/standard.h#L20) добавляет нативные функции parseInt, parseFloat и String.
 Они вызываются по имени через [`fvm_call`](../include/flashvm/value.h#L138) и AVM1 CallFunction. Конфликты имён
 проверяются до установки; публикация атомарна, повторная установка проверяет методы.
 
@@ -168,5 +168,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 <!-- source-links:end -->

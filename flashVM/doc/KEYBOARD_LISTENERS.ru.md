@@ -86,7 +86,7 @@ GC interpreter/JIT. Обычные native callbacks сохраняют native-б
 
 ## Скриптовый интерфейс
 
-Как прежде, вызовите [`fvm_standard_install`](../include/flashvm/standard.h#L19), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L88).
+Как прежде, вызовите [`fvm_standard_install`](../include/flashvm/standard.h#L20), затем [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L88).
 Установка теперь атомарно готовит также методы регистрации и getter списка;
 повторная установка проверяет исходные незатенённые callbacks. Регистрации не
 очищаются и не дублируются. Это явная установка подмножества; полная политика
@@ -175,7 +175,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_KEYBOARD_MAX_LISTENERS` | macro / define | [include/flashvm/keyboard.h:6](../include/flashvm/keyboard.h#L6) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

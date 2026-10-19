@@ -217,6 +217,7 @@ extern "C"
         context->input_userdata = 0;
         /* Initialize stage selection before the new context becomes visible to host callbacks. */
         context->audio_busy = false;
+        context->stage_update_pending = context->stage_update_allowed = false;
         context->stage_quality = FVM_STAGE_QUALITY_HIGH;
         context->stage_quality_best = false;
         context->stage_background_set = false;

@@ -1,6 +1,6 @@
 # AS1/AS2 URL functions
 
-v0.619 adds `escape(value)` and `unescape(value)` to [`fvm_standard_install`](../include/flashvm/standard.h#L19).
+v0.619 adds `escape(value)` and `unescape(value)` to [`fvm_standard_install`](../include/flashvm/standard.h#L20).
 They are available in host contexts and loaded SWF5–8. A SWF4 invocation returns
 [`FVM_UNSUPPORTED`](../include/flashvm/flashvm.h#L46), including when installation preceded loading. Existing own namespace bindings, including native methods and SWF5/6 case aliases,
 reject initial installation without replacement. No network request or OS encoding service is used. [Русский](URL_FUNCTIONS.ru.md).
@@ -95,6 +95,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_invoke` | function | [include/flashvm/function.h:65](../include/flashvm/function.h#L65) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

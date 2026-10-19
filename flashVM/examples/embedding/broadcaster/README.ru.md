@@ -55,7 +55,7 @@ pin защищают частичное построение и позднее �
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | config: задать ABI по умолчанию; ресурсы не создаются. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | config и выход runtime: создать внешнего владельца; разрушить после контекста. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | runtime и выход context: создать отдельную управляемую кучу. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | context: синхронно установить необходимые Object/Array с выделением памяти. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | context: синхронно установить необходимые Object/Array с выделением памяти. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_standard_broadcaster_install`](../../../include/flashvm/broadcaster.h#L13) | context: явно установить пространство имён скрипта, сохраняя конфликты. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_broadcaster_initialize`](../../../include/flashvm/broadcaster.h#L19) | context, source того же контекста: после проверки привязок атомарно установить методы и живой Array. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | context, выход object: создать принадлежащий контексту объект; указатель заимствован. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
@@ -136,7 +136,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../../../include/flashvm/serialization.h#L30) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../../../include/flashvm/broadcaster.h#L13) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |
 | `FVM_VALUE_NUMBER` | enum constant | [include/flashvm/value.h:19](../../../include/flashvm/value.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |

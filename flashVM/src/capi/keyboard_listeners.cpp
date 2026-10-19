@@ -1,4 +1,5 @@
 /* FlashVM: strongly rooted keyboard registrations and mutation-safe synchronous notification. */
+#include "../standard/stage_update.hpp"
 #include "../core/keyboard_state.hpp"
 #include "../core/optional_method.hpp"
 #include "../core/value_vector_root_scope.hpp"
@@ -160,6 +161,7 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
             FVM_Result result = work.step();
             if (result != FVM_OK)
                 return result;
+            FVM_StageUpdateEventScope redraw(context, focus && i == 0);
             result = fvm_object_call_optional(context, recipients[i].object,
                                                          pressed ? "onKeyDown" : "onKeyUp");
             if (result != FVM_OK)

@@ -45,7 +45,7 @@ iterations, including between timeline frames. SDL waiting is capped by the
 nearest timer as well as the existing frame/audio limits. Callback activations
 can be collected at a safe host boundary between slow frames. Timeline advance,
 rendering and frame counters keep their authored cadence; callback state changes
-appear at the next render. This does not implement updateAfterEvent.
+appear at the next render. v0.623 adds [eligible updateAfterEvent redraws](UPDATE_AFTER_EVENT.md) between frames.
 
 Existing background suspension remains: an inactive player waits without timer
 delivery; on resumption late intervals coalesce under the existing policy.

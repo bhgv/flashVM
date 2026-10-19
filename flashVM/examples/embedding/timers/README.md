@@ -24,6 +24,12 @@ zero and the 1000 ms ceiling. A query does not invoke the callback; after
 cancellation the example verifies pending=0 and the unchanged host ceiling.
 [Wakeup contract](../../../doc/TIMER_WAKEUP.md).
 
+The interval callback calls updateAfterEvent; after polling, the host observes and
+consumes its redraw flag, printing `callback redraw: N` (normally 0/1 as above).
+The example also verifies that two explicit host requests coalesce into one.
+It requires no renderer and never claims a display was updated.
+[Redraw contract](../../../doc/UPDATE_AFTER_EVENT.md).
+
 ## API, lifetime and blocking
 
 | Function | Demonstrated contract |
@@ -31,13 +37,16 @@ cancellation the example verifies pending=0 and the unchanged host ceiling.
 | [fvm_config_init](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration ABI defaults. |
 | [fvm_runtime_create](../../../include/flashvm/flashvm.h#L64) | Copy configuration and acquire the runtime; outlives its context. |
 | [fvm_context_create](../../../include/flashvm/flashvm.h#L68) | Acquire the owning-thread heap and independent monotonic origin. |
-| [fvm_standard_install](../../../include/flashvm/standard.h#L19) | Publish scheduling globals transactionally, preserving conflicting own bindings. |
+| [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Publish scheduling globals transactionally, preserving conflicting own bindings. |
 | [fvm_function_create_native](../../../include/flashvm/function.h#L49) | Create a managed Function with borrowed callback code/userdata; pending registration retains it. |
 | [fvm_value_undefined](../../../include/flashvm/value.h#L40) | Initialize Function value fields or produce the ignored callback result; allocates no buffer. |
 | [fvm_value_number](../../../include/flashvm/value.h#L42) | Prepare the delay Number; no managed storage is acquired. |
 | [fvm_call](../../../include/flashvm/value.h#L138) | Synchronously register/cancel via setInterval/clearInterval; may allocate/coerce, but does not wait for due time. |
 | [fvm_timers_next_delay](../../../include/flashvm/timers.h#L29) | Read an allocation-free capped wakeup hint without callbacks; preserve both outputs on errors and return the host ceiling for an empty queue. |
 | [fvm_timers_poll](../../../include/flashvm/timers.h#L19) | Attempt the due snapshot synchronously; may call user code/allocate and returns attempted count, including a failing delivery. |
+| [fvm_stage_request_update](../../../include/flashvm/stage.h#L38) | Coalesce an explicit host redraw independent of script-event eligibility; allocate/call/render nothing. |
+| [fvm_stage_get_update](../../../include/flashvm/stage.h#L41) | Read the pending plain flag without clearing it; owner-thread and lifecycle restrictions apply. |
+| [fvm_stage_take_update](../../../include/flashvm/stage.h#L45) | Read and clear before host drawing, preserving later requests; request again if a failed presentation is retried. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Drop pending roots and free the heap before host callback counters leave scope. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after all contexts have been destroyed. |
 
@@ -65,7 +74,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_function_create_native` | function | [include/flashvm/function.h:49](../../../include/flashvm/function.h#L49) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../../../include/flashvm/stage.h#L41) |
+| `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../../../include/flashvm/stage.h#L38) |
+| `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../../../include/flashvm/stage.h#L45) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../../../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../../../include/flashvm/timers.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |

@@ -31,7 +31,7 @@ Each new context starts with seed 1, so sequences are intentionally reproducible
 Workers have independent state; no global libc rand state is shared. This is not
 cryptographic randomness or a replica of Flash Player's PRNG.
 
-[`fvm_value_to_number`](../include/flashvm/standard.h#L24) converts undefined to NaN, null to +0, boolean to 0/1,
+[`fvm_value_to_number`](../include/flashvm/standard.h#L25) converts undefined to NaN, null to +0, boolean to 0/1,
 and preserves numbers. String conversion is independent of locale: ASCII
 whitespace, signed decimal/fraction/exponent, unsigned 0x hexadecimal, Infinity
 and empty-string zero. Invalid syntax yields NaN. Negative zero is preserved.
@@ -67,6 +67,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:24](../include/flashvm/standard.h#L24) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
 <!-- source-links:end -->

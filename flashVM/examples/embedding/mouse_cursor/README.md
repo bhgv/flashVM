@@ -59,7 +59,7 @@ explains SWF5 cursor support, SWF6 listener guards and ignored arguments.
 
 | API | Parameters and behavior |
 | --- | --- |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Live context: install ordinary objects; real allocation errors propagate. [Embedding](../../../doc/EMBEDDING_API.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Live context: install ordinary objects; real allocation errors propagate. [Embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L50) | Standard-installed context: atomically install cursor/listener subset, preserve conflicts; version gates remain explicit. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
 | [`fvm_get_global`](../../../include/flashvm/value.h#L85) | Context, name Mouse, writable value output: borrow namespace retained by global binding, no host ownership transfer. [Embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Context, borrowed receiver, hide/show name, count=0, NULL args, writable out: ordinary rooted native method lookup, return Number previous request; real lookup/callback errors propagate. [Mouse](../../../doc/MOUSE.md#script-hide-and-show). |
@@ -89,6 +89,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../../../include/flashvm/flashvm.h#L42) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../../../include/flashvm/mouse.h#L50) |
 <!-- source-links:end -->
