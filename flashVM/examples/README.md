@@ -1252,6 +1252,10 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 
 **Колесо v0.607:** явный перевод нативной вертикальной прокрутки в строки; параметры и ограничения — в README.
 
+
+v0.612–0.614: восстановление evdev через ioctl после потери пакетов и согласование
+BTN_LEFT/BTN_TOUCH; [контракты и тесты](frontends/linux_fb/README.md).
+
 <a id="group-frontends-memory"></a>
 ### memory
 
@@ -1279,6 +1283,10 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 **Файлы:** [main.c](frontends/clutter3d/main.c), [общий demo.h](frontends/common/demo.h).
 
 [К оглавлению](#оглавление).
+
+
+v0.613: вертикальное дискретное/плавное колесо в координатах актора и отдельная
+видимость курсора stage; [параметры API и ограничения](frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
 
 <a id="example-frontends-gtk3"></a>
 ### gtk3

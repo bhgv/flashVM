@@ -72,5 +72,8 @@ int main(void)
     sx.maximum=319;sx.value=999;sy.value=-100;
     assert(event(&p,&d,EV_SYN,SYN_REPORT,0));
     assert(d.held && !p.dropping);position(&d,319,0);
+    assert(p.touch_down && !p.left_down);
+    assert(event(&p,&d,EV_KEY,BTN_LEFT,0) && d.held); /* untouched source cannot release recovered touch */
+    assert(event(&p,&d,EV_KEY,BTN_TOUCH,0) && !d.held);
     demo_close(&d);return 0;
 }

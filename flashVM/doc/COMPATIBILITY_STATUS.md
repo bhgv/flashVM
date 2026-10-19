@@ -4907,6 +4907,25 @@ open; no auxiliary SDK result substitutes for native platform acceptance.
 3D-проекции сохранена; системная библиотека без прежнего патча её не проходит.
 [API, parameters and ownership](../examples/frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
 
+
+## v0.614 coherent evdev primary state / Общее удержание evdev
+
+BTN_LEFT and BTN_TOUCH now retain independent copied native state. Mouse down/up
+is delivered only when their combined OR changes, preventing duplicate presses
+and premature release while the other source remains held. Recovery snapshots
+populate the same bits; autorepeat and unrelated keys/buttons remain ignored.
+
+The C89 evdev_buttons fixture checks real public Mouse listener counts for both
+source orders, duplicates, autorepeat and unrelated records; evdev_recovery adds
+release after a restored touch. Linux adapter ASan/UBSan uses disabled leak
+detection and the ordinary VM library, not whole-VM instrumentation. This is a
+single-primary host policy, not full multitouch or physical-device acceptance.
+All nine stages remain open.
+
+Русский: исправлено объединение двух нативных источников в один указатель VM;
+контракты ядра/ABI не изменены. Аппаратная и межплатформенная приёмка остаётся
+открытой. [Details / Подробности](../examples/frontends/linux_fb/README.md#v0614-primary-source-reconciliation--согласование-кнопок).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

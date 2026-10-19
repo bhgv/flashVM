@@ -217,3 +217,23 @@ fail closed. Sequential ioctl snapshots are not a hardware-atomic transaction.
 | `pointer_resync(pointer, demo)` | internal owner-thread adapter, consumes copied device state and publishes one VM transition / внутренний адаптер, без сохранения kernel pointers |
 
 Device-free tests: `flashvm_evdev_recovery` and `flashvm_linux_device_layout`.
+
+## v0.614 primary-source reconciliation / Согласование кнопок
+
+The decoder stores BTN_LEFT and BTN_TOUCH separately. Their logical OR is the
+single VM primary hold. Only aggregate edges dispatch Mouse down/up: repeated
+press/release records and autorepeat value 2 do not duplicate callbacks, and
+releasing one source does not release a still-held other source. Keyboard and
+secondary-button records remain ignored. Recovery snapshots populate the same
+two bits before resuming input, so an unrelated release cannot end a recovered
+contact. This is a one-primary tutorial policy, not general multitouch or pointer IDs.
+
+Русский: BTN_LEFT и BTN_TOUCH больше не перезаписывают друг друга. Удержание VM
+сохраняется, пока хотя бы один источник нажат; down/up отправляются только при
+изменении объединённого состояния. Снимки восстановления обновляют эти же два
+признака. Повторы и value=2 не создают новых событий. Не добавляется отдельный
+поток клавиатуры или поддержка нескольких указателей.
+
+`flashvm_evdev_buttons` verifies actual public Mouse listener counts for both
+source orders, duplicates, autorepeat and unrelated keys/buttons.
+`flashvm_evdev_recovery` also checks release after a recovered held touch.

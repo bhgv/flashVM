@@ -208,20 +208,6 @@ Public fork declarations:
 No new library patch or inferno-os client dependency is needed for these APIs.
 The supplied separate library patch remains unchanged. Auxiliary system SDK
 checks do not replace execution of the requested fork's Android backend.
-
-<!-- source-links:start -->
-## Исходники / Source declarations
-
-Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
-номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
-Source line links describe the current checkout, including in historical notes.
-
-| Символ / Symbol | Вид / Kind | Исходник / Source |
-| --- | --- | --- |
-| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
-| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
-<!-- source-links:end -->
-
 ### Current acceptance / Текущие проверки
 
 The focused `flashvm_clutter_wheel_cursor` fixture and ordinary/hidden/touch-only
@@ -236,3 +222,24 @@ fork; it was not weakened to make an auxiliary system run look equivalent.
 Русский: проверка новых колеса/курсора отделена от строгой проверки дробной
 обратной проекции. Последняя на системном Clutter без прежнего патча не проходит;
 это не объявляется свежей приёмкой пользовательского форка или Android.
+
+[clutter_event_get_scroll_direction](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-event.h) — read borrowed event data / чтение заимствованных данных события.
+
+[clutter_event_get_scroll_delta](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-event.h) — read borrowed event data / чтение заимствованных данных события.
+
+[clutter_stage_show_cursor](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-stage.h) — stage-local native cursor request / запрос курсора своего stage.
+
+[clutter_stage_hide_cursor](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-stage.h) — stage-local native cursor request / запрос курсора своего stage.
+
+<!-- source-links:start -->
+## Исходники / Source declarations
+
+Ссылки ведут к объявлениям/определениям в текущем дереве исходников;
+номера строк обновляются скриптом `scripts/link_documentation_sources.py`.
+Source line links describe the current checkout, including in historical notes.
+
+| Символ / Symbol | Вид / Kind | Исходник / Source |
+| --- | --- | --- |
+| `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
+<!-- source-links:end -->

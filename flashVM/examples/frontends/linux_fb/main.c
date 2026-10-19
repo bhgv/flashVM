@@ -10,6 +10,8 @@ typedef struct PointerDevice { /* Only one input descriptor is selected per run.
     int mouse; /* Three-byte mousedev stream instead of evdev records. */
     double x, y; /* Tutorial coordinates clamped into its fixed framebuffer rectangle. */
     struct input_absinfo ax, ay; /* Optional calibrated legacy single-pointer ABS axes. */
+    int left_down; /* Last accepted BTN_LEFT native state, independent of legacy touch. */
+    int touch_down; /* Last accepted BTN_TOUCH state; primary hold is the OR of both. */
     int dropping; /* Ignore damaged evdev records through the next SYN_REPORT. */
     int (*query)(int, unsigned long, void *); /* Native ioctl wrapper; replaceable only by decoder fixtures. */
     int absolute; /* Both ABS_X and ABS_Y queried successfully with nonempty ranges. */
@@ -88,8 +90,9 @@ static int pointer_resync(PointerDevice *pointer, Demo *demo) /* Relative motion
         pointer->y = ((double)ay.value - ay.minimum) * (DEMO_HEIGHT - 1) / /* Same scale as ordinary ABS reports. */
             ((double)ay.maximum - ay.minimum); /* pointer_send clamps out-of-range device values. */
     } /* Lost relative deltas and wheel events are deliberately not guessed. */
-    held = ((keys[BTN_LEFT / CHAR_BIT] & (1U << (BTN_LEFT % CHAR_BIT))) != 0) || /* Mouse primary button. */
-           ((keys[BTN_TOUCH / CHAR_BIT] & (1U << (BTN_TOUCH % CHAR_BIT))) != 0); /* Legacy single touch contact. */
+    pointer->left_down = (keys[BTN_LEFT / CHAR_BIT] & (1U << (BTN_LEFT % CHAR_BIT))) != 0; /* Mouse snapshot. */
+    pointer->touch_down = (keys[BTN_TOUCH / CHAR_BIT] & (1U << (BTN_TOUCH % CHAR_BIT))) != 0; /* Touch snapshot. */
+    held = pointer->left_down || pointer->touch_down; /* Either source keeps the common primary contact held. */
     if (!pointer_send(pointer, demo, held ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_MOVE)) return 0; /* Explicit resume policy. */
     pointer->dropping = 0; /* Resume ordinary records only after VM acceptance. */
     return 1; /* A held snapshot begins a new contact after the cancellation at loss. */
@@ -125,7 +128,15 @@ static int evdev_event(PointerDevice *pointer, Demo *demo, const struct input_ev
             ((double)pointer->ay.maximum - pointer->ay.minimum); /* No display offset added to world. */
     if (event->type == EV_KEY && (event->code == BTN_LEFT || event->code == BTN_TOUCH) && /* One primary stream. */
         (event->value == FB_DEMO_KEY_RELEASED || event->value == FB_DEMO_KEY_PRESSED)) /* Ignore autorepeat and unrelated keyboard events. */
-        return pointer_send(pointer, demo, event->value ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP); /* Ordered. */
+    { /* Duplicate records and one source's release must not release the other source. */
+        int previous = pointer->left_down || pointer->touch_down; /* Aggregate before this native record. */
+        int held; /* Aggregate after exactly one source changed. */
+        if (event->code == BTN_LEFT) pointer->left_down = event->value; /* Copied 0/1 mouse state. */
+        else pointer->touch_down = event->value; /* Copied 0/1 legacy contact state. */
+        held = pointer->left_down || pointer->touch_down; /* One coherent VM primary pointer. */
+        if (held != previous) return pointer_send(pointer, demo, held ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP); /* Ordered edge. */
+        return 1; /* Preserve aggregate hold and suppress duplicate script notifications. */
+    } /* Autorepeat value 2 never enters this transition block. */
     if (event->type == EV_SYN && event->code == SYN_REPORT) { /* Commit one completed native packet. */
         FVM_Affine identity = {1, 0, 0, 1, 0, 0}; /* Framebuffer rectangle and world have equal pixel units. */
         double delta = ((pointer->wheel_highres_available || pointer->wheel_has_highres) ? /* Select one representation for this report. */
