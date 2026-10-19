@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.610
+# FlashVM stage status / Состояние стадий — v0.612
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,30 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+
+## v0.612 evdev snapshot recovery / Восстановление evdev
+
+The direct Linux tutorial now cancels an old primary contact on SYN_DROPPED,
+discards pending wheel/unpublished relative motion, ignores damaged input through
+the next SYN_REPORT, then queries current key state and both calibrated absolute
+axes where applicable. A held snapshot starts a new contact; a released snapshot
+publishes the recovered position. Lost relative/wheel displacement is not guessed.
+Native ioctl retries EINTR; failed queries and invalid calibration fail closed.
+Sequential snapshots are not an atomic hardware transaction.
+
+Two current Linux C89 decoder tests pass: linux_device_layout and evdev_recovery.
+The recovery fixture also passes adapter ASan/UBSan (LeakSanitizer disabled in the
+traced environment); that run links the ordinary VM library and does not claim
+a newly instrumented whole VM. Fixtures cover ignored stale/repeated-loss records,
+relative position preservation, held absolute recovery, per-query disconnects,
+invalid ranges and coordinate clamping. Physical fbdev/evdev devices and other OS
+acceptance remain open. All nine roadmap stages remain open.
+
+Русский: это восстановление существующего Linux-адаптера после переполнения
+очереди, без повторения потерянных нажатий/прокрутки. Проверен реальный декодер
+с контролируемыми ioctl-снимками, не физическое устройство.
+[Contract / Контракт](../examples/frontends/linux_fb/README.md#v0612-evdev-loss-recovery--восстановление-evdev).
 
 ## v0.610 native cursor application / Курсор оконных хостов
 

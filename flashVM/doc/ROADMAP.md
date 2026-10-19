@@ -3297,6 +3297,30 @@ with an invalid audio driver. [EN](PLAYER_POINTER.md#muted-movie-playback) /
 [RU](PLAYER_POINTER.ru.md#ролики-без-звука). Это исправление плеера стадий 4/9,
 не прослушивание, новый декодер или завершение платформенной приёмки.
 
+
+## v0.612 evdev snapshot recovery / Восстановление evdev
+
+The direct Linux tutorial now cancels an old primary contact on SYN_DROPPED,
+discards pending wheel/unpublished relative motion, ignores damaged input through
+the next SYN_REPORT, then queries current key state and both calibrated absolute
+axes where applicable. A held snapshot starts a new contact; a released snapshot
+publishes the recovered position. Lost relative/wheel displacement is not guessed.
+Native ioctl retries EINTR; failed queries and invalid calibration fail closed.
+Sequential snapshots are not an atomic hardware transaction.
+
+Two current Linux C89 decoder tests pass: linux_device_layout and evdev_recovery.
+The recovery fixture also passes adapter ASan/UBSan (LeakSanitizer disabled in the
+traced environment); that run links the ordinary VM library and does not claim
+a newly instrumented whole VM. Fixtures cover ignored stale/repeated-loss records,
+relative position preservation, held absolute recovery, per-query disconnects,
+invalid ranges and coordinate clamping. Physical fbdev/evdev devices and other OS
+acceptance remain open. All nine roadmap stages remain open.
+
+Русский: это восстановление существующего Linux-адаптера после переполнения
+очереди, без повторения потерянных нажатий/прокрутки. Проверен реальный декодер
+с контролируемыми ioctl-снимками, не физическое устройство.
+[Contract / Контракт](../examples/frontends/linux_fb/README.md#v0612-evdev-loss-recovery--восстановление-evdev).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

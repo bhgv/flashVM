@@ -85,9 +85,11 @@ untouched. Reconfigure/restart if another owner changes display mode externally.
 Evdev accumulates REL_X/Y and calibrated ABS_X/Y, forwards button records in their
 native order at the position known at that record, and publishes accumulated motion
 at SYN_REPORT. Initial held-at-open button state is not synthesized. Pointer is
-clamped to the tutorial rectangle. SYN_DROPPED cancels any hold and stops with an
-error: this example deliberately requires reopening/re-querying instead of guessing
-state after loss. It does not decode ABS_MT slots, keyboard layout or multitouch.
+clamped to the tutorial rectangle. SYN_DROPPED cancels any hold, discards pending
+wheel/unpublished relative motion, ignores through the next SYN_REPORT, then
+queries current keys and (for legacy absolute devices) both axes. A held snapshot
+begins a new contact; a released snapshot publishes a move at the recovered position.
+Query/calibration failures stop with an error rather than guessing state. It does not decode ABS_MT slots, keyboard layout or multitouch.
 Mousedev reassembles three-byte packets, honors header sign bits and Y inversion;
 overflow stops rather than inventing movement. Both paths bound work per tick.
 
@@ -174,8 +176,8 @@ REL_WHEEL detents are used; the decoder also prefers explicit high-res data foun
 in a report. Accumulate until SYN_REPORT, publish the completed pointer position,
 then deliver nonzero vertical lines using 3 lines/detent. Reset packet accumulators
 before callbacks. REL_HWHEEL remains unsupported; three-byte mousedev does not
-acquire wheel bytes or negotiate IntelliMouse mode. SYN_DROPPED stops without
-publishing pending wheel. No native worker or VM keyboard policy is introduced.
+acquire wheel bytes or negotiate IntelliMouse mode. SYN_DROPPED discards pending
+wheel before the explicit snapshot recovery described below. No native worker or VM keyboard policy is introduced.
 
 | API/code | Parameters and behavior |
 | --- | --- |
@@ -188,3 +190,30 @@ publishing pending wheel. No native worker or VM keyboard policy is introduced.
 доставляется только после полного пакета; потерянный пакет прекращает пример.
 Тест использует искусственные input_event и проверяет дробь, выбор high-res,
 отдельные legacy-пакеты и отмену — физический evdev этим не подтверждается.
+
+## v0.612 evdev loss recovery / Восстановление evdev
+
+The decoder follows the kernel [SYN_DROPPED contract](https://docs.kernel.org/input/event-codes.html#ev-syn):
+ignore through the next report, query EVIOCGKEY, and query EVIOCGABS(ABS_X/Y)
+when using calibrated absolute axes. Relative/wheel displacement lost to overflow
+cannot be recovered. The last accepted VM position is retained for relative input;
+absolute calibration/value is validated and copied before VM publication. Repeated
+loss markers do not query early. ioctl EINTR is retried; disconnect/invalid ranges
+fail closed. Sequential ioctl snapshots are not a hardware-atomic transaction.
+
+Русский: при переполнении очереди адаптер завершает прежнее удержание в последней
+принятой позиции и отбрасывает неполный пакет. До следующего SYN_REPORT все
+записи игнорируются. Затем EVIOCGKEY восстанавливает текущее состояние кнопок;
+для абсолютного указателя EVIOCGABS получает обе координаты и калибровку. Новое
+удержание начинается только из успешного снимка; потерянные относительные движения
+и колесо не выдумываются. Ошибка любого запроса или нулевой диапазон завершают
+пример без частичного обновления VM. Это не multitouch-протокол и не физическая
+приёмка устройства.
+
+| API | Parameters / Параметры |
+| --- | --- |
+| `EVIOCGKEY(bytes)` | fd is the explicit evdev descriptor; output is a zeroed bounded bitmap of keys/buttons / fd — выбранный evdev; выход — ограниченная битовая карта |
+| `EVIOCGABS(ABS_X/ABS_Y)` | output is input_absinfo with current value/min/max; both validated before use / input_absinfo содержит значение и диапазон, проверяются обе оси |
+| `pointer_resync(pointer, demo)` | internal owner-thread adapter, consumes copied device state and publishes one VM transition / внутренний адаптер, без сохранения kernel pointers |
+
+Device-free tests: `flashvm_evdev_recovery` and `flashvm_linux_device_layout`.

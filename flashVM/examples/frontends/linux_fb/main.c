@@ -10,6 +10,8 @@ typedef struct PointerDevice { /* Only one input descriptor is selected per run.
     int mouse; /* Three-byte mousedev stream instead of evdev records. */
     double x, y; /* Tutorial coordinates clamped into its fixed framebuffer rectangle. */
     struct input_absinfo ax, ay; /* Optional calibrated legacy single-pointer ABS axes. */
+    int dropping; /* Ignore damaged evdev records through the next SYN_REPORT. */
+    int (*query)(int, unsigned long, void *); /* Native ioctl wrapper; replaceable only by decoder fixtures. */
     int absolute; /* Both ABS_X and ABS_Y queried successfully with nonempty ranges. */
     unsigned char packet[FB_DEMO_MOUSE_BYTES]; /* Preserve partial PS/2 packet reads. */
     unsigned int used; /* Number of packet bytes collected so far. */
@@ -59,11 +61,54 @@ static int pointer_send(PointerDevice *pointer, Demo *demo, FVM_MouseEventType t
     if (pointer->y >= DEMO_HEIGHT) pointer->y = DEMO_HEIGHT - 1; /* Bound vertical marker. */
     return demo_pointer(demo, type, &identity, pointer->x, pointer->y) == FVM_OK; /* Preserve real VM failure. */
 } /* Coordinates are copied into the context, not retained by pointer. */
+/* Query one copied device snapshot through the native descriptor, retrying interrupted ioctls. */
+static int pointer_query(int fd, unsigned long request, void *output) /* No VM calls in this helper. */
+{ /* The caller owns every fixed-size output buffer. */
+    int result; /* Preserve errno from the last failed ioctl. */
+    do { result = ioctl(fd, request, output); } while (result < 0 && errno == EINTR); /* Retry signal interruption. */
+    return result; /* Nonnegative native results indicate a completed query. */
+} /* No resource or output pointer is retained. */
+/* Recover current buttons and calibrated absolute position after the ignored report boundary. */
+static int pointer_resync(PointerDevice *pointer, Demo *demo) /* Relative motion cannot be reconstructed. */
+{ /* Collect every required native query before publishing a recovered VM transition. */
+    unsigned char keys[FB_DEMO_KEY_BITS_BYTES]; /* Kernel bitmap, zero unused tail bytes. */
+    struct input_absinfo ax, ay; /* Stage new absolute values/calibration transactionally. */
+    int held; /* Snapshot primary state; this is not a replay of lost presses. */
+    int (*query)(int, unsigned long, void *) = pointer->query ? pointer->query : pointer_query; /* Real native default. */
+    memset(keys, 0, sizeof(keys)); /* ioctl may return fewer bytes than requested. */
+    if (query(pointer->fd, EVIOCGKEY(sizeof(keys)), keys) < 0) return 0; /* Disconnected/unsupported device fails closed. */
+    if (pointer->absolute) /* Relative devices keep the last accepted VM position. */
+    { /* A changed calibration is valid only when both queried ranges remain nonempty. */
+        if (query(pointer->fd, EVIOCGABS(ABS_X), &ax) < 0 || /* Complete both native coordinate queries. */
+            query(pointer->fd, EVIOCGABS(ABS_Y), &ay) < 0) return 0; /* No partial VM publication. */
+        if (ax.maximum <= ax.minimum || ay.maximum <= ay.minimum) { errno = EINVAL; return 0; } /* No zero divisor. */
+        pointer->ax = ax; pointer->ay = ay; /* Commit copied calibration after full validation. */
+        pointer->x = ((double)ax.value - ax.minimum) * (DEMO_WIDTH - 1) / /* Convert without signed subtraction overflow. */
+            ((double)ax.maximum - ax.minimum); /* Fixed world rectangle. */
+        pointer->y = ((double)ay.value - ay.minimum) * (DEMO_HEIGHT - 1) / /* Same scale as ordinary ABS reports. */
+            ((double)ay.maximum - ay.minimum); /* pointer_send clamps out-of-range device values. */
+    } /* Lost relative deltas and wheel events are deliberately not guessed. */
+    held = ((keys[BTN_LEFT / CHAR_BIT] & (1U << (BTN_LEFT % CHAR_BIT))) != 0) || /* Mouse primary button. */
+           ((keys[BTN_TOUCH / CHAR_BIT] & (1U << (BTN_TOUCH % CHAR_BIT))) != 0); /* Legacy single touch contact. */
+    if (!pointer_send(pointer, demo, held ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_MOVE)) return 0; /* Explicit resume policy. */
+    pointer->dropping = 0; /* Resume ordinary records only after VM acceptance. */
+    return 1; /* A held snapshot begins a new contact after the cancellation at loss. */
+} /* No claim that snapshot ioctls constitute an atomic hardware transaction. */
 /* Consume one complete legacy evdev record, preserving native record order. */
 static int evdev_event(PointerDevice *pointer, Demo *demo, const struct input_event *event) { /* Borrow record. */
     if (event->type == EV_SYN && event->code == SYN_DROPPED) { /* Kernel queue lost synchronization. */
-        demo_cancel(demo); errno = EOVERFLOW; return 0; /* Fail closed; restart to re-query state. */
+        pointer->dropping = 1; /* Repeated loss markers keep the recovery boundary pending. */
+        pointer->wheel_legacy = pointer->wheel_highres = 0; pointer->wheel_has_highres = 0; /* Discard partial wheel packet. */
+        demo_cancel(demo); /* End a previous drag at its last accepted VM coordinate. */
+        if (demo->status != FVM_OK) return 0; /* Handler failure cannot be hidden by recovery. */
+        demo->status = fvm_input_get_pointer(demo->context, &pointer->x, &pointer->y); /* Discard unpublished REL motion. */
+        return demo->status == FVM_OK; /* Keep reading until the mandatory synchronization boundary. */
     } /* Never interpret subsequent stale records as a continuous drag. */
+    if (pointer->dropping) /* Kernel protocol requires ignoring through and including the next report. */
+    { /* No stale button, axis or wheel event reaches ordinary decoding. */
+        if (event->type == EV_SYN && event->code == SYN_REPORT) return pointer_resync(pointer, demo); /* Query current state. */
+        return 1; /* Other records are intentionally discarded, including SYN_MT_REPORT. */
+    } /* The first event after a successful snapshot resumes normal delivery. */
     if (event->type == EV_REL && event->code == REL_X) pointer->x += event->value; /* Relative X motion. */
     if (event->type == EV_REL && event->code == REL_Y) pointer->y += event->value; /* Relative Y motion. */
     if (event->type == EV_REL && event->code == REL_WHEEL) pointer->wheel_legacy += event->value; /* Detents. */

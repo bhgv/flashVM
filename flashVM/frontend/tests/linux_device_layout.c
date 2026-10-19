@@ -87,7 +87,9 @@ int main(void)
     before_loss=demo.wheel_events;
     e.type=EV_REL;e.code=REL_WHEEL;e.value=1;assert(evdev_event(&pointer,&demo,&e));
     e.type=EV_SYN; e.code=SYN_DROPPED;
-    assert(!evdev_event(&pointer,&demo,&e)); assert(!demo.held && demo.wheel_events==before_loss);
+    assert(evdev_event(&pointer,&demo,&e)); assert(pointer.dropping);
+    assert(!demo.held && demo.wheel_events==before_loss);
+    assert(pointer.wheel_legacy==0 && pointer.wheel_highres==0);
     before_loss=demo.wheel_events;
     assert(demo_wheel(&demo,&singular,0,0,1)==FVM_INVALID_ARGUMENT);
     assert(demo.wheel_events==before_loss);
