@@ -1,6 +1,6 @@
-/* Standalone AVM1 emitter. Values are movie-local generated variables.
+/* Standalone SWO1 object emitter. Values are movie-local generated variables.
  * Build everything in memory before writing: branch range failures never
- * produce a partially emitted movie. No private FlashVM structures are used. */
+ * produce a partially emitted object. No private FlashVM structures are used. */
 #include "fir.h"
 #include <stdlib.h>
 #include <string.h>
@@ -39,31 +39,31 @@ static void real(Bytes *b, double x)
     dword(b, (uint32_t)(bits >> 32)); dword(b, (uint32_t)bits);
 }
 /* Push the generated storage name for one SSA value. */
-static void variable(Bytes *b, int index)
+static void variable(Bytes *b, const FirModule *m, int index)
 {
-    char name[40];
-    snprintf(name, sizeof(name), "__fir1_value_%d", index);
+    char name[FIR_TEXT + 40];
+    snprintf(name, sizeof(name), "__fir1_%s_value_%d", m->module + 1, index);
     text(b, name);
 }
 /* Retrieve one SSA value from its generated movie-local variable. */
-static void load(Bytes *b, int index) { variable(b, index); byte(b, 0x1c); }
+static void load(Bytes *b, const FirModule *m, int index) { variable(b, m, index); byte(b, 0x1c); }
 /* Push the low unsigned 16-bit half of an i32 value. */
-static void low(Bytes *b, int index)
+static void low(Bytes *b, const FirModule *m, int index)
 {
-    load(b, index); integer(b, 65535); byte(b, 0x60); /* BitAnd */
+    load(b, m, index); integer(b, 65535); byte(b, 0x60); /* BitAnd */
 }
 /* Push the high signed 16-bit half of an i32 value. */
-static void high(Bytes *b, int index)
+static void high(Bytes *b, const FirModule *m, int index)
 {
-    load(b, index); integer(b, 16); byte(b, 0x64); /* signed shift right */
+    load(b, m, index); integer(b, 16); byte(b, 0x64); /* signed shift right */
 }
 /* Full 32x32 multiplication cannot use one AVM1 double multiply: low bits
  * disappear above 2^53. Three exact 16-bit partial products preserve them. */
-static void multiply(Bytes *b, int a, int c)
+static void multiply(Bytes *b, const FirModule *m, int a, int c)
 {
-    low(b, a); low(b, c); byte(b, 0x0c);
-    high(b, a); low(b, c); byte(b, 0x0c);
-    high(b, c); low(b, a); byte(b, 0x0c);
+    low(b, m, a); low(b, m, c); byte(b, 0x0c);
+    high(b, m, a); low(b, m, c); byte(b, 0x0c);
+    high(b, m, c); low(b, m, a); byte(b, 0x0c);
     byte(b, 0x0a); integer(b, 16); byte(b, 0x63);
     byte(b, 0x0a); integer(b, 0); byte(b, 0x61);
 }
@@ -75,12 +75,13 @@ static size_t branch(Bytes *b, int conditional)
     return b->n - 2;
 }
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
-int fir_swf(FILE *output, const FirModule *m, int raw, char *error, size_t cap)
+int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
     Bytes actions, movie;
     Fixup fixes[FIR_LIMIT * 2];
     size_t labels[FIR_BLOCKS], end;
     int i, nf = 0, previous = -1, ok = 0;
+    if (!fir_verify(m, error, cap)) return 0;
     actions.data = (unsigned char *)malloc(BYTE_LIMIT);
     movie.data = (unsigned char *)malloc(BYTE_LIMIT);
     actions.n = movie.n = 0; actions.failed = movie.failed = 0;
@@ -92,40 +93,40 @@ int fir_swf(FILE *output, const FirModule *m, int raw, char *error, size_t cap)
         const FirInstruction *in = &m->instructions[i];
         if (in->removed) continue;
         if (previous != in->block) { labels[in->block] = actions.n; previous = in->block; }
-        if (in->result >= 0) variable(&actions, in->result);
+        if (in->result >= 0) variable(&actions, m, in->result);
         switch (in->op) {
         case O_I32: integer(&actions, in->integer); break;
         case O_F64: real(&actions, in->real); break;
         case O_BOOL:
             byte(&actions, 0x96); word(&actions, 2); byte(&actions, 5); byte(&actions, (unsigned)in->integer); break;
         case O_STRING: text(&actions, in->text); break;
-        case O_COPY: load(&actions, in->a); break;
-        case O_MUL: multiply(&actions, in->a, in->b); break;
+        case O_COPY: load(&actions, m, in->a); break;
+        case O_MUL: multiply(&actions, m, in->a, in->b); break;
         case O_ADD: case O_SUB: case O_LT: case O_EQ:
         case O_FADD: case O_FSUB: case O_FMUL: case O_ASADD:
-            load(&actions, in->a); load(&actions, in->b);
+            load(&actions, m, in->a); load(&actions, m, in->b);
             byte(&actions, in->op == O_ADD || in->op == O_FADD ? 0x0a :
                 in->op == O_SUB || in->op == O_FSUB ? 0x0b :
                 in->op == O_FMUL ? 0x0c : in->op == O_LT ? 0x48 :
                 in->op == O_EQ ? 0x49 : 0x47);
             if (in->op == O_ADD || in->op == O_SUB) { integer(&actions, 0); byte(&actions, 0x61); }
             break;
-        case O_NUMBER: load(&actions, in->a); byte(&actions, 0x4a); break;
+        case O_NUMBER: load(&actions, m, in->a); byte(&actions, 0x4a); break;
         case O_CHANNEL:
             integer(&actions, 0); text(&actions, "channel"); byte(&actions, 0x1c);
             text(&actions, "create"); byte(&actions, 0x52); break;
         case O_RECEIVE:
-            integer(&actions, 0); load(&actions, in->a);
+            integer(&actions, 0); load(&actions, m, in->a);
             text(&actions, "receive"); byte(&actions, 0x52); break;
         case O_SEND:
-            load(&actions, in->b); integer(&actions, 1); load(&actions, in->a);
+            load(&actions, m, in->b); integer(&actions, 1); load(&actions, m, in->a);
             text(&actions, "send"); byte(&actions, 0x52); byte(&actions, 0x17); break;
         case O_CLOSE:
-            integer(&actions, 0); load(&actions, in->a);
+            integer(&actions, 0); load(&actions, m, in->a);
             text(&actions, "close"); byte(&actions, 0x52); byte(&actions, 0x17); break;
-        case O_TRACE: load(&actions, in->a); byte(&actions, 0x26); break;
+        case O_TRACE: load(&actions, m, in->a); byte(&actions, 0x26); break;
         case O_IF:
-            load(&actions, in->a);
+            load(&actions, m, in->a);
             fixes[nf].at = branch(&actions, 1); fixes[nf++].target = in->yes;
             fixes[nf].at = branch(&actions, 0); fixes[nf++].target = in->no;
             break;
@@ -147,19 +148,20 @@ int fir_swf(FILE *output, const FirModule *m, int raw, char *error, size_t cap)
         actions.data[fixes[i].at + 1] = (unsigned char)(bits >> 8);
     }
     if (actions.failed) { snprintf(error, cap, "action size limit exceeded"); goto done; }
-    if (raw) {
-        ok = fwrite(actions.data, 1, actions.n, output) == actions.n;
-    } else {
-        /* FWS8, zero-size stage (trace-only program), 12 fps, one frame.
-         * RECT has Nbits=1 and four zero coordinates, hence two bytes. */
-        byte(&movie, 'F'); byte(&movie, 'W'); byte(&movie, 'S'); byte(&movie, 8);
-        dword(&movie, 0); byte(&movie, 0x08); byte(&movie, 0);
-        word(&movie, 12u << 8); word(&movie, 1);
-        word(&movie, (12u << 6) | 63u); dword(&movie, (uint32_t)actions.n);
+    /* SWO1 v1: explicit little-endian fields, never a C structure dump.
+     * FNV-1a detects accidental corruption; it is not authentication. */
+    {
+        uint32_t hash = UINT32_C(2166136261);
+        const unsigned char *name = (const unsigned char *)m->module + 1;
+        size_t length = strlen((const char *)name);
+        for (end = 0; end < length; ++end) hash = (hash ^ name[end]) * UINT32_C(16777619);
+        for (end = 0; end < actions.n; ++end) hash = (hash ^ actions.data[end]) * UINT32_C(16777619);
+        byte(&movie, 'S'); byte(&movie, 'W'); byte(&movie, 'O'); byte(&movie, '1');
+        dword(&movie, 1); dword(&movie, m->channels ? 1 : 0);
+        dword(&movie, (uint32_t)length); dword(&movie, (uint32_t)actions.n); dword(&movie, hash);
+        for (end = 0; end < length; ++end) byte(&movie, name[end]);
         for (end = 0; end < actions.n; ++end) byte(&movie, actions.data[end]);
-        word(&movie, 1u << 6); word(&movie, 0); /* ShowFrame; End */
-        if (movie.failed) { snprintf(error, cap, "movie size limit exceeded"); goto done; }
-        for (i = 0; i < 4; ++i) movie.data[4 + i] = (unsigned char)(movie.n >> (8 * i));
+        if (movie.failed) { snprintf(error, cap, "object size limit exceeded"); goto done; }
         ok = fwrite(movie.data, 1, movie.n, output) == movie.n;
     }
     if (!ok) snprintf(error, cap, "output write failed");

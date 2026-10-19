@@ -14,6 +14,8 @@ import tempfile
 TOOL, SOURCE = map(str, map(Path, sys.argv[1:3]))
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = os.environ.get('FIR_FLASHVM_RUNNER')
+LINKER = os.environ.get('FIR_SWL')
+assert not RUNNER or LINKER, 'FIR_FLASHVM_RUNNER requires FIR_SWL'
 checks = 0
 
 
@@ -80,8 +82,17 @@ with tempfile.TemporaryDirectory() as directory:
         call(TOOL, 'opt', inp, opt)
         call(TOOL, 'check', opt)
         for source in (inp, opt):
-            call(TOOL, 'swf', source, swf)
-            movie(swf)
+            call(TOOL, 'object', source, temp / 'out.swo')
+            obj = (temp / 'out.swo').read_bytes()
+            assert obj[:8] == b'SWO1\x01\0\0\0'
+            flags, namesize, codesize, checksum = struct.unpack_from('<IIII', obj, 8)
+            assert flags in (0, 1) and len(obj) == 24 + namesize + codesize
+            h = 2166136261
+            for byte in obj[24:]: h = ((h ^ byte) * 16777619) & 0xffffffff
+            assert h == checksum and obj[-1] == 0
+            if LINKER:
+                call(LINKER, 'link', swf, '--extensions', temp / 'out.swo')
+                movie(swf)
             if RUNNER:
                 result = call(RUNNER, swf).stdout.decode('utf-8')
                 assert result == expected, (source.read_text(), result, expected)
@@ -180,7 +191,7 @@ with tempfile.TemporaryDirectory() as directory:
         inp.write_text(text)
         swf.write_bytes(b'preserve-existing-output')
         call(TOOL, 'check', inp, good=False)
-        call(TOOL, 'swf', inp, swf, good=False)
+        call(TOOL, 'object', inp, swf, good=False)
         assert swf.read_bytes() == b'preserve-existing-output'
     for data in (b'FIR 1.0\n\x00', b'FIR 1.0\n//\xff', b'FIR 1.0\n//\xed\xa0\x80'):
         inp.write_bytes(data)
@@ -204,6 +215,6 @@ with tempfile.TemporaryDirectory() as directory:
     inp.write_text(module('jump ^far\n^middle:\n' + '\n'.join(f'%v{i}: i32 = const.i32 {i}' for i in range(1500)) + '\njump ^far\n^far:\n%f: bool = const.bool false\nif %f, ^middle, ^end\n^end:\nreturn'))
     call(TOOL, 'check', inp)
     swf.write_bytes(b'preserve-existing-output')
-    call(TOOL, 'swf', inp, swf, good=False)
+    call(TOOL, 'object', inp, swf, good=False)
     assert swf.read_bytes() == b'preserve-existing-output'
 print('%d subprocess checks; real FlashVM execution: %s' % (checks, bool(RUNNER)))

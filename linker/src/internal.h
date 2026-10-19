@@ -1,0 +1,17 @@
+#ifndef SWL_INTERNAL_H
+#define SWL_INTERNAL_H
+#include "swl.h"
+#define SWL_LIMIT (64u * 1024u * 1024u)
+#define SWL_ITEMS 1024
+/* Canonical owned object: name plus validated AVM1 ActionEnd-terminated bytes. */
+typedef struct { char name[256]; unsigned char *data; size_t size; unsigned flags; } Item;
+struct SwlContext { SwlOptions options; Item objects[SWL_ITEMS]; size_t count, bytes; };
+typedef struct { unsigned char *data; size_t size, capacity; int failed; } Buffer;
+int swl_fail(char *, size_t, const char *);
+uint32_t swl_u32(const unsigned char *);
+void swl_bytes(Buffer *, const void *, size_t);
+void swl_byte(Buffer *, unsigned);
+void swl_word(Buffer *, unsigned);
+void swl_dword(Buffer *, uint32_t);
+void swl_tag(Buffer *, unsigned, const void *, size_t);
+#endif

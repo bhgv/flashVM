@@ -10,17 +10,17 @@ int main(int argc, char **argv)
     FirModule *module;
     FILE *input, *output;
     char error[512] = "operation failed";
-    int ok, check, optimise, compile, raw;
+    int ok, check, optimise, compile;
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1 0.2.2 (FIR 1.0; AVM1/FWS8)"); return 0;
+        puts("fir1 0.3.0 (FIR 1.0; SWO1)"); return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("fir1 - FIR 1.0 compiler and verifier\n"
              "usage: fir1 check INPUT.fir\n"
-             "       fir1 print|opt|swf|actions INPUT.fir OUTPUT\n"
+             "       fir1 print|opt|object INPUT.fir OUTPUT\n"
              "check: syntax, SSA dominance, types and CFG; no output\n"
              "print: canonical FIR; opt: conservative FIR peephole\n"
-             "swf: one-frame FWS8; actions: raw AVM1 with ActionEnd\n"
+             "object: SWO1 object; use swl to link SWF\n"
              "No implicit optimization. Use opt output explicitly.\n"
              "Required header: FIR 1.0; conditional: if %c, ^yes, ^no\n"
              "Comments: // and /* ... */. Channels require FlashVM extensions.\n"
@@ -33,9 +33,8 @@ int main(int argc, char **argv)
     if (argc < 3) goto usage;
     check = !strcmp(argv[1], "check");
     optimise = !strcmp(argv[1], "opt");
-    compile = !strcmp(argv[1], "swf");
-    raw = !strcmp(argv[1], "actions");
-    if ((!check && !optimise && !compile && !raw && strcmp(argv[1], "print")) ||
+    compile = !strcmp(argv[1], "object");
+    if ((!check && !optimise && !compile && strcmp(argv[1], "print")) ||
         argc != (check ? 3 : 4)) goto usage;
     if (!check && !strcmp(argv[2], argv[3])) {
         fprintf(stderr, "input and output must be different paths\n"); return 2;
@@ -53,7 +52,7 @@ int main(int argc, char **argv)
     /* Staging also protects against aliases/hard links to the input file. */
     output = fir_temporary();
     if (!output) { perror("temporary output"); free(module); return 2; }
-    ok = compile || raw ? fir_swf(output, module, raw, error, sizeof(error)) : fir_print(output, module);
+    ok = compile ? fir_object(output, module, error, sizeof(error)) : fir_print(output, module);
     if (ok && (fflush(output) || fseek(output, 0, SEEK_SET))) ok = 0;
     if (ok) {
         FILE *destination = fopen(argv[3], "wb");
@@ -71,6 +70,6 @@ int main(int argc, char **argv)
     if (!ok) fprintf(stderr, "%s\n", error);
     return ok ? 0 : 2;
 usage:
-    fprintf(stderr, "usage: fir1 check INPUT\n       fir1 print|opt|swf|actions INPUT OUTPUT\n");
+    fprintf(stderr, "usage: fir1 check INPUT\n       fir1 print|opt|object INPUT OUTPUT\n");
     return 2;
 }

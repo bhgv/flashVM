@@ -61,7 +61,6 @@ int fir_verify(FirModule *module, char *error, size_t capacity);
 int fir_print(FILE *output, const FirModule *module);
 /* Apply conservative rewrites in place and verify the result. */
 int fir_optimise(FirModule *module, char *error, size_t capacity);
-/* Emit checked AVM1 records (raw != 0), or a complete FWS8 file. */
-int fir_swf(FILE *output, const FirModule *module, int raw,
-            char *error, size_t capacity);
+/* Compile verified FIR into a versioned SWO1 object, never a SWF container. */
+int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 #endif
