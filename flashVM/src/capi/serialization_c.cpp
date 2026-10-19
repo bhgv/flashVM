@@ -17,6 +17,7 @@
 #include "../standard/function_state.hpp"
 #include "../standard/date_state.hpp"
 #include "../standard/base_state.hpp"
+#include "../standard/broadcaster.hpp"
 #include "../standard/inheritance.hpp"
 #include "flashvm/utf8.h"
 #include "../standard/string_state.hpp"
@@ -283,6 +284,9 @@ capture_callback(FVM_Context *c, FVM_NativeFunction fn, void *userdata, FVM_Obje
     if (!dst.builtin)
         /* [GC:] Preserve the stable native callback identifier rather than a process address. */
         dst.builtin = fvm_geometry_callback_id(fn);
+    /* [GC:] The live listener Array travels as the accessor capture, never native userdata bytes. */
+    if (!dst.builtin)
+        dst.builtin = fvm_broadcaster_callback_id(fn);
     /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
     if (selector)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -524,7 +528,8 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 !p->second.collector_entry ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    fvm_function_collector_callback(p->second.callback),
+                    (fvm_function_collector_callback(p->second.callback) ||
+                     fvm_broadcaster_callback_id(p->second.callback) != 0),
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_UNSUPPORTED);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -545,7 +550,8 @@ Graph capture(FVM_Context *c, const FVM_Value &value)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 !p->second.collector_entry ||
                     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                    fvm_function_collector_callback(p->second.callback),
+                    (fvm_function_collector_callback(p->second.callback) ||
+                     fvm_broadcaster_callback_id(p->second.callback) != 0),
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 FVM_UNSUPPORTED);
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -1582,6 +1588,9 @@ restore_callback(FVM_Context *c, const Callback &src,
             /* [GC:] Resolve the native implementation associated with the transported root graph.
              */
             dst.callback = fvm_geometry_callback_from_id(src.builtin);
+        /* [GC:] Resolve generic broadcaster bridges before rebinding their cloned list roots. */
+        if (!dst.callback)
+            dst.callback = fvm_broadcaster_callback_from_id(src.builtin);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         require(dst.callback != 0, FVM_UNSUPPORTED);
         /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1619,7 +1628,9 @@ restore_callback(FVM_Context *c, const Callback &src,
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         dst.userdata = dst.root;
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-    dst.collector_entry = fvm_function_collector_callback(dst.callback);
+    /* [GC:] Restored broadcasters keep the same rooted script/GC entry policy as fresh ones. */
+    dst.collector_entry = fvm_function_collector_callback(dst.callback) ||
+        fvm_broadcaster_callback_id(dst.callback) != 0;
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return dst;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1726,7 +1737,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             dst->invocable.collector_entry =
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
-                fvm_function_collector_callback(dst->invocable.callback);
+                fvm_function_collector_callback(dst->invocable.callback) ||
+                fvm_broadcaster_callback_id(dst->invocable.callback) != 0;
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.method_values.begin();
                  /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

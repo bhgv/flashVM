@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.614
+# FlashVM stage status / Состояние стадий — v0.615
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,35 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.615 generic application broadcasters / Пользовательские события
+
+Explicit AsBroadcaster namespace and same-context initialization add a read-only
+live Array and add/remove/broadcast methods. Rooted snapshot dispatch preserves
+counted event names and actual handler errors. Allocation sweeps cover publication,
+reset, registration changes and pre-delivery preparation. Global Object/Array
+validation now preserves lookup failures rather than replacing OOM with invalid
+argument; initialization roots its receiver before that potentially scripted lookup.
+Stable callback identities retain cyclic graphs and cached method wrappers after
+sender destruction. Loaded SWF6–8 interpreter/manual/automatic JIT fixtures include
+nested script GC and actual native-entry checks on the Linux x64 JIT host.
+
+[Contract EN](AS_BROADCASTER.md) / [RU](AS_BROADCASTER.ru.md),
+[annotated C89/AS tutorial](../examples/embedding/broadcaster/README.md).
+Validation: 275 selected VM tests pass, including the four new broadcaster
+fixtures; nine restored ELF fixtures needed execute permissions and then passed
+on retry. The isolated build-version check and documentation source-link checks
+pass. The tutorial compiles as strict C89 and prints onValue: 42. Broadcaster
+bridge ASan/UBSan passes host, graph and JIT fixtures with leak detection disabled;
+this instruments the new bridge, not the whole VM. No full-suite/platform claim.
+
+Historical list mutation/duplicate/primitive/reflection rules and complete reference,
+channel/worker and foreign-platform acceptance remain open. This is progress in
+stages 1/2/5/6/7/8; all nine stages remain open.
+
+Русский: добавлен независимый от frontend объект событий, атомарная подготовка,
+проверки ошибок памяти, GC, циклического графа и настоящих AVM1/JIT-вызовов.
+Полная совместимость с оригинальным Flash и приёмка всех платформ не заявляются.
 
 ## v0.614 coherent evdev primary state / Общее удержание evdev
 

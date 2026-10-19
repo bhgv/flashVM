@@ -8,4 +8,7 @@ extern "C" FVM_Result fvm_object_call_optional(FVM_Context *, FVM_Object *, cons
 /* Deliver counted arguments through the same optional, rooted method lookup. */
 extern "C" FVM_Result fvm_object_call_optional_args(FVM_Context *, FVM_Object *, const char *,
                                                    unsigned int, const FVM_Value *);
+/* Deliver an exact counted handler key, including embedded NUL and Unicode bytes. */
+extern "C" FVM_Result fvm_object_call_optional_bytes(FVM_Context *, FVM_Object *, const char *,
+                                                      size_t, unsigned int, const FVM_Value *);
 #endif

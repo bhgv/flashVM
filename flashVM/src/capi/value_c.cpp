@@ -1382,6 +1382,14 @@ extern "C"
                     : FVM_INVALID_ARGUMENT;
     }
 
+    /* [GC:] Preserve counted broadcaster event names through the same rooted optional lookup. */
+    FVM_Result fvm_object_call_optional_bytes(FVM_Context *c, FVM_Object *self, const char *name,
+                                              size_t size, unsigned int argc, const FVM_Value *argv)
+    {
+        FVM_Value ignored;
+        return call_method_dispatch(c, self, name, size, argc, argv, &ignored, true);
+    }
+
     /* [GC:] Define object method rooted. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_Result fvm_object_define_method_rooted(

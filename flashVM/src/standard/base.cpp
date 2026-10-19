@@ -2905,7 +2905,11 @@ FVM_Result fvm_base_validate(FVM_Context *c)
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         FVM_Value v;
         /* [GC:] Выбираем безопасную ветку обработки состояния сборки или корней. */
-        if (fvm_get_global(c, names[i], &v) != FVM_OK || v.type != FVM_VALUE_OBJECT ||
+        /* Preserve lookup allocation/callback failures instead of reporting a malformed base. */
+        FVM_Result status = fvm_get_global(c, names[i], &v);
+        if (status != FVM_OK)
+            return status;
+        if (v.type != FVM_VALUE_OBJECT ||
             /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
             v.object->resource_kind != kinds[i])
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */

@@ -75,6 +75,7 @@
     - [jit_instances](#example-embedding-jit_instances) — <small><em>Две VM, строгий JIT и вызов после teardown другой VM</em></small>
     - [jit_workers](#example-embedding-jit_workers) — <small><em>Два worker с отдельными VM и JIT</em></small>
   - [objects](#group-embedding-objects)
+    - [broadcaster](#example-embedding-broadcaster) — <small><em>Пользовательские события, живой Array и снимок получателей</em></small>
     - [main](#example-embedding-main) — <small><em>Runtime, объект и nativeSum: базовый C-хост</em></small>
     - [objects](#example-embedding-objects) — <small><em>Объекты, свойства и глобальные значения</em></small>
     - [property_resolve](#example-embedding-property_resolve) — <small><em>Ленивое разрешение свойств через __resolve</em></small>
@@ -896,6 +897,20 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 <a id="group-embedding-objects"></a>
 ### objects
 
+<a id="example-embedding-broadcaster"></a>
+#### broadcaster
+
+**Тип:** исполняемый C89 и скриптовый AS-спутник. **README:** [EN](embedding/broadcaster/README.md) / [RU](embedding/broadcaster/README.ru.md).
+
+Пользовательский объект событий независимо от frontend: явная установка,
+инициализация, сильная регистрация слушателя, onValue(42), снятие подписки и
+очистка после ошибки. Показывает живой Array и рассылку по снимку; не плеер.
+[Контракт EN](../doc/AS_BROADCASTER.md) / [RU](../doc/AS_BROADCASTER.ru.md).
+
+**Файлы:** [main.c](embedding/broadcaster/main.c), [events.as](embedding/broadcaster/events.as).
+
+[К оглавлению](#оглавление).
+
 <a id="example-embedding-main"></a>
 #### main
 
@@ -1630,6 +1645,7 @@ Source line links describe the current checkout, including in historical notes.
 - [audio_channels — multimedia/audio_channels](#example-multimedia-audio_channels)
 - [backtrace — debugger/backtrace](#example-debugger-backtrace)
 - [bitmap_fill — embedding/bitmap_fill](#example-embedding-bitmap_fill)
+- [broadcaster — embedding/broadcaster](#example-embedding-broadcaster)
 - [callable_objects — extending/callable_objects](#example-extending-callable_objects)
 - [channel_cpp98 — embedding/channel_cpp98](#example-embedding-channel_cpp98)
 - [channel_inspection — debugger/channel_inspection](#example-debugger-channel_inspection)
