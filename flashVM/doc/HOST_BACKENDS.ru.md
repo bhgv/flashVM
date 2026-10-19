@@ -58,7 +58,7 @@ NULL, совпадающие выходные указатели, непредс
 сцену: повторное применение масштаба окна ошибочно. Его смешанная очередь
 сохраняется; автоматический выбор Flash-фокуса не добавлен.
 
-## Будущий адаптер Clutter/Cogl
+## Выбранный хост Clutter/Cogl (v0.600)
 
 Изучен [shell revision 2a616b2](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/tree/2a616b264f0045a3ba00ce77aa1930ca905956ea)
 вне `inferno-os`. В [app/jni/clutter_main.c](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/2a616b264f0045a3ba00ce77aa1930ca905956ea/app/jni/clutter_main.c)
@@ -68,11 +68,14 @@ clutter_event_get_coords. Отдельный хост сможет переда�
 Жизненный цикл GLES/actor остаётся в оболочке. Существующий xmouse_btn
 относится к другому клиенту и не является точкой подключения VM.
 
-Реализован общий контракт; это **не готовый Clutter backend и не приёмка на
-Android**. Код/зависимости оболочки не копируются; `inferno-os` исключён.
-Будущий адаптер размещается в ports/ с явным внешним SDK и нативными
-проверками lifecycle, отмены ввода и формата пикселей. Прямой GLES-рендеринг,
-zero-copy, полный multitouch и IME — отдельные задачи. Все девять этапов открыты.
+С v0.600 [пример Clutter3D](../examples/frontends/clutter3d/README.md) использует
+именно исходники Clutter/Cogl указанного Git через явный
+[SDK](../external/clutter3d/README.md). Экспорт физически исключает inferno-os.
+После двух исправлений configure обе библиотеки собраны статически; Linux-пример
+передаёт кадры и проверяет координаты actor под Xvfb/Mesa. Это учебный host,
+не полный player и не приёмка Android/GLES на устройстве. Surface lifecycle,
+прямой GPU-рендер сцены, zero-copy, полный multitouch и IME остаются открытыми,
+как и все девять стадий.
 
 ## Проверки
 
@@ -83,7 +86,7 @@ flashvm_tests_host проверяет padding/последнюю строку, �
 реализация — C++98. Выполненные прогоны указаны в отчёте стадий.
 ## Исполняемый пример v0.599
 
-[Хост C89 без SDL](../examples/embedding/host_backend/README.md) реально рисует
+[Хост C89 без SDL](../examples/frontends/headless/README.md) реально рисует
 квадрат, проверяет/передаёт RGBA-кадр, обращает масштаб и перенос события,
 доставляет down/up в context. Смешанная SDL-очередь теперь тоже применяет
 [fvm_host_pointer_to_world](../include/flashvm/host.h#L26) к каждому сохранённому событию; после уже выполненной

@@ -4823,12 +4823,23 @@ muted interpreter/JIT movies; no new native Android/Clutter/GLES acceptance.
 [EN](HOST_BACKENDS.md) / [RU](HOST_BACKENDS.ru.md).
 ## v0.599 no-SDL executable host / Исполняемый хост без SDL
 
-[Headless tutorial](../examples/embedding/host_backend/README.md): real raster
+[Headless tutorial](../examples/frontends/headless/README.md): real raster
 frame and mapped pointer dispatch pass default Release and ASan/UBSan; SDL
 FIFO mapping passes seven targeted Release checks. Separate NO_GRAPHICS core
 build passes host contract and explicitly skips the raster tutorial. No native
 Clutter/GLES or Android acceptance, no full-suite rerun.
 Проверены исполняемый хост и общий перевод координат, а не новый GPU backend.
+## v0.600 frontend hosts / Хосты фронтендов
+
+Verified on Linux: annotated SDL and selected bhgv Clutter/Cogl C89 examples;
+relocated headless host, explicit source export without inferno-os, two static
+SDK configure repairs, actual SDK texture readback and primary-contact/actor
+coordinate/cancel checks under Xvfb/Mesa. Two fork smoke runs upload 120 frames
+each. SDL dummy-video and targeted ASan/UBSan checks pass; a renamed detached
+component builds/runs SDL/headless. Full compatibility, physical GLES, Android
+and foreign-OS native acceptance remain open.
+Проверена именно библиотечная часть выбранного Git, клиент не используется.
+[Frontends](../examples/frontends/README.md), [source SDK](../external/clutter3d/README.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

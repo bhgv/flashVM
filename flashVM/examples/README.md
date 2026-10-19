@@ -49,7 +49,6 @@
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
     - [gradients](#example-embedding-gradients) — <small><em>Векторный путь с градиентной заливкой</em></small>
-    - [host_backend](#example-embedding-host_backend) — <small><em>Кадр и ввод через независимый хост без SDL</em></small>
     - [image_codecs](#example-embedding-image_codecs) — <small><em>Разбор SVG, растеризация и PNG</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
     - [movieclip](#example-embedding-movieclip) — <small><em>Управление MovieClip — AS-эскиз</em></small>
@@ -108,6 +107,12 @@
     - [network](#example-extending-network) — <small><em>Сетевое расширение — AS-эскиз</em></small>
     - [prototypes](#example-extending-prototypes) — <small><em>Native-объекты на прототипах — заметка</em></small>
     - [sqlite](#example-extending-sqlite) — <small><em>SQLite в памяти и целочисленный запрос</em></small>
+- [frontends](#group-frontends)
+  - [memory](#group-frontends-memory)
+    - [headless](#example-frontends-headless) — <small><em>Кадр и ввод без оконного SDK</em></small>
+  - [windows](#group-frontends-windows)
+    - [clutter3d](#example-frontends-clutter3d) — <small><em>Текстура и касания в Clutter/Cogl из выбранного Git</em></small>
+    - [sdl](#example-frontends-sdl) — <small><em>SDL2: streaming RGBA, мышь и первое касание</em></small>
 - [multimedia](#group-multimedia)
   - [bridges](#group-multimedia-bridges)
     - [alsa_output](#example-multimedia-alsa_output) — <small><em>Linux ALSA: PCM-устройство и StopSounds</em></small>
@@ -141,9 +146,9 @@
 ## Сборка, типы примеров и чтение API
 
 Основные группы соответствуют подпапкам `actionscript/`, `debugger/`,
-`embedding/`, `extending/`, `multimedia/`, `player/`. Тематические подгруппы ниже объединяют одну идею;
+`embedding/`, `extending/`, `frontends/`, `multimedia/`, `player/`. Тематические подгруппы ниже объединяют одну идею;
 имя подгруппы занимает своё алфавитное место, а её примеры также отсортированы.
-Существующие пути исходников и CMake-имена сохранены: например, подгруппа
+Тематические группы обычно сохраняют пути и CMake-имена; перенос frontend-хоста явно отмечен выше. Например, например, подгруппа
 `embedding/jit` в каталоге объединяет `jit/`, `jit_debug/`, `jit_instances/` и
 `jit_workers/`. Вспомогательные headers и сопровождающие AS-файлы описываются
 в составе своего примера, а не выдаются за самостоятельные программы.
@@ -607,17 +612,6 @@ AS2-исходник использует Point, Matrix и Rectangle: перен
 Создаёт редактируемый прямоугольный путь и линейную красно-синюю заливку, затем печатает центральный RGBA. Показывает матрицу градиента, диапазон stop ratios и владение массивом остановок; графический backend выбирается в DEFS.
 
 **Файлы:** [example_as2.as](embedding/gradients/example_as2.as), [main.c](embedding/gradients/main.c).
-
-[К оглавлению](#оглавление).
-
-<a id="example-embedding-host_backend"></a>
-#### host_backend
-
-**Тип:** C89 — собираемый пример. **README:** [embedding/host_backend/README.md](embedding/host_backend/README.md).
-
-Растеризует квадрат в собственный RGBA-буфер и передаёт его синхронному consumer без SDL. Обращает масштаб и перенос координат события, затем доставляет down/up на потоке VM. Проверяет пиксель и итоговые мировые координаты; при NO_GRAPHICS явно пропускается. Это общий host-контракт, не готовый адаптер Clutter.
-
-**Файлы:** [main.c](embedding/host_backend/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1202,6 +1196,50 @@ AS2-эскиз сетевого host bridge для расширений. Не в
 
 [К оглавлению](#оглавление).
 
+<a id="group-frontends"></a>
+## frontends
+
+[Общее руководство и FlashVM API](frontends/README.md). Самостоятельные хосты вывода/ввода; общая часть common/demo.h — не отдельный frontend. Headless перенесён из embedding/host_backend; его CMake-target теперь flashvm_examples_frontends_headless_main. Других самостоятельных фронтендов в примерах не найдено.
+
+<a id="group-frontends-memory"></a>
+### memory
+
+<a id="example-frontends-headless"></a>
+#### headless
+
+**Тип:** исполняемый C89. **README:** [frontends/headless/README.md](frontends/headless/README.md).
+
+Рисует реальный квадрат, передаёт RGBA-кадр синхронному consumer и проверяет мировые координаты down/up в VM. Не требует оконного SDK; при NO_GRAPHICS явно пропускается.
+
+**Файлы:** [main.c](frontends/headless/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="group-frontends-windows"></a>
+### windows
+
+<a id="example-frontends-clutter3d"></a>
+#### clutter3d
+
+**Тип:** C89 с явным SDK выбранного Clutter/Cogl Git. **README:** [frontends/clutter3d/README.md](frontends/clutter3d/README.md).
+
+Загружает RGBA в texture actor, переводит stage→actor→world, выбирает первый touch sequence и отменяет контакт при деактивации. Исходники SDK берутся из bhgv/Inferno-OS_Android-Clutter3d без inferno-os; отдельно описана интеграция с Android-ready/surface lifecycle. Не готовый APK.
+
+**Файлы:** [main.c](frontends/clutter3d/main.c), [общий demo.h](frontends/common/demo.h).
+
+[К оглавлению](#оглавление).
+
+<a id="example-frontends-sdl"></a>
+#### sdl
+
+**Тип:** исполняемый C89 с явным SDL2 SDK. **README:** [frontends/sdl/README.md](frontends/sdl/README.md).
+
+Показывает marker из VM через настоящую streaming-текстуру SDL. Обрабатывает мышь и первое касание с подавлением синтетических дублей, сбросом фокуса и логическими координатами. Есть интерактивный и конечный smoke-режимы.
+
+**Файлы:** [main.c](frontends/sdl/main.c), [общий demo.h](frontends/common/demo.h).
+
+[К оглавлению](#оглавление).
+
 <a id="group-multimedia"></a>
 ## multimedia
 
@@ -1509,6 +1547,7 @@ Source line links describe the current checkout, including in historical notes.
 - [channel_values — embedding/channel_values](#example-embedding-channel_values)
 - [channel_worker — extending/channel_worker](#example-extending-channel_worker)
 - [channels — embedding/channels](#example-embedding-channels)
+- [clutter3d — frontends/clutter3d](#example-frontends-clutter3d)
 - [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
 - [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)
 - [custom_audio_bridge — multimedia/custom_audio_bridge](#example-multimedia-custom_audio_bridge)
@@ -1530,7 +1569,7 @@ Source line links describe the current checkout, including in historical notes.
 - [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
 - [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
 - [gradients — embedding/gradients](#example-embedding-gradients)
-- [host_backend — embedding/host_backend](#example-embedding-host_backend)
+- [headless — frontends/headless](#example-frontends-headless)
 - [image_codecs — embedding/image_codecs](#example-embedding-image_codecs)
 - [input — embedding/input](#example-embedding-input)
 - [input_queue — embedding/input_queue](#example-embedding-input_queue)
@@ -1550,8 +1589,8 @@ Source line links describe the current checkout, including in historical notes.
 - [media — extending/media](#example-extending-media)
 - [meta_call — extending/meta_call](#example-extending-meta_call)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
-- [movieclip — embedding/movieclip](#example-embedding-movieclip)
 - [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
+- [movieclip — embedding/movieclip](#example-embedding-movieclip)
 - [movieclip — extending/movieclip](#example-extending-movieclip)
 - [native_functions — extending/native_functions](#example-extending-native_functions)
 - [network — embedding/network](#example-embedding-network)
@@ -1570,6 +1609,7 @@ Source line links describe the current checkout, including in historical notes.
 - [resurrection — embedding/resurrection](#example-embedding-resurrection)
 - [script_functions — embedding/script_functions](#example-embedding-script_functions)
 - [script_methods — embedding/script_methods](#example-embedding-script_methods)
+- [sdl — frontends/sdl](#example-frontends-sdl)
 - [selection — embedding/selection](#example-embedding-selection)
 - [shared_mutex — embedding/shared_mutex](#example-embedding-shared_mutex)
 - [shared_mutex.as — actionscript/shared_mutex.as](#example-actionscript-shared_mutex-as)
@@ -1578,13 +1618,13 @@ Source line links describe the current checkout, including in historical notes.
 - [speech_macos — multimedia/speech_macos](#example-multimedia-speech_macos)
 - [speech_stt — multimedia/speech_stt](#example-multimedia-speech_stt)
 - [speech_tts — multimedia/speech_tts](#example-multimedia-speech_tts)
-- [stop_binding — multimedia/stop_binding](#example-multimedia-stop_binding)
 - [sprite_resources.as — actionscript/sprite_resources.as](#example-actionscript-sprite_resources-as)
 - [sqlite — extending/sqlite](#example-extending-sqlite)
 - [stack_c — extending/stack_c](#example-extending-stack_c)
 - [stage_quality — embedding/stage_quality](#example-embedding-stage_quality)
 - [standard_boolean — embedding/standard_boolean](#example-embedding-standard_boolean)
 - [standard_text — embedding/standard_text](#example-embedding-standard_text)
+- [stop_binding — multimedia/stop_binding](#example-multimedia-stop_binding)
 - [string.as — actionscript/string.as](#example-actionscript-string-as)
 - [swf_audio — multimedia/swf_audio](#example-multimedia-swf_audio)
 - [swf_audio_queue — multimedia/swf_audio_queue](#example-multimedia-swf_audio_queue)

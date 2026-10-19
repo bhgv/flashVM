@@ -62,7 +62,7 @@ window/touch coordinates into its logical stage, so another window-scale
 conversion there would apply the transform twice. This change does not replace
 its mixed FIFO or add automatic Flash focus selection.
 
-## Future Clutter/Cogl host
+## Selected Clutter/Cogl host (v0.600)
 
 Inspected shell revision
 [2a616b264f0045a3ba00ce77aa1930ca905956ea](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/tree/2a616b264f0045a3ba00ce77aa1930ca905956ea),
@@ -75,13 +75,15 @@ coordinates using the inverse contract above. Its GLES/context and actor
 lifecycle stay in the shell. Do not wire FlashVM into the existing `xmouse_btn`
 client path: that path belongs to a different client integration.
 
-This is a verified generic host boundary and an integration design, **not an
-implemented Clutter backend or Android device acceptance**. No files/dependencies
-from that repository are copied, and `inferno-os` is excluded. Future adapter
-code belongs in `ports/`, with an explicit external SDK and native lifecycle,
-input cancellation and pixel-format acceptance tests. Direct GLES rendering,
-zero-copy GPU textures, full multitouch and platform keyboard/IME mapping
-remain separate work. Roadmap stages 1–9 remain open.
+Since v0.600 the [Clutter3D tutorial](../examples/frontends/clutter3d/README.md)
+uses that repository's actual Clutter/Cogl library source through an explicit
+[prepared SDK](../external/clutter3d/README.md). The export excludes inferno-os.
+Both libraries build statically after two configure fixes; the Linux example
+uploads frames and tests native actor-coordinate conversion under Xvfb/Mesa.
+This is a tutorial host, not a completed full player or Android device
+acceptance. The SDK's Android backend and GLES surface lifecycle remain
+separate native validation. Direct GPU scene rendering, zero-copy textures,
+full multitouch and keyboard/IME mapping remain open; so do roadmap stages 1–9.
 
 ## Validation
 
@@ -92,7 +94,7 @@ consumer's bounds rejection and byte-correct pixels. The frontend is C89 and
 the implementation is C++98. See the current stage report for executed runs.
 ## Executable host tutorial (v0.599)
 
-[Headless C89 host](../examples/embedding/host_backend/README.md) renders a
+[Headless C89 host](../examples/frontends/headless/README.md) renders a
 real raster square, validates/consumes its borrowed RGBA frame, converts a
 scaled/translated event, and dispatches down/up into a context without SDL.
 The SDL FIFO now uses [fvm_host_pointer_to_world](../include/flashvm/host.h#L26) for each saved event as well;

@@ -219,6 +219,9 @@ if(FVM_BUILD_TESTS)
 endif()
 function(fvm_add_program source)
   file(RELATIVE_PATH relative ${PROJECT_SOURCE_DIR} ${source})
+  if(relative MATCHES "^examples/frontends/(sdl|clutter3d)/")
+    return() # SDK-specific tutorial targets are registered by examples/frontends/CMakeLists.txt.
+  endif()
   if(relative MATCHES "font_libraries" AND NOT FVM_ENABLE_FONTS)
     return()
   endif()
@@ -253,7 +256,7 @@ function(fvm_add_program source)
   if(FVM_BUILD_TESTS)
     add_test(NAME ${target} COMMAND ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
-    if(target STREQUAL "flashvm_examples_embedding_host_backend_main" OR
+    if(target STREQUAL "flashvm_examples_frontends_headless_main" OR
        target STREQUAL "flashvm_tests_jit_macos_native" OR
        target STREQUAL "flashvm_tests_jit_windows_unwind" OR
        target STREQUAL "flashvm_tests_jit_macos_arm64_port" OR
@@ -282,6 +285,10 @@ if(FVM_BUILD_EXAMPLES)
   foreach(source ${FVM_EXAMPLE_SOURCES})
     fvm_add_program(${source})
   endforeach()
+endif()
+
+if(FVM_BUILD_EXAMPLES)
+  add_subdirectory(examples/frontends)
 endif()
 
 # Separate processes verify that persisted graph/callback references do not
@@ -423,6 +430,8 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
       COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_macos_jit_policy.py
               --cc ${CMAKE_C_COMPILER})
   endif()
+  add_test(NAME flashvm_frontend_tutorial_contracts
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/check_frontend_examples.py)
   add_test(NAME flashvm_documentation_source_link_order
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_documentation_source_links.py)
   add_test(NAME flashvm_multimedia_tutorial_contract

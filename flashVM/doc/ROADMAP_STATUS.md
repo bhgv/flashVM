@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.599
+# FlashVM stage status / Состояние стадий — v0.600
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -21,6 +21,30 @@ counts are historical unless explicitly rerun for this revision.
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
 
+## v0.600 frontend tutorials / Примеры фронтендов
+
+SDL and the selected bhgv Clutter/Cogl fork now have annotated C89 tutorials
+under examples/frontends; the old headless host moved there too. The independent
+fork SDK export excludes inferno-os and preserves upstream licensing. Two
+configure repairs unblock modern Linux static builds: unconditional C++ libtool
+initialization and omission of the unused missing Win32 template.
+
+A clean export rebuilt both fork Cogl/Clutter 1.14.1 as static libraries. The
+example and actual SDK actor/input/texture-readback fixture passed under Linux
+Xvfb/Mesa, plus two independent 120-frame runs (normal and touch-only). SDL
+software pixels/first-contact/reset tests and the 120-frame dummy-video run
+passed. Four targeted ASan/UBSan CTest checks plus the separate Clutter SDK
+fixture passed (leak detection disabled; third-party SDK remains uninstrumented).
+Three checks passed from a renamed detached VM component (SDL, headless,
+tutorial contracts). Four default-core checks passed (headless, version refresh,
+source links, tutorial contracts); NO_GRAPHICS explicitly skips the headless
+raster run. No full-suite rerun, physical GPU, Android or foreign-OS acceptance
+is claimed. [Tutorials](../examples/frontends/README.md) / [SDK](../external/clutter3d/README.md).
+
+Проверены реальные библиотеки выбранного Git на Linux/Xvfb/Mesa, а не только
+системный Clutter. Клиент исключён. Android/GLES surface lifecycle и приёмка
+на телефоне остаются открытыми, как и стадии 1–9.
+
 ## v0.599 runnable host / Исполняемый хост
 
 The no-SDL C89 tutorial renders and consumes a real frame, maps host coordinates,
@@ -31,7 +55,7 @@ checks pass with leak detection disabled. A separately configured NO_GRAPHICS
 build, without SDL, passes the host contract test and explicitly skips the
 raster tutorial (77). Documentation links, debugger tutorials and the new
 example's comments/catalog ordering pass. No full-suite or foreign-device
-rerun is claimed. [Tutorial](../examples/embedding/host_backend/README.md).
+rerun is claimed. [Tutorial](../examples/frontends/headless/README.md).
 
 Пример и общее преобразование ввода проверены в Release и ASan/UBSan;
 отдельная сборка NO_GRAPHICS без SDL проверяет host API и явно пропускает

@@ -18,9 +18,9 @@ in DEFS.txt, with examples enabled:
 
 ```sh
 cmake -S . -B build -DFVM_BUILD_EXAMPLES=ON
-cmake --build build --target flashvm_examples_embedding_host_backend_main
-./build/flashvm_examples_embedding_host_backend_main
-ctest --test-dir build -R '^flashvm_examples_embedding_host_backend_main$' --output-on-failure
+cmake --build build --target flashvm_examples_frontends_headless_main
+./build/flashvm_examples_frontends_headless_main
+ctest --test-dir build -R '^flashvm_examples_frontends_headless_main$' --output-on-failure
 ```
 
 Expected output / ожидаемый вывод:
@@ -34,7 +34,7 @@ Exit 0 means frame and pointer checks passed; ordinary failures exit 1.
 NO_GRAPHICS returns 77 and is explicitly skipped by CTest, not accepted as a
 successful render. Нужен включённый графический backend; отсутствие графики
 явно пропускается. A script listener variant is demonstrated separately by
-[mouse_listeners](../mouse_listeners/README.md).
+[mouse_listeners](../../embedding/mouse_listeners/README.md).
 
 ## Ownership and integration / Владение и подключение
 

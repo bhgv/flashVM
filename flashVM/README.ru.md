@@ -1,4 +1,4 @@
-Версия разработки: **0.599** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.600** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -24,7 +24,9 @@ v0.588: [ADPCM test-tone block restart fix / исправление тестов
 
 v0.589: [Опрос Key и клавиатурные снимки хоста](doc/KEYBOARD.ru.md).
 
-v0.599: [Runnable host without SDL / запускаемый хост без SDL](examples/embedding/host_backend/README.md); shared pointer projection in the SDL FIFO.
+v0.600: [Frontend tutorials / примеры фронтендов](examples/frontends/README.md): SDL2, selected Clutter/Cogl fork, relocated headless host; [SDK source and fixes](external/clutter3d/README.md).
+
+v0.599: [Runnable host without SDL / запускаемый хост без SDL](examples/frontends/headless/README.md); shared pointer projection in the SDL FIFO.
 
 v0.598: [Independent frame/event host boundary / независимый хост кадров и событий](doc/HOST_BACKENDS.md) ([RU](doc/HOST_BACKENDS.ru.md)).
 
