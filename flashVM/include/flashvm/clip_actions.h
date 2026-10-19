@@ -36,6 +36,22 @@ extern "C" {
  * Calling again is a new delivery, not continuation or replay of a stored dispatch cursor. */
 FVM_API FVM_Result fvm_movieclip_dispatch_clip_actions(FVM_Context *, FVM_Object *,
                                                        unsigned long event, unsigned int key_code);
+/* Broadcast one global retained input event through a selected root's native descendants.
+ * Accept only MOUSE_MOVE/DOWN/UP or KEY_DOWN/UP. No key selector or native onX delivery.
+ * Host publishes pointer/keyboard state separately before calling; visibility and focus do not
+ * filter these global records. No Press/Roll/Drag hit testing, wheel or lifecycle scheduling.
+ * Prepare recipients in root-first native depth order before callbacks. New children wait for
+ * the next broadcast; removed/reparented captured branches are skipped before later delivery.
+ * Each receiver prepares its own selector/code snapshot at its turn, so earlier callbacks may
+ * replace a later receiver's handler table. Older-than-SWF5 nodes are traversed without handlers.
+ * Borrow/pin the same-context root on its owner thread. [GC:] Collection is barred throughout.
+ * One work budget covers capture, ancestry checks and retained bytecode; stop is cooperative.
+ * Invalid root/type/phase/event/reentry or malformed/cyclic topology -> INVALID_ARGUMENT;
+ * exhausted work/worker stop -> ERROR; OOM -> OUT_OF_MEMORY. Depth/recipient bounds reject
+ * preparation before callbacks. Later errors preserve completed callbacks and input state.
+ * The context-local reentry flag and active recipient batch are not serialized. */
+FVM_API FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *, FVM_Object *root,
+                                                    unsigned long event);
 #ifdef __cplusplus
 }
 #endif

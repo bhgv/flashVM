@@ -55,10 +55,11 @@ sprite libraries retain their source SWF policy even after graph transfer.
 
 The host controls event selection and once-only lifecycle policy. Calling Load,
 Construct, Initialize or Unload twice delivers twice; no hidden loader cursor is
-created. Explicit EnterFrame followed by advance also delivers twice. Load/unload,
-construct/initialize, data and input records are retained but are not automatically
-scheduled by the shipped desktop loop. The desktop currently supplies automatic
-EnterFrame only. Existing native Mouse/Key/focus APIs keep their separate contracts.
+created. Explicit EnterFrame followed by advance also delivers twice. Load/unload, construct/initialize and data remain explicit. Since v0.626 the desktop
+also broadcasts the five global MouseMove/Down/Up and KeyDown/Up records through
+[the selected scene](CLIP_INPUT.md); EnterFrame remains delivered by ticks. Targeted
+interaction/lifecycle scheduling remains open. Native Mouse/Key/focus APIs retain
+their separate contracts.
 
 All calls are synchronous on the context owner thread. The API borrows the clip;
 pin it or retain its enclosing scene across host calls. Null, foreign or nonclip

@@ -2,7 +2,8 @@
 
 [English](README.md). Host загружает встроенный SWF8 sprite с двумя authored records:
 EnterFrame записывает `seen=17`, Load — `seen=42`. Обычный tick размещает и продвигает
-sprite, затем host выбирает actor, явно доставляет Load и проверяет marker.
+sprite, затем host выбирает actor, явно доставляет Load и проверяет marker. Затем публикует pointer state, рассылает
+retained MouseMove по сцене и снимает coalesced redraw request.
 Окно, OS input, компилятор, внешний файл и SDL не нужны.
 
 ## Сборка и запуск
@@ -19,6 +20,7 @@ cmake --build build-clips --target flashvm_examples_embedding_clip_actions_main
 
 ```text
 explicit Load marker: 42
+scene MouseMove marker: 84; redraw: 1
 ```
 
 [main.c](main.c) — самостоятельный C89 host. [clip_action_movie.h](clip_action_movie.h)
@@ -52,6 +54,10 @@ explicit Load marker: 42
 описаны в заголовке и руководстве. Проверяется одна выбранная запись, не планирование
 оригинального Player, сеть, hit testing, видимый вывод или приёмка чужой платформы.
 При ошибке автоматического retry нет. [Каталог](../../README.md#example-embedding-clip_actions).
+Tree path v0.626: [CLIP_INPUT.ru.md](../../../doc/CLIP_INPUT.ru.md). Встроенный
+MouseMove записывает marker 84 и вызывает updateAfterEvent; host получает один
+pending request. Здесь намеренно raw state publication; если нужны namespace
+listeners/drag policy, интеграция должна также вызвать namespace dispatch перед деревом.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

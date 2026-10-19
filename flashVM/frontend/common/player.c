@@ -323,7 +323,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         }
         if (!checked(fvm_desktop_audio_tick(&audio), "PCM queue", path))
             goto cleanup;
-        if (!checked(fvm_desktop_window_pump_input(window, context, -viewport.x0, -viewport.y0),
+        if (!checked(fvm_desktop_window_pump_clip_input(window, context, clip, -viewport.x0, -viewport.y0),
                      "input listeners", path))
             goto cleanup;
         fvm_desktop_window_input(window, &input);

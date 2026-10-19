@@ -76,10 +76,22 @@ ctest --test-dir build -R '^flashvm_(player|capture)_update_' --output-on-failur
 
 ## Retained ClipActions v0.625
 
-PlaceObject2 sprite records are retained; this player automatically delivers only
-EnterFrame during its existing ticks. Other load/unload/construct/data/input records
-require explicit host integration through [the C89 API](../doc/CLIP_ACTIONS.md).
+PlaceObject2 sprite records are retained; the v0.625 baseline delivered only
+EnterFrame during ticks. Since v0.626 global scene input is wired as below.
+Load/unload/construct/data and targeted interaction still require explicit host integration through [the C89 API](../doc/CLIP_ACTIONS.md).
 No native onX method, hit testing or lifecycle scheduler is implicitly added.
 The optional flashvm_player_clip_actions_interpreter/jit tests execute SWF5–8 on
 actual SDL dummy video and reject wrong-value controls; this is not visible-device
 or foreign-platform acceptance.
+
+## Retained scene input v0.626
+
+The main player now supplies its pinned root to fvm_desktop_window_pump_clip_input:
+namespace/focus handlers and native state precede each global retained scene event.
+The namespace-only wrapper remains available to existing hosts. Primary touch keeps
+its existing mapping. [Exact contracts, errors and remaining limits](../doc/CLIP_INPUT.md).
+The flashvm_frontend_clip_input test uses real SDL dummy video with synthetic
+mouse/finger/key messages. The separate flashvm_frontend_clip_player executable uses
+the actual host/adapter and injects SDL queue messages after its first presentation;
+flashvm_player_clip_input_interpreter/jit verify SWF5–8 event sums and coalesced redraw.
+Only this test executable injects events; no physical-device acceptance is implied.

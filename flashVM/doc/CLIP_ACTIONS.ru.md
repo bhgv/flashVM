@@ -52,10 +52,10 @@ library сохраняет source SWF version также после перено
 
 Выбор событий и once-only lifecycle — задача host. Два вызова Load/Construct/
 Initialize/Unload выполнят обработчики дважды; скрытого loader cursor нет. Явный
-EnterFrame плюс advance также доставит дважды. Load/unload, construct/initialize,
-data и input records сохраняются, но desktop loop их автоматически не планирует.
-В плеере сейчас автоматически доставляется только EnterFrame. Существующие native
-Mouse/Key/focus API сохраняют отдельные контракты.
+EnterFrame плюс advance также доставит дважды. Load/unload, construct/initialize и data остаются явными. С v0.626 desktop также
+рассылает пять global MouseMove/Down/Up и KeyDown/Up через [дерево сцены](CLIP_INPUT.ru.md).
+EnterFrame остаётся частью ticks, targeted interaction/lifecycle scheduling открыт.
+Native Mouse/Key/focus API сохраняют отдельные контракты.
 
 API синхронный, только для потока владельца. Клип заимствован: удерживайте pin либо
 родительскую сцену между вызовами. Null/чужой/nonclip, static art, lifecycle/sound

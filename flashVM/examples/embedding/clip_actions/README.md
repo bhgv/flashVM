@@ -3,7 +3,9 @@
 [Русский](README.ru.md). The host loads an embedded SWF8 sprite with two authored
 records: EnterFrame writes `seen=17`; Load writes `seen=42`. A normal tick places
 and advances the sprite. The host selects that actor and explicitly delivers Load,
-then verifies its marker. No window, OS input, compiler, external file or SDL is needed.
+then verifies its marker. It next publishes pointer state, broadcasts retained MouseMove
+through the scene and consumes a coalesced redraw request. No window, OS input,
+compiler, external file or SDL is needed.
 
 ## Build and run
 
@@ -19,6 +21,7 @@ Expected exit code zero and output:
 
 ```text
 explicit Load marker: 42
+scene MouseMove marker: 84; redraw: 1
 ```
 
 [main.c](main.c) is standalone C89; [clip_action_movie.h](clip_action_movie.h) contains
@@ -54,6 +57,10 @@ selectors are described individually in the public header and guide. The tutoria
 checks one selected record, not original-player event scheduling, networking, input
 hit testing, visible output or foreign-platform acceptance. No automatic retry is
 performed after an error. [Catalog](../../README.md#example-embedding-clip_actions).
+The v0.626 tree path is documented in [CLIP_INPUT.md](../../../doc/CLIP_INPUT.md).
+The embedded MouseMove record writes marker 84 and calls updateAfterEvent; the host
+observes one pending request. This example intentionally uses raw state publication;
+use namespace dispatch first as well when your integration needs its listeners/drag policy.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

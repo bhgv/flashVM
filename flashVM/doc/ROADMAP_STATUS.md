@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.625
+# FlashVM stage status / Состояние стадий — v0.626
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,39 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.626 retained scene input / Ввод для дерева клипов
+
+Selected scene broadcasts now prepare root-first, depth-sorted recipients and
+revalidate captured ancestry/removal before each retained global input delivery.
+Depth/node/child/recipient bounds, heap-sort work, code callbacks and worker stop
+share the outer budget. Newborns wait; removed/moved branches skip. The reentry/
+teardown flag is context-local and restores across errors, exceptions and OOM.
+
+The player uses the same SDL FIFO and native state/namespace publication before
+scene MouseMove/Down/Up and KeyDown/Up records. Primary touch keeps its existing
+mapping. A separate actual-SDL player fixture injects five queued transitions after
+frame one and verifies their script sum plus one coalesced interframe redraw in
+SWF5–8 interpreter/native JIT, with wrong-value controls.
+[EN](CLIP_INPUT.md) / [RU](CLIP_INPUT.ru.md),
+[C89](../examples/embedding/clip_actions/README.md).
+
+Это продвижение стадий 3/5/6/7/8/9, не Press/Roll/Drag hit targets, KeyPress mapping,
+полный lifecycle scheduler или оригинальный Player event-order certificate.
+Физический input и видимые устройства/чужие ОС не приняты. Все девять этапов открыты.
+
+Validation for this revision: 263 selected Release CTests and 83 ASan/UBSan
+CTests passed on Linux. The updated embedding example also compiled as strict
+C89 and ran under ASan/UBSan. A separately linked player using the previous
+rootless pump rejected the same input-checking movie, as expected. Documentation
+source links, deterministic regeneration and debugger tutorial checks passed.
+These runs use SDL dummy drivers; physical devices and other operating systems
+remain unverified.
+
+Проверено в этой версии: 263 выбранных Release CTest и 83 ASan/UBSan CTest
+на Linux; пример строгого C89 также выполнен под санитайзерами. Контрольный
+проигрыватель со старым вызовом без дерева ожидаемо отверг тот же фильм.
+SDL dummy не подтверждает работу физических устройств или других ОС.
 
 ## v0.625 retained ClipActions / Сохраняемые события sprite
 

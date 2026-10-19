@@ -1,6 +1,7 @@
 /* SDL2 window adapter for desktop targets. All event/render calls remain on main thread. */
 #define SDL_MAIN_HANDLED /* OS entrypoints are supplied in frontend/{linux,windows,macos}. */
 #include "window.h"
+#include "flashvm/clip_actions.h"
 #include "keyboard_sdl.h"
 #include <SDL.h>
 #include <stdlib.h>
@@ -297,8 +298,8 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 }
 
 /* Dispatch only the entry batch; callbacks may enqueue later work without an unbounded loop. */
-FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *context,
-                                          double origin_x, double origin_y)
+FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Context *context,
+                                               FVM_Object *root, double origin_x, double origin_y)
 {
     size_t remaining;
     unsigned long epoch;
@@ -334,11 +335,27 @@ FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *c
         else
             result = fvm_input_dispatch_mouse(context, event.mouse_type,
                                                world_x, world_y);
+        if (result == FVM_OK && root && epoch == view->event_epoch)
+        {
+            unsigned long clip_event = event.kind == FVM_DESKTOP_EVENT_KEY
+                ? (event.pressed ? FVM_CLIP_EVENT_KEY_DOWN : FVM_CLIP_EVENT_KEY_UP)
+                : event.mouse_type == FVM_MOUSE_EVENT_MOVE ? FVM_CLIP_EVENT_MOUSE_MOVE
+                : event.mouse_type == FVM_MOUSE_EVENT_DOWN ? FVM_CLIP_EVENT_MOUSE_DOWN
+                                                         : FVM_CLIP_EVENT_MOUSE_UP;
+            result = fvm_movieclip_dispatch_clip_input(context, root, clip_event);
+        }
         if (result != FVM_OK)
             break;
     }
     view->pumping_events = 0;
     return result == FVM_OK ? view->event_error : result;
+}
+
+/* Keep existing hosts on namespace-only delivery unless they explicitly supply a pinned scene root. */
+FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *context,
+                                          double origin_x, double origin_y)
+{
+    return fvm_desktop_window_pump_clip_input(view, context, 0, origin_x, origin_y);
 }
 
 /* Preserve the earlier internal entrypoint for zero-origin hosts, delivering the shared FIFO. */

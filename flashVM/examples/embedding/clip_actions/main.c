@@ -2,6 +2,8 @@
 #include "flashvm/movieclip.h" /* Load the SWF graph and perform a normal timeline tick. */
 #include "flashvm/clip_actions.h" /* Select one retained event without hit testing or native onX calls. */
 #include "flashvm/standard.h" /* Install standard classes before scene construction. */
+#include "flashvm/input.h" /* Publish world pointer coordinates before retained input delivery. */
+#include "flashvm/stage.h" /* Consume a redraw request without claiming any displayed pixels. */
 #include "flashvm/gc.h" /* Pin the root while retaining borrowed scene pointers. */
 #include "clip_action_movie.h" /* Embed an independently encoded, immutable SWF8 fixture. */
 #include <stdio.h> /* Report the selected handler's script-visible effect. */
@@ -12,6 +14,7 @@ int main(void) /* Build this file as its own C89 executable, separate from main.
     FVM_Runtime *runtime = 0; /* Outlive its managed context. */
     FVM_Context *context = 0; /* Own the retained SWF library and handlers. */
     FVM_Object *root = 0, *actor = 0; /* Borrow graph objects, retaining them through the pinned root. */
+    int redraw = 0; /* Receive and consume the MouseMove record's coalesced request. */
     FVM_Value value; /* Borrow each property result until its next use or context destruction. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the configuration ABI. */
     if (status == FVM_OK) /* Acquire the outer owner first. */
@@ -41,6 +44,18 @@ int main(void) /* Build this file as its own C89 executable, separate from main.
         status = FVM_INVALID_ARGUMENT; /* Keep a mismatch observable through the exit code. */
     if (status == FVM_OK) /* Report the deterministic selected-event effect. */
         printf("explicit Load marker: %.0f\n", value.number); /* Expected output is 42, with no device required. */
+    if (status == FVM_OK) /* Pointer publication and namespace listeners remain a separate host policy. */
+        status = fvm_input_set_pointer(context, 20, 30); /* Set native world pixels without delivering callbacks. */
+    if (status == FVM_OK) /* Capture the selected scene, then deliver global retained MouseMove records. */
+        status = fvm_movieclip_dispatch_clip_input(context, root, FVM_CLIP_EVENT_MOUSE_MOVE); /* No hit test, native onX or frame step occurs. */
+    if (status == FVM_OK) /* Verify the actor reached by the tree broadcast. */
+        status = fvm_object_get(context, actor, "seen", &value); /* The borrowed actor remains reachable through root. */
+    if (status == FVM_OK) /* Consume before a real embedding host would render. */
+        status = fvm_stage_take_update(context, &redraw); /* This tutorial has no presenter and displays no pixels. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != FVM_TUTORIAL_CLIP_INPUT_EXPECTED || redraw != 1)) /* Check marker and eligible request together. */
+        status = FVM_INVALID_ARGUMENT; /* Preserve a mismatch through ordinary cleanup. */
+    if (status == FVM_OK) /* Report the second event independently of Load. */
+        printf("scene MouseMove marker: %.0f; redraw: %d\n", value.number, redraw); /* Expected marker 84 and one coalesced request. */
     else /* Preserve failures without assertions or automatic replay. */
         fprintf(stderr, "ClipActions tutorial failed: %d\n", (int)status); /* A failed batch may already have script effects. */
     if (context) /* Release the pinned root, library and code before host locals expire. */

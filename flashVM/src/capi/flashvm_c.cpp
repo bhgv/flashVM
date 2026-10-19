@@ -152,6 +152,7 @@ extern "C"
         context->keyboard.struct_size = sizeof(context->keyboard);
         context->keyboard_focus = 0; /* [GC:] No selected clip before host input setup. */
         context->keyboard_dispatching = false;
+        context->clip_input_dispatching = false;
         context->mouse_dispatching = false;
         context->cursor_visible = true;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -250,7 +251,8 @@ extern "C"
 
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         if (!context || context->destroying || context->gc_collecting ||
-            context->gc_native_depth || context->keyboard_dispatching || context->mouse_dispatching ||
+            context->gc_native_depth || context->clip_input_dispatching ||
+            context->keyboard_dispatching || context->mouse_dispatching ||
             context->pumping_input || context->timers_dispatching)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;

@@ -369,6 +369,7 @@ struct FVM_Context
     FVM_Object *keyboard_focus; /* [GC:] Explicit host-selected native MovieClip; null means none. */
     fvm_detail::vector<FVM_Object *> mouse_listeners; /* [GC:] Context-owned primary-pointer observers. */
     bool cursor_visible; /* Native requested cursor visibility; host applies it to its own window, no GC edges. */
+    bool clip_input_dispatching; /* Reject recursive scene-input delivery; no managed or exported state. */
     bool mouse_dispatching; /* Reject recursive Mouse delivery and teardown during a callback. */
     bool keyboard_dispatching; /* Reject recursive keyboard notification and context destruction. */
     FVM_KeyboardState keyboard; /* Context-local native snapshot; no managed roots or serialized state. */

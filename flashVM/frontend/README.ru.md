@@ -76,9 +76,22 @@ ctest --test-dir build -R '^flashvm_(player|capture)_update_' --output-on-failur
 
 ## Сохраняемые ClipActions v0.625
 
-PlaceObject2 сохраняет records sprite; плеер автоматически доставляет только
-EnterFrame во время ticks. Load/unload/construct/data/input требуют явной host
+PlaceObject2 сохраняет records sprite; базовая v0.625 доставляла только
+EnterFrame во время ticks. С v0.626 global input подключён, как описано ниже.
+Load/unload/construct/data и targeted interaction требуют явной host
 интеграции [C89 API](../doc/CLIP_ACTIONS.ru.md). Native onX, hit testing и lifecycle
 scheduler автоматически не добавлены. Optional tests flashvm_player_clip_actions_
 interpreter/jit исполняют SWF5–8 на настоящем SDL dummy video и отвергают wrong-value
 controls; это не видимый экран или приёмка другой ОС.
+
+## Input дерева клипов v0.626
+
+Основной player передаёт pinned root в fvm_desktop_window_pump_clip_input: namespace/
+focus handlers и native state предшествуют каждому global retained scene event.
+Старый wrapper остаётся namespace-only, primary touch mapping сохраняется.
+[Контракты/ошибки/границы](../doc/CLIP_INPUT.ru.md). flashvm_frontend_clip_input
+использует реальную SDL dummy video с synthetic mouse/finger/key messages. Отдельный
+flashvm_frontend_clip_player использует настоящий host/adapter, добавляя SDL messages
+после первого показа; flashvm_player_clip_input_interpreter/jit проверяют SWF5–8,
+сумму событий и coalesced redraw. Injector только тестовый; физическое устройство
+не считается проверенным.

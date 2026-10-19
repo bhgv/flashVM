@@ -29,6 +29,9 @@ void fvm_desktop_window_input(FVM_DesktopWindow *window,FVM_DesktopInput *input)
 /* There are no synthetic listeners or OS messages in this protocol fixture. */
 FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *window,FVM_Context *c,double x,double y)
 { (void)c;(void)x;(void)y;return window==&view?FVM_OK:FVM_INVALID_ARGUMENT; }
+/* This empty event source has no input records to broadcast; the real SDL adapter is tested separately. */
+FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *window,FVM_Context *c,FVM_Object *root,double x,double y)
+{ (void)root;return fvm_desktop_window_pump_input(window,c,x,y); }
 /* Keep the compatibility keyboard entry routed to the same empty event source. */
 FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *window,FVM_Context *c)
 { return fvm_desktop_window_pump_input(window,c,0,0); }
