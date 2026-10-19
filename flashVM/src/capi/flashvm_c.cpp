@@ -205,6 +205,7 @@ extern "C"
         context->drag_revision = 0;
         context->pointer_world_x = context->pointer_world_y = 0;
         context->pumping_input = false;
+        context->input_queue_epoch = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->input_callback = 0;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -243,7 +244,8 @@ extern "C"
 
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         if (!context || context->destroying || context->gc_collecting ||
-            context->gc_native_depth || context->keyboard_dispatching || context->mouse_dispatching)
+            context->gc_native_depth || context->keyboard_dispatching || context->mouse_dispatching ||
+            context->pumping_input)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;
 

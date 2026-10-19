@@ -2,7 +2,7 @@
 
 ## Model
 
-Each [`FVM_Context`](../src/core/runtime.hpp#L241) owns its objects. A full mark-and-sweep pass begins at the VM global object and all explicitly pinned objects. It traces own named properties, numeric indexed properties, prototypes and metatables. It therefore collects **cycles** that are unreachable from roots; reference counting alone cannot do this.
+Each [`FVM_Context`](../src/core/runtime.hpp#L245) owns its objects. A full mark-and-sweep pass begins at the VM global object and all explicitly pinned objects. It traces own named properties, numeric indexed properties, prototypes and metatables. It therefore collects **cycles** that are unreachable from roots; reference counting alone cannot do this.
 
 The collector is not concurrent. Use it only on the context's owning thread, at a VM safe point. Never call collection recursively from `__gc` or while the AVM1 interpreter is actively using unrooted temporary objects. AVM1 frames are rooted and automatic safe points are enabled. Public stacks and registered native captures are also traced; arbitrary native C locals are not scanned. See [collector contracts](GC_COMPLETION.md).
 
@@ -32,7 +32,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:241](../src/core/runtime.hpp#L241) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:245](../src/core/runtime.hpp#L245) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `FVM_GC_FULL` | macro / define | [include/flashvm/gc.h:26](../include/flashvm/gc.h#L26) |
 | `fvm_gc_mode` | function | [include/flashvm/gc.h:37](../include/flashvm/gc.h#L37) |

@@ -63,6 +63,7 @@
       - [keyboard_listeners](#example-embedding-keyboard_listeners) — <small><em>Слушатели Key, явный выбор клипа и короткие нажатия</em></small>
       - [keyboard_polling](#example-embedding-keyboard_polling) — <small><em>Опрос Key, одновременные клавиши и сброс фокуса</em></small>
       - [selection](#example-embedding-selection) — <small><em>Selection: выбор клипа, уведомления и наблюдатели</em></small>
+    - [mixed_input](#example-embedding-mixed_input) — <small><em>Одна очередь Mouse/Key, снимки и отмена пакета</em></small>
     - [mouse](#group-embedding-input-mouse)
       - [mouse_listeners](#example-embedding-mouse_listeners) — <small><em>Слушатели указателя: касание, движение и отпускание</em></small>
   - [jit](#group-embedding-jit)
@@ -771,6 +772,17 @@ getFocus, уведомления onSetFocus/onKillFocus, регистрацию/
 [Контракт EN](../doc/SELECTION.md) / [RU](../doc/SELECTION.ru.md).
 
 **Файлы:** [main.c](embedding/selection/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-mixed_input"></a>
+#### mixed_input
+
+**Тип:** исполняемый C89. **README:** [embedding/mixed_input/README.md](embedding/mixed_input/README.md).
+
+Сохраняет контакт и полный клавиатурный снимок с позицией указателя в едином FIFO. Ограничивает пакет доставки, проверяет независимость копии и явно отменяет остаток; сброс polling-состояния выполняется отдельно. Без SDK и графики, не display frontend.
+
+**Файлы:** [main.c](embedding/mixed_input/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1588,6 +1600,7 @@ Source line links describe the current checkout, including in historical notes.
 - [media — embedding/media](#example-embedding-media)
 - [media — extending/media](#example-extending-media)
 - [meta_call — extending/meta_call](#example-extending-meta_call)
+- [mixed_input — embedding/mixed_input](#example-embedding-mixed_input)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
 - [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
 - [movieclip — embedding/movieclip](#example-embedding-movieclip)

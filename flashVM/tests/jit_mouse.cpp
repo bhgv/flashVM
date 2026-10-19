@@ -3,6 +3,7 @@
 #include "jit_classes.cpp"
 #include "flashvm/mouse.h"
 #include "flashvm/input.h"
+#include "flashvm/input_queue.h"
 #include "flashvm/movieclip.h"
 static FVM_Result collect_mouse(FVM_Context *c, FVM_Object *, unsigned, const FVM_Value *,
                                 FVM_Value *out, void *) {
@@ -65,6 +66,13 @@ int main() {
             assert(fvm_input_dispatch_mouse(c, types[i], 30 + i, -4) == FVM_OK);
             if (class_mode) assert(c->execution_mode.stats.native_entries > entries);
             assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 30 + i);
+            entries = c->execution_mode.stats.native_entries;
+            assert(fvm_input_enqueue_mouse(c, types[i], 40 + i, -5) == FVM_OK);
+            assert(fvm_gc_collect(c, 0) == FVM_OK);
+            unsigned processed = 99;
+            assert(fvm_input_pump(c, 0, &processed) == FVM_OK && processed == 1);
+            if (class_mode) assert(c->execution_mode.stats.native_entries > entries);
+            assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 40 + i);
         }
         Program throwing; throwing.text("pointer failure"); throwing.op(0x2a); throwing.op(0);
         FVM_JitCode *throw_code = 0; FVM_Object *throw_fn = script(c, throwing, &throw_code);
@@ -72,6 +80,14 @@ int main() {
         assert(fvm_input_dispatch_mouse(c, FVM_MOUSE_EVENT_UP, 42, 43) == FVM_EXCEPTION);
         assert(c->pointer_world_x == 42 && c->pointer_world_y == 43 && fvm_exception_clear(c) == FVM_OK);
         assert(!c->gc_frames && !c->gc_native_depth && !c->mouse_dispatching && !c->script_depth);
+        assert(fvm_input_enqueue_mouse(c, FVM_MOUSE_EVENT_UP, 80, 81) == FVM_OK);
+        assert(fvm_input_enqueue_mouse(c, FVM_MOUSE_EVENT_MOVE, 82, 83) == FVM_OK);
+        unsigned processed = 99, pending = 99;
+        assert(fvm_input_pump(c, 0, &processed) == FVM_EXCEPTION && processed == 0);
+        assert(!c->pumping_input && fvm_input_pending(c, &pending) == FVM_OK && pending == 1);
+        assert(c->pointer_world_x == 80 && fvm_exception_clear(c) == FVM_OK);
+        assert(fvm_input_pump(c, 0, &processed) == FVM_OK && processed == 1);
+        assert(fvm_object_get(c, observer, "pointerX", &value) == FVM_OK && value.number == 82);
         assert(fvm_function_set_body(c, handler, 0, 0, 0) == FVM_OK && fvm_jit_destroy(handler_code) == FVM_OK);
         assert(fvm_function_set_body(c, add_fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(add_code) == FVM_OK);
         assert(fvm_function_set_body(c, throw_fn, 0, 0, 0) == FVM_OK && fvm_jit_destroy(throw_code) == FVM_OK);

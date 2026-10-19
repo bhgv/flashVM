@@ -10,7 +10,7 @@ FlashVM uses internal C++98 types in `src/details/` rather than STL containers:
 | `std::vector<T>` | `fvm_detail::vector<T>` | `src/details/vector.hpp` |
 | `std::map<string,T>` | `fvm_detail::map<fvm_detail::string,T>` | `src/details/hash_table.hpp` |
 
-These are **private implementation types**, not public C ABI types. Embedding applications and extensions use the opaque [`FVM_Context`](../src/core/runtime.hpp#L241), [`FVM_Object`](../src/core/runtime.hpp#L121) and [`FVM_Value`](../include/flashvm/value.h#L24) API in `include/flashvm/`.
+These are **private implementation types**, not public C ABI types. Embedding applications and extensions use the opaque [`FVM_Context`](../src/core/runtime.hpp#L245), [`FVM_Object`](../src/core/runtime.hpp#L121) and [`FVM_Value`](../include/flashvm/value.h#L24) API in `include/flashvm/`.
 
 ### Byte strings
 
@@ -41,7 +41,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:241](../src/core/runtime.hpp#L241) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:245](../src/core/runtime.hpp#L245) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 <!-- source-links:end -->

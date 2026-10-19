@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.602
+# FlashVM stage status / Состояние стадий — v0.603
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,40 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.603 mixed input FIFO / Общая очередь ввода
+
+Gestures, Mouse and copied Key snapshots now share the context FIFO, with
+world coordinates captured at enqueue time. Pumping handles only its entry
+batch; callback additions wait for the next pump. Explicit cancellation
+invalidates the old batch while preserving events appended after cancellation.
+Recursive pumping and context destruction during dispatch are blocked.
+
+Eight targeted tests pass in Linux Release and a separate ASan/UBSan build
+(leak detection disabled): input_callback_failures, input_mixed_queue,
+input_pointer, input_queue, input_validation, jit_mouse, and the input_queue
+and mixed_input embedding tutorials. The JIT fixture covers real SWF6–8
+interpreter/manual/automatic native delivery, queued GC and exception recovery.
+The build-version refresh and tutorial/source-link checks also pass.
+
+Жесты, Mouse и копии состояния Key используют общую очередь контекста.
+Проверены порядок, координаты, отмена, добавление из обработчика, лимит,
+ошибки, GC и восстановление после исключения. Восемь целевых тестов прошли
+в Linux Release и отдельно с ASan/UBSan без проверки утечек. Новых запусков
+SDL/Clutter SDK, Android или Windows в этой версии нет. Перевод всех
+фронтендов на очередь и полная приёмка стадий остаются открытыми.
+
+See [INPUT_QUEUE.md](INPUT_QUEUE.md) and the
+[mixed input tutorial](../examples/embedding/mixed_input/README.md).
+
+## v0.602 standalone Clutter patch / Отдельный патч библиотеки
+
+The standalone git-format patch is copied into the Clutter frontend example,
+with repository-specific application instructions and scope documented in
+[LIBRARY_PATCH.md](../examples/frontends/clutter3d/LIBRARY_PATCH.md).
+It changes only library configure/actor sources, excluding inferno-os.
+Это отдельная доставка уже описанных исправлений библиотеки; она не означает
+новую проверку SDK или готовность Android/Windows.
 
 ## v0.601 GLES2 and projected input / GLES2 и проекция ввода
 

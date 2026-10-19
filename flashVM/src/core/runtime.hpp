@@ -200,7 +200,11 @@ struct FVM_ScriptFunction
 /* Define FVM_QueuedInput struct and its representation. */
 struct FVM_QueuedInput
 {
-    FVM_InputEvent event; /* Queued input event payload. */
+    unsigned int kind; /* Private discriminant: gesture, primary pointer or keyboard. */
+    FVM_InputEvent event; /* Gesture payload; x/y carry event-time world pixels for all variants. */
+    FVM_KeyboardState keyboard; /* Copied native state, with no managed pointers. */
+    FVM_MouseEventType mouse_type; /* Down/move/up for the primary-pointer variant. */
+    int pressed; /* Keyboard transition polarity, normalized to zero or one. */
     FVM_InputPhase phase; /* Input event delivery phase. */
 };
 
@@ -342,7 +346,7 @@ struct FVM_Context
     FVM_NativeEntry avm1_trace; /* [GC:] Host ActionTrace sink retaining its optional capture. */
     fvm_detail::vector<FVM_InputRule>
         input_rules; /* [GC:] Rules mapping input events to callbacks. */
-    fvm_detail::vector<FVM_QueuedInput> queued_input; /* [GC:] Input events awaiting delivery. */
+    fvm_detail::vector<FVM_QueuedInput> queued_input; /* Copied native input payloads; no managed edges or callback userdata. */
     FVM_Object *drag_clip; /* [GC:] Context-owned root of the currently dragged native instance. */
     bool drag_lock_center; /* Whether dragging centers the clip on the pointer. */
     bool drag_constrained; /* Whether normalized parent-space bounds apply. */
@@ -360,6 +364,7 @@ struct FVM_Context
     bool mouse_dispatching; /* Reject recursive Mouse delivery and teardown during a callback. */
     bool keyboard_dispatching; /* Reject recursive keyboard notification and context destruction. */
     FVM_KeyboardState keyboard; /* Context-local native snapshot; no managed roots or serialized state. */
+    unsigned long input_queue_epoch; /* Incremented when cancellation invalidates an entry batch. */
     bool pumping_input; /* [GC:] Whether input delivery is already in progress. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     FVM_InputCallback
