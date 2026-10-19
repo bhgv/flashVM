@@ -15,6 +15,7 @@ good = [
     'try { throw 1; } catch(e:Error) { trace(e); } finally {}',
     '// EOF comment', '/* stars **/ var x:Number = 1;',
 ]
+good += [p.read_text() for p in sorted((Path(__file__).resolve().parents[2] / 'examples').glob('*.as'))]
 bad = ['package x { class C {', 'package { import ; }',
        'class C extends A, B {}', 'var x: = 1;', 'const = 2;',
        'interface I { function f() {} }', 'var x = <xml/>;',
@@ -32,3 +33,9 @@ with tempfile.TemporaryDirectory() as tmp:
         path.write_bytes(data)
         assert subprocess.run([exe, str(path)], capture_output=True).returncode == 1
 print(f'{len(good)+len(bad)+2} syntax cases; no semantic/backend claim')
+
+# Help/version are successful commands, never treated as input filenames.
+for option in ('--help', '--version'):
+    result = subprocess.run([sys.argv[1], option], capture_output=True, timeout=5)
+    assert result.returncode == 0 and result.stdout
+    assert b'ERROR: AddressSanitizer' not in result.stderr and b'runtime error:' not in result.stderr

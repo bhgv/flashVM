@@ -38,3 +38,16 @@ Renamed detached build (path containing spaces) and compiler-local build passed.
 Root plus six local viewer launchers served their home, Russian format guide,
 channel tutorial and grammar over loopback HTTP; all FIR Markdown links resolved.
 External Coco/R revision used: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.
+
+## Compiler series 0.2.2
+
+Linux, GCC 13.3, C99: 472 subprocess checks with the real FlashVM host passed,
+before and after optimization. The same 472 passed with ASan/UBSan for FIR and
+the source adapter. This environment disables ASan stack instrumentation and
+LSan; heap/global ASan and UBSan were exercised, not leak or stack checking.
+All four syntax-frontend CTest suites passed. Detached renamed AS1, AS2, AS3,
+Limbo and FIR copies built and tested in paths containing spaces. All 512 local
+Markdown links resolved. Coco/R revision:
+`b91b65233c264d92c63a5c8cd855e7fc784bca53`. No physical Android test was run.
+Without /tmp, set TMPDIR to an existing writable directory; temporary files use
+mkstemp and are immediately unlinked, leaving only their open streams.

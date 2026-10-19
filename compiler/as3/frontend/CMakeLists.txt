@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(as3_frontend VERSION 0.1.0 LANGUAGES C)
+project(as3_frontend VERSION 0.1.1 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)

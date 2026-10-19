@@ -71,3 +71,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# Help/version are successful commands, never treated as input filenames.
+for option in ('--help', '--version'):
+    result = subprocess.run([sys.argv[1], option], capture_output=True, timeout=5)
+    assert result.returncode == 0 and result.stdout
+    assert b'ERROR: AddressSanitizer' not in result.stderr and b'runtime error:' not in result.stderr

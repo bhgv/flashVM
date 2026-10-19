@@ -56,3 +56,8 @@ their globals never enter the same executable. Do not edit generated build files
 
 Local CMake entry: configure this directory with the same COCOR_ROOT and
 COCOR_EXECUTABLE flags; tool executables are under the build directory’s `v1/`.
+
+File-free help: `fir1 --help`, `fir1_source --help`; versions: `--version`.
+On Linux/Termux, `TMPDIR` selects the secure temporary-file directory.
+Numeric semantics and SSA bindings: [lower.c](lower.c), API: [lower.h](lower.h).
+[Complete workflow](../doc/PIPELINE.md).

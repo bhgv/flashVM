@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.1.0. [Русский](README.ru.md).
+Version 0.1.1. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -15,3 +15,5 @@ cmake -S . -B build \
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+CLI: `--help`, `--version` (no source file required; status 0).

@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.1.0
+# AS3 syntax frontend 0.1.1
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -24,3 +24,5 @@ Primary; type declarations use TypeDeclaration/Member/Signature. Diagnostics
 include file, byte-based line/column and generated Coco/R error number. Status:
 0 syntax accepted, 1 rejected, 2 command/I/O failure. UTF-8 and NUL are validated
 before scanning. A detached renamed `as3` directory builds without siblings.
+
+CLI: `--help`, `--version` (no source file required; status 0).

@@ -11,6 +11,25 @@ int main(int argc, char **argv)
     FILE *input, *output;
     char error[512] = "operation failed";
     int ok, check, optimise, compile, raw;
+    if (argc == 2 && !strcmp(argv[1], "--version")) {
+        puts("fir1 0.2.2 (FIR 1.0; AVM1/FWS8)"); return 0;
+    }
+    if (argc == 2 && !strcmp(argv[1], "--help")) {
+        puts("fir1 - FIR 1.0 compiler and verifier\n"
+             "usage: fir1 check INPUT.fir\n"
+             "       fir1 print|opt|swf|actions INPUT.fir OUTPUT\n"
+             "check: syntax, SSA dominance, types and CFG; no output\n"
+             "print: canonical FIR; opt: conservative FIR peephole\n"
+             "swf: one-frame FWS8; actions: raw AVM1 with ActionEnd\n"
+             "No implicit optimization. Use opt output explicitly.\n"
+             "Required header: FIR 1.0; conditional: if %c, ^yes, ^no\n"
+             "Comments: // and /* ... */. Channels require FlashVM extensions.\n"
+             "Limits: one main() -> void, 4096 instructions/values, 256 blocks.\n"
+             "TMPDIR selects secure temporary staging on Linux/Termux.\n"
+             "Exit: 0 success, 1 invalid input, 2 CLI/I/O/backend failure.\n"
+             "See fir/v1/doc/FORMAT.md and compiler/README.md (also .ru.md).");
+        return 0;
+    }
     if (argc < 3) goto usage;
     check = !strcmp(argv[1], "check");
     optimise = !strcmp(argv[1], "opt");
@@ -31,7 +50,7 @@ int main(int argc, char **argv)
     if (ok && optimise) ok = fir_optimise(module, error, sizeof(error));
     if (!ok) { fprintf(stderr, "%s: %s\n", argv[2], error); free(module); return 1; }
     if (check) { free(module); return 0; }
-    /* tmpfile also protects against aliases/hard links to the input file. */
+    /* Staging also protects against aliases/hard links to the input file. */
     output = fir_temporary();
     if (!output) { perror("temporary output"); free(module); return 2; }
     ok = compile || raw ? fir_swf(output, module, raw, error, sizeof(error)) : fir_print(output, module);

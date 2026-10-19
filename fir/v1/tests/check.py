@@ -97,16 +97,19 @@ with tempfile.TemporaryDirectory() as directory:
         else:
             exercise((folder / 'main.fir').read_text(), (folder / 'expected.txt').read_text())
 
+    for tool in (TOOL, SOURCE):
+        for option in ('--help', '--version'):
+            result = call(tool, option)
+            assert result.stdout
     # Every source profile lowers mutable names into fresh SSA definitions.
     for language in ('as1', 'as2', 'as3', 'limbo'):
-        if language == 'limbo':
-            program = 'implement V; V: module { value: fn(): int; }; value(): int { x: int = 6; y: int = x * 7; x = y - x; return x; }'
-        else:
-            annotation = '' if language == 'as1' else ':Number'
-            program = f'var x{annotation} = 6; var y = x * 7; x = y - x; trace(x); trace(y);'
+        folder = ROOT / 'examples' / language
+        program = (folder / ('variables.b' if language == 'limbo' else 'variables.as')).read_text()
         inp.write_text(program)
         call(SOURCE, language, '--input', inp, opt)
-        exercise(opt.read_text(), '36\n' if language == 'limbo' else '36\n42\n')
+        expected = (folder / 'variables.txt').read_text()
+        exercise(opt.read_text(), expected)
+        exercise((folder / 'variables.fir').read_text(), expected)
     for program in ('var x = x + 1;', 'x = 1;', 'var x = 1; var x = 2;',
                     'var x:String = 1;', 'var x = 1; trace(y);',
                     'var x;', 'var x = 1; x += 2;',
@@ -187,6 +190,11 @@ with tempfile.TemporaryDirectory() as directory:
         call(SOURCE, 'as2', '--input', inp, opt, good=False)
     inp.write_text('implement Answer; Answer: module { value: fn(): int; }; value(): int { return 1.0; }')
     call(SOURCE, 'limbo', '--input', inp, opt, good=False)
+    # Size rejection must not touch an existing destination.
+    inp.write_bytes(b'/' * 65537)
+    opt.write_bytes(b'keep-output')
+    call(SOURCE, 'as2', '--input', inp, opt, good=False)
+    assert opt.read_bytes() == b'keep-output'
     inp.write_bytes(b'// invalid UTF-8 \xff\ntrace(1);')
     call(SOURCE, 'as1', '--input', inp, opt, good=False)
     # Incompatible symbols and capacity overflows fail cleanly.

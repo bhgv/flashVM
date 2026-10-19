@@ -14,7 +14,7 @@ static int depth;
 CHARACTERS
   /* Portable module identifiers. */
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" .
-  /* Decimal literals only; exponent and division are outside this subset. */
+  /* Decimal literals with exponent; division is outside this subset. */
   digit = "0123456789" .
   /* Comment bytes excluding EOF and line delimiters. */
   linebyte = ANY - CHR(0) - CHR(10) - CHR(13) .

@@ -1,6 +1,7 @@
 /* Standalone syntax check driver. One source file per process avoids Coco/R's
  * global scanner/parser state being reused or shared between threads. */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <fcntl.h>
@@ -97,6 +98,19 @@ static void report_error(int code, int line, int column, long offset)
 int main(int argc, char **argv)
 {
     int accepted;
+    if (argc == 2 && !strcmp(argv[1], "--version")) {
+        puts("as2_parse 0.1.1 (Coco/R syntax frontend)"); return 0;
+    }
+    if (argc == 2 && !strcmp(argv[1], "--help")) {
+        puts("usage: as2_parse SOURCE\n"
+             "Syntax only: no type checking, FIR, bytecode or SWF output.\n"
+             "Grammar: compiler/as2/frontend/as2.atg (bhgv/coco-r-C).\n"
+             "One input per process; UTF-8 validated; byte-based coordinates.\n"
+             "Exit: 0 syntax accepted, 1 rejected, 2 CLI/I/O failure.\n"
+             "Coverage/build: compiler/as2/README.md and README.ru.md.\n"
+             "Numeric source-to-FIR tutorials: build/fir1/fir1_source --help.");
+        return 0;
+    }
     if (argc != 2) {
         fprintf(stderr, "usage: as2_parse SOURCE\n");
         return 2;

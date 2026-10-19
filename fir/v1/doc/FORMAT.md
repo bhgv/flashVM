@@ -11,7 +11,7 @@ blank line or comment precedes it. The file suffix is `.fir`; directory `v1`
 denotes the major family, while header `1.0` identifies this exact grammar.
 Unknown versions are rejected before parsing. A new accepted grammar requires
 an explicit reader change; silently interpreting future minor versions is forbidden.
-Implementation version 0.1.0 and FlashVM development version are independent.
+Implementation version 0.2.2 and FlashVM development version are independent.
 
 UTF-8 is validated, including comments; embedded NUL and malformed UTF-8 fail.
 `//` runs to newline/EOF. `/* ... */` is non-nesting and must terminate.
@@ -128,3 +128,9 @@ parse calls. The IR structures are an internal C99 API, not a stable embedding
 ABI or binary file format. The text is the interchange format. Failed syntax,
 type, dominance or backend-range checks do not overwrite an existing output.
 OS write failures can still leave a partial destination file.
+
+The effect table lives in `optimiser/effects.c`: `FIR_READS_MEMORY`,
+`FIR_WRITES_MEMORY`, `FIR_ALLOCATES`, `FIR_MAY_THROW`, `FIR_MAY_CALL_USER`,
+`FIR_MAY_SUSPEND`. C API `fir_effects(op)` returns the mask; an unknown opcode
+receives `FIR_ALL_EFFECTS`. Control instructions have no result and are not
+removed by DCE even with a zero effect mask.

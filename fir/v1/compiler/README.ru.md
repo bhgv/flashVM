@@ -55,3 +55,8 @@ Backend использует зарезервированные movie-local им
 
 Локальная CMake-сборка: можно конфигурировать эту папку с теми же параметрами
 COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` каталога сборки.
+
+Справка без файла: `fir1 --help`, `fir1_source --help`; версии: `--version`.
+На Linux/Termux `TMPDIR` задаёт каталог безопасных временных файлов.
+Числовая семантика и окружение SSA: [lower.c](lower.c), интерфейс: [lower.h](lower.h).
+[Полный цикл](../doc/PIPELINE.ru.md).

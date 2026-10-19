@@ -6,7 +6,7 @@
 `expected.txt` contains expected trace lines. Result: **5.75**.
 
 All operands are numeric literals, so the adapter can select f64 operations.
-Variables, strings, classes and dynamic source-language addition are rejected.
+Strings, classes and dynamic source-language addition are rejected.
 The AS3 sample uses an explicitly limited numeric-to-AVM1 profile; ABC/AVM2
 emission is not implemented.
 
