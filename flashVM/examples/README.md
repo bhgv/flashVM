@@ -907,6 +907,8 @@ Darwin ARM64 encoder и включаемый MAP_JIT callback-пул описа�
 очистка после ошибки. Показывает живой Array и рассылку по снимку; не плеер.
 [Контракт EN](../doc/AS_BROADCASTER.md) / [RU](../doc/AS_BROADCASTER.ru.md).
 
+Регистрация учитывает общий бюджет AVM1; прерванная операция сохраняет список. Контракт и ограничения: [EN](../doc/AS_BROADCASTER.md#registration-work-limits-v0617) / [RU](../doc/AS_BROADCASTER.ru.md#ограничение-работы-регистрации-v0617).
+
 **Файлы:** [main.c](embedding/broadcaster/main.c), [events.as](embedding/broadcaster/events.as).
 
 [К оглавлению](#оглавление).

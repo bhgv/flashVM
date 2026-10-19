@@ -3364,6 +3364,16 @@ All nine stages remain open.
 контракты ядра/ABI не изменены. Аппаратная и межплатформенная приёмка остаётся
 открытой. [Details / Подробности](../examples/frontends/linux_fb/README.md#v0614-primary-source-reconciliation--согласование-кнопок).
 
+## v0.617 bounded broadcaster registration / Бюджет регистрации
+
+AsBroadcaster add/remove now charge identity searches, stored-index staging and
+new insertions to the shared AVM1 execution budget. Budget failure leaves the live
+registration list unchanged; nested calls retain the outer budget. No complete
+native callback, real-time cancellation or foreign-platform acceptance is claimed.
+[EN](AS_BROADCASTER.md#registration-work-limits-v0617) /
+[RU](AS_BROADCASTER.ru.md#ограничение-работы-регистрации-v0617).
+Все девять этапов остаются открытыми. Проверки: [status](ROADMAP_STATUS.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -158,3 +158,9 @@ Workflow details / RU+EN policy: [doc/DOCUMENTATION_GUIDELINES.md](doc/DOCUMENTA
   artifact is FlashVM-android-test-signing-key-v0.585.keystore (alias flashvm-test;
   test-only store/key password android), saved separately with deliverables.
   Reuse it rather than generating a replacement. It is not a production identity.
+
+- User instruction on 2026-10-19 supersedes direct-master and publication rules:
+  do not commit on master and do not push. Prepare commits on a local work branch
+  only to produce downloadable format-patch files. Deliver each patch with raw
+  Termux pull/am/author+committer verification/push commands; the user applies
+  and publishes the changes from Android.

@@ -124,6 +124,26 @@ Namespace не зависит от SDK отображения; другие хо
 Гонки worker, длительные/удалённые сетевые сбои и полная историческая семантика
 Flash остаются открытыми. Эти ограниченные сценарии не закрывают этапы 6–9.
 
+## Ограничение работы регистрации (v0.617)
+
+Регистрация разделяет `FVM_Config.instruction_limit` контекста с вложенным
+исполнением AVM1 и рассылками. Учитывается каждый просмотренный логический индекс,
+скопированный сохранённый индекс и новая регистрация. Поиск дубликата и отсутствующего
+слушателя также расходует бюджет. Ноль отключает числовой предел; проверка остановки
+worker сохраняется. Это условные единицы работы, не время и не предел памяти.
+
+Add/remove готовят новую карту индексов до публикации. Исчерпание бюджета или
+остановка возвращает [`FVM_ERROR`](../include/flashvm/flashvm.h#L43), сохраняя идентичность Array, длину, порядок и
+элементы. Частичная регистрация не публикуется даже при прерывании копирования.
+Вложенный вызов не получает новый бюджет; следующий независимый вызов хоста
+начинает собственный. Семантика снимка рассылки и уже выполненные побочные эффекты
+обработчиков сохраняются. Декодирование графа этим механизмом не ограничивается.
+
+`broadcaster_budget` проверяет SWF6–8: прямой вызов, извлечённую нативную функцию,
+интерпретатор/manual/automatic JIT, прерывание поиска/копирования/уплотнения,
+повтор после GC и общий бюджет вложенных вызовов. Это ограниченные проверки Linux,
+не закрытие стадий роудмапа и не приёмка других платформ.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -137,6 +157,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_BROADCASTER_MAX_LISTENERS` | macro / define | [include/flashvm/broadcaster.h:6](../include/flashvm/broadcaster.h#L6) |
 | `fvm_channel_receive_value` | function | [include/flashvm/transfer.h:25](../include/flashvm/transfer.h#L25) |
 | `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../include/flashvm/transfer.h#L22) |
+| `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../include/flashvm/flashvm.h#L51) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

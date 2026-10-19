@@ -100,6 +100,8 @@ retains no argument or pointer beyond the call.
 
 Contracts and Adobe source: [guide](../../../doc/AS_BROADCASTER.md#script-methods-and-delivery).
 
+Registration may return [`FVM_ERROR`](../../../include/flashvm/flashvm.h#L43) when the shared execution budget is exhausted; the live list remains unchanged. See [work limits](../../../doc/AS_BROADCASTER.md#registration-work-limits-v0617) / [ограничение работы](../../../doc/AS_BROADCASTER.ru.md#ограничение-работы-регистрации-v0617).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -119,6 +121,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Context` | struct | [src/core/runtime.hpp:246](../../../src/core/runtime.hpp#L246) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
+| `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../../../include/flashvm/gc.h#L44) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |

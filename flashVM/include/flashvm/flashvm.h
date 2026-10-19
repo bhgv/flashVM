@@ -53,7 +53,7 @@ extern "C"
         unsigned long struct_size;        /* Size of this structure for API compatibility checks. */
         unsigned long features;           /* Requested runtime feature bits. */
         unsigned long memory_limit_bytes; /* Configured memory budget in bytes. */
-        unsigned long instruction_limit;  /* Maximum charged work: AVM1 instructions and native Array slice/join/concat traversal. */
+        unsigned long instruction_limit;  /* Maximum charged work: AVM1 instructions and budgeted native traversals, including Array and broadcaster operations. */
         void *userdata;                   /* Opaque caller data passed to native callbacks. */
     } FVM_Config;
     /* Implement abi version for this subsystem. */

@@ -74,8 +74,12 @@ FVM_Result add(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_V
         return FVM_OK;
     /* [GC:] The rooted method dispatcher retains incoming arguments; retain list across allocation. */
     FVM_ObjectRootScope root(c, array);
+    FVM_ExecutionWorkScope work(c);
     for (unsigned long i = 0; i < length; ++i)
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         fvm_detail::map<unsigned long, FVM_Value>::iterator entry = array->indexed.find(i);
         if (entry != array->indexed.end() && entry->second.type == FVM_VALUE_OBJECT &&
             entry->second.object == args[0].object)
@@ -83,8 +87,19 @@ FVM_Result add(FVM_Context *c, FVM_Object *self, unsigned int count, const FVM_V
     }
     if (length >= FVM_BROADCASTER_MAX_LISTENERS)
         return FVM_ERROR;
-    /* Prepare the only allocating insertion before changing logical length. */
-    fvm_detail::map<unsigned long, FVM_Value> next = array->indexed;
+    /* Stage and charge every stored entry before publishing the new registration. */
+    fvm_detail::map<unsigned long, FVM_Value> next;
+    for (fvm_detail::map<unsigned long, FVM_Value>::iterator slot = array->indexed.begin();
+         slot != array->indexed.end(); ++slot)
+    {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
+        next[slot->first] = slot->second;
+    }
+    status = work.step();
+    if (status != FVM_OK)
+        return status;
     next[length] = args[0];
     array->indexed.swap(next);
     fvm_value_number(&array->resource_result, static_cast<double>(length + 1));
@@ -104,8 +119,12 @@ FVM_Result remove(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
         return FVM_OK;
     /* [GC:] Keep list and its remaining listener graphs alive throughout staging. */
     FVM_ObjectRootScope root(c, array);
+    FVM_ExecutionWorkScope work(c);
     for (unsigned long i = 0; i < length; ++i)
     {
+        status = work.step();
+        if (status != FVM_OK)
+            return status;
         fvm_detail::map<unsigned long, FVM_Value>::iterator entry = array->indexed.find(i);
         if (entry == array->indexed.end() || entry->second.type != FVM_VALUE_OBJECT ||
             entry->second.object != args[0].object)
@@ -113,8 +132,13 @@ FVM_Result remove(FVM_Context *c, FVM_Object *self, unsigned int count, const FV
         fvm_detail::map<unsigned long, FVM_Value> next;
         for (fvm_detail::map<unsigned long, FVM_Value>::iterator slot = array->indexed.begin();
              slot != array->indexed.end(); ++slot)
+        {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             if (slot->first != i)
                 next[slot->first > i && slot->first < length ? slot->first - 1 : slot->first] = slot->second;
+        }
         array->indexed.swap(next);
         fvm_value_number(&array->resource_result, static_cast<double>(length - 1));
         fvm_value_boolean(out, 1);

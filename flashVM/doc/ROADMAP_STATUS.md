@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.616
+# FlashVM stage status / Состояние стадий — v0.617
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,36 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.617 registration work budget / Бюджет регистрации слушателей
+
+AsBroadcaster add/remove charge logical identity scans, copied stored indices and
+new insertion to the same execution budget as nested AVM1 and broadcast work.
+Interrupted staging preserves the live Array's identity, length and entries.
+Duplicate/missing searches cannot bypass the limit; outer scopes are not reset.
+[EN contract](AS_BROADCASTER.md#registration-work-limits-v0617) /
+[RU](AS_BROADCASTER.ru.md#ограничение-работы-регистрации-v0617).
+
+Fresh Linux x86-64 Release C89/C++98 AGG build with bundled static dependencies:
+eight selected CTest checks pass (six broadcaster fixtures, independent-process
+transport and build-version refresh). The new fixture covers 45 combinations of
+SWF6–8, direct/extracted native calls, interpreter/manual/automatic JIT and failed
+search/copy/compaction; each retries after GC and checks nested shared budgets.
+Additional direct checks exercise exact insertion/removal boundaries, missing
+removal and unlimited numeric budgets. Native entries are checked by the shared
+JIT fixture; these are actual x86-64 runs, not foreign-ISA acceptance.
+
+A fresh minimal Debug VM built throughout with ASan/UBSan passes all seven
+broadcaster/independent-process checks, with LeakSanitizer explicitly disabled.
+The unchanged annotated tutorial was compiled as strict C89, linked to the
+Release library and run: onValue 42 locally and 84 in its destination context.
+Source-link freshness, deterministic source-link/HTML tests and debugger tutorial
+checks pass. No complete core suite, original-player comparison, physical device,
+worker cancellation race or new Windows/macOS/Android run is claimed.
+
+Русский: проверены границы общего бюджета и сохранность опубликованного списка
+при прерывании поиска и подготовки карты. Это продвижение стадий 5/6/7/8, не
+полная приёмка платформ или всей семантики событий. Все девять стадий открыты.
 
 ## v0.616 broadcaster transports and player / Каналы событий и плеер
 
