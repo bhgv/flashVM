@@ -5,6 +5,7 @@
 #include "flashvm/gc.h"
 #include "flashvm/input.h"
 #include "flashvm/keyboard.h"
+#include "flashvm/mouse.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
 #include "flashvm/swf.h"
@@ -200,6 +201,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     if (!checked(fvm_standard_keyboard_install(context), "Key polling namespace", path))
         goto cleanup;
     /* The explicit MovieClip Selection subset starts at SWF6; keep older movies playable. */
+    if (info.version >= FVM_MOUSE_MIN_SWF_VERSION &&
+        !checked(fvm_standard_mouse_install(context), "Mouse pointer namespace", path))
+        goto cleanup;
     if (info.version >= FVM_SELECTION_MIN_SWF_VERSION &&
         !checked(fvm_standard_selection_install(context), "Selection MovieClip namespace", path))
         goto cleanup;
@@ -291,7 +295,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             }
             continue;
         }
-        if (!checked(fvm_desktop_window_pump_keyboard(window, context), "keyboard listeners", path))
+        if (!checked(fvm_desktop_window_pump_input(window, context, -viewport.x0, -viewport.y0),
+                     "input listeners", path))
             goto cleanup;
         fvm_desktop_window_input(window, &input);
         if (!checked(publish_input(context, host_input, &input,

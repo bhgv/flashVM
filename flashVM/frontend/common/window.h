@@ -3,8 +3,14 @@
 #define FVM_DESKTOP_WINDOW_H
 #include "flashvm/raster.h"
 #include "flashvm/keyboard.h"
-#define FVM_DESKTOP_PENDING_KEYS                                                                   \
+#include "flashvm/mouse.h"
+#include "flashvm/input.h"
+#define FVM_DESKTOP_PENDING_EVENTS                                                                   \
     128U /* Fixed main-thread FIFO capacity; overflow is an explicit error. */
+#define FVM_DESKTOP_TOUCH_MOUSE_HINT "SDL_TOUCH_MOUSE_EVENTS" /* Disable generated mouse duplicates. */
+#define FVM_DESKTOP_MOUSE_TOUCH_HINT "SDL_MOUSE_TOUCH_EVENTS" /* Disable generated finger duplicates. */
+#define FVM_DESKTOP_EVENT_KEY 1U /* Shared FIFO keyboard variant. */
+#define FVM_DESKTOP_EVENT_MOUSE 2U /* Shared FIFO primary-pointer variant. */
 #define FVM_DESKTOP_MAX_PIXELS 4096U    /* Match the current rasterizer coordinate extent. */
 #define FVM_DESKTOP_RED 0U              /* Red offset in a packed RGBA pixel. */
 #define FVM_DESKTOP_GREEN 1U            /* Green offset in a packed RGBA pixel. */
@@ -47,6 +53,9 @@ void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
 /* Deliver queued native snapshots in order on the VM owner thread, before its next tick.
  * Focus loss cancels pending transitions. Errors consume the current event and retain later ones.
  */
+FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *, FVM_Context *,
+                                          double origin_x, double origin_y);
+/* Compatibility internal entrypoint: deliver the same shared FIFO with zero stage origin. */
 FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *, FVM_Context *);
 /* Read whether the Android application is foreground; ordinary desktop focus loss only clears held
  * input. */

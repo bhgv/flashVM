@@ -3278,6 +3278,15 @@ GC, recursion guards and real AVM1/JIT exception paths are covered.
 [EN](MOUSE.md) / [RU](MOUSE.ru.md). Это продвижение стадий 3/5/7/8;
 полная сцена, курсор/колесо, native-device и эталонная приёмка остаются открытыми.
 
+## v0.596 — player primary contact and shared input ordering
+
+SDL finger down/move/up now maps one primary contact to standard Mouse events,
+without generated mouse duplicates. Supported keys and pointer events share a
+bounded copied FIFO with event-time coordinates and authored origin restoration.
+Focus/background reset cancels old batches; callback appends wait for a later pump.
+[EN](PLAYER_POINTER.md) / [RU](PLAYER_POINTER.ru.md). Это продвижение стадий
+3/5/9, не нативная приёмка Android/Windows/macOS и не завершение плана.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

@@ -170,6 +170,10 @@ Linux checkpoint v0.577: the desktop-enabled profile passes 1140 tests with
 3 explicit foreign-native skips out of 1143 registered (examples disabled).
 Four Cairo core rendering/RECT tests and eight viewer tests also pass.
 
+
+The current bounded Key/Mouse listener routing and primary touch adapter are
+described in [player input](PLAYER_POINTER.md). Full scene/button routing remains open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

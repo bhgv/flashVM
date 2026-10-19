@@ -31,3 +31,6 @@ Automatic A/V clock sync, full Flash Key/Mouse/button routing and browser integr
 remain open. Windows/Android cross builds do not establish native runtime acceptance.
 
 v0.584: [PCM/WAV диагностика и отправка ZIP с Android](../doc/PLAYER_AUDIO_DIAGNOSTICS.md).
+
+v0.596: [Primary touch and shared key/pointer queue](../doc/PLAYER_POINTER.md)
+([RU](../doc/PLAYER_POINTER.ru.md)); one touch contact needs no physical mouse.

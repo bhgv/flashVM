@@ -4,6 +4,10 @@ v0.595 provides an explicit SWF6–8 Mouse listener subset and a C89 host bounda
 A host can supply its primary touch contact, stylus or mouse; no physical mouse,
 OS device, permission or window is opened by the VM. [Русский контракт](MOUSE.ru.md).
 
+
+The SDL player bridge added in v0.596 maps an actual primary finger into these
+events and preserves key/pointer order; see [player input](PLAYER_POINTER.md).
+
 ## Installation
 
 `fvm_standard_mouse_install(context)` borrows a live, standard-library-installed

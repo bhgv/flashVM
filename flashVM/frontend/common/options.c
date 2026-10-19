@@ -210,6 +210,7 @@ void fvm_desktop_help(const char *program)
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");
+    puts("Touch: the first contact drives the pointer; additional contacts are ignored.");
     puts("This frontend plays the currently supported SWF subset; root PCM/ADPCM StartSound uses "
          "optional SDL audio.");
 }

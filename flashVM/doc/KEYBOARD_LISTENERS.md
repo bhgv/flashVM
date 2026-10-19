@@ -116,11 +116,11 @@ receiving context. Serializing the native Key namespace remains unsupported.
 ## SDL event queue
 
 The main-thread window adapter copies supported key transitions into a native
-FIFO of `FVM_DESKTOP_PENDING_KEYS` (128) complete snapshots. It retains presses,
+shared key/pointer FIFO of `FVM_DESKTOP_PENDING_EVENTS` (128) copied events. It retains presses,
 releases and repeats even when all occur between movie ticks. Unsupported SDL
 key symbols do not enqueue notifications. No VM code runs in SDL event collection.
 
-`fvm_desktop_window_pump_keyboard` runs on the owning thread before the next tick,
+`fvm_desktop_window_pump_input` runs on the owning thread before the next tick,
 then the player publishes final HostInput/polling state and advances the movie.
 The pump processes only its entry batch; recursively pumping is invalid. Focus
 loss/background cancels pending transitions and clears held/codes/toggles without

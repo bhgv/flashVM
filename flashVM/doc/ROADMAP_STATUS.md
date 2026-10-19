@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.595
+# FlashVM stage status / Состояние стадий — v0.596
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -455,6 +455,36 @@ permission; the locally materialized executable passes directly. Source-link
 freshness/HTML/determinism and debugger tutorial checks pass. No new native
 Android/Windows/macOS run, touch device or original-player acceptance is claimed.
 All roadmap stages remain open.
+
+## v0.596 primary touch in player / Первичное касание плеера
+
+The SDL host maps one real finger identity to Mouse down/move/up and ignores
+synthetic duplicates/secondary fingers. Its shared native FIFO retains mixed
+key/pointer order and event-time coordinates. Delivery restores stage origin;
+focus reset cancels an old active batch without consuming callback-enqueued
+new input. Explicit overflow/errors do not claim successful lost-event delivery.
+[EN](PLAYER_POINTER.md) / [RU](PLAYER_POINTER.ru.md).
+
+Проверки runtime библиотеки/очереди не заменяют физический touch/экран или
+нативную Android/Windows/macOS приёмку. Полная scene/button маршрутизация,
+multitouch, IME, колесо и курсор остаются открытыми; ни одна стадия не закрывается.
+
+### v0.596 verification / Проверка
+
+Fresh Linux Release C89/C++98 AGG core build with examples: 1263 registered,
+1259 pass and four explicit native-macOS/native-Windows/SSIP skips. Separately,
+a fresh lean AGG/JIT player built against static SDL2 2.30.0 passes six checks:
+primary-contact/shared-FIFO runtime, existing keyboard/real-SWF keyboard fixtures,
+options/help and unchanged audio assets. The pointer fixture uses explicit dummy
+video, including actual SDL resize/letterbox filtering; no physical device is claimed.
+
+Five focused regressions pass ASan/UBSan with leak detection disabled: pointer/
+keyboard adapter tests plus the native Mouse, allocation-failure and real SWF6–8
+interpreter/manual/automatic-JIT cases. SDL itself is an ordinary static Release
+library, not an instrumented SDL build. Source links and tutorial checks pass.
+The old SDL2 2.0.9 header lacks SDL_MOUSE_TOUCHID, so that newer SDK spelling is
+conditionally referenced; no old-SDK runtime result is claimed. Foreign native
+OS/device/endurance/reference acceptance and all nine stages remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

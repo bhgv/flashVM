@@ -5,26 +5,35 @@
 #include <SDL.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 /* Plain copied transition; contains no borrowed VM/SDL pointers. */
-typedef struct FVM_DesktopKeyEvent
+typedef struct FVM_DesktopEvent
 {
+    unsigned int kind;       /* Select a key or primary-pointer transition. */
+    FVM_MouseEventType mouse_type; /* Down/move/up when kind is the pointer variant. */
+    double x, y;             /* Logical coordinates captured at this event, before stage origin. */
     FVM_KeyboardState state; /* Complete post-transition polling state. */
     int pressed;             /* One for physical down/repeat, zero for release. */
-} FVM_DesktopKeyEvent;
+} FVM_DesktopEvent;
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
 struct FVM_DesktopWindow
 {
     SDL_Window *window;     /* Native OS window, owned until close. */
     SDL_Renderer *renderer; /* SDL software/accelerated presenter selected by SDL. */
     SDL_Texture *texture;   /* Streaming byte-order-independent RGBA texture. */
+    unsigned int logical_width, logical_height; /* Fixed stage extent for SDL normalized touches. */
+    int touch_active; /* One selected primary contact; additional fingers do not replace it. */
+    SDL_TouchID touch_device; /* Borrowed numeric identity of the selected touch device. */
+    SDL_FingerID touch_finger; /* Borrowed numeric identity of the selected contact. */
     int background;         /* Suspend timeline/audio while Android activity is not foreground. */
     FVM_DesktopInput
         input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
-    FVM_DesktopKeyEvent
-        pending_keys[FVM_DESKTOP_PENDING_KEYS]; /* Native bounded transition FIFO. */
-    size_t key_head, key_count; /* First pending transition and number of occupied slots. */
-    FVM_Result key_error; /* Latched overflow, never silently reported as successful delivery. */
-    int pumping_keys;     /* Reject recursive host pumping from a script/native handler. */
+    FVM_DesktopEvent
+        pending_events[FVM_DESKTOP_PENDING_EVENTS]; /* Native bounded transition FIFO. */
+    unsigned long event_epoch; /* Focus reset cancels an active entry batch, including reentrant changes. */
+    size_t event_head, event_count; /* First pending transition and number of occupied slots. */
+    FVM_Result event_error; /* Latched overflow, never silently reported as successful delivery. */
+    int pumping_events;     /* Reject recursive host pumping from a script/native handler. */
     int ready; /* Nonzero after a complete upload; permits repaint without another VM tick. */
 };
 
@@ -34,6 +43,9 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
 {
     FVM_DesktopWindow *view;
     SDL_SetMainReady();
+    /* Handle real finger events once, independently of SDL's configurable mouse synthesis. */
+    SDL_SetHint(FVM_DESKTOP_TOUCH_MOUSE_HINT, "0");
+    SDL_SetHint(FVM_DESKTOP_MOUSE_TOUCH_HINT, "0");
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
         return 0;
     view = (FVM_DesktopWindow *)calloc(1, sizeof(*view));
@@ -42,6 +54,8 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
         SDL_Quit();
         return 0;
     }
+    view->logical_width = width;
+    view->logical_height = height;
     view->input.keyboard.struct_size = sizeof(view->input.keyboard);
     view->window =
         SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, (int)width,
@@ -92,6 +106,76 @@ int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface 
     return draw_texture(view);
 }
 
+/* Queue one copied event in shared key/pointer order; overflow is latched until close. */
+static void queue_input(FVM_DesktopWindow *view, unsigned int kind,
+                         FVM_MouseEventType mouse_type, int pressed)
+{
+    size_t slot;
+    FVM_DesktopEvent *queued;
+    if (view->event_error != FVM_OK)
+        return;
+    if (view->event_count == FVM_DESKTOP_PENDING_EVENTS)
+    {
+        view->event_error = FVM_ERROR;
+        return;
+    }
+    slot = (view->event_head + view->event_count) % FVM_DESKTOP_PENDING_EVENTS;
+    queued = view->pending_events + slot;
+    queued->kind = kind;
+    queued->mouse_type = mouse_type;
+    queued->state = view->input.keyboard;
+    queued->pressed = pressed;
+    queued->x = view->input.x;
+    queued->y = view->input.y;
+    ++view->event_count;
+}
+
+/* SDL's logical-size event filter already maps normalized touches into the logical viewport. */
+static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *event)
+{
+    FVM_MouseEventType type;
+    /* Older supported SDK headers do not define mouse-to-finger synthesis identities. */
+#ifdef SDL_MOUSE_TOUCHID
+    if (event->touchId == SDL_MOUSE_TOUCHID)
+        return;
+#endif
+    if (event->type == SDL_FINGERDOWN)
+    {
+        if (view->touch_active || (view->input.buttons & FVM_DESKTOP_BUTTON_LEFT))
+            return;
+        type = FVM_MOUSE_EVENT_DOWN;
+    }
+    else
+    {
+        if (!view->touch_active || view->touch_device != event->touchId ||
+            view->touch_finger != event->fingerId)
+            return;
+        type = event->type == SDL_FINGERUP ? FVM_MOUSE_EVENT_UP : FVM_MOUSE_EVENT_MOVE;
+    }
+    if (!view->logical_width || !view->logical_height ||
+        !(event->x >= 0 && event->x <= 1 && event->y >= 0 && event->y <= 1))
+    {
+        view->event_error = FVM_INVALID_ARGUMENT;
+        return;
+    }
+    view->input.x = (double)event->x * view->logical_width;
+    view->input.y = (double)event->y * view->logical_height;
+    if (type == FVM_MOUSE_EVENT_DOWN)
+    {
+        view->touch_device = event->touchId;
+        view->touch_finger = event->fingerId;
+        view->touch_active = 1;
+        view->input.buttons |= FVM_DESKTOP_BUTTON_LEFT;
+        ++view->input.clicks;
+    }
+    else if (type == FVM_MOUSE_EVENT_UP)
+    {
+        view->touch_active = 0;
+        view->input.buttons &= ~FVM_DESKTOP_BUTTON_LEFT;
+    }
+    queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0);
+}
+
 /* Handle OS events without advancing the VM. Expose/resize can repaint during a slow frame. */
 static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 {
@@ -110,18 +194,26 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.left = view->input.right = view->input.up = view->input.down = 0;
         view->input.space = view->input.key_down = 0;
         view->input.buttons = 0;
+        view->touch_active = 0;
         memset(&view->input.keyboard, 0, sizeof(view->input.keyboard));
         view->input.keyboard.struct_size = sizeof(view->input.keyboard);
-        view->key_head = view->key_count = 0;
+        view->event_head = view->event_count = 0;
+        ++view->event_epoch;
     }
     if (event->type == SDL_MOUSEMOTION)
     {
+        if (event->motion.which == SDL_TOUCH_MOUSEID || view->touch_active)
+            return 1;
         view->input.x = event->motion.x;
         view->input.y = event->motion.y;
+        queue_input(view, FVM_DESKTOP_EVENT_MOUSE, FVM_MOUSE_EVENT_MOVE, 0);
     }
     if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
     {
-        unsigned int bit = event->button.button == SDL_BUTTON_LEFT     ? FVM_DESKTOP_BUTTON_LEFT
+        unsigned int bit;
+        if (event->button.which == SDL_TOUCH_MOUSEID || view->touch_active)
+            return 1;
+        bit = event->button.button == SDL_BUTTON_LEFT     ? FVM_DESKTOP_BUTTON_LEFT
                            : event->button.button == SDL_BUTTON_MIDDLE ? FVM_DESKTOP_BUTTON_MIDDLE
                            : event->button.button == SDL_BUTTON_RIGHT  ? FVM_DESKTOP_BUTTON_RIGHT
                                                                        : 0;
@@ -134,7 +226,14 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         }
         else
             view->input.buttons &= ~bit;
+        if (bit == FVM_DESKTOP_BUTTON_LEFT)
+            queue_input(view, FVM_DESKTOP_EVENT_MOUSE,
+                         event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN
+                                                            : FVM_MOUSE_EVENT_UP, 0);
     }
+    if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION ||
+        event->type == SDL_FINGERUP)
+        touch_input(view, &event->tfinger);
     if (event->type == SDL_KEYDOWN || event->type == SDL_KEYUP)
     {
         SDL_Keycode key = event->key.keysym.sym;
@@ -168,17 +267,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.key_code = code;
         view->input.key_down = down;
         if (fvm_desktop_key_code(key))
-        {
-            if (view->key_count == FVM_DESKTOP_PENDING_KEYS)
-                view->key_error = FVM_ERROR;
-            else if (view->key_error == FVM_OK)
-            {
-                size_t slot = (view->key_head + view->key_count) % FVM_DESKTOP_PENDING_KEYS;
-                view->pending_keys[slot].state = view->input.keyboard;
-                view->pending_keys[slot].pressed = down;
-                ++view->key_count;
-            }
-        }
+            queue_input(view, FVM_DESKTOP_EVENT_KEY, FVM_MOUSE_EVENT_MOVE, down);
         if (down && !event->key.repeat)
             ++view->input.key_presses;
     }
@@ -190,27 +279,46 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 }
 
 /* Dispatch only the entry batch; callbacks may enqueue later work without an unbounded loop. */
-FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *view, FVM_Context *context)
+FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *view, FVM_Context *context,
+                                          double origin_x, double origin_y)
 {
     size_t remaining;
+    unsigned long epoch;
     FVM_Result result = FVM_OK;
-    if (!view || !context || view->pumping_keys)
+    if (!view || !context || view->pumping_events ||
+        !(origin_x >= -DBL_MAX && origin_x <= DBL_MAX &&
+          origin_y >= -DBL_MAX && origin_y <= DBL_MAX))
         return FVM_INVALID_ARGUMENT;
-    if (view->key_error != FVM_OK)
-        return view->key_error;
-    view->pumping_keys = 1;
-    remaining = view->key_count;
-    while (remaining-- && view->key_count)
+    if (view->event_error != FVM_OK)
+        return view->event_error;
+    view->pumping_events = 1;
+    remaining = view->event_count;
+    epoch = view->event_epoch;
+    while (remaining-- && view->event_count && epoch == view->event_epoch)
     {
-        FVM_DesktopKeyEvent event = view->pending_keys[view->key_head];
-        view->key_head = (view->key_head + 1) % FVM_DESKTOP_PENDING_KEYS;
-        --view->key_count;
-        result = fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
+        FVM_DesktopEvent event = view->pending_events[view->event_head];
+        view->event_head = (view->event_head + 1) % FVM_DESKTOP_PENDING_EVENTS;
+        --view->event_count;
+        if (event.kind == FVM_DESKTOP_EVENT_KEY)
+        {
+            result = fvm_input_set_pointer(context, event.x + origin_x, event.y + origin_y);
+            if (result == FVM_OK)
+                result = fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
+        }
+        else
+            result = fvm_input_dispatch_mouse(context, event.mouse_type,
+                                               event.x + origin_x, event.y + origin_y);
         if (result != FVM_OK)
             break;
     }
-    view->pumping_keys = 0;
-    return result == FVM_OK ? view->key_error : result;
+    view->pumping_events = 0;
+    return result == FVM_OK ? view->event_error : result;
+}
+
+/* Preserve the earlier internal entrypoint for zero-origin hosts, delivering the shared FIFO. */
+FVM_Result fvm_desktop_window_pump_keyboard(FVM_DesktopWindow *view, FVM_Context *context)
+{
+    return fvm_desktop_window_pump_input(view, context, 0, 0);
 }
 
 /* SDL_WaitEventTimeout removes an event: inspect it instead of accidentally losing close. */

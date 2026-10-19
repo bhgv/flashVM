@@ -73,12 +73,12 @@ int main(void)
     assert(fvm_input_add_key_listener(context, listener) == FVM_OK);
     key(&view, SDL_KEYDOWN, SDLK_LEFT, 0);
     key(&view, SDL_KEYUP, SDLK_LEFT, 0);
-    assert(view.key_count == 2 && !view.input.keyboard.down[FVM_KEY_LEFT] && calls == 0);
-    assert(fvm_desktop_window_pump_keyboard(&view, context) == FVM_OK && calls == 2 && !view.key_count);
+    assert(view.event_count == 2 && !view.input.keyboard.down[FVM_KEY_LEFT] && calls == 0);
+    assert(fvm_desktop_window_pump_keyboard(&view, context) == FVM_OK && calls == 2 && !view.event_count);
     assert(fvm_desktop_window_pump_keyboard(&view, context) == FVM_OK && calls == 2);
-    for (i = 0; i <= FVM_DESKTOP_PENDING_KEYS; ++i)
+    for (i = 0; i <= FVM_DESKTOP_PENDING_EVENTS; ++i)
         key(&view, SDL_KEYDOWN, SDLK_LEFT, 0);
-    assert(view.key_count == FVM_DESKTOP_PENDING_KEYS && view.key_error == FVM_ERROR);
+    assert(view.event_count == FVM_DESKTOP_PENDING_EVENTS && view.event_error == FVM_ERROR);
     assert(fvm_desktop_window_pump_keyboard(&view, context) == FVM_ERROR && calls == 2);
     assert(fvm_desktop_window_pump_keyboard(0, context) == FVM_INVALID_ARGUMENT);
     fvm_context_destroy(context); fvm_runtime_destroy(runtime);
