@@ -67,7 +67,7 @@ origin указывает на GitHub.
 FPS файла = frame_rate_fixed8 / 256. Итоговая частота — либо --fps, либо
 FPS файла * проценты / 100. Эти режимы не перемножаются. Итог должен быть больше
 нуля и не выше 1000. Очень медленные положительные частоты допустимы. При нулевом
-FPS файла нужен явный --fps. Каждый тик вызывает [fvm_movieclip_advance](../include/flashvm/movieclip.h#L62) с одним
+FPS файла нужен явный --fps. Каждый тик вызывает [fvm_movieclip_advance](../include/flashvm/movieclip.h#L66) с одним
 шагом, очищает фон, растеризует сцену и показывает результат. Первый тик входит
 в кадр 1. Последний ограниченный кадр виден весь свой период. Expose/resize
 перерисовывает сохранённую текстуру без нового тика VM, поэтому низкая скорость
@@ -180,8 +180,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:67](../include/flashvm/movieclip.h#L67) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:71](../include/flashvm/movieclip.h#L71) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
 | `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:27](../include/flashvm/swf.h#L27) |

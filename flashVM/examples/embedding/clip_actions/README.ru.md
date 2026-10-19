@@ -46,7 +46,7 @@ scene KeyPress key: 1; marker: 168; redraw: 1
 | [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Установить классы/методы до создания загруженной сцены. |
 | [fvm_movieclip_load_swf](../../../include/flashvm/movieclip.h#L43) | Скопировать/проверить SWF и сохранить private handlers; root заимствован, scripts при загрузке не исполняются. |
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Удержать root/actor/library между вызовами; pin примера освобождает context_destroy. |
-| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L62) | Выполнить tick, разместить actor и доставить EnterFrame; Load автоматически не доставляется. |
+| [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L66) | Выполнить tick, разместить actor и доставить EnterFrame; Load автоматически не доставляется. |
 | [fvm_object_get](../../../include/flashvm/value.h#L72) | Синхронно прочитать actor и scalar marker; borrowed object остаётся достижимым через root. |
 | [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L55) | Исполнить retained Load bytecode с receiver actor и key_code ноль; без выбора цели, native onX, продвижения кадра или показа. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Освободить граф/registration/pin после завершения вызовов; managed pointers недействительны. |
@@ -108,7 +108,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
 | `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../../../include/flashvm/keyboard.h#L69) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../../include/flashvm/input.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../../../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../../../include/flashvm/clip_actions.h#L55) |
 | `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../../../include/flashvm/clip_actions.h#L71) |
 | `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../../../include/flashvm/clip_actions.h#L86) |

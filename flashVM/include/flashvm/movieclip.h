@@ -55,6 +55,10 @@ extern "C"
        All ticks, callback AVM1 and charged native traversal share the outer instruction/work limit
        (zero disables the numeric limit, not cooperative worker cancellation). On error/OOM/exception
        completed actions, playhead changes and callbacks remain committed; later work is skipped.
+       After parent delivery, capture child identities and sort ascending native depth under budget.
+       Later same-depth replacements/newborns wait for the next snapshot; depth changes do not reorder it.
+       Validate local snapshots before child callbacks; detached/moved children are skipped.
+       A malformed/aliased/foreign or oversized child table fails after any committed parent work.
        No rendering or timer polling occurs. [GC:] The native barrier retains the traversed graph;
        explicit collect returns INVALID_ARGUMENT and gc_step does no collection until return.
        Null/foreign clips, lifecycle phases, sound

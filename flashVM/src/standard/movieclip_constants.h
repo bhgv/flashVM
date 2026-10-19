@@ -21,6 +21,7 @@
 #define FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES 65536UL
 /* Maximum descendant depth visited by one native timeline traversal. */
 #define FVM_MOVIECLIP_ADVANCE_MAX_DEPTH 64U
+#define FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN 65536UL /* Bound each post-handler native child snapshot. */
 /* Maximum timeline steps accepted by one native tick call. */
 #define FVM_MOVIECLIP_MAX_TICKS_PER_CALL 65536UL
 /* Resource bounds for stored geometry commands and path groups. */

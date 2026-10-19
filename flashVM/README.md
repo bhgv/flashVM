@@ -1,10 +1,12 @@
-Development version: **0.628** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.628 ` and an English description. Increase the subversion before each
+Development version: **0.629** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.629 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.629: [Timeline depth order](doc/TIMELINE_DEPTH_ORDER.md) / [Порядок tick-обхода](doc/TIMELINE_DEPTH_ORDER.ru.md).
 
 v0.628: [ClipEventKeyPress](doc/CLIP_KEYPRESS.md) / [Коды и доставка KeyPress](doc/CLIP_KEYPRESS.ru.md).
 
@@ -149,8 +151,8 @@ files. The agent does not commit on master or push. The user applies each patch
 with git am --3way and publishes master from Termux. Author and committer must
 both be `bhgv <bhgv@bhgv.bhgv>`. Each delivered patch includes the exact commands.
 
-Версия разработки: **0.628** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.628 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.629** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.629 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

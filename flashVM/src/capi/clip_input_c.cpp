@@ -4,6 +4,7 @@
 #include "../core/optional_method.hpp"
 #include "../standard/stage_update.hpp"
 #include "../core/execution_work_scope.hpp"
+#include "../core/depth_order.hpp"
 #include "../standard/movieclip_scene.hpp"
 #include "../standard/movieclip_state.hpp"
 #include "../standard/movieclip_storage.hpp"
@@ -47,50 +48,6 @@ FVM_Result state(FVM_Context *c, FVM_Object *clip, bool &art)
     }
     return FVM_OK;
 }
-/* Restore a max-heap, charging each comparison block so sorting shares the caller's budget. */
-FVM_Result sift(fvm_detail::vector<unsigned long> &order, size_t root, size_t count,
-                 FVM_ExecutionWorkScope &work)
-{
-    while (root < count / 2)
-    {
-        FVM_Result result = work.step();
-        if (result != FVM_OK)
-            return result;
-        size_t child = root * 2 + 1;
-        if (child + 1 < count && order[child] < order[child + 1])
-            ++child;
-        if (order[root] >= order[child])
-            break;
-        unsigned long value = order[root];
-        order[root] = order[child];
-        order[child] = value;
-        root = child;
-    }
-    return FVM_OK;
-}
-/* Sort native depth keys without STL or quadratic insertion sorting. */
-FVM_Result sort(fvm_detail::vector<unsigned long> &order, FVM_ExecutionWorkScope &work)
-{
-    for (size_t i = order.size() / 2; i; --i)
-    {
-        FVM_Result result = sift(order, i - 1, order.size(), work);
-        if (result != FVM_OK)
-            return result;
-    }
-    for (size_t count = order.size(); count > 1; --count)
-    {
-        FVM_Result result = work.step();
-        if (result != FVM_OK)
-            return result;
-        unsigned long value = order[0];
-        order[0] = order[count - 1];
-        order[count - 1] = value;
-        result = sift(order, 0, count - 1, work);
-        if (result != FVM_OK)
-            return result;
-    }
-    return FVM_OK;
-}
 /* Capture the complete selected topology before the first event callback; static art has no handler. */
 FVM_Result capture(FVM_Context *c, FVM_Object *clip, size_t parent, unsigned int depth,
                     fvm_detail::vector<Recipient> &batch, fvm_detail::map<size_t, bool> &seen,
@@ -130,7 +87,7 @@ FVM_Result capture(FVM_Context *c, FVM_Object *clip, size_t parent, unsigned int
             return result;
         order.push_back(i->first);
     }
-    result = sort(order, work);
+    result = fvm_depth_order::sort(order, work);
     if (result != FVM_OK)
         return result;
     for (size_t i = 0; i < order.size(); ++i)

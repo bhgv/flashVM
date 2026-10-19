@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.628
+# FlashVM stage status / Состояние стадий — v0.629
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,40 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.629 native timeline depth snapshots / Глубины tick-обхода
+
+Corrects a documented-but-unimplemented ordering promise: native child hash copies
+previously iterated insertion order. Post-handler child snapshots now validate local
+receiver identities and ownership, sort depths under the shared work budget, preserve
+captured identities through replacements and recheck effective ancestor removal.
+Input tree routes share the same heap sort with unchanged sorting units. Early private
+container/state checks reject unsafe null/foreign edges. The C89 tick tutorial adds a
+separate finite-budget shuffled-depth example. [EN](TIMELINE_DEPTH_ORDER.md) /
+[RU](TIMELINE_DEPTH_ORDER.ru.md).
+
+Это продвижение стадий 3/6/7/8/9, не whole-tree lifecycle scheduler или полная приёмка
+original-player ordering. Все девять этапов открыты; физические устройства и чужие
+платформы этой серией не сертифицируются.
+
+Validation for v0.629: 172 selected Linux Release CTests (AGG/static dependencies,
+including three runnable tutorials) and 112 minimal whole-core ASan/UBSan CTests
+passed. Ten new core regressions cover sorting, identity, detachment, private edges,
+local bounds, work/OOM and transferred AVM1/JIT ordering. The final sanitizer run
+was serial, with LeakSanitizer disabled; the exhaustive clone-allocation test took
+81.61 seconds within its explicit 180-second limit. Earlier mixed cached objects
+were rebuilt, and load-induced parallel timeouts were not counted as passing.
+The strict C89 example also ran against the instrumented VM and printed the verified
+low/middle/high order. Source-linked old/new controls reproduced the v0.628 insertion
+order defect. Source links, deterministic generation and annotated tutorial checks
+passed. No SDL/device/foreign-OS rerun is claimed by these Linux core results.
+
+Проверки v0.629: успешно 172 выбранных Release CTest и 112 whole-core ASan/UBSan
+CTest, включая десять новых regressions. Финальный sanitizer run последовательный,
+LeakSanitizer выключен; clone OOM matrix прошёл за 81,61 с при лимите 180 с.
+Strict C89 example выполнен под санитайзерами. Старые cache objects пересобраны;
+таймауты параллельного запуска не выданы за успешную приёмку. Все девять стадий
+открыты; SDL/физические устройства/чужие ОС этой серией повторно не проверены.
 
 ## v0.628 retained KeyPress input / Коды и доставка KeyPress
 

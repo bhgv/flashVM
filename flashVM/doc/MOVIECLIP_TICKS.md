@@ -1,10 +1,16 @@
 # MovieClip ticks and optional handlers — v0.624
 
-[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L62) drives synchronous owner-thread
+[Русский](MOVIECLIP_TICKS.ru.md). [fvm_movieclip_advance](../include/flashvm/movieclip.h#L66) drives synchronous owner-thread
 MovieClip ticks. It advances eligible timelines, runs retained initializers and frame
 scripts, delivers onEnterFrame, then visits a depth-ordered child snapshot. Stopped
 and single-frame clips still receive the handler. No timer poll, rendering or device
 presentation occurs; see [redraw](UPDATE_AFTER_EVENT.md) for independently hosted draws.
+
+v0.629 correction: the earlier implementation copied an insertion-ordered hash
+table, despite describing it as depth-ordered. Child snapshots now validate identities,
+use budgeted ascending depth sorting and skip effective removed ancestors.
+[Exact ordering, bounds and changed work](TIMELINE_DEPTH_ORDER.md). The childless
+exact two-unit policy remains; child-bearing ticks now also charge sorting/query work.
 
 ## Shared work and partial completion
 
@@ -20,7 +26,7 @@ and each initializer or segmented action-block delivery. AVM1 instructions retai
 existing accounting. Child snapshot entries are charged before its allocation. A
 single-frame clip with no scripts or children consumes two units per tick even when
 its handler is absent. Zero ticks does no work and invokes no callback. The maximum
-requested ticks and descendant depth are [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L25) and
+requested ticks and descendant depth are [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L26) and
 [FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L23); exceeding them returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
 
 This is an accounting/cancellation boundary, not hard real-time preemption. Scene
@@ -117,9 +123,9 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
-| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
+| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1368](../src/capi/value_c.cpp#L1368) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

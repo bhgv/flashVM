@@ -32,6 +32,7 @@
 #include "base_state.hpp"
 #include "../core/call_scope.hpp"
 #include "../core/optional_method.hpp"
+#include "../core/depth_order.hpp"
 #include "../core/execution_work_scope.hpp"
 #include "flashvm/property.h"
 #include "flashvm/serialization.h"
@@ -2499,6 +2500,9 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
     FVM_Result charged = work.step();
     if (charged != FVM_OK)
         return charged;
+    FVM_Object *checked = 0;
+    if (!o || o->owner != c || state(o, checked) != FVM_OK || checked->owner != c)
+        return FVM_INVALID_ARGUMENT;
     if (static_art(o))
         return FVM_OK;
     if (depth > FVM_MOVIECLIP_ADVANCE_MAX_DEPTH)
@@ -2515,6 +2519,8 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
     r = private_object(data, "children", children);
     if (r != FVM_OK)
         return r;
+    if (!frames || frames->owner != c || !children || children->owner != c)
+        return FVM_INVALID_ARGUMENT;
     unsigned long current = 0, total = 0;
     r = integer_field(data, "frame", FVM_MOVIECLIP_MAX_FRAMES, current);
     if (r != FVM_OK)
@@ -2599,8 +2605,10 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
     r = fvm_object_call_optional(c, o, "onEnterFrame");
     if (r != FVM_OK)
         return r;
-    /* Charge every child before allocating the post-handler, depth-ordered snapshot.
-     * [GC:] The enclosing native barrier retains removed snapshot objects throughout this tick. */
+    /* Charge before allocating a snapshot; callbacks have already committed the parent tick.
+     * [GC:] The enclosing barrier retains captured identities after removal or replacement. */
+    if (children->owner != c || children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
+        return FVM_INVALID_ARGUMENT;
     for (Slots::const_iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
     {
         r = work.step();
@@ -2608,13 +2616,38 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
             return r;
     }
     Slots snapshot = children->indexed;
-    for (Slots::iterator i = snapshot.begin(); i != snapshot.end(); ++i)
+    fvm_detail::vector<unsigned long> order;
+    fvm_detail::map<size_t, bool> seen;
+    /* Validate the complete local snapshot before the first child callback, without script lookup. */
+    for (Slots::const_iterator i = snapshot.begin(); i != snapshot.end(); ++i)
     {
-        if (i->second.type != FVM_VALUE_OBJECT)
+        FVM_Object *child = i->second.type == FVM_VALUE_OBJECT ? i->second.object : 0;
+        FVM_Object *child_data = 0;
+        if (!child || child == o || child->owner != c || state(child, child_data) != FVM_OK ||
+            child_data->owner != c || seen.find(reinterpret_cast<size_t>(child)) != seen.end())
             return FVM_INVALID_ARGUMENT;
-        if (parent(i->second.object) != o)
+        seen[reinterpret_cast<size_t>(child)] = true;
+        order.push_back(i->first);
+    }
+    r = fvm_depth_order::sort(order, work);
+    if (r != FVM_OK)
+        return r;
+    for (size_t i = 0; i < order.size(); ++i)
+    {
+        FVM_Object *child = snapshot.find(order[i])->second.object;
+        if (parent(child) != o)
             continue;
-        r = advance(c, i->second.object, depth + 1, work);
+        /* A parent may remove itself; physical child links alone do not reveal that detachment. */
+        r = work.step();
+        if (r != FVM_OK)
+            return r;
+        bool removed = false;
+        r = fvm_movieclip_scene_removed(c, child, &removed);
+        if (r != FVM_OK)
+            return r;
+        if (removed)
+            continue;
+        r = advance(c, child, depth + 1, work);
         if (r != FVM_OK)
             return r;
     }

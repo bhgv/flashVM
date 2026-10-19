@@ -13,6 +13,84 @@ static FVM_Result tick(FVM_Context *context, FVM_Object *receiver, unsigned int 
     fvm_value_undefined(out); /* Optional event delivery ignores the result value. */
     return FVM_OK; /* Permit the bounded traversal to continue. */
 } /* Do not destroy or access the context from another thread here. */
+/* One stack-owned log outlives every native method registration in the second context. */
+struct DepthLog /* Share ordinary C storage, never managed or serialized pointers. */
+{ /* Bound observations independently of callback order. */
+    unsigned int digits[FVM_TUTORIAL_DEPTH_CHILDREN]; /* Store the low/middle/high identities. */
+    unsigned int count; /* Count committed callbacks. */
+}; /* End the borrowed host log. */
+/* Each registration borrows one identity entry until its context is destroyed. */
+struct DepthEntry /* Keep callback identity independent of the native child hash table. */
+{ /* A registration owns no C allocation. */
+    struct DepthLog *log; /* Borrow the enclosing demonstration's stack-owned log. */
+    unsigned int digit; /* Expected ascending-order identity: low=1, middle=2, high=3. */
+}; /* End the native registration payload. */
+/* Record the actual child order without allocating or advancing another timeline. */
+static FVM_Result depth_tick(FVM_Context *context, FVM_Object *receiver, unsigned int count, const FVM_Value *args, FVM_Value *out, void *raw) /* Called synchronously on the owner thread. */
+{ /* The enclosing tick barrier retains receiver while this userdata is borrowed. */
+    struct DepthEntry *entry = (struct DepthEntry *)raw; /* The host keeps this entry alive until cleanup. */
+    (void)context; (void)receiver; (void)count; (void)args; /* Only the independent native identity is needed. */
+    fvm_value_undefined(out); /* The event route ignores result values. */
+    if (entry->log->count >= FVM_TUTORIAL_DEPTH_CHILDREN) /* Detect duplicate delivery before writing the bounded log. */
+        return FVM_INVALID_ARGUMENT; /* Preserve completed entries for host inspection. */
+    entry->log->digits[entry->log->count++] = entry->digit; /* Commit this receiver's observed position. */
+    return FVM_OK; /* Continue the ordered snapshot. */
+} /* Finish this native event. */
+/* Create children out of depth order in a separate runtime with its own finite work limit. */
+static int depth_demo(void) /* No renderer, file, SDL adapter or SWF compiler is needed. */
+{ /* Initialize partial owners before the first fallible operation. */
+    FVM_Config config; /* Runtime creation copies this second configuration. */
+    FVM_Runtime *runtime = 0; /* Outlive the managed context. */
+    FVM_Context *context = 0; /* Own the root and all child registrations. */
+    FVM_Object *root = 0; /* Pin while retaining borrowed child identities. */
+    FVM_Value args[2], out; /* Temporary construction arguments and borrowed child results. */
+    struct DepthLog log = {{0,0,0},0}; /* Keep native observation storage alive through context destruction. */
+    struct DepthEntry entries[FVM_TUTORIAL_DEPTH_CHILDREN]; /* Borrow one stable entry per registration. */
+    const char *names[FVM_TUTORIAL_DEPTH_CHILDREN] = {"high","low","middle"}; /* Deliberately shuffled insertion. */
+    const long depths[FVM_TUTORIAL_DEPTH_CHILDREN] = {10,-5,2}; /* Ascending traversal differs from insertion order. */
+    const unsigned int digits[FVM_TUTORIAL_DEPTH_CHILDREN] = {3,1,2}; /* Independent expected identities. */
+    unsigned int i; /* C89 loop counter declared before statements. */
+    FVM_Result status = fvm_config_init(&config); /* Initialize the complete configuration ABI. */
+    if (status == FVM_OK) /* Use a separate finite bound for sorting and child delivery. */
+    { /* This does not alter the earlier five-unit demonstration. */
+        config.instruction_limit = FVM_TUTORIAL_DEPTH_WORK_LIMIT; /* Budget is work units, not milliseconds. */
+        status = fvm_runtime_create(&config, &runtime); /* No thread or native device is started. */
+    } /* Runtime retains its copied configuration. */
+    if (status == FVM_OK) /* Acquire the owner-thread managed heap. */
+        status = fvm_context_create(runtime, &context); /* All remaining API calls use this context synchronously. */
+    if (status == FVM_OK) /* Install native MovieClip methods before constructing the tree. */
+        status = fvm_standard_install(context); /* Preserve errors for cleanup. */
+    if (status == FVM_OK) /* Create one frame with no root handler. */
+        status = fvm_movieclip_create(context, "ordered", 1, &root); /* The context owns the returned borrowed root. */
+    if (status == FVM_OK) /* Retain the complete scene across host boundaries. */
+        status = fvm_gc_pin(context, root); /* [GC:] Context destruction releases the pin. */
+    for (i = 0; status == FVM_OK && i < FVM_TUTORIAL_DEPTH_CHILDREN; ++i) /* Preserve the intentionally shuffled insertion order. */
+    { /* Fully configure one child before constructing the next. */
+        entries[i].log = &log; /* Borrow the same stack-owned trace. */
+        entries[i].digit = digits[i]; /* Keep identity separate from traversal position. */
+        status = fvm_value_string(args, names[i]); /* Prepare a static child name without transferring its C storage. */
+        fvm_value_number(args + 1, (double)depths[i]); /* Native public depths may be negative. */
+        if (status == FVM_OK) /* Construct through the public optional method bridge. */
+            status = fvm_object_call(context, root, "createEmptyMovieClip", 2, args, &out); /* The root retains a successful child. */
+        if (status == FVM_OK && (out.type != FVM_VALUE_OBJECT || !out.object)) /* Validate the borrowed method result. */
+            status = FVM_INVALID_ARGUMENT; /* Avoid registering on a missing receiver. */
+        if (status == FVM_OK) /* No collection happens between construction and registration. */
+            status = fvm_object_define_method_rooted(context, out.object, "onEnterFrame", depth_tick, entries + i, 0); /* Stack userdata remains valid until cleanup. */
+    } /* Parent graph owns every successfully constructed child. */
+    if (status == FVM_OK) /* Snapshot children after the parent tick and visit ascending depths. */
+        status = fvm_movieclip_advance(context, root, 1); /* Expected identities are 1,2,3 rather than 3,1,2. */
+    if (status == FVM_OK && (log.count != FVM_TUTORIAL_DEPTH_CHILDREN || log.digits[0] != 1 || log.digits[1] != 2 || log.digits[2] != 3)) /* Verify observed identities, not table iteration. */
+        status = FVM_INVALID_ARGUMENT; /* Preserve mismatches through ordinary cleanup. */
+    if (status == FVM_OK) /* Report only verified observations. */
+        puts("depth order: low middle high"); /* Expected third output line of the complete tutorial. */
+    else /* A failed tick can already have committed native log entries. */
+        fprintf(stderr, "MovieClip depth tutorial failed: %d\n", (int)status); /* Do not replay the event automatically. */
+    if (context) /* Release registrations before the borrowed entries/log go out of scope. */
+        fvm_context_destroy(context); /* [GC:] No managed pointer is used after return. */
+    if (runtime) /* Release the outer owner last. */
+        fvm_runtime_destroy(runtime); /* No thread/device cleanup remains. */
+    return status == FVM_OK; /* Preserve failure for the caller's exit code. */
+} /* End the independent depth-order demonstration. */
 /* Demonstrate partial completion and the fresh budget of a later outer host call. */
 int main(void) /* Build with the independent FlashVM component's examples option. */
 { /* Set partial owners before any fallible acquisition. */
@@ -61,5 +139,7 @@ int main(void) /* Build with the independent FlashVM component's examples option
         fvm_context_destroy(context); /* [GC:] No callback occurs after this returns. */
     if (runtime) /* Release the copied configuration last. */
         fvm_runtime_destroy(runtime); /* No external platform resource is owned. */
+    if (status == FVM_OK && !depth_demo()) /* Run the independent order example after releasing the first runtime. */
+        status = FVM_INVALID_ARGUMENT; /* Propagate the second demonstration's failure. */
     return status == FVM_OK ? 0 : 1; /* Let CTest or a shell observe the result. */
 } /* End the standalone host. */

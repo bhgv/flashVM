@@ -265,11 +265,12 @@ function(fvm_add_program source)
       # Unavailable native platforms or the headless example raster backend skip explicitly.
       set_tests_properties(${target} PROPERTIES SKIP_RETURN_CODE 77)
     endif()
-    if(target STREQUAL "flashvm_tests_color_matrix_filter_allocation" OR
+    if(target STREQUAL "flashvm_tests_avm1_clone_sprite_allocation" OR
+       target STREQUAL "flashvm_tests_color_matrix_filter_allocation" OR
        target STREQUAL "flashvm_tests_convolution_filter_allocation" OR
        target STREQUAL "flashvm_tests_property_version_exhaustive" OR
        target STREQUAL "flashvm_tests_property_version_exhaustive_execution")
-      # Exhaustive graph/attribute matrices run longer under ASan/UBSan.
+      # Exhaustive graph/attribute/allocation matrices run longer under ASan/UBSan.
       set_tests_properties(${target} PROPERTIES TIMEOUT 180)
     endif()
   endif()

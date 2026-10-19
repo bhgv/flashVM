@@ -101,7 +101,7 @@ no-multiple 7, stop 7, start 8. При первом PCM read остаётся т
 | [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Импортирует кадры/корневой звук из совпадающего source; clip нужно удерживать: [MOVIECLIP_SOUND.md](../../../doc/MOVIECLIP_SOUND.md#loading-and-source-identity). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | [GC:] Удерживает managed root во время host операций: [GC_NATIVE_ROOTS.md](../../../doc/GC_NATIVE_ROOTS.md). |
 | [`fvm_movieclip_set_sound_callback`](../../../include/flashvm/movieclip.h#L21) | Заимствует callback/userdata, не сериализует их и не открывает device: [контракт](../../../doc/MOVIECLIP_SOUND.md#callback-registration-contract). |
-| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L62) | Реальный вход доставляет события перед DoAction; ошибки не откатываются: [порядок](../../../doc/MOVIECLIP_SOUND.md#execution-order-and-errors). |
+| [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L66) | Реальный вход доставляет события перед DoAction; ошибки не откатываются: [порядок](../../../doc/MOVIECLIP_SOUND.md#execution-order-and-errors). |
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | [GC:] Снимает только успешно полученный pin перед уничтожением context: [GC_NATIVE_ROOTS.md](../../../doc/GC_NATIVE_ROOTS.md). |
 
 [Русское руководство](../../../doc/MOVIECLIP_SOUND.ru.md).
@@ -149,7 +149,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../../../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../../../include/flashvm/movieclip.h#L21) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |

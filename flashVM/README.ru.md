@@ -1,4 +1,4 @@
-Версия разработки: **0.628** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.629** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.629: [Timeline depth order](doc/TIMELINE_DEPTH_ORDER.md) / [Порядок tick-обхода](doc/TIMELINE_DEPTH_ORDER.ru.md).
 
 v0.628: [ClipEventKeyPress](doc/CLIP_KEYPRESS.md) / [Коды и доставка KeyPress](doc/CLIP_KEYPRESS.ru.md).
 

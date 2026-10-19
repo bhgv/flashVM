@@ -10,7 +10,7 @@
 - `include/flashvm/avm1.h`: actions, rooted trace/URL sinks and borrowed active-target introspection.
 - [stage.h](../include/flashvm/stage.h): host background/quality plus [fvm_stage_request_update](../include/flashvm/stage.h#L38), [fvm_stage_get_update](../include/flashvm/stage.h#L41) and [fvm_stage_take_update](../include/flashvm/stage.h#L45) ([EN](UPDATE_AFTER_EVENT.md) / [RU](UPDATE_AFTER_EVENT.ru.md)).
 - [clip_actions.h](../include/flashvm/clip_actions.h): [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55), [`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L71) for retained scene records, [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L86) for records plus methods ([EN](CLIP_INPUT_METHODS.md) / [RU](CLIP_INPUT_METHODS.ru.md)), and individual FVM_CLIP_EVENT_* selectors ([EN](CLIP_ACTIONS.md) / [RU](CLIP_ACTIONS.ru.md)).
-- [movieclip.h](../include/flashvm/movieclip.h): host-authored clip frames, vector rendering and [fvm_movieclip_advance](../include/flashvm/movieclip.h#L62) ([EN ticks](MOVIECLIP_TICKS.md) / [RU](MOVIECLIP_TICKS.ru.md)).
+- [movieclip.h](../include/flashvm/movieclip.h): host-authored clip frames, vector rendering and [fvm_movieclip_advance](../include/flashvm/movieclip.h#L66) ([EN ticks](MOVIECLIP_TICKS.md) / [RU](MOVIECLIP_TICKS.ru.md)).
 - `include/flashvm/standard.h`: standard installation and primitive conversion.
 - [timers.h](../include/flashvm/timers.h): [fvm_timers_poll](../include/flashvm/timers.h#L19), explicit owning-thread scheduled callback delivery ([EN](TIMERS.md) / [RU](TIMERS.ru.md)).
 - `include/flashvm/capability.h`: TCP resource authority and imports.
@@ -130,7 +130,7 @@ macOS Intel classic JIT memory policy, frame chain and host preparation / пам
 ## Desktop host and authored stage
 
 [`fvm_swf_stage_bounds`](../include/flashvm/swf.h#L38) reads authored signed-twip geometry;
-[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L67) projects rendering without modifying script poses.
+[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L71) projects rendering without modifying script poses.
 Full parameters, ownership, errors and restrictions:
 [EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
 ## Incremental StartSound mixing
@@ -249,12 +249,12 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
 | `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
 | `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
 | `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../include/flashvm/clip_actions.h#L97) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:67](../include/flashvm/movieclip.h#L67) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:71](../include/flashvm/movieclip.h#L71) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |
