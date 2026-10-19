@@ -3383,6 +3383,16 @@ before and between native recipients. [EN](INPUT_EVENT_BUDGET.md) /
 [RU](INPUT_EVENT_BUDGET.ru.md), [verification](ROADMAP_STATUS.md).
 Все девять стадий открыты; полная приёмка пункта 9 не заявляется.
 
+## v0.619 URL functions and trusted native globals / URL-функции и GC
+
+Adds bounded SWF5–8 escape/unescape with counted Unicode/NUL/surrogate handling,
+GC-safe coercion, work limits, stable graph callbacks and a runnable C89 tutorial.
+Direct global C calls retain self-replaced captures and honor trusted entry;
+standard installation preserves case-folded own conflicts, including native methods.
+[EN](URL_FUNCTIONS.md) / [RU](URL_FUNCTIONS.ru.md), [evidence](ROADMAP_STATUS.md).
+Malformed escape recovery/codepages, full original-player and foreign-platform
+acceptance remain open. Ни один из девяти этапов не закрывается.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

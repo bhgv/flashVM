@@ -12,8 +12,8 @@ extern "C"
 #endif
     /* Install the initial numeric standard library: Math, Number/Boolean conversion,
      * boxed String, Number, Boolean and Error constructors/prototypes, isNaN/isFinite,
-     * parseInt/parseFloat, String conversion, NaN and Infinity. This is not the complete AS1/AS2
-     * library. Existing bindings are preserved: conflicting names reject installation. */
+     * parseInt/parseFloat, escape/unescape (SWF5+), String conversion, NaN and Infinity.
+     * Partial AS1/AS2 library; conflicting own names follow active SWF case rules and are preserved. */
     /* Implement standard install for this subsystem. */
     FVM_API FVM_Result fvm_standard_install(FVM_Context *);
     /* Deterministic primitive ToNumber, without locale-dependent strtod.

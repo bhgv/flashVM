@@ -91,6 +91,7 @@
     - [standard_text](#example-embedding-standard_text) — <small><em>TextField, шрифты и векторный текст</em></small>
     - [text](#example-embedding-text) — <small><em>Проверка UTF-8 и поиск регулярным выражением</em></small>
     - [text_layout](#example-embedding-text_layout) — <small><em>Строки, метрики и контуры text layout</em></small>
+    - [url_encoding](#example-embedding-url_encoding) — <small><em>URL-функции AS1/AS2, UTF-16 и NUL без потери длины</em></small>
   - [workers](#group-embedding-workers)
     - [worker_channels](#example-embedding-worker_channels) — <small><em>Обмен host↔worker по двум каналам</em></small>
     - [worker_lifecycle](#example-embedding-worker_lifecycle) — <small><em>Отложенный запуск, state и join</em></small>
@@ -1066,6 +1067,20 @@ AS2-эскиз сетевой интеграции и host bridge. Отдель�
 
 [К оглавлению](#оглавление).
 
+<a id="example-embedding-url_encoding"></a>
+#### url_encoding
+
+**Тип:** исполняемый C89 без сети/экрана. **README:** [EN](embedding/url_encoding/README.md) / [RU](embedding/url_encoding/README.ru.md).
+
+Кодирует UTF-16 через escape, декодирует unescape и проверяет восемь исходных
+единиц, включая NUL и следующий за ним символ. Показывает счётные строки,
+синхронный глобальный вызов и cleanup контекста перед runtime.
+[Контракт EN](../doc/URL_FUNCTIONS.md) / [RU](../doc/URL_FUNCTIONS.ru.md).
+
+**Файлы:** [main.c](embedding/url_encoding/main.c).
+
+[К оглавлению](#оглавление).
+
 <a id="group-embedding-workers"></a>
 ### workers
 
@@ -1766,6 +1781,7 @@ Source line links describe the current checkout, including in historical notes.
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)
 - [text_layout — embedding/text_layout](#example-embedding-text_layout)
+- [url_encoding — embedding/url_encoding](#example-embedding-url_encoding)
 - [worker_channels — embedding/worker_channels](#example-embedding-worker_channels)
 - [worker_lifecycle — embedding/worker_lifecycle](#example-embedding-worker_lifecycle)
 - [worker_stop — embedding/worker_stop](#example-embedding-worker_stop)

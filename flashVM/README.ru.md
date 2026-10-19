@@ -1,10 +1,12 @@
-Версия разработки: **0.618** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.619** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
 новые коммиты отправляются только туда, с проверкой серверного HEAD.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.619: [AS1/AS2 URL globals and trusted global-call roots](doc/URL_FUNCTIONS.md) / [URL-функции и корни глобальных вызовов](doc/URL_FUNCTIONS.ru.md), [C89](examples/embedding/url_encoding/README.md).
 
 v0.618: [Shared input event budgets and worker cancellation](doc/INPUT_EVENT_BUDGET.md) / [общий бюджет событий и остановка worker](doc/INPUT_EVENT_BUDGET.ru.md).
 

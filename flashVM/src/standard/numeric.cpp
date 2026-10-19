@@ -7,6 +7,7 @@
 #include "math_constants.h"
 #include "constructor_identity.hpp"
 #include "../core/object_root_scope.hpp"
+#include "../core/property_lookup.hpp"
 #include "movieclip_state.hpp"
 #include "geometry_state.hpp"
 #include "function_state.hpp"
@@ -14,6 +15,8 @@
 #include "base_state.hpp"
 #include "string_state.hpp"
 #include "global_parsing.hpp"
+#include "url_encoding.hpp"
+#include "url_constants.h"
 #include "number_state.hpp"
 #include "../avm1/coercion.hpp"
 #include "error_state.hpp"
@@ -691,13 +694,16 @@ FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM
         fvm_value_boolean(o, number == number && std::fabs(number) != infinity());
     return result;
 }
+/* Keep the seven legacy entries in order; URL callbacks have separate, explicit graph IDs. */
 const Method global_functions[] = {{"Number", number_call},
                                    {"Boolean", boolean_call},
                                    {"isNaN", isnan_call},
                                    {"isFinite", isfinite_call},
                                    {"parseInt", fvm_builtin_parse_int},
                                    {"parseFloat", fvm_builtin_parse_float},
-                                   {"String", fvm_builtin_string}};
+                                   {"String", fvm_builtin_string},
+                                   {"escape", fvm_builtin_escape},
+                                   {"unescape", fvm_builtin_unescape}};
 } // namespace
 /* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
@@ -788,6 +794,10 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == fvm_builtin_escape)
+        return FVM_URL_ESCAPE_CALLBACK;
+    if (callback == fvm_builtin_unescape)
+        return FVM_URL_UNESCAPE_CALLBACK;
     if (callback == global_nan_get)
         return GLOBAL_NAN_GET;
     if (callback == global_infinity_get)
@@ -803,15 +813,19 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
             return 100 + (unsigned long)i;
     if (callback == boolean_constructor)
         return 3;
-    for (size_t i = 0; i < sizeof(global_functions) / sizeof(global_functions[0]); ++i)
+    for (size_t i = 0; i < FVM_NUMERIC_LEGACY_GLOBAL_COUNT; ++i)
         if (callback == global_functions[i].callback)
-            return 150 + (unsigned long)i;
+            return FVM_NUMERIC_GLOBAL_CALLBACK_BASE + (unsigned long)i;
     return 0;
 }
 
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == FVM_URL_ESCAPE_CALLBACK)
+        return fvm_builtin_escape;
+    if (id == FVM_URL_UNESCAPE_CALLBACK)
+        return fvm_builtin_unescape;
     if (id == GLOBAL_NAN_GET)
         return global_nan_get;
     if (id == GLOBAL_INFINITY_GET)
@@ -820,8 +834,9 @@ FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
         return global_constant_set;
     if (id == 3)
         return boolean_constructor;
-    if (id >= 150 && id < 150 + sizeof(global_functions) / sizeof(global_functions[0]))
-        return global_functions[id - 150].callback;
+    if (id >= FVM_NUMERIC_GLOBAL_CALLBACK_BASE &&
+        id < FVM_NUMERIC_GLOBAL_CALLBACK_BASE + FVM_NUMERIC_LEGACY_GLOBAL_COUNT)
+        return global_functions[id - FVM_NUMERIC_GLOBAL_CALLBACK_BASE].callback;
     if (id == 1)
         return boolean_value;
     if (id == 2)
@@ -903,6 +918,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "Error",
                                "parseInt",
                                "parseFloat",
+                               "escape",
+                               "unescape",
                                "String",
                                "Object",
                                "Array",
@@ -1036,13 +1053,15 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
             return error_result == FVM_OK ? fvm_geometry_validate(c) : error_result;
             /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
         }
+        /* Preserve existing own bindings using the active SWF's case rules, without getters. */
         for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
-            if (c->global->properties.find(names[i]) != c->global->properties.end() ||
-                c->global->accessors.find(names[i]) != c->global->accessors.end() ||
-                c->constructors.find(names[i]) != c->constructors.end() ||
-                c->functions.find(names[i]) != c->functions.end() ||
-                c->stack_functions.find(names[i]) != c->stack_functions.end() ||
-                c->script_functions.find(names[i]) != c->script_functions.end())
+            if (fvm_property_find(c, c->global->properties, fvm_detail::string(names[i])) != c->global->properties.end() ||
+                fvm_property_find(c, c->global->accessors, fvm_detail::string(names[i])) != c->global->accessors.end() ||
+                fvm_property_find(c, c->global->methods, fvm_detail::string(names[i])) != c->global->methods.end() ||
+                fvm_property_find(c, c->constructors, fvm_detail::string(names[i])) != c->constructors.end() ||
+                fvm_property_find(c, c->functions, fvm_detail::string(names[i])) != c->functions.end() ||
+                fvm_property_find(c, c->stack_functions, fvm_detail::string(names[i])) != c->stack_functions.end() ||
+                fvm_property_find(c, c->script_functions, fvm_detail::string(names[i])) != c->script_functions.end())
                 return FVM_INVALID_ARGUMENT;
         /* Build staged maps before publishing, so allocation errors cannot leave
          * partially installed globals and function registrations. */
@@ -1106,6 +1125,9 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         {
             FVM_NativeEntry entry;
             entry.callback = global_functions[i].callback;
+            /* [GC:] URL coercion may call script and collect with rooted arguments/captures. */
+            if (fvm_url_collector_callback(entry.callback))
+                entry.collector_entry = true;
             functions[global_functions[i].name] = entry;
         }
         FVM_Object *boolean_class = 0, *prototype = 0;

@@ -1,10 +1,12 @@
-Development version: **0.618** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.618 ` and an English description. Increase the subversion before each
+Development version: **0.619** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.619 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.619: [AS1/AS2 URL globals and trusted global-call roots](doc/URL_FUNCTIONS.md) / [URL-функции и корни глобальных вызовов](doc/URL_FUNCTIONS.ru.md), [C89](examples/embedding/url_encoding/README.md).
 
 v0.618: [Shared input event budgets and worker cancellation](doc/INPUT_EVENT_BUDGET.md) / [общий бюджет событий и остановка worker](doc/INPUT_EVENT_BUDGET.ru.md).
 
@@ -128,8 +130,8 @@ Use its full URL for authorized updates:
 `git push https://github.com/bhgv/flashVM.git master`. Do not force push.
 Author and committer must both be `bhgv <bhgv@bhgv.bhgv>`.
 
-Версия разработки: **0.618** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
-начинаются с `v0.618 ` и описания на английском. Перед каждым коммитом повышается
+Версия разработки: **0.619** ([VERSION.txt](VERSION.txt)). Сообщения новых коммитов
+начинаются с `v0.619 ` и описания на английском. Перед каждым коммитом повышается
 субверсия; имена архивов исходников/Git получают постфикс `-v<версия>` перед `.zip`.
 Полная совместимость с SWF 8 ещё
 не завершена; номер обозначает текущий этап разработки. CMake читает эту же версию.

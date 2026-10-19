@@ -1786,8 +1786,10 @@ extern "C"
             {
                 /* Copy the entry before a callback can replace its registration. */
                 FVM_NativeEntry entry = registered->second;
-                /* [GC:] Preserve the native barrier and result lifetime of the legacy call. */
-                FVM_NativeCallGuard guard(c);
+                /* [GC:] A trusted callback may replace its registration before collecting;
+                 * retain its copied capture and preserve any enclosing native barrier. */
+                FVM_ObjectRootScope entry_root(c, entry.root);
+                FVM_NativeCallGuard guard(c, !entry.collector_entry);
                 fvm_resource_fault_begin(c);
                 return fvm_exception_complete(c, c->global,
                     fvm_native_result(c, entry.callback(c, c->global, argc, args, out,

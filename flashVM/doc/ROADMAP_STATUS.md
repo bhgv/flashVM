@@ -1,11 +1,11 @@
-# FlashVM stage status / Состояние стадий — v0.618
+# FlashVM stage status / Состояние стадий — v0.619
 
 This is a bounded review of existing implementation reports and the current
-keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
+event and global-function work. It does not replace a complete per-API/SWF conformance matrix
 or certify unexecuted platforms. All nine stages remain open. Existing test
 counts are historical unless explicitly rerun for this revision.
 
-Это сводка существующих отчётов и текущего клавиатурного ввода, а не
+Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
 
@@ -23,6 +23,44 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.619 URL globals and trusted C calls / URL-функции и глобальные вызовы
+
+Standard installation now publishes escape/unescape for host and SWF5–8 execution.
+The bounded profile handles alphanumeric-only percent encoding, one-pass hex/plus
+decoding, counted UTF-8/WTF-8, NUL and lone UTF-16 surrogates. Malformed percent
+recovery and invalid decoded sequences remain explicitly unsupported; codepages
+and original-player edge conformance are open. [EN](URL_FUNCTIONS.md) /
+[RU](URL_FUNCTIONS.ru.md), [C89 tutorial](../examples/embedding/url_encoding/README.md).
+
+Direct counted global C calls now honor trusted runtime collection policy and
+root their copied capture through self-replacement, while preserving enclosing
+native barriers. Standard-install preflight also checks own native methods and
+uses active SWF case rules to preserve conflicting bindings. New URL graph IDs
+161/162 do not alter old numeric IDs 150–156 or constant IDs 158–160; extraction,
+clone-after-sender-destruction and collecting coercion are covered.
+
+Linux x86-64 Release AGG/static dependencies: 49 selected checks pass (47 runtime
+regressions, the real strict-C89 tutorial and version refresh). These include
+standard object baselines, numeric/global/parser/GC/graph regressions and five
+new fixtures: URL spellings/lifecycle/version/conflicts/work, actual SWF5–8
+interpreter/manual/automatic JIT, old callback-ID identity and transported Function,
+allocation sweeps with aliased output, and six native self-replacement/barrier/error
+cases. The installer fixture includes 32 own-global/native-method conflict cases.
+
+Minimal Debug core compiled throughout with ASan/UBSan: all 32 selected runtime
+regressions pass with LeakSanitizer explicitly disabled. The same annotated C89
+tutorial also runs against the instrumented VM, preserving eight UTF-16 units
+including NUL. Cached executable materialization/execute permissions were restored
+before the final runs; no not-started or runtime/assertion failure remains.
+Source-link freshness, deterministic source-link/HTML and debugger tutorial
+checks pass after documentation refresh. No fresh whole-core suite, reference
+player, foreign native OS/device, full legacy malformed recovery, network/endurance
+or completion of any roadmap stage is claimed.
+
+Русский: это развитие стадий 1/2/5/6/7/8 — новые стандартные функции, согласованная
+версионная семантика, корни GC, стабильные графовые ID и проверка JIT. Все девять
+стадий, включая пункт 9, остаются открытыми.
 
 ## v0.618 input event budgets / Общий бюджет событий ввода
 

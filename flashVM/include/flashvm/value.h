@@ -92,9 +92,9 @@ extern "C"
     /* [GC:] Register a counted native global name with a traced capture. */
     FVM_API FVM_Result fvm_register_function_rooted_bytes(FVM_Context *, const char *, size_t,
                                                           FVM_NativeFunction, void *, FVM_Object *);
-    /* Call a full counted native or script global function name. Arguments are
-     * snapshotted before lookup/callbacks; output may alias an argument. External
-     * borrowed string buffers remain caller-owned through the complete call. */
+    /* Call a counted global name with copied arguments; output may alias an argument.
+     * [GC:] Retain copied captures through self-replacement; trusted runtime entries honor GC barriers.
+     * Borrowed string buffers remain caller-owned through this synchronous owning-thread call. */
     FVM_API FVM_Result fvm_call_bytes(FVM_Context *, const char *, size_t, unsigned int,
                                       const FVM_Value *, FVM_Value *);
     /* Register function. */
