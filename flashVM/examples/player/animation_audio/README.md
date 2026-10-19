@@ -13,6 +13,12 @@ This is not complete Flash Key/Mouse/button compatibility.
 [Full EN guide](../../../doc/PLAYER_TEST_BUILDS.md) /
 [RU](../../../doc/PLAYER_TEST_BUILDS.ru.md).
 
+v0.597: `--mute` now plays the three sound-bearing movies without opening an audio
+device or failing at StartSound; interpreter/JIT CLI checks run 120 frames each.
+`--mute` теперь запускает все три ролика без аудиоустройства и отказа на StartSound.
+[EN contract](../../../doc/PLAYER_POINTER.md#muted-movie-playback) /
+[RU](../../../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
+
 v0.592: SWF 02 uses Selection.setFocus("_root") after focusEnabled setup.
 Root onKeyDown/onKeyUp counters are separate from the Key listener; root-focused
 releases increase the blue box height. The player installs the SWF6–8 subset.

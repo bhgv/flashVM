@@ -1457,6 +1457,10 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 запускают те же файлы в interpreter/JIT. Это не полная совместимость Key/Mouse
 или аппаратная приёмка всех ОС; [контракты и сборка](../doc/PLAYER_TEST_BUILDS.md).
 
+С v0.597 --mute выполняет все три звуковых ролика без аудиоустройства; реальный
+CLI проверяет 120 кадров каждого в interpreter/JIT.
+[Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

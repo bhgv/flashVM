@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.596
+# FlashVM stage status / Состояние стадий — v0.597
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -485,6 +485,40 @@ library, not an instrumented SDL build. Source links and tutorial checks pass.
 The old SDL2 2.0.9 header lacks SDL_MOUSE_TOUCHID, so that newer SDK spelling is
 conditionally referenced; no old-SDK runtime result is claimed. Foreign native
 OS/device/endurance/reference acceptance and all nine stages remain open.
+
+## v0.597 muted root audio / Явное отключение событийного звука
+
+A real player run of the delivered SWFs exposed the old --mute route's missing
+root StartSound callback. Explicit muted acknowledgements now permit timeline
+playback without PCM decoding/queueing, a worker or an audio device. Cleanup
+clears borrowed userdata before audio storage; stats count acknowledged events.
+Normal sound-enabled error behavior and unsupported scene tags are not hidden.
+[EN](PLAYER_POINTER.md#muted-movie-playback) /
+[RU](PLAYER_POINTER.ru.md#ролики-без-звука).
+
+This is player runtime integration, not codec/listening/device certification.
+Ни один этап не закрыт; нативные foreign OS/device, полная Flash-совместимость
+и итоговая приёмка по прежнему открыты.
+
+### v0.597 verification / Проверка
+
+The lean Linux AGG/JIT SDL2 2.30.0 player passes all eight registered frontend
+checks. Muted interpreter and JIT checks each run all three delivered sound
+movies for 120 frames with a deliberately invalid audio-driver name. They require
+actual interpreter/native counters, acknowledged sound events and audio_device=0;
+no unsupported-JIT skip was taken on this Linux x86-64 host. Other hosts without
+a native backend explicitly skip only the separate JIT check with status 77.
+
+Seven focused tests pass ASan/UBSan with leak detection disabled: native Mouse,
+allocation sweeps, SWF6–8 interpreter/manual/automatic-JIT callbacks, pointer and
+keyboard adapters, plus the two complete muted-player process checks. Initially
+cached sanitizer executables lost permission/materialization; fresh relinking
+and rerun pass all seven. SDL is an ordinary static Release library. Version
+configuration/refresh checks pass separately. The complete unchanged core run is
+recorded at v0.596 (1259 passes, four skips); no fresh full-core rerun is claimed
+for this player-only correction. Source-link and tutorial checks pass. Native
+foreign OS, physical touch/listening, general codecs and all stage acceptance
+remain open.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

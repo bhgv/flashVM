@@ -3287,6 +3287,16 @@ Focus/background reset cancels old batches; callback appends wait for a later pu
 [EN](PLAYER_POINTER.md) / [RU](PLAYER_POINTER.ru.md). Это продвижение стадий
 3/5/9, не нативная приёмка Android/Windows/macOS и не завершение плана.
 
+## v0.597 — explicit muted root sound notifications
+
+The player --mute route now acknowledges validated root StartSound events without
+opening audio, instead of failing its timeline with an absent host callback.
+Cleanup detaches userdata before release; muted events remain visible in stats.
+All three delivered sound movies have real 120-frame interpreter/JIT CLI checks
+with an invalid audio driver. [EN](PLAYER_POINTER.md#muted-movie-playback) /
+[RU](PLAYER_POINTER.ru.md#ролики-без-звука). Это исправление плеера стадий 4/9,
+не прослушивание, новый декодер или завершение платформенной приёмки.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

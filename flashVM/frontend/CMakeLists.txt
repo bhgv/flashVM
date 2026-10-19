@@ -67,6 +67,15 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
   add_test(NAME flashvm_frontend_options COMMAND flashvm_frontend_options)
   add_test(NAME flashvm_player_help COMMAND flashvm_player --help)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  if(NOT CMAKE_CROSSCOMPILING)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_player_muted_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/muted_movies.py $<TARGET_FILE:flashvm_player>
+        ${CMAKE_CURRENT_SOURCE_DIR}/../examples/player/animation_audio --${mode})
+      set_tests_properties(flashvm_player_muted_${mode} PROPERTIES TIMEOUT 60)
+    endforeach()
+    set_tests_properties(flashvm_player_muted_jit PROPERTIES SKIP_RETURN_CODE 77)
+  endif()
   add_test(NAME flashvm_player_audio_assets COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/audio_assets.py)
 endif()

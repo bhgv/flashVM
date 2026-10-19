@@ -66,6 +66,26 @@ OOM подготовки, расходует его, оставляя поздн
 IME, multitouch-жесты и security origins этим мостом не добавлены. Ядро без
 плеера по прежнему собирается без SDL.
 
+## Ролики без звука
+
+v0.597 исправляет найденный при запуске готовых роликов дефект: --mute раньше
+не создавал ни устройство, ни callback корневого StartSound, поэтому первый
+звуковой event останавливал timeline с [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46). Теперь --mute устанавливает
+явный muted_sound: подтверждает только эти проверенные уведомления без декодирования,
+очереди PCM, worker и открытия аудиоустройства. Обычный режим со звуком и его
+ошибки не меняются. Прочие неподдержанные scene tags/actions по прежнему отклоняются.
+
+Userdata callback заимствованы из живого FVM_DesktopAudio плеера; очистка всегда
+снимает callback до обнуления этой памяти. sound_events учитывает и намеренно
+пропущенные звуковые уведомления, audio_device остаётся нулём. StopSounds успешен
+по существующему контракту пустого контекста: фиктивный output/stop binding не создаётся.
+
+`frontend/tests/muted_movies.py` выполняет все три готовых ролика по 120 кадров
+в интерпретаторе и настоящем native JIT, с dummy video и заведомо неверным
+аудиодрайвером. Требует успешный выход, звуковые события, реальные счётчики
+исполнения и отсутствие аудиоустройства. Это muted-runtime проверка, а не
+прослушивание, аппаратная или codec-приёмка.
+
 ## Повторение ограниченных проверок
 
 Из компонента FlashVM с настоящим SDK SDL2:
@@ -98,4 +118,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

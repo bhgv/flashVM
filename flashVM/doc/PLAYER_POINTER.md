@@ -68,6 +68,28 @@ remain playable without the new namespace. The bridge does not add wheel,
 cursor visibility, Button/ClipActions, automatic focus/hit routing, IME,
 multitouch gestures or security-origin policy. Core-only builds still need no SDL.
 
+## Muted movie playback
+
+v0.597 fixes a player integration gap found while running the delivered sound
+movies: --mute previously omitted both the device and the root StartSound callback,
+so the timeline reported [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) at its first sound event. The player now
+installs an explicit muted_sound callback for --mute. It acknowledges only those
+validated root sound notifications without decoding/queueing PCM, starting a
+worker or opening an audio device. Normal non-muted device/error behavior is unchanged.
+Other unsupported scene tags/actions still fail through their existing checks.
+
+The context borrows callback userdata from the player's live FVM_DesktopAudio
+storage; cleanup clears the callback before clearing that storage on every exit.
+The stats sound_events counter includes intentionally muted notifications;
+audio_device stays zero. StopSounds succeeds through the existing empty-context
+contract: no fake output or no-op audio-stop binding is installed.
+
+`frontend/tests/muted_movies.py` runs all three shipped sound-bearing movies for
+120 ticks each in interpreter and actual native JIT modes, with dummy video and
+an intentionally invalid audio-driver name. It requires successful exit, observed
+sound events, actual execution counters and no audio device. This is muted
+runtime validation, not listening/device/codec acceptance.
+
 ## Reproduce the bounded checks
 
 From the FlashVM component with a real SDL2 SDK:
@@ -101,4 +123,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
+| `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

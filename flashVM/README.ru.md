@@ -1,4 +1,4 @@
-Версия разработки: **0.596** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.597** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -23,6 +23,8 @@ v0.587: [optional stop release / затухание остановки](doc/PLAY
 v0.588: [ADPCM test-tone block restart fix / исправление тестового ADPCM-тона](doc/PLAYER_AUDIO_DIAGNOSTICS.md#v0588-adpcm-fixture-block-restarts).
 
 v0.589: [Опрос Key и клавиатурные снимки хоста](doc/KEYBOARD.ru.md).
+
+v0.597: [Muted sound-bearing movie playback / запуск звуковых роликов с --mute](doc/PLAYER_POINTER.md#muted-movie-playback) ([RU](doc/PLAYER_POINTER.ru.md#ролики-без-звука)).
 
 v0.596: [Player primary touch and shared input FIFO / касания и общая очередь ввода](doc/PLAYER_POINTER.md) ([RU](doc/PLAYER_POINTER.ru.md)).
 

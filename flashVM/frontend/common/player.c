@@ -130,6 +130,18 @@ static FVM_Result publish_input(FVM_Context *context, FVM_Object *object,
                : result;
 }
 
+/* Explicit --mute acknowledges validated root sound events without decoding or opening audio. */
+static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ordinal,
+                               void *userdata)
+{
+    FVM_DesktopAudio *audio = (FVM_DesktopAudio *)userdata;
+    (void)context;
+    (void)clip;
+    (void)ordinal;
+    ++audio->events;
+    return FVM_OK;
+}
+
 /* Play one file. All VM/SDL objects belong to this thread; no background worker touches them. */
 static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
 {
@@ -249,6 +261,10 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         fprintf(stderr, "%s: cannot open desktop window\n", path);
         goto cleanup;
     }
+    if (options->mute &&
+        !checked(fvm_movieclip_set_sound_callback(context, muted_sound, &audio),
+                  "muted event sound", path))
+        goto cleanup;
     if (!options->mute && !checked(fvm_desktop_audio_open(context, clip, &audio),
                                    "event audio (use --mute to disable)", path))
         goto cleanup;
@@ -355,7 +371,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     }
     status = 0;
 cleanup:
-    if (context && clip && audio.mixer)
+    /* Release both real-output and explicit-mute registrations before audio userdata cleanup. */
+    if (context && clip)
         fvm_movieclip_set_sound_callback(context, 0, 0);
     fvm_desktop_audio_close(&audio);
     fvm_desktop_window_close(window);
