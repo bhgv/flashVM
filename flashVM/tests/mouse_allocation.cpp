@@ -43,6 +43,23 @@ int main() {
         assert(fvm_gc_collect(c, 0) == FVM_OK);
     }
     assert(done && before && after);
+    done = false; before = after = 0;
+    for (long allocation = 0; allocation < 128 && !done; ++allocation) {
+        assert(fvm_input_set_pointer(c, 3, 4) == FVM_OK);
+        fail_after = allocation;
+        FVM_Result status = fvm_input_dispatch_mouse_wheel(c, -2.5, 18, 19);
+        fail_after = -1;
+        double x, y; assert(fvm_input_get_pointer(c, &x, &y) == FVM_OK);
+        if (status == FVM_OK) { done = true; assert(x == 18 && y == 19); }
+        else {
+            assert(status == FVM_OUT_OF_MEMORY);
+            if (x == 3) { assert(y == 4); ++before; }
+            else { assert(x == 18 && y == 19); ++after; }
+        }
+        assert(!c->gc_frames && !c->gc_native_depth && !c->mouse_dispatching);
+        assert(fvm_gc_collect(c, 0) == FVM_OK);
+    }
+    assert(done && before && after);
     fail_after = 0; int removed = 0;
     assert(fvm_input_remove_mouse_listener(c, listener, &removed) == FVM_OK && removed);
     fail_after = -1;

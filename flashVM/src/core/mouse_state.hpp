@@ -16,4 +16,10 @@ inline bool fvm_mouse_event_valid(FVM_MouseEventType type, double x, double y)
             type == FVM_MOUSE_EVENT_UP) &&
            x >= -DBL_MAX && x <= DBL_MAX && y >= -DBL_MAX && y <= DBL_MAX;
 }
+/* A wheel is an explicit finite Number and pointer position, with no implicit device policy. */
+inline bool fvm_mouse_wheel_valid(double delta, double x, double y)
+{
+    return delta >= -DBL_MAX && delta <= DBL_MAX &&
+           fvm_mouse_event_valid(FVM_MOUSE_EVENT_MOVE, x, y);
+}
 #endif

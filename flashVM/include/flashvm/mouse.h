@@ -24,6 +24,13 @@ FVM_API FVM_Result fvm_input_remove_mouse_listener(FVM_Context *, FVM_Object *li
  * Nested Mouse dispatch is rejected. Listener edits affect later events; no device is opened. */
 FVM_API FVM_Result fvm_input_dispatch_mouse(FVM_Context *, FVM_MouseEventType,
                                            double world_x, double world_y);
+/* Deliver a finite signed wheel delta in host-normalized scroll lines (+up, -down),
+ * at finite world coordinates. All finite deltas, including zero, are explicit events.
+ * Publish position/update drag, then call onMouseWheel(delta) on rooted Mouse listeners.
+ * Same lifecycle, snapshot/OOM, error and cross-event recursion rules as pointer dispatch.
+ * No hit-test target is supplied, no focus/scroll action or OS wheel scaling is inferred. */
+FVM_API FVM_Result fvm_input_dispatch_mouse_wheel(FVM_Context *, double delta,
+                                                 double world_x, double world_y);
 /* Atomically install the SWF6--8 addListener/removeListener/_listeners subset after standard
  * objects. Existing conflicting bindings are preserved. Does not install Key or Selection. */
 FVM_API FVM_Result fvm_standard_mouse_install(FVM_Context *);

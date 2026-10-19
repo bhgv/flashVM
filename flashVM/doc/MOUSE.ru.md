@@ -116,6 +116,47 @@ OOM установки, до/после публикации. `tests/jit_mouse.c
 Снимки, пределы и явный mapping хоста — политика подмножества, а не полная
 Flash-совместимость. Ни один этап не закрывается; см. [состояние](ROADMAP_STATUS.md).
 
+## Колесо прокрутки
+
+С v0.605 [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32)(context, delta, world_x, world_y) принимает
+явное событие колеса. `context` — живой контекст вызывающего потока вне GC,
+освобождения и разрушения. `delta` — конечный Number в **строках прокрутки,
+нормализованных хостом**: плюс вверх, минус вниз. Дробная часть и явно переданный
+ноль сохраняются. `world_x`, `world_y` — конечные пиксели мира/сцены на момент
+события, не координаты экрана или виджета. Указатели и значения заимствуются
+только на время синхронного вызова; отдельное устройство VM не открывает.
+
+Сначала копируются и укореняются те же регистрации Mouse, что у down/move/up.
+После успешной подготовки публикуются координаты, обновляется активный drag,
+затем по порядку регистрации вызывается необязательный onMouseWheel(delta).
+Передаётся ровно один числовой аргумент. Автоматических scrollTarget, hit test,
+изменения фокуса/кнопки и прокрутки содержимого нет. Отсутствующий или невызываемый
+метод игнорируется без обращения к глобальной функции. Для прямой C-доставки
+установка пространства Mouse не обязательна; SWF6–8 использует тот же список.
+
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) означает неверный контекст/состояние, NaN/бесконечность в
+дельте/координатах или вложенную доставку Mouse. У колеса и down/move/up общая
+защита: нельзя рекурсивно вызвать ни свой, ни другой вид события. Ошибочный ввод
+и OOM снимка сохраняют координаты/drag, обработчиков не вызывают. После публикации
+ошибка drag/getter/метода или исключение VM прекращает дальнейшее уведомление и
+сохраняет совершённые изменения. OOM поиска метода тоже может случиться после
+публикации. Неожиданное нативное исключение ограничивается [FVM_ERROR](../include/flashvm/flashvm.h#L43). Временные
+корни и защита снимаются на любом выходе. Удаление регистрации и GC из раннего
+обработчика не уничтожают ожидающих получателей снимка. Изменения подписок
+влияют на следующие события; метод ожидающего получателя ищется при его вызове.
+Не разрушайте контекст внутри обработчика; доставка блокирует такое разрушение.
+
+Хост сам переводит щелчки, строки, пиксели и высокоточные отсчёты в строки.
+Нельзя молча выдавать пиксельную дельту за строки. VM не округляет дробную часть,
+не копит остаток, не синтезирует MouseMove и не добавляет аргумент объекта-цели.
+[Полный C89 пример](../examples/embedding/mouse_wheel/README.md).
+
+[Копия справочника Adobe AS2](https://open-flash.github.io/mirrors/as2-language-reference/Mouse.html)
+описывает знаковую дельту строк и необязательную цель; историческая поддержка
+колеса была привязана к Windows. Здесь явный переносимый контракт хоста только
+для delta. Автоматическая цель, точный порядок событий старого проигрывателя,
+физические колёса/тачпады и все ОС этой реализацией не приняты.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -129,6 +170,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:18](../include/flashvm/mouse.h#L18) |
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
 | `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:20](../include/flashvm/mouse.h#L20) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
@@ -140,6 +182,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

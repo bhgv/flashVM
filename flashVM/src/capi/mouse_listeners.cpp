@@ -1,6 +1,7 @@
 /* FlashVM: strongly rooted Mouse registrations and mutation-safe synchronous notification. */
 #include "../core/mouse_state.hpp"
 #include "../core/optional_method.hpp"
+#include "../core/mouse_limits.h"
 #include "../core/value_vector_root_scope.hpp"
 #include <new>
 
@@ -69,13 +70,12 @@ extern "C" FVM_Result fvm_input_remove_mouse_listener(FVM_Context *context, FVM_
     return FVM_OK;
 }
 
-/* Snapshot recipients before publication, then update drag state and deliver optional handlers. */
-extern "C" FVM_Result fvm_input_dispatch_mouse(FVM_Context *context, FVM_MouseEventType type,
-                                               double x, double y)
+namespace
 {
-    if (!fvm_mouse_context_usable(context) || !fvm_mouse_event_valid(type, x, y) ||
-        context->mouse_dispatching)
-        return FVM_INVALID_ARGUMENT;
+/* [GC:] Prepare a strong receiver snapshot before publishing coordinates; arguments are native Numbers. */
+FVM_Result dispatch(FVM_Context *context, const char *handler, double x, double y,
+                    unsigned int argc, const FVM_Value *args)
+{
     try
     {
         fvm_detail::vector<FVM_Value> recipients;
@@ -96,11 +96,9 @@ extern "C" FVM_Result fvm_input_dispatch_mouse(FVM_Context *context, FVM_MouseEv
             result = fvm_exec_drag_update(context);
         if (result != FVM_OK)
             return result;
-        const char *handler = type == FVM_MOUSE_EVENT_MOVE ? "onMouseMove"
-                              : type == FVM_MOUSE_EVENT_DOWN ? "onMouseDown" : "onMouseUp";
         for (size_t i = 0; i < recipients.size(); ++i)
         {
-            result = fvm_object_call_optional(context, recipients[i].object, handler);
+            result = fvm_object_call_optional_args(context, recipients[i].object, handler, argc, args);
             if (result != FVM_OK)
                 return result;
         }
@@ -114,4 +112,30 @@ extern "C" FVM_Result fvm_input_dispatch_mouse(FVM_Context *context, FVM_MouseEv
     {
         return FVM_ERROR;
     }
+}
+
+} // namespace
+
+/* Validate a primary-pointer transition before shared rooted dispatch can change state. */
+extern "C" FVM_Result fvm_input_dispatch_mouse(FVM_Context *context, FVM_MouseEventType type,
+                                               double x, double y)
+{
+    if (!fvm_mouse_context_usable(context) || !fvm_mouse_event_valid(type, x, y) ||
+        context->mouse_dispatching)
+        return FVM_INVALID_ARGUMENT;
+    const char *handler = type == FVM_MOUSE_EVENT_MOVE ? "onMouseMove"
+                          : type == FVM_MOUSE_EVENT_DOWN ? "onMouseDown" : "onMouseUp";
+    return dispatch(context, handler, x, y, 0, 0);
+}
+
+/* Preserve a signed finite line delta as a Number; hit testing and platform normalization belong to host. */
+extern "C" FVM_Result fvm_input_dispatch_mouse_wheel(FVM_Context *context, double delta,
+                                                     double x, double y)
+{
+    if (!fvm_mouse_context_usable(context) || !fvm_mouse_wheel_valid(delta, x, y) ||
+        context->mouse_dispatching)
+        return FVM_INVALID_ARGUMENT;
+    FVM_Value value;
+    fvm_value_number(&value, delta);
+    return dispatch(context, "onMouseWheel", x, y, FVM_MOUSE_WHEEL_DELTA_ARGS, &value);
 }

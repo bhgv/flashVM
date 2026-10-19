@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.604
+# FlashVM stage status / Состояние стадий — v0.605
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -20,6 +20,22 @@ counts are historical unless explicitly rerun for this revision.
 | 7: GC/debugger | Root/OOM tests, fault policies and source-aware debugger API | Coverage across every new subsystem; concurrency, finalization, deadlock and intercepted-channel diagnostics |
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
+
+## v0.605 direct wheel delivery / Прямая доставка колеса
+
+[fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32) adds finite signed/fractional line deltas through
+onMouseWheel(delta), reusing rooted Mouse snapshots, coordinate/drag publication
+and cross-event recursion/lifecycle protection. Six targeted Linux Release tests
+pass: mouse_wheel, mouse_listeners, mouse_allocation, jit_mouse (existing pointer
+fixture), input_mixed_queue and the new C89 mouse_wheel tutorial. The first three
+also pass ASan/UBSan with leak detection disabled. Wheel-specific script/JIT and
+queue/frontend delivery are not claimed by this checkpoint.
+
+Русский: проверены числовой аргумент, GC при изменении подписок, запрет вложенных
+Mouse/колеса и разрушения контекста, ошибки/OOM до и после публикации, drag,
+невызываемый обработчик и неверные значения. Автоматический scrollTarget,
+исторический порядок/совместимость Windows и физические устройства остаются
+открытыми. [EN](MOUSE.md#wheel-events) / [RU](MOUSE.ru.md#колесо-прокрутки).
 
 ## v0.604 GTK3, Qt5 and Linux devices / Новые фронтенды
 
@@ -679,6 +695,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |

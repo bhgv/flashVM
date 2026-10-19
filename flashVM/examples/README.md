@@ -66,6 +66,7 @@
     - [mixed_input](#example-embedding-mixed_input) — <small><em>Одна очередь Mouse/Key, снимки и отмена пакета</em></small>
     - [mouse](#group-embedding-input-mouse)
       - [mouse_listeners](#example-embedding-mouse_listeners) — <small><em>Слушатели указателя: касание, движение и отпускание</em></small>
+    - [mouse_wheel](#example-embedding-mouse_wheel) — <small><em>Знаковые строки колеса и onMouseWheel</em></small>
   - [jit](#group-embedding-jit)
     - [execution_modes](#example-embedding-execution_modes) — <small><em>Режимы исполнения и replay ошибки</em></small>
     - [jit](#example-embedding-jit) — <small><em>Ручной JIT, сравнение с интерпретатором и подготовка ОС</em></small>
@@ -807,6 +808,16 @@ getFocus, уведомления onSetFocus/onKillFocus, регистрацию/
 **Файлы:** [main.c](embedding/mouse_listeners/main.c).
 
 [К оглавлению](#оглавление).
+
+<a id="example-embedding-mouse_wheel"></a>
+### mouse_wheel
+
+**Тип:** исполняемый C89. **README:** [embedding/mouse_wheel/README.md](embedding/mouse_wheel/README.md).
+
+**Назначение:** явные дробные знаковые строки колеса, координаты до обработчика,
+сильная регистрация и снятие корней; без ОС/окна, scrollTarget и автоматической прокрутки.
+
+**Файл:** [main.c](embedding/mouse_wheel/main.c).
 
 <a id="group-embedding-jit"></a>
 ### jit
@@ -1639,6 +1650,7 @@ Source line links describe the current checkout, including in historical notes.
 - [mixed_input — embedding/mixed_input](#example-embedding-mixed_input)
 - [mode_tuning — embedding/mode_tuning](#example-embedding-mode_tuning)
 - [mouse_listeners — embedding/mouse_listeners](#example-embedding-mouse_listeners)
+- [mouse_wheel — embedding/mouse_wheel](#example-embedding-mouse_wheel)
 - [movieclip — embedding/movieclip](#example-embedding-movieclip)
 - [movieclip — extending/movieclip](#example-extending-movieclip)
 - [native_functions — extending/native_functions](#example-extending-native_functions)

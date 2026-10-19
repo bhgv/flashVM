@@ -118,6 +118,47 @@ Basic listener signatures follow the [Adobe AS2 reference mirror](https://open-f
 Snapshot mutation, limits and explicit host mapping are documented subset policies,
 not full Flash compatibility. No roadmap stage closes; see [status](ROADMAP_STATUS.md).
 
+## Wheel events
+
+v0.605 adds [fvm_input_dispatch_mouse_wheel](../include/flashvm/mouse.h#L32)(context, delta, world_x, world_y).
+`context` is a borrowed live VM owner, outside collection/release/teardown;
+`delta` is a finite Number measured in **host-normalized scroll lines**: positive
+up, negative down. Fractional values and explicit zero are preserved. `world_x`
+and `world_y` are finite world/stage pixels captured for this event, not screen,
+widget or device coordinates. All calls remain on the context owner thread.
+
+The function first snapshots/roots the same Mouse registrations used by pointer
+notifications. It then publishes position, updates native drag, and calls each
+optional onMouseWheel(delta) in registration order. There is exactly one numeric
+argument, with no automatic scrollTarget, hit testing, keyboard-focus change,
+button transition, content scrolling or OS device query. Missing/noncallable
+handlers are ignored without global fallback. Native delivery does not require
+a script Mouse namespace; the existing SWF6–8 namespace registers the same list.
+
+[FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45) covers invalid context/lifecycle, NaN/infinite delta or
+coordinates and nested Mouse delivery. Pointer and wheel notifications share a
+recursion guard: neither can recursively dispatch the other. Invalid input and
+snapshot OOM preserve coordinates/drag and invoke no handler. After publication,
+real drag/getter/handler status or VM exception propagates unchanged, stops later
+receivers, and retains committed effects. Allocating optional lookup can also
+return [FVM_OUT_OF_MEMORY](../include/flashvm/flashvm.h#L44) after publication. [FVM_ERROR](../include/flashvm/flashvm.h#L43) contains unexpected native
+exceptions. All temporary roots/guards unwind on every exit. A callback may
+mutate subscriptions and collect; the rooted entry recipients survive removal.
+Changes affect later events; pending receivers use their current handler lookup.
+Do not destroy the context from a handler (delivery prevents teardown).
+
+The host converts its native units before calling: wheel detents, lines, pixels
+and high-resolution device counts are different protocols. Do not pass a pixel
+scroll as line delta without an explicit policy. The VM never rounds a delta,
+accumulates residual movement, synthesizes MouseMove, or adds a target argument.
+See the [C89 example](../examples/embedding/mouse_wheel/README.md).
+
+The [Adobe AS2 reference copy](https://open-flash.github.io/mirrors/as2-language-reference/Mouse.html)
+describes onMouseWheel's line delta and optional target; classic wheel support
+was Windows-specific. FlashVM exposes explicit platform-neutral host delivery.
+This is bounded delta-only support, not acceptance of target picking, historical
+Windows event order or native wheel/trackpad/device behavior on every OS.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -131,6 +172,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_add_mouse_listener` | function | [include/flashvm/mouse.h:18](../include/flashvm/mouse.h#L18) |
 | `fvm_input_dispatch` | function | [include/flashvm/input.h:82](../include/flashvm/input.h#L82) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:25](../include/flashvm/mouse.h#L25) |
+| `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:32](../include/flashvm/mouse.h#L32) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../include/flashvm/input.h#L75) |
 | `fvm_input_remove_mouse_listener` | function | [include/flashvm/mouse.h:20](../include/flashvm/mouse.h#L20) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../include/flashvm/input.h#L72) |
@@ -142,6 +184,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_MOUSE_MIN_SWF_VERSION` | macro / define | [include/flashvm/mouse.h:5](../include/flashvm/mouse.h#L5) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
+| `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->
