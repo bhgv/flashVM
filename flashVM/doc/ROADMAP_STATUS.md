@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.619
+# FlashVM stage status / Состояние стадий — v0.620
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,25 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.620 getTimer global / Глобальная getTimer
+
+Standard installation now exposes the existing context clock as getTimer for
+host/SWF4–8 execution. Global calls, extracted Functions, graph imports and
+GetTime share the execution service without argument coercion. ID 163 preserves
+older callback identities. See [EN](GET_TIMER.md) / [RU](GET_TIMER.ru.md) and the
+[C89 tutorial](../examples/embedding/get_timer/README.md).
+
+Глобальная getTimer использует существующие часы контекста; перенос Function
+читает время получателя. Отдельно проверяются ошибки часов, GC-фазы, конфликты
+имён, OOM и эквивалентность GetTime/глобального вызова/alias в JIT. Начало отсчёта
+контекста и unsigned wrap не объявлены точной семантикой оригинального Player.
+Таймеры-планировщики и приёмка остальных платформ остаются открытыми.
+
+Validation: 53 selected Release checks (52 runtime regressions and the C89
+example) and 37 ASan/UBSan runtime checks passed. LeakSanitizer was disabled.
+Source-link freshness/determinism and debugger tutorial checks passed. These are
+Linux results, not Windows/macOS/Android or original-player acceptance.
 
 ## v0.619 URL globals and trusted C calls / URL-функции и глобальные вызовы
 

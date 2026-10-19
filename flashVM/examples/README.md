@@ -34,6 +34,7 @@
     - [cpp98_stack](#example-embedding-cpp98_stack) — <small><em>RAII-стек значений и индексы C++98</em></small>
     - [function_parameters](#example-embedding-function_parameters) — <small><em>Параметры AVM1-функции — AS-исходник</em></small>
     - [function_rpc](#example-embedding-function_rpc) — <small><em>Вызовы между потоками, процессами и LAN</em></small>
+    - [get_timer](#example-embedding-get_timer) — <small><em>Монотонные часы контекста через getTimer</em></small>
     - [object_methods](#example-embedding-object_methods) — <small><em>Native-метод, receiver и аргументы</em></small>
     - [script_functions](#example-embedding-script_functions) — <small><em>Объявление script-функции — AS-исходник</em></small>
     - [script_methods](#example-embedding-script_methods) — <small><em>Метод объекта и this — AS-исходник</em></small>
@@ -473,6 +474,20 @@ link demonstrated API functions to public headers and feature guides.
 Одна native-функция используется через интерфейсы между процессами, независимыми VM-потоками и узлами LAN. Показывает брокер, маршрутизацию вызовов, обслуживание исходного контекста, ошибки и время жизни экспортированной функции.
 
 **Файлы:** [main.c](embedding/function_rpc/main.c).
+
+[К оглавлению](#оглавление).
+
+<a id="example-embedding-get_timer"></a>
+#### get_timer
+
+**Тип:** исполняемый C89 без устройств. **README:** [EN](embedding/get_timer/README.md) / [RU](embedding/get_timer/README.ru.md).
+
+Создаёт контекст, устанавливает стандартную библиотеку и синхронно читает
+глобальную getTimer без ожидания и планирования callback. Печатает целые
+миллисекунды от начала контекста; часы и ограничения описаны в
+[EN](../doc/GET_TIMER.md) / [RU](../doc/GET_TIMER.ru.md).
+
+**Файлы:** [main.c](embedding/get_timer/main.c).
 
 [К оглавлению](#оглавление).
 
@@ -1704,6 +1719,7 @@ Source line links describe the current checkout, including in historical notes.
 - [gc — embedding/gc](#example-embedding-gc)
 - [gc_workers_channels.as — actionscript/gc_workers_channels.as](#example-actionscript-gc_workers_channels-as)
 - [geometry — embedding/geometry](#example-embedding-geometry)
+- [get_timer — embedding/get_timer](#example-embedding-get_timer)
 - [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
 - [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
 - [gradients — embedding/gradients](#example-embedding-gradients)

@@ -17,6 +17,8 @@
 #include "global_parsing.hpp"
 #include "url_encoding.hpp"
 #include "url_constants.h"
+#include "time_constants.h"
+#include "flashvm/execution.h"
 #include "number_state.hpp"
 #include "../avm1/coercion.hpp"
 #include "error_state.hpp"
@@ -694,7 +696,20 @@ FVM_Result isfinite_call(FVM_Context *c, FVM_Object *, unsigned int n, const FVM
         fvm_value_boolean(o, number == number && std::fabs(number) != infinity());
     return result;
 }
-/* Keep the seven legacy entries in order; URL callbacks have separate, explicit graph IDs. */
+/* Read the existing context clock without converting or evaluating unused arguments. */
+FVM_Result get_timer_call(FVM_Context *c, FVM_Object *, unsigned int, const FVM_Value *,
+                          FVM_Value *out, void *)
+{
+    if (!out)
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_undefined(out);
+    if (!c || c->destroying || c->gc_collecting || c->gc_releasing)
+        return FVM_INVALID_ARGUMENT;
+    if (c->swf_loaded && c->swf_info.version < FVM_TIME_MIN_SWF_VERSION)
+        return FVM_UNSUPPORTED;
+    return fvm_exec_get_time(c, out);
+}
+/* Keep the seven legacy entries in order; appended callbacks use explicit graph IDs. */
 const Method global_functions[] = {{"Number", number_call},
                                    {"Boolean", boolean_call},
                                    {"isNaN", isnan_call},
@@ -703,7 +718,8 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"parseFloat", fvm_builtin_parse_float},
                                    {"String", fvm_builtin_string},
                                    {"escape", fvm_builtin_escape},
-                                   {"unescape", fvm_builtin_unescape}};
+                                   {"unescape", fvm_builtin_unescape},
+                                   {"getTimer", get_timer_call}};
 } // namespace
 /* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
@@ -794,6 +810,8 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == get_timer_call)
+        return FVM_TIME_GET_TIMER_CALLBACK;
     if (callback == fvm_builtin_escape)
         return FVM_URL_ESCAPE_CALLBACK;
     if (callback == fvm_builtin_unescape)
@@ -822,6 +840,8 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == FVM_TIME_GET_TIMER_CALLBACK)
+        return get_timer_call;
     if (id == FVM_URL_ESCAPE_CALLBACK)
         return fvm_builtin_escape;
     if (id == FVM_URL_UNESCAPE_CALLBACK)
@@ -920,6 +940,7 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "parseFloat",
                                "escape",
                                "unescape",
+                               "getTimer",
                                "String",
                                "Object",
                                "Array",
