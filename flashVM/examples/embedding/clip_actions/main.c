@@ -2,6 +2,7 @@
 #include "flashvm/movieclip.h" /* Load the SWF graph and perform a normal timeline tick. */
 #include "flashvm/clip_actions.h" /* Select one retained event without hit testing or native onX calls. */
 #include "flashvm/standard.h" /* Install standard classes before scene construction. */
+#include "flashvm/keyboard.h" /* Copy keyboard state and translate a held key to a SWF selector. */
 #include "flashvm/input.h" /* Publish world pointer coordinates before retained input delivery. */
 #include "flashvm/stage.h" /* Consume a redraw request without claiming any displayed pixels. */
 #include "flashvm/gc.h" /* Pin the root while retaining borrowed scene pointers. */
@@ -33,6 +34,8 @@ int main(void) /* Build this file as its own C89 executable, separate from main.
     FVM_Runtime *runtime = 0; /* Outlive its managed context. */
     FVM_Context *context = 0; /* Own the retained SWF library and handlers. */
     FVM_Object *root = 0, *actor = 0; /* Borrow graph objects, retaining them through the pinned root. */
+    FVM_KeyboardState keyboard; /* The native copied snapshot owns no managed references. */
+    unsigned int key_code = 0; /* Receive a SWF selector, distinct from Key.LEFT virtual code 37. */
     int redraw = 0; /* Receive and consume the MouseMove record's coalesced request. */
     FVM_Value value; /* Borrow each property result until its next use or context destruction. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the configuration ABI. */
@@ -87,6 +90,30 @@ int main(void) /* Build this file as its own C89 executable, separate from main.
         status = FVM_INVALID_ARGUMENT; /* Keep tutorial failures observable to its caller. */
     if (status == FVM_OK) /* Report the combined route independently of both older APIs. */
         printf("scene MouseMove method: %.0f; redraw: %d\n", value.number, redraw); /* Expected marker 126 and one request. */
+    keyboard.struct_size = sizeof(keyboard); /* Describe the copied-keyboard ABI before its getter. */
+    if (status == FVM_OK) /* Borrow no native input buffer: the getter copies every field. */
+        status = fvm_input_get_keyboard(context, &keyboard); /* Preserve any getter error for cleanup. */
+    if (status == FVM_OK) /* Prepare a synthetic held Left transition without opening an OS device. */
+    { /* The caller supplies transitions when embedding without SDL. */
+        keyboard.down[FVM_KEY_LEFT] = 1; /* Mark the virtual key held before publishing. */
+        keyboard.last_code = FVM_KEY_LEFT; /* Virtual code 37 translates to SWF KeyPress code 1. */
+        keyboard.last_ascii = 0; /* Special keys do not need a printable character. */
+        status = fvm_input_set_keyboard(context, &keyboard); /* Publish before retained input callbacks. */
+    } /* End host snapshot construction. */
+    if (status == FVM_OK) /* Translate this copied key-down, without changing context state. */
+        status = fvm_input_clip_key_code(&keyboard, 1, &key_code); /* A zero result means skip, not a wildcard. */
+    if (status == FVM_OK && key_code == FVM_CLIP_KEY_NONE) /* This known Left key must translate. */
+        status = FVM_INVALID_ARGUMENT; /* Avoid accidentally selecting a raw zero record. */
+    if (status == FVM_OK) /* Broadcast only the matching retained KeyPress records. */
+        status = fvm_movieclip_dispatch_key_press(context, root, key_code); /* No onKeyPress method or global KeyDown is implied. */
+    if (status == FVM_OK) /* Verify the fixture's raw selector, not virtual code 37. */
+        status = fvm_object_get(context, actor, "seen", &value); /* Expected KeyPress marker 168. */
+    if (status == FVM_OK) /* Consume the request produced by the host-input KeyPress scope. */
+        status = fvm_stage_take_update(context, &redraw); /* Presentation remains the embedding host's task. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != FVM_TUTORIAL_CLIP_KEY_EXPECTED || redraw != 1)) /* Verify marker and request together. */
+        status = FVM_INVALID_ARGUMENT; /* Preserve a mismatch without replaying the transition. */
+    if (status == FVM_OK) /* Report this fourth delivery independently of the previous routes. */
+        printf("scene KeyPress key: %u; marker: %.0f; redraw: %d\n", key_code, value.number, redraw); /* Expected 1, 168 and one request. */
     else /* Preserve failures without assertions or automatic replay. */
         fprintf(stderr, "ClipActions tutorial failed: %d\n", (int)status); /* A failed batch may already have script effects. */
     if (context) /* Release the pinned root, library and code before host locals expire. */

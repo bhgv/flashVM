@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.627
+# FlashVM stage status / Состояние стадий — v0.628
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,35 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.628 retained KeyPress input / Коды и доставка KeyPress
+
+Pure copied-snapshot translation now distinguishes SWF special selectors from
+virtual Key codes and preserves existing English modifier mapping. A separate
+bounded tree API delivers exact raw KeyPress records for source SWF6–8/host zero,
+sharing topology/work/GC/stop/error policy. The SDL player selects from the queued
+snapshot after successful KeyDown records/methods, with release/unmapped suppression,
+repeat delivery, epoch checks and existing focus deduplication. The C89 tutorial
+adds explicit Left 37→1, marker 168 and coalesced redraw.
+[EN](CLIP_KEYPRESS.md) / [RU](CLIP_KEYPRESS.ru.md).
+
+Это развитие стадий 3/5/6/7/8/9; DefineButton2 conditions, targeted interaction,
+lifecycle, IME/layout, original-player order и physical/foreign-platform acceptance
+не закрываются. Все девять этапов открыты.
+
+Validation for v0.628: 286 selected Release CTests and 101 whole-core ASan/UBSan
+CTests passed on Linux, including eight new core tests and three new frontend/player
+checks. LeakSanitizer was disabled in this environment. The updated strict C89
+example also ran under ASan/UBSan and produced Left selector 1, marker 168 and a
+coalesced redraw request. A separately linked player with the v0.627 SDL adapter
+rejected the same SWF8 KeyPress trace movie as expected. Documentation source links,
+deterministic regeneration and debugger tutorial checks passed. SDL dummy/synthetic
+input does not certify physical devices, foreign OS or full original-player order.
+
+Проверки v0.628: успешно 286 выбранных Release CTest и 101 whole-core ASan/UBSan
+CTest, плюс strict C89 example под санитайзерами. Контрольный player со старым
+v0.627 SDL adapter ожидаемо отверг тот же SWF8 KeyPress movie. Leak detection был
+выключен. Все девять этапов открыты; physical/foreign/reference acceptance не закрыта.
 
 ## v0.627 MovieClip input methods / Методы ввода клипов
 
@@ -997,7 +1026,7 @@ remain open.
 
 ## v0.591 explicit host keyboard focus / Выбор клипа хостом
 
-Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L75) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L78) for one native
+Added [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L83) / [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L86) for one native
 MovieClip, with a strong context root, private attachment validation and lazy
 clearing when the clip or a physical ancestor is removed. Keyboard dispatch
 snapshots the selected clip before Key listeners; callback selection changes
@@ -1028,7 +1057,7 @@ physical device acceptance is claimed.
 
 ## v0.592 Selection MovieClip subset / Скриптовый выбор клипа
 
-Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L93) with atomic publication and
+Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L101) with atomic publication and
 versioned conflicts. Selection.setFocus accepts native clip objects or counted
 dot/slash paths, applies focusEnabled/button-handler eligibility and revalidates
 native attachment after getters. Selection.getFocus returns a counted native dot
@@ -1238,9 +1267,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:93](../include/flashvm/keyboard.h#L93) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
 | `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
 <!-- source-links:end -->

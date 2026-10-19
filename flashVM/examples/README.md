@@ -47,7 +47,7 @@
     - [resurrection](#example-embedding-resurrection) — <small><em>Возврат объекта из финализатора — заметка</em></small>
   - [graphics](#group-embedding-graphics)
     - [bitmap_fill](#example-embedding-bitmap_fill) — <small><em>Живой BitmapData как заливка клипа</em></small>
-    - [clip_actions](#example-embedding-clip_actions) — <small><em>Load, записи и методы ввода клипов</em></small>
+    - [clip_actions](#example-embedding-clip_actions) — <small><em>Load, MouseMove и KeyPress</em></small>
     - [color_matrix_filter](#example-embedding-color_matrix_filter) — <small><em>Изменение RGBA через матрицу цвета</em></small>
     - [drawing](#example-embedding-drawing) — <small><em>Рисование и host-интеграция — AS-эскиз</em></small>
     - [geometry](#example-embedding-geometry) — <small><em>Point, Matrix и Rectangle — AS-исходник</em></small>
@@ -619,7 +619,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** исполняемый C89 host. **README:** [EN](embedding/clip_actions/README.md) / [RU](embedding/clip_actions/README.ru.md).
 
-Загружает встроенный SWF8 sprite с placement handlers: обычный tick исполняет EnterFrame, затем host выбирает actor и явно доставляет Load. Затем публикует pointer state, рассылает MouseMove по дереву и снимает redraw request. Сравнивает retained-only доставку с общим маршрутом record → native method, проверяя отдельные marker и объединение redraw. Показывает удержание root/library/code, явную lifecycle policy и проверку marker без окна, input adapter, компилятора или внешнего файла.
+Загружает встроенный SWF8 sprite с placement handlers: обычный tick исполняет EnterFrame, затем host выбирает actor и явно доставляет Load. Затем публикует pointer state, рассылает MouseMove по дереву и снимает redraw request. Сравнивает retained-only доставку с общим маршрутом record → native method, проверяя отдельные marker и объединение redraw. Затем публикует held Left, переводит virtual code 37 в SWF selector 1 и доставляет KeyPress с отдельным marker 168. Показывает удержание root/library/code, явную lifecycle policy и проверку marker без окна, input adapter, компилятора или внешнего файла.
 
 **Файлы:** [main.c](embedding/clip_actions/main.c), [clip_action_movie.h](embedding/clip_actions/clip_action_movie.h).
 

@@ -108,3 +108,14 @@ flashvm_player_clip_input_methods_interpreter/jit use the actual SDL queue and h
 method-only and record → method traces, source gates, wrong-value controls and
 method-originated redraw. Dummy video/synthetic messages are not physical/foreign
 platform acceptance.
+
+## ClipEventKeyPress v0.628
+
+The player now translates the original queued key-down snapshot after successful
+scene KeyDown records/methods and broadcasts retained KeyPress. Special SWF selectors
+differ from virtual Key codes; Shift/Caps ASCII comes from the existing English mapper.
+Release/unmapped messages skip KeyPress; autorepeat delivers it. Epoch reset and
+earlier errors suppress the stage; a KeyPress error leaves later FIFO transitions.
+Escape/Android back keep their close policy. [Contract](../doc/CLIP_KEYPRESS.md).
+New flashvm_frontend_clip_keypress and flashvm_player_clip_keypress_interpreter/jit
+checks use actual SDL adapter/host with synthetic input, not physical-device evidence.

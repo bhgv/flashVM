@@ -1,11 +1,11 @@
 # Глобальные методы ввода MovieClip — v0.627
 
-[English](CLIP_INPUT_METHODS.md). Новый [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L68) дополняет
+[English](CLIP_INPUT_METHODS.md). Новый [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L86) дополняет
 [рассылку по дереву](CLIP_INPUT.ru.md) методами `onMouseMove`, `onMouseDown`,
 `onMouseUp`, `onKeyDown`, `onKeyUp`. SDL-проигрыватель теперь использует этот маршрут.
-Существующий [`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L53) по-прежнему вызывает только
+Существующий [`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L71) по-прежнему вызывает только
 сохранённые записи и сохраняет прежний учёт работы. API выбранного клипа
-[`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L37) также не меняется.
+[`fvm_movieclip_dispatch_clip_actions`](../include/flashvm/clip_actions.h#L55) также не меняется.
 
 ## Контракт хоста и версии
 
@@ -26,8 +26,9 @@ API не открывает устройство, не вызывает namespac
 само по себе не сбрасывает её в ноль. Версия читается в начале очереди конкретного
 получателя. Невидимость, остановка playback и отсутствие keyboard focus не
 исключают клип из этих глобальных событий. Static artwork обработчиков не получает.
-Press/Release/Roll/Drag с hit target, перевод KeyPress, колесо и автоматические
-Load/Unload/Construct пока не добавлены. Это ограниченный контракт хоста, а не
+Press/Release/Roll/Drag с hit target, колесо и автоматические Load/Unload/Construct
+пока не добавлены. Отдельный [KeyPress route v0.628](CLIP_KEYPRESS.ru.md) теперь
+следует за scene KeyDown; эти пять-event API по-прежнему не принимают selector. Это ограниченный контракт хоста, а не
 подтверждение точного порядка событий оригинального Flash Player.
 
 ## Подготовка, поиск и изменения
@@ -87,14 +88,14 @@ INVALID_ARGUMENT; incremental step не собирает. Повторный в�
 
 Каждый переход FIFO публикует event-time состояние, вызывает namespace callbacks,
 затем — при успехе и неизменном reset epoch — общий маршрут сцены. При наличии scene
-root клавиатура использует новый [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L89): только rooted
+root клавиатура использует новый [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L97): только rooted
 Key observers, без отдельного неявного вызова focused clip. Затем сцена доставляет
 метод каждому клипу один раз независимо от фокуса. Это предотвращает дубль для
 focused clip в том же дереве. Явный Key.addListener остаётся независимым источником
 уведомления даже для клипа сцены. Новый API сохраняет подготовку/публикацию/error/
 reentry/GC контракт прежней доставки, не читает/меняет фокус и не даёт observer-only
 redraw eligibility. При ручной композиции хост задаёт тот же порядок сам. Старый
-[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) и SDL pump без root сохраняют focus-first поведение.
+[`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) и SDL pump без root сохраняют focus-first поведение.
 Primary touch сохраняет одноуказательный mapping. Recursive pump запрещён; append
 из callback ждёт следующего входного batch. Ошибка метода потребляет текущий переход,
 оставляя следующие в очереди. Namespace error/reset подавляет сценическую часть.
@@ -139,9 +140,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
-| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:89](../include/flashvm/keyboard.h#L89) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../include/flashvm/clip_actions.h#L37) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:53](../include/flashvm/clip_actions.h#L53) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:68](../include/flashvm/clip_actions.h#L68) |
+| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:97](../include/flashvm/keyboard.h#L97) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
 <!-- source-links:end -->

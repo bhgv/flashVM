@@ -51,7 +51,7 @@ NULL, совпадающие выходные указатели, непредс
 Совместно изменять одни аргументы одновременно нельзя.
 
 Результат передавайте в [`fvm_input_dispatch_mouse`](../include/flashvm/mouse.h#L29) на потоке владельца VM,
-полные снимки клавиатуры — в [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82). Выбор первого
+полные снимки клавиатуры — в [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90). Выбор первого
 контакта, отмена, подавление синтетических событий, потеря фокуса и порядок
 остаются обязанностью хоста. Из рабочего потока ввода копируйте события,
 затем доставляйте их владельцем VM. SDL уже переводит события в логическую
@@ -108,7 +108,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_host_present` | function | [include/flashvm/host.h:18](../include/flashvm/host.h#L18) |
 | `FVM_HOST_RGBA_BYTES` | macro / define | [include/flashvm/host.h:8](../include/flashvm/host.h#L8) |
 | `FVM_HostPresentCallback` | callback typedef | [include/flashvm/host.h:11](../include/flashvm/host.h#L11) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

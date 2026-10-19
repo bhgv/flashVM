@@ -45,11 +45,11 @@ See [Mouse listeners](../mouse_listeners/README.md) for rooted script receivers.
 | [`fvm_input_enqueue_mouse`](../../../include/flashvm/input_queue.h#L25) | Context, DOWN/MOVE/UP, finite world x/y: copy a transition; no callback/publication until pump; capacity/allocation errors retain FIFO. [Queue](../../../doc/INPUT_QUEUE.md). |
 | [`fvm_input_enqueue_keyboard`](../../../include/flashvm/input_queue.h#L34) | Context, borrowed validated state, pressed=0/1, finite event-time world x/y: copy all native fields; producer may immediately reuse storage. [Queue](../../../doc/INPUT_QUEUE.md). |
 | [`fvm_input_pump`](../../../include/flashvm/input_queue.h#L45) | Context, max_events (zero means entry batch), optional processed: synchronously dispatch in order on owner thread; additions wait for next pump, errors consume current and retain later entries. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L63) | Context, writable state with exact struct_size: copy committed polling state without script/OS activity. [Keyboard](../../../doc/KEYBOARD.md). |
+| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L71) | Context, writable state with exact struct_size: copy committed polling state without script/OS activity. [Keyboard](../../../doc/KEYBOARD.md). |
 | [`fvm_input_get_pointer`](../../../include/flashvm/input.h#L75) | Context, distinct writable world x/y: copy current committed pointer, no allocation. [Input](../../../include/flashvm/input.h). |
 | [`fvm_input_pending`](../../../include/flashvm/input_queue.h#L48) | Context, writable count: total pending entries across variants; invalid arguments preserve output. [Queue](../../../doc/INPUT_QUEUE.md). |
 | [`fvm_input_clear_queue`](../../../include/flashvm/input_queue.h#L39) | Context: cancel pending entries without callbacks/state reset; invalidates active entry batch if called during delivery. [Queue](../../../doc/INPUT_QUEUE.md). |
-| [`fvm_input_reset_keyboard`](../../../include/flashvm/keyboard.h#L65) | Context: clear held/latest/toggle polling state without synthesizing key callbacks. [Keyboard](../../../doc/KEYBOARD.md). |
+| [`fvm_input_reset_keyboard`](../../../include/flashvm/keyboard.h#L73) | Context: clear held/latest/toggle polling state without synthesizing key callbacks. [Keyboard](../../../doc/KEYBOARD.md). |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Acquired context: release FIFO and VM state after delivery stops; rejected during an active pump. [Embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Acquired runtime after context destruction: release outer owner; no callback may still use it. [Embedding](../../../doc/EMBEDDING_API.md). |
 
@@ -74,11 +74,11 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_clear_queue` | function | [include/flashvm/input_queue.h:39](../../../include/flashvm/input_queue.h#L39) |
 | `fvm_input_enqueue_keyboard` | function | [include/flashvm/input_queue.h:34](../../../include/flashvm/input_queue.h#L34) |
 | `fvm_input_enqueue_mouse` | function | [include/flashvm/input_queue.h:25](../../../include/flashvm/input_queue.h#L25) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:63](../../../include/flashvm/keyboard.h#L63) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
 | `fvm_input_get_pointer` | function | [include/flashvm/input.h:75](../../../include/flashvm/input.h#L75) |
 | `fvm_input_pending` | function | [include/flashvm/input_queue.h:48](../../../include/flashvm/input_queue.h#L48) |
 | `fvm_input_pump` | function | [include/flashvm/input_queue.h:45](../../../include/flashvm/input_queue.h#L45) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:65](../../../include/flashvm/keyboard.h#L65) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:73](../../../include/flashvm/keyboard.h#L73) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 <!-- source-links:end -->

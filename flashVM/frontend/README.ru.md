@@ -107,3 +107,14 @@ observer-only публикация клавиатуры предотвращае
 flashvm_player_clip_input_methods_interpreter/jit используют реальный SDL queue/host:
 method-only и record → method trace, source gate, ошибочные контроли и redraw из методов.
 Dummy video и synthetic messages не заменяют физическую/межплатформенную приёмку.
+
+## ClipEventKeyPress v0.628
+
+Плеер теперь переводит исходный queued key-down snapshot после успешных scene
+KeyDown records/methods и рассылает retained KeyPress. Special SWF-коды отличны от
+Key virtual codes; Shift/Caps ASCII берётся из прежнего English mapper. Release/
+unmapped не рассылаются, autorepeat рассылается. Epoch reset и ошибки ранних стадий
+подавляют KeyPress; ошибка самого KeyPress оставляет следующие FIFO transitions.
+Escape/Android back остаются зарезервированы для закрытия. [Контракт](../doc/CLIP_KEYPRESS.ru.md).
+Новые тесты flashvm_frontend_clip_keypress и flashvm_player_clip_keypress_interpreter/jit
+проверяют настоящий SDL adapter/host с synthetic input, не физическое устройство.

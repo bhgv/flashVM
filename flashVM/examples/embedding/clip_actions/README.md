@@ -1,6 +1,6 @@
 # Explicit retained ClipActions in C89
 
-[Русский](README.ru.md). The host loads an embedded SWF8 sprite with three authored
+[Русский](README.ru.md). The host loads an embedded SWF8 sprite with four authored
 records: EnterFrame writes `seen=17`; Load writes `seen=42`. A normal tick places
 and advances the sprite. The host selects that actor and explicitly delivers Load,
 then verifies its marker. It next publishes pointer state, broadcasts retained MouseMove
@@ -23,6 +23,7 @@ Expected exit code zero and output:
 explicit Load marker: 42
 scene MouseMove marker: 84; redraw: 1
 scene MouseMove method: 126; redraw: 1
+scene KeyPress key: 1; marker: 168; redraw: 1
 ```
 
 [main.c](main.c) is standalone C89; [clip_action_movie.h](clip_action_movie.h) contains
@@ -49,7 +50,7 @@ its once-only lifecycle policy. This API does not call a native onLoad method.
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L48) | Keep the complete root/actor/library graph reachable between host calls; this example releases its pin by destroying the context. |
 | [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L62) | Perform one tick, place the actor and deliver its EnterFrame record; does not automatically deliver Load. |
 | [fvm_object_get](../../../include/flashvm/value.h#L72) | Read authored actor and scalar marker synchronously; object results are borrowed and kept reachable through root. |
-| [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L37) | Execute matching retained Load bytecode with the actor receiver and key_code zero; no target selection, native onX call, timeline advance or presentation. |
+| [fvm_movieclip_dispatch_clip_actions](../../../include/flashvm/clip_actions.h#L55) | Execute matching retained Load bytecode with the actor receiver and key_code zero; no target selection, native onX call, timeline advance or presentation. |
 | [fvm_context_destroy](../../../include/flashvm/flashvm.h#L70) | Release graph/registration/pin after calls return; managed pointers become unusable. |
 | [fvm_runtime_destroy](../../../include/flashvm/flashvm.h#L66) | Release the outer owner after the context. |
 
@@ -70,13 +71,26 @@ redraw requests coalesce. [Method contract](../../../doc/CLIP_INPUT_METHODS.md).
 | API | Purpose, errors and ownership |
 | --- | --- |
 | [`fvm_input_set_pointer`](../../../include/flashvm/input.h#L72) | Publish coordinates synchronously; no event delivery or target selection. |
-| [`fvm_movieclip_dispatch_clip_input`](../../../include/flashvm/clip_actions.h#L53) | Traverse the retained tree for MouseMove records only; completed effects survive errors. |
-| [`fvm_movieclip_dispatch_input`](../../../include/flashvm/clip_actions.h#L68) | Use the same pinned root for records then optional method; errors skip the rest of the batch. |
+| [`fvm_movieclip_dispatch_clip_input`](../../../include/flashvm/clip_actions.h#L71) | Traverse the retained tree for MouseMove records only; completed effects survive errors. |
+| [`fvm_movieclip_dispatch_input`](../../../include/flashvm/clip_actions.h#L86) | Use the same pinned root for records then optional method; errors skip the rest of the batch. |
 | [`fvm_stage_take_update`](../../../include/flashvm/stage.h#L45) | Consume one coalesced redraw flag without rendering or advancing timeline. |
 | [`fvm_object_define_method_rooted`](../../../include/flashvm/value.h#L115) | Register the native method on the borrowed actor; userdata/root are null, with no temporary capture. |
 | [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Write the scalar marker synchronously; propagate errors without rolling back the preceding record. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Construct an unmanaged numeric scalar in the local [FVM_Value](../../../include/flashvm/value.h#L24). |
 | [`fvm_call`](../../../include/flashvm/value.h#L138) | Invoke updateAfterEvent synchronously inside the event scope; propagate errors without presenting. |
+
+
+The v0.628 step publishes a copied held Left transition, translates virtual 37 to
+SWF selector 1 and delivers KeyPress with marker 168 and one redraw request. This
+is an explicit synthetic host transition, not an OS keyboard requirement. The SWF
+also retains this fourth authored record. [Contract](../../../doc/CLIP_KEYPRESS.md).
+
+| API | Purpose and ownership |
+| --- | --- |
+| [`fvm_input_get_keyboard`](../../../include/flashvm/keyboard.h#L71) | Copy the native snapshot into a caller-owned exact-size struct; invalid output ABI preserves fields. |
+| [`fvm_input_set_keyboard`](../../../include/flashvm/keyboard.h#L69) | Validate and copy the constructed held snapshot synchronously; no implicit event delivery. |
+| [`fvm_input_clip_key_code`](../../../include/flashvm/keyboard.h#L66) | Validate and translate the immutable copied key-down; zero means skip, errors preserve the output selector. |
+| [`fvm_movieclip_dispatch_key_press`](../../../include/flashvm/clip_actions.h#L97) | Borrow the pinned scene for exact selector delivery; grant input redraw scope, preserve committed effects on failure. |
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -93,11 +107,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
+| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:66](../../../include/flashvm/keyboard.h#L66) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../../../include/flashvm/keyboard.h#L71) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../../../include/flashvm/keyboard.h#L69) |
 | `fvm_input_set_pointer` | function | [include/flashvm/input.h:72](../../../include/flashvm/input.h#L72) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../../../include/flashvm/movieclip.h#L62) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../../../include/flashvm/clip_actions.h#L37) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:53](../../../include/flashvm/clip_actions.h#L53) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:68](../../../include/flashvm/clip_actions.h#L68) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../../../include/flashvm/clip_actions.h#L55) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../../../include/flashvm/clip_actions.h#L71) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../../../include/flashvm/clip_actions.h#L86) |
+| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../../../include/flashvm/clip_actions.h#L97) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |

@@ -182,12 +182,13 @@ const char *handler(unsigned long event)
     }
     return 0;
 }
-/* Share prepared topology, work and teardown guards between retained-only and full delivery. */
-FVM_Result dispatch(FVM_Context *c, FVM_Object *root, unsigned long event, bool methods)
+/* Share topology, work and teardown guards across retained, named-method and raw-key delivery. */
+FVM_Result dispatch(FVM_Context *c, FVM_Object *root, unsigned long event, bool methods,
+                    bool key_press = false, unsigned int key = 0)
 {
     if (!c || c->destroying || c->gc_collecting || c->gc_releasing || c->movieclip_sound_busy ||
         c->clip_input_dispatching || !event || (event & (event - 1)) ||
-        (event & ~FVM_CLIP_INPUT_EVENT_MASK))
+        (event & ~(key_press ? FVM_CLIP_EVENT_KEY_PRESS : FVM_CLIP_INPUT_EVENT_MASK)))
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -220,9 +221,12 @@ FVM_Result dispatch(FVM_Context *c, FVM_Object *root, unsigned long event, bool 
             result = fvm_movieclip_movie_version(c, batch[i].clip, &version);
             if (result != FVM_OK)
                 return result;
-            if (version && version < FVM_SWF_CLIP_ACTION_MIN_VERSION)
+            if (version && version < (key_press ? FVM_CLIP_INPUT_KEY_PRESS_MIN_VERSION :
+                                                  FVM_SWF_CLIP_ACTION_MIN_VERSION))
                 continue;
-            result = fvm_movieclip_dispatch_clip_actions(c, batch[i].clip, event, 0);
+            /* Host KeyPress is an input scope; the older selected-record API stays unchanged. */
+            FVM_StageUpdateEventScope key_redraw(c, key_press);
+            result = fvm_movieclip_dispatch_clip_actions(c, batch[i].clip, event, key);
             if (result != FVM_OK)
                 return result;
             if (methods && (!version || version >= FVM_CLIP_INPUT_METHOD_MIN_VERSION))
@@ -262,4 +266,13 @@ extern "C" FVM_Result fvm_movieclip_dispatch_input(FVM_Context *c, FVM_Object *r
                                                    unsigned long event)
 {
     return dispatch(c, root, event, true);
+}
+
+/* Retain exact wire selector matching without translating or modifying host keyboard state. */
+extern "C" FVM_Result fvm_movieclip_dispatch_key_press(FVM_Context *c, FVM_Object *root,
+                                                       unsigned int key)
+{
+    if (key > FVM_CLIP_KEY_MAX)
+        return FVM_INVALID_ARGUMENT;
+    return dispatch(c, root, FVM_CLIP_EVENT_KEY_PRESS, false, true, key);
 }

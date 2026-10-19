@@ -1,6 +1,6 @@
 # Retained input across a MovieClip scene — v0.626
 
-[Русский](CLIP_INPUT.ru.md). [fvm_movieclip_dispatch_clip_input](../include/flashvm/clip_actions.h#L53) broadcasts one of
+[Русский](CLIP_INPUT.ru.md). [fvm_movieclip_dispatch_clip_input](../include/flashvm/clip_actions.h#L71) broadcasts one of
 five global retained ClipActions through a selected native MovieClip subtree:
 [FVM_CLIP_EVENT_MOUSE_MOVE](../include/flashvm/clip_actions.h#L8), [FVM_CLIP_EVENT_MOUSE_DOWN](../include/flashvm/clip_actions.h#L9), [FVM_CLIP_EVENT_MOUSE_UP](../include/flashvm/clip_actions.h#L10),
 [FVM_CLIP_EVENT_KEY_DOWN](../include/flashvm/clip_actions.h#L11) or [FVM_CLIP_EVENT_KEY_UP](../include/flashvm/clip_actions.h#L12). Exactly one bit is required.
@@ -12,7 +12,7 @@ native Mouse/Key listeners, focus notifications or a full Flash event scheduler.
 The API borrows the owning context and retained root on the context owner thread.
 Pin the root or otherwise keep its graph reachable between host calls. The host
 publishes pointer/keyboard state first, for example with [fvm_input_dispatch_mouse](../include/flashvm/mouse.h#L29)
-or [fvm_input_dispatch_keyboard](../include/flashvm/keyboard.h#L82). This API itself does not change native input state,
+or [fvm_input_dispatch_keyboard](../include/flashvm/keyboard.h#L90). This API itself does not change native input state,
 advance timeline, poll timers, render, choose focus or invoke any native onX method.
 The caller controls state publication and the namespace/tree order.
 
@@ -47,7 +47,7 @@ next tree broadcast. Changing depth does not reorder this already prepared batch
 An explicitly selected root remains the root identity of this call; this is not a
 new global display registry.
 
-At each recipient's turn, [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L37) prepares that receiver's
+At each recipient's turn, [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55) prepares that receiver's
 selector/code snapshot. Earlier receivers may replace a later receiver's table;
 that later turn observes the replacement. Within the selected-record call, changes
 to later records cannot alter its already captured selectors/code. These are two
@@ -64,10 +64,10 @@ without disabling cooperative worker cancellation.
 
 | Bound | Meaning |
 | --- | --- |
-| [FVM_CLIP_INPUT_MAX_DEPTH](../src/standard/clip_input_constants.h#L5) | Selected-root descendant depth, root at zero. |
-| [FVM_CLIP_INPUT_MAX_NODES](../src/standard/clip_input_constants.h#L6) | Total inspected native nodes, including static artwork. |
-| [FVM_CLIP_INPUT_MAX_CHILDREN](../src/standard/clip_input_constants.h#L7) | Child-depth sorting entries for one parent. |
-| [FVM_CLIP_INPUT_MAX_RECIPIENTS](../src/standard/clip_input_constants.h#L8) | Prepared live receiver count. |
+| [FVM_CLIP_INPUT_MAX_DEPTH](../src/standard/clip_input_constants.h#L6) | Selected-root descendant depth, root at zero. |
+| [FVM_CLIP_INPUT_MAX_NODES](../src/standard/clip_input_constants.h#L7) | Total inspected native nodes, including static artwork. |
+| [FVM_CLIP_INPUT_MAX_CHILDREN](../src/standard/clip_input_constants.h#L8) | Child-depth sorting entries for one parent. |
+| [FVM_CLIP_INPUT_MAX_RECIPIENTS](../src/standard/clip_input_constants.h#L9) | Prepared live receiver count. |
 
 Depth/count violations reject preparation with [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Budget exhaustion
 or a polled worker stop returns [FVM_ERROR](../include/flashvm/flashvm.h#L43). Completed callbacks, native state and
@@ -98,7 +98,7 @@ fvm_desktop_window_pump_clip_input. For each existing FIFO transition it:
    keep the original focus-first keyboard delivery.
 3. If that stage succeeded and the reset epoch still matches, broadcasts the retained
    scene records and, since v0.627, eligible named methods through
-   [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L68) before the next queued transition
+   [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L86) before the next queued transition
    ([method contract](CLIP_INPUT_METHODS.md)).
 
 The legacy fvm_desktop_window_pump_input and keyboard wrapper remain namespace-only.
@@ -110,7 +110,9 @@ SDL/FIFO wait for the next entry batch. Focus/background loss still cancels old 
 
 Primary touch uses the existing single-contact down/move/up mapping; secondary contacts
 and generated mouse duplicates retain their existing filtering. No keyboard/mouse APK
-or new Android input assumption is introduced. KeyPress mapping, wheel ClipActions,
+or new Android input assumption is introduced. A separate
+[v0.628 KeyPress route](CLIP_KEYPRESS.md) now follows scene KeyDown.
+Wheel ClipActions,
 Press/Release/Roll/Drag hit targets and automatic lifecycle scheduling remain open.
 The retained-only API itself still invokes no named methods. No complete original-player ordering is certified.
 
@@ -154,20 +156,20 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_CLIP_EVENT_MOUSE_DOWN` | macro / define | [include/flashvm/clip_actions.h:9](../include/flashvm/clip_actions.h#L9) |
 | `FVM_CLIP_EVENT_MOUSE_MOVE` | macro / define | [include/flashvm/clip_actions.h:8](../include/flashvm/clip_actions.h#L8) |
 | `FVM_CLIP_EVENT_MOUSE_UP` | macro / define | [include/flashvm/clip_actions.h:10](../include/flashvm/clip_actions.h#L10) |
-| `FVM_CLIP_INPUT_MAX_CHILDREN` | macro / define | [src/standard/clip_input_constants.h:7](../src/standard/clip_input_constants.h#L7) |
-| `FVM_CLIP_INPUT_MAX_DEPTH` | macro / define | [src/standard/clip_input_constants.h:5](../src/standard/clip_input_constants.h#L5) |
-| `FVM_CLIP_INPUT_MAX_NODES` | macro / define | [src/standard/clip_input_constants.h:6](../src/standard/clip_input_constants.h#L6) |
-| `FVM_CLIP_INPUT_MAX_RECIPIENTS` | macro / define | [src/standard/clip_input_constants.h:8](../src/standard/clip_input_constants.h#L8) |
+| `FVM_CLIP_INPUT_MAX_CHILDREN` | macro / define | [src/standard/clip_input_constants.h:8](../src/standard/clip_input_constants.h#L8) |
+| `FVM_CLIP_INPUT_MAX_DEPTH` | macro / define | [src/standard/clip_input_constants.h:6](../src/standard/clip_input_constants.h#L6) |
+| `FVM_CLIP_INPUT_MAX_NODES` | macro / define | [src/standard/clip_input_constants.h:7](../src/standard/clip_input_constants.h#L7) |
+| `FVM_CLIP_INPUT_MAX_RECIPIENTS` | macro / define | [src/standard/clip_input_constants.h:9](../src/standard/clip_input_constants.h#L9) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
 | `fvm_input_dispatch_mouse` | function | [include/flashvm/mouse.h:29](../include/flashvm/mouse.h#L29) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../include/flashvm/clip_actions.h#L37) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:53](../include/flashvm/clip_actions.h#L53) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:68](../include/flashvm/clip_actions.h#L68) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

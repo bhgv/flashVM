@@ -9,7 +9,7 @@
 - `include/flashvm/function.h`: first-class native/AVM1 functions, invoke/construct.
 - `include/flashvm/avm1.h`: actions, rooted trace/URL sinks and borrowed active-target introspection.
 - [stage.h](../include/flashvm/stage.h): host background/quality plus [fvm_stage_request_update](../include/flashvm/stage.h#L38), [fvm_stage_get_update](../include/flashvm/stage.h#L41) and [fvm_stage_take_update](../include/flashvm/stage.h#L45) ([EN](UPDATE_AFTER_EVENT.md) / [RU](UPDATE_AFTER_EVENT.ru.md)).
-- [clip_actions.h](../include/flashvm/clip_actions.h): [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L37), [`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L53) for retained scene records, [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L68) for records plus methods ([EN](CLIP_INPUT_METHODS.md) / [RU](CLIP_INPUT_METHODS.ru.md)), and individual FVM_CLIP_EVENT_* selectors ([EN](CLIP_ACTIONS.md) / [RU](CLIP_ACTIONS.ru.md)).
+- [clip_actions.h](../include/flashvm/clip_actions.h): [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55), [`fvm_movieclip_dispatch_clip_input`](../include/flashvm/clip_actions.h#L71) for retained scene records, [`fvm_movieclip_dispatch_input`](../include/flashvm/clip_actions.h#L86) for records plus methods ([EN](CLIP_INPUT_METHODS.md) / [RU](CLIP_INPUT_METHODS.ru.md)), and individual FVM_CLIP_EVENT_* selectors ([EN](CLIP_ACTIONS.md) / [RU](CLIP_ACTIONS.ru.md)).
 - [movieclip.h](../include/flashvm/movieclip.h): host-authored clip frames, vector rendering and [fvm_movieclip_advance](../include/flashvm/movieclip.h#L62) ([EN ticks](MOVIECLIP_TICKS.md) / [RU](MOVIECLIP_TICKS.ru.md)).
 - `include/flashvm/standard.h`: standard installation and primitive conversion.
 - [timers.h](../include/flashvm/timers.h): [fvm_timers_poll](../include/flashvm/timers.h#L19), explicit owning-thread scheduled callback delivery ([EN](TIMERS.md) / [RU](TIMERS.ru.md)).
@@ -183,23 +183,29 @@ standard Flash Key/Mouse API. Native foreign-platform acceptance remains open.
 - [`fvm_swf_sound_output_stop_release`](../include/flashvm/swf_sound_output.h#L67): running queue replacement and bounded tail; [errors/retry/limits](PLAYER_AUDIO_RELEASE.md#fvm_swf_sound_output_stop_release).
 
 
-[Keyboard snapshot and Key polling / клавиатурный снимок и опрос Key](KEYBOARD.md) ([RU](KEYBOARD.ru.md)): [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L61), [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L63), [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L65), [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L95).
+[Keyboard snapshot and Key polling / клавиатурный снимок и опрос Key](KEYBOARD.md) ([RU](KEYBOARD.ru.md)): [`fvm_input_set_keyboard`](../include/flashvm/keyboard.h#L69), [`fvm_input_get_keyboard`](../include/flashvm/keyboard.h#L71), [`fvm_input_reset_keyboard`](../include/flashvm/keyboard.h#L73), [`fvm_standard_keyboard_install`](../include/flashvm/keyboard.h#L103).
 
 
-[Keyboard listeners / слушатели клавиатуры](KEYBOARD_LISTENERS.md) ([RU](KEYBOARD_LISTENERS.ru.md)): [`fvm_input_add_key_listener`](../include/flashvm/keyboard.h#L70), [`fvm_input_remove_key_listener`](../include/flashvm/keyboard.h#L72), [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82).
+[Keyboard listeners / слушатели клавиатуры](KEYBOARD_LISTENERS.md) ([RU](KEYBOARD_LISTENERS.ru.md)): [`fvm_input_add_key_listener`](../include/flashvm/keyboard.h#L78), [`fvm_input_remove_key_listener`](../include/flashvm/keyboard.h#L80), [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90).
 
 
-[Explicit host keyboard focus / Явный выбор клипа](KEYBOARD_FOCUS.md) ([RU](KEYBOARD_FOCUS.ru.md)): [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L75), [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L78).
+[Explicit host keyboard focus / Явный выбор клипа](KEYBOARD_FOCUS.md) ([RU](KEYBOARD_FOCUS.ru.md)): [`fvm_input_set_keyboard_focus`](../include/flashvm/keyboard.h#L83), [`fvm_input_get_keyboard_focus`](../include/flashvm/keyboard.h#L86).
 
-[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L93).
+[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L101).
 
 
-Observer-only scene composition v0.627: [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L89) publishes
+Observer-only scene composition v0.627: [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L97) publishes
 the validated snapshot and notifies registered Key listeners, without an implicit
-focused-clip call. The original [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) is unchanged. Use the
+focused-clip call. The original [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) is unchanged. Use the
 new route before whole-scene methods to avoid duplicate focus delivery. Explicit
 listener registration remains independent. [EN](CLIP_INPUT_METHODS.md) /
 [RU](CLIP_INPUT_METHODS.ru.md).
+
+
+KeyPress v0.628: [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L66) validates a copied transition and maps
+special/printable selectors without allocation or state mutation.
+[`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L97) separately broadcasts exact retained selectors.
+[EN contract](CLIP_KEYPRESS.md) / [RU](CLIP_KEYPRESS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -230,22 +236,24 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../include/flashvm/flashvm.h#L62) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../include/flashvm/flashvm.h#L70) |
-| `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:70](../include/flashvm/keyboard.h#L70) |
-| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:89](../include/flashvm/keyboard.h#L89) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
-| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
-| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
-| `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:72](../include/flashvm/keyboard.h#L72) |
-| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
-| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
-| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
+| `fvm_input_add_key_listener` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
+| `fvm_input_clip_key_code` | function | [include/flashvm/keyboard.h:66](../include/flashvm/keyboard.h#L66) |
+| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:97](../include/flashvm/keyboard.h#L97) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
+| `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:71](../include/flashvm/keyboard.h#L71) |
+| `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_input_remove_key_listener` | function | [include/flashvm/keyboard.h:80](../include/flashvm/keyboard.h#L80) |
+| `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:73](../include/flashvm/keyboard.h#L73) |
+| `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:69](../include/flashvm/keyboard.h#L69) |
+| `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_MEDIA_AUDIO_MIX_MAX_INPUTS` | macro / define | [include/flashvm/multimedia.h:19](../include/flashvm/multimedia.h#L19) |
 | `fvm_meta_call` | function | [include/flashvm/meta_call.h:20](../include/flashvm/meta_call.h#L20) |
 | `fvm_meta_register` | function | [include/flashvm/metamethod.h:20](../include/flashvm/metamethod.h#L20) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../include/flashvm/clip_actions.h#L37) |
-| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:53](../include/flashvm/clip_actions.h#L53) |
-| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:68](../include/flashvm/clip_actions.h#L68) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
+| `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
+| `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
+| `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../include/flashvm/clip_actions.h#L97) |
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:67](../include/flashvm/movieclip.h#L67) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
@@ -262,8 +270,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_stage_set_quality` | function | [include/flashvm/stage.h:22](../include/flashvm/stage.h#L22) |
 | `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |
 | `fvm_stage_toggle_quality` | function | [include/flashvm/stage.h:25](../include/flashvm/stage.h#L25) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:95](../include/flashvm/keyboard.h#L95) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:93](../include/flashvm/keyboard.h#L93) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:103](../include/flashvm/keyboard.h#L103) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
 | `fvm_swf_sound_at` | function | [include/flashvm/swf_sound.h:88](../include/flashvm/swf_sound.h#L88) |
 | `fvm_swf_sound_count` | function | [include/flashvm/swf_sound.h:86](../include/flashvm/swf_sound.h#L86) |
 | `fvm_swf_sound_event_at` | function | [include/flashvm/swf_sound.h:58](../include/flashvm/swf_sound.h#L58) |

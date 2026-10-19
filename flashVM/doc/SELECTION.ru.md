@@ -69,7 +69,7 @@ native-callback остаётся в силе. Getter может сменить �
 клип или бросить исключение. Эти эффекты сохраняются при неудаче внешнего выбора.
 При успехе внешняя попытка заменяет выбор, сделанный вложенным вызовом. Отката
 и очереди уведомлений о смене фокуса нет. Успешная смена отправляет синхронные
-уведомления, описанные ниже. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) доставляются
+уведомления, описанные ниже. Последующие переходы через [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L90) доставляются
 выбранному клипу перед независимыми слушателями Key по общей политике хоста.
 
 ## Уведомления фокуса
@@ -210,7 +210,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:68](../src/standard/movieclip_constants.h#L68) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
@@ -220,6 +220,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
 | `fvm_selection_set_focus` | function | [src/standard/selection.cpp:128](../src/standard/selection.cpp#L128) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:93](../include/flashvm/keyboard.h#L93) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:101](../include/flashvm/keyboard.h#L101) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

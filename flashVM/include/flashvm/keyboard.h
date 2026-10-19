@@ -57,6 +57,14 @@ extern "C"
         int caps_lock;  /* Boolean Caps Lock toggle, independent of physical key-down state. */
         int num_lock;   /* Boolean Num Lock toggle, independent of physical key-down state. */
     } FVM_KeyboardState;
+    /* Translate a copied key transition into a raw SWF ClipEventKeyPress selector.
+     * pressed must be 0/1. Validate the complete snapshot; invalid input preserves *out.
+     * Release, absent/not-held latest key and unmapped input return OK with zero (skip).
+     * Special virtual keys map to SWF codes; otherwise use printable last_ascii 32..126.
+     * No allocation, context access, state mutation, event delivery or IME conversion.
+     * See FVM_CLIP_KEY_* in clip_actions.h; repeated pressed snapshots translate again. */
+    FVM_API FVM_Result fvm_input_clip_key_code(const FVM_KeyboardState *, int pressed,
+                                               unsigned int *out);
     /* Validate all fields before copying the snapshot; no allocation or event delivery. */
     FVM_API FVM_Result fvm_input_set_keyboard(FVM_Context *, const FVM_KeyboardState *);
     /* Copy current state; require exact struct_size and preserve output on invalid input. */

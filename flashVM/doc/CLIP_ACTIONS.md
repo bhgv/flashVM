@@ -38,7 +38,7 @@ DefineButton actions, event hit-target selection or a textual AS compiler.
 
 ## C89 selected-event delivery
 
-Include `flashvm/clip_actions.h`. Call [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L37) with:
+Include `flashvm/clip_actions.h`. Call [fvm_movieclip_dispatch_clip_actions](../include/flashvm/clip_actions.h#L55) with:
 
 - The owning context and its retained MovieClip instance.
 - Exactly one FVM_CLIP_EVENT_* bit from the public header, not an event combination.
@@ -159,7 +159,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:62](../include/flashvm/movieclip.h#L62) |
-| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:37](../include/flashvm/clip_actions.h#L37) |
+| `fvm_movieclip_dispatch_clip_actions` | function | [include/flashvm/clip_actions.h:55](../include/flashvm/clip_actions.h#L55) |
 | `FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES` | macro / define | [src/standard/movieclip_constants.h:21](../src/standard/movieclip_constants.h#L21) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

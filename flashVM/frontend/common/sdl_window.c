@@ -344,6 +344,15 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
                 : event.mouse_type == FVM_MOUSE_EVENT_DOWN ? FVM_CLIP_EVENT_MOUSE_DOWN
                                                          : FVM_CLIP_EVENT_MOUSE_UP;
             result = fvm_movieclip_dispatch_input(context, root, clip_event);
+            if (result == FVM_OK && event.kind == FVM_DESKTOP_EVENT_KEY && event.pressed &&
+                epoch == view->event_epoch)
+            {
+                unsigned int key_code = FVM_CLIP_KEY_NONE;
+                /* Translate the queued event, not state possibly changed by a previous handler. */
+                result = fvm_input_clip_key_code(&event.state, event.pressed, &key_code);
+                if (result == FVM_OK && key_code != FVM_CLIP_KEY_NONE)
+                    result = fvm_movieclip_dispatch_key_press(context, root, key_code);
+            }
         }
         if (result != FVM_OK)
             break;
