@@ -11,7 +11,7 @@ execution, the retained parent when physically detached. Parent/root preloads,
 native _parent/_root accessors and display-path ancestry use that helper.
 Absolute paths and target-or-root fallback therefore reach the original root
 from a removed clip or its still-parented descendant. Root ancestry has a named
-[FVM_MOVIECLIP_ROOT_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L71) bound independent from prototype lookup.
+[FVM_MOVIECLIP_ROOT_MAX_ANCESTORS](../src/standard/movieclip_constants.h#L74) bound independent from prototype lookup.
 
 [GC:] The retained edge is an ordinary managed object value in the native private
 state, reached through resource_result. Generic graph marking and transport
@@ -60,5 +60,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_MOVIECLIP_ROOT_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:71](../src/standard/movieclip_constants.h#L71) |
+| `FVM_MOVIECLIP_ROOT_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:74](../src/standard/movieclip_constants.h#L74) |
 <!-- source-links:end -->

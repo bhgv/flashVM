@@ -1,4 +1,4 @@
-/* FlashVM: budgeted ascending depth sorting shared by timeline and retained input traversal. */
+/* FlashVM: budgeted ascending depth sorting shared by timeline, raster and retained input traversal. */
 #ifndef FVM_CORE_DEPTH_ORDER_HPP
 #define FVM_CORE_DEPTH_ORDER_HPP /* Private C++98 depth-sort guard. */
 #include "execution_work_scope.hpp"

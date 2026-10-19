@@ -22,6 +22,7 @@ Expected output and exit code zero:
 bounded batch: 2 callbacks retained
 after next call: 3 callbacks
 depth order: low middle high
+render: no timeline callbacks
 ```
 
 [main.c](main.c) is executable; [tutorial_limits.h](tutorial_limits.h) names its
@@ -72,6 +73,12 @@ not full original Player event-order certification. [Contract](../../../doc/TIME
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Prepare a nonmanaged signed-depth scalar in caller-owned [FVM_Value](../../../include/flashvm/value.h#L24) storage. |
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | Construct each child synchronously through createEmptyMovieClip; root owns a successful borrowed result. |
 
+The v0.630 extension renders the empty scene into caller-owned RGBA memory and checks that rendering does not dispatch more timeline callbacks. No backend is needed for empty geometry; real paths need a raster backend. Expected fourth line: `render: no timeline callbacks`. See [raster contract](../../../doc/RASTER_DEPTH_ORDER.md).
+
+| Added API use | Purpose and lifetime |
+| --- | --- |
+| [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L76) | Synchronously borrow the caller-owned surface and pinned scene; no tick or asynchronous memory retention. Errors preserve prior pixels/getter effects. |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -88,6 +95,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |

@@ -26,5 +26,13 @@ int main()
     for(unsigned i=0;i<32;++i)repeated.push_back(i%3);
     {FVM_ExecutionWorkScope work(c);assert(fvm_depth_order::sort(repeated,work)==FVM_OK);}
     for(size_t i=1;i<repeated.size();++i)assert(repeated[i-1]<=repeated[i]);
+    /* A full raster-sized reverse list stays below an explicit n log n work bound. */
+    repeated.clear();
+    for(unsigned long i=65536;i;--i)repeated.push_back(i-1);
+    {FVM_ExecutionWorkScope work(c);assert(fvm_depth_order::sort(repeated,work)==FVM_OK);assert(c->avm1_steps<65536UL*40UL);}
+    for(size_t i=0;i<repeated.size();++i)assert(repeated[i]==i);
+    /* Disabled accounting must preserve an enclosing caller's exhausted budget. */
+    c->avm1_steps=71;runtime->config.instruction_limit=1;
+    {FVM_ExecutionWorkScope work(c,false);assert(fvm_depth_order::sort(repeated,work)==FVM_OK);assert(c->avm1_steps==71);}
     assert(!c->avm1_execution_depth);fvm_context_destroy(c);fvm_runtime_destroy(runtime);
 }

@@ -129,6 +129,8 @@ detection disabled. Its clone-allocation matrix completed in 81.61 seconds. The
 strict C89 example also passed against the instrumented core. [Stage status and
 acceptance limits](ROADMAP_STATUS.md).
 
+v0.630: raster traversal now has a separate [EN](RASTER_DEPTH_ORDER.md) / [RU](RASTER_DEPTH_ORDER.ru.md) contract; v0.629 evidence above remains historical.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

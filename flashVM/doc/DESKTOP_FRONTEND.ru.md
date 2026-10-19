@@ -181,7 +181,7 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_Affine` | struct | [include/flashvm/path.h:33](../include/flashvm/path.h#L33) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:71](../include/flashvm/movieclip.h#L71) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:79](../include/flashvm/movieclip.h#L79) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `fvm_swf_stage_bounds` | function | [include/flashvm/swf.h:38](../include/flashvm/swf.h#L38) |
 | `FVM_SWF_TWIPS_PER_PIXEL` | macro / define | [include/flashvm/swf.h:27](../include/flashvm/swf.h#L27) |

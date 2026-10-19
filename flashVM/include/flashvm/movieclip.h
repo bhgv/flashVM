@@ -64,7 +64,15 @@ extern "C"
        Null/foreign clips, lifecycle phases, sound
        callback reentry and excessive tick counts return INVALID_ARGUMENT. Zero ticks does no work. */
     FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
-    /* Render movieclip. */
+    /* Render owner-thread geometry into the caller-owned raster surface (no timeline tick).
+       Children use ascending signed depth and a bounded local identity snapshot after parent
+       drawing. Replacements/newborns from child getters wait; detached children are skipped.
+       Each node accepts at most 65536 child slots and 64 descendant levels. Invalid/foreign/
+       aliased private children return INVALID_ARGUMENT; prior pixels/getter effects remain.
+       OUT_OF_MEMORY and getter errors propagate; disabled raster backends may return UNSUPPORTED.
+       Sorting uses O(n log n) time and O(n) scratch without consuming instruction units.
+       [GC:] The native barrier retains captured objects; caller owns surface storage throughout.
+       See doc/RASTER_DEPTH_ORDER.md for lifetime, partial completion and limitations. */
     FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterSurface *);
     /* Render through a finite host viewport without changing script-visible clip transforms.
        Viewport applies once to every world-space node, preserving root visibility/color. */

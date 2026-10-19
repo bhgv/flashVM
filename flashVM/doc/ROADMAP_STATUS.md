@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.629
+# FlashVM stage status / Состояние стадий — v0.630
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,24 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.630 raster depth snapshots / Снимки raster-обхода
+
+Raster traversal replaces quadratic insertion sorting with the shared heap sort,
+without changing native instruction accounting. Local identity snapshots validate
+owners/aliases/bounds before child getters; replacement and detachment are explicit.
+The C89 tutorial demonstrates rendering without advancing timelines.
+[EN](RASTER_DEPTH_ORDER.md) / [RU](RASTER_DEPTH_ORDER.ru.md).
+
+Это продвижение стадий 3/4/6/7/9. Полная геометрия, общий raster budget, lifecycle,
+оригинальный Player и физическая приёмка других платформ остаются открытыми.
+
+Validation v0.630: 183 selected Linux Release CTests with AGG/static dependencies
+and 125 minimal whole-core ASan/UBSan CTests passed. The latter run is serial,
+with LeakSanitizer disabled and no raster backend; actual pixel assertions passed
+in Release. Four new raster regressions, the large shared-sort oracle, strict C89
+tutorial and documentation checks passed. Source-linked v0.629/current comparison
+reproduces/fixes premature replacement delivery; it is not original-Player evidence.
 
 ## v0.629 native timeline depth snapshots / Глубины tick-обхода
 

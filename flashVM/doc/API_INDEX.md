@@ -130,7 +130,7 @@ macOS Intel classic JIT memory policy, frame chain and host preparation / пам
 ## Desktop host and authored stage
 
 [`fvm_swf_stage_bounds`](../include/flashvm/swf.h#L38) reads authored signed-twip geometry;
-[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L71) projects rendering without modifying script poses.
+[`fvm_movieclip_render_view`](../include/flashvm/movieclip.h#L79) projects rendering without modifying script poses.
 Full parameters, ownership, errors and restrictions:
 [EN](DESKTOP_FRONTEND.md#new-public-vm-api) / [RU](DESKTOP_FRONTEND.ru.md#новые-публичные-функции-vm).
 ## Incremental StartSound mixing
@@ -254,7 +254,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_dispatch_clip_input` | function | [include/flashvm/clip_actions.h:71](../include/flashvm/clip_actions.h#L71) |
 | `fvm_movieclip_dispatch_input` | function | [include/flashvm/clip_actions.h:86](../include/flashvm/clip_actions.h#L86) |
 | `fvm_movieclip_dispatch_key_press` | function | [include/flashvm/clip_actions.h:97](../include/flashvm/clip_actions.h#L97) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:71](../include/flashvm/movieclip.h#L71) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:79](../include/flashvm/movieclip.h#L79) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `fvm_movieclip_swf_document_info` | function | [include/flashvm/movieclip.h:33](../include/flashvm/movieclip.h#L33) |
 | `FVM_MovieClipSoundCallback` | callback typedef | [include/flashvm/movieclip.h:18](../include/flashvm/movieclip.h#L18) |

@@ -4941,6 +4941,13 @@ All nine stages remain open.
 контракты ядра/ABI не изменены. Аппаратная и межплатформенная приёмка остаётся
 открытой. [Details / Подробности](../examples/frontends/linux_fb/README.md#v0614-primary-source-reconciliation--согласование-кнопок).
 
+## v0.630 raster child identity and depth / Глубины и идентичности при рисовании
+
+Bounded local child snapshots, O(n log n) heap sorting without new instruction charges,
+mutation-safe replacement deferral and effective detachment checks. Ошибки сохраняют
+прежние пиксели и эффекты getters. [EN](RASTER_DEPTH_ORDER.md) /
+[RU](RASTER_DEPTH_ORDER.ru.md). All nine stages remain open.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

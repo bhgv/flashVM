@@ -2159,14 +2159,14 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
                   const FVM_Affine *drawing_base = 0, FVM_RasterSurface *coverage = 0,
                   const FVM_Affine *viewport = 0)
 {
-    if (depth > 64)
+    if (!o || o->owner != c || depth > FVM_MOVIECLIP_RENDER_MAX_DEPTH)
         return FVM_INVALID_ARGUMENT;
 
     /* Initialization / Инициализация локального состояния. */
     FVM_Object *data = 0, *paths = 0, *children = 0;
     FVM_Result r = state(o, data);
-    if (r != FVM_OK)
-        return r;
+    if (r != FVM_OK || !data || data->owner != c)
+        return FVM_INVALID_ARGUMENT;
     if (!drawing_base || depth)
     {
         double visible = 0;
@@ -2189,6 +2189,8 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
     r = private_object(data, "children", children);
     if (r != FVM_OK)
         return r;
+    if (!paths || paths->owner != c || !children || children->owner != c)
+        return FVM_INVALID_ARGUMENT;
     FVM_Affine world;
     if (drawing_base)
     {
@@ -2277,27 +2279,43 @@ FVM_Result render(FVM_Context *c, FVM_Object *o, FVM_RasterSurface *surface,
         if (r != FVM_OK)
             return r;
     }
-    /* Depth order is independent of hash-table insertion order. */
+    /* [GC:] Capture identities after this node's drawing getters, before any child getter.
+     * The enclosing native barrier retains removed/replaced objects until rendering returns. */
+    if (!children || children->owner != c ||
+        children->indexed.size() > FVM_MOVIECLIP_RENDER_MAX_CHILDREN)
+        return FVM_INVALID_ARGUMENT;
+    Slots descendants = children->indexed;
     fvm_detail::vector<unsigned long> order;
-    for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
-        order.push_back(i->first);
-    for (size_t i = 1; i < order.size(); ++i)
+    fvm_detail::map<size_t, bool> seen;
+    for (Slots::const_iterator i = descendants.begin(); i != descendants.end(); ++i)
     {
-        unsigned long v = order[i];
-        size_t j = i;
-        while (j && order[j - 1] > v)
-        {
-            order[j] = order[j - 1];
-            --j;
-        }
-        order[j] = v;
+        FVM_Object *child = i->second.type == FVM_VALUE_OBJECT ? i->second.object : 0;
+        FVM_Object *child_data = 0;
+        if (!child || child == o || child->owner != c || state(child, child_data) != FVM_OK ||
+            !child_data || child_data->owner != c ||
+            seen.find(reinterpret_cast<size_t>(child)) != seen.end())
+            return FVM_INVALID_ARGUMENT;
+        seen[reinterpret_cast<size_t>(child)] = true;
+        order.push_back(i->first);
     }
+    /* Raster traversal historically does not consume native instruction units.
+     * Reuse bounded O(n log n) sorting without entering/resetting the execution budget. */
+    FVM_ExecutionWorkScope unmetered(c, false);
+    r = fvm_depth_order::sort(order, unmetered);
+    if (r != FVM_OK)
+        return r;
     for (size_t i = 0; i < order.size(); ++i)
     {
-        FVM_Value child = children->indexed.find(order[i])->second;
-        if (child.type != FVM_VALUE_OBJECT)
-            return FVM_INVALID_ARGUMENT;
-        r = render(c, child.object, surface, transform, depth + 1, drawing_base ? &world : 0,
+        FVM_Object *child = descendants.find(order[i])->second.object;
+        if (parent(child) != o)
+            continue;
+        bool removed = false;
+        r = fvm_movieclip_scene_removed(c, child, &removed);
+        if (r != FVM_OK)
+            return r;
+        if (removed)
+            continue;
+        r = render(c, child, surface, transform, depth + 1, drawing_base ? &world : 0,
                    coverage, viewport);
         if (r != FVM_OK)
             return r;

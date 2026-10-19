@@ -1,10 +1,12 @@
-Development version: **0.629** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.629 ` and an English description. Increase the subversion before each
+Development version: **0.630** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.630 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.630: [Raster depth snapshots](doc/RASTER_DEPTH_ORDER.md) / [Отрисовка по глубинам](doc/RASTER_DEPTH_ORDER.ru.md).
 
 v0.629: [Timeline depth order](doc/TIMELINE_DEPTH_ORDER.md) / [Порядок tick-обхода](doc/TIMELINE_DEPTH_ORDER.ru.md).
 

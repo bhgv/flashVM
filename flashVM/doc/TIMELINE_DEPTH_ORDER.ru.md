@@ -124,6 +124,8 @@ CTest на Linux. Финальный sanitizer suite шёл последоват
 выключен. Clone-allocation matrix завершился за 81,61 с. Strict C89 example также
 прошёл с инструментированным ядром. [Статус и границы приёмки](ROADMAP_STATUS.md).
 
+v0.630: raster traversal now has a separate [EN](RASTER_DEPTH_ORDER.md) / [RU](RASTER_DEPTH_ORDER.ru.md) contract; v0.629 evidence above remains historical.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

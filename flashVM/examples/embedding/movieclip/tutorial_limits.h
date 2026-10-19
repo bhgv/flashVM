@@ -5,4 +5,7 @@
 #define FVM_TUTORIAL_TICK_BATCH 3U /* The third handler exceeds five work units. */
 #define FVM_TUTORIAL_DEPTH_WORK_LIMIT 64UL /* Leave room for three children, sorting and eligibility checks. */
 #define FVM_TUTORIAL_DEPTH_CHILDREN 3U /* The depth-order demonstration records exactly three child callbacks. */
+#define FVM_TUTORIAL_RASTER_SIDE 2U /* Empty-geometry target width and height in pixels. */
+#define FVM_TUTORIAL_RASTER_STRIDE 8U /* Two RGBA pixels per caller-owned row. */
+#define FVM_TUTORIAL_RASTER_BYTES 16U /* Two complete rows of RGBA storage. */
 #endif /* End the example's private constants. */

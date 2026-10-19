@@ -37,7 +37,7 @@ static FVM_Result depth_tick(FVM_Context *context, FVM_Object *receiver, unsigne
     return FVM_OK; /* Continue the ordered snapshot. */
 } /* Finish this native event. */
 /* Create children out of depth order in a separate runtime with its own finite work limit. */
-static int depth_demo(void) /* No renderer, file, SDL adapter or SWF compiler is needed. */
+static int depth_demo(void) /* No raster backend, file, SDL adapter or SWF compiler is needed. */
 { /* Initialize partial owners before the first fallible operation. */
     FVM_Config config; /* Runtime creation copies this second configuration. */
     FVM_Runtime *runtime = 0; /* Outlive the managed context. */
@@ -49,8 +49,11 @@ static int depth_demo(void) /* No renderer, file, SDL adapter or SWF compiler is
     const char *names[FVM_TUTORIAL_DEPTH_CHILDREN] = {"high","low","middle"}; /* Deliberately shuffled insertion. */
     const long depths[FVM_TUTORIAL_DEPTH_CHILDREN] = {10,-5,2}; /* Ascending traversal differs from insertion order. */
     const unsigned int digits[FVM_TUTORIAL_DEPTH_CHILDREN] = {3,1,2}; /* Independent expected identities. */
+    unsigned char pixels[FVM_TUTORIAL_RASTER_BYTES] = {0}; /* Caller-owned transparent RGBA storage for empty geometry. */
+    FVM_RasterSurface surface = {0, FVM_TUTORIAL_RASTER_SIDE, FVM_TUTORIAL_RASTER_SIDE, FVM_TUTORIAL_RASTER_STRIDE}; /* Borrow storage only during synchronous rendering. */
     unsigned int i; /* C89 loop counter declared before statements. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the complete configuration ABI. */
+    surface.pixels = pixels; /* Bind the automatic array after C89 declarations finish. */
     if (status == FVM_OK) /* Use a separate finite bound for sorting and child delivery. */
     { /* This does not alter the earlier five-unit demonstration. */
         config.instruction_limit = FVM_TUTORIAL_DEPTH_WORK_LIMIT; /* Budget is work units, not milliseconds. */
@@ -83,7 +86,13 @@ static int depth_demo(void) /* No renderer, file, SDL adapter or SWF compiler is
         status = FVM_INVALID_ARGUMENT; /* Preserve mismatches through ordinary cleanup. */
     if (status == FVM_OK) /* Report only verified observations. */
         puts("depth order: low middle high"); /* Expected third output line of the complete tutorial. */
-    else /* A failed tick can already have committed native log entries. */
+    if (status == FVM_OK) /* Rendering visits sorted children but never dispatches onEnterFrame. */
+        status = fvm_movieclip_render(context, root, &surface); /* Empty geometry works without a raster backend; real paths require one. */
+    if (status == FVM_OK && log.count != FVM_TUTORIAL_DEPTH_CHILDREN) /* Preserve the three tick callbacks exactly. */
+        status = FVM_INVALID_ARGUMENT; /* Rendering must not manufacture another timeline tick. */
+    if (status == FVM_OK) /* Report the verified host rendering boundary. */
+        puts("render: no timeline callbacks"); /* Fourth deterministic tutorial output line. */
+    else /* A failed tick/render can already have committed native effects. */
         fprintf(stderr, "MovieClip depth tutorial failed: %d\n", (int)status); /* Do not replay the event automatically. */
     if (context) /* Release registrations before the borrowed entries/log go out of scope. */
         fvm_context_destroy(context); /* [GC:] No managed pointer is used after return. */
