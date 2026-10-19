@@ -59,7 +59,7 @@ MEDIA и OS_PORTS. Для speech/TTS/STT используется такой ж�
 Хостовые UI/device службы могут дополнительно требовать главный поток ОС.
 
 Sessions use unmanaged native allocations, not VM objects or the VM memory
-budget. No [FVM_Context](../src/core/runtime.hpp#L246) is retained. Host userdata, referenced labels and output
+budget. No [FVM_Context](../src/core/runtime.hpp#L247) is retained. Host userdata, referenced labels and output
 handles must outlive calls/sessions. [GC:] Managed VM values kept by a host
 callback need explicit existing VM roots; an opaque pointer is not a GC edge.
 Do not call VM APIs from an arbitrary device callback thread; enqueue a host-owned
@@ -342,7 +342,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_audio_stop` | function | [include/flashvm/multimedia.h:135](../include/flashvm/multimedia.h#L135) |
 | `fvm_audio_write` | function | [include/flashvm/multimedia.h:129](../include/flashvm/multimedia.h#L129) |
 | `fvm_camera_open` | function | [include/flashvm/multimedia.h:118](../include/flashvm/multimedia.h#L118) |
-| `FVM_Context` | struct | [src/core/runtime.hpp:246](../src/core/runtime.hpp#L246) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:247](../src/core/runtime.hpp#L247) |
 | `fvm_device_poll` | function | [include/flashvm/multimedia.h:140](../include/flashvm/multimedia.h#L140) |
 | `FVM_DEVICE_WINDOWS_VK_MAX` | macro / define | [include/flashvm/multimedia.h:12](../include/flashvm/multimedia.h#L12) |
 | `FVM_DeviceBridge` | struct | [include/flashvm/multimedia.h:102](../include/flashvm/multimedia.h#L102) |

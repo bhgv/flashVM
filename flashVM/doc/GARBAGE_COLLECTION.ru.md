@@ -2,7 +2,7 @@
 
 ## Принцип работы
 
-Каждый [`FVM_Context`](../src/core/runtime.hpp#L246) владеет собственными объектами. Полный проход mark-and-sweep начинается с глобального объекта VM и объектов, закреплённых через [`fvm_gc_pin`](../include/flashvm/gc.h#L48). Обходятся именованные и числовые поля, прототипы и метатаблицы. **Циклические ссылки** между недостижимыми объектами не препятствуют их освобождению.
+Каждый [`FVM_Context`](../src/core/runtime.hpp#L247) владеет собственными объектами. Полный проход mark-and-sweep начинается с глобального объекта VM и объектов, закреплённых через [`fvm_gc_pin`](../include/flashvm/gc.h#L48). Обходятся именованные и числовые поля, прототипы и метатаблицы. **Циклические ссылки** между недостижимыми объектами не препятствуют их освобождению.
 
 Сборщик не является параллельным. Вызывайте его в потоке владельца контекста, в безопасной точке выполнения. Пока стек интерпретатора AVM1 и временные значения C не добавлены в корни GC автоматически, нельзя запускать сборку посреди исполнения инструкций или нативного callback. Доступные сейчас проходы запускаются явно через API.
 
@@ -32,7 +32,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:246](../src/core/runtime.hpp#L246) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:247](../src/core/runtime.hpp#L247) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `FVM_GC_FULL` | macro / define | [include/flashvm/gc.h:26](../include/flashvm/gc.h#L26) |
 | `fvm_gc_mode` | function | [include/flashvm/gc.h:37](../include/flashvm/gc.h#L37) |

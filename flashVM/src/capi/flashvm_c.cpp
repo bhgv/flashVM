@@ -1,6 +1,8 @@
 /* FlashVM: C embedding API: flashvm.
  * File: src/capi/flashvm_c.cpp.
  */
+#include "../standard/timers.hpp" /* Context-owned timer initialization and teardown. */
+
 
 #include "../multimedia/audio/channel.hpp" /* Stop registered host outputs before releasing the context. */
 #include "../core/runtime.hpp"
@@ -133,6 +135,8 @@ extern "C"
         context->standard_text_library = false;
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         context->random_state = FVM_RANDOM_INITIAL_STATE;
+        context->last_timer_id = 0;
+        context->timers_dispatching = false;
         context->timer_origin_ms = context->timer_elapsed_ms = 0;
         context->timer_clock_valid = fvm_timer_read(&context->timer_origin_ms);
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
@@ -246,7 +250,7 @@ extern "C"
         /* [GC:] Учитываем флаг активной сборки и предотвращаем повторный вход. */
         if (!context || context->destroying || context->gc_collecting ||
             context->gc_native_depth || context->keyboard_dispatching || context->mouse_dispatching ||
-            context->pumping_input)
+            context->pumping_input || context->timers_dispatching)
             /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
             return;
 
@@ -258,6 +262,7 @@ extern "C"
         /* [GC:] Release the native drag root before finalization destroys the object graph. */
         context->drag_clip = 0;
         /* [GC:] Drop listener roots before finalization destroys their graph. */
+        fvm_timers_cleanup(context); /* [GC:] Drop pending callback roots before finalization. */
         context->keyboard_listeners.clear();
         context->mouse_listeners.clear(); /* [GC:] Release pointer observers before finalization. */
         context->selection_listeners.clear(); /* [GC:] Drop focus observers before finalization. */

@@ -31,7 +31,7 @@ Math.random использует независимый для контекст�
 Потоки не разделяют libc rand или состояние генератора. Это не криптографический
 генератор и не точная копия PRNG Flash Player.
 
-[`fvm_value_to_number`](../include/flashvm/standard.h#L23): undefined → NaN, null → +0, boolean → 0/1; числа
+[`fvm_value_to_number`](../include/flashvm/standard.h#L24): undefined → NaN, null → +0, boolean → 0/1; числа
 сохраняются. Строки разбираются независимо от locale: ASCII-пробелы, десятичные
 числа с дробью/экспонентой, беззнаковый 0x hex, Infinity и пустая строка → 0.
 Неверный синтаксис даёт NaN; отрицательный ноль сохраняется. Оболочка Boolean
@@ -65,6 +65,6 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../include/flashvm/value.h#L126) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
-| `fvm_value_to_number` | function | [include/flashvm/standard.h:23](../include/flashvm/standard.h#L23) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
+| `fvm_value_to_number` | function | [include/flashvm/standard.h:24](../include/flashvm/standard.h#L24) |
 <!-- source-links:end -->

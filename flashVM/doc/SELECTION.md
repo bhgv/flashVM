@@ -8,7 +8,7 @@ This is a bounded implementation, not complete Flash Selection compatibility.
 ## Installation
 
 `fvm_standard_selection_install(context)` requires a borrowed non-null live
-context with standard objects already installed by [`fvm_standard_install`](../include/flashvm/standard.h#L18).
+context with standard objects already installed by [`fvm_standard_install`](../include/flashvm/standard.h#L19).
 Use the VM-owning thread, outside context teardown or GC collection/release.
 It synchronously prepares a namespace containing getFocus, setFocus, addListener, removeListener and a read-only
 _listeners snapshot accessor,
@@ -229,7 +229,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_SELECTION_MAX_LISTENERS` | macro / define | [src/standard/selection_listeners.hpp:6](../src/standard/selection_listeners.hpp#L6) |
 | `FVM_SELECTION_MIN_SWF_VERSION` | macro / define | [include/flashvm/keyboard.h:5](../include/flashvm/keyboard.h#L5) |
 | `fvm_selection_set_focus` | function | [src/standard/selection.cpp:128](../src/standard/selection.cpp#L128) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

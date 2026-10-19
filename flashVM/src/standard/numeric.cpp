@@ -18,6 +18,8 @@
 #include "url_encoding.hpp"
 #include "url_constants.h"
 #include "time_constants.h"
+#include "timers.hpp"
+#include "timer_constants.h"
 #include "flashvm/execution.h"
 #include "number_state.hpp"
 #include "../avm1/coercion.hpp"
@@ -719,7 +721,11 @@ const Method global_functions[] = {{"Number", number_call},
                                    {"String", fvm_builtin_string},
                                    {"escape", fvm_builtin_escape},
                                    {"unescape", fvm_builtin_unescape},
-                                   {"getTimer", get_timer_call}};
+                                   {"getTimer", get_timer_call},
+                                   {"setInterval", fvm_builtin_set_interval},
+                                   {"clearInterval", fvm_builtin_clear_interval},
+                                   {"setTimeout", fvm_builtin_set_timeout},
+                                   {"clearTimeout", fvm_builtin_clear_timeout}};
 } // namespace
 /* [GC:] Prepare all builtin layouts and copied attribute tables before String activation.
  * No allocation or callback follows its commit, so load failures preserve every prototype. */
@@ -810,6 +816,14 @@ FVM_Result fvm_primitive_activate_loaded(FVM_Context *c)
 /* Map a native numeric callback to its stable serialization identifier. */
 unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 {
+    if (callback == fvm_builtin_set_interval)
+        return FVM_TIMERS_SET_INTERVAL_CALLBACK;
+    if (callback == fvm_builtin_clear_interval)
+        return FVM_TIMERS_CLEAR_INTERVAL_CALLBACK;
+    if (callback == fvm_builtin_set_timeout)
+        return FVM_TIMERS_SET_TIMEOUT_CALLBACK;
+    if (callback == fvm_builtin_clear_timeout)
+        return FVM_TIMERS_CLEAR_TIMEOUT_CALLBACK;
     if (callback == get_timer_call)
         return FVM_TIME_GET_TIMER_CALLBACK;
     if (callback == fvm_builtin_escape)
@@ -840,6 +854,14 @@ unsigned long fvm_numeric_callback_id(FVM_NativeFunction callback)
 /* Restore a native numeric callback from its stable serialization identifier. */
 FVM_NativeFunction fvm_numeric_callback_from_id(unsigned long id)
 {
+    if (id == FVM_TIMERS_SET_INTERVAL_CALLBACK)
+        return fvm_builtin_set_interval;
+    if (id == FVM_TIMERS_CLEAR_INTERVAL_CALLBACK)
+        return fvm_builtin_clear_interval;
+    if (id == FVM_TIMERS_SET_TIMEOUT_CALLBACK)
+        return fvm_builtin_set_timeout;
+    if (id == FVM_TIMERS_CLEAR_TIMEOUT_CALLBACK)
+        return fvm_builtin_clear_timeout;
     if (id == FVM_TIME_GET_TIMER_CALLBACK)
         return get_timer_call;
     if (id == FVM_URL_ESCAPE_CALLBACK)
@@ -941,6 +963,10 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
                                "escape",
                                "unescape",
                                "getTimer",
+                               "setInterval",
+                               "clearInterval",
+                               "setTimeout",
+                               "clearTimeout",
                                "String",
                                "Object",
                                "Array",
@@ -1146,8 +1172,8 @@ extern "C" FVM_Result fvm_standard_install(FVM_Context *c)
         {
             FVM_NativeEntry entry;
             entry.callback = global_functions[i].callback;
-            /* [GC:] URL coercion may call script and collect with rooted arguments/captures. */
-            if (fvm_url_collector_callback(entry.callback))
+            /* [GC:] URL/timer coercion may call script and collect with rooted arguments/captures. */
+            if (fvm_url_collector_callback(entry.callback) || fvm_timers_collector_callback(entry.callback))
                 entry.collector_entry = true;
             functions[global_functions[i].name] = entry;
         }

@@ -38,6 +38,7 @@
     - [object_methods](#example-embedding-object_methods) — <small><em>Native-метод, receiver и аргументы</em></small>
     - [script_functions](#example-embedding-script_functions) — <small><em>Объявление script-функции — AS-исходник</em></small>
     - [script_methods](#example-embedding-script_methods) — <small><em>Метод объекта и this — AS-исходник</em></small>
+    - [timers](#example-embedding-timers) — <small><em>Явный poll callback и отмена interval</em></small>
   - [gc](#group-embedding-gc)
     - [cycle_collection](#example-embedding-cycle_collection) — <small><em>Недостижимые циклы — заметка о GC</em></small>
     - [gc](#example-embedding-gc) — <small><em>Pin/unpin объекта и ручная сборка</em></small>
@@ -524,6 +525,20 @@ link demonstrated API functions to public headers and feature guides.
 
 [К оглавлению](#оглавление).
 
+<a id="example-embedding-timers"></a>
+#### timers
+
+**Тип:** исполняемый C89 с необязательным интерактивным ожиданием. **README:** [EN](embedding/timers/README.md) / [RU](embedding/timers/README.ru.md).
+
+Регистрирует native Function через setInterval, явно опрашивает реальные часы и
+отменяет запись. По умолчанию не ждёт; `--wait` позволяет нажать Enter после
+секунды для наблюдения callback. Host-счётчики живут дольше pending-вызовов.
+[Контракт EN](../doc/TIMERS.md) / [RU](../doc/TIMERS.ru.md).
+
+**Файлы:** [main.c](embedding/timers/main.c), [tutorial_limits.h](embedding/timers/tutorial_limits.h).
+
+[К оглавлению](#оглавление).
+
 <a id="group-embedding-gc"></a>
 ### gc
 
@@ -543,7 +558,7 @@ link demonstrated API functions to public headers and feature guides.
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/gc/README.md](embedding/gc/README.md).
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L121) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../src/core/runtime.hpp#L122) перестаёт быть допустимым для доступа.
 
 **Файлы:** [main.c](embedding/gc/main.c), [usage.as](embedding/gc/usage.as).
 
@@ -1675,7 +1690,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_extensions_install` | function | [include/flashvm/extensions.h:17](../include/flashvm/extensions.h#L17) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:68](../include/flashvm/multimedia.h#L68) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_Stack` | struct | [src/capi/stack_c.cpp:16](../src/capi/stack_c.cpp#L16) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../include/flashvm/value.h#L24) |
 | `fvm_video_present` | function | [include/flashvm/multimedia.h:137](../include/flashvm/multimedia.h#L137) |
@@ -1719,9 +1734,9 @@ Source line links describe the current checkout, including in historical notes.
 - [gc — embedding/gc](#example-embedding-gc)
 - [gc_workers_channels.as — actionscript/gc_workers_channels.as](#example-actionscript-gc_workers_channels-as)
 - [geometry — embedding/geometry](#example-embedding-geometry)
-- [get_timer — embedding/get_timer](#example-embedding-get_timer)
 - [gesture_dispatch — embedding/gesture_dispatch](#example-embedding-gesture_dispatch)
 - [gesture_recognizer — embedding/gesture_recognizer](#example-embedding-gesture_recognizer)
+- [get_timer — embedding/get_timer](#example-embedding-get_timer)
 - [gradients — embedding/gradients](#example-embedding-gradients)
 - [gtk3 — frontends/gtk3](#example-frontends-gtk3)
 - [headless — frontends/headless](#example-frontends-headless)
@@ -1797,6 +1812,7 @@ Source line links describe the current checkout, including in historical notes.
 - [tables_debug — embedding/tables_debug](#example-embedding-tables_debug)
 - [text — embedding/text](#example-embedding-text)
 - [text_layout — embedding/text_layout](#example-embedding-text_layout)
+- [timers — embedding/timers](#example-embedding-timers)
 - [url_encoding — embedding/url_encoding](#example-embedding-url_encoding)
 - [worker_channels — embedding/worker_channels](#example-embedding-worker_channels)
 - [worker_lifecycle — embedding/worker_lifecycle](#example-embedding-worker_lifecycle)

@@ -2,7 +2,7 @@
 
 ## Model
 
-Each [`FVM_Context`](../src/core/runtime.hpp#L246) owns its objects. A full mark-and-sweep pass begins at the VM global object and all explicitly pinned objects. It traces own named properties, numeric indexed properties, prototypes and metatables. It therefore collects **cycles** that are unreachable from roots; reference counting alone cannot do this.
+Each [`FVM_Context`](../src/core/runtime.hpp#L247) owns its objects. A full mark-and-sweep pass begins at the VM global object and all explicitly pinned objects. It traces own named properties, numeric indexed properties, prototypes and metatables. It therefore collects **cycles** that are unreachable from roots; reference counting alone cannot do this.
 
 The collector is not concurrent. Use it only on the context's owning thread, at a VM safe point. Never call collection recursively from `__gc` or while the AVM1 interpreter is actively using unrooted temporary objects. AVM1 frames are rooted and automatic safe points are enabled. Public stacks and registered native captures are also traced; arbitrary native C locals are not scanned. See [collector contracts](GC_COMPLETION.md).
 
@@ -32,7 +32,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `FVM_Context` | struct | [src/core/runtime.hpp:246](../src/core/runtime.hpp#L246) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:247](../src/core/runtime.hpp#L247) |
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../include/flashvm/gc.h#L44) |
 | `FVM_GC_FULL` | macro / define | [include/flashvm/gc.h:26](../include/flashvm/gc.h#L26) |
 | `fvm_gc_mode` | function | [include/flashvm/gc.h:37](../include/flashvm/gc.h#L37) |
@@ -42,5 +42,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_GC_SUSPENDED` | macro / define | [include/flashvm/gc.h:23](../include/flashvm/gc.h#L23) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 <!-- source-links:end -->

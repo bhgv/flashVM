@@ -1,6 +1,6 @@
 # Global conversions and numeric prefix parsing — v0.11
 
-[`fvm_standard_install`](../include/flashvm/standard.h#L18) installs native parseInt, parseFloat and String functions
+[`fvm_standard_install`](../include/flashvm/standard.h#L19) installs native parseInt, parseFloat and String functions
 alongside the earlier numeric functions. Call them by name through [`fvm_call`](../include/flashvm/value.h#L138)
 or AVM1 CallFunction. Installation preflights conflicting names, stages all
 entries and validates these callbacks on repeated installation.
@@ -197,5 +197,5 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_call` | function | [include/flashvm/value.h:138](../include/flashvm/value.h#L138) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
 <!-- source-links:end -->

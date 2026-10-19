@@ -9,7 +9,7 @@
 ## Установка и владение
 
 Подключите `flashvm/broadcaster.h`. В потоке владельца VM после
-[`fvm_standard_install`](../include/flashvm/standard.h#L18) вызовите `fvm_standard_broadcaster_install(context)`:
+[`fvm_standard_install`](../include/flashvm/standard.h#L19) вызовите `fvm_standard_broadcaster_install(context)`:
 появится обычный объект AsBroadcaster с методом initialize(object). Стандартная установка ABI
 его не включает; с v0.616 поставляемый плеер явно устанавливает namespace для
 SWF6–8 до выполнения сцены. Конструктора нет. Повторная
@@ -163,6 +163,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../include/flashvm/broadcaster.h#L13) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

@@ -7,7 +7,7 @@ Build via CMake with `FVM_BUILD_EXAMPLES=ON`; run `flashvm_examples_embedding_gc
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
-Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../../../src/core/runtime.hpp#L121) перестаёт быть допустимым для доступа.
+Создаёт объект, закрепляет его C-корнем, запускает сборку, снимает закрепление и собирает снова. Показывает, когда borrowed [FVM_Object](../../../src/core/runtime.hpp#L122) перестаёт быть допустимым для доступа.
 
 **Текущая CMake-цель:** `flashvm_examples_embedding_gc_main`.
 
@@ -47,7 +47,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_collect` | function | [include/flashvm/gc.h:44](../../../include/flashvm/gc.h#L44) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../../../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../../../src/core/runtime.hpp#L122) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |

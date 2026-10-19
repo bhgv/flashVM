@@ -50,7 +50,7 @@ GC. Очистка учитывает частичный успех и сохр�
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned configuration; [embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime before its context; [embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent VM state; [embedding](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Install ordinary constructors, without opting into Mouse; [Mouse](../../../doc/MOUSE.md#installation). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Install ordinary constructors, without opting into Mouse; [Mouse](../../../doc/MOUSE.md#installation). |
 | [`fvm_standard_mouse_install`](../../../include/flashvm/mouse.h#L50) | Atomically publish the explicit script namespace; no OS access or callback; [Mouse](../../../doc/MOUSE.md#installation). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | Create a borrowed context-owned receiver before pinning; [embedding](../../../doc/EMBEDDING_API.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Acquire the temporary construction root; [GC](../../../doc/GARBAGE_COLLECTION.md). |
@@ -99,7 +99,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../../../include/flashvm/mouse.h#L50) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:40](../../../include/flashvm/value.h#L40) |
 <!-- source-links:end -->

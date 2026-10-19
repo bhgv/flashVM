@@ -275,7 +275,7 @@ Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug
 
 Declaration / декларация: [`flashvm/debug.h`](../include/flashvm/debug.h).
 
-**Parameters / параметры.** `context`: owning VM. `index`: zero-based row below its current count. `out`: required [FVM_Object](../src/core/runtime.hpp#L121) ** object output.
+**Parameters / параметры.** `context`: owning VM. `index`: zero-based row below its current count. `out`: required [FVM_Object](../src/core/runtime.hpp#L122) ** object output.
 
 **Results / результаты.** `OK`; `INVALID_ARGUMENT` for null arguments or an out-of-range index (legacy APIs do not use NOT_FOUND for end).
 
@@ -929,6 +929,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_machine_code` | function | [include/flashvm/jit.h:33](../include/flashvm/jit.h#L33) |
 | `fvm_jit_source` | function | [include/flashvm/jit.h:31](../include/flashvm/jit.h#L31) |
 | `FVM_JitCode` | struct | [src/jit/internal.hpp:59](../src/jit/internal.hpp#L59) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_ScriptBody` | callback typedef | [include/flashvm/function.h:36](../include/flashvm/function.h#L36) |
 <!-- source-links:end -->

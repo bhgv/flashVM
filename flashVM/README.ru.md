@@ -1,10 +1,12 @@
-Версия разработки: **0.620** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.621** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
 новые коммиты отправляются только туда, с проверкой серверного HEAD.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.621: [Scheduled callbacks](doc/TIMERS.md) / [Таймеры](doc/TIMERS.ru.md), [C89](examples/embedding/timers/README.md).
 
 v0.620: [getTimer global](doc/GET_TIMER.md) / [Глобальная getTimer](doc/GET_TIMER.ru.md), [C89](examples/embedding/get_timer/README.md).
 

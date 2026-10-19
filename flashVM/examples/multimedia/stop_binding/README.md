@@ -34,7 +34,7 @@ callback запрещены. Сам пример не сохраняет managed
 | [`fvm_audio_stop_binding_create`](../../../include/flashvm/audio_stop.h#L14) | Allocate/register a borrowed host callback; no invocation or ownership of userdata. [Create](../../../doc/AUDIO_STOP_BINDINGS.md#create). |
 | [`fvm_audio_stop_binding_close`](../../../include/flashvm/audio_stop.h#L17) | Detach without callback/allocation; invalidate the handle, null allowed. [Close](../../../doc/AUDIO_STOP_BINDINGS.md#close). |
 | [`fvm_call_bytes`](../../../include/flashvm/value.h#L98) | Synchronously invoke the real stopAllSounds global with no arguments. [API index](../../../doc/API_INDEX.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Install standard globals before invoking stopAllSounds. [API index](../../../doc/API_INDEX.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Install standard globals before invoking stopAllSounds. [API index](../../../doc/API_INDEX.md). |
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize supported runtime configuration without acquiring a VM. [Embedding](../../../doc/API_INDEX.md). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Own the native runtime until every child context is destroyed. [Embedding](../../../doc/API_INDEX.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Create one isolated VM owning its stop registrations. [Embedding](../../../doc/API_INDEX.md). |
@@ -61,5 +61,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
 <!-- source-links:end -->

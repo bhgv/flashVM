@@ -97,7 +97,7 @@ no-multiple 7, stop 7, start 8. При первом PCM read остаётся т
 
 | Additional API | Individual contract / Где читать |
 | --- | --- |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Устанавливает методы MovieClip до исполнения кадра: [API_INDEX.md](../../../doc/API_INDEX.md). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Устанавливает методы MovieClip до исполнения кадра: [API_INDEX.md](../../../doc/API_INDEX.md). |
 | [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Импортирует кадры/корневой звук из совпадающего source; clip нужно удерживать: [MOVIECLIP_SOUND.md](../../../doc/MOVIECLIP_SOUND.md#loading-and-source-identity). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | [GC:] Удерживает managed root во время host операций: [GC_NATIVE_ROOTS.md](../../../doc/GC_NATIVE_ROOTS.md). |
 | [`fvm_movieclip_set_sound_callback`](../../../include/flashvm/movieclip.h#L21) | Заимствует callback/userdata, не сериализует их и не открывает device: [контракт](../../../doc/MOVIECLIP_SOUND.md#callback-registration-contract). |
@@ -154,7 +154,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../../../include/flashvm/movieclip.h#L21) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
 | `fvm_swf_sound_mixer_close` | function | [include/flashvm/swf_sound_mixer.h:63](../../../include/flashvm/swf_sound_mixer.h#L63) |
 | `FVM_SWF_SOUND_MIXER_CONVERT` | macro / define | [include/flashvm/swf_sound_mixer.h:21](../../../include/flashvm/swf_sound_mixer.h#L21) |
 | `fvm_swf_sound_mixer_create` | function | [include/flashvm/swf_sound_mixer.h:45](../../../include/flashvm/swf_sound_mixer.h#L45) |

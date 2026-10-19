@@ -177,6 +177,11 @@ static void mark_graph(FVM_Context *c, FVM_StringGCPlan &strings, size_t newborn
             /* [GC:] Добавляем достижимый объект или значение в очередь маркировки. */
             mark_object(c->objects[i], pending);
     /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
+    /* [GC:] Pending calls keep targets, counted strings and user arguments alive until cancellation. */
+    for (fvm_detail::map<unsigned long, FVM_ScheduledCall *>::iterator timer =
+             c->scheduled_calls.begin(); timer != c->scheduled_calls.end(); ++timer)
+        for (size_t argument = 0; argument < timer->second->values.size(); ++argument)
+            mark_value(timer->second->values[argument], pending, strings);
     for (FVM_GCRootFrame *frame = c->gc_frames; frame; frame = frame->previous)
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
     {

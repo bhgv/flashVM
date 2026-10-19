@@ -9,6 +9,7 @@
 #include "flashvm/execution.h"
 #include "../jit/mode_state.hpp"
 #include "crash_state.hpp"
+#include "timer_state.hpp"
 #include "resource_kinds.h"
 #include "numeric_constants.h"
 #include "../swf/format_constants.h"
@@ -297,6 +298,9 @@ struct FVM_Context
     fvm_detail::string default_font; /* [GC:] Default registered font name. */
     double timer_origin_ms; /* Monotonic sample establishing this context's timer origin. */
     double timer_elapsed_ms; /* Last unwrapped elapsed sample, retaining monotonicity on rollback. */
+    fvm_detail::map<unsigned long, FVM_ScheduledCall *> scheduled_calls; /* [GC:] Strong pending timer records, ordered by registration. */
+    unsigned long last_timer_id; /* Last published ID; zero precedes the first registration. */
+    bool timers_dispatching; /* Prevent recursive polling and destruction during callbacks. */
     bool timer_clock_valid; /* Whether a valid timer origin has been captured. */
     unsigned long random_state;      /* [GC:] State of the context-local pseudo-random generator. */
     FVM_Runtime *runtime;            /* [GC:] Runtime owning this context. */

@@ -68,7 +68,7 @@ keeps the ordinary native collector barrier. [Observer contract](../../../doc/SE
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | Initialize caller-owned defaults; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | Acquire the runtime before its context; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent globals and focus; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | Prepare MovieClip constructors/prototypes; [SELECTION.md](../../../doc/SELECTION.md#installation). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | Prepare MovieClip constructors/prototypes; [SELECTION.md](../../../doc/SELECTION.md#installation). |
 | [`fvm_standard_selection_install`](../../../include/flashvm/keyboard.h#L86) | Atomically publish only the supported Selection methods; [SELECTION.md](../../../doc/SELECTION.md#installation), [RU](../../../doc/SELECTION.ru.md#установка). |
 | [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | Create a borrowed native scene; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain the clip before eligibility is configured; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
@@ -119,7 +119,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_object_set` | function | [include/flashvm/value.h:74](../../../include/flashvm/value.h#L74) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../../../include/flashvm/keyboard.h#L86) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:44](../../../include/flashvm/value.h#L44) |
 | `fvm_value_string_size` | function | [include/flashvm/value.h:51](../../../include/flashvm/value.h#L51) |

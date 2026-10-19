@@ -14,5 +14,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../../../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../../../src/core/runtime.hpp#L122) |
 <!-- source-links:end -->

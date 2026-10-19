@@ -13,6 +13,7 @@ extern "C"
     /* Install the initial numeric standard library: Math, Number/Boolean conversion,
      * boxed String, Number, Boolean and Error constructors/prototypes, isNaN/isFinite,
      * parseInt/parseFloat, escape/unescape (SWF5+), String conversion, getTimer (SWF4+), NaN and Infinity.
+     * Timers: setInterval/clearInterval (SWF6+), setTimeout/clearTimeout (SWF8+); poll via timers.h.
      * Partial AS1/AS2 library; conflicting own names follow active SWF case rules and are preserved. */
     /* Implement standard install for this subsystem. */
     FVM_API FVM_Result fvm_standard_install(FVM_Context *);

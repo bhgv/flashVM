@@ -1,6 +1,6 @@
 # getTimer — ограниченные часы контекста (v0.620)
 
-[English](GET_TIMER.md). [fvm_standard_install](../include/flashvm/standard.h#L18) добавляет `getTimer()` для host и
+[English](GET_TIMER.md). [fvm_standard_install](../include/flashvm/standard.h#L19) добавляет `getTimer()` для host и
 SWF4–8. Глобальная функция вызывает [fvm_exec_get_time](../include/flashvm/execution.h#L168) — тот же сервис, что GetTime
 AVM1 и машинный код JIT. Дополнительные аргументы игнорируются без ToString/valueOf.
 Извлечённая Function и обычный глобальный вызов используют одни часы.
@@ -21,7 +21,7 @@ AVM1 и машинный код JIT. Дополнительные аргумен
 
 ## Вызовы, ошибки и владение
 
-Сначала вызвать [fvm_standard_install](../include/flashvm/standard.h#L18), затем [fvm_call](../include/flashvm/value.h#L138) с именем `getTimer`, нулём
+Сначала вызвать [fvm_standard_install](../include/flashvm/standard.h#L19), затем [fvm_call](../include/flashvm/value.h#L138) с именем `getTimer`, нулём
 аргументов и ненулевым выходным указателем. Конфликтующие собственные имена
 сохраняются по активным правилам регистра SWF; установка возвращает
 [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45). Повторная установка проверяет идентичности регистраций.
@@ -72,7 +72,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../include/flashvm/gc.h#L54) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../include/flashvm/standard.h#L19) |
 | `FVM_TIME_GET_TIMER_CALLBACK` | macro / define | [src/standard/time_constants.h:5](../src/standard/time_constants.h#L5) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

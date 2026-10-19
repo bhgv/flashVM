@@ -19,6 +19,7 @@
 #include "../standard/base_state.hpp"
 #include "../standard/broadcaster.hpp"
 #include "../standard/url_encoding.hpp"
+#include "../standard/timers.hpp"
 #include "../standard/inheritance.hpp"
 #include "flashvm/utf8.h"
 #include "../standard/string_state.hpp"
@@ -1631,7 +1632,8 @@ restore_callback(FVM_Context *c, const Callback &src,
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
     /* [GC:] Restored broadcasters keep the same rooted script/GC entry policy as fresh ones. */
     dst.collector_entry = fvm_function_collector_callback(dst.callback) ||
-        fvm_broadcaster_callback_id(dst.callback) != 0 || fvm_url_collector_callback(dst.callback);
+        fvm_broadcaster_callback_id(dst.callback) != 0 || fvm_url_collector_callback(dst.callback) ||
+        fvm_timers_collector_callback(dst.callback);
     /* [GC:] Возвращаем результат операции сборщика или защиты корней. */
     return dst;
     /* [GC:] Граница блока, управляющего жизненным циклом объектов или корней. */
@@ -1740,7 +1742,8 @@ void restore(FVM_Context *c, const Graph &g, FVM_Value *out)
                 /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
                 fvm_function_collector_callback(dst->invocable.callback) ||
                 fvm_broadcaster_callback_id(dst->invocable.callback) != 0 ||
-                fvm_url_collector_callback(dst->invocable.callback);
+                fvm_url_collector_callback(dst->invocable.callback) ||
+                fvm_timers_collector_callback(dst->invocable.callback);
             /* [GC:] Обходим корни, ссылки или записи кучи в этой фазе сборки. */
             for (fvm_detail::map<fvm_detail::string, Value>::iterator p = src.method_values.begin();
                  /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */

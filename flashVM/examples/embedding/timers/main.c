@@ -1,0 +1,60 @@
+/* FlashVM C89 tutorial: retain a callback, explicitly poll and cancel an interval. */
+#include "flashvm/standard.h" /* Runtime acquisition and built-in globals; see README.md API table. */
+#include "flashvm/function.h" /* Construct a context-owned native Function with borrowed host state. */
+#include "flashvm/timers.h" /* Explicit synchronous delivery on this context's owning thread. */
+#include "tutorial_limits.h" /* Give the human-visible timer delay a local semantic name. */
+#include <stdio.h> /* Print deliveries and optionally wait for a human event. */
+#include <string.h> /* Recognize the optional interactive mode without any platform SDK. */
+/* Count deliveries; the ordinary native callback barrier remains active during this function. */
+static FVM_Result tick(FVM_Context *context, FVM_Object *receiver, unsigned int count, const FVM_Value *args, FVM_Value *out, void *raw) /* README.md documents borrowed userdata. */
+{ /* Run synchronously on the polling VM thread. */
+    unsigned int *calls = (unsigned int *)raw; /* Host storage remains alive through context destruction. */
+    (void)context; (void)receiver; (void)count; (void)args; /* This tutorial needs no receiver or callback arguments. */
+    ++*calls; /* Record only callbacks actually attempted by the host poll. */
+    fvm_value_undefined(out); /* The scheduler ignores successful callback results. */
+    return FVM_OK; /* Allow any later due timer to run. */
+} /* Returning does not create another OS thread or keep an active call frame. */
+/* Default mode polls once; --wait permits a human-driven event loop without slowing CTest. */
+int main(int argc, char **argv) /* Build as C89 with the FlashVM static library. */
+{ /* Initialize partial ownership before acquisition. */
+    FVM_Config config; /* Configuration is copied into its runtime. */
+    FVM_Runtime *runtime = 0; /* Outlive the managed heap. */
+    FVM_Context *context = 0; /* Own callback objects and pending timer records. */
+    FVM_Object *function = 0; /* Borrowed Function pointer retained by the timer after registration. */
+    FVM_Value args[2], id, ignored; /* Prepare Function/delay and retain the plain numeric ID. */
+    unsigned int calls = 0, delivered = 0; /* Host-owned counters; no cross-thread access occurs. */
+    FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
+    if (status == FVM_OK) /* Acquire the outer owner first. */
+        status = fvm_runtime_create(&config, &runtime); /* No worker is started. */
+    if (status == FVM_OK) /* Establish the independent heap and monotonic clock origin. */
+        status = fvm_context_create(runtime, &context); /* Use only from this owning thread. */
+    if (status == FVM_OK) /* Install scheduling globals alongside the standard objects. */
+        status = fvm_standard_install(context); /* Conflicting own names cause a reported error. */
+    if (status == FVM_OK) /* Store callback code and borrowed host counters in a managed Function. */
+        status = fvm_function_create_native(context, tick, &calls, 0, &function); /* No capture object is needed. */
+    if (status == FVM_OK) /* Prepare the two registration arguments without an intervening GC. */
+    { /* Publish a complete Function value before scheduling it. */
+        fvm_value_undefined(&args[0]); /* Initialize every unused value field. */
+        args[0].type = FVM_VALUE_OBJECT; args[0].object = function; /* Reference the same-context Function. */
+        fvm_value_number(&args[1], FVM_TUTORIAL_TIMER_DELAY_MS); /* Use the explicit millisecond delay. */
+        status = fvm_call(context, "setInterval", 2, args, &id); /* [GC:] Pending registration now retains the callback. */
+    } /* The numeric ID owns no managed storage. */
+    if (status == FVM_OK && argc > 1 && strcmp(argv[1], "--wait") == 0) /* Waiting is an optional host event, outside VM execution. */
+    { /* The default noninteractive run never blocks for input. */
+        printf("Wait at least one second, then press Enter to poll.\n"); /* Explain when the callback becomes due. */
+        (void)getchar(); /* Replace with the application's ordinary event source in an integration. */
+    } /* The VM creates neither a sleep nor a background timer. */
+    if (status == FVM_OK) /* Attempt each currently due callback at most once. */
+        status = fvm_timers_poll(context, &delivered); /* A late interval is coalesced rather than replayed in a burst. */
+    if (status == FVM_OK) /* Release the pending callback root explicitly when finished. */
+        status = fvm_call(context, "clearInterval", 1, &id, &ignored); /* Cancellation returns undefined. */
+    if (status == FVM_OK) /* Report actual timing rather than requiring an exact platform clock sample. */
+        printf("cancelled interval; callbacks: %u; attempted: %u\n", calls, delivered); /* Normally 0 by default, 1 after --wait. */
+    else /* Preserve clock, callback, allocation and budget errors. */
+        fprintf(stderr, "timer example failed: %d\n", (int)status); /* Cleanup also releases a still-pending registration. */
+    if (context) /* End use of the callback and host userdata before returning from main. */
+        fvm_context_destroy(context); /* [GC:] Release pending records and all managed objects. */
+    if (runtime) /* Release the external owner after its context. */
+        fvm_runtime_destroy(runtime); /* No timer thread remains to join. */
+    return status == FVM_OK ? 0 : 1; /* Expose integration failures to the shell or CTest. */
+} /* Stack counters outlive every possible callback in this example. */

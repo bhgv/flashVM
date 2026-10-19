@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.620
+# FlashVM stage status / Состояние стадий — v0.621
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,29 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.621 scheduled callbacks / Таймеры
+
+Added setInterval/clearInterval for host/SWF6–8 and setTimeout/clearTimeout for
+host/SWF8, with explicit owning-thread [fvm_timers_poll](../include/flashvm/timers.h#L19) delivery. Strong pending
+and active value roots retain Function/capture, method owner and copied arguments;
+self/other cancellation, new registration and GC during callbacks are supported.
+Late intervals coalesce; timeouts consume before invocation. All four globals
+have stable graph IDs and collecting-coercion restoration in imported Functions.
+
+Очередь ограничена; регистрация, отмена, снимки и callback делят бюджет и
+кооперативную отмену worker. Общий desktop player опрашивает её перед render;
+изменённый C89-модуль компилируется с реальными заголовками SDL2 на Linux.
+Это не приёмка видимого проигрывания, Windows/macOS/Android или точного расписания
+оригинального Player. Полные ограничения: [EN](TIMERS.md) / [RU](TIMERS.ru.md),
+[пример C89](../examples/embedding/timers/README.md).
+
+Validation: 63 selected Release checks (61 runtime tests and two C89 examples)
+and 46 ASan/UBSan runtime checks passed, with LeakSanitizer disabled. The new
+C89 tutorial also passed both immediate and real-clock delayed interactive paths
+linked against the instrumented core. The changed common desktop player module
+compiled as C89 with real SDL2 headers. Documentation source-link freshness,
+HTML/determinism and debugger tutorial checks passed; these are Linux results.
 
 ## v0.620 getTimer global / Глобальная getTimer
 
@@ -1057,4 +1080,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
 | `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
 <!-- source-links:end -->

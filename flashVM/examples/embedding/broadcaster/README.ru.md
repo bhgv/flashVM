@@ -55,7 +55,7 @@ pin защищают частичное построение и позднее �
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L62) | config: задать ABI по умолчанию; ресурсы не создаются. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | config и выход runtime: создать внешнего владельца; разрушить после контекста. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | runtime и выход context: создать отдельную управляемую кучу. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
-| [`fvm_standard_install`](../../../include/flashvm/standard.h#L18) | context: синхронно установить необходимые Object/Array с выделением памяти. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
+| [`fvm_standard_install`](../../../include/flashvm/standard.h#L19) | context: синхронно установить необходимые Object/Array с выделением памяти. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_standard_broadcaster_install`](../../../include/flashvm/broadcaster.h#L13) | context: явно установить пространство имён скрипта, сохраняя конфликты. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_broadcaster_initialize`](../../../include/flashvm/broadcaster.h#L19) | context, source того же контекста: после проверки привязок атомарно установить методы и живой Array. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
 | [`fvm_object_create`](../../../include/flashvm/value.h#L62) | context, выход object: создать принадлежащий контексту объект; указатель заимствован. [Guide](../../../doc/AS_BROADCASTER.ru.md#установка-и-владение). |
@@ -77,8 +77,8 @@ pin защищают частичное построение и позднее �
 
 ## Callback и значения
 
-[`FVM_Config`](../../../include/flashvm/flashvm.h#L51) хранится у хоста; [`FVM_Runtime`](../../../src/core/runtime.hpp#L174) и [`FVM_Context`](../../../src/core/runtime.hpp#L246) — приобретённые
-владельцы. [`FVM_Object`](../../../src/core/runtime.hpp#L121) заимствован и защищается pin/достижимостью. [`FVM_Value`](../../../include/flashvm/value.h#L24)
+[`FVM_Config`](../../../include/flashvm/flashvm.h#L51) хранится у хоста; [`FVM_Runtime`](../../../src/core/runtime.hpp#L175) и [`FVM_Context`](../../../src/core/runtime.hpp#L247) — приобретённые
+владельцы. [`FVM_Object`](../../../src/core/runtime.hpp#L122) заимствован и защищается pin/достижимостью. [`FVM_Value`](../../../include/flashvm/value.h#L24)
 содержит тег: [`FVM_VALUE_OBJECT`](../../../include/flashvm/value.h#L21) выбирает object, [`FVM_VALUE_NUMBER`](../../../include/flashvm/value.h#L19) — number.
 [`FVM_Result`](../../../include/flashvm/flashvm.h#L40) передаёт статус без скрытой замены ошибки.
 
@@ -118,7 +118,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_channel_send_value` | function | [include/flashvm/transfer.h:22](../../../include/flashvm/transfer.h#L22) |
 | `FVM_Config` | struct | [include/flashvm/flashvm.h:51](../../../include/flashvm/flashvm.h#L51) |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:62](../../../include/flashvm/flashvm.h#L62) |
-| `FVM_Context` | struct | [src/core/runtime.hpp:246](../../../src/core/runtime.hpp#L246) |
+| `FVM_Context` | struct | [src/core/runtime.hpp:247](../../../src/core/runtime.hpp#L247) |
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
@@ -126,17 +126,17 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../../../include/flashvm/flashvm.h#L47) |
-| `FVM_Object` | struct | [src/core/runtime.hpp:121](../../../src/core/runtime.hpp#L121) |
+| `FVM_Object` | struct | [src/core/runtime.hpp:122](../../../src/core/runtime.hpp#L122) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `FVM_Result` | enum | [include/flashvm/flashvm.h:40](../../../include/flashvm/flashvm.h#L40) |
-| `FVM_Runtime` | struct | [src/core/runtime.hpp:174](../../../src/core/runtime.hpp#L174) |
+| `FVM_Runtime` | struct | [src/core/runtime.hpp:175](../../../src/core/runtime.hpp#L175) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_serialization_register_callback` | function | [include/flashvm/serialization.h:30](../../../include/flashvm/serialization.h#L30) |
 | `fvm_standard_broadcaster_install` | function | [include/flashvm/broadcaster.h:13](../../../include/flashvm/broadcaster.h#L13) |
-| `fvm_standard_install` | function | [include/flashvm/standard.h:18](../../../include/flashvm/standard.h#L18) |
+| `fvm_standard_install` | function | [include/flashvm/standard.h:19](../../../include/flashvm/standard.h#L19) |
 | `FVM_Value` | struct | [include/flashvm/value.h:24](../../../include/flashvm/value.h#L24) |
 | `FVM_VALUE_NUMBER` | enum constant | [include/flashvm/value.h:19](../../../include/flashvm/value.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |

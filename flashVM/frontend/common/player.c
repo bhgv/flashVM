@@ -9,6 +9,7 @@
 #include "flashvm/mouse.h"
 #include "flashvm/movieclip.h"
 #include "flashvm/standard.h"
+#include "flashvm/timers.h"
 #include "flashvm/swf.h"
 #include "options.h"
 #include "window.h"
@@ -164,6 +165,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     size_t length = 0;
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
+    unsigned int timer_callbacks = 0; /* Receive each frame poll's attempted delivery count. */
     int status = 1, pinned = 0, input_pinned = 0;
     memset(&input, 0, sizeof(input));
     memset(&audio, 0, sizeof(audio));
@@ -326,6 +328,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                      "host input", path))
             goto cleanup;
         if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline tick", path))
+            goto cleanup;
+        /* Deliver timers on the VM thread before rendering callback-driven scene changes. */
+        if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
         if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
             goto cleanup;
