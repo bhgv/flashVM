@@ -95,3 +95,15 @@ flashvm_frontend_clip_player использует настоящий host/adapte
 после первого показа; flashvm_player_clip_input_interpreter/jit проверяют SWF5–8,
 сумму событий и coalesced redraw. Injector только тестовый; физическое устройство
 не считается проверенным.
+
+## MovieClip input methods v0.627
+
+Общий scene route теперь вызывает записи и затем optional onMouseMove/Down/Up,
+onKeyDown/Up для SWF6–8 (SWF5 получает только записи). Старый namespace-only pump и
+retained-only API сохранены. State/namespace остаются перед scene delivery;
+observer-only публикация клавиатуры предотвращает дубль focused clip. Pump без root
+сохраняет focus-first поведение;
+ошибка метода потребляет текущий переход, не следующие. [Контракт](../doc/CLIP_INPUT_METHODS.ru.md).
+flashvm_player_clip_input_methods_interpreter/jit используют реальный SDL queue/host:
+method-only и record → method trace, source gate, ошибочные контроли и redraw из методов.
+Dummy video и synthetic messages не заменяют физическую/межплатформенную приёмку.

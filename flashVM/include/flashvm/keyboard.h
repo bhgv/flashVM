@@ -81,6 +81,13 @@ extern "C"
      * after publication. Nested dispatch is rejected; listener edits affect later events. */
     FVM_API FVM_Result fvm_input_dispatch_keyboard(FVM_Context *, const FVM_KeyboardState *,
                                                    int pressed);
+    /* Publish the same validated snapshot and notify rooted Key listeners only.
+     * Use before a whole-scene input broadcast to avoid a duplicate implicit focused-clip call.
+     * Does not query/change focus or grant observer-only updateAfterEvent eligibility.
+     * Explicit listener registration of a clip remains an independent notification source.
+     * Shares the original dispatch API's preparation, mutation, errors, reentry, work and GC contract. */
+    FVM_API FVM_Result fvm_input_dispatch_key_listeners(FVM_Context *, const FVM_KeyboardState *,
+                                                        int pressed);
     /* Install explicit Selection.getFocus/setFocus for native MovieClips on SWF6--8;
      * requires standard objects, preserves conflicts, and does not install Key. */
     FVM_API FVM_Result fvm_standard_selection_install(FVM_Context *);

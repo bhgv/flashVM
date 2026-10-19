@@ -1,4 +1,4 @@
-/* C89 tutorial: deliver retained sprite ClipActions explicitly; see README.md and CLIP_ACTIONS.md. */
+/* C89 tutorial: compare selected ClipActions, retained tree input and optional clip methods; see README.md and CLIP_ACTIONS.md. */
 #include "flashvm/movieclip.h" /* Load the SWF graph and perform a normal timeline tick. */
 #include "flashvm/clip_actions.h" /* Select one retained event without hit testing or native onX calls. */
 #include "flashvm/standard.h" /* Install standard classes before scene construction. */
@@ -7,6 +7,25 @@
 #include "flashvm/gc.h" /* Pin the root while retaining borrowed scene pointers. */
 #include "clip_action_movie.h" /* Embed an independently encoded, immutable SWF8 fixture. */
 #include <stdio.h> /* Report the selected handler's script-visible effect. */
+/* Observe a retained record before the optional native MovieClip method. */
+static FVM_Result input_method(FVM_Context *context, FVM_Object *self, unsigned int argc, const FVM_Value *argv, FVM_Value *out, void *userdata) /* A synchronous owner-thread native callback. */
+{ /* The selected scene retains self throughout this call. */
+    FVM_Value seen; /* Borrow the script marker only until this callback returns. */
+    FVM_Result status = fvm_object_get(context, self, "seen", &seen); /* Retained MouseMove has already written 84. */
+    (void)argc; /* Named input methods receive no arguments. */
+    (void)argv; /* Pointer coordinates are read through the native input APIs when needed. */
+    (void)userdata; /* This callback owns no external capture. */
+    if (status == FVM_OK && (seen.type != FVM_VALUE_NUMBER || seen.number != FVM_TUTORIAL_CLIP_INPUT_EXPECTED)) /* Validate record-before-method ordering. */
+        status = FVM_INVALID_ARGUMENT; /* Preserve a mismatch through the outer delivery. */
+    if (status == FVM_OK) /* Publish the method's own independently checked marker. */
+    { /* Keep both native and script error paths explicit. */
+        fvm_value_number(&seen, FVM_TUTORIAL_CLIP_METHOD_EXPECTED); /* The method changes the marker to 126. */
+        status = fvm_object_set(context, self, "seen", &seen); /* This effect is committed even if a later operation fails. */
+    } /* Finish the method's marker update. */
+    if (status == FVM_OK) /* Request one eligible redraw for the whole batch. */
+        status = fvm_call(context, "updateAfterEvent", 0, 0, out); /* The embedding host still owns presentation. */
+    return status; /* Propagate method errors without retrying the event. */
+} /* End the optional native MovieClip method. */
 /* The host selects the actor; explicit delivery neither advances timeline nor opens a device. */
 int main(void) /* Build this file as its own C89 executable, separate from main.c. */
 { /* Initialize partial owners before acquisition. */
@@ -56,6 +75,18 @@ int main(void) /* Build this file as its own C89 executable, separate from main.
         status = FVM_INVALID_ARGUMENT; /* Preserve a mismatch through ordinary cleanup. */
     if (status == FVM_OK) /* Report the second event independently of Load. */
         printf("scene MouseMove marker: %.0f; redraw: %d\n", value.number, redraw); /* Expected marker 84 and one coalesced request. */
+    if (status == FVM_OK) /* Install a method without changing the immutable SWF records. */
+        status = fvm_object_define_method_rooted(context, actor, "onMouseMove", input_method, 0, 0); /* No native capture needs a separate managed root. */
+    if (status == FVM_OK) /* Deliver records and the optional method together through the same tree. */
+        status = fvm_movieclip_dispatch_input(context, root, FVM_CLIP_EVENT_MOUSE_MOVE); /* Retained-only API above remains available. */
+    if (status == FVM_OK) /* Read the method marker after the retained record wrote 84 again. */
+        status = fvm_object_get(context, actor, "seen", &value); /* Expected method marker 126. */
+    if (status == FVM_OK) /* Consume the coalesced record/method redraw request. */
+        status = fvm_stage_take_update(context, &redraw); /* No timeline step or renderer is needed. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != FVM_TUTORIAL_CLIP_METHOD_EXPECTED || redraw != 1)) /* Verify marker and redraw together. */
+        status = FVM_INVALID_ARGUMENT; /* Keep tutorial failures observable to its caller. */
+    if (status == FVM_OK) /* Report the combined route independently of both older APIs. */
+        printf("scene MouseMove method: %.0f; redraw: %d\n", value.number, redraw); /* Expected marker 126 and one request. */
     else /* Preserve failures without assertions or automatic replay. */
         fprintf(stderr, "ClipActions tutorial failed: %d\n", (int)status); /* A failed batch may already have script effects. */
     if (context) /* Release the pinned root, library and code before host locals expire. */

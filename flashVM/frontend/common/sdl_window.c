@@ -330,7 +330,8 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
         {
             result = fvm_input_set_pointer(context, world_x, world_y);
             if (result == FVM_OK)
-                result = fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
+                result = root ? fvm_input_dispatch_key_listeners(context, &event.state, event.pressed)
+                              : fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
         }
         else
             result = fvm_input_dispatch_mouse(context, event.mouse_type,
@@ -342,7 +343,7 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
                 : event.mouse_type == FVM_MOUSE_EVENT_MOVE ? FVM_CLIP_EVENT_MOUSE_MOVE
                 : event.mouse_type == FVM_MOUSE_EVENT_DOWN ? FVM_CLIP_EVENT_MOUSE_DOWN
                                                          : FVM_CLIP_EVENT_MOUSE_UP;
-            result = fvm_movieclip_dispatch_clip_input(context, root, clip_event);
+            result = fvm_movieclip_dispatch_input(context, root, clip_event);
         }
         if (result != FVM_OK)
             break;

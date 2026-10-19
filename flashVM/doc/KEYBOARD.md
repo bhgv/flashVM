@@ -118,6 +118,14 @@ Reference: Adobe's [ActionScript 2.0 Language Reference](https://homepage.cs.uio
 Key chapter (original publisher document, mirrored by the University of Iowa).
 Unimplemented security and clip/button event semantics remain explicit roadmap work.
 
+
+Observer-only scene composition v0.627: [`fvm_input_dispatch_key_listeners`](../include/flashvm/keyboard.h#L89) publishes
+the validated snapshot and notifies registered Key listeners, without an implicit
+focused-clip call. The original [`fvm_input_dispatch_keyboard`](../include/flashvm/keyboard.h#L82) is unchanged. Use the
+new route before whole-scene methods to avoid duplicate focus delivery. Explicit
+listener registration remains independent. [EN](CLIP_INPUT_METHODS.md) /
+[RU](CLIP_INPUT_METHODS.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -128,6 +136,8 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
+| `fvm_input_dispatch_key_listeners` | function | [include/flashvm/keyboard.h:89](../include/flashvm/keyboard.h#L89) |
+| `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:82](../include/flashvm/keyboard.h#L82) |
 | `fvm_input_get_keyboard` | function | [include/flashvm/keyboard.h:63](../include/flashvm/keyboard.h#L63) |
 | `fvm_input_reset_keyboard` | function | [include/flashvm/keyboard.h:65](../include/flashvm/keyboard.h#L65) |
 | `fvm_input_set_keyboard` | function | [include/flashvm/keyboard.h:61](../include/flashvm/keyboard.h#L61) |
@@ -139,7 +149,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../include/flashvm/standard.h#L20) |
-| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:88](../include/flashvm/keyboard.h#L88) |
+| `fvm_standard_keyboard_install` | function | [include/flashvm/keyboard.h:95](../include/flashvm/keyboard.h#L95) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 | `fvm_value_to_number` | function | [include/flashvm/standard.h:25](../include/flashvm/standard.h#L25) |
 <!-- source-links:end -->

@@ -52,6 +52,21 @@ FVM_API FVM_Result fvm_movieclip_dispatch_clip_actions(FVM_Context *, FVM_Object
  * The context-local reentry flag and active recipient batch are not serialized. */
 FVM_API FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *, FVM_Object *root,
                                                     unsigned long event);
+/* Broadcast the same five global input events, including optional MovieClip methods.
+ * Uses the retained-only API's topology, work, lifetime, phase and error contract.
+ * For each receiver: run retained ClipActions, recheck captured ancestry/removal, then
+ * resolve onMouseMove/Down/Up or onKeyDown/Up once with this=receiver and no arguments.
+ * Named methods run for source SWF6–8 and host-created version zero, not source SWF1–5.
+ * Missing/noncallable members succeed; inherited/accessor/resolver methods use ordinary
+ * method lookup with no global-function fallback. Function-valued handlers preserve their
+ * defining owner; native entries keep the ordinary native-call contract. Lookup happens
+ * at each turn, after retained records; mutations can affect this and later receivers.
+ * Methods/getters allow updateAfterEvent; this does not advance or render a frame.
+ * Visibility, playback and focus do not filter these global notifications. No native
+ * namespace listeners, input-state publication, targeted events or lifecycle are added.
+ * Retained-only callers keep fvm_movieclip_dispatch_clip_input instead. */
+FVM_API FVM_Result fvm_movieclip_dispatch_input(FVM_Context *, FVM_Object *root,
+                                               unsigned long event);
 #ifdef __cplusplus
 }
 #endif

@@ -101,7 +101,7 @@ with clip receivers on SWF6–8 in interpreter, explicit JIT and automatic JIT m
 preparation failure and allocation-free null clearing. These are host/runtime
 fixtures, not physical keyboard acceptance or full Flash focus conformance.
 
-[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L86).
+[Selection MovieClip subset / Скриптовый выбор клипа](SELECTION.md) ([RU](SELECTION.ru.md)): [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L93).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -125,5 +125,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:93](../include/flashvm/keyboard.h#L93) |
 <!-- source-links:end -->

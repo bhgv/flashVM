@@ -112,8 +112,8 @@ extern "C" FVM_Result fvm_input_get_keyboard_focus(FVM_Context *context, FVM_Obj
 }
 
 /* Prepare all recipients before publication, then resolve each current handler exactly once. */
-extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
-                                                  const FVM_KeyboardState *state, int pressed)
+static FVM_Result dispatch_keyboard(FVM_Context *context,
+                                    const FVM_KeyboardState *state, int pressed, bool notify_focus)
 {
     if (!fvm_keyboard_context_usable(context) || !fvm_keyboard_state_valid(state) ||
         (pressed != 0 && pressed != 1) || context->keyboard_dispatching)
@@ -125,7 +125,7 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
         /* [GC:] Link the snapshot before any handler can remove a later listener and collect. */
         FVM_ValueVectorRootScope roots(context, recipients);
         FVM_Object *focus = 0;
-        FVM_Result status = fvm_input_get_keyboard_focus(context, &focus);
+        FVM_Result status = notify_focus ? fvm_input_get_keyboard_focus(context, &focus) : FVM_OK;
         if (status != FVM_OK)
             return status;
         recipients.reserve(context->keyboard_listeners.size() + (focus ? 1 : 0));
@@ -177,4 +177,17 @@ extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
     {
         return FVM_ERROR;
     }
+}
+
+/* Preserve the original focus-first public delivery for hosts without scene broadcasts. */
+extern "C" FVM_Result fvm_input_dispatch_keyboard(FVM_Context *context,
+                                                  const FVM_KeyboardState *state, int pressed)
+{
+    return dispatch_keyboard(context, state, pressed, true);
+}
+/* Publish state and notify registered Key observers without a separate focused-clip call. */
+extern "C" FVM_Result fvm_input_dispatch_key_listeners(FVM_Context *context,
+                                                       const FVM_KeyboardState *state, int pressed)
+{
+    return dispatch_keyboard(context, state, pressed, false);
 }

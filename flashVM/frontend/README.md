@@ -95,3 +95,16 @@ mouse/finger/key messages. The separate flashvm_frontend_clip_player executable 
 the actual host/adapter and injects SDL queue messages after its first presentation;
 flashvm_player_clip_input_interpreter/jit verify SWF5–8 event sums and coalesced redraw.
 Only this test executable injects events; no physical-device acceptance is implied.
+
+## MovieClip input methods v0.627
+
+The combined scene route now delivers records followed by optional onMouseMove/Down/Up
+and onKeyDown/Up for SWF6–8; SWF5 keeps records only. The namespace-only pump and
+retained-only API remain. State/namespace precede scene delivery; observer-only
+keyboard publication avoids a duplicate focused-clip call. Rootless hosts keep
+focus-first delivery. A method
+failure consumes its transition, leaving later ones queued. [Contract](../doc/CLIP_INPUT_METHODS.md).
+flashvm_player_clip_input_methods_interpreter/jit use the actual SDL queue and host:
+method-only and record → method traces, source gates, wrong-value controls and
+method-originated redraw. Dummy video/synthetic messages are not physical/foreign
+platform acceptance.

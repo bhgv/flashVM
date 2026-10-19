@@ -53,8 +53,9 @@ void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
 /* Deliver queued native snapshots in order on the VM owner thread, before its next tick.
  * Focus loss cancels pending transitions. Errors consume the current event and retain later ones.
  */
-/* Supply a borrowed, pinned scene root to deliver retained global input records after namespaces.
- * The root must belong to context and outlive this synchronous main-thread pump. */
+/* Supply a borrowed, pinned scene root for retained records then eligible named input methods.
+ * The root must belong to context and outlive this synchronous main-thread pump.
+ * Keyboard observers precede scene methods without an extra implicit focused-clip call. */
 FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *, FVM_Context *, FVM_Object *,
                                               double origin_x, double origin_y);
 FVM_Result fvm_desktop_window_pump_input(FVM_DesktopWindow *, FVM_Context *,

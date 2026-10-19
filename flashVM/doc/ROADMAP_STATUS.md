@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.626
+# FlashVM stage status / Состояние стадий — v0.627
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,37 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.627 MovieClip input methods / Методы ввода клипов
+
+A separate combined scene API delivers retained records and then optional MovieClip
+onMouseMove/Down/Up and onKeyDown/Up methods. The retained-only API is unchanged.
+Named methods are source SWF6–8/host version zero; source SWF5 still receives records.
+One prepared topology/work/GC barrier covers both stages, with ancestry revalidation
+between them. Method lookup preserves ordinary inherited/accessor/resolver behavior,
+committed errors and updateAfterEvent eligibility. SDL uses this route after native
+state and namespace callbacks. Observer-only keyboard publication prevents a
+second implicit focused-clip call; the original focus-first API stays available. [EN](CLIP_INPUT_METHODS.md) /
+[RU](CLIP_INPUT_METHODS.ru.md), [C89](../examples/embedding/clip_actions/README.md).
+
+Русский: продвижение стадий 3/5/6/7/8/9; targeted hit transitions, lifecycle scheduler,
+точный порядок оригинального Player и приёмка физических/чужих платформ остаются
+открытыми. Все девять этапов открыты.
+
+Validation for v0.627: 275 selected Release CTests and 93 whole-core ASan/UBSan
+CTests passed on Linux (LeakSanitizer disabled in this environment). The updated
+example compiled with strict C89/pedantic-errors and ran under ASan/UBSan, producing
+Load=42, retained MouseMove=84, combined method=126 and coalesced redraw flags.
+Ten new core regressions and two new actual-player CTests cover the new routes.
+A separately linked fixture using the v0.626 retained-only SDL adapter rejected
+the same SWF8 record/method trace movie as expected. Source links, deterministic
+regeneration and debugger tutorial checks passed. SDL dummy drivers and synthetic
+queue injection do not certify physical input, foreign OS or original-player order.
+
+Проверки v0.627: 275 выбранных Release CTest и 93 whole-core ASan/UBSan CTest
+успешны; пример strict C89 также выполнен под санитайзерами. Старый retained-only
+SDL adapter ожидаемо отверг тот же movie с проверкой методов. Физические устройства,
+чужие ОС и полный порядок оригинального Player не приняты; все стадии открыты.
 
 ## v0.626 retained scene input / Ввод для дерева клипов
 
@@ -997,7 +1028,7 @@ physical device acceptance is claimed.
 
 ## v0.592 Selection MovieClip subset / Скриптовый выбор клипа
 
-Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L86) with atomic publication and
+Added explicit [`fvm_standard_selection_install`](../include/flashvm/keyboard.h#L93) with atomic publication and
 versioned conflicts. Selection.setFocus accepts native clip objects or counted
 dot/slash paths, applies focusEnabled/button-handler eligibility and revalidates
 native attachment after getters. Selection.getFocus returns a counted native dot
@@ -1209,7 +1240,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_dispatch_mouse_wheel` | function | [include/flashvm/mouse.h:36](../include/flashvm/mouse.h#L36) |
 | `fvm_input_get_keyboard_focus` | function | [include/flashvm/keyboard.h:78](../include/flashvm/keyboard.h#L78) |
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:75](../include/flashvm/keyboard.h#L75) |
-| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:86](../include/flashvm/keyboard.h#L86) |
+| `fvm_standard_selection_install` | function | [include/flashvm/keyboard.h:93](../include/flashvm/keyboard.h#L93) |
 | `fvm_timers_next_delay` | function | [include/flashvm/timers.h:29](../include/flashvm/timers.h#L29) |
 | `fvm_timers_poll` | function | [include/flashvm/timers.h:19](../include/flashvm/timers.h#L19) |
 <!-- source-links:end -->

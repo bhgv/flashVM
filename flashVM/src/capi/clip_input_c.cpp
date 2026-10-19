@@ -1,6 +1,8 @@
 /* FlashVM: bounded retained input broadcasts over a prepared native MovieClip scene. */
 #include "flashvm/clip_actions.h"
 #include "../core/native_call_guard.hpp"
+#include "../core/optional_method.hpp"
+#include "../standard/stage_update.hpp"
 #include "../core/execution_work_scope.hpp"
 #include "../standard/movieclip_scene.hpp"
 #include "../standard/movieclip_state.hpp"
@@ -167,10 +169,21 @@ FVM_Result eligible(FVM_Context *c, const fvm_detail::vector<Recipient> &batch, 
         deliver = !removed;
     return result;
 }
-} // namespace
-/* Deliver only retained global clip input records; callers control native state publication. */
-extern "C" FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *c, FVM_Object *root,
-                                                        unsigned long event)
+/* Map a validated global input bit to its optional zero-argument MovieClip method. */
+const char *handler(unsigned long event)
+{
+    switch (event)
+    {
+    case FVM_CLIP_EVENT_MOUSE_MOVE: return "onMouseMove";
+    case FVM_CLIP_EVENT_MOUSE_DOWN: return "onMouseDown";
+    case FVM_CLIP_EVENT_MOUSE_UP: return "onMouseUp";
+    case FVM_CLIP_EVENT_KEY_DOWN: return "onKeyDown";
+    case FVM_CLIP_EVENT_KEY_UP: return "onKeyUp";
+    }
+    return 0;
+}
+/* Share prepared topology, work and teardown guards between retained-only and full delivery. */
+FVM_Result dispatch(FVM_Context *c, FVM_Object *root, unsigned long event, bool methods)
 {
     if (!c || c->destroying || c->gc_collecting || c->gc_releasing || c->movieclip_sound_busy ||
         c->clip_input_dispatching || !event || (event & (event - 1)) ||
@@ -212,6 +225,23 @@ extern "C" FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *c, FVM_Obje
             result = fvm_movieclip_dispatch_clip_actions(c, batch[i].clip, event, 0);
             if (result != FVM_OK)
                 return result;
+            if (methods && (!version || version >= FVM_CLIP_INPUT_METHOD_MIN_VERSION))
+            {
+                /* A retained record may have removed or moved this receiver's branch. */
+                result = eligible(c, batch, i, deliver, work);
+                if (result != FVM_OK)
+                    return result;
+                if (!deliver)
+                    continue;
+                result = work.step();
+                if (result != FVM_OK)
+                    return result;
+                /* Resolve once at this receiver's turn; getters share event eligibility. */
+                FVM_StageUpdateEventScope redraw(c, true);
+                result = fvm_object_call_optional(c, batch[i].clip, handler(event));
+                if (result != FVM_OK)
+                    return result;
+            }
         }
         return FVM_OK;
     }
@@ -219,4 +249,17 @@ extern "C" FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *c, FVM_Obje
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+} // namespace
+/* Preserve the v0.626 retained-bytecode-only API and its existing work accounting. */
+extern "C" FVM_Result fvm_movieclip_dispatch_clip_input(FVM_Context *c, FVM_Object *root,
+                                                        unsigned long event)
+{
+    return dispatch(c, root, event, false);
+}
+/* Deliver retained records followed by the receiver's optional MovieClip input method. */
+extern "C" FVM_Result fvm_movieclip_dispatch_input(FVM_Context *c, FVM_Object *root,
+                                                   unsigned long event)
+{
+    return dispatch(c, root, event, true);
 }

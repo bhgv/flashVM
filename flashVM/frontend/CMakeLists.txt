@@ -107,8 +107,11 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
       add_test(NAME flashvm_player_clip_input_${mode} COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/clip_input_player.py $<TARGET_FILE:flashvm_frontend_clip_player> --${mode})
       set_tests_properties(flashvm_player_clip_input_${mode} PROPERTIES TIMEOUT 90)
+      add_test(NAME flashvm_player_clip_input_methods_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/clip_input_methods.py $<TARGET_FILE:flashvm_frontend_clip_player> --${mode})
+      set_tests_properties(flashvm_player_clip_input_methods_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
-    set_tests_properties(flashvm_player_clip_input_jit PROPERTIES SKIP_RETURN_CODE 77)
+    set_tests_properties(flashvm_player_clip_input_jit flashvm_player_clip_input_methods_jit PROPERTIES SKIP_RETURN_CODE 77)
     add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c
       common/options.c common/audio.c common/audio_trace.c tests/update_capture.c)
     target_link_libraries(flashvm_frontend_update_capture PRIVATE flashvm SDL2::SDL2)

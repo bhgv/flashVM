@@ -2,6 +2,7 @@
 #ifndef FVM_TUTORIAL_CLIP_ACTION_MOVIE_H /* Keep the immutable wire fixture local. */
 #define FVM_TUTORIAL_CLIP_ACTION_MOVIE_H /* Prevent duplicate inclusion. */
 #define FVM_TUTORIAL_CLIP_ACTION_EXPECTED 42 /* Explicit Load overwrites the earlier EnterFrame marker. */
+#define FVM_TUTORIAL_CLIP_METHOD_EXPECTED 126 /* Optional native method overwrites the retained input marker. */
 #define FVM_TUTORIAL_CLIP_INPUT_EXPECTED 84 /* A scene-wide MouseMove record changes the marker again. */
 static const unsigned char fvm_tutorial_clip_action_movie[] = { /* Loader borrows these bytes only during its call. */
     0x46, 0x57, 0x53, 0x08, 0xc6, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x0c, /* SWF octets 0..11: immutable serialized records, not host pointers. */
