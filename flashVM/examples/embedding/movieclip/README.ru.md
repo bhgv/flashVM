@@ -23,6 +23,7 @@ bounded batch: 2 callbacks retained
 after next call: 3 callbacks
 depth order: low middle high
 render: no timeline callbacks
+frame call: frame 2 actions; playhead 1; callbacks 0
 ```
 
 [main.c](main.c) исполняется; [tutorial_limits.h](tutorial_limits.h) именует границы.
@@ -79,6 +80,18 @@ stack entries и проверяет порядок low/middle/high. Pin корн
 | --- | --- |
 | [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L76) | Синхронно заимствует поверхность host и закреплённую сцену; без tick и асинхронного удержания памяти. Ошибка сохраняет прежние пиксели/эффекты getters. |
 
+v0.631 adds a third independent runtime / третий независимый runtime: define frame
+two, invoke its actions twice through the public execution service with a fresh five-unit
+limit per outer host call, and verify `called=42`, playhead one and zero tick callbacks.
+The fifth output line is shown above. / Пятая строка показана выше.
+[EN contract](../../../doc/FRAME_BLOCKS.md) / [RU](../../../doc/FRAME_BLOCKS.ru.md).
+
+| Added API / API | Purpose, ownership and blocking / Назначение и владение |
+| --- | --- |
+| [`fvm_movieclip_define_frame`](../../../include/flashvm/movieclip.h#L51) | Copy/validate caller-owned AVM1 bytes and label into the clip's graph; synchronous, does not execute code. / Копирует bytes/метку; без исполнения. |
+| [`fvm_exec_call_frame`](../../../include/flashvm/execution.h#L342) | Borrow a rooted receiver and scalar operand synchronously; selected actions share one limit, preserve earlier effects on failure, and do not seek/tick. / Синхронно заимствует receiver/операнд; эффекты до ошибки сохраняются, playhead не меняется. |
+| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read committed scalar properties into caller-owned values; callbacks/errors follow normal property semantics. / Читает числовой результат и playhead; обычные getters могут вернуть ошибку. |
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -92,12 +105,15 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_create` | function | [include/flashvm/flashvm.h:68](../../../include/flashvm/flashvm.h#L68) |
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../../../include/flashvm/flashvm.h#L43) |
+| `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../../../include/flashvm/execution.h#L342) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
+| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../../../include/flashvm/movieclip.h#L51) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
+| `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |

@@ -1,5 +1,6 @@
 /* C89 tutorial: bounded stopped MovieClip ticks and committed callback effects; see README.md. */
 #include "flashvm/movieclip.h" /* Create a timeline and drive its owner-thread ticks explicitly. */
+#include "flashvm/execution.h" /* Execute selected frame actions without advancing the playhead; see FRAME_BLOCKS.md. */
 #include "flashvm/standard.h" /* Install the MovieClip class and runtime globals. */
 #include "flashvm/gc.h" /* Pin the host-owned root between calls; context destruction releases it. */
 #include "tutorial_limits.h" /* Name this tutorial's deliberate work limit and batch size. */
@@ -100,6 +101,59 @@ static int depth_demo(void) /* No raster backend, file, SDL adapter or SWF compi
         fvm_runtime_destroy(runtime); /* No thread/device cleanup remains. */
     return status == FVM_OK; /* Preserve failure for the caller's exit code. */
 } /* End the independent depth-order demonstration. */
+/* Execute frame two twice with a fresh five-unit budget per outer host call; see README.md. */
+static int frame_call_demo(void) /* Public C89 execution service needs no SWF file or renderer. */
+{ /* Declare all C89 locals before acquiring owners. */
+    FVM_Config config; /* Each outer frame call uses the copied runtime limit. */
+    FVM_Runtime *runtime = 0; /* Outlive the context and all callback registrations. */
+    FVM_Context *context = 0; /* Own the frame definitions and managed clip. */
+    FVM_Object *clip = 0; /* Pin before retaining this borrowed pointer between calls. */
+    FVM_Value argument, seen, playhead; /* Caller-owned scalar inputs and borrowed property results. */
+    unsigned int calls = 0; /* Borrow this counter until context destruction. */
+    const unsigned char code[] = { /* Raw independent AVM1: called = 42, then End. */
+        0x96,8,0,0,'c','a','l','l','e','d',0, /* Push the variable name as a counted action payload. */
+        0x96,5,0,7,42,0,0,0, /* Push integer 42 using the AVM1 integer tag. */
+        0x1d,0 /* SetVariable commits the value; End terminates this exact frame block. */
+    }; /* The definition API copies and validates these stack-owned bytes. */
+    FVM_Result status = fvm_config_init(&config); /* Initialize the complete configuration ABI. */
+    if (status == FVM_OK) /* Keep this demonstration's budget independent of tick/depth limits. */
+    { /* No device or background worker is started. */
+        config.instruction_limit = FVM_TUTORIAL_FRAME_CALL_WORK_LIMIT; /* One block entry plus four AVM1 instructions. */
+        status = fvm_runtime_create(&config, &runtime); /* Runtime owns its copied configuration. */
+    } /* The host retains the runtime until the context is destroyed. */
+    if (status == FVM_OK) /* Acquire the owner-thread managed heap. */
+        status = fvm_context_create(runtime, &context); /* All remaining calls are synchronous on this thread. */
+    if (status == FVM_OK) /* Install native MovieClip methods and globals. */
+        status = fvm_standard_install(context); /* Preserve failure for ordinary cleanup. */
+    if (status == FVM_OK) /* Frame two differs from the initial playhead at frame one. */
+        status = fvm_movieclip_create(context, "frame_calls", 2, &clip); /* The returned pointer is context-owned. */
+    if (status == FVM_OK) /* Retain the graph across separate host calls. */
+        status = fvm_gc_pin(context, clip); /* [GC:] Context destruction releases this pin. */
+    if (status == FVM_OK) /* A selected frame call must not deliver a tick notification. */
+        status = fvm_object_define_method_rooted(context, clip, "onEnterFrame", tick, &calls, 0); /* Stack userdata remains alive until cleanup. */
+    if (status == FVM_OK) /* Copy the independent action block into the second frame. */
+        status = fvm_movieclip_define_frame(context, clip, 2, "called", code, sizeof(code)); /* Definition does not execute actions. */
+    fvm_value_number(&argument, 2); /* Numeric selection needs no label search. */
+    if (status == FVM_OK) /* Share block entry and nested bytecode under one outer limit. */
+        status = fvm_exec_call_frame(context, clip, &argument); /* Exact five-unit success does not move the playhead. */
+    if (status == FVM_OK) /* A later independent outer call starts its own five-unit limit. */
+        status = fvm_exec_call_frame(context, clip, &argument); /* No automatic tick or scene-control application occurs. */
+    if (status == FVM_OK) /* Inspect the committed script effect. */
+        status = fvm_object_get(context, clip, "called", &seen); /* The numeric result needs no retained managed storage. */
+    if (status == FVM_OK) /* Verify the playhead independently from selected action execution. */
+        status = fvm_object_get(context, clip, "_currentframe", &playhead); /* Reading does not advance the timeline. */
+    if (status == FVM_OK && (seen.type != FVM_VALUE_NUMBER || seen.number != 42 || playhead.type != FVM_VALUE_NUMBER || playhead.number != 1 || calls)) /* Check every visible effect. */
+        status = FVM_INVALID_ARGUMENT; /* Report mismatches through normal cleanup. */
+    if (status == FVM_OK) /* Report only verified observations. */
+        puts("frame call: frame 2 actions; playhead 1; callbacks 0"); /* Fifth deterministic tutorial output line. */
+    else /* Prior script effects may remain after an execution error. */
+        fprintf(stderr, "MovieClip frame-call tutorial failed: %d\n", (int)status); /* Never replay a failed call automatically. */
+    if (context) /* Release the graph and callbacks before their stack userdata expires. */
+        fvm_context_destroy(context); /* [GC:] No managed pointer is used after this returns. */
+    if (runtime) /* Release the outer owner last. */
+        fvm_runtime_destroy(runtime); /* No asynchronous native work remains. */
+    return status == FVM_OK; /* Preserve failure for the main program. */
+} /* End the independent frame-action demonstration. */
 /* Demonstrate partial completion and the fresh budget of a later outer host call. */
 int main(void) /* Build with the independent FlashVM component's examples option. */
 { /* Set partial owners before any fallible acquisition. */
@@ -150,5 +204,7 @@ int main(void) /* Build with the independent FlashVM component's examples option
         fvm_runtime_destroy(runtime); /* No external platform resource is owned. */
     if (status == FVM_OK && !depth_demo()) /* Run the independent order example after releasing the first runtime. */
         status = FVM_INVALID_ARGUMENT; /* Propagate the second demonstration's failure. */
+    if (status == FVM_OK && !frame_call_demo()) /* Run selected frame actions after the previous independent demos. */
+        status = FVM_INVALID_ARGUMENT; /* Propagate frame-call demonstration failure. */
     return status == FVM_OK ? 0 : 1; /* Let CTest or a shell observe the result. */
 } /* End the standalone host. */

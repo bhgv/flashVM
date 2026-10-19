@@ -23,8 +23,8 @@ MovieClip в потоке владельца контекста. Они не д�
 его отсоединённые потомки пропускаются. Дети, созданные getters корня до снимка,
 могут участвовать сразу. Единого атомарного снимка всего дерева нет.
 
-Границы независимы от tick: [`FVM_MOVIECLIP_RENDER_MAX_DEPTH`](../src/standard/movieclip_constants.h#L26) разрешает 64 уровня
-потомков, [`FVM_MOVIECLIP_RENDER_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L27) — 65536 слотов детей одного узла.
+Границы независимы от tick: [`FVM_MOVIECLIP_RENDER_MAX_DEPTH`](../src/standard/movieclip_constants.h#L30) разрешает 64 уровня
+потомков, [`FVM_MOVIECLIP_RENDER_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L31) — 65536 слотов детей одного узла.
 До первого getter ребёнка отклоняются null, не-MovieClip, чужой owner, ссылка на
 самого родителя и повторная идентичность. Null/чужие private paths/children/state
 также недопустимы. Повреждения и превышение границ дают [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L45),
@@ -90,8 +90,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../include/flashvm/movieclip.h#L76) |
-| `FVM_MOVIECLIP_RENDER_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
-| `FVM_MOVIECLIP_RENDER_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
+| `FVM_MOVIECLIP_RENDER_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:31](../src/standard/movieclip_constants.h#L31) |
+| `FVM_MOVIECLIP_RENDER_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:30](../src/standard/movieclip_constants.h#L30) |
 | `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:79](../include/flashvm/movieclip.h#L79) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

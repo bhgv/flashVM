@@ -37,6 +37,14 @@ are tested. Missing targets are silent no-ops. Frames still execute actions only
 Прежнее ограничение на все пути снято для формы `путь:кадр`; без разделяющего
 двоеточия альтернативная slash-форма пока не реализована.
 
+
+## v0.631 frame block preparation / Подготовка блоков кадра
+
+Tick/ActionCall capture a bounded dense zero-based action list by ordinal, share
+native work limits and preserve selected code through source mutation. Public native
+frame calls include operand coercion; labels choose the lowest stored exact match.
+[EN](FRAME_BLOCKS.md) / [RU](FRAME_BLOCKS.ru.md). Это не закрывает стадии 1–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

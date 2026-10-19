@@ -2344,6 +2344,44 @@ FVM_Result execute_frame_block(FVM_Context *c, FVM_Object *o, const FVM_Value &c
     return fvm_avm1_execute_block_receiver(c, bytes.begin(), bytes.size(), o);
 }
 
+/* Capture independent frame actions by their zero-based ordinal, never map insertion order.
+ * [GC:] Callers retain the vector through their native barrier or linked FrameScope roots.
+ * Copying does not enter script; decoding/errors still occur at each block's execution turn. */
+FVM_Result snapshot_frame_blocks(FVM_Context *c, FVM_Object *record,
+                                 fvm_detail::vector<FVM_Value> &blocks, bool &segmented,
+                                 FVM_ExecutionWorkScope &work)
+{
+    if (!record || record->owner != c)
+        return FVM_INVALID_ARGUMENT;
+    Properties::const_iterator entry = record->properties.find("segments");
+    segmented = entry != record->properties.end();
+    if (!segmented)
+    {
+        FVM_Value code;
+        FVM_Result result = field(record, "code", code);
+        if (result != FVM_OK)
+            return result;
+        blocks.push_back(code);
+        return FVM_OK;
+    }
+    FVM_Object *segments = entry->second.type == FVM_VALUE_OBJECT ? entry->second.object : 0;
+    if (!segments || segments->owner != c ||
+        segments->indexed.size() > FVM_MOVIECLIP_MAX_FRAME_BLOCKS)
+        return FVM_INVALID_ARGUMENT;
+    /* Charge each ordinal before lookup/copy; holes and out-of-range keys cannot execute code. */
+    for (unsigned long index = 0; index < segments->indexed.size(); ++index)
+    {
+        FVM_Result result = work.step();
+        if (result != FVM_OK)
+            return result;
+        Slots::const_iterator block = segments->indexed.find(index);
+        if (block == segments->indexed.end())
+            return FVM_INVALID_ARGUMENT;
+        blocks.push_back(block->second);
+    }
+    return FVM_OK;
+}
+
 /* Snapshot scalar selectors and a borrowed managed code value before the first callback.
  * [GC:] The enclosing native barrier retains code even when callbacks replace its owner table. */
 struct ClipActionCall
@@ -2572,42 +2610,26 @@ FVM_Result advance(FVM_Context *c, FVM_Object *o, unsigned int depth, FVM_Execut
         Slots::iterator entry = frames->indexed.find(current);
         if (entry != frames->indexed.end())
         {
-            if (entry->second.type != FVM_VALUE_OBJECT)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Value code;
-            r = field(entry->second.object, "code", code);
-            if (r != FVM_OK || code.type != FVM_VALUE_STRING)
-                return FVM_INVALID_ARGUMENT;
-            FVM_Value segments;
-            r = field(entry->second.object, "segments", segments);
-            if (r == FVM_OK && segments.type == FVM_VALUE_OBJECT)
-            {
-                /* [GC:] Copy the managed block values before script callbacks can change state. */
-                /* Precharge the snapshot so an exhausted caller cannot copy an unbounded list. */
-                for (Slots::const_iterator i = segments.object->indexed.begin(); i != segments.object->indexed.end(); ++i)
-                {
-                    r = work.step();
-                    if (r != FVM_OK)
-                        return r;
-                }
-                Slots blocks = segments.object->indexed;
-                for (Slots::iterator i = blocks.begin(); i != blocks.end(); ++i)
-                {
-                    r = work.step();
-                    if (r != FVM_OK)
-                        return r;
-                    r = execute_frame_block(c, o, i->second);
-                    if (r != FVM_OK)
-                        return r;
-                }
-            }
-            else if (entry->second.object->properties.find("segments") ==
-                     entry->second.object->properties.end())
-                r = execute_frame_block(c, o, code);
-            else
-                return FVM_INVALID_ARGUMENT;
+            /* [GC:] Capture immutable code values before the first block can replace its frame. */
+            fvm_detail::vector<FVM_Value> blocks;
+            bool segmented = false;
+            r = snapshot_frame_blocks(c, entry->second.type == FVM_VALUE_OBJECT ?
+                                      entry->second.object : 0, blocks, segmented, work);
             if (r != FVM_OK)
                 return r;
+            for (size_t index = 0; index < blocks.size(); ++index)
+            {
+                /* Keep native single-code tick accounting unchanged; segmented frames charge entry. */
+                if (segmented)
+                {
+                    r = work.step();
+                    if (r != FVM_OK)
+                        return r;
+                }
+                r = execute_frame_block(c, o, blocks[index]);
+                if (r != FVM_OK)
+                    return r;
+            }
         }
     }
     /* Retained onClipEvent(enterFrame) bytecode precedes the optional named handler.
@@ -3311,16 +3333,21 @@ FVM_Result fvm_movieclip_reference_string(FVM_Context *c, FVM_Object *clip, FVM_
 /* [GC:] Retain every selected block and receiver while nested frame calls execute script. */
 FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_Value &argument)
 {
-    if (!c || !clip || clip->owner != c || c->script_depth >= 64)
+    if (!c || !clip || clip->owner != c || c->script_depth >= FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH)
         return FVM_ERROR;
     try
     {
+        FVM_ExecutionWorkScope work(c);
         FVM_Object *data = 0, *frames = 0;
         FVM_Result status = state(clip, data);
+        if (status == FVM_OK && data->owner != c)
+            return FVM_INVALID_ARGUMENT;
         if (status == FVM_OK)
             status = private_object(data, "frames", frames);
         if (status != FVM_OK)
             return status;
+        if (!frames || frames->owner != c || frames->indexed.size() > FVM_MOVIECLIP_MAX_FRAMES)
+            return FVM_INVALID_ARGUMENT;
         unsigned long selected = 0;
         double numeric = std::numeric_limits<double>::quiet_NaN();
         if (argument.type == FVM_VALUE_NUMBER)
@@ -3331,6 +3358,9 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
             bool decimal = size != 0;
             for (size_t i = 0; i < size; ++i)
             {
+                status = work.step();
+                if (status != FVM_OK)
+                    return status;
                 unsigned char ch = (unsigned char)argument.string[i];
                 if (ch == ':' || ch == '/' )
                     return FVM_UNSUPPORTED;
@@ -3347,7 +3377,12 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
             if (numeric != numeric)
                 for (Slots::iterator i = frames->indexed.begin(); i != frames->indexed.end(); ++i)
                 {
-                    if (i->second.type != FVM_VALUE_OBJECT || !i->second.object)
+                    status = work.step();
+                    if (status != FVM_OK)
+                        return status;
+                    if (!i->first || i->first > FVM_MOVIECLIP_MAX_FRAMES ||
+                        i->second.type != FVM_VALUE_OBJECT || !i->second.object ||
+                        i->second.object->owner != c)
                         return FVM_INVALID_ARGUMENT;
                     FVM_Value label;
                     status = field(i->second.object, "label", label);
@@ -3357,11 +3392,9 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
                     status = fvm_string_order(label, argument, order);
                     if (status != FVM_OK)
                         return status;
-                    if (!order)
-                    {
+                    /* Duplicate labels choose the lowest stored frame, independent of map order. */
+                    if (!order && (!selected || i->first < selected))
                         selected = i->first;
-                        break;
-                    }
                 }
         }
         else
@@ -3414,26 +3447,15 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
             /* Keep root-chain ownership unique. */
             FrameScope &operator=(const FrameScope &);
         } scope(c, clip);
-        FVM_Object *record = entry->second.object;
-        Properties::iterator segments = record->properties.find("segments");
-        if (segments != record->properties.end())
-        {
-            if (segments->second.type != FVM_VALUE_OBJECT || !segments->second.object)
-                return FVM_INVALID_ARGUMENT;
-            for (Slots::iterator i = segments->second.object->indexed.begin();
-                 i != segments->second.object->indexed.end(); ++i)
-                scope.blocks.push_back(i->second);
-        }
-        else
-        {
-            FVM_Value code;
-            status = field(record, "code", code);
-            if (status != FVM_OK)
-                return status;
-            scope.blocks.push_back(code);
-        }
+        bool segmented = false;
+        status = snapshot_frame_blocks(c, entry->second.object, scope.blocks, segmented, work);
+        if (status != FVM_OK)
+            return status;
         for (size_t i = 0; i < scope.blocks.size(); ++i)
         {
+            status = work.step();
+            if (status != FVM_OK)
+                return status;
             status = execute_frame_block(c, clip, scope.blocks[i]);
             if (status != FVM_OK)
                 return status;

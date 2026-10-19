@@ -49,7 +49,7 @@ actual child eligibility query now charges an additional unit. AVM1, parent meth
 nested calls and multiple requested ticks still share the original outer budget.
 A childless single-frame tick remains two units. Zero ticks still does no work.
 
-Each post-handler child table is capped at [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L24)
+Each post-handler child table is capped at [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L28)
 (65,536 slots), including static artwork and stale links. Oversized tables fail
 before scanning/copying that table. Existing maximum descendant depth and ticks per
 call remain. There is no new total-node cap across a complete multi-tick call.
@@ -141,5 +141,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:24](../src/standard/movieclip_constants.h#L24) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:28](../src/standard/movieclip_constants.h#L28) |
 <!-- source-links:end -->

@@ -4948,6 +4948,14 @@ mutation-safe replacement deferral and effective detachment checks. Ошибки
 прежние пиксели и эффекты getters. [EN](RASTER_DEPTH_ORDER.md) /
 [RU](RASTER_DEPTH_ORDER.ru.md). All nine stages remain open.
 
+
+## v0.631 frame block preparation / Подготовка блоков кадра
+
+Tick/ActionCall capture a bounded dense zero-based action list by ordinal, share
+native work limits and preserve selected code through source mutation. Public native
+frame calls include operand coercion; labels choose the lowest stored exact match.
+[EN](FRAME_BLOCKS.md) / [RU](FRAME_BLOCKS.ru.md). Это не закрывает стадии 1–9.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

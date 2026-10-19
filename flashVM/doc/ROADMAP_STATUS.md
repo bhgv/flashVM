@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.630
+# FlashVM stage status / Состояние стадий — v0.631
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,26 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.631 bounded frame-action snapshots / Блоки действий кадра
+
+Tick and ActionCall share dense ordinal snapshots instead of insertion-order iteration.
+Direct native frame calls retain a single instruction/work budget across every block;
+the public service includes operand coercion. Label lookup is charged and duplicate
+labels choose the lowest stored index. GC-rooted frame calls retain real collection,
+while tick keeps its native barrier and legacy single-code accounting.
+[EN](FRAME_BLOCKS.md) / [RU](FRAME_BLOCKS.ru.md).
+
+Продвижение стадий 2/3/6/7/8/9; полная совместимость SWF/Player, все CPU/JIT и
+физическая приёмка платформ остаются открытыми вместе со всеми девятью стадиями.
+
+Validation v0.631: 196 selected Linux Release CTests (AGG/static dependencies) and
+139 minimal whole-core ASan/UBSan CTests passed. The sanitizer run is serial,
+without a raster backend and with LeakSanitizer disabled. Nine new frame regressions,
+existing ActionCall/missing-input/JIT dispatch and timeline/graph/input/timer tests,
+strict C89 tutorial and documentation checks passed. Source-linked v0.630/current
+comparison reproduces/fixes per-block budget resets; no original-Player, SDL/device
+or foreign-OS acceptance follows from this evidence.
 
 ## v0.630 raster depth snapshots / Снимки raster-обхода
 

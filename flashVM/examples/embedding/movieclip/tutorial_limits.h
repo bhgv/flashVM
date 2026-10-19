@@ -8,4 +8,5 @@
 #define FVM_TUTORIAL_RASTER_SIDE 2U /* Empty-geometry target width and height in pixels. */
 #define FVM_TUTORIAL_RASTER_STRIDE 8U /* Two RGBA pixels per caller-owned row. */
 #define FVM_TUTORIAL_RASTER_BYTES 16U /* Two complete rows of RGBA storage. */
+#define FVM_TUTORIAL_FRAME_CALL_WORK_LIMIT 5UL /* Selected frame entry plus four AVM1 instructions. */
 #endif /* End the example's private constants. */

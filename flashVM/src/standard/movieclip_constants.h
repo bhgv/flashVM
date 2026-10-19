@@ -19,6 +19,10 @@
 #define FVM_MOVIECLIP_MAX_AUTHORED_DEPTH 65535UL
 /* Native frame-definition action-buffer limit; not a drawing or tick limit. */
 #define FVM_MOVIECLIP_MAX_FRAME_ACTION_BYTES 65536UL
+/* Maximum independent DoAction blocks retained by one frame snapshot. */
+#define FVM_MOVIECLIP_MAX_FRAME_BLOCKS 65536UL
+/* Nested ActionCall depth, independent of display-tree recursion. */
+#define FVM_MOVIECLIP_CALL_FRAME_MAX_DEPTH 64U
 /* Maximum descendant depth visited by one native timeline traversal. */
 #define FVM_MOVIECLIP_ADVANCE_MAX_DEPTH 64U
 #define FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN 65536UL /* Bound each post-handler native child snapshot. */

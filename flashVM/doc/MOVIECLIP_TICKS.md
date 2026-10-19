@@ -26,8 +26,8 @@ and each initializer or segmented action-block delivery. AVM1 instructions retai
 existing accounting. Child snapshot entries are charged before its allocation. A
 single-frame clip with no scripts or children consumes two units per tick even when
 its handler is absent. Zero ticks does no work and invokes no callback. The maximum
-requested ticks and descendant depth are [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L29) and
-[FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L23); exceeding them returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
+requested ticks and descendant depth are [FVM_MOVIECLIP_MAX_TICKS_PER_CALL](../src/standard/movieclip_constants.h#L33) and
+[FVM_MOVIECLIP_ADVANCE_MAX_DEPTH](../src/standard/movieclip_constants.h#L27); exceeding them returns [FVM_INVALID_ARGUMENT](../include/flashvm/flashvm.h#L45).
 
 This is an accounting/cancellation boundary, not hard real-time preemption. Scene
 placement/resource helpers, native callback internals, property lookup, allocation,
@@ -124,8 +124,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_step` | function | [include/flashvm/gc.h:90](../include/flashvm/gc.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:23](../src/standard/movieclip_constants.h#L23) |
-| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:29](../src/standard/movieclip_constants.h#L29) |
+| `FVM_MOVIECLIP_ADVANCE_MAX_DEPTH` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
+| `FVM_MOVIECLIP_MAX_TICKS_PER_CALL` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `fvm_object_call_optional` | function | [src/capi/value_c.cpp:1368](../src/capi/value_c.cpp#L1368) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

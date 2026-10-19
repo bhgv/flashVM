@@ -58,7 +58,7 @@ Missing paths, unsupported scalar/object types, class prototypes, ineligible or
 detached clips return false without publishing the candidate. Lookup/getter side
 effects are not rolled back. Private native
 attachment is checked before eligibility and again before publication, since a
-getter may remove the candidate. [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L72) bounds that
+getter may remove the candidate. [`FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS`](../src/standard/movieclip_constants.h#L76) bounds that
 native walk; path traversal keeps its own existing bounds. Malformed state or real
 path/getter/resolver errors propagate as VM statuses rather than being fabricated
 as an eligibility result. Allocation failure returns [`FVM_OUT_OF_MEMORY`](../include/flashvm/flashvm.h#L44).
@@ -222,7 +222,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `fvm_input_dispatch_keyboard` | function | [include/flashvm/keyboard.h:90](../include/flashvm/keyboard.h#L90) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:72](../src/standard/movieclip_constants.h#L72) |
+| `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:76](../src/standard/movieclip_constants.h#L76) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_selection_get_focus` | function | [src/standard/selection.cpp:178](../src/standard/selection.cpp#L178) |

@@ -1,6 +1,7 @@
 /* FlashVM: call frame semantics for C callers and generated code. */
 #include "support.hpp"
 #include "execution_roots.h"
+#include "../../core/execution_work_scope.hpp"
 /* Execute value semantics with validation and allocation failure containment. */
 extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_receiver,
                                           const FVM_Value *input)
@@ -10,6 +11,8 @@ extern "C" FVM_Result fvm_exec_call_frame(FVM_Context *c, FVM_Object *scope_rece
         return FVM_INVALID_ARGUMENT;
     try
     {
+        /* Share argument coercion, target resolution and nested frame actions with one outer limit. */
+        FVM_ExecutionWorkScope work(c);
         FVM_ExecutionRoots roots(c, FVM_CALL_FRAME_ROOT_COUNT);
         roots.values[FVM_CALL_FRAME_ARGUMENT_ROOT] = *input;
         if (scope_receiver)
