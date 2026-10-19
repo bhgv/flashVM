@@ -231,6 +231,17 @@ cursor. See [frontend API and lifetime](../examples/frontends/README.md)
 and individual SDK READMEs. Native setters with no status report issuance only.
 Software SDK checks do not certify a physical cursor, device or foreign OS.
 
+
+## Clutter stage application v0.613 / Применение к stage Clutter
+
+Clutter now maps vertical scroll through the actor's inverse projection and
+applies cursor visibility requests with its public stage API. --touch-only
+suppresses wheel and --hide-cursor configures startup visibility. This changes
+no VM ABI. The frame marker remains content; a touch-only backend may have no
+native cursor. [Contract / Контракт](../examples/frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
+Русский: курсор применяется на потоке владельца stage; это запрос SDK, не
+подтверждение устройства. Физическая и Android-приёмка остаётся открытой.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

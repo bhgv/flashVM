@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.612
+# FlashVM stage status / Состояние стадий — v0.613
 
 This is a bounded review of existing implementation reports and the current
 keyboard polling/listener/Selection work. It does not replace a complete per-API/SWF conformance matrix
@@ -21,6 +21,30 @@ counts are historical unless explicitly rerun for this revision.
 | 8: JIT | Native Linux subset; foreign-ISA encoders and Windows/macOS protocol fixtures | Full advertised AVM1/native equivalence and actual runtime acceptance on each CPU/OS; fixtures are not foreign-platform runs |
 | 9: platforms/release | Linux build/test infrastructure and target-specific adapters | Actual Windows/macOS/Android build/run/device/endurance acceptance, complete compatibility matrix and reproducible release gates |
 
+
+
+## v0.613 Clutter wheel and stage cursor / Колесо и курсор Clutter
+
+The requested fork's public Clutter/Cogl API now drives vertical discrete/smooth
+wheel through inverse actor projection and the existing VM line-delta boundary.
+Touch-only/active-touch, horizontal and zero-event policies remain explicit.
+Cursor requests are applied to the owned stage before upload, with a cached
+stage-local show/hide request and --hide-cursor startup option. The library and
+excluded inferno-os client are unchanged; no additional library patch is required.
+
+A real Linux Clutter 1.26 auxiliary SDK fixture verifies deltas, coordinates,
+contact ownership and cursor properties, plus three 120-frame runs (ordinary,
+hidden cursor, touch-only). The full existing fractional projection fixture on
+the unpatched system library still reproduces the already documented precision
+bug; it is retained as a strict patched-fork regression, not weakened or claimed
+passing. Public declarations were checked in the user's fork. Fork-specific
+Android/GLES/device and hardware cursor acceptance remain open. All stages remain
+open; no auxiliary SDK result substitutes for native platform acceptance.
+
+Русский: новые привязки проверены на настоящем Linux SDK; это не свежая сборка
+пользовательского Android-форка и не проверка телефона. Строгая проверка дробной
+3D-проекции сохранена; системная библиотека без прежнего патча её не проходит.
+[API, parameters and ownership](../examples/frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
 
 ## v0.612 evdev snapshot recovery / Восстановление evdev
 

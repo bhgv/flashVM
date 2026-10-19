@@ -71,7 +71,8 @@ stage deactivation uses a synthetic UP at the previous valid world position.
 Unprojectable/edge-on actor geometry cancels safely instead of delivering fake
 coordinates. In mouse-enabled mode no mouse event can steal an active touch.
 For touch-synthesizing shells use touch-only mode to suppress even post-END
-mouse duplicates; keyboard/IME/wheel and unrelated events propagate.
+mouse duplicates; keyboard/IME and unrelated events propagate. Vertical wheel
+is handled under the v0.613 policy below.
 
 Coordinates are **not** assumed equal to native stage pixels. First
 clutter_actor_transform_stage_point converts actual stage event coordinates into
@@ -165,6 +166,48 @@ hash; it refuses mixed Clutter/Cogl SDKs or a pre-fix marker.
 Код примера тот же; дополнительного frontend на SDL здесь нет. Для смены
 рендерера нужны отдельные каталоги исходников/SDK/сборки. Проверка охватывает
 3D-поворот и дробный allocation; нативный Android всё ещё отдельная приёмка.
+## v0.613 wheel and cursor / Колесо и курсор
+
+Vertical scroll now follows the same inverse projected actor mapping as primary
+pointer input. UP/DOWN produce +3/-3 lines; SMOOTH uses `-dy * 3`, preserving
+fractions. This is an explicit tutorial policy, not the OS user's scroll setting.
+Horizontal-only/zero events propagate to the shell. `--touch-only` and an active
+primary touch suppress wheel delivery; ordinary wheel does not change held-button
+or touch ownership. Unmappable projected positions propagate without cancelling
+a held contact. A real VM delivery error is latched for loop shutdown.
+
+The owned stage applies the VM cursor request before upload using
+`clutter_stage_show_cursor/hide_cursor`; repeated requests are cached.
+`--hide-cursor` sets the initial VM request and combines with `--smoke`.
+The colored frame marker stays visible. A touch-only native backend may have no
+physical cursor. Void stage setters prove request issuance/property changes,
+not compositor or hardware acknowledgement. The launcher destroys its own stage;
+an embedding Android shell must retain its own stage/lifecycle ownership policy.
+
+Русский: колесо преобразуется через ту же обратную 3D-проекцию и масштаб актора,
+что и указатель; положительная прокрутка направлена вверх. При активном touch
+и в режиме `--touch-only` колесо не доставляется. Горизонтальные/нулевые события
+передаются оболочке. Видимость системного курсора применяется отдельно от
+цветного маркера перед загрузкой кадра. `--hide-cursor` меняет начальный запрос
+VM, не создавая мышь на телефоне. Встраиваемая оболочка продолжает владеть своим
+stage, Activity и GLES-контекстом.
+
+| API | Parameters and ownership / Параметры и владение |
+| --- | --- |
+| `clutter_event_get_scroll_direction(event)` | Borrowed scroll event; distinguish UP, DOWN, SMOOTH and horizontal / заимствованное событие, вид прокрутки |
+| `clutter_event_get_scroll_delta(event, &dx, &dy)` | Borrowed event and writable double outputs; normalize only vertical dy / выходные double, используется вертикальный dy |
+| `clutter_event_get_coords(event, &x, &y)` | Event-time stage coordinates; feed inverse actor projection / координаты stage в момент события |
+| `clutter_actor_transform_stage_point(actor, x, y, &lx, &ly)` | Borrowed live texture actor; returns false for unusable projection / обратная проекция в локальные координаты |
+| `clutter_stage_show_cursor(stage)` / `clutter_stage_hide_cursor(stage)` | Borrowed owned-live stage, native owner thread, no returned acknowledgement / живой stage на потоке владельца, без подтверждения устройства |
+| `fvm_input_get_cursor_visible(context, &visible)` | Allocation-free logical request query / чтение логического запроса без выделения памяти |
+| `demo_wheel(demo, transform, x, y, delta)` | Copied positions/line delta, borrowed transform, synchronous dispatch / синхронная передача позиции и строк прокрутки |
+
+Public fork declarations:
+[event API](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-event.h),
+[stage API](https://github.com/bhgv/Inferno-OS_Android-Clutter3d/blob/master/sources/clutter-android/clutter/clutter-stage.h).
+No new library patch or inferno-os client dependency is needed for these APIs.
+The supplied separate library patch remains unchanged. Auxiliary system SDK
+checks do not replace execution of the requested fork's Android backend.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -176,4 +219,20 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_host_pointer_to_world` | function | [include/flashvm/host.h:26](../../../include/flashvm/host.h#L26) |
+| `fvm_input_get_cursor_visible` | function | [include/flashvm/mouse.h:38](../../../include/flashvm/mouse.h#L38) |
 <!-- source-links:end -->
+
+### Current acceptance / Текущие проверки
+
+The focused `flashvm_clutter_wheel_cursor` fixture and ordinary/hidden/touch-only
+120-frame smoke runs pass on a real Linux system Clutter 1.26 SDK under Xvfb.
+The same adapter sources pass ASan/UBSan with leak detection disabled; the VM and
+external SDK libraries in this run are ordinary builds, so this is adapter
+instrumentation only. The unchanged strict fractional-projection acceptance
+(`flashvm_example_clutter3d_input`) still fails on this unpatched system SDK at
+the known subpixel inverse case. It remains enabled for the prepared patched
+fork; it was not weakened to make an auxiliary system run look equivalent.
+
+Русский: проверка новых колеса/курсора отделена от строгой проверки дробной
+обратной проекции. Последняя на системном Clutter без прежнего патча не проходит;
+это не объявляется свежей приёмкой пользовательского форка или Android.

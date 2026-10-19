@@ -1,5 +1,5 @@
 /* Real Clutter/Cogl texture and event tutorial, compatible with the shell's public actor APIs. */
-#include "../common/demo.h" /* Share only the backend-independent VM/frame lifecycle. */
+#include "../common/wheel.h" /* Share only the backend-independent VM/frame lifecycle. */
 #include <clutter/clutter.h> /* Explicit Clutter SDK, selected by the embedding application. */
 #include <stdio.h> /* Report real SDK/VM errors and bounded smoke results. */
 /* Stage owns the texture actor; the timer borrows this host only until it is removed. */
@@ -12,9 +12,23 @@ typedef struct ClutterHost /* No client code from inferno-os is used. */
     guint timer; /* Owned GLib source ID, zero after its callback removes itself. */
     int destroyed; /* Stage destruction invalidates the borrowed child actor. */
     int looping; /* Nonzero only while this launcher owns an active Clutter main loop. */
+    int cursor_applied; /* Last stage cursor request issued, -1 before the first application. */
     int smoke; /* Explicit bounded run, otherwise wait for native stage close. */
     int touch_only; /* Suppress every mouse event for shells that synthesize mouse from touch. */
 } ClutterHost; /* Main owns this structure until all signal/timer callbacks stop. */
+/* Apply the VM request to this owned stage, separately from the frame's colored marker. */
+static FVM_Result clutter_cursor(ClutterHost *host) /* Clutter and VM share this native owner thread. */
+{ /* No assumption that a physical cursor exists on an Android shell. */
+    int visible; /* Valid only after the VM query succeeds. */
+    if (host->demo.status != FVM_OK) return host->demo.status; /* Preserve earlier VM/upload errors. */
+    if (host->destroyed || !host->stage) return host->demo.status = FVM_ERROR; /* No destroyed-stage use. */
+    host->demo.status = fvm_input_get_cursor_visible(host->demo.context, &visible); /* Allocation-free query. */
+    if (host->demo.status != FVM_OK || visible == host->cursor_applied) return host->demo.status; /* No duplicate call. */
+    if (visible) clutter_stage_show_cursor(CLUTTER_STAGE(host->stage)); /* Request stage-local visibility. */
+    else clutter_stage_hide_cursor(CLUTTER_STAGE(host->stage)); /* SDK may implement this as no-op on touch-only backends. */
+    host->cursor_applied = visible; /* Record issuance, not compositor/hardware acknowledgement. */
+    return FVM_OK; /* The launcher owns and destroys this stage, so no other stage's state is changed. */
+} /* Embedded shells should apply their own stage ownership policy. */
 /* Upload RGBA with a byte stride into the actor's Cogl-backed texture. */
 static FVM_Result clutter_present(const FVM_RasterSurface *frame, void *userdata) /* Borrow frame. */
 { /* Run only on the Clutter/VM owner thread with a live graphics context. */
@@ -23,6 +37,7 @@ static FVM_Result clutter_present(const FVM_RasterSurface *frame, void *userdata
     gboolean uploaded; /* Keep the actual library result. */
     if (host->destroyed) /* Never upload after stage destroyed its children. */
         return FVM_ERROR; /* Owner loop performs cleanup. */
+    if (clutter_cursor(host) != FVM_OK) return host->demo.status; /* Apply cursor before native presentation. */
     uploaded = clutter_texture_set_from_rgb_data(CLUTTER_TEXTURE(host->texture), /* Actual texture actor. */
                  frame->pixels, TRUE, frame->width, frame->height, /* RGBA has alpha, top-left rows. */
                  (gint)frame->stride, FVM_HOST_RGBA_BYTES, CLUTTER_TEXTURE_NONE, &error); /* Straight RGBA. */
@@ -58,6 +73,34 @@ static void clutter_deactivate(ClutterStage *stage, gpointer userdata) /* Borrow
     demo_cancel(&host->demo); /* Explicit up policy, no untrusted native coordinates. */
     host->sequence = NULL; /* Release native first-contact ownership as well. */
 } /* Signal removal follows the stage lifetime. */
+/* Normalize one real Clutter vertical scroll event without taking primary-contact ownership. */
+static gboolean clutter_scroll(ClutterHost *host, ClutterEvent *event) /* Stage captured-event owner. */
+{ /* The same inverse projected actor mapping is used for pointer and wheel position. */
+    ClutterScrollDirection direction; /* Native SDK detent/smooth discriminator. */
+    FVM_Affine transform = {1, 0, 0, 1, 0, 0}; /* Fixed VM world to actor-local allocation. */
+    gfloat stage_x, stage_y, local_x, local_y; /* Do not retain native event pointers. */
+    gdouble dx, dy; /* Smooth deltas, positive Y means down. */
+    double delta; /* Host-normalized signed scroll lines, positive up. */
+    if (host->destroyed || !host->texture || host->touch_only || host->sequence) /* No mouse synthesis during touch. */
+        return CLUTTER_EVENT_PROPAGATE; /* Leave unsupported/shell-owned events alone. */
+    direction = clutter_event_get_scroll_direction(event); /* Public API exists in the user's Clutter fork too. */
+    if (direction == CLUTTER_SCROLL_UP) delta = DEMO_WHEEL_LINES_PER_DETENT; /* One explicit detent. */
+    else if (direction == CLUTTER_SCROLL_DOWN) delta = -DEMO_WHEEL_LINES_PER_DETENT; /* Down is negative. */
+    else if (direction == CLUTTER_SCROLL_SMOOTH) /* Preserve fractional native vertical units. */
+    { /* Horizontal-only and zero smooth events are not consumed. */
+        clutter_event_get_scroll_delta(event, &dx, &dy); /* Native SDK owns the event. */
+        (void)dx; delta = -dy * DEMO_WHEEL_LINES_PER_DETENT; /* Same explicit policy as other tutorials. */
+        if (delta == 0) return CLUTTER_EVENT_PROPAGATE; /* No fake zero-line event. */
+    } /* End smooth normalization. */
+    else return CLUTTER_EVENT_PROPAGATE; /* LEFT/RIGHT and unknown native direction. */
+    clutter_event_get_coords(event, &stage_x, &stage_y); /* Position at the time of scrolling. */
+    if (!clutter_actor_transform_stage_point(host->texture, stage_x, stage_y, &local_x, &local_y)) /* Inverse projection. */
+        return CLUTTER_EVENT_PROPAGATE; /* An unmappable wheel must not cancel an unrelated held contact. */
+    transform.xx = clutter_actor_get_width(host->texture) / DEMO_WIDTH; /* Same scale as native presentation. */
+    transform.yy = clutter_actor_get_height(host->texture) / DEMO_HEIGHT; /* Preserve fractional allocation. */
+    demo_wheel(&host->demo, &transform, local_x, local_y, delta); /* Count only successful VM delivery. */
+    return CLUTTER_EVENT_STOP; /* A VM failure is latched for the owning loop, not retried. */
+} /* Wheel does not synthesize DOWN/UP or mutate the selected touch identity. */
 /* Translate one stage-space pointer/touch event into the texture's local/world space. */
 static gboolean clutter_input(ClutterActor *stage, ClutterEvent *event, gpointer userdata) /* Captured signal. */
 { /* A transformed actor requires the SDK's inverse projected stage mapping. */
@@ -68,6 +111,7 @@ static gboolean clutter_input(ClutterActor *stage, ClutterEvent *event, gpointer
     FVM_Affine world_to_local = {1, 0, 0, 1, 0, 0}; /* Actor-local scale from fixed world pixels. */
     gfloat stage_x, stage_y, local_x, local_y; /* Clutter's event and projected actor coordinates. */
     (void)stage; /* The texture actor is the actual event coordinate target. */
+    if (native_type == CLUTTER_SCROLL) return clutter_scroll(host, event); /* Dedicated wheel policy before touch selection. */
     if (native_type == CLUTTER_TOUCH_CANCEL) /* Cancel coordinates may be absent or invalid. */
     { /* Only the selected contact can cancel the primary pointer. */
         if (host->sequence == clutter_event_get_event_sequence(event)) /* Match the active sequence. */
@@ -132,15 +176,19 @@ static gboolean clutter_tick(gpointer userdata) /* GLib borrows main-owned host 
 int main(int argc, char **argv) /* This is not an Android Activity or replacement native_app_glue. */
 { /* Initialize Clutter before creating any actor/context-dependent resources. */
     ClutterHost host; /* Main owns every callback's userdata. */
+    int hide_cursor = 0; /* Optional initial VM request, independent of native device presence. */
+    int previous; /* Previous cursor request returned by the public setter. */
     int i, result = 1; /* Fail unless initialization and all rendered frames succeed. */
     memset(&host, 0, sizeof(host)); /* Partial cleanup has no uninitialized owners. */
+    host.cursor_applied = -1; /* Issue the first visible/hidden request explicitly. */
     for (i = 1; i < argc; ++i) /* Parse only the tutorial's own options. */
     { /* Strip our options before passing argc/argv to Clutter. */
-        if (!strcmp(argv[i], "--smoke")) host.smoke = 1; /* Stop after 120 submitted frames. */
+        if (!strcmp(argv[i], "--hide-cursor")) hide_cursor = 1; /* Defer VM request until context creation. */
+        else if (!strcmp(argv[i], "--smoke")) host.smoke = 1; /* Stop after 120 submitted frames. */
         else if (!strcmp(argv[i], "--touch-only")) host.touch_only = 1; /* Ignore synthetic/physical mice entirely. */
         else /* Reject unknown arguments with a concrete usage message. */
         { /* No native resources exist yet. */
-            fprintf(stderr, "usage: %s [--smoke] [--touch-only]\n", argv[0]); /* Interactive or bounded mode. */
+            fprintf(stderr, "usage: %s [--smoke] [--touch-only] [--hide-cursor]\n", argv[0]); /* Interactive or bounded mode. */
             return 1; /* Do not silently ignore a misspelled option. */
         } /* End argument failure. */
     } /* Preserve argv[0], then let the SDK initialize without tutorial options. */
@@ -149,6 +197,8 @@ int main(int argc, char **argv) /* This is not an Android Activity or replacemen
         return 1; /* SDK reports its initialization error, no owners exist. */
     if (demo_open(&host.demo) != FVM_OK) /* Create the platform-independent VM/frame owners. */
         goto cleanup; /* Preserve the VM failure. */
+    if (hide_cursor) host.demo.status = fvm_input_set_cursor_visible(host.demo.context, 0, &previous); /* Startup VM request. */
+    if (host.demo.status != FVM_OK) goto cleanup; /* Preserve cursor request errors. */
     host.stage = clutter_stage_new(); /* Create a distinct desktop stage for this tutorial. */
     g_object_ref_sink(host.stage); /* Own an explicit reference even after native destroy. */
     host.texture = clutter_texture_new(); /* Create the SDK-compatible Cogl-backed texture actor. */

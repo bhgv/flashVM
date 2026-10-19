@@ -89,6 +89,18 @@ if(FVM_EXAMPLE_CLUTTER3D AND FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
   # Requires the caller's real native display; do not silently substitute a fake SDK.
   add_test(NAME flashvm_example_clutter3d_input COMMAND flashvm_example_clutter3d_input)
   set_tests_properties(flashvm_example_clutter3d_input PROPERTIES TIMEOUT 30)
+  add_executable(flashvm_clutter_wheel_cursor ${PROJECT_SOURCE_DIR}/frontend/tests/clutter_wheel_cursor.c)
+  target_link_libraries(flashvm_clutter_wheel_cursor PRIVATE flashvm PkgConfig::FVM_CLUTTER)
+  if(FVM_CLUTTER3D_SDK)
+    target_link_libraries(flashvm_clutter_wheel_cursor PRIVATE ${FVM_CLUTTER_STATIC_LDFLAGS})
+  endif()
+  if(MSVC)
+    target_compile_options(flashvm_clutter_wheel_cursor PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_clutter_wheel_cursor PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_clutter_wheel_cursor COMMAND flashvm_clutter_wheel_cursor)
+  set_tests_properties(flashvm_clutter_wheel_cursor PROPERTIES TIMEOUT 30)
 endif()
 
 # These hosts link explicit external SDKs; the core library retains its own C++98 dialect.

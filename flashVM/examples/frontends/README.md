@@ -132,8 +132,9 @@ horizontal-only streams remain unhandled, not relabeled as lines. evdev prefers
 advertised REL_WHEEL_HI_RES (120 counts/detent), ignores its legacy compatibility
 packets even in separate reports, otherwise uses REL_WHEEL detents. Completed
 SYN_REPORT publishes position then vertical wheel; partial/drop packets do not
-produce a wheel. Three-byte mousedev, headless and Clutter adapters gain no native
-wheel decoder here. Clutter SDK/device and other OS acceptance remain open.
+produce a wheel. Three-byte mousedev and headless have no native wheel decoder.
+The Clutter actor adapter adds vertical discrete/smooth normalization in v0.613;
+its fork-specific Android/device and other OS acceptance remain open.
 
 Русский: единицы ОС не попадают в VM без явного перевода. Дробь сохраняется,
 горизонталь и пиксельный-only Qt поток не выдаются за строки. В evdev источник
@@ -167,8 +168,19 @@ the tutorial; repeated unchanged requests avoid redundant native updates.
 Русский: флаг --hide-cursor меняет запрос VM; реальный SDK применяется только
 потоком оконного хоста. После скрипта или ввода следующий native draw применяет
 запрос. Сенсорный/headless/direct-fb хост без отдельного нативного курсора может
-хранить запрос без создания мыши. Clutter-привязка пока не добавлена. Программные
+хранить запрос без создания мыши. Clutter с v0.613 применяет запрос к своему stage.
+Программные
 проверки SDK не подтверждают физический указатель, аппаратный экран или другие ОС.
+## Clutter stage input in v0.613 / Ввод Clutter stage
+
+The Clutter host now uses common/wheel.h, preserves inverse projected actor
+coordinates for vertical discrete/smooth scrolling, and applies cursor visibility
+to its owned stage before upload. --hide-cursor is available with --smoke.
+Native touch suppression and stage lifetime remain explicit. See the
+[annotated implementation/API guide](clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
+Русский: используются публичные API пользовательского форка; библиотека и
+inferno-os клиент не изменены. Приёмка Android/физического устройства остаётся
+отдельной от вспомогательных Linux SDK проверок.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -226,6 +226,17 @@ VM/окна. --hide-cursor задаёт начальный запрос. SDL с�
 описаны в README фронтендов. Void-setter SDK подтверждает только выдачу запроса;
 программная проверка не подтверждает физический курсор, устройство или другую ОС.
 
+
+## Clutter stage application v0.613 / Применение к stage Clutter
+
+Clutter now maps vertical scroll through the actor's inverse projection and
+applies cursor visibility requests with its public stage API. --touch-only
+suppresses wheel and --hide-cursor configures startup visibility. This changes
+no VM ABI. The frame marker remains content; a touch-only backend may have no
+native cursor. [Contract / Контракт](../examples/frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
+Русский: курсор применяется на потоке владельца stage; это запрос SDK, не
+подтверждение устройства. Физическая и Android-приёмка остаётся открытой.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

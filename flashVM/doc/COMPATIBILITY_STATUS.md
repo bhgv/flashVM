@@ -4883,6 +4883,30 @@ acceptance remain open. All nine roadmap stages remain open.
 с контролируемыми ioctl-снимками, не физическое устройство.
 [Contract / Контракт](../examples/frontends/linux_fb/README.md#v0612-evdev-loss-recovery--восстановление-evdev).
 
+
+## v0.613 Clutter wheel and stage cursor / Колесо и курсор Clutter
+
+The requested fork's public Clutter/Cogl API now drives vertical discrete/smooth
+wheel through inverse actor projection and the existing VM line-delta boundary.
+Touch-only/active-touch, horizontal and zero-event policies remain explicit.
+Cursor requests are applied to the owned stage before upload, with a cached
+stage-local show/hide request and --hide-cursor startup option. The library and
+excluded inferno-os client are unchanged; no additional library patch is required.
+
+A real Linux Clutter 1.26 auxiliary SDK fixture verifies deltas, coordinates,
+contact ownership and cursor properties, plus three 120-frame runs (ordinary,
+hidden cursor, touch-only). The full existing fractional projection fixture on
+the unpatched system library still reproduces the already documented precision
+bug; it is retained as a strict patched-fork regression, not weakened or claimed
+passing. Public declarations were checked in the user's fork. Fork-specific
+Android/GLES/device and hardware cursor acceptance remain open. All stages remain
+open; no auxiliary SDK result substitutes for native platform acceptance.
+
+Русский: новые привязки проверены на настоящем Linux SDK; это не свежая сборка
+пользовательского Android-форка и не проверка телефона. Строгая проверка дробной
+3D-проекции сохранена; системная библиотека без прежнего патча её не проходит.
+[API, parameters and ownership](../examples/frontends/clutter3d/README.md#v0613-wheel-and-cursor--колесо-и-курсор).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
