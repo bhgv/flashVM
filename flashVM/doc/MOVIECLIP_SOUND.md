@@ -98,6 +98,8 @@ support exists; it is never installed as an undefined visual symbol.
 Звуковой ExportAssets/linkage пока явно UNSUPPORTED: Sound.attachSound ещё
 не реализован этим изменением. Проверяется отдельным malformed/unsupported fixture.
 
+[Ordinal snapshots](SOUND_SNAPSHOT.md) — v0.637.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

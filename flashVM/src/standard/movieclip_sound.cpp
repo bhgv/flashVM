@@ -1,6 +1,7 @@
 /* FlashVM: root StartSound notifications at real frame entry, without an implicit audio device. */
 #include "movieclip_sound.hpp"
 #include "movieclip_sound_constants.h"
+#include "movieclip_constants.h"
 #include "../swf/sound_event_constants.h"
 #include <cmath>
 #include <cstring>
@@ -44,6 +45,9 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
 {
     typedef fvm_detail::map<fvm_detail::string, FVM_Value> Properties;
     typedef fvm_detail::map<unsigned long, FVM_Value> Slots;
+    if (!context || !clip || clip->owner != context || !frames || frames->owner != context ||
+        frame < 1 || frame > FVM_MOVIECLIP_MAX_FRAMES)
+        return FVM_INVALID_ARGUMENT;
     Slots::iterator selected = frames->indexed.find(frame);
     if (selected == frames->indexed.end())
         return FVM_OK;
@@ -79,20 +83,29 @@ FVM_Result fvm_movieclip_sound_run(FVM_Context *context, FVM_Object *clip, FVM_O
         return FVM_INVALID_ARGUMENT;
     try
     {
-        /* [GC:] Host callback cannot collect through the enclosing native-call barrier.
-         * Copy the ordinal list so ordinary host queries cannot invalidate traversal state. */
-        Slots ordinals = sounds->second.object->indexed;
-        unsigned long next = 0;
-        for (Slots::iterator i = ordinals.begin(); i != ordinals.end(); ++i, ++next)
+        /* [GC:] The caller's native barrier retains source values through host callbacks.
+         * Capture by ordinal rather than map insertion order and validate the entire batch
+         * before publishing its first external effect. */
+        FVM_Object *list = sounds->second.object;
+        if (list->indexed.size() > FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS)
+            return FVM_INVALID_ARGUMENT;
+        const size_t count = list->indexed.size();
+        fvm_detail::vector<size_t> ordinals;
+        for (size_t index = 0; index < count; ++index)
         {
-            if (i->first != next || i->second.type != FVM_VALUE_NUMBER ||
-                !(i->second.number >= 0 &&
-                  i->second.number < context->swf_bytes.size() / FVM_SWF_SOUND_EVENT_MIN_BYTES) ||
-                i->second.number != std::floor(i->second.number))
+            Slots::const_iterator event = list->indexed.find((unsigned long)index);
+            if (event == list->indexed.end() || event->second.type != FVM_VALUE_NUMBER ||
+                !(event->second.number >= 0 &&
+                  event->second.number < context->swf_bytes.size() / FVM_SWF_SOUND_EVENT_MIN_BYTES) ||
+                event->second.number != std::floor(event->second.number))
                 return FVM_INVALID_ARGUMENT;
+            ordinals.push_back((size_t)event->second.number);
+        }
+        for (size_t index = 0; index < ordinals.size(); ++index)
+        {
             DeliveryScope scope(context);
             FVM_Result result = context->movieclip_sound_callback(
-                context, clip, (size_t)i->second.number, context->movieclip_sound_userdata);
+                context, clip, ordinals[index], context->movieclip_sound_userdata);
             if (result != FVM_OK)
                 return result;
         }

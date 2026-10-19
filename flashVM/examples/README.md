@@ -1589,6 +1589,8 @@ host callback и pin-ит root; оба режима проверяются по 
 Подробные контракты: [SWF_SOUND_MIXER.md](../doc/SWF_SOUND_MIXER.md).
 
 <a id="example-multimedia-swf_mix"></a>
+Связанный [контракт звукового снимка](../doc/SOUND_SNAPSHOT.ru.md) описывает private robustness fixtures; tutorial не изменяет metadata.
+
 #### swf_mix
 
 Два подготовленных голоса из встроенного SWF читаются малыми синхронными

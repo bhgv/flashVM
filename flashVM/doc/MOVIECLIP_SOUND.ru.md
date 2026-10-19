@@ -88,6 +88,8 @@ support exists; it is never installed as an undefined visual symbol.
 Звуковой ExportAssets/linkage пока явно UNSUPPORTED: Sound.attachSound ещё
 не реализован этим изменением. Проверяется отдельным malformed/unsupported fixture.
 
+[Снимки звуковых событий](SOUND_SNAPSHOT.ru.md) — v0.637.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

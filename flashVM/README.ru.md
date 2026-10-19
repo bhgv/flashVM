@@ -1,4 +1,4 @@
-Версия разработки: **0.636** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.637** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -8,6 +8,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+v0.637: [Sound ordinal snapshots](doc/SOUND_SNAPSHOT.md) / [Снимки звуковых событий](doc/SOUND_SNAPSHOT.ru.md).
 
 v0.636: [Scene graph safety](doc/SCENE_CONTROLS.md#graph-validation-and-legacy-depths-v0636) / [Граф сцены и старые глубины](doc/SCENE_CONTROLS.ru.md#граф-сцены-и-старые-глубины-v0636).
 

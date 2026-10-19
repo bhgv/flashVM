@@ -1,10 +1,12 @@
-Development version: **0.636** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.636 ` and an English description. Increase the subversion before each
+Development version: **0.637** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.637 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.637: [Sound ordinal snapshots](doc/SOUND_SNAPSHOT.md) / [Снимки звуковых событий](doc/SOUND_SNAPSHOT.ru.md).
 
 v0.636: [Scene graph safety](doc/SCENE_CONTROLS.md#graph-validation-and-legacy-depths-v0636) / [Граф сцены и старые глубины](doc/SCENE_CONTROLS.ru.md#граф-сцены-и-старые-глубины-v0636).
 

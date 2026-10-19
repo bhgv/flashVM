@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.636
+# FlashVM stage status / Состояние стадий — v0.637
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,19 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.637 root sound ordinal capture / Снимки звуковых событий
+
+Dense bounded scalar sound snapshots are captured by ordinal and completely
+validated before first host delivery. [EN](SOUND_SNAPSHOT.md) /
+[RU](SOUND_SNAPSHOT.ru.md). Host callback editing remains forbidden; robustness
+fixtures are private tests. Canonical membership and broader work remain open.
+
+Validation: eight selected minimal Linux Release CTests passed, including three
+new snapshot/invalid/OOM tests, old sound lifecycle/validation/transport/import-OOM
+and C89 tutorial checks. Exact v0.636 sound source fails the shuffled-ordinal
+regression; current source passes. All nine stages remain open.
+Все девять стадий открыты; физический звук и другие ОС не проверены.
 
 ## v0.636 scene graph boundaries / Границы графа сцены
 

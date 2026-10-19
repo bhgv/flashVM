@@ -133,6 +133,7 @@ channels, voice_capacity и flags. [`FVM_SWF_SOUND_MIXER_CONVERT`](../../../incl
 | [`fvm_swf_sound_mixer_get_config`](../../../include/flashvm/swf_sound_mixer.h#L42) | Копирует immutable output geometry/flags без new, callbacks и продвижения; неверный struct_size сохраняет out: [EN](../../../doc/SWF_SOUND_CONVERSION.md#fvm_swf_sound_mixer_get_config) / [RU](../../../doc/SWF_SOUND_CONVERSION.ru.md#fvm_swf_sound_mixer_get_config). |
 
 [Политика интерполяции и округления](../../../doc/SWF_SOUND_CONVERSION.ru.md#алгоритм-и-округление).
+The [sound snapshot contract](../../../doc/SOUND_SNAPSHOT.md) / [контракт снимка](../../../doc/SOUND_SNAPSHOT.ru.md) describes bounded ordinal preparation. This tutorial uses only public callbacks and never mutates frame metadata.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
