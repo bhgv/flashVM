@@ -1,10 +1,12 @@
-Development version: **0.632** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.632 ` and an English description. Increase the subversion before each
+Development version: **0.633** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.633 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+v0.633: [Platform source evidence](doc/PLATFORM_VALIDATION.md#source-stability-v0633) / [Исходники при приёмке](doc/PLATFORM_VALIDATION.ru.md#стабильность-исходников-v0633).
 
 v0.632: [Initializer progress](doc/INITIALIZER_PROGRESS.md) / [Бюджет инициализации](doc/INITIALIZER_PROGRESS.ru.md).
 

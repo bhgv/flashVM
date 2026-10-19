@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.632
+# FlashVM stage status / Состояние стадий — v0.633
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,19 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.633 stable platform source evidence / Стабильность исходников
+
+Native validation now compares component source/index/HEAD endpoints before an
+overall pass. Dirty-to-dirty changes can no longer reuse a successful tool result
+as evidence for unchanged sources. [EN](PLATFORM_VALIDATION.md#source-stability-v0633) /
+[RU](PLATFORM_VALIDATION.ru.md#стабильность-исходников-v0633).
+
+Validation: seven isolated source-evidence tests, ten existing encoder/compiler
+metadata tests and nine ELF evidence tests passed on Linux/Python 3. No CMake/CTest
+or native VM run is claimed for this revision: CMake is unavailable in this host.
+All nine stages remain open; endpoint hashing does not prove reproducible builds
+or Windows/macOS/Android execution. Все девять стадий открыты.
 
 ## v0.632 pending initializer work / Бюджет оставшейся инициализации
 

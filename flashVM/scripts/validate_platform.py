@@ -8,6 +8,8 @@ Reports/logs stay in the ignored build directory and never certify roadmap stage
 import argparse
 import datetime
 import json
+import hashlib
+import stat
 import os
 from pathlib import Path
 import platform
@@ -16,6 +18,58 @@ import subprocess
 import sys
 import tempfile
 from elf_dependencies import validate_elf_dependencies
+
+
+def source_identity(root):
+    """Fingerprint Git-listed component inputs without following external symlinks.
+
+    Ignored build products are excluded. Missing tracked files remain inputs;
+    staged content and HEAD are included so an index-only edit is also detected.
+    This is an endpoint check, not a lock or an immutable build sandbox.
+    """
+    def git(*args):
+        """Read raw NUL-delimited Git names safely, including non-UTF8 names."""
+        return subprocess.check_output(['git', '-C', str(root)] + list(args))
+
+    digest = hashlib.sha256()
+
+    def feed(value):
+        """Length-prefix fields to prevent ambiguous concatenated records."""
+        digest.update(str(len(value)).encode('ascii') + b':' + value)
+
+    commit = git('rev-parse', 'HEAD').decode('ascii').strip()
+    feed(commit.encode('ascii'))
+    feed(git('ls-files', '--stage', '-z', '--', '.'))
+    names = sorted(set(git('ls-files', '--cached', '--others', '--exclude-standard',
+                           '-z', '--', '.').split(b'\0')) - {b''})
+    for name in names:
+        feed(name)
+        path = root / os.fsdecode(name)
+        try:
+            mode = path.lstat().st_mode
+        except FileNotFoundError:
+            feed(b'missing')
+            continue
+        if stat.S_ISLNK(mode):
+            feed(b'link')
+            feed(os.fsencode(os.readlink(str(path))))
+        elif stat.S_ISREG(mode):
+            feed(b'executable' if mode & stat.S_IXUSR else b'file')
+            content = hashlib.sha256()
+            with path.open('rb') as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b''):
+                    content.update(block)
+            feed(content.digest())
+        else:
+            raise ValueError('unsupported source input (including submodules): ' + os.fsdecode(name))
+    return {'commit': commit, 'sha256': digest.hexdigest(), 'files': len(names)}
+
+
+def verify_source_identity(root, report):
+    """Prevent a passing report when source endpoints differ or cannot be read."""
+    report['source_end'] = source_identity(root)
+    if report['source_start'] != report['source_end']:
+        raise ValueError('source inputs changed during platform validation; rerun on stable sources')
 
 
 def cache_values(path):
@@ -140,8 +194,8 @@ def main():
     # process termination then leaves running evidence, never a stale pass.
     (output / 'platform-evidence.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     try:
-        report['commit'] = subprocess.check_output(
-            ['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
+        report['source_start'] = source_identity(root)
+        report['commit'] = report['source_start']['commit']
         report['dirty'] = bool(subprocess.check_output(
             ['git', '-C', str(root), 'status', '--porcelain'], text=True).strip())
         report['tools'] = {name: tool_version(executable) for name, executable in
@@ -200,6 +254,7 @@ def main():
             if args.elf_dependencies:
                 validate_elf_dependencies(build, args.ctest, args.readelf, execute, record)
             record['status'] = 'passed'
+        verify_source_identity(root, report)
         report['status'] = 'passed'
         return 0
     except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as error:

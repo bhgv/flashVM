@@ -1,4 +1,4 @@
-# Platform validation runner — v0.361
+# Platform validation runner — v0.633
 
 [Русское руководство](PLATFORM_VALIDATION.ru.md)
 
@@ -11,7 +11,7 @@ instruction. All bundled dependencies remain static CMake targets.
 ## Native Windows, Linux and macOS
 
 Use Python 3.8+, Git, CMake/CTest 3.26+ and the native C/C++ toolchain. From the
-repository root:
+component root:
 
 ```sh
 python scripts/validate_platform.py --profile all --jobs 4
@@ -289,3 +289,36 @@ Recorded / зафиксировано: clean v0.531 minimal-jit release-runner v
 precommit minimal/JIT 1096 each, 30 definition cases and three ASan/UBSan cases.
 See [RU/EN evidence and limits](LINUX_JIT_CHECKPOINT_V531.md). Documentation
 only; real foreign OS/CPU acceptance and all nine stages remain open.
+
+## Source stability (v0.633)
+
+Before tools run and again before reporting success, the runner fingerprints the
+component's Git-listed inputs. The report contains `source_start` and `source_end`
+with HEAD, SHA-256 and file count. A mismatch or unreadable endpoint fails the
+whole run even when all individual profiles passed. Failed tool phases can stop
+before the final snapshot; absence of `source_end` is not stability evidence.
+
+The digest includes tracked and nonignored untracked paths, working file bytes,
+owner executable bits, missing tracked files, symlink target names, and Git index
+entries. Length-prefixed records distinguish paths and binary contents. Already
+dirty workspaces are supported: changing dirty content is detected even when the
+dirty flag remains true. Only this independent component is scanned; sibling
+projects and ignored build products are excluded. Keep `--build-root` outside the
+component or under an ignored build directory to avoid fingerprinting generated
+logs as source inputs. Submodule directories and other special input types fail
+closed; regular source distributions need no submodules.
+
+This is a comparison of two endpoints, not an immutable checkout or a filesystem
+lock: edit-and-restore during execution can escape detection. External symlink
+target contents, ignored SDK/dependency installations, tool binaries and environment
+changes are not hashed. Record these separately for release acceptance; a matching
+digest alone does not prove reproducibility, an original-Player comparison, device
+acceptance or completion of any roadmap stage. The report schema remains 1 with
+additive source fields; consumers must still inspect the overall `status`.
+
+Run the isolated host regression (real temporary Git repositories, simulated
+build tools; no claim of native VM execution):
+
+```sh
+python3 scripts/test_platform_source.py
+```
