@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS2
 
-Версия 0.2.3. [English](README.md).
+Версия 0.2.4. [English](README.md).
 
 Читаемый файл [as2.atg](as2.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).

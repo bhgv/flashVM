@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.3.2
+# AS3 syntax frontend 0.3.3
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -48,7 +48,7 @@ recognition, not property enumeration or FIR lowering.
 
 [Grammar](frontend/as3.atg): Relational/ForStatement. [Example](examples/in.as).
 
-### Declarations and functions 0.3.2
+### Declarations and functions 0.3.3
 
 Default parameters, a final `...rest`, for-each, multiple catch handlers,
 namespace/use-namespace declarations and `ns::name` qualifiers are supported.

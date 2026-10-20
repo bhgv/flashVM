@@ -1,6 +1,6 @@
 # AS2 syntax frontend
 
-Version 0.2.3. [Русская версия](README.ru.md).
+Version 0.2.4. [Русская версия](README.ru.md).
 
 The readable [as2.atg](as2.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).

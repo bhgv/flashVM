@@ -14,10 +14,13 @@ int main(int argc, char **argv)
     size_t length;
     int ok;
     char error[512] = "source operation failed";
-    if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1_source 0.4.2 (numeric tutorial profiles)"); return 0;
+    if (argc == 2 && !strcmp(argv[1], "--version"))
+    {
+        puts("fir1_source 0.4.3 (numeric tutorial profiles)");
+        return 0;
     }
-    if (argc == 2 && !strcmp(argv[1], "--help")) {
+    if (argc == 2 && !strcmp(argv[1], "--help"))
+    {
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"
              "Numeric subset: literals, names, unary +/-, + - * /, parentheses.\n"
              "AS: var x = 1, y = .5; x += y; trace(x); AS3 const supported.\n"
@@ -32,30 +35,67 @@ int main(int argc, char **argv)
              "See fir/v1/doc/COVERAGE.md and examples/ (also .ru.md).");
         return 0;
     }
-    if ((argc != 5 && (argc != 7 || strcmp(argv[5], "--module"))) || (strcmp(argv[1], "as1") && strcmp(argv[1], "as2") &&
-        strcmp(argv[1], "as3") && strcmp(argv[1], "limbo")) || strcmp(argv[2], "--input")) {
-        fprintf(stderr, "usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"); return 2;
+    if ((argc != 5 && (argc != 7 || strcmp(argv[5], "--module"))) ||
+        (strcmp(argv[1], "as1") && strcmp(argv[1], "as2") && strcmp(argv[1], "as3") &&
+         strcmp(argv[1], "limbo")) ||
+        strcmp(argv[2], "--input"))
+    {
+        fprintf(stderr,
+                "usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n");
+        return 2;
     }
-    if (!strcmp(argv[3], argv[4])) { fprintf(stderr, "different paths required\n"); return 2; }
+    if (!strcmp(argv[3], argv[4]))
+    {
+        fprintf(stderr, "different paths required\n");
+        return 2;
+    }
     input = fopen(argv[3], "rb");
-    if (!input) { perror(argv[3]); return 2; }
-    text = (unsigned char *)calloc(65538, 1); temporary = fir_temporary();
-    if (!text || !temporary) { free(text); if (temporary) fclose(temporary); fclose(input); return 2; }
+    if (!input)
+    {
+        perror(argv[3]);
+        return 2;
+    }
+    text = (unsigned char *)calloc(65538, 1);
+    temporary = fir_temporary();
+    if (!text || !temporary)
+    {
+        free(text);
+        if (temporary)
+            fclose(temporary);
+        fclose(input);
+        return 2;
+    }
     ok = fir_source(input, temporary,
-         (FirLanguage)(!strcmp(argv[1], "limbo") ? 4 : argv[1][2] - '0'),
-         argc == 7 ? argv[6] : NULL, error, sizeof(error));
-    if (ok && (fflush(temporary) || fseek(temporary, 0, SEEK_SET))) ok = 0;
-    if (ok) {
+                    (FirLanguage)(!strcmp(argv[1], "limbo") ? 4 : argv[1][2] - '0'),
+                    argc == 7 ? argv[6] : NULL, error, sizeof(error));
+    if (ok && (fflush(temporary) || fseek(temporary, 0, SEEK_SET)))
+        ok = 0;
+    if (ok)
+    {
         output = fopen(argv[4], "wb");
-        if (!output) { perror(argv[4]); ok = 0; }
-        else {
+        if (!output)
+        {
+            perror(argv[4]);
+            ok = 0;
+        }
+        else
+        {
             while ((length = fread(text, 1, 65536, temporary)) != 0)
-                if (fwrite(text, 1, length, output) != length) { ok = 0; break; }
-            if (ferror(temporary)) ok = 0;
-            if (fclose(output)) ok = 0;
+                if (fwrite(text, 1, length, output) != length)
+                {
+                    ok = 0;
+                    break;
+                }
+            if (ferror(temporary))
+                ok = 0;
+            if (fclose(output))
+                ok = 0;
         }
     }
-    fclose(input); fclose(temporary); free(text);
-    if (!ok) fprintf(stderr, "%s\n", error[0] ? error : "source output/I/O failure");
+    fclose(input);
+    fclose(temporary);
+    free(text);
+    if (!ok)
+        fprintf(stderr, "%s\n", error[0] ? error : "source output/I/O failure");
     return ok ? 0 : 1;
 }

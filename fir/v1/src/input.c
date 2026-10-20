@@ -14,21 +14,34 @@ FILE *fir_temporary(void)
 {
 #ifndef _WIN32
     const char *directory = getenv("TMPDIR");
-    if (directory && *directory) {
+    if (directory && *directory)
+    {
         size_t length = strlen(directory);
         char *path;
         int fd;
         FILE *stream;
-        if (length > 4096) return NULL;
+        if (length > 4096)
+            return NULL;
         path = (char *)malloc(length + 24);
-        if (!path) return NULL;
+        if (!path)
+            return NULL;
         snprintf(path, length + 24, "%s/fir1-XXXXXX", directory);
         fd = mkstemp(path);
-        if (fd < 0) { free(path); return NULL; }
-        if (unlink(path)) { close(fd); free(path); return NULL; }
+        if (fd < 0)
+        {
+            free(path);
+            return NULL;
+        }
+        if (unlink(path))
+        {
+            close(fd);
+            free(path);
+            return NULL;
+        }
         free(path);
         stream = fdopen(fd, "w+b");
-        if (!stream) close(fd);
+        if (!stream)
+            close(fd);
         return stream;
     }
 #endif
@@ -43,21 +56,37 @@ int fir_utf8(const unsigned char *text, size_t n)
     size_t i;
     int remaining = 0;
     unsigned low = 0x80, high = 0xbf;
-    for (i = 0; i < n; ++i) {
+    for (i = 0; i < n; ++i)
+    {
         unsigned c = text[i];
-        if (remaining) {
-            if (c < low || c > high) return 0;
-            --remaining; low = 0x80; high = 0xbf;
-        } else if (!c) return 0;
-        else if (c < 0x80) continue;
-        else if (c >= 0xc2 && c <= 0xdf) remaining = 1;
-        else if (c >= 0xe0 && c <= 0xef) {
+        if (remaining)
+        {
+            if (c < low || c > high)
+                return 0;
+            --remaining;
+            low = 0x80;
+            high = 0xbf;
+        }
+        else if (!c)
+            return 0;
+        else if (c < 0x80)
+            continue;
+        else if (c >= 0xc2 && c <= 0xdf)
+            remaining = 1;
+        else if (c >= 0xe0 && c <= 0xef)
+        {
             remaining = 2;
-            low = c == 0xe0 ? 0xa0 : 0x80; high = c == 0xed ? 0x9f : 0xbf;
-        } else if (c >= 0xf0 && c <= 0xf4) {
+            low = c == 0xe0 ? 0xa0 : 0x80;
+            high = c == 0xed ? 0x9f : 0xbf;
+        }
+        else if (c >= 0xf0 && c <= 0xf4)
+        {
             remaining = 3;
-            low = c == 0xf0 ? 0x90 : 0x80; high = c == 0xf4 ? 0x8f : 0xbf;
-        } else return 0;
+            low = c == 0xf0 ? 0x90 : 0x80;
+            high = c == 0xf4 ? 0x8f : 0xbf;
+        }
+        else
+            return 0;
     }
     return !remaining;
 }

@@ -6,37 +6,67 @@
 #include <string.h>
 #include <float.h>
 #define BYTE_LIMIT (2u * 1024u * 1024u)
-typedef struct { unsigned char *data; size_t n; int failed; } Bytes;
-typedef struct { size_t at; int target; } Fixup;
+typedef struct
+{
+    unsigned char *data;
+    size_t n;
+    int failed;
+} Bytes;
+typedef struct
+{
+    size_t at;
+    int target;
+} Fixup;
 /* Append one byte, recording capacity failure without writing out of bounds. */
 static void byte(Bytes *b, unsigned x)
 {
-    if (b->n >= BYTE_LIMIT) b->failed = 1;
-    else b->data[b->n++] = (unsigned char)x;
+    if (b->n >= BYTE_LIMIT)
+        b->failed = 1;
+    else
+        b->data[b->n++] = (unsigned char)x;
 }
 /* Append an unsigned little-endian 16-bit field. */
-static void word(Bytes *b, unsigned x) { byte(b, x); byte(b, x >> 8); }
+static void word(Bytes *b, unsigned x)
+{
+    byte(b, x);
+    byte(b, x >> 8);
+}
 /* Append an unsigned little-endian 32-bit field. */
-static void dword(Bytes *b, uint32_t x) { word(b, x); word(b, x >> 16); }
+static void dword(Bytes *b, uint32_t x)
+{
+    word(b, x);
+    word(b, x >> 16);
+}
 /* Push one NUL-terminated AVM1 string with a checked FIR-bounded spelling. */
 static void text(Bytes *b, const char *s)
 {
-    byte(b, 0x96); word(b, (unsigned)strlen(s) + 2); byte(b, 0);
-    do { byte(b, (unsigned char)*s); } while (*s++);
+    byte(b, 0x96);
+    word(b, (unsigned)strlen(s) + 2);
+    byte(b, 0);
+    do
+    {
+        byte(b, (unsigned char)*s);
+    } while (*s++);
 }
 /* Push a signed i32 using the AVM1 integer constant representation. */
 static void integer(Bytes *b, int32_t x)
 {
-    byte(b, 0x96); word(b, 5); byte(b, 7); dword(b, (uint32_t)x);
+    byte(b, 0x96);
+    word(b, 5);
+    byte(b, 7);
+    dword(b, (uint32_t)x);
 }
 /* Push a binary64 constant using the SWF mixed-word byte layout. */
 static void real(Bytes *b, double x)
 {
     uint64_t bits;
     memcpy(&bits, &x, 8);
-    byte(b, 0x96); word(b, 9); byte(b, 6);
+    byte(b, 0x96);
+    word(b, 9);
+    byte(b, 6);
     /* SWF doubles exchange the two little-endian 32-bit words. */
-    dword(b, (uint32_t)(bits >> 32)); dword(b, (uint32_t)bits);
+    dword(b, (uint32_t)(bits >> 32));
+    dword(b, (uint32_t)bits);
 }
 /* Push the generated storage name for one SSA value. */
 static void variable(Bytes *b, const FirModule *m, int index)
@@ -46,31 +76,50 @@ static void variable(Bytes *b, const FirModule *m, int index)
     text(b, name);
 }
 /* Retrieve one SSA value from its generated object-local variable. */
-static void load(Bytes *b, const FirModule *m, int index) { variable(b, m, index); byte(b, 0x1c); }
+static void load(Bytes *b, const FirModule *m, int index)
+{
+    variable(b, m, index);
+    byte(b, 0x1c);
+}
 /* Push the low unsigned 16-bit half of an i32 value. */
 static void low(Bytes *b, const FirModule *m, int index)
 {
-    load(b, m, index); integer(b, 65535); byte(b, 0x60); /* BitAnd */
+    load(b, m, index);
+    integer(b, 65535);
+    byte(b, 0x60); /* BitAnd */
 }
 /* Push the high signed 16-bit half of an i32 value. */
 static void high(Bytes *b, const FirModule *m, int index)
 {
-    load(b, m, index); integer(b, 16); byte(b, 0x64); /* signed shift right */
+    load(b, m, index);
+    integer(b, 16);
+    byte(b, 0x64); /* signed shift right */
 }
 /* Full 32x32 multiplication cannot use one AVM1 double multiply: low bits
  * disappear above 2^53. Three exact 16-bit partial products preserve them. */
 static void multiply(Bytes *b, const FirModule *m, int a, int c)
 {
-    low(b, m, a); low(b, m, c); byte(b, 0x0c);
-    high(b, m, a); low(b, m, c); byte(b, 0x0c);
-    high(b, m, c); low(b, m, a); byte(b, 0x0c);
-    byte(b, 0x0a); integer(b, 16); byte(b, 0x63);
-    byte(b, 0x0a); integer(b, 0); byte(b, 0x61);
+    low(b, m, a);
+    low(b, m, c);
+    byte(b, 0x0c);
+    high(b, m, a);
+    low(b, m, c);
+    byte(b, 0x0c);
+    high(b, m, c);
+    low(b, m, a);
+    byte(b, 0x0c);
+    byte(b, 0x0a);
+    integer(b, 16);
+    byte(b, 0x63);
+    byte(b, 0x0a);
+    integer(b, 0);
+    byte(b, 0x61);
 }
 /* Emit an unresolved branch and return the offset-field position. */
 static size_t branch(Bytes *b, int conditional)
 {
-    byte(b, conditional ? 0x9d : 0x99); word(b, 2);
+    byte(b, conditional ? 0x9d : 0x99);
+    word(b, 2);
     word(b, 0);
     return b->n - 2;
 }
@@ -81,91 +130,188 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     Fixup fixes[FIR_LIMIT * 2];
     size_t labels[FIR_BLOCKS], end;
     int i, nf = 0, previous = -1, ok = 0;
-    if (!fir_verify(m, error, cap)) return 0;
+    if (!fir_verify(m, error, cap))
+        return 0;
     actions.data = (unsigned char *)malloc(BYTE_LIMIT);
     object.data = (unsigned char *)malloc(BYTE_LIMIT);
-    actions.n = object.n = 0; actions.failed = object.failed = 0;
-    if (!actions.data || !object.data) { snprintf(error, cap, "out of memory"); goto done; }
-    if (sizeof(double) != 8 || DBL_MANT_DIG != 53) {
-        snprintf(error, cap, "backend requires IEEE binary64 double"); goto done;
+    actions.n = object.n = 0;
+    actions.failed = object.failed = 0;
+    if (!actions.data || !object.data)
+    {
+        snprintf(error, cap, "out of memory");
+        goto done;
     }
-    for (i = 0; i < m->count; ++i) {
+    if (sizeof(double) != 8 || DBL_MANT_DIG != 53)
+    {
+        snprintf(error, cap, "backend requires IEEE binary64 double");
+        goto done;
+    }
+    for (i = 0; i < m->count; ++i)
+    {
         const FirInstruction *in = &m->instructions[i];
-        if (in->removed) continue;
-        if (previous != in->block) { labels[in->block] = actions.n; previous = in->block; }
-        if (in->result >= 0) variable(&actions, m, in->result);
-        switch (in->op) {
-        case O_I32: integer(&actions, in->integer); break;
-        case O_F64: real(&actions, in->real); break;
-        case O_BOOL:
-            byte(&actions, 0x96); word(&actions, 2); byte(&actions, 5); byte(&actions, (unsigned)in->integer); break;
-        case O_STRING: text(&actions, in->text); break;
-        case O_COPY: load(&actions, m, in->a); break;
-        case O_MUL: multiply(&actions, m, in->a, in->b); break;
-        case O_ADD: case O_SUB: case O_LT: case O_EQ:
-        case O_FADD: case O_FSUB: case O_FMUL: case O_FDIV: case O_ASADD:
-            load(&actions, m, in->a); load(&actions, m, in->b);
-            byte(&actions, in->op == O_ADD || in->op == O_FADD ? 0x0a :
-                in->op == O_SUB || in->op == O_FSUB ? 0x0b :
-                in->op == O_FMUL ? 0x0c : in->op == O_FDIV ? 0x0d : in->op == O_LT ? 0x48 :
-                in->op == O_EQ ? 0x49 : 0x47);
-            if (in->op == O_ADD || in->op == O_SUB) { integer(&actions, 0); byte(&actions, 0x61); }
+        if (in->removed)
+            continue;
+        if (previous != in->block)
+        {
+            labels[in->block] = actions.n;
+            previous = in->block;
+        }
+        if (in->result >= 0)
+            variable(&actions, m, in->result);
+        switch (in->op)
+        {
+        case O_I32:
+            integer(&actions, in->integer);
             break;
-        case O_NUMBER: load(&actions, m, in->a); byte(&actions, 0x4a); break;
+        case O_F64:
+            real(&actions, in->real);
+            break;
+        case O_BOOL:
+            byte(&actions, 0x96);
+            word(&actions, 2);
+            byte(&actions, 5);
+            byte(&actions, (unsigned)in->integer);
+            break;
+        case O_STRING:
+            text(&actions, in->text);
+            break;
+        case O_COPY:
+            load(&actions, m, in->a);
+            break;
+        case O_MUL:
+            multiply(&actions, m, in->a, in->b);
+            break;
+        case O_ADD:
+        case O_SUB:
+        case O_LT:
+        case O_EQ:
+        case O_FADD:
+        case O_FSUB:
+        case O_FMUL:
+        case O_FDIV:
+        case O_ASADD:
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, in->op == O_ADD || in->op == O_FADD   ? 0x0a
+                           : in->op == O_SUB || in->op == O_FSUB ? 0x0b
+                           : in->op == O_FMUL                    ? 0x0c
+                           : in->op == O_FDIV                    ? 0x0d
+                           : in->op == O_LT                      ? 0x48
+                           : in->op == O_EQ                      ? 0x49
+                                                                 : 0x47);
+            if (in->op == O_ADD || in->op == O_SUB)
+            {
+                integer(&actions, 0);
+                byte(&actions, 0x61);
+            }
+            break;
+        case O_NUMBER:
+            load(&actions, m, in->a);
+            byte(&actions, 0x4a);
+            break;
         case O_CHANNEL:
-            integer(&actions, 0); text(&actions, "channel"); byte(&actions, 0x1c);
-            text(&actions, "create"); byte(&actions, 0x52); break;
+            integer(&actions, 0);
+            text(&actions, "channel");
+            byte(&actions, 0x1c);
+            text(&actions, "create");
+            byte(&actions, 0x52);
+            break;
         case O_RECEIVE:
-            integer(&actions, 0); load(&actions, m, in->a);
-            text(&actions, "receive"); byte(&actions, 0x52); break;
+            integer(&actions, 0);
+            load(&actions, m, in->a);
+            text(&actions, "receive");
+            byte(&actions, 0x52);
+            break;
         case O_SEND:
-            load(&actions, m, in->b); integer(&actions, 1); load(&actions, m, in->a);
-            text(&actions, "send"); byte(&actions, 0x52); byte(&actions, 0x17); break;
+            load(&actions, m, in->b);
+            integer(&actions, 1);
+            load(&actions, m, in->a);
+            text(&actions, "send");
+            byte(&actions, 0x52);
+            byte(&actions, 0x17);
+            break;
         case O_CLOSE:
-            integer(&actions, 0); load(&actions, m, in->a);
-            text(&actions, "close"); byte(&actions, 0x52); byte(&actions, 0x17); break;
-        case O_TRACE: load(&actions, m, in->a); byte(&actions, 0x26); break;
+            integer(&actions, 0);
+            load(&actions, m, in->a);
+            text(&actions, "close");
+            byte(&actions, 0x52);
+            byte(&actions, 0x17);
+            break;
+        case O_TRACE:
+            load(&actions, m, in->a);
+            byte(&actions, 0x26);
+            break;
         case O_IF:
             load(&actions, m, in->a);
-            fixes[nf].at = branch(&actions, 1); fixes[nf++].target = in->yes;
-            fixes[nf].at = branch(&actions, 0); fixes[nf++].target = in->no;
+            fixes[nf].at = branch(&actions, 1);
+            fixes[nf++].target = in->yes;
+            fixes[nf].at = branch(&actions, 0);
+            fixes[nf++].target = in->no;
             break;
-        case O_JUMP: case O_RETURN:
+        case O_JUMP:
+        case O_RETURN:
             fixes[nf].at = branch(&actions, 0);
             fixes[nf++].target = in->op == O_RETURN ? -1 : in->yes;
             break;
         }
-        if (in->result >= 0) byte(&actions, 0x1d); /* SetVariable consumes both operands. */
+        if (in->result >= 0)
+            byte(&actions, 0x1d); /* SetVariable consumes both operands. */
     }
     end = actions.n;
     byte(&actions, 0); /* ActionEnd */
-    for (i = 0; i < nf; ++i) {
-        long offset = (long)(fixes[i].target < 0 ? end : labels[fixes[i].target]) - (long)(fixes[i].at + 2);
+    for (i = 0; i < nf; ++i)
+    {
+        long offset =
+            (long)(fixes[i].target < 0 ? end : labels[fixes[i].target]) - (long)(fixes[i].at + 2);
         unsigned bits;
-        if (offset < -32768 || offset > 32767) { snprintf(error, cap, "AVM1 branch exceeds signed 16-bit range"); goto done; }
+        if (offset < -32768 || offset > 32767)
+        {
+            snprintf(error, cap, "AVM1 branch exceeds signed 16-bit range");
+            goto done;
+        }
         bits = (unsigned)((uint32_t)offset & 65535u);
         actions.data[fixes[i].at] = (unsigned char)bits;
         actions.data[fixes[i].at + 1] = (unsigned char)(bits >> 8);
     }
-    if (actions.failed) { snprintf(error, cap, "action size limit exceeded"); goto done; }
+    if (actions.failed)
+    {
+        snprintf(error, cap, "action size limit exceeded");
+        goto done;
+    }
     /* SWO1 v1: explicit little-endian fields, never a C structure dump.
      * FNV-1a detects accidental corruption; it is not authentication. */
     {
         uint32_t hash = UINT32_C(2166136261);
         const unsigned char *name = (const unsigned char *)m->module + 1;
         size_t length = strlen((const char *)name);
-        for (end = 0; end < length; ++end) hash = (hash ^ name[end]) * UINT32_C(16777619);
-        for (end = 0; end < actions.n; ++end) hash = (hash ^ actions.data[end]) * UINT32_C(16777619);
-        byte(&object, 'S'); byte(&object, 'W'); byte(&object, 'O'); byte(&object, '1');
-        dword(&object, 1); dword(&object, m->channels ? 1 : 0);
-        dword(&object, (uint32_t)length); dword(&object, (uint32_t)actions.n); dword(&object, hash);
-        for (end = 0; end < length; ++end) byte(&object, name[end]);
-        for (end = 0; end < actions.n; ++end) byte(&object, actions.data[end]);
-        if (object.failed) { snprintf(error, cap, "object size limit exceeded"); goto done; }
+        for (end = 0; end < length; ++end)
+            hash = (hash ^ name[end]) * UINT32_C(16777619);
+        for (end = 0; end < actions.n; ++end)
+            hash = (hash ^ actions.data[end]) * UINT32_C(16777619);
+        byte(&object, 'S');
+        byte(&object, 'W');
+        byte(&object, 'O');
+        byte(&object, '1');
+        dword(&object, 1);
+        dword(&object, m->channels ? 1 : 0);
+        dword(&object, (uint32_t)length);
+        dword(&object, (uint32_t)actions.n);
+        dword(&object, hash);
+        for (end = 0; end < length; ++end)
+            byte(&object, name[end]);
+        for (end = 0; end < actions.n; ++end)
+            byte(&object, actions.data[end]);
+        if (object.failed)
+        {
+            snprintf(error, cap, "object size limit exceeded");
+            goto done;
+        }
         ok = fwrite(object.data, 1, object.n, output) == object.n;
     }
-    if (!ok) snprintf(error, cap, "output write failed");
+    if (!ok)
+        snprintf(error, cap, "output write failed");
 done:
-    free(actions.data); free(object.data);
+    free(actions.data);
+    free(object.data);
     return ok;
 }

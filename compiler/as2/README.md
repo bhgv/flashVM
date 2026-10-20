@@ -1,6 +1,6 @@
 # AS2
 
-Version 0.2.3. [Русский](README.ru.md).
+Version 0.2.4. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
