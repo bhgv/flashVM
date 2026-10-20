@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.717
+# FlashVM stage status / Состояние стадий — v0.718
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.718 adds a standalone annotated C89/AS/SWF capture tutorial: copy a selected
+completed host tick, stop normally, and encode PPM only after SDK teardown.
+Independent all-pixel file/memory/HTTP output tests include early-source and
+output/argument errors. Native/shared/cross build instructions accompany it.
+All roadmap stages remain open.
 
 v0.717 integrates C frame observers with FILE/MEMORY/URL runners, pause redraws,
 whole-root counters and background loading. Actual interpreter/JIT pixels and
@@ -19,6 +25,23 @@ v0.716 adds C89 frame-observer contracts and allocation-free checked RGBA row
 copying. Independent raw-byte tests verify padding, complete source/destination
 extents, overflow and untouched invalid outputs without VM/SDL startup. All
 roadmap stages remain open.
+
+Final v0.716–v0.718 verification: 65 selected native frame/loading/control/mailbox
+checks and 13 additional audio/timer/redraw/final-frame/build-info regressions
+pass. Shared host configurations pass 35 socket-TLS, 33 curl, 27 no-provider
+and 21 codec-disabled checks. ASan/UBSan cover the C frame/player/transfer/
+audio/control modules and copy/live-player/tutorial fixtures, including descriptor
+aliasing, overflow and independent all-pixel output. Leak detection is disabled
+because traced /proc enumeration is unavailable; VM, SDL and transports are not
+instrumented. Cached native mailbox/shared allocation executables encountered execute-permission
+failures; fresh relinking and rerunning the affected selections passes. A renamed detached component freshly
+builds and runs the file/embedded PPM tutorial with no HTTP provider. Audio/image-
+enabled player and tutorials cross-link for Linux ARM64, Linux RISC-V64 and
+Windows x86-64; foreign binaries are not executed here. Generated SWF/include
+assets reproduce byte-for-byte; source links and tutorial comment/catalog checks
+pass. Captures observe the logical software raster and still require SDL native
+presentation. Native foreign OS/device, windowless embedding and full reference
+acceptance remain open, as do all nine roadmap stages.
 
 v0.715 adds a standalone C89/AS/SWF tutorial with a separate native controller,
 confirmed step acknowledgements and explicit done/join/release/shutdown on every

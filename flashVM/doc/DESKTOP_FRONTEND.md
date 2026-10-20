@@ -183,6 +183,9 @@ described in [player input](PLAYER_POINTER.md). Full scene/button routing remain
 
 [Playback mailbox / Ящик команд](PLAYBACK_MAILBOX.md).
 
+
+[Logical RGBA frames / RGBA-кадры сцены](FRAME_CAPTURE.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

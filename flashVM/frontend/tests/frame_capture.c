@@ -210,8 +210,8 @@ int main(int argc, char **argv)
         status = fvm_desktop_run_source_background_observed(
             &options, &source, &background, &monitor, controlled ? &control : 0, &observer, &error);
     else
-        status = fvm_desktop_run_source_observed(&options, &source, &loader, controlled ? &control : 0,
-                                                 &observer, &error);
+        status = fvm_desktop_run_source_observed(&options, &source, &loader,
+                                                 controlled ? &control : 0, &observer, &error);
     free(bytes);
     if (!strcmp(test.scenario, "bad"))
     {

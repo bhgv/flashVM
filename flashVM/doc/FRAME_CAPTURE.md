@@ -94,6 +94,12 @@ FILE/MEMORY/HTTP provenance; argument rejection and active HTTP cancellation on
 callback failure. Copied buffers are inspected after SDK teardown. Foreign runtime,
 physical display/audio, full graphics/reference and windowless-widget acceptance
 remain open. Existing runners pass no observer and keep their previous path.
+[Executable C89/AS/SWF tutorial](../examples/player/frame_capture/README.md):
+selected tick copy, PPM after SDK cleanup and native/shared/cross instructions.
+Copying snapshots the required geometry locally before extent validation;
+writing destination storage that also holds native descriptor bytes cannot change
+the copy loop. Overlap with source pixels remains forbidden. Counters have native
+unsigned long width and ordinary unsigned wrapping; they are not globally unique IDs.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

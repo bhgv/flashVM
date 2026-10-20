@@ -157,6 +157,7 @@
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
+  - [frame_capture](#example-player-frame_capture) — <small><em>C89: копия RGBA-кадра и PPM после очистки VM/SDK</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1755,6 +1756,18 @@ Timeline при fetch ждёт; это не полная async Flash loading sem
 [обычный хост](player/embedded_movie/module_host.c),
 [контракт](../doc/PLAYER_SOURCES.ru.md), [API](../frontend/common/player.h).
 
+<a id="example-player-frame_capture"></a>
+### frame_capture
+
+Самостоятельный C89-хост получает logical-stage RGBA через callback, копирует
+нужный host tick в свою память, завершает плеер и только после SDK cleanup пишет PPM.
+FILE/linked-memory/HTTP, отдельный C API от CLI, checked stride/capacity и обычные
+ошибки без asserts. [README EN](player/frame_capture/README.md) /
+[RU](player/frame_capture/README.ru.md), [C](player/frame_capture/main.c),
+[SWF8](player/frame_capture/start.swf), [AS-пояснение](player/frame_capture/start.as),
+[генератор](player/frame_capture/make_movie.py). Это logical raster, не screenshot
+window chrome/letterbox и не windowless widget.
+
 <a id="example-player-image_loading"></a>
 ### image_loading
 
@@ -1924,6 +1937,7 @@ Source line links describe the current checkout, including in historical notes.
 - [file_channels — embedding/file_channels](#example-embedding-file_channels)
 - [file_channels.as — actionscript/file_channels.as](#example-actionscript-file_channels-as)
 - [font_libraries — embedding/font_libraries](#example-embedding-font_libraries)
+- [frame_capture — player/frame_capture](#example-player-frame_capture)
 - [function_parameters — embedding/function_parameters](#example-embedding-function_parameters)
 - [function_rpc — embedding/function_rpc](#example-embedding-function_rpc)
 - [gc — embedding/gc](#example-embedding-gc)

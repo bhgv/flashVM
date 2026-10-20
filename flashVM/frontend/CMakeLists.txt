@@ -1023,3 +1023,20 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
     endforeach()
   endif()
 endif()
+
+# Pixel observer tutorial keeps file encoding outside the player/VM implementation.
+if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_frame_capture ../examples/player/frame_capture/main.c)
+  target_link_libraries(flashvm_example_frame_capture PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_frame_capture PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+endif()
+if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_frame_capture COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
+    ${PROJECT_SOURCE_DIR}/examples/player/frame_capture)
+  set_tests_properties(flashvm_example_frame_capture PROPERTIES TIMEOUT 30)
+  if(UNIX AND NOT APPLE)
+    set_property(TEST flashvm_example_frame_capture APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endif()
+endif()

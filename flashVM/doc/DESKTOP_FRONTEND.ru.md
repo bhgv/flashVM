@@ -180,6 +180,9 @@ CTest в сеансе display. Для cross-build они не регистрир
 
 [Playback mailbox / Ящик команд](PLAYBACK_MAILBOX.ru.md).
 
+
+[Logical RGBA frames / RGBA-кадры сцены](FRAME_CAPTURE.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

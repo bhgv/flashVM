@@ -70,7 +70,8 @@ def check():
     for relative, anchor in (("embedding/image_codecs_loading", "embedding-image_codecs_loading"),
                              ("player/image_loading", "player-image_loading"),
                              ("player/playback_control", "player-playback_control"),
-                             ("player/playback_mailbox", "player-playback_mailbox")):
+                             ("player/playback_mailbox", "player-playback_mailbox"),
+                             ("player/frame_capture", "player-frame_capture")):
         tutorial = ROOT / "examples" / relative
         source = (tutorial / "main.c").read_text()
         for file in [tutorial / "main.c"] + list(tutorial.glob("*.inc")):

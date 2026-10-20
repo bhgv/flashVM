@@ -27,20 +27,26 @@ static int frame_extent(size_t row_bytes, unsigned int height, size_t stride, si
 FVM_Result fvm_desktop_frame_copy(const FVM_DesktopFrame *frame, void *destination, size_t capacity,
                                   size_t destination_stride)
 {
-    size_t row_bytes;
-    unsigned int y;
+    size_t row_bytes, source_stride;
+    unsigned int y, height;
+    const unsigned char *pixels;
     unsigned char *target = (unsigned char *)destination;
-    if (!frame || frame->struct_size != sizeof(*frame) ||
-        frame->format != FVM_DESKTOP_FRAME_RGBA8 || !frame->pixels || !destination ||
+    if (!frame || frame->struct_size != sizeof(*frame))
+        return FVM_INVALID_ARGUMENT;
+    if (frame->format != FVM_DESKTOP_FRAME_RGBA8 || !frame->pixels || !destination ||
         !frame->width || !frame->height || frame->width > FVM_DESKTOP_FRAME_MAX_DIMENSION ||
         frame->height > FVM_DESKTOP_FRAME_MAX_DIMENSION)
         return FVM_INVALID_ARGUMENT;
     row_bytes = (size_t)frame->width * FVM_DESKTOP_FRAME_PIXEL_BYTES;
-    if (!frame_extent(row_bytes, frame->height, frame->stride, frame->byte_count) ||
-        !frame_extent(row_bytes, frame->height, destination_stride, capacity))
+    /* Cache only copy geometry, not unused metadata, before output may overwrite the descriptor. */
+    source_stride = frame->stride;
+    height = frame->height;
+    pixels = frame->pixels;
+    if (!frame_extent(row_bytes, height, source_stride, frame->byte_count) ||
+        !frame_extent(row_bytes, height, destination_stride, capacity))
         return FVM_INVALID_ARGUMENT;
-    for (y = 0; y < frame->height; ++y)
-        memcpy(target + (size_t)y * destination_stride, frame->pixels + (size_t)y * frame->stride,
+    for (y = 0; y < height; ++y)
+        memcpy(target + (size_t)y * destination_stride, pixels + (size_t)y * source_stride,
                row_bytes);
     return FVM_OK;
 }
