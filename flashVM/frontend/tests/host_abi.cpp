@@ -33,7 +33,8 @@ int main()
     FVM_DesktopLoadMonitor monitor;
     if (!fvm_desktop_load_monitor_init(&monitor) || monitor.asynchronous != 1 ||
         monitor.timeout_ms || monitor.notify || monitor.userdata ||
-        fvm_desktop_run_source_monitored(0, 0, &background, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        fvm_desktop_run_source_monitored(0, 0, &background, &monitor, 0) !=
+            FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
     if (fvm_desktop_run_monitored(0, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
@@ -42,6 +43,16 @@ int main()
         policy.connect_ms > policy.total_ms || policy.ca_file ||
         fvm_desktop_run_source_network(0, 0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
         fvm_desktop_run_network(0, &policy, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    FVM_DesktopPlaybackControl control;
+    if (!fvm_desktop_playback_control_init(&control) || control.struct_size != sizeof(control) ||
+        control.initially_paused || control.notify || control.userdata ||
+        fvm_desktop_run_source_controlled(0, 0, 0, &control, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
+        fvm_desktop_run_source_background_controlled(0, 0, &background, &monitor, &control, 0) !=
+            FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    control.initially_paused = 1;
+    if (fvm_desktop_run_source_controlled(0, 0, 0, &control, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;

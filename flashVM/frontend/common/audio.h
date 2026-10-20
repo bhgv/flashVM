@@ -43,9 +43,13 @@ extern "C"
 #endif
     /* Acquire native ownership and start a producer only when the file has root sound controls. */
     FVM_Result fvm_desktop_audio_open(FVM_Context *, FVM_Object *, FVM_DesktopAudio *);
+    /* Set initial suspension before starting the native PCM producer thread. */
+    FVM_Result fvm_desktop_audio_open_paused(FVM_Context *, FVM_Object *, FVM_DesktopAudio *, int);
     /* Poll worker errors and mark the host foreground; never perform PCM work on the render thread.
      */
     FVM_Result fvm_desktop_audio_tick(FVM_DesktopAudio *);
+    /* Poll the worker error latch while preserving an explicit owner-requested pause. */
+    FVM_Result fvm_desktop_audio_tick_paused(FVM_DesktopAudio *, int paused);
     /* Serialize an explicit background pause; resume is primed by the worker. */
     FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *, int paused);
     /* Copy queue observation under the same native mutex; useful for diagnostics and regression

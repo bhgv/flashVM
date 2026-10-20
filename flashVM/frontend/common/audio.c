@@ -126,7 +126,8 @@ static int SDLCALL audio_worker(void *raw)
 }
 
 /* Complete acquisition before publication; partial cleanup joins any started worker first. */
-FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_DesktopAudio *audio)
+FVM_Result fvm_desktop_audio_open_paused(FVM_Context *context, FVM_Object *clip,
+                                         FVM_DesktopAudio *audio, int paused)
 {
     FVM_AudioQueueBackend backend;
     FVM_SDLAudioQueueInfo device_info;
@@ -134,7 +135,10 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_De
     FVM_Result result;
     size_t count = 0;
     (void)clip;
+    if (!audio || (paused != 0 && paused != 1))
+        return FVM_INVALID_ARGUMENT;
     memset(audio, 0, sizeof(*audio));
+    audio->suspended = paused; /* Publish the initial policy before the worker can prime/unpause. */
     result = fvm_swf_sound_event_count(context, &count);
     if (result != FVM_OK || !count)
         return result;
@@ -202,6 +206,12 @@ FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_De
     return FVM_OK;
 }
 
+/* Existing callers retain running startup and the same ownership/cleanup contract. */
+FVM_Result fvm_desktop_audio_open(FVM_Context *context, FVM_Object *clip, FVM_DesktopAudio *audio)
+{
+    return fvm_desktop_audio_open_paused(context, clip, audio, 0);
+}
+
 /* Background suspension preserves the FIFO; worker primes again before foreground resume. */
 FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *audio, int paused)
 {
@@ -221,15 +231,23 @@ FVM_Result fvm_desktop_audio_pause(FVM_DesktopAudio *audio, int paused)
 }
 
 /* The render thread polls a latch; it no longer determines when PCM gets produced. */
-FVM_Result fvm_desktop_audio_tick(FVM_DesktopAudio *audio)
+FVM_Result fvm_desktop_audio_tick_paused(FVM_DesktopAudio *audio, int paused)
 {
     FVM_Result result;
+    if (!audio || (paused != 0 && paused != 1))
+        return FVM_INVALID_ARGUMENT;
     if (!audio->output)
         return FVM_OK;
     result = (FVM_Result)SDL_AtomicGet(&audio->error);
     if (result != FVM_OK)
         return result;
-    return fvm_desktop_audio_pause(audio, 0);
+    return fvm_desktop_audio_pause(audio, paused);
+}
+
+/* Compatibility foreground poll preserves ordinary continuous playback behavior. */
+FVM_Result fvm_desktop_audio_tick(FVM_DesktopAudio *audio)
+{
+    return fvm_desktop_audio_tick_paused(audio, 0);
 }
 
 /* Diagnostics share the producer lock, preventing simultaneous observe/pump operations. */

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.710
+# FlashVM stage status / Состояние стадий — v0.711
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.711 integrates owner-thread pause/step/resume/stop with FILE/MEMORY/URL
+runners, background loading, paused redraw/timers and suspended native PCM.
+Four focused native checks pass, including real interpreter/JIT SWF fixtures,
+HTTP completion/cancellation and host ABI. All nine stages remain open.
 
 v0.710 adds an allocation-free C89 playback-command policy and separate host
 descriptor: pause, resume, coalesced single tick and terminal stop. This is not

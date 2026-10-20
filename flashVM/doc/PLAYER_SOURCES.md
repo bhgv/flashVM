@@ -46,7 +46,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 ## Host transport and root loading since v0.674
 
 [source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
+size, location), [FVM_DesktopLoader](../frontend/common/playback.h#L79) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 and [FVM_DesktopFetch](../frontend/common/http.h#L17). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
 validation, ignored playlist, return/error and main-thread rules as memory run.
@@ -104,7 +104,7 @@ The CLI and structured playlist detect a URI by ://. HTTP builds use this provid
 without a provider URI playback fails explicitly. --loads N sets a per-starting-
 movie total root-load budget, including startup, from 1 to 1024 (default 1).
 [FVM_DesktopOptions.max_loads](../frontend/common/options.h#L35) carries the same CLI/playlist policy; direct run_source
-uses its explicit [FVM_DesktopLoader](../frontend/common/source.h#L44) policy. Closing a movie ends the entire playlist.
+uses its explicit [FVM_DesktopLoader](../frontend/common/playback.h#L79) policy. Closing a movie ends the entire playlist.
 File playlists still default to one authored pass. Unsupported targets/POST/etc
 propagate failure rather than being silently interpreted as root navigation.
 

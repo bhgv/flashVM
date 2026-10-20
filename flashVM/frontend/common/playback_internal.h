@@ -7,7 +7,9 @@
 typedef struct FVM_DesktopPlaybackSession
 {
     FVM_DesktopPlaybackControl policy; /* Shallow immutable copy; userdata remains borrowed. */
-    unsigned long total_ticks;         /* Successful presented ticks across root replacement. */
+    double start_ms;           /* Monotonic epoch captured at the first observer callback. */
+    int clock_started;         /* Distinguish a valid zero epoch from an uninitialized clock. */
+    unsigned long total_ticks; /* Successful presented ticks across root replacement. */
     int paused;       /* Pause requested independently of the movie's own play/stop state. */
     int step_pending; /* At most one outstanding permit; repeated STEP commands coalesce. */
     int stopped;      /* Terminal disposition; subsequent commands cannot resurrect playback. */

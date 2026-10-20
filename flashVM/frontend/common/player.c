@@ -7,6 +7,7 @@
 #endif
 #define SDL_MAIN_HANDLED
 #include "player.h"
+#include "playback_internal.h"
 #include "desktop_build_version.h"
 #include "audio.h"
 #include "flashvm/gc.h"
@@ -315,9 +316,10 @@ static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ord
 /* Explicit background session borrows only owner-thread native window/audio pointers. */
 typedef struct FVM_DesktopBackgroundSession
 {
-    FVM_DesktopTransferOptions options; /* Immutable provider policy copied before playback. */
-    FVM_DesktopWindow *window;          /* Borrowed only while play_bytes owns a live view. */
-    FVM_DesktopAudio *audio;            /* Borrowed only while its native output is live. */
+    FVM_DesktopTransferOptions options;  /* Immutable provider policy copied before playback. */
+    FVM_DesktopWindow *window;           /* Borrowed only while play_bytes owns a live view. */
+    FVM_DesktopAudio *audio;             /* Borrowed only while its native output is live. */
+    FVM_DesktopPlaybackSession *control; /* Borrowed owner policy through source-run return. */
     int closed;       /* Owner-thread close request, independent of worker status. */
     int asynchronous; /* Keep the timeline running for deferred network child/form jobs. */
     const FVM_DesktopLoadMonitor *monitor; /* Borrowed owner-only callbacks and deadline policy. */
@@ -429,7 +431,8 @@ static FVM_Result background_fetch(const char *reference, const char *base, FVM_
             result = fvm_desktop_window_status(session->window);
             if (result == FVM_OK && session->audio && session->audio->output)
                 result = fvm_desktop_window_active(session->window)
-                             ? fvm_desktop_audio_tick(session->audio)
+                             ? fvm_desktop_audio_tick_paused(
+                                   session->audio, session->control && session->control->paused)
                              : fvm_desktop_audio_pause(session->audio, 1);
             if (session->closed || result != FVM_OK)
                 break;
@@ -494,6 +497,7 @@ typedef struct FVM_DesktopNavigation
     const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
     const FVM_DesktopLoader *policy;          /* Borrowed for the entire source run. */
     FVM_DesktopBackgroundSession *background; /* Optional borrowed owner-thread transfer session. */
+    FVM_DesktopPlaybackSession *control; /* Borrowed state shared across whole-root navigation. */
     unsigned long remaining; /* Remaining requests, including child and variable fetches. */
 } FVM_DesktopNavigation;
 
@@ -1013,6 +1017,45 @@ static FVM_Result install_load_functions(FVM_Context *context, FVM_DesktopNaviga
     return status;
 }
 
+/* [GC:] Notify only while the owner holds its ordinary root/input pins and no VM frame is active.
+ * The copied snapshot never escapes; the callback owns its independent userdata. */
+static FVM_Result playback_observe(FVM_DesktopPlaybackSession *control,
+                                   FVM_DesktopPlaybackPhase phase, FVM_Context *context,
+                                   FVM_Object *root, const char *source, unsigned long ticks,
+                                   unsigned long presentations)
+{
+    FVM_DesktopPlaybackState state;
+    FVM_DesktopPlaybackCommand command;
+    if (!control || !control->policy.notify || control->stopped)
+        return FVM_OK;
+    memset(&state, 0, sizeof(state));
+    state.struct_size = sizeof(state);
+    state.phase = phase;
+    if (!control->clock_started)
+    {
+        control->start_ms = fvm_desktop_now();
+        control->clock_started = 1;
+    }
+    state.elapsed_ms = fvm_desktop_now() - control->start_ms;
+    state.context = context;
+    state.root = root;
+    state.source = source;
+    state.movie_ticks = ticks;
+    state.total_ticks = control->total_ticks;
+    state.presentations = presentations;
+    state.paused = control->paused;
+    state.step_pending = control->step_pending;
+    command = control->policy.notify(&state, control->policy.userdata);
+    return fvm_desktop_playback_apply(control, command) ? FVM_OK : FVM_INVALID_ARGUMENT;
+}
+
+/* Poll the native error latch without resuming the PCM producer while timeline control is paused.
+ */
+static FVM_Result playback_audio(FVM_DesktopAudio *audio, const FVM_DesktopPlaybackSession *control)
+{
+    return fvm_desktop_audio_tick_paused(audio, control && control->paused);
+}
+
 /* Play borrowed binary input. VM/SDL objects stay on this thread; source bytes are never freed. */
 static int play_bytes(const FVM_DesktopOptions *options, const char *path, const void *bytes,
                       size_t length, int *quit, FVM_DesktopNavigation *navigation)
@@ -1025,6 +1068,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     FVM_Value host_value;
     FVM_DesktopInput input;
     FVM_DesktopAudio audio;
+    FVM_DesktopPlaybackSession *control = navigation ? navigation->control : 0;
     FVM_DesktopWindow *window = 0;
     FVM_SWFInfo info;
     FVM_SWFStageBounds bounds;
@@ -1174,8 +1218,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (options->mute && !checked(fvm_movieclip_set_sound_callback(context, muted_sound, &audio),
                                   "muted event sound", path))
         goto cleanup;
-    if (!options->mute && !checked(fvm_desktop_audio_open(context, clip, &audio),
-                                   "event audio (use --mute to disable)", path))
+    if (!options->mute &&
+        !checked(fvm_desktop_audio_open_paused(context, clip, &audio, control && control->paused),
+                 "event audio (use --mute to disable)", path))
         goto cleanup;
     if (!limit && (options->once || options->file_count > 1))
         limit = info.frame_count;
@@ -1183,7 +1228,14 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             surface.width, surface.height, authored, rate);
     period = FVM_DESKTOP_MILLISECONDS / rate;
     next = fvm_desktop_now();
-    while ((!limit || ticks < limit) && !(navigation && navigation->pending))
+    if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_READY, context, clip, path, ticks,
+                                  presentations),
+                 "playback control", path) ||
+        (control && !checked(playback_audio(&audio, control), "initial controlled PCM", path)))
+        goto cleanup;
+    if (control && control->stopped)
+        *quit = 1;
+    while (!*quit && (!limit || ticks < limit) && !(navigation && navigation->pending))
     {
         double now;
         if (!fvm_desktop_window_events(window, 0))
@@ -1193,6 +1245,20 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         }
         if (!checked(fvm_desktop_window_status(window), "window events", path))
             goto cleanup;
+        {
+            int was_paused = control && control->paused;
+            if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_TURN, context, clip, path,
+                                          ticks, presentations),
+                         "playback control", path))
+                goto cleanup;
+            if (control && control->stopped)
+            {
+                *quit = 1;
+                break;
+            }
+            if (control && (was_paused != control->paused || control->step_pending))
+                next = fvm_desktop_now();
+        }
         if (!fvm_desktop_window_active(window))
         {
             if (audio.output &&
@@ -1207,7 +1273,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             next = fvm_desktop_now();
             continue;
         }
-        if (!checked(fvm_desktop_audio_tick(&audio), "PCM queue", path))
+        if (!checked(playback_audio(&audio, control), "PCM queue", path))
             goto cleanup;
         if (!checked(fvm_desktop_window_pump_clip_input(window, context, clip, -viewport.x0,
                                                         -viewport.y0),
@@ -1240,7 +1306,31 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         if (!checked(fvm_desktop_window_sync_cursor(window, context), "cursor visibility", path))
             goto cleanup;
         now = fvm_desktop_now();
-        if (now < next)
+        if (!fvm_desktop_playback_can_tick(control))
+        {
+            int wait;
+            if (!checked(fvm_stage_take_update(context, &update_requested), "paused redraw", path))
+                goto cleanup;
+            if (!presentations || update_requested)
+            {
+                if (!present_stage(context, clip, window, &surface, &viewport, path))
+                    goto cleanup;
+                ++presentations;
+                ++refreshes;
+            }
+            if (!checked(fvm_timers_next_delay(context, FVM_DESKTOP_PLAYBACK_WAIT_MS, &timer_wait,
+                                               &timers_pending),
+                         "paused timer wakeup", path))
+                goto cleanup;
+            wait = (int)timer_wait;
+            if (wait && !fvm_desktop_window_events(window, wait))
+                *quit = 1;
+            if (!checked(fvm_desktop_window_status(window), "paused window events", path))
+                goto cleanup;
+            next = fvm_desktop_now();
+            continue;
+        }
+        if (now < next && !(control && control->paused && control->step_pending))
         {
             int wait;
             if (!checked(fvm_stage_take_update(context, &update_requested), "redraw request", path))
@@ -1286,10 +1376,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         }
         if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline tick", path))
             goto cleanup;
+        fvm_desktop_playback_consume_step(control);
         /* Deliver timers on the VM thread before rendering callback-driven scene changes. */
         if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
-        if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
+        if (!checked(playback_audio(&audio, control), "frame PCM queue", path))
             goto cleanup;
         if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request",
                      path))
@@ -1301,6 +1392,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             goto cleanup;
         ++presentations;
         ++ticks;
+        if (control)
+            ++control->total_ticks;
         if (navigation &&
             !checked(service_requests(context, navigation), "frame resource load", path))
             goto cleanup;
@@ -1312,12 +1405,23 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         /* [GC:] Collect only at a safe host boundary; the root and its library remain pinned. */
         if (!checked(fvm_gc_step(context, 0), "GC step", path))
             goto cleanup;
+        if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_TICK, context, clip, path,
+                                      ticks, presentations),
+                     "playback control", path) ||
+            (control && !checked(playback_audio(&audio, control), "controlled PCM queue", path)))
+            goto cleanup;
+        if (control && control->stopped)
+        {
+            *quit = 1;
+            break;
+        }
         next += period;
         if (now - next > FVM_DESKTOP_LATE_FRAMES * period)
             next = now;
     }
     /* Keep the last bounded frame visible for its scheduled duration, with responsive close. */
-    while (!*quit && !(navigation && navigation->pending) && fvm_desktop_now() < next)
+    while (!*quit && !(navigation && navigation->pending) && !(control && control->paused) &&
+           fvm_desktop_now() < next)
     {
         int wait = (int)(next - fvm_desktop_now());
         if (!fvm_desktop_window_active(window))
@@ -1326,7 +1430,7 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                 !checked(fvm_desktop_audio_pause(&audio, 1), "tail background audio pause", path))
                 goto cleanup;
         }
-        else if (!checked(fvm_desktop_audio_tick(&audio), "tail PCM queue", path))
+        else if (!checked(playback_audio(&audio, control), "tail PCM queue", path))
             goto cleanup;
         if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
             wait = FVM_DESKTOP_AUDIO_WAIT;
@@ -1543,7 +1647,8 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
             if (request->flags & FVM_AVM1_URL_LOAD_VARIABLES)
                 status = fvm_object_load_variables(context, request->target, view.bytes, view.size);
             else
-                status = fvm_movieclip_replace_resource(context, request->target, view.bytes, view.size,
+                status =
+                    fvm_movieclip_replace_resource(context, request->target, view.bytes, view.size,
                                                    view.location, strlen(view.location));
         }
         fvm_desktop_transfer_release(navigation->transfer);
@@ -1649,7 +1754,7 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
                     status = fvm_object_load_variables(context, request->target, bytes, size);
                 else
                     status = fvm_movieclip_replace_resource(context, request->target, bytes, size,
-                                                       resolved, strlen(resolved));
+                                                            resolved, strlen(resolved));
             }
             free(file_bytes);
             free(download.bytes);
@@ -1671,7 +1776,7 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
  */
 static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                       const FVM_DesktopLoader *loader, const char **error, int *closed,
-                      FVM_DesktopBackgroundSession *background)
+                      FVM_DesktopBackgroundSession *background, FVM_DesktopPlaybackSession *control)
 {
     FVM_DesktopOptions value;
     FVM_DesktopLoader policy;
@@ -1705,6 +1810,7 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
     if (!memory_options(options, source->location, &value, error))
         return status;
     navigation.background = background;
+    navigation.control = control;
     navigation.policy = &policy;
     navigation.remaining = policy.max_loads - 1;
     kind = source->kind;
@@ -1798,7 +1904,7 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
 int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                            const FVM_DesktopLoader *loader, const char **error)
 {
-    return run_source(options, source, loader, error, 0, 0);
+    return run_source(options, source, loader, error, 0, 0, 0);
 }
 
 /* Initialize an explicitly selected worker provider without native startup. */
@@ -1813,7 +1919,8 @@ int fvm_desktop_background_loader_init(FVM_DesktopBackgroundLoader *out)
 /* Private session never escapes this synchronous owner-thread call. */
 static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                           const FVM_DesktopBackgroundLoader *loader, const char **error,
-                          int *closed, int asynchronous, const FVM_DesktopLoadMonitor *monitor)
+                          int *closed, int asynchronous, const FVM_DesktopLoadMonitor *monitor,
+                          FVM_DesktopPlaybackSession *control)
 {
     FVM_DesktopBackgroundSession session;
     FVM_DesktopLoader policy;
@@ -1828,17 +1935,18 @@ static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSo
     session.options = loader->transfer;
     session.asynchronous = asynchronous;
     session.monitor = monitor;
+    session.control = control;
     policy.fetch = background_fetch;
     policy.userdata = &session;
     policy.max_loads = loader->max_loads;
-    return run_source(options, source, &policy, error, closed, &session);
+    return run_source(options, source, &policy, error, closed, &session, control);
 }
 /* Native app/IDE entrypoint keeps provider opt-in explicit instead of moving old callbacks. */
 int fvm_desktop_run_source_background(const FVM_DesktopOptions *options,
                                       const FVM_DesktopSource *source,
                                       const FVM_DesktopBackgroundLoader *loader, const char **error)
 {
-    return run_background(options, source, loader, error, 0, 0, 0);
+    return run_background(options, source, loader, error, 0, 0, 0, 0);
 }
 /* Default-provider playlist shares the same import/GC/render/cleanup implementation. */
 static int run_background_playlist(const FVM_DesktopOptions *options, const char **error,
@@ -1870,7 +1978,7 @@ static int run_background_playlist(const FVM_DesktopOptions *options, const char
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_background(&value, &source, &loader, error, &closed, asynchronous, monitor);
+        status = run_background(&value, &source, &loader, error, &closed, asynchronous, monitor, 0);
         if (status || closed)
             break;
     }
@@ -1886,7 +1994,7 @@ int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **e
 int fvm_desktop_run_source_async(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                                  const FVM_DesktopBackgroundLoader *loader, const char **error)
 {
-    return run_background(options, source, loader, error, 0, 1, 0);
+    return run_background(options, source, loader, error, 0, 1, 0, 0);
 }
 /* Async playlist adapter retains ordinary whole-root replacement and close semantics. */
 int fvm_desktop_run_async(const FVM_DesktopOptions *options, const char **error)
@@ -1925,7 +2033,8 @@ int fvm_desktop_run_source_monitored(const FVM_DesktopOptions *options,
 {
     if (!load_monitor_valid(monitor, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
-    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor);
+    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
+                          0);
 }
 
 /* Thin default-provider adapter preserves the same observation and ownership rules. */
@@ -1935,6 +2044,43 @@ int fvm_desktop_run_monitored(const FVM_DesktopOptions *options,
     if (!load_monitor_valid(monitor, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
     return run_background_playlist(options, error, (int)monitor->asynchronous, monitor);
+}
+
+/* Validate control before any source/provider/VM/window startup. */
+int fvm_desktop_run_source_controlled(const FVM_DesktopOptions *options,
+                                      const FVM_DesktopSource *source,
+                                      const FVM_DesktopLoader *loader,
+                                      const FVM_DesktopPlaybackControl *control, const char **error)
+{
+    FVM_DesktopPlaybackSession session;
+    if (!fvm_desktop_playback_session_init(&session, control))
+    {
+        if (error)
+            *error = "invalid playback control policy";
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    }
+    return run_source(options, source, loader, error, 0, 0, &session);
+}
+
+/* Preserve explicit worker/monitor policy; callbacks and all VM work remain on the owner. */
+int fvm_desktop_run_source_background_controlled(const FVM_DesktopOptions *options,
+                                                 const FVM_DesktopSource *source,
+                                                 const FVM_DesktopBackgroundLoader *loader,
+                                                 const FVM_DesktopLoadMonitor *monitor,
+                                                 const FVM_DesktopPlaybackControl *control,
+                                                 const char **error)
+{
+    FVM_DesktopPlaybackSession session;
+    if (!fvm_desktop_playback_session_init(&session, control))
+    {
+        if (error)
+            *error = "invalid playback control policy";
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    }
+    if (!load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
+                          &session);
 }
 
 /* This host initializer stays linkable in SDKs with no HTTP provider. */
@@ -1977,14 +2123,14 @@ static int run_network_source(const FVM_DesktopOptions *options, const FVM_Deskt
     loader.transfer.userdata = (void *)policy; /* Provider only borrows the const descriptor. */
     loader.max_loads = options ? options->max_loads : 1;
     return run_background(options, source, &loader, error, closed, (int)monitor->asynchronous,
-                          monitor);
+                          monitor, 0);
 #else
     FVM_DesktopLoader loader;
     (void)policy;
     (void)monitor;
     fvm_desktop_loader_init(&loader);
     loader.max_loads = options ? options->max_loads : 1;
-    return run_source(options, source, &loader, error, closed, 0);
+    return run_source(options, source, &loader, error, closed, 0, 0);
 #endif
 }
 /* IDE entrypoint uses the same resource FIFO and owner-thread monitor as CLI policy playback. */
@@ -2052,7 +2198,7 @@ int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_source(&value, &source, &loader, error, &closed, 0);
+        status = run_source(&value, &source, &loader, error, &closed, 0, 0);
         if (status || closed)
             break;
     }

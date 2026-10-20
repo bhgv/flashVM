@@ -46,7 +46,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 ## Транспорт хоста и корневая загрузка с v0.674
 
 [source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
+size, location), [FVM_DesktopLoader](../frontend/common/playback.h#L79) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 и [FVM_DesktopFetch](../frontend/common/http.h#L17). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают
@@ -105,7 +105,7 @@ CLI и структурированный плейлист распознают 
 --loads N задаёт бюджет корневых загрузок для каждого стартового фильма,
 включая сам старт: 1..1024, по умолчанию 1. Поле [FVM_DesktopOptions.max_loads](../frontend/common/options.h#L35)
 задаёт ту же политику CLI/плейлиста; прямой run_source использует явный
-[FVM_DesktopLoader](../frontend/common/source.h#L44). Закрытие заканчивает весь плейлист. Несколько файлов по
+[FVM_DesktopLoader](../frontend/common/playback.h#L79). Закрытие заканчивает весь плейлист. Несколько файлов по
 умолчанию играются по одному авторскому проходу. Неподдержанные targets/POST
 дают ошибку, не превращаются молча в корневую навигацию.
 

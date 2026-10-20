@@ -2,6 +2,7 @@
 #ifndef FVM_DESKTOP_PLAYBACK_H
 #define FVM_DESKTOP_PLAYBACK_H /* Guard additive playback-control declarations. */
 #include "source.h"
+#include "load_monitor.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -24,7 +25,7 @@ extern "C"
         FVM_DESKTOP_PLAYBACK_READY =
             1, /* Imported/pinned root and window/audio exist, before first tick. */
         FVM_DESKTOP_PLAYBACK_TURN =
-            2, /* Foreground owner turn before input/timers/resources and ticking. */
+            2, /* Owner turn before services; background turns may accept stop. */
         FVM_DESKTOP_PLAYBACK_TICK =
             3 /* One successful timeline advance and presentation completed. */
     } FVM_DesktopPlaybackPhase;
@@ -42,12 +43,14 @@ extern "C"
         unsigned long total_ticks; /* Completed ticks across whole-root navigation in this run. */
         unsigned long
             presentations; /* Successful current-root draws, including paused refreshes. */
+        double elapsed_ms; /* Monotonic time since first READY, excluding startup fetch. */
         int paused; /* Timeline paused; input/timers/network may still run and mutate the scene. */
         int step_pending; /* One step permit is waiting for an eligible foreground turn. */
     } FVM_DesktopPlaybackState;
     /* Read/query the live VM at this safe point. Return one command; unknown values fail the run.
      * No concurrent/reentrant runner, SDK shutdown, root replacement, VM destruction or C++ throw.
-     * Do not retain borrowed pointers without the normal C API ownership/GC rules. */
+     * Do not retain context/root/managed-value pointers beyond notify; pinning does not extend
+     * the context lifetime owned by the runner. Copy scalars/text or serialize while notified. */
     typedef FVM_DesktopPlaybackCommand (*FVM_DesktopPlaybackNotify)(
         const FVM_DesktopPlaybackState *, void *);
     /* Additive descriptor; existing source/options/loader layouts remain unchanged. */
@@ -63,6 +66,26 @@ extern "C"
     /* Initialize exact ABI size, running mode and null callback/userdata; no startup or allocation.
      */
     FVM_DESKTOP_API int fvm_desktop_playback_control_init(FVM_DesktopPlaybackControl *out);
+    /* Synchronous controlled FILE/MEMORY/URL playback with ordinary loader policy.
+     * Validate control/source/options before startup. All descriptors/strings/userdata remain
+     * borrowed until return. Callback commands operate at owner boundaries; STOP returns OK.
+     * Paused turns still service input/timers/load completion/GC/redraw and suspend native PCM.
+     * Resume resets the frame deadline; STEP advances one tick while keeping PCM paused.
+     * No control callback during startup fetch or blocking provider wait; use a load monitor
+     * for startup/wait cancellation. Invalid runtime commands return PLAYBACK failure.
+     * No reentrant/concurrent runs. No existing descriptor layout or default runner changes. */
+    FVM_DESKTOP_API int fvm_desktop_run_source_controlled(const FVM_DesktopOptions *,
+                                                          const FVM_DesktopSource *,
+                                                          const FVM_DesktopLoader *,
+                                                          const FVM_DesktopPlaybackControl *,
+                                                          const char **error);
+
+    /* Controlled background runner with explicit required provider and load monitor.
+     * monitor.asynchronous selects continuing owner turns versus blocking safe-point waits.
+     * STOP cancels/joins outstanding jobs before releasing managed roots and native audio. */
+    FVM_DESKTOP_API int fvm_desktop_run_source_background_controlled(
+        const FVM_DesktopOptions *, const FVM_DesktopSource *, const FVM_DesktopBackgroundLoader *,
+        const FVM_DesktopLoadMonitor *, const FVM_DesktopPlaybackControl *, const char **error);
 #ifdef __cplusplus
 }
 #endif
