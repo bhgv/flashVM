@@ -179,3 +179,36 @@ with tempfile.TemporaryDirectory() as tmp:
         result = subprocess.run([EXE, *map(str, args)], capture_output=True, timeout=15)
         assert result.returncode == 2 and result.stdout == b''
 print(f'{checks} total checks including inspection')
+
+# Stage options affect real SWF header fields, independent of the bit writer.
+with tempfile.TemporaryDirectory() as tmp:
+    p = Path(tmp); a = p/'a.swo'; out = p/'scene.swf'
+    a.write_bytes(object('stage', b'\0'))
+    for width, height, fps in [(1, 1, 1), (3276, 3276, 255), (640, 480, 30)]:
+        call('link', out, a, '--size', width, height, '--fps', fps)
+        data = out.read_bytes(); bounds, pos = rect(data, 8)
+        assert bounds == [0, width*20, 0, height*20]
+        assert struct.unpack_from('<HH', data, pos) == (fps << 8, 1)
+    for option in [('--size','0','1'),('--size','3277','1'),('--size','1','-2'),
+                   ('--size','1'),('--fps','0'),('--fps','256'),('--fps','1x'),
+                   ('--fps','9'*200),('--fps',''),('--fps',)]:
+        out.write_bytes(b'preserve')
+        result = subprocess.run([EXE, 'link', str(out), str(a), *option],
+                                capture_output=True, timeout=15)
+        assert result.returncode == 2 and out.read_bytes() == b'preserve'
+    # A resource operand is data, never permission to emit extension code.
+    a.write_bytes(object('channels', b'\0', 1)); out.write_bytes(b'preserve')
+    root = Path(__file__).resolve().parents[1]/'examples'
+    (p/'--extensions').write_bytes((root/'panel.svf').read_bytes())
+    for explicit, expected_status in [(False, 1), (True, 0)]:
+        args = [EXE, 'link', str(out), str(a), '--svf', 'panel', '--extensions']
+        if explicit:
+            args.append('--extensions')
+        result = subprocess.run(args, cwd=p, capture_output=True, timeout=15)
+        assert result.returncode == expected_status, result.stderr
+        if not explicit:
+            assert b'enable extensions explicitly' in result.stderr
+            assert out.read_bytes() == b'preserve'
+        else:
+            tags(out.read_bytes())
+print(f'{checks} total checks including stage policy')

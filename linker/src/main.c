@@ -77,6 +77,67 @@ static int inspect_file(const char *path)
     return 0;
 }
 
+/* Parse an unsigned decimal without overflow or locale-dependent conversion. */
+static int decimal(const char *text, unsigned maximum, unsigned *value)
+{
+    unsigned result = 0;
+    if (!*text)
+        return 0;
+    for (; *text; ++text)
+    {
+        unsigned digit;
+        if (*text < '0' || *text > '9')
+            return 0;
+        digit = (unsigned)(*text - '0');
+        if (result > maximum / 10 || (result == maximum / 10 && digit > maximum % 10))
+            return 0;
+        result = result * 10 + digit;
+    }
+    *value = result;
+    return 1;
+}
+
+/* Resolve output policy before opening inputs. Skip operand slots so a resource
+ * name such as --extensions is never interpreted as an authorization flag. */
+static int configure(int argc, char **argv, int archive, SwlOptions *options)
+{
+    int i;
+    for (i = 3; i < argc; ++i)
+    {
+        int operands = 0;
+        if (archive)
+            continue;
+        if (!strcmp(argv[i], "--size"))
+        {
+            if (argc - i <= 2 || !decimal(argv[i + 1], 3276, &options->width) ||
+                !decimal(argv[i + 2], 3276, &options->height) || !options->width ||
+                !options->height)
+                return 0;
+            operands = 2;
+        }
+        else if (!strcmp(argv[i], "--fps"))
+        {
+            if (argc - i <= 1 || !decimal(argv[i + 1], 255, &options->frames_per_second) ||
+                !options->frames_per_second)
+                return 0;
+            operands = 1;
+        }
+        else if (!strcmp(argv[i], "--extensions"))
+            options->allow_flashvm_extensions = 1;
+        else if (!strcmp(argv[i], "--svf") || !strcmp(argv[i], "--jpeg") ||
+                 !strcmp(argv[i], "--wav"))
+            operands = 2;
+        else if (!strcmp(argv[i], "--place"))
+            operands = 4;
+        else if (!strcmp(argv[i], "--play"))
+            operands = 1;
+        if (argc - i <= operands)
+            return 0;
+        i += operands;
+    }
+    return 1;
+}
+
 int main(int argc, char **argv)
 {
     SwlOptions options = {550, 400, 12, 0};
@@ -87,7 +148,7 @@ int main(int argc, char **argv)
     char error[256] = "read/allocation failure";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("swl 0.3.7 (SWO1/SWA1 to SWF8)");
+        puts("swl 0.3.8 (SWO1/SWA1 to SWF8)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -95,6 +156,7 @@ int main(int argc, char **argv)
         puts("usage: swl link OUTPUT.swf [--extensions] INPUT.swo|INPUT.swa ...\n"
              "       swl archive OUTPUT.swa INPUT.swo ...\n"
              "       swl inspect INPUT.swo|INPUT.swa\n"
+             "Stage: --size WIDTH HEIGHT (1..3276 pixels) --fps RATE (1..255)\n"
              "Resources: --svf NAME FILE --jpeg NAME FILE --wav NAME FILE\n"
              "Events (after resources): --place NAME X Y DEPTH --play NAME\n"
              "Initializers run in input/member order. Duplicate modules fail.\n"
@@ -109,9 +171,11 @@ int main(int argc, char **argv)
     if (argc < 4 || (strcmp(argv[1], "link") && strcmp(argv[1], "archive")))
         return 2;
     archive = !strcmp(argv[1], "archive");
-    for (i = 3; i < argc; ++i)
-        if (!strcmp(argv[i], "--extensions") && !archive)
-            options.allow_flashvm_extensions = 1;
+    if (!configure(argc, argv, archive, &options))
+    {
+        fprintf(stderr, "swl: invalid or incomplete stage/resource options\n");
+        return 2;
+    }
     c = swl_create(&options);
     if (!c)
         return 1;
@@ -125,6 +189,16 @@ int main(int argc, char **argv)
     {
         unsigned char *data;
         size_t n;
+        if (!archive && !strcmp(argv[i], "--size"))
+        {
+            i += 2;
+            continue;
+        }
+        if (!archive && !strcmp(argv[i], "--fps"))
+        {
+            ++i;
+            continue;
+        }
         if (!strcmp(argv[i], "--extensions") && !archive)
             continue;
         if (!archive &&

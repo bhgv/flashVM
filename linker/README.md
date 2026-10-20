@@ -1,4 +1,4 @@
-# SWL linker 0.3.7
+# SWL linker 0.3.8
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -43,3 +43,17 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Build for the host or another OS/CPU](../BUILDING.md).
 
 [Object/library inspection](INSPECTION.md).
+
+Stage policy is also available from the CLI:
+
+```sh
+build/linker/swl link movie.swf --size 640 480 --fps 30 library.swa
+build/linker/swl inspect library.swa
+```
+
+Size is 1..3276 pixels per axis; rate is an integer 1..255 frames/second.
+Defaults remain 550×400 at 12 fps. Options can precede or follow inputs;
+repeated stage options use the last value. Invalid/missing stage values return
+usage status 2 before opening inputs or output. Resource operand slots are never
+interpreted as options: a file literally named `--extensions` cannot enable
+FlashVM requirements. The standalone C API continues to use `SwlOptions`.
