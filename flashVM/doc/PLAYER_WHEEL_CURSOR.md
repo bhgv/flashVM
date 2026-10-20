@@ -43,6 +43,15 @@ entry. Teardown restoration is best effort because close returns void. Active
 query/application failures propagate; a failed SDL application is also latched.
 No physical cursor is guaranteed on touch-only systems. The C fixture checks
 actual SDL state, redundant-call suppression, deferral and the cleanup operation.
+## Actual movie checks (v0.655)
+
+flashvm_player_wheel_interpreter/jit execute self-checking SWF6, 7 and 8 movies
+through the real player, real SDL dummy event queue and VM. Script hides the
+cursor in frame one; a test-only adapter verifies applied native state, injects
+motion then two ordered wheel events, and verifies script-originated show before
+the next wait. The second frame checks wheel accumulation and exactly one move
+callback. Wrong-value controls must fail. Ordinary player builds inject nothing.
+This is native Linux dummy-video/SDL state evidence, not a physical cursor test.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

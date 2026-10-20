@@ -26,6 +26,31 @@ static int inject_keypress(void)
     }
     return 1;
 }
+/* Wheel mode verifies the script's first-frame hide before injecting real SDL events. */
+static int inject_wheel(FVM_DesktopWindow *view)
+{
+    SDL_Event event;
+    if (view->cursor_applied != SDL_DISABLE)
+        return 0;
+    memset(&event, 0, sizeof(event)); event.type = SDL_MOUSEMOTION;
+    event.motion.x = 10; event.motion.y = 20;
+    if (SDL_PushEvent(&event) != 1) return 0;
+    memset(&event, 0, sizeof(event)); event.type = SDL_MOUSEWHEEL;
+    event.wheel.y = 2;
+#if SDL_VERSION_ATLEAST(2,0,18)
+    event.wheel.preciseY = 2;
+#endif
+#if SDL_VERSION_ATLEAST(2,26,0)
+    event.wheel.mouseX = 10; event.wheel.mouseY = 20;
+#endif
+    if (SDL_PushEvent(&event) != 1) return 0;
+    event.wheel.y = 1; event.wheel.direction = SDL_MOUSEWHEEL_FLIPPED;
+#if SDL_VERSION_ATLEAST(2,0,18)
+    event.wheel.preciseY = 1;
+#endif
+    return SDL_PushEvent(&event) == 1;
+}
+
 /* Feed SDL's real queue at a visible-scene boundary, then use the real drain/wait implementation. */
 int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout)
 {
@@ -36,6 +61,11 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout)
         const Uint32 types[] = {SDL_MOUSEMOTION, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONUP,
                                 SDL_KEYDOWN, SDL_KEYUP};
         injected = 1;
+        if (SDL_getenv("FLASHVM_TEST_WHEEL"))
+        {
+            if (!inject_wheel(view)) {view->event_error=FVM_ERROR;return 1;}
+            return clip_player_real_events(view, timeout);
+        }
         if (SDL_getenv("FLASHVM_TEST_KEYPRESS"))
         {
             if (!inject_keypress()) {view->event_error=FVM_ERROR;return 0;}
@@ -59,5 +89,7 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout)
             }
         }
     }
+    if (injected && SDL_getenv("FLASHVM_TEST_WHEEL") && view->cursor_applied != SDL_ENABLE)
+        view->event_error = FVM_ERROR;
     return clip_player_real_events(view, timeout);
 }

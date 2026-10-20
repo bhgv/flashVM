@@ -270,3 +270,12 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
   endforeach()
   set_tests_properties(flashvm_capture_tail_pause_jit PROPERTIES SKIP_RETURN_CODE 77)
 endif()
+
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_player_wheel_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/wheel_player.py $<TARGET_FILE:flashvm_frontend_clip_player> --${mode})
+    set_tests_properties(flashvm_player_wheel_${mode} PROPERTIES TIMEOUT 30)
+  endforeach()
+  set_tests_properties(flashvm_player_wheel_jit PROPERTIES SKIP_RETURN_CODE 77)
+endif()
