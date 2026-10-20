@@ -2,6 +2,7 @@
 #include "socket_url.h"
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 static void good(const char *reference, const char *base, const char *canonical)
 {
@@ -9,6 +10,31 @@ static void good(const char *reference, const char *base, const char *canonical)
     assert(fvm_socket_url_resolve(reference, base, &url) == FVM_OK);
     assert(!strcmp(url.canonical, canonical));
     assert(url.target[0] == '/');
+}
+/* Generated hostile references exercise resolver termination/bounds and canonical round trips. */
+static void generated(void)
+{
+    static const char alphabet[] = "abcXYZ01239./?%#:@[];=+-_!\\\r\n\t\377";
+    char reference[513];
+    FVM_SocketURL first, second;
+    unsigned int trial;
+    size_t i, size;
+    srand(2371);
+    for (trial = 0; trial < 10000; ++trial)
+    {
+        size = (size_t)rand() % sizeof(reference);
+        for (i = 0; i < size; ++i)
+            reference[i] = alphabet[(size_t)rand() % (sizeof(alphabet) - 1)];
+        reference[size] = 0;
+        if (fvm_socket_url_resolve(reference, "https://example.com/a/b?old", &first) != FVM_OK)
+            continue;
+        assert(strlen(first.canonical) <= FVM_DESKTOP_MAX_LOCATION && first.target[0] == '/');
+        assert(!strchr(first.canonical, '#') && !strchr(first.canonical, '\r') &&
+               !strchr(first.canonical, '\n'));
+        assert(fvm_socket_url_resolve(first.canonical, 0, &second) == FVM_OK);
+        assert(!strcmp(first.canonical, second.canonical));
+        assert(!strcmp(first.target, second.target) && !strcmp(first.host, second.host));
+    }
 }
 int main(void)
 {
@@ -68,5 +94,6 @@ int main(void)
     long_url[FVM_DESKTOP_MAX_LOCATION] = 'a';
     long_url[FVM_DESKTOP_MAX_LOCATION + 1] = 0;
     assert(fvm_socket_url_resolve(long_url, 0, &url) != FVM_OK);
+    generated();
     return 0;
 }

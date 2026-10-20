@@ -40,10 +40,10 @@ runner освобождает временные байты и GC pins. Зате
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация настроек вызывающей программы без открытия display/аллокаций. |
 | [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Начальная callback-политика без транспорта, с одним разрешённым запросом. |
-| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L32) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
-| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L39) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
+| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L34) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
+| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L41) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Работа UI/VM-потока с заимствованными дескрипторами до возврата; запросы на безопасных границах. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L45) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L46) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
 
 Подробные аргументы/коды/время жизни каждого API — в [контракте транспорта](../../../doc/SOCKET_TRANSPORT.ru.md#c-api)
 и [руководстве источников](../../../doc/PLAYER_SOURCES.ru.md). Пример задаёт 2 с
@@ -55,3 +55,5 @@ HTTPS требует отдельной сборки с проверяемым T
 другой ОС/CPU проводится отдельно.
 
 Для проверяемого HTTPS включите FVM_PLAYER_SOCKET_TLS и SDK OpenSSL. Второй необязательный аргумент задаёт PEM CA; без него используется default trust OpenSSL. См. [TLS-контракт](../../../doc/SOCKET_TRANSPORT.ru.md#проверяемый-https-с-v0678).
+
+IDE может заранее вызвать [fvm_desktop_network_capabilities](../../../frontend/common/network.h#L19) из [network.h](../../../frontend/common/network.h), чтобы узнать default provider без запуска сети/display. Сам пример явно выбирает свой callback.

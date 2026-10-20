@@ -102,11 +102,24 @@ FVM_Result fvm_desktop_shutdown(void)
     return FVM_OK;
 }
 
+/* Report only the compiled default provider; custom loader policy remains caller-owned. */
+unsigned int fvm_desktop_network_capabilities(void)
+{
+#ifdef FVM_DESKTOP_HTTP
+    return fvm_desktop_http_capabilities();
+#elif defined(FVM_DESKTOP_SOCKET_HTTP)
+    return fvm_desktop_socket_capabilities();
+#else
+    return 0;
+#endif
+}
+
 /* Console adapter for the same metadata available to a C host; no SDL_Init call. */
 static void print_build_info(void)
 {
     FVM_DesktopBuildInfo info;
     SDL_version linked;
+    unsigned int network = fvm_desktop_network_capabilities();
     fvm_desktop_build_info(&info);
     SDL_GetVersion(&linked);
     printf("FlashVM player %s\n", info.version);
@@ -116,6 +129,12 @@ static void print_build_info(void)
     printf("sdl_headers=%u.%u.%u sdl_linked=%u.%u.%u\n", (unsigned int)SDL_MAJOR_VERSION,
            (unsigned int)SDL_MINOR_VERSION, (unsigned int)SDL_PATCHLEVEL,
            (unsigned int)linked.major, (unsigned int)linked.minor, (unsigned int)linked.patch);
+    printf("network_provider=%s http=%s https=%s fetch=synchronous\n",
+           network & FVM_DESKTOP_NETWORK_SOCKET ? "socket"
+           : network & FVM_DESKTOP_NETWORK_CURL ? "curl"
+                                                : "none",
+           network & FVM_DESKTOP_NETWORK_HTTP ? "yes" : "no",
+           network & FVM_DESKTOP_NETWORK_HTTPS ? "yes" : "no");
     puts("Build metadata only; no device or target-runtime acceptance is implied.");
 }
 

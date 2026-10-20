@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.678
+# FlashVM stage status / Состояние стадий — v0.679
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -61,6 +61,14 @@ with per-request trust configuration, DNS/IP identity and SNI. Seven native test
 pass, including TLS1.2/1.3, bad trust/name/expiry, EOF/deadlines, interpreter/JIT
 HTTPS child/forms and the C host. The transport probe passes UBSan; OpenSSL/VM
 are not instrumented by that probe. Foreign TLS SDK/runtime acceptance remains open.
+
+v0.679 exposes compiled network capabilities through C89/C++98 and --version
+without changing the build-info layout or opening network/display resources.
+Final native selection: 78 tests covered, with focused reruns after catalog/helper
+fixes; shared TLS 12, libcurl 9, no-provider metadata/ABI 2. Generated URI tests pass
+ASan/UBSan (LSan disabled: unavailable /proc task inventory); transport probes pass
+UBSan. Three plain HTTP cross targets and Windows DLL/C/C++98 consumers link;
+foreign execution/TLS SDK acceptance and full stage 9 remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

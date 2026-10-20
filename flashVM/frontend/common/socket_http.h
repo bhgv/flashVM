@@ -2,6 +2,7 @@
 #ifndef FVM_SOCKET_HTTP_H
 #define FVM_SOCKET_HTTP_H
 #include "source.h"
+#include "network.h"
 #include "../../ports/network/socket.h"
 #define FVM_SOCKET_BUFFER 8192U          /* Native read and body-forwarding buffer bytes. */
 #define FVM_SOCKET_LINE 8192U            /* Maximum status/header/chunk line bytes. */
@@ -40,6 +41,8 @@ extern "C"
     FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base,
                                         FVM_DesktopWrite write, void *write_userdata,
                                         char *resolved, size_t capacity, void *userdata);
+    /* Native provider build bits, without connection, DNS, trust file access or TLS startup. */
+    unsigned int fvm_desktop_socket_capabilities(void);
 #ifdef __cplusplus
 }
 #endif

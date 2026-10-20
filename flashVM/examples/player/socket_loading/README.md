@@ -41,10 +41,10 @@ bytes and GC pins. The caller ends the matching player library session afterward
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned scalar player options; no allocation or display access. |
 | [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Initialize caller-owned callback policy with no transport and one load. |
-| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L32) | Initialize caller-owned native transport deadlines; opens no sockets. |
-| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L39) | Synchronously resolve/connect/fetch each resource through a borrowed sink; closes owned sockets and retains no pointers. |
+| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L34) | Initialize caller-owned native transport deadlines; opens no sockets. |
+| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L41) | Synchronously resolve/connect/fetch each resource through a borrowed sink; closes owned sockets and retains no pointers. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Run on the UI/VM thread, borrowing all descriptors until return; resource callbacks execute at safe points. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L45) | End the matching player-library session after playback; refuses active SDL subsystems. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L46) | End the matching player-library session after playback; refuses active SDL subsystems. |
 
 Each API's detailed arguments/status/lifetime contract is linked in the
 [transport guide](../../../doc/SOCKET_TRANSPORT.md#c-api) and
@@ -57,3 +57,5 @@ build. Cross-compilation requires a matching target SDL SDK; see the transport
 build guide. Foreign runtime acceptance remains separate.
 
 For verified HTTPS enable FVM_PLAYER_SOCKET_TLS with a target OpenSSL SDK. The optional second argument supplies a PEM CA file; omission uses OpenSSL default trust. See the [TLS contract](../../../doc/SOCKET_TRANSPORT.md#verified-https-since-v0678).
+
+Before playback an IDE can call [fvm_desktop_network_capabilities](../../../frontend/common/network.h#L19) from [network.h](../../../frontend/common/network.h) to inspect the compiled default provider without network/display startup. This tutorial explicitly selects its own callback instead.

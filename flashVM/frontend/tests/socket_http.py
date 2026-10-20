@@ -88,6 +88,11 @@ class Server(socketserver.ThreadingTCPServer):
 
 def main():
     executable = sys.argv[1]
+    bits = int(subprocess.check_output([executable, '--capabilities']))
+    assert bits in (1 | 4, 1 | 2 | 4), bits
+    subprocess.run([executable, '--contract'], check=True, timeout=2)
+    if not bits & 2:
+        subprocess.run([executable, '--unsupported-check'], check=True, timeout=2)
     with Server(('127.0.0.1', 0), Handler) as server:
         server.requests = []
         thread = threading.Thread(target=server.serve_forever, daemon=True)

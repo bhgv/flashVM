@@ -46,8 +46,8 @@ cleartext-соединений задаётся приложением.
 
 | API | Контракт |
 | --- | --- |
-| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L32) | В структуру FVM_SocketHTTPOptions вызывающей программы записывает connect=10000ms, total=30000ms. Возвращает 1; null даёт 0. Нет I/O/аллокаций/сохранения указателей. |
-| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L39) | Обязательны reference, write, resolved и ненулевая capacity. base необязателен для абсолютного URL. userdata — null для defaults или заимствованные options. Синхронно выполняет GET, передаёт бинарные чанки write(bytes,size,write_userdata). Canonical origin с NUL публикуется в resolved только при успехе. |
+| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34) | В структуру [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) вызывающей программы записывает connect=10000ms, total=30000ms. Возвращает 1; null даёт 0. Нет I/O/аллокаций/сохранения указателей. |
+| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L41) | Обязательны reference, write, resolved и ненулевая capacity. base необязателен для абсолютного URL. userdata — null для defaults или заимствованные options. Синхронно выполняет GET, передаёт бинарные чанки write(bytes,size,write_userdata). Canonical origin с NUL публикуется в resolved только при успехе. |
 
 Настройки: 0 < connect_ms <= total_ms <= 120000. DNS выполняется системным
 синхронным getaddrinfo: затраченное время учитывается, но сам resolver нельзя
@@ -133,8 +133,8 @@ OPENSSL_USE_STATIC_LIBS выбирает статические архивы ц�
 При TLS OFF OpenSSL не нужен; HTTPS даёт [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) до DNS/TCP. TLS ON без
 SOCKET_HTTP — ошибка конфигурации.
 
-В FVM_SocketHTTPOptions добавлен ca_file, заимствованный до возврата fetch.
-Всегда используйте fvm_desktop_socket_options_init: он записывает null.
+В [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) добавлен ca_file, заимствованный до возврата fetch.
+Всегда используйте [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34): он записывает null.
 Null выбирает default trust OpenSSL, включая SSL_CERT_FILE/SSL_CERT_DIR.
 Ненулевой путь выбирает только указанный PEM CA bundle для данного запроса.
 Ошибочный/пустой/нечитаемый CA и отказ проверки дают [FVM_ERROR](../include/flashvm/flashvm.h#L43) до HTTP payload.
@@ -165,6 +165,32 @@ EOF, медленный body/handshake, точная ошибка sink, HTTPS ch
 Transport probe дополнительно проверен UBSan в Linux; OpenSSL и остальная VM
 этим не инструментированы. TLS с foreign SDK ещё не проверен сборкой/запуском;
 успех cross-build обычного HTTP не означает foreign TLS-приёмку.
+## Проверка возможностей сборки с v0.679
+
+[network.h](../frontend/common/network.h) объявляет [fvm_desktop_network_capabilities](../frontend/common/network.h#L19).
+Возвращаются биты [FVM_DESKTOP_NETWORK_HTTP](../frontend/common/network.h#L5), [FVM_DESKTOP_NETWORK_HTTPS](../frontend/common/network.h#L6),
+[FVM_DESKTOP_NETWORK_SOCKET](../frontend/common/network.h#L7), [FVM_DESKTOP_NETWORK_CURL](../frontend/common/network.h#L8) либо ноль без default provider.
+Файлы, сокеты, SDL, VM и trust store не открываются. Это возможности выбранной
+сборки, а не произвольного loader.fetch и не проверка Internet/сертификатов/устройств.
+Отдельная функция сохраняет layout FVM_DesktopBuildInfo. Вызывайте на потоке хоста;
+со старым libcurl согласуйте параллельные init/query по правилам его SDK.
+Отдельные функции [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L45) и [fvm_desktop_http_capabilities](../frontend/common/http.h#L23)
+описывают собственный провайдер. Libcurl query проверяет реальные protocols/SSL
+связанного SDK, а не предполагает наличие HTTPS.
+
+`--version` печатает network_provider=none/socket/curl, http=yes/no, https=yes/no и
+fetch=synchronous без открытия display/сети. Тесты выполняют это с заведомо
+ошибочными именами SDL video/audio driver. Это metadata сборки, не health check.
+
+Итоговая native-выборка охватывает 78 тестов; после исправления порядка каталога
+и пересборки локального helper executable повторные целевые запуски закрыли все
+ошибки. Shared TLS — 12 тестов, libcurl — 9, no-provider C/C++98 metadata — 2.
+Plain HTTP плеер/пример слинкованы для Linux ARM64/RISC-V64 и Windows x86_64;
+Windows DLL экспортирует новый query, потребители C/C++98 слинкованы. Foreign
+binaries не запускались. Дополнительно 10000 generated URI прошли round-trip
+под ASan/UBSan. LeakSanitizer выключен в harness из-за отсутствия /proc task
+access; это не проверка утечек. TLS/raw-HTTP probe прошёл UBSan, без
+инструментирования OpenSSL SDK и VM.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

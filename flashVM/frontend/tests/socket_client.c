@@ -13,12 +13,62 @@ static FVM_Result sink(const void *bytes, size_t size, void *userdata)
         return FVM_NOT_FOUND;
     return fwrite(bytes, 1, size, stdout) == size ? FVM_OK : FVM_ERROR;
 }
+static int contract(void)
+{
+    FVM_SocketHTTPOptions options;
+    char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+    if (fvm_desktop_socket_options_init(0))
+        return 1;
+    if (!fvm_desktop_socket_options_init(&options) || !options.connect_ms ||
+        options.connect_ms > options.total_ms || options.ca_file)
+        return 1;
+    strcpy(resolved, "unpublished");
+    if (fvm_desktop_socket_fetch(0, 0, sink, 0, resolved, sizeof(resolved), 0) !=
+            FVM_INVALID_ARGUMENT ||
+        fvm_desktop_socket_fetch("http://a/", 0, 0, 0, resolved, sizeof(resolved), 0) !=
+            FVM_INVALID_ARGUMENT ||
+        fvm_desktop_socket_fetch("http://a/", 0, sink, 0, 0, sizeof(resolved), 0) !=
+            FVM_INVALID_ARGUMENT ||
+        fvm_desktop_socket_fetch("http://a/", 0, sink, 0, resolved, 0, 0) != FVM_INVALID_ARGUMENT ||
+        fvm_desktop_socket_fetch("http://a/", 0, sink, 0, resolved, 1, 0) != FVM_INVALID_ARGUMENT ||
+        fvm_desktop_socket_fetch("file:///tmp/x", 0, sink, 0, resolved, sizeof(resolved), 0) !=
+            FVM_INVALID_ARGUMENT)
+        return 1;
+    options.connect_ms = 0;
+    if (fvm_desktop_socket_fetch("http://a/", 0, sink, 0, resolved, sizeof(resolved), &options) !=
+        FVM_INVALID_ARGUMENT)
+        return 1;
+    options.connect_ms = options.total_ms + 1;
+    if (fvm_desktop_socket_fetch("http://a/", 0, sink, 0, resolved, sizeof(resolved), &options) !=
+        FVM_INVALID_ARGUMENT)
+        return 1;
+    options.connect_ms = 1;
+    options.total_ms = FVM_NET_MAX_MS + 1;
+    if (fvm_desktop_socket_fetch("http://a/", 0, sink, 0, resolved, sizeof(resolved), &options) !=
+        FVM_INVALID_ARGUMENT)
+        return 1;
+    return strcmp(resolved, "unpublished") != 0;
+}
 int main(int argc, char **argv)
 {
     FVM_SocketHTTPOptions options;
     FVM_Result result;
     char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
     unsigned long timeout;
+    if (argc == 2 && !strcmp(argv[1], "--contract"))
+        return contract();
+    if (argc == 2 && !strcmp(argv[1], "--unsupported-check"))
+    {
+        strcpy(resolved, "unpublished");
+        result = fvm_desktop_socket_fetch("https://127.0.0.1:1/", 0, sink, 0, resolved,
+                                          sizeof(resolved), 0);
+        return result == FVM_UNSUPPORTED && !strcmp(resolved, "unpublished") ? 0 : 1;
+    }
+    if (argc == 2 && !strcmp(argv[1], "--capabilities"))
+    {
+        printf("%u\n", fvm_desktop_socket_capabilities());
+        return 0;
+    }
     if (argc < 2 || argc > 5)
         return 2;
 #ifdef _WIN32

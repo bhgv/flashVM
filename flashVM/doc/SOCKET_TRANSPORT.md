@@ -51,8 +51,8 @@ The loader contract is in [source.h](../frontend/common/source.h).
 
 | API | Contract |
 | --- | --- |
-| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L32) | Nonnull caller-owned FVM_SocketHTTPOptions receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
-| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L39) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
+| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34) | Nonnull caller-owned [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
+| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L41) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
 
 Options require 0 < connect_ms <= total_ms <= 120000. DNS is synchronous
 getaddrinfo: elapsed resolver time counts, but the resolver call itself cannot
@@ -148,8 +148,8 @@ find-root/sysroot for a foreign SDK. Never mix host OpenSSL with a cross target.
 With TLS OFF no OpenSSL headers/libraries are required; HTTPS returns
 [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
 
-FVM_SocketHTTPOptions now includes ca_file, borrowed until fetch returns. Always
-initialize the structure with fvm_desktop_socket_options_init, which sets ca_file
+[FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) now includes ca_file, borrowed until fetch returns. Always
+initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34), which sets ca_file
 to null. Null selects OpenSSL default trust paths, including its standard
 SSL_CERT_FILE/SSL_CERT_DIR environment configuration. A nonnull filename selects
 only that PEM CA bundle for this request; missing/empty/unreadable/invalid trust
@@ -184,6 +184,35 @@ test when a host openssl executable, examples and native tests are available.
 The transport probe also passes UBSan in Linux; OpenSSL and the rest of the VM
 are not instrumented by that probe. Foreign TLS SDK builds/runs remain unverified;
 plain HTTP cross-build evidence is not foreign TLS acceptance.
+## Build capability query since v0.679
+
+[network.h](../frontend/common/network.h) defines [fvm_desktop_network_capabilities](../frontend/common/network.h#L19),
+which returns [FVM_DESKTOP_NETWORK_HTTP](../frontend/common/network.h#L5), [FVM_DESKTOP_NETWORK_HTTPS](../frontend/common/network.h#L6),
+[FVM_DESKTOP_NETWORK_SOCKET](../frontend/common/network.h#L7) and [FVM_DESKTOP_NETWORK_CURL](../frontend/common/network.h#L8) bits, or zero with no
+default provider. It opens no file, socket, SDL subsystem, VM or trust store.
+It describes the compiled default, not a custom loader.fetch or current Internet/
+certificate/device readiness. A separate function avoids changing the existing
+FVM_DesktopBuildInfo layout. Use the native host thread; with older libcurl,
+coordinate concurrent initialization/queries according to that SDK's thread rules.
+The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L45) and
+[fvm_desktop_http_capabilities](../frontend/common/http.h#L23) report their own linked provider. The libcurl query
+checks the actual linked protocol list/SSL feature rather than assuming HTTPS.
+
+`--version` prints network_provider=none/socket/curl, http=yes/no, https=yes/no and
+fetch=synchronous without display/network startup. It works with deliberately
+invalid SDL video/audio driver names, as checked by the TLS and metadata fixtures.
+These flags are build metadata, not an external-service health check.
+
+The final native selection covers 78 tests; after fixing the new catalog entry
+order and rebuilding a local helper executable, focused reruns passed all failed
+cases. Shared-host TLS selection passes 12 tests, libcurl selection 9 and
+no-provider C/C++98 metadata selection 2. ARM64/RISC-V64 Linux and Windows x86_64
+plain HTTP player/tutorial cross-builds link; the Windows DLL exports the new
+query and its C/C++98 consumers link. Foreign binaries are not executed.
+Ten thousand generated URI references additionally pass canonical round-trip
+checks under ASan/UBSan. LeakSanitizer is disabled in that harness because the
+sandbox lacks /proc task access; this is not a leak-check claim. TLS/raw-HTTP
+transport probes pass UBSan, without instrumenting the OpenSSL SDK or VM.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

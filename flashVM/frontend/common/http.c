@@ -97,3 +97,21 @@ cleanup:
     curl_global_cleanup();
     return result;
 }
+
+/* Query the linked SDK rather than claiming HTTPS for a libcurl built without TLS/HTTP. */
+unsigned int fvm_desktop_http_capabilities(void)
+{
+    const curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
+    const char *const *protocol;
+    unsigned int flags = FVM_DESKTOP_NETWORK_CURL;
+    if (!info || !info->protocols)
+        return flags;
+    for (protocol = info->protocols; *protocol; ++protocol)
+    {
+        if (!strcmp(*protocol, "http"))
+            flags |= FVM_DESKTOP_NETWORK_HTTP;
+        if (!strcmp(*protocol, "https") && (info->features & CURL_VERSION_SSL))
+            flags |= FVM_DESKTOP_NETWORK_HTTPS;
+    }
+    return flags;
+}

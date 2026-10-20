@@ -101,6 +101,10 @@ def server(context, handler=RawHandler, child=False):
 
 def main():
     client, player, example, openssl = sys.argv[1:]
+    assert int(subprocess.check_output([client, '--capabilities'])) == 1 | 2 | 4
+    metadata = subprocess.check_output([player, '--version'], env=dict(os.environ,
+                                      SDL_VIDEODRIVER='nonexistent', SDL_AUDIODRIVER='nonexistent'))
+    assert b'network_provider=socket http=yes https=yes fetch=synchronous' in metadata, metadata
     with tempfile.TemporaryDirectory() as temporary:
         folder = Path(temporary)
         ca, key = certificates(folder, openssl)

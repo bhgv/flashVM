@@ -552,15 +552,6 @@ if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
   endif()
 endif()
 
-# Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
-# Keep production RPATH relocatable; supply only the build-tree test environment here.
-if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
-  get_property(player_host_tests DIRECTORY PROPERTY TESTS)
-  foreach(host_test ${player_host_tests})
-    set_property(TEST ${host_test} APPEND PROPERTY ENVIRONMENT
-      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
-  endforeach()
-endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID)
   add_executable(flashvm_frontend_shutdown tests/shutdown.c)
@@ -614,4 +605,14 @@ if(FVM_PLAYER_SOCKET_TLS AND FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND NOT ANDR
       $<TARGET_FILE:flashvm_player> $<TARGET_FILE:flashvm_example_socket_loading> ${FVM_OPENSSL_PROGRAM})
     set_tests_properties(flashvm_socket_tls PROPERTIES TIMEOUT 60)
   endif()
+endif()
+
+# Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
+# Keep production RPATH relocatable; supply only the build-tree test environment here.
+if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
+  get_property(player_host_tests DIRECTORY PROPERTY TESTS)
+  foreach(host_test ${player_host_tests})
+    set_property(TEST ${host_test} APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endforeach()
 endif()

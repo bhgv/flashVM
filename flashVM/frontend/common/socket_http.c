@@ -452,3 +452,13 @@ cleanup:
     fvm_net_close(reader.socket);
     return result;
 }
+
+/* Build discovery performs no socket, TLS, trust, resolver or VM initialization. */
+unsigned int fvm_desktop_socket_capabilities(void)
+{
+    unsigned int flags = FVM_DESKTOP_NETWORK_HTTP | FVM_DESKTOP_NETWORK_SOCKET;
+#ifdef FVM_DESKTOP_SOCKET_TLS
+    flags |= FVM_DESKTOP_NETWORK_HTTPS;
+#endif
+    return flags;
+}
