@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.707
+# FlashVM stage status / Состояние стадий — v0.708
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,10 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.708 adds versioned getBytesLoaded/getBytesTotal/getSWFVersion methods backed
+by committed import records. CWS totals use canonical bytes; no progressive or
+internal-symbol accounting is claimed. All nine stages remain open.
 
 v0.707 adds C89 committed-content snapshots: format, own SWF version, encoded/
 decoded counts and original image dimensions. Atomic import/unload, duplicate and

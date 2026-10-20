@@ -19,7 +19,9 @@ bool consistent(const FVM_MovieClipContentInfo &info)
         !info.decoded_bytes || info.decoded_bytes > FVM_MOVIECLIP_CONTENT_MAX_BYTES)
         return false;
     if (info.format == FVM_MOVIECLIP_CONTENT_SWF)
-        return info.swf_version >= FVM_SWF_VERSION_1 && info.swf_version <= FVM_SWF_VERSION_8 &&
+        return info.encoded_bytes >= FVM_MOVIECLIP_CONTENT_SWF_HEADER_BYTES &&
+               info.decoded_bytes >= FVM_MOVIECLIP_CONTENT_SWF_HEADER_BYTES &&
+               info.swf_version >= FVM_SWF_VERSION_1 && info.swf_version <= FVM_SWF_VERSION_8 &&
                !info.pixel_width && !info.pixel_height;
     return info.format >= FVM_MOVIECLIP_CONTENT_PNG && info.format <= FVM_MOVIECLIP_CONTENT_JPEG &&
            !info.swf_version && info.pixel_width && info.pixel_height &&

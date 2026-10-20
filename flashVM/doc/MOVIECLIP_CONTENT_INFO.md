@@ -66,6 +66,37 @@ original pixels after named resizing, failed import and duplicated metadata.
 Existing SWF/image allocation sweeps also traverse record preparation allocations.
 See the linked C and player image tutorials for native/cross profile setup.
 
+## ActionScript queries since v0.708
+
+| Method | Completed-content result |
+| --- | --- |
+| `getBytesLoaded()` | Canonical uncompressed SWF bytes, encoded image bytes, or zero after explicit unload. |
+| `getBytesTotal()` | Same completed byte count; hidden before SWF5, as is getBytesLoaded. |
+| `getSWFVersion()` | Own SWF header version, -1 for images/explicit unload; hidden before SWF7. |
+
+The byte methods return undefined for unmarked native clips, internal symbols and
+legacy graphs whose source size is unavailable. They do not guess a containing
+movie's size. For an unmarked clip, getSWFVersion uses its retained library version
+or the normal ambient source profile; if unavailable it returns -1. The builtin
+class prototype returns undefined. Extra query arguments are ignored without
+coercion. Corrupt native records propagate a VM error rather than returning a
+misleading counter. Existing method IDs remain unchanged: new methods are appended
+and their builtin version attributes travel with the prototype.
+
+Only complete imports are published, so loaded equals total. An outstanding new
+request leaves the old committed values visible; this is not a progressive
+preloader API. Full historical internal-symbol byte accounting and loader-event
+acceptance remain open. The C descriptor separately exposes encoded/canonical
+sizes, avoiding ambiguity between transfer and ActionScript SWF byte counts.
+The archived [ActionScript 2 reference](https://open-flash.github.io/mirrors/as2-language-reference/MovieClip.html)
+describes external SWF totals in terms of uncompressed bytes.
+
+`tests/movieclip_content_methods.cpp` checks method availability in SWF4–8,
+CWS counts, source/ambient version isolation, extra arguments, graph transport,
+GC, unload and real CallMethod interpreter/native-JIT entry counters. A dedicated
+allocation sweep checks unchanged C output at every failed snapshot query;
+SWF/image unload/import sweeps exercise publication allocations as well.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

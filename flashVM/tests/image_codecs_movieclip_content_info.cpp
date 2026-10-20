@@ -26,6 +26,13 @@ int main()
         assert(info.format == formats[kind] && info.encoded_bytes == images[kind].size() &&
                !info.swf_version);
         assert(info.pixel_width == 8 && info.pixel_height == 8 && info.decoded_bytes == 256);
+        FVM_Value count;
+        assert(fvm_object_call(c, clip, "getBytesLoaded", 0, 0, &count) == FVM_OK &&
+               count.number == images[kind].size());
+        assert(fvm_object_call(c, clip, "getBytesTotal", 0, 0, &count) == FVM_OK &&
+               count.number == images[kind].size());
+        assert(fvm_object_call(c, clip, "getSWFVersion", 0, 0, &count) == FVM_OK &&
+               count.number == -1);
         FVM_MovieClipContentInfo before = info;
         FVM_Value value;
         fvm_value_number(&value, 16);

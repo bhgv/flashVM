@@ -5,6 +5,7 @@
 #include "movieclip_dimensions.hpp"
 #include "movieclip_location.hpp"
 #include "movieclip_content.hpp"
+#include "movieclip_content_methods.hpp"
 #include "../swf/clip_action_policy.hpp"
 #include "flashvm/clip_actions.h"
 #include "stage_update.hpp"
@@ -2843,7 +2844,10 @@ const Method methods[] = {{"toString", clip_string},
                           {"beginBitmapFill", fvm_movieclip_bitmap_begin},
                           {"attachBitmap", attach_bitmap},
                           {"startDrag", fvm_movieclip_start_drag},
-                          {"stopDrag", fvm_movieclip_stop_drag}};
+                          {"stopDrag", fvm_movieclip_stop_drag},
+                          {"getBytesLoaded", fvm_movieclip_bytes_loaded},
+                          {"getBytesTotal", fvm_movieclip_bytes_total},
+                          {"getSWFVersion", fvm_movieclip_swf_version}};
 } // namespace
 
 /* Compose intrinsic world geometry under the caller's root/native-barrier scope. */
@@ -4054,6 +4058,12 @@ fvm_movieclip_stage(FVM_Context *c,
 
     /* Initialization / Инициализация локального состояния. */
     /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
+    /* Keep new query methods nonenumerable and gate availability with stored version attributes.
+     * Appending callbacks above preserves every previously serialized method identity. */
+    proto->attributes["getBytesLoaded"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_BYTES_VERSION_ATTRIBUTE;
+    proto->attributes["getBytesTotal"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_BYTES_VERSION_ATTRIBUTE;
+    proto->attributes["getSWFVersion"] = FVM_PROPERTY_BUILTIN_FLAGS | FVM_MOVIECLIP_SWF_VERSION_ATTRIBUTE;
+
     const char *keys[] = {
         /* [GC:] Операция в блоке управления достижимостью и временем жизни объектов. */
         "_parent", "_root", "_currentframe",

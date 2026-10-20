@@ -84,7 +84,7 @@ between native-only control applications in `scene_controls_worker`.
 
 ## Graph validation and legacy depths (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2894) validates same-context private state/table ownership
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2898) validates same-context private state/table ownership
 and [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32) before normalizing any legacy depths.
 Its output pointer is published only on success. An unnormalized nonempty table
 charges one unit per child before migration; insufficient work leaves the old
@@ -142,6 +142,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2894](../src/standard/movieclip.cpp#L2894) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2898](../src/standard/movieclip.cpp#L2898) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->
