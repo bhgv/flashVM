@@ -12,7 +12,7 @@ This is an internal frontend contract, not a new stable VM ABI or an installed S
 ## API and lifetime
 
 Include frontend/common/player.h; the target exports that include directory.
-[fvm_desktop_options_init](../frontend/common/options.h#L48) accepts required [FVM_DesktopOptions](../frontend/common/load_monitor.h#L55) storage, returns
+[fvm_desktop_options_init](../frontend/common/options.h#L48) accepts required [FVM_DesktopOptions](../frontend/common/load_monitor.h#L57) storage, returns
 one on success and zero for null, and sets automatic execution, HIGH quality,
 authored timing at 100 percent, no limits/flags and an empty playlist. It does
 not allocate or open anything. Select at least one file before calling run.

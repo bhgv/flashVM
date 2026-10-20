@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.685
+# FlashVM stage status / Состояние стадий — v0.686
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,17 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.686 exposes the same monitor through a default-provider playlist C API and
+strict --load-timeout/--load-progress CLI translation. No scalar ABI change or
+second network/scheduling implementation. Tests cover malformed options before
+startup, zero disabling, waiting/async delivery, timeout and two-source playlists.
+18 monitored HTTP/HTTPS scenarios include memory roots and whole-root replacement.
+Series validation: 95 selected native tests plus 17 focused checks after the stop-latch
+correction; 20 shared native-TLS, 16 shared curl, 3 no-provider checks. Player/transfer
+C-only UBSan passes monitor/CLI/jobs; dependencies are not instrumented. Three foreign
+player/example builds and Windows DLL C/C++98 consumers link, without execution.
+[EN](LOAD_MONITOR.md) / [RU](LOAD_MONITOR.ru.md). All stages remain open.
 
 v0.685 adds owner-thread source load monitoring, startup stop before I/O,
 per-network-job deadlines and explicit result/cancellation notices. HTTP/HTTPS

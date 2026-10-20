@@ -55,7 +55,7 @@ def main():
             env['SSL_CERT_FILE'] = str(ca); scheme = 'https'
         worker = threading.Thread(target=server.serve_forever, daemon=True); worker.start()
         try:
-            for mode in range(16):
+            for mode in range(18):
                 Handler.mode = mode; Handler.paths = []
                 started = time.monotonic()
                 result = subprocess.run([host, '%s://127.0.0.1:%d/start.swf' % (scheme, server.server_port), str(mode), str(Handler.folder / 'start.swf')],
@@ -63,12 +63,12 @@ def main():
                 if result.returncode == 77: raise SystemExit(77)
                 assert result.returncode == 0, (mode, result.stdout, result.stderr)
                 assert time.monotonic() - started < 2, (mode, 'did not cancel the stalled body')
-                if mode in (1, 10, 13, 14): assert not Handler.paths, Handler.paths
+                if mode in (1, 10, 13, 14, 17): assert not Handler.paths, Handler.paths
                 if mode in (4, 5, 6, 7, 9, 12):
                     assert '/root-vars.txt' not in Handler.paths, Handler.paths
                 if mode == 11: assert Handler.paths == ['/nested/child.swf', '/root-vars.txt', '/nested/child-vars.txt'], Handler.paths
                 if mode == 15: assert Handler.paths == ['/start.swf', '/replacement.swf'], Handler.paths
-                if mode in (0, 8):
+                if mode in (0, 8, 16):
                     assert Handler.paths == ['/start.swf', '/nested/child.swf', '/root-vars.txt', '/nested/child-vars.txt'], Handler.paths
         finally:
             server.shutdown(); server.server_close(); worker.join(timeout=4)

@@ -26,13 +26,13 @@ python3 -m http.server 8000 --directory flashVM/examples/player/async_loading
 ```
 
 Первый запуск: четыре запроса, успешные проверки кадров/таймеров/значений,
-журнал уведомлений, exit0. Второй: BEGIN/CANCELLED, без HTTP запроса, exit0.
+журнал уведомлений, exit 0. Второй: BEGIN/CANCELLED, без HTTP запроса, exit 0.
 FETCHED означает успех получения байтов; некорректный SWF ещё может дать ошибку
 импорта. Проценты не вычисляются: received — байты тела провайдера, а не wire size
 или гарантированный Content-Length. Callback копирует скаляры, строки заимствованы
 только на время вызова.
 
-Это короткий loopback-пример: 700 тиков при1000FPS. Для обычных фильмов задайте
+Это короткий loopback-пример: 700 тиков при 1000 FPS. Для обычных фильмов задайте
 нормальные FPS/лимиты и собственную политику остановки. Ответ сервера с задержкой
 больше бюджета даст TIMED_OUT и playback failure. Отмена/дедлайн кооперативные:
 DNS/пользовательский код могут задержать join. Worker не detach; userdata/настройки
@@ -48,8 +48,10 @@ Dummy SDL проверяет протокол, не физические уст�
 | [fvm_desktop_background_supported](../../../frontend/common/background.h#L49) | Default worker capability, no network/window startup. |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller playback scalars. |
 | [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Initialize caller worker/byte/load policy. |
-| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L47) | Initialize async delivery, zero deadline and no callback. |
+| [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Initialize async delivery, zero deadline and no callback. |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L64) | Worker-safe native provider; nested userdata borrowed through return. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L34) | Worker-safe curl alternative, requires thread-safe global SDK. |
-| [fvm_desktop_run_source_monitored](../../../frontend/common/load_monitor.h#L55) | Whole-player call; notify runs on owner, provider on worker. |
+| [fvm_desktop_run_source_monitored](../../../frontend/common/load_monitor.h#L57) | Whole-player call; notify runs on owner, provider on worker. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Cleanup only after joined workers/window/audio disposal. |
+
+Та же политика доступна через [CLI/playlist API](../../../doc/LOAD_MONITOR.ru.md#адаптеры-playlist-и-консоли-v0686).

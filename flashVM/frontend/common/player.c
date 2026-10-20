@@ -383,6 +383,22 @@ static void background_terminal(FVM_DesktopBackgroundSession *session, unsigned 
     background_notice(session, id, kind, phase, reference, base, view,
                       abandoned ? FVM_ERROR : result);
 }
+/* A cooperative deadline stops further VM turns even if a provider is slow to acknowledge it.
+ * The actual job remains pending until its worker exits; only this owner's local view changes. */
+static FVM_Result background_poll(FVM_DesktopTransfer *job, FVM_DesktopTransferView *view)
+{
+    FVM_Result result = fvm_desktop_transfer_poll(job, view);
+    if (result == FVM_OK && view->state == FVM_DESKTOP_TRANSFER_PENDING)
+    {
+        unsigned int reason = fvm_desktop_transfer_stop_requested(job);
+        if (reason)
+        {
+            view->state = reason;
+            view->result = FVM_ERROR;
+        }
+    }
+    return result;
+}
 /* The worker owns only bytes; event/audio pumping and the consumer callback stay on the owner. */
 static FVM_Result background_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
                                    void *write_userdata, char *resolved, size_t capacity,
@@ -398,7 +414,7 @@ static FVM_Result background_fetch(const char *reference, const char *base, FVM_
         return result;
     for (;;)
     {
-        result = fvm_desktop_transfer_poll(job, &view);
+        result = background_poll(job, &view);
         if (result != FVM_OK || view.state != FVM_DESKTOP_TRANSFER_PENDING)
             break;
         background_notice(session, id, session->kind, FVM_DESKTOP_LOAD_WAIT, reference, base, &view,
@@ -1191,7 +1207,7 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
                                 : FVM_DESKTOP_LOAD_CHILD;
         FVM_Result status;
         memset(&view, 0, sizeof(view));
-        status = fvm_desktop_transfer_poll(navigation->transfer, &view);
+        status = background_poll(navigation->transfer, &view);
         if (status == FVM_OK && view.state == FVM_DESKTOP_TRANSFER_PENDING)
         {
             background_notice(navigation->background, navigation->transfer_id, kind,
@@ -1493,7 +1509,7 @@ int fvm_desktop_run_source_background(const FVM_DesktopOptions *options,
 }
 /* Default-provider playlist shares the same import/GC/render/cleanup implementation. */
 static int run_background_playlist(const FVM_DesktopOptions *options, const char **error,
-                                   int asynchronous)
+                                   int asynchronous, const FVM_DesktopLoadMonitor *monitor)
 {
     FVM_DesktopOptions value;
     FVM_DesktopBackgroundLoader loader;
@@ -1521,7 +1537,7 @@ static int run_background_playlist(const FVM_DesktopOptions *options, const char
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_background(&value, &source, &loader, error, &closed, asynchronous, 0);
+        status = run_background(&value, &source, &loader, error, &closed, asynchronous, monitor);
         if (status || closed)
             break;
     }
@@ -1531,7 +1547,7 @@ static int run_background_playlist(const FVM_DesktopOptions *options, const char
 /* Preserve the explicit event-pumping/waiting mode introduced before asynchronous delivery. */
 int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **error)
 {
-    return run_background_playlist(options, error, 0);
+    return run_background_playlist(options, error, 0, 0);
 }
 /* Keep child/form transfer completion separate from active timeline/timer execution. */
 int fvm_desktop_run_source_async(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
@@ -1542,7 +1558,7 @@ int fvm_desktop_run_source_async(const FVM_DesktopOptions *options, const FVM_De
 /* Async playlist adapter retains ordinary whole-root replacement and close semantics. */
 int fvm_desktop_run_async(const FVM_DesktopOptions *options, const char **error)
 {
-    return run_background_playlist(options, error, 1);
+    return run_background_playlist(options, error, 1, 0);
 }
 
 /* Zero-cost observer initialization, independent of VM/window/provider startup. */
@@ -1556,20 +1572,36 @@ int fvm_desktop_load_monitor_init(FVM_DesktopLoadMonitor *out)
     out->userdata = 0;
     return 1;
 }
-/* Validate every observer scalar before routing through the existing owner-thread runner. */
-int fvm_desktop_run_source_monitored(const FVM_DesktopOptions *options,
-                                     const FVM_DesktopSource *source,
-                                     const FVM_DesktopBackgroundLoader *loader,
-                                     const FVM_DesktopLoadMonitor *monitor, const char **error)
+/* Common validation is used by both source and playlist adapters before startup. */
+static int load_monitor_valid(const FVM_DesktopLoadMonitor *monitor, const char **error)
 {
     if (!monitor || monitor->asynchronous > 1 ||
         monitor->timeout_ms > FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS)
     {
         if (error)
             *error = "invalid load monitor policy";
-        return FVM_DESKTOP_EXIT_ARGUMENT;
+        return 0;
     }
+    return 1;
+}
+/* Validate every observer scalar before routing through the existing owner-thread runner. */
+int fvm_desktop_run_source_monitored(const FVM_DesktopOptions *options,
+                                     const FVM_DesktopSource *source,
+                                     const FVM_DesktopBackgroundLoader *loader,
+                                     const FVM_DesktopLoadMonitor *monitor, const char **error)
+{
+    if (!load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
     return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor);
+}
+
+/* Thin default-provider adapter preserves the same observation and ownership rules. */
+int fvm_desktop_run_monitored(const FVM_DesktopOptions *options,
+                              const FVM_DesktopLoadMonitor *monitor, const char **error)
+{
+    if (!load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_background_playlist(options, error, (int)monitor->asynchronous, monitor);
 }
 
 /* Shared synchronous runner; the CLI translates arguments into this same contract. */
@@ -1606,10 +1638,52 @@ int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
     return status;
 }
 
+/* Console-only coalescing state, borrowed by the same owner-thread C monitor used by IDEs. */
+typedef struct FVM_DesktopCLIProgress
+{
+    unsigned long id; /* Last reported source-run request ordinal. */
+    size_t received;  /* Last emitted body-byte count; WAIT duplicates are suppressed. */
+} FVM_DesktopCLIProgress;
+/* Numeric metadata avoids printing credentials or control characters from an input URL. */
+static int cli_load_progress(const FVM_DesktopLoadEvent *event, void *userdata)
+{
+    FVM_DesktopCLIProgress *state = (FVM_DesktopCLIProgress *)userdata;
+    if (event->phase != FVM_DESKTOP_LOAD_WAIT || event->id != state->id ||
+        event->received != state->received)
+        fprintf(stderr, "load id=%lu kind=%u phase=%u received=%lu result=%d\n", event->id,
+                event->kind, event->phase, (unsigned long)event->received, (int)event->result);
+    state->id = event->id;
+    state->received = event->received;
+    return 0;
+}
+/* Strict decimal integer milliseconds, independent of locale/sign/exponent and unsigned width. */
+static int cli_load_timeout(const char *text, unsigned long *out)
+{
+    unsigned long value = 0;
+    size_t length = 0;
+    if (!text || !*text)
+        return 0;
+    while (*text)
+    {
+        unsigned int digit;
+        if (++length > FVM_DESKTOP_DECIMAL_MAX_TEXT || *text < '0' || *text > '9')
+            return 0;
+        digit = (unsigned int)(*text++ - '0');
+        if (value > (FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS - digit) / 10UL)
+            return 0;
+        value = value * 10UL + digit;
+    }
+    *out = value;
+    return 1;
+}
+
 /* Parse before SDL/VM startup so help and invalid arguments work without a display server. */
 int fvm_desktop_main(int argc, char **argv)
 {
     FVM_DesktopOptions options;
+    FVM_DesktopLoadMonitor monitor;
+    FVM_DesktopCLIProgress progress;
+    int timeout_selected = 0, progress_selected = 0;
     const char *error = 0;
     const char **files;
     char **arguments;
@@ -1629,11 +1703,35 @@ int fvm_desktop_main(int argc, char **argv)
         free(files);
         return FVM_DESKTOP_EXIT_PLAYBACK;
     }
+    fvm_desktop_load_monitor_init(&monitor);
+    memset(&progress, 0, sizeof(progress));
     arguments[0] = argv[0];
     for (i = 1; i < argc; ++i)
     {
-        if (!literal &&
-            (!strcmp(argv[i], "--background-loads") || !strcmp(argv[i], "--async-loads")))
+        if (!literal && !strcmp(argv[i], "--load-timeout"))
+        {
+            if (timeout_selected || i + 1 >= argc ||
+                !cli_load_timeout(argv[i + 1], &monitor.timeout_ms))
+            {
+                error = "invalid or duplicate --load-timeout (0..2147483647 integer ms)";
+                goto argument_failure;
+            }
+            timeout_selected = 1;
+            ++i;
+        }
+        else if (!literal && !strcmp(argv[i], "--load-progress"))
+        {
+            if (progress_selected)
+            {
+                error = "duplicate --load-progress";
+                goto argument_failure;
+            }
+            progress_selected = 1;
+            monitor.notify = cli_load_progress;
+            monitor.userdata = &progress;
+        }
+        else if (!literal &&
+                 (!strcmp(argv[i], "--background-loads") || !strcmp(argv[i], "--async-loads")))
         {
             if (background)
             {
@@ -1651,6 +1749,12 @@ int fvm_desktop_main(int argc, char **argv)
             arguments[count++] = argv[i];
         }
     }
+    if ((timeout_selected || progress_selected) && !background)
+    {
+        error = "--load-timeout/--load-progress requires --async-loads or --background-loads";
+        goto argument_failure;
+    }
+    monitor.asynchronous = background == 2;
     parsed = fvm_desktop_parse(count, arguments, files, &options, &error);
     if (parsed == FVM_DESKTOP_PARSE_HELP)
         fvm_desktop_help(argv[0]);
@@ -1663,7 +1767,9 @@ int fvm_desktop_main(int argc, char **argv)
     }
     else
     {
-        status = background == 2   ? fvm_desktop_run_async(&options, &error)
+        status = (timeout_selected || progress_selected)
+                     ? fvm_desktop_run_monitored(&options, &monitor, &error)
+                 : background == 2 ? fvm_desktop_run_async(&options, &error)
                  : background == 1 ? fvm_desktop_run_background(&options, &error)
                                    : fvm_desktop_run(&options, &error);
         if (status == FVM_DESKTOP_EXIT_ARGUMENT)
@@ -1672,4 +1778,9 @@ int fvm_desktop_main(int argc, char **argv)
     free(arguments);
     free(files);
     return status;
+argument_failure:
+    fprintf(stderr, "%s\n", error);
+    free(arguments);
+    free(files);
+    return FVM_DESKTOP_EXIT_ARGUMENT;
 }

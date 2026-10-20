@@ -6,7 +6,7 @@
 #include <string.h>
 
 typedef struct State {
-    SDL_sem *gate;
+    SDL_sem *gate, *exit_gate;
     FVM_DesktopTransfer *job;
     int mode;
     SDL_threadID owner, worker;
@@ -25,6 +25,11 @@ static FVM_Result provider(const char *reference, const char *base, FVM_DesktopW
         assert(state->worker != state->owner);
         assert(!strcmp(reference, "http://copied/start"));
         assert(!strcmp(base, "http://copied/base"));
+        if (state->mode == 12) {
+            while (!control->cancelled(control->userdata)) SDL_Delay(1);
+            SDL_SemWait(state->exit_gate); /* Remain pending after acknowledging the stop latch. */
+            return FVM_OK;
+        }
         if (state->mode == 10) {
             result = write(data, sizeof(data), sink);
             assert(result == FVM_OK);
@@ -126,9 +131,20 @@ int main(void)
         assert(view.state == (i == 1 ? FVM_DESKTOP_TRANSFER_CANCELLED : FVM_DESKTOP_TRANSFER_TIMED_OUT));
         assert(view.result == FVM_ERROR && !view.bytes && !view.size && !view.location);
         if (i == 0) assert(view.received == 4);
+        assert(fvm_desktop_transfer_stop_requested(job) == view.state);
         assert(!fvm_desktop_transfer_cancel(job));
         assert(fvm_desktop_transfer_release(job) == FVM_OK);
     }
+    state.mode = 12; state.exit_gate = SDL_CreateSemaphore(0); assert(state.exit_gate);
+    assert(fvm_desktop_transfer_begin_timed(reference, base, &options, 20, &job) == FVM_OK);
+    while (!fvm_desktop_transfer_stop_requested(job)) SDL_Delay(1);
+    assert(fvm_desktop_transfer_stop_requested(job) == FVM_DESKTOP_TRANSFER_TIMED_OUT);
+    assert(fvm_desktop_transfer_poll(job, &view) == FVM_OK && view.state == FVM_DESKTOP_TRANSFER_PENDING);
+    assert(!view.bytes && !view.location && view.result == FVM_NOT_FOUND);
+    SDL_SemPost(state.exit_gate); view = done(job);
+    assert(view.state == FVM_DESKTOP_TRANSFER_TIMED_OUT);
+    assert(fvm_desktop_transfer_release(job) == FVM_OK); SDL_DestroySemaphore(state.exit_gate);
+    assert(!fvm_desktop_transfer_stop_requested(0));
     job = 0;
     assert(fvm_desktop_transfer_begin_timed(reference, base, &options,
         FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS + 1UL, &job) == FVM_INVALID_ARGUMENT && !job);

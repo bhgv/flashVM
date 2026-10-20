@@ -32,7 +32,7 @@ cmake --build build-player --target flashvm_example_configured_host --parallel
 
 | API | Назначение и владение |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализирует структуру [FVM_DesktopOptions](../../../frontend/common/load_monitor.h#L55) приложения, включая 100 процентов авторской частоты. Null возвращает 0; ресурсы не создаются |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализирует структуру [FVM_DesktopOptions](../../../frontend/common/load_monitor.h#L57) приложения, включая 100 процентов авторской частоты. Null возвращает 0; ресурсы не создаются |
 | [fvm_desktop_run](../../../frontend/common/player.h#L35) | Проверяет весь плейлист, затем синхронно загружает, играет и освобождает ресурсы. Массив и неизменные пути заимствуются до возврата. Коды 0/1/2 описаны в контракте |
 | [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L13) | Ошибка аргументов/конфигурации до запуска |
 

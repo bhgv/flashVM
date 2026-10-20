@@ -33,6 +33,16 @@ def check():
         local = set(re.findall(r"^static [^\n]*\b((?:clutter_|sdl_|gtk_)\w+)\(", source, re.M))
         for api in set(re.findall(pattern, source)) - local:
             assert "[" + api + "](" in docs, (name, api)
+    # New player loader tutorial must retain per-line explanations and per-API ownership tables.
+    tutorial = ROOT / "examples/player/monitored_loading"
+    source = (tutorial / "main.c").read_text()
+    for number, line in enumerate(source.splitlines(), 1):
+        assert not line.strip() or "/*" in line or "*/" in line, (tutorial, number)
+    assert catalog.count("example-player-monitored_loading") == 3
+    for language in ("", ".ru"):
+        manual = (tutorial / ("README" + language + ".md")).read_text()
+        for api in set(re.findall(r"\b(fvm_desktop_\w+)\s*\(", source)):
+            assert re.search(r"\|.*" + api + r".*\|", manual), (language, api)
     # Every local Markdown file/anchor source target must still exist after the move.
     for readme in FRONTENDS.rglob("*.md"):
         for target in re.findall(r"\]\(([^)]+)\)", readme.read_text()):

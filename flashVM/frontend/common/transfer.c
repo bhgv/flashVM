@@ -232,6 +232,20 @@ FVM_Result fvm_desktop_transfer_poll(FVM_DesktopTransfer *job, FVM_DesktopTransf
     SDL_UnlockMutex(job->mutex);
     return FVM_OK;
 }
+/* Observe the first cooperative stop reason without pretending the worker has exited. */
+unsigned int fvm_desktop_transfer_stop_requested(FVM_DesktopTransfer *job)
+{
+    unsigned int reason;
+    if (!job)
+        return 0;
+    SDL_LockMutex(job->mutex);
+    transfer_deadline(job);
+    reason = job->timed_out   ? FVM_DESKTOP_TRANSFER_TIMED_OUT
+             : job->cancelled ? FVM_DESKTOP_TRANSFER_CANCELLED
+                              : 0;
+    SDL_UnlockMutex(job->mutex);
+    return reason;
+}
 /* A completed snapshot cannot be retroactively revoked by cancellation. */
 int fvm_desktop_transfer_cancel(FVM_DesktopTransfer *job)
 {

@@ -12,7 +12,7 @@ FlashVM и выбранный SDL SDK подключаются транзити�
 ## API и владение
 
 Подключите frontend/common/player.h; цель экспортирует каталог заголовка.
-[fvm_desktop_options_init](../frontend/common/options.h#L48) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/load_monitor.h#L55),
+[fvm_desktop_options_init](../frontend/common/options.h#L48) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/load_monitor.h#L57),
 возвращает 1 при успехе, 0 для null. По умолчанию: автоматический режим,
 качество HIGH, авторская частота на 100 процентов, пустой плейлист, нулевые
 ограничения и флаги. Выделения памяти и запуска устройств нет. Перед run

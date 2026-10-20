@@ -714,6 +714,10 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_TESTS AND NOT ANDRO
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/load_monitor.py $<TARGET_FILE:flashvm_load_monitor>
       ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
     set_tests_properties(flashvm_load_monitor PROPERTIES TIMEOUT 35 SKIP_RETURN_CODE 77)
+    add_test(NAME flashvm_load_control_cli COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/load_control_cli.py $<TARGET_FILE:flashvm_player>
+      ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
+    set_tests_properties(flashvm_load_control_cli PROPERTIES TIMEOUT 35 SKIP_RETURN_CODE 77)
     if(FVM_PLAYER_SOCKET_TLS AND FVM_OPENSSL_PROGRAM)
       add_test(NAME flashvm_load_monitor_tls COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/load_monitor.py $<TARGET_FILE:flashvm_load_monitor>

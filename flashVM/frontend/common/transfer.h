@@ -65,6 +65,11 @@ extern "C"
     /* Copy a synchronized snapshot; null returns INVALID_ARGUMENT without modifying output. */
     FVM_DESKTOP_API FVM_Result fvm_desktop_transfer_poll(FVM_DesktopTransfer *job,
                                                          FVM_DesktopTransferView *out);
+    /* Synchronized stop latch: zero for none/null, CANCELLED or TIMED_OUT otherwise.
+     * May be nonzero while poll is still PENDING because provider/DNS has not returned.
+     * Lets the owner stop executing script at a deadline before the mandatory final join.
+     * No payload is published and terminal job views remain unchanged. */
+    FVM_DESKTOP_API unsigned int fvm_desktop_transfer_stop_requested(FVM_DesktopTransfer *job);
     /* Request cancellation before terminal publication. 1 accepted, 0 terminal/null.
      * Cancel does not free storage, close another thread's socket, join or revoke a DONE view. */
     FVM_DESKTOP_API int fvm_desktop_transfer_cancel(FVM_DesktopTransfer *job);

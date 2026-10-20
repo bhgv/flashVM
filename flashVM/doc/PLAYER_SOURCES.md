@@ -2,14 +2,14 @@
 
 [Русский](PLAYER_SOURCES.ru.md).
 
-Current v0.683 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
+Current v0.686 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
 
 [Native POSIX/Winsock transport without libcurl](SOCKET_TRANSPORT.md) is available since v0.677.
 
 ## Memory input since v0.673
 
 [fvm_desktop_run_memory](../frontend/common/player.h#L43) in [player.h](../frontend/common/player.h) accepts scalar
-[FVM_DesktopOptions](../frontend/common/load_monitor.h#L55), a const void pointer, the exact size_t byte count, a nonempty
+[FVM_DesktopOptions](../frontend/common/load_monitor.h#L57), a const void pointer, the exact size_t byte count, a nonempty
 source name and optional static error output. char buf[] and read-only linked
 arrays both work; binary NUL is ordinary data. No temporary file, strlen(data),
 source mutation or ownership transfer occurs. Keep source bytes and name immutable
@@ -45,7 +45,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Roadmap status](ROADMAP_STATUS.md)
 ## Host transport and root loading since v0.674
 
-[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/load_monitor.h#L56) (kind, bytes,
+[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 and [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
@@ -243,6 +243,7 @@ is tested against a shared SDL instance in the static-host fixture; opaque DLL
 cleanup is tested through the module interface.
 GET here means retrieving the supplied URL. Automatic serialization of current-clip variables into query parameters or a POST body is not implemented.
 [Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.683.
+[Owner load progress, deadlines and startup stop](LOAD_MONITOR.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

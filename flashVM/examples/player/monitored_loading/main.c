@@ -18,13 +18,18 @@ typedef struct Progress /* Observer state never enters a network worker. */
 static int progress(const FVM_DesktopLoadEvent *event, void *userdata) /* Borrow one notice. */
 { /* Begin observer callback. */
     Progress *state = (Progress *)userdata; /* Recover caller-owned immutable policy/state. */
-    if (event->phase != FVM_DESKTOP_LOAD_WAIT || event->id != state->id || event->received != state->received) /* Limit logging. */
+    if (event->phase != FVM_DESKTOP_LOAD_WAIT || /* Always show lifecycle transitions. */
+        event->id != state->id || /* A new request starts its own byte count. */
+        event->received != state->received) /* Suppress unchanged WAIT heartbeats. */
     { /* Print new progress or a lifecycle transition. */
-        printf("load=%lu kind=%u phase=%u received=%lu url=%s\n", event->id, event->kind, event->phase, (unsigned long)event->received, event->reference); /* No payload/VM pointer escapes. */
+        printf("load=%lu kind=%u phase=%u received=%lu url=%s\n", /* Metadata only. */
+               event->id, event->kind, event->phase, /* Copy scalar request metadata. */
+               (unsigned long)event->received, event->reference); /* Borrow URL only here. */
     } /* Finish the diagnostic branch. */
     state->id = event->id; /* Remember this request for progress coalescing. */
     state->received = event->received; /* Copy only scalar metadata; strings remain borrowed. */
-    return state->stop_startup && event->phase == FVM_DESKTOP_LOAD_BEGIN; /* Stop is honored only at BEGIN/WAIT. */
+    return state->stop_startup && /* Caller opted into a startup stop. */
+           event->phase == FVM_DESKTOP_LOAD_BEGIN; /* No provider starts for this request. */
 } /* Return to owner loop; no VM calls, worker joins or reentrant runner calls here. */
 /* Link this function with the static host target or its shared-library equivalent. */
 int main(int argc, char **argv) /* Ordinary application entrypoint, independent of player CLI. */
@@ -36,7 +41,8 @@ int main(int argc, char **argv) /* Ordinary application entrypoint, independent 
     Progress state = {0, 0, 0}; /* No pointer or global registration is needed. */
     const char *error = 0; /* Runner returns an optional borrowed static diagnostic. */
     int status; /* Preserve successful stop versus playback failure. */
-    if (argc < 2 || argc > 3 || (argc == 3 && strcmp(argv[2], "--cancel-startup"))) /* Validate tutorial arguments. */
+    if (argc < 2 || argc > 3 || /* Require one URL and at most one selector. */
+        (argc == 3 && strcmp(argv[2], "--cancel-startup"))) /* Reject unknown selectors. */
     { /* Reject malformed calls before SDK/network startup. */
         fprintf(stderr, "usage: %s URL [--cancel-startup]\n", argv[0]); /* Example-specific help. */
         return 2; /* Ordinary argument-error status. */
@@ -66,7 +72,8 @@ int main(int argc, char **argv) /* Ordinary application entrypoint, independent 
     source.location = argv[1]; /* Borrow caller text through runner return. */
     source.bytes = 0; /* URL sources have no borrowed memory payload. */
     source.size = 0; /* URL byte size is discovered by the native job. */
-    status = fvm_desktop_run_source_monitored(&options, &source, &loader, &monitor, &error); /* Enter owner playback loop. */
+    status = fvm_desktop_run_source_monitored( /* Enter the synchronous owner playback loop. */
+        &options, &source, &loader, &monitor, &error); /* Borrow all descriptors until return. */
     if (error) fprintf(stderr, "%s\n", error); /* Static error remains borrowed; never free it. */
     if (fvm_desktop_shutdown() != FVM_OK) return 1; /* Jobs have joined before SDK cleanup. */
     return status; /* Stop at BEGIN returns zero; timeout/import failure remains nonzero. */

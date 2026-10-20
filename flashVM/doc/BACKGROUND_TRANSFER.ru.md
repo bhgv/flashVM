@@ -55,16 +55,16 @@ ERROR без payload. received сохраняет накопленный progres
 ошибочного/отменённого буфера. Игнорирование ошибки sink провайдером не превращается
 в успех. Пустой/неограниченный NUL provenance — ошибка.
 
-[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L70) возвращает 1 для pending, 0 для terminal/null;
+[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L75) возвращает 1 для pending, 0 для terminal/null;
 не блокирует, не освобождает storage и не отзывает готовый view. Отмена до
 terminal publication побеждает поздний успех provider.
-[fvm_desktop_transfer_release](../frontend/common/transfer.h#L74) отменяет, join и освобождает на создавшем потоке:
+[fvm_desktop_transfer_release](../frontend/common/transfer.h#L79) отменяет, join и освобождает на создавшем потоке:
 OK, null также OK, другой поток INVALID_ARGUMENT. Некоперативный provider/DNS
 может задержать join. Нет detach/forced kill. Нельзя одновременно release и
 poll/cancel или выгружать библиотеку с активным worker. Все borrowed данные
 сохраняются до возврата release.
 
-[fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) считает живые handles, включая готовые до release.
+[fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) считает живые handles, включая готовые до release.
 [fvm_desktop_shutdown](../frontend/common/player.h#L50) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L64) принимает native options либо
@@ -88,7 +88,7 @@ parser не имеет поля для него. IDE вызывает background
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L57):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L59):
 transfer defaults без провайдера, одну загрузку, 1 — успех, 0 — null, без startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) принимает обычные options/source, обязательный
 background loader и необязательный static error out. Нужны worker-safe fetch,

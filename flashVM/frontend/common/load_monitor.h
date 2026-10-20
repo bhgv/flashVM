@@ -9,7 +9,8 @@
 #define FVM_DESKTOP_LOAD_WAIT 2U      /* Owner heartbeat while awaiting immutable bytes. */
 #define FVM_DESKTOP_LOAD_FETCHED 3U   /* Fetch succeeded; does not promise VM import success. */
 #define FVM_DESKTOP_LOAD_FAILED 4U    /* Begin/provider/sink failure; no partial import. */
-#define FVM_DESKTOP_LOAD_CANCELLED 5U /* Resource abandoned; worker joined before runner returns.  \
+#define FVM_DESKTOP_LOAD_CANCELLED                                                                 \
+    5U                                /* Resource abandoned; worker joined before runner returns.  \
                                        */
 #define FVM_DESKTOP_LOAD_TIMED_OUT 6U /* Cooperative deadline won; no partial import. */
 #ifdef __cplusplus
@@ -22,8 +23,9 @@ extern "C"
         unsigned long id;   /* One-based network request ordinal within this source run. */
         unsigned int kind;  /* LOAD_ROOT, LOAD_CHILD or LOAD_VARIABLES. */
         unsigned int phase; /* One LOAD_BEGIN/WAIT/FETCHED/FAILED/CANCELLED/TIMED_OUT value. */
-        size_t received;    /* Provider-delivered body bytes observed so far, not wire Content-Length. */
-        FVM_Result result;  /* NOT_FOUND for BEGIN/WAIT; fetch result otherwise. */
+        size_t
+            received; /* Provider-delivered body bytes observed so far, not wire Content-Length. */
+        FVM_Result result;     /* NOT_FOUND for BEGIN/WAIT; fetch result otherwise. */
         const char *reference; /* Copied request URL/reference, nonempty. */
         const char *base;      /* Optional copied request base; null if none. */
         const char *location;  /* Canonical location only during FETCHED; otherwise null. */
@@ -57,6 +59,11 @@ extern "C"
                                                          const FVM_DesktopBackgroundLoader *loader,
                                                          const FVM_DesktopLoadMonitor *monitor,
                                                          const char **error);
+    /* Default-provider playlist adapter. IDs restart for each source; stop ends the playlist.
+     * Without a compiled provider local playback remains available and URLs fail normally. */
+    FVM_DESKTOP_API int fvm_desktop_run_monitored(const FVM_DesktopOptions *options,
+                                                  const FVM_DesktopLoadMonitor *monitor,
+                                                  const char **error);
 #ifdef __cplusplus
 }
 #endif

@@ -16,6 +16,8 @@ int main()
     if (!fvm_desktop_transfer_options_init(&transfer) || transfer.fetch ||
         fvm_desktop_transfer_active() || fvm_desktop_transfer_release(0) != FVM_OK)
         return 1;
+    if (fvm_desktop_transfer_stop_requested(0))
+        return 1;
     if (fvm_desktop_transfer_begin_timed(0, 0, &transfer, 1, 0) != FVM_INVALID_ARGUMENT)
         return 1;
     if (fvm_desktop_background_supported() != 0 && fvm_desktop_background_supported() != 1)
@@ -32,6 +34,8 @@ int main()
     if (!fvm_desktop_load_monitor_init(&monitor) || monitor.asynchronous != 1 ||
         monitor.timeout_ms || monitor.notify || monitor.userdata ||
         fvm_desktop_run_source_monitored(0, 0, &background, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    if (fvm_desktop_run_monitored(0, &monitor, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;

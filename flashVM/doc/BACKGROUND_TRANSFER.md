@@ -55,16 +55,16 @@ no payload. CANCELLED returns ERROR and no payload. received retains accumulated
 progress even when a failed/cancelled buffer has been discarded. Providers that
 ignore a sink error cannot publish success. Missing/unterminated provenance fails.
 
-[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L70) returns 1 for a pending request and 0 for terminal/null;
+[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L75) returns 1 for a pending request and 0 for terminal/null;
 it requests a stop without blocking, freeing bytes or revoking a completed view.
 Cancellation before terminal publication wins over a late provider success.
-[fvm_desktop_transfer_release](../frontend/common/transfer.h#L74) cancels, joins and frees the handle on its creating
+[fvm_desktop_transfer_release](../frontend/common/transfer.h#L79) cancels, joins and frees the handle on its creating
 thread: OK, null also OK, wrong thread INVALID_ARGUMENT. It may block for an
 uncooperative provider/DNS; no detach/forced kill is used. Never release concurrently
 with poll/cancel or unload a library while its worker is alive. All argument and
 callback storage remains live until release returns.
 
-[fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) reports live handles, including terminal handles not
+[fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) reports live handles, including terminal handles not
 yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L50) refuses cleanup while any remain, even when
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
@@ -93,7 +93,7 @@ for it. An IDE calls the explicit background runner or the lower-level job API.
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L57):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L59):
 transfer defaults/no provider, one resource load, 1 success or 0 null, no startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) takes ordinary options/source, a required
 background loader and optional static error output. Provide a worker-safe fetch,

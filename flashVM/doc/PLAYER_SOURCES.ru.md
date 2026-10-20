@@ -2,14 +2,14 @@
 
 [English](PLAYER_SOURCES.md).
 
-Текущая v0.683 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
+Текущая v0.686 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
 
 [Встроенный транспорт POSIX/Winsock без libcurl](SOCKET_TRANSPORT.ru.md) доступен с v0.677.
 
 ## Вход из памяти с v0.673
 
 [fvm_desktop_run_memory](../frontend/common/player.h#L43) из [player.h](../frontend/common/player.h) принимает
-скалярные [FVM_DesktopOptions](../frontend/common/load_monitor.h#L55), const void указатель, точное число байтов size_t,
+скалярные [FVM_DesktopOptions](../frontend/common/load_monitor.h#L57), const void указатель, точное число байтов size_t,
 непустое имя источника и необязательный указатель на статическую ошибку.
 Подходят char buf[] и read-only массивы в исполняемом файле. NUL — обычный байт,
 не конец данных. Нет временного файла, strlen(data), изменения источника или
@@ -45,7 +45,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Этапы](ROADMAP_STATUS.md)
 ## Транспорт хоста и корневая загрузка с v0.674
 
-[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/load_monitor.h#L56) (kind, bytes,
+[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 и [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
@@ -240,6 +240,7 @@ Shared native CTest явно добавляет build-каталог библи�
 фикстуре с общим SDL; opaque DLL cleanup проверяется через интерфейс модуля.
 GET в этой серии — получение ресурса по заданному URL. Автоматическая отправка переменных текущего клипа в query и POST-body ещё не реализована.
 [Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.ru.md), v0.680–0.683.
+[Наблюдение загрузок, дедлайны и отмена старта](LOAD_MONITOR.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

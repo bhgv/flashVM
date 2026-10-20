@@ -345,6 +345,9 @@ void fvm_desktop_help(const char *program)
     puts(
         "  --async-loads           Keep timeline/timers running during network child/form fetches");
     puts("  --background-loads      Fetch network bytes on joined workers; pump the active window");
+    puts("  --load-timeout MS       Total cooperative job budget, 0..2147483647 (0 disables)");
+    puts("  --load-progress         Log owner-thread network request phases and body bytes");
+    puts("                          Both require --async-loads or --background-loads");
     puts("  --loads N               Allow 1..1024 resource loads, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");

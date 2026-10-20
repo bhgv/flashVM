@@ -57,7 +57,7 @@ static int notify(const FVM_DesktopLoadEvent *event, void *userdata)
     }
     if (event->phase == FVM_DESKTOP_LOAD_WAIT) ++s->waits;
     s->phase[id] = event->phase; s->received[id] = event->received;
-    stop = (s->mode == 1 && event->phase == FVM_DESKTOP_LOAD_BEGIN) ||
+    stop = ((s->mode == 1 || s->mode == 17) && event->phase == FVM_DESKTOP_LOAD_BEGIN) ||
            (s->mode == 2 && event->phase == FVM_DESKTOP_LOAD_WAIT && event->received) ||
            (s->mode == 4 && event->kind == FVM_DESKTOP_LOAD_CHILD &&
             event->phase == FVM_DESKTOP_LOAD_WAIT && event->received) ||
@@ -76,6 +76,7 @@ int main(int argc, char **argv)
     FVM_DesktopLoadMonitor monitor;
     const char *error = "sentinel";
     int status;
+    const char *files[2];
     unsigned char memory[4096];
     if (argc != 4) return 2;
     if (!fvm_desktop_background_supported()) return 77;
@@ -100,7 +101,11 @@ int main(int argc, char **argv)
         assert(source.size && source.size < sizeof(memory) && !ferror(file)); fclose(file);
         source.kind = FVM_DESKTOP_SOURCE_MEMORY; source.bytes = memory;
     }
-    status = fvm_desktop_run_source_monitored(&options, &source, &loader, &monitor, &error);
+    if (state.mode == 16 || state.mode == 17) {
+        files[0] = files[1] = argv[1]; options.files = files;
+        options.file_count = state.mode == 17 ? 2 : 1; options.max_loads = 8;
+        status = fvm_desktop_run_monitored(&options, &monitor, &error);
+    } else status = fvm_desktop_run_source_monitored(&options, &source, &loader, &monitor, &error);
     assert(!fvm_desktop_transfer_active());
     assert(fvm_desktop_shutdown() == FVM_OK);
     assert(state.begun == state.terminal);
@@ -115,11 +120,11 @@ int main(int argc, char **argv)
         assert(status == 1 && error && state.phase[2] == FVM_DESKTOP_LOAD_FAILED);
     } else {
         assert(status == 0 && !error);
-        if (state.mode == 0 || state.mode == 8) assert(state.begun == 4);
+        if (state.mode == 0 || state.mode == 8 || state.mode == 16) assert(state.begun == 4);
         else if (state.mode == 11) assert(state.begun == 3 && state.kind[1] == FVM_DESKTOP_LOAD_CHILD);
         else if (state.mode == 15) assert(state.begun == 2 && state.kind[2] == FVM_DESKTOP_LOAD_ROOT);
         else if (state.mode != 6) assert(state.stopped);
-        if (state.mode == 1) assert(!SDL_AtomicGet(&state.calls));
+        if (state.mode == 1 || state.mode == 17) assert(!SDL_AtomicGet(&state.calls));
         if (state.mode == 4 || state.mode == 6 || state.mode == 9)
             assert(state.phase[2] == FVM_DESKTOP_LOAD_CANCELLED);
     }
