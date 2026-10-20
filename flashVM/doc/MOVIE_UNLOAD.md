@@ -132,6 +132,21 @@ frame actions, checks identity state/children and relative fresh form delivery,
 and rejects a wrong reply. With SDL audio enabled it starts a looping PCM sound,
 then verifies the device has closed and the event counter remains one. Dummy SDL
 is a native ownership/protocol test, not audible hardware or foreign-OS acceptance.
+## Numbered level-zero entrypoints since v0.698
+
+The optional player now installs `loadMovieNum(url, 0[, "GET"])` and
+`unloadMovieNum(0)`. Number operands use version-aware AVM1 numeric coercion.
+Only zero (including a coerced numeric string) is supported; other values,
+including NaN, return UNSUPPORTED before transport. Missing/malformed argument
+counts return INVALID_ARGUMENT. POST is still unsupported. These are facades over
+the existing queue and root lifecycle, not a second level or network subsystem.
+
+An earlier queued root load is cancelled by a following level-zero unload;
+a later level-zero load survives. Root replacement still starts a new context
+and source lifecycle. Relative requests from that replacement use its actual
+source directory. The `numbered_loading.py` fixture checks local and HTTP roots,
+cancelled earlier child/root loads, numeric string levels, nested new provenance,
+unsupported levels/methods and a wrong-response negative control in interpreter/JIT.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -828,3 +828,11 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
     set_tests_properties(flashvm_root_unload_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
   endforeach()
 endif()
+
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_numbered_loading_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/numbered_loading.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_numbered_loading_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+  endforeach()
+endif()

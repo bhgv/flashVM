@@ -15,13 +15,13 @@ from unload_loading import require_undefined
 from smoke import rect, tag
 
 
-def movie(network=False, audio=False):
+def movie(network=False, audio=False, numbered=False):
     first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
     first += push('_root.kept', 42) + b'\x1d' + push('_root.turn', 0) + b'\x1d'
     if network:
         first += method_call('_root.child', 'loadVariables', 'slow.txt')
         first += method_call('_root', 'loadVariables', 'never.txt')
-    clear = global_call('unloadMovie', '_level0')
+    clear = global_call('unloadMovieNum', 0) if numbered else global_call('unloadMovie', '_level0')
     if network:
         clear += method_call('_root', 'loadVariables', 'fresh.txt')
     checks = require('_root.kept', 42) + require('_root._totalframes', 1)
@@ -77,8 +77,8 @@ def main():
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', SDL_AUDIODRIVER='dummy')
     with tempfile.TemporaryDirectory() as folder:
         path = Path(folder) / 'root.swf'
-        for audio in (False, True):
-            path.write_bytes(movie(False, audio))
+        for audio, numbered in ((False, False), (True, False), (False, True)):
+            path.write_bytes(movie(False, audio, numbered))
             result = subprocess.run([player, mode, '--loads', '1', '--frames', '140', '--fps', '1000',
                                      '--stats', *([] if audio and audio_enabled else ['--mute']), str(path)],
                                     env=env, capture_output=True, timeout=10)

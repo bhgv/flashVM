@@ -873,6 +873,62 @@ static FVM_Result load_builtin(FVM_Context *context, FVM_Object *receiver, unsig
     return fvm_exec_url(context, args, &target, builtin->flags);
 }
 
+/* Numbered level loading currently maps only level zero to the existing root lifecycle.
+ * Numeric coercion is explicit; unsupported levels never trigger a transport request. */
+static FVM_Result load_numbered_builtin(FVM_Context *context, FVM_Object *receiver,
+                                        unsigned int argc, const FVM_Value *args, FVM_Value *result,
+                                        void *userdata)
+{
+    FVM_Value target;
+    FVM_Value level;
+    FVM_Result status;
+    (void)receiver;
+    (void)userdata;
+    if (result)
+        fvm_value_undefined(result);
+    if (!args || argc < FVM_DESKTOP_NUMBERED_LOAD_MIN_ARGS ||
+        argc > FVM_DESKTOP_NUMBERED_LOAD_MAX_ARGS)
+        return FVM_INVALID_ARGUMENT;
+    status = fvm_exec_to_number(context, 0, args + FVM_DESKTOP_NUMBERED_LEVEL_INDEX, &level);
+    if (status != FVM_OK)
+        return status;
+    if (level.number != 0)
+        return FVM_UNSUPPORTED;
+    if (argc == FVM_DESKTOP_NUMBERED_LOAD_MAX_ARGS &&
+        args[FVM_DESKTOP_NUMBERED_METHOD_INDEX].type != FVM_VALUE_UNDEFINED)
+    {
+        const FVM_Value *method = args + FVM_DESKTOP_NUMBERED_METHOD_INDEX;
+        if (method->type != FVM_VALUE_STRING || fvm_value_string_size(method) != strlen("GET") ||
+            memcmp(method->string, "GET", strlen("GET")))
+            return FVM_UNSUPPORTED;
+    }
+    fvm_value_string(&target, "_level0");
+    return fvm_exec_url(context, args, &target, FVM_AVM1_URL_LOAD_TARGET);
+}
+
+/* Numbered root unloading reuses the exact same pin/queue/audio cancellation path. */
+static FVM_Result unload_numbered_builtin(FVM_Context *context, FVM_Object *receiver,
+                                          unsigned int argc, const FVM_Value *args,
+                                          FVM_Value *result, void *userdata)
+{
+    FVM_DesktopNavigation *navigation = (FVM_DesktopNavigation *)userdata;
+    FVM_Value target;
+    FVM_Value level;
+    FVM_Result status;
+    if (!navigation || !args || argc != FVM_DESKTOP_UNLOAD_MAX_ARGS)
+        return FVM_INVALID_ARGUMENT;
+    status = fvm_exec_to_number(context, 0, args, &level);
+    if (status != FVM_OK)
+        return status;
+    if (level.number != 0)
+        return FVM_UNSUPPORTED;
+    fvm_value_undefined(&target);
+    target.type = FVM_VALUE_OBJECT;
+    target.object = navigation->root;
+    return unload_builtin(context, receiver, FVM_DESKTOP_UNLOAD_MAX_ARGS, &target, result,
+                          navigation);
+}
+
 /* Install loader facades in the optional host only; the standalone VM remains transport-neutral. */
 static FVM_Result install_load_functions(FVM_Context *context, FVM_DesktopNavigation *navigation)
 {
@@ -903,6 +959,13 @@ static FVM_Result install_load_functions(FVM_Context *context, FVM_DesktopNaviga
     if (status == FVM_OK)
         status = fvm_object_define_method_rooted(context, prototype.object, "unloadMovie",
                                                  unload_builtin, navigation, 0);
+    if (status == FVM_OK)
+        status = fvm_register_function_rooted_bytes(context, "loadMovieNum", strlen("loadMovieNum"),
+                                                    load_numbered_builtin, navigation, 0);
+    if (status == FVM_OK)
+        status =
+            fvm_register_function_rooted_bytes(context, "unloadMovieNum", strlen("unloadMovieNum"),
+                                               unload_numbered_builtin, navigation, 0);
     return status;
 }
 
