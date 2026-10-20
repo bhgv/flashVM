@@ -48,7 +48,8 @@ typedef struct FVM_DesktopInput
         key_presses; /* Counts of physical down transitions, excluding key repeats. */
 } FVM_DesktopInput;
 typedef struct FVM_DesktopWindow FVM_DesktopWindow;
-/* Initialize SDL/video on the calling main thread and own window/renderer/texture. */
+/* Acquire private timer/video SDL references on the main thread and own presentation objects.
+ * Host subsystem references survive success, failed initialization and close. */
 FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned int);
 /* Upload/present and retain one owned packed RGBA snapshot; source bytes are borrowed
  * only during this call. Closing the window releases the native copy. */
@@ -82,6 +83,7 @@ int fvm_desktop_window_active(FVM_DesktopWindow *);
 double fvm_desktop_now(void);
 /* Report the latest SDL failure while the backend remains initialized. */
 const char *fvm_desktop_window_error(void);
-/* Release texture, renderer, window and SDL; null is accepted. */
+/* Release owned presentation objects and SDL references; never call process-global SDL_Quit.
+ * Null is accepted. This does not provide an embedded foreign-window event router. */
 void fvm_desktop_window_close(FVM_DesktopWindow *);
 #endif

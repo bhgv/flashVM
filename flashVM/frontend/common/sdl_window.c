@@ -21,6 +21,7 @@ typedef struct FVM_DesktopEvent
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
 struct FVM_DesktopWindow
 {
+    Uint32 subsystems;      /* SDL subsystem references acquired by this view only. */
     SDL_Window *window;     /* Native OS window, owned until close. */
     SDL_Renderer *renderer; /* SDL software/accelerated presenter selected by SDL. */
     SDL_Texture *texture;   /* Streaming byte-order-independent RGBA texture. */
@@ -52,20 +53,32 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
                                            unsigned int height)
 {
     FVM_DesktopWindow *view;
-    SDL_SetMainReady();
-    /* Handle real finger events once, independently of SDL's configurable mouse synthesis. */
-    SDL_SetHint(FVM_DESKTOP_TOUCH_MOUSE_HINT, "0");
-    SDL_SetHint(FVM_DESKTOP_MOUSE_TOUCH_HINT, "0");
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
-        return 0;
     view = (FVM_DesktopWindow *)calloc(1, sizeof(*view));
     if (!view)
     {
-        SDL_Quit();
+        SDL_SetError("FlashVM window allocation failed");
         return 0;
     }
     view->cursor_initial = FVM_DESKTOP_CURSOR_UNSET;
     view->cursor_applied = FVM_DESKTOP_CURSOR_UNSET;
+    SDL_SetMainReady();
+    /* Handle real finger events once, independently of SDL's configurable mouse synthesis. */
+    SDL_SetHint(FVM_DESKTOP_TOUCH_MOUSE_HINT, "0");
+    SDL_SetHint(FVM_DESKTOP_MOUSE_TOUCH_HINT, "0");
+    /* Acquire each reference separately so a failed video initialization releases
+     * the timer acquired here without touching any embedding host ownership. */
+    if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0)
+    {
+        fvm_desktop_window_close(view);
+        return 0;
+    }
+    view->subsystems |= SDL_INIT_TIMER;
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+    {
+        fvm_desktop_window_close(view);
+        return 0;
+    }
+    view->subsystems |= SDL_INIT_VIDEO;
     view->cursor_initial = SDL_ShowCursor(SDL_QUERY);
     if (view->cursor_initial < 0)
     {
@@ -664,6 +677,8 @@ void fvm_desktop_window_close(FVM_DesktopWindow *view)
         SDL_DestroyRenderer(view->renderer);
     if (view->window)
         SDL_DestroyWindow(view->window);
+    /* Release only this view's references, after every native object is gone.
+     * SDL_Quit would also tear down unrelated host windows/audio/events. */
+    SDL_QuitSubSystem(view->subsystems);
     free(view);
-    SDL_Quit();
 }

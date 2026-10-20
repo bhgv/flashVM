@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.669
+# FlashVM stage status / Состояние стадий — v0.670
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -17,6 +17,10 @@ v0.669 adds device-free version/build metadata and a C/C++98 host query.
 Current v0.669 validation: 62 selected native tests pass; full players cross-link
 for ARM64/RISC-V64 Linux and x86-64 Windows without target execution.
 This is bounded progress on stages 3/7/9; all nine stages remain open.
+
+v0.670 replaces global SDL shutdown with balanced per-window VIDEO/TIMER references.
+Host windows and unrelated subsystem references survive player cleanup and video failure.
+[Embedding ownership EN](PLAYER_HOST_OWNERSHIP.md) / [RU](PLAYER_HOST_OWNERSHIP.ru.md).
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |
