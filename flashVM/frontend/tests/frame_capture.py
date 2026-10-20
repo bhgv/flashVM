@@ -55,8 +55,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    executable,mode=sys.argv[1:];executable=str(Path(executable).resolve())
-    env=dict(os.environ,SDL_VIDEODRIVER='dummy',SDL_AUDIODRIVER='dummy')
+    executable,mode=sys.argv[1:3];executable=str(Path(executable).resolve())
+    env=dict(os.environ,SDL_VIDEODRIVER=('flashvm-driver-that-does-not-exist' if '--offscreen' in sys.argv else 'dummy'),SDL_AUDIODRIVER='dummy')
     def run(source,scenario,memory=None):
         result=subprocess.run([executable,str(source),mode,scenario]+([str(memory)] if memory else []),env=env,capture_output=True,text=True,timeout=8)
         if 'requested JIT backend unavailable' in result.stderr:raise SystemExit(77)

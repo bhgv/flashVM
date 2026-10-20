@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.719
+# FlashVM stage status / Состояние стадий — v0.720
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,14 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.720 exposes two additive windowless C runners using the established source,
+control, observer and loader contracts. Real rasters, pause/step, root navigation
+and joined transfer failure cleanup are checked with video deliberately unavailable;
+host SDL events/references survive the complete run. Native-window APIs retain
+behavior. SDL timing/audio dependencies remain; no GUI widget/input injection,
+foreign OS runtime or stage completion is claimed. [EN](OFFSCREEN_PLAYER.md) /
+[RU](OFFSCREEN_PLAYER.ru.md).
 
 v0.719 introduces a timer-only presentation adapter with checked raster extents,
 no video initialization, no cursor mutation and no SDL event-queue consumption.

@@ -84,6 +84,23 @@ extern "C"
         const FVM_DesktopOptions *, const FVM_DesktopSource *, const FVM_DesktopBackgroundLoader *,
         const FVM_DesktopLoadMonitor *, const FVM_DesktopPlaybackControl *,
         const FVM_DesktopFrameObserver *, const char **error);
+    /* Windowless counterparts: identical source/control/observer/error and lifetime contracts.
+     * Own only timer scheduling, never initialize SDL video/events, create native windows,
+     * poll host events or change cursor visibility. Frame presentations mean completed software
+     * rasters. Audio remains explicit options.mute policy; no native input is synthesized.
+     * Still synchronous, real-time paced, owner-thread-only and non-reentrant; SDL remains a
+     * timing/thread/audio link dependency. A finite frame limit or STOP callback is recommended.
+     * Not a GUI widget, frame-at-a-time API or Android lifecycle adapter. */
+    FVM_DESKTOP_API int
+    fvm_desktop_run_source_offscreen(const FVM_DesktopOptions *, const FVM_DesktopSource *,
+                                     const FVM_DesktopLoader *, const FVM_DesktopPlaybackControl *,
+                                     const FVM_DesktopFrameObserver *, const char **error);
+    /* Explicit background provider/monitor variant; async and blocking safe-point loading use
+     * timer waits without consuming external events. Cancel/join precedes every runner return. */
+    FVM_DESKTOP_API int fvm_desktop_run_source_background_offscreen(
+        const FVM_DesktopOptions *, const FVM_DesktopSource *, const FVM_DesktopBackgroundLoader *,
+        const FVM_DesktopLoadMonitor *, const FVM_DesktopPlaybackControl *,
+        const FVM_DesktopFrameObserver *, const char **error);
 #ifdef __cplusplus
 }
 #endif

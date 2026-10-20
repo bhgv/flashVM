@@ -4,7 +4,10 @@
 #include "../common/socket_http.h"
 #endif
 /* A C++98 host can bind the C observer without seeing native renderer/SDL types. */
-static FVM_Result frame_notify(const FVM_DesktopFrame *, void *) { return FVM_OK; }
+static FVM_Result frame_notify(const FVM_DesktopFrame *, void *)
+{
+    return FVM_OK;
+}
 /* No SDL or private VM header, no process argument vector and no native device startup. */
 int main()
 {
@@ -78,6 +81,10 @@ int main()
     frames.notify = frame_notify;
     if (fvm_desktop_run_source_observed(0, 0, 0, 0, &frames, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
         fvm_desktop_run_source_background_observed(0, 0, &background, &monitor, 0, &frames, 0) !=
+            FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
+    if (fvm_desktop_run_source_offscreen(0, 0, 0, 0, &frames, 0) != FVM_DESKTOP_EXIT_ARGUMENT ||
+        fvm_desktop_run_source_background_offscreen(0, 0, &background, &monitor, 0, &frames, 0) !=
             FVM_DESKTOP_EXIT_ARGUMENT)
         return 1;
     FVM_DesktopOptions options;

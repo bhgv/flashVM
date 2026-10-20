@@ -224,6 +224,7 @@ static int checked(FVM_Result status, const char *operation, const char *path)
 /* One copied native observer policy and run-wide presentation count, shared across roots. */
 typedef struct FVM_DesktopFrameSession
 {
+    int offscreen; /* Select timer-only delivery, leaving host video/events/cursor untouched. */
     FVM_DesktopFrameObserver policy; /* Shallow immutable copy; host userdata remains borrowed. */
     unsigned long
         total_presentations; /* Successful raster/native presentations for this source run. */
@@ -1243,10 +1244,13 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     viewport.xx = viewport.yy = 1;
     viewport.x0 = -(double)bounds.x_min / FVM_SWF_TWIPS_PER_PIXEL;
     viewport.y0 = -(double)bounds.y_min / FVM_SWF_TWIPS_PER_PIXEL;
-    window = fvm_desktop_window_open(path, surface.width, surface.height);
+    window = frames && frames->offscreen
+                 ? fvm_desktop_window_open_offscreen(surface.width, surface.height)
+                 : fvm_desktop_window_open(path, surface.width, surface.height);
     if (!window)
     {
-        fprintf(stderr, "%s: cannot open desktop window\n", path);
+        fprintf(stderr, "%s: cannot initialize presentation: %s\n", path,
+                fvm_desktop_window_error());
         goto cleanup;
     }
     if (navigation && navigation->background)
@@ -2211,6 +2215,40 @@ int fvm_desktop_run_source_background_observed(const FVM_DesktopOptions *options
     if (!observed_sessions(control, observer, &playback, &frames, error) ||
         !load_monitor_valid(monitor, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
+    return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
+                          &playback, &frames);
+}
+
+/* Windowless owner loop keeps the same scheduling, callbacks and joined cleanup contracts. */
+int fvm_desktop_run_source_offscreen(const FVM_DesktopOptions *options,
+                                     const FVM_DesktopSource *source,
+                                     const FVM_DesktopLoader *loader,
+                                     const FVM_DesktopPlaybackControl *control,
+                                     const FVM_DesktopFrameObserver *observer, const char **error)
+{
+    FVM_DesktopPlaybackSession playback;
+    FVM_DesktopFrameSession frames;
+    if (!observed_sessions(control, observer, &playback, &frames, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    frames.offscreen = 1;
+    return run_source(options, source, loader, error, 0, 0, &playback, &frames);
+}
+
+/* Windowless resource loading still joins byte workers before releasing VM and raster storage. */
+int fvm_desktop_run_source_background_offscreen(const FVM_DesktopOptions *options,
+                                                const FVM_DesktopSource *source,
+                                                const FVM_DesktopBackgroundLoader *loader,
+                                                const FVM_DesktopLoadMonitor *monitor,
+                                                const FVM_DesktopPlaybackControl *control,
+                                                const FVM_DesktopFrameObserver *observer,
+                                                const char **error)
+{
+    FVM_DesktopPlaybackSession playback;
+    FVM_DesktopFrameSession frames;
+    if (!observed_sessions(control, observer, &playback, &frames, error) ||
+        !load_monitor_valid(monitor, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    frames.offscreen = 1;
     return run_background(options, source, loader, error, 0, (int)monitor->asynchronous, monitor,
                           &playback, &frames);
 }

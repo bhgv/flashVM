@@ -1,5 +1,11 @@
 /* Real owner rasters, exact callback order, paused refresh and copied pixels surviving SDK
  * teardown. */
+#ifdef FVM_TEST_OFFSCREEN
+#define SDL_MAIN_HANDLED
+#include <SDL.h>
+#define fvm_desktop_run_source_observed fvm_desktop_run_source_offscreen
+#define fvm_desktop_run_source_background_observed fvm_desktop_run_source_background_offscreen
+#endif
 #include "../common/player.h"
 #ifdef FVM_DESKTOP_SOCKET_HTTP
 #include "../common/socket_http.h"
@@ -34,6 +40,10 @@ static FVM_Result capture_frame(const FVM_DesktopFrame *frame, void *raw)
     Capture *test = (Capture *)raw;
     unsigned long tick;
     int orange;
+#ifdef FVM_TEST_OFFSCREEN
+    if (SDL_WasInit(SDL_INIT_VIDEO))
+        return FVM_ERROR;
+#endif
     ++test->count;
     if (!frame || frame->struct_size != sizeof(*frame) ||
         frame->format != FVM_DESKTOP_FRAME_RGBA8 || frame->width != 32 || frame->height != 32 ||
@@ -159,6 +169,10 @@ int main(int argc, char **argv)
     size_t size = 0;
     const char *error = 0;
     int status, network, controlled;
+#ifdef FVM_TEST_OFFSCREEN
+    SDL_Event host_event;
+    Uint32 host_subsystems;
+#endif
     if (argc < 4 || argc > 5)
         return 2;
     memset(&test, 0, sizeof(test));
@@ -204,6 +218,17 @@ int main(int argc, char **argv)
         source.bytes = bytes;
         source.size = size;
     }
+#ifdef FVM_TEST_OFFSCREEN
+    SDL_SetMainReady();
+    if (SDL_InitSubSystem(SDL_INIT_TIMER | SDL_INIT_EVENTS) != 0)
+        return 4;
+    host_subsystems = SDL_WasInit(0);
+    memset(&host_event, 0, sizeof(host_event));
+    host_event.type = SDL_USEREVENT;
+    host_event.user.code = 720;
+    if (SDL_PushEvent(&host_event) != 1)
+        return 4;
+#endif
     if (!strcmp(test.scenario, "bad"))
         observer.notify = 0;
     if (network)
@@ -226,6 +251,12 @@ int main(int argc, char **argv)
     }
     else if (status || test.count != (!strcmp(test.scenario, "sequence") ? 4UL : 2UL))
         test.failed = 1;
+#ifdef FVM_TEST_OFFSCREEN
+    if (SDL_WasInit(0) != host_subsystems || SDL_PollEvent(&host_event) != 1 ||
+        host_event.type != SDL_USEREVENT || host_event.user.code != 720)
+        test.failed = 1;
+    SDL_QuitSubSystem(SDL_INIT_TIMER | SDL_INIT_EVENTS);
+#endif
     if (fvm_desktop_shutdown() != FVM_OK)
         test.failed = 1;
     if (strcmp(test.scenario, "bad") &&

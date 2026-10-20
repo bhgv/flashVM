@@ -1049,3 +1049,18 @@ if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_frontend_offscreen_window COMMAND flashvm_frontend_offscreen_window)
   set_tests_properties(flashvm_frontend_offscreen_window PROPERTIES TIMEOUT 15)
 endif()
+
+# Share real raster oracles, but force an invalid video driver for windowless runs.
+if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_executable(flashvm_frontend_offscreen_capture tests/frame_capture.c)
+  target_compile_definitions(flashvm_frontend_offscreen_capture PRIVATE FVM_TEST_OFFSCREEN)
+  target_link_libraries(flashvm_frontend_offscreen_capture PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_offscreen_capture PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  if(Python3_Interpreter_FOUND)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_offscreen_capture_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_capture.py $<TARGET_FILE:flashvm_frontend_offscreen_capture> --${mode} --offscreen)
+      set_tests_properties(flashvm_offscreen_capture_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+    endforeach()
+  endif()
+endif()
