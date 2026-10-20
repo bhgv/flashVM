@@ -30,3 +30,16 @@ operations, successful calls do not promise to clear old diagnostic text.
 The standalone C test [tests/inspect.c](tests/inspect.c) checks a mixed-requirement
 library, every truncated prefix, late corruption, cancellation and invalid
 arguments. These are format/embedding checks, not foreign-platform execution.
+
+The CLI is a thin adapter: `swl inspect INPUT.swo` or `swl inspect LIBRARY.swa`.
+It prints one stable decimal row per member:
+
+```text
+module alpha code 1 requirements 0
+```
+
+An invalid input produces no rows; errors go to stderr. Success is exit 0, read/
+validation/visitor/output failure is 1, wrong argument count is 2. A console write
+failure can leave partial text. The command neither emits SWF nor changes input.
+Names in SWO1 exclude whitespace, so each row has unambiguous whitespace fields.
+The text is a simple CLI report; C applications should call the typed API.

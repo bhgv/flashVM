@@ -41,6 +41,42 @@ static unsigned char *read_file(const char *path, size_t *size)
     }
     return data;
 }
+/* Console formatting is policy; validation and visitation stay in swl_core. */
+static int describe_module(void *user, const SwlModuleInfo *module)
+{
+    FILE *out = (FILE *)user;
+    return fprintf(out, "module %s code %zu requirements %u\n", module->name, module->code_size,
+                   module->requirements) >= 0;
+}
+
+/* Inspect one file without creating or overwriting any output artifact. */
+static int inspect_file(const char *path)
+{
+    unsigned char *data;
+    size_t size;
+    char error[256];
+    int ok;
+    data = read_file(path, &size);
+    if (!data)
+    {
+        fprintf(stderr, "swl: cannot read inspection input: %s\n", path);
+        return 1;
+    }
+    ok = swl_inspect(data, size, describe_module, stdout, error, sizeof(error));
+    free(data);
+    if (!ok)
+    {
+        fprintf(stderr, "swl: %s\n", error);
+        return 1;
+    }
+    if (fflush(stdout))
+    {
+        fprintf(stderr, "swl: inspection output failed\n");
+        return 1;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     SwlOptions options = {550, 400, 12, 0};
@@ -51,13 +87,14 @@ int main(int argc, char **argv)
     char error[256] = "read/allocation failure";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("swl 0.3.6 (SWO1/SWA1 to SWF8)");
+        puts("swl 0.3.7 (SWO1/SWA1 to SWF8)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
         puts("usage: swl link OUTPUT.swf [--extensions] INPUT.swo|INPUT.swa ...\n"
              "       swl archive OUTPUT.swa INPUT.swo ...\n"
+             "       swl inspect INPUT.swo|INPUT.swa\n"
              "Resources: --svf NAME FILE --jpeg NAME FILE --wav NAME FILE\n"
              "Events (after resources): --place NAME X Y DEPTH --play NAME\n"
              "Initializers run in input/member order. Duplicate modules fail.\n"
@@ -67,6 +104,8 @@ int main(int argc, char **argv)
              "Exit: 0 success, 1 input/link/output failure, 2 usage error.");
         return 0;
     }
+    if (argc >= 2 && !strcmp(argv[1], "inspect"))
+        return argc == 3 ? inspect_file(argv[2]) : 2;
     if (argc < 4 || (strcmp(argv[1], "link") && strcmp(argv[1], "archive")))
         return 2;
     archive = !strcmp(argv[1], "archive");

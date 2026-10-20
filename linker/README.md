@@ -1,4 +1,4 @@
-# SWL linker 0.3.6
+# SWL linker 0.3.7
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.

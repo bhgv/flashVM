@@ -154,3 +154,28 @@ with tempfile.TemporaryDirectory() as tmp:
                 assert struct.unpack_from('<I',body,3)[0]==8 and body[7:]==pcm
     out.write_bytes(b'keep');call('link',out,'--svf','panel',root/'panel.svf','--place','missing','0','0','1',good=False);assert out.read_bytes()==b'keep'
 print(f'{checks} total linker/resource subprocess checks')
+
+# Inspection uses the same validating core; no output is published on bad input.
+with tempfile.TemporaryDirectory() as tmp:
+    p = Path(tmp)
+    a, b, lib = p/'a.swo', p/'b.swo', p/'library.swa'
+    a.write_bytes(object('alpha', b'\0'))
+    b.write_bytes(object('beta', trace('extension'), 1))
+    assert call('inspect', a).stdout == b'module alpha code 1 requirements 0\n'
+    call('archive', lib, a, b)
+    expected = (b'module alpha code 1 requirements 0\n' +
+                f'module beta code {len(trace("extension"))} requirements 1\n'.encode())
+    assert call('inspect', lib).stdout == expected
+    data = lib.read_bytes()
+    for cut in range(len(data)):
+        lib.write_bytes(data[:cut])
+        assert call('inspect', lib, good=False).stdout == b''
+    lib.write_bytes(data + b'extra')
+    assert call('inspect', lib, good=False).stdout == b''
+    lib.write_bytes(data[:-1] + b'\1')
+    assert call('inspect', lib, good=False).stdout == b''
+    assert call('inspect', p/'missing', good=False).stdout == b''
+    for args in [('inspect',), ('inspect', a, b)]:
+        result = subprocess.run([EXE, *map(str, args)], capture_output=True, timeout=15)
+        assert result.returncode == 2 and result.stdout == b''
+print(f'{checks} total checks including inspection')
