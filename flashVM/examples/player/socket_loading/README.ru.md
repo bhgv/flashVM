@@ -40,8 +40,8 @@ runner освобождает временные байты и GC pins. Зате
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация настроек вызывающей программы без открытия display/аллокаций. |
 | [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Начальная callback-политика без транспорта, с одним разрешённым запросом. |
-| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L35) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
-| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L42) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
+| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L36) | Начальные тайм-ауты в структуре вызывающей программы; сокеты не открываются. |
+| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L43) | Синхронные DNS/connect/чтение через заимствованный sink; все собственные сокеты закрываются, указатели не сохраняются. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Работа UI/VM-потока с заимствованными дескрипторами до возврата; запросы на безопасных границах. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Завершение сеанса библиотеки после плеера; активные SDL-подсистемы запрещают очистку. |
 

@@ -46,8 +46,8 @@ cleartext-соединений задаётся приложением.
 
 | API | Контракт |
 | --- | --- |
-| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L35) | В структуру [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) вызывающей программы записывает connect=10000ms, total=30000ms. Возвращает 1; null даёт 0. Нет I/O/аллокаций/сохранения указателей. |
-| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L42) | Обязательны reference, write, resolved и ненулевая capacity. base необязателен для абсолютного URL. userdata — null для defaults или заимствованные options. Синхронно выполняет GET, передаёт бинарные чанки write(bytes,size,write_userdata). Canonical origin с NUL публикуется в resolved только при успехе. |
+| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36) | В структуру [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) вызывающей программы записывает connect=10000ms, total=30000ms. Возвращает 1; null даёт 0. Нет I/O/аллокаций/сохранения указателей. |
+| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L43) | Обязательны reference, write, resolved и ненулевая capacity. base необязателен для абсолютного URL. userdata — null для defaults или заимствованные options. Синхронно выполняет GET, передаёт бинарные чанки write(bytes,size,write_userdata). Canonical origin с NUL публикуется в resolved только при успехе. |
 
 Настройки: 0 < connect_ms <= total_ms <= 120000. DNS выполняется системным
 синхронным getaddrinfo: затраченное время учитывается, но сам resolver нельзя
@@ -134,7 +134,7 @@ OPENSSL_USE_STATIC_LIBS выбирает статические архивы ц�
 SOCKET_HTTP — ошибка конфигурации.
 
 В [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) добавлен ca_file, заимствованный до возврата fetch.
-Всегда используйте [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L35): он записывает null.
+Всегда используйте [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L36): он записывает null.
 Null выбирает default trust OpenSSL, включая SSL_CERT_FILE/SSL_CERT_DIR.
 Ненулевой путь выбирает только указанный PEM CA bundle для данного запроса.
 Ошибочный/пустой/нечитаемый CA и отказ проверки дают [FVM_ERROR](../include/flashvm/flashvm.h#L43) до HTTP payload.
@@ -174,7 +174,7 @@ Transport probe дополнительно проверен UBSan в Linux; Open
 сборки, а не произвольного loader.fetch и не проверка Internet/сертификатов/устройств.
 Отдельная функция сохраняет layout FVM_DesktopBuildInfo. Вызывайте на потоке хоста;
 со старым libcurl согласуйте параллельные init/query по правилам его SDK.
-Отдельные функции [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L46) и [fvm_desktop_http_capabilities](../frontend/common/http.h#L25)
+Отдельные функции [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L47) и [fvm_desktop_http_capabilities](../frontend/common/http.h#L25)
 описывают собственный провайдер. Libcurl query проверяет реальные protocols/SSL
 связанного SDK, а не предполагает наличие HTTPS.
 
@@ -192,6 +192,7 @@ binaries не запускались. Дополнительно 10000 generated
 access; это не проверка утечек. TLS/raw-HTTP probe прошёл UBSan, без
 инструментирования OpenSSL SDK и VM.
 [Controlled cancellation / Управляемая отмена](BACKGROUND_TRANSFER.ru.md), v0.680.
+[Явная политика ограниченных GET redirects](HTTP_REDIRECTS.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

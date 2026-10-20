@@ -2,6 +2,7 @@
 #ifndef FVM_SOCKET_HTTP_H
 #define FVM_SOCKET_HTTP_H
 #include "source.h"
+#include "http_policy.h"
 #include "network.h"
 #include "transfer.h"
 #include "../../ports/network/socket.h"
@@ -65,6 +66,17 @@ extern "C"
                                                  FVM_DesktopWrite write, void *write_userdata,
                                                  char *resolved, size_t capacity,
                                                  const FVM_NetControl *control, void *userdata);
+    /* Explicit redirect/deadline profile; userdata must point to an initialized HTTP policy.
+     * GET 301/302/303/307/308 only, no HTTPS downgrade; redirect bodies never reach the sink.
+     * Canonical final URL is published only after final successful body validation. */
+    FVM_Result fvm_desktop_socket_fetch_policy(const char *reference, const char *base,
+                                               FVM_DesktopWrite write, void *write_userdata,
+                                               char *resolved, size_t capacity, void *userdata);
+    /* Worker variant takes the same immutable policy plus the job cancellation callback. */
+    FVM_Result fvm_desktop_socket_transfer_policy(const char *reference, const char *base,
+                                                  FVM_DesktopWrite write, void *write_userdata,
+                                                  char *resolved, size_t capacity,
+                                                  const FVM_NetControl *control, void *userdata);
 #ifdef __cplusplus
 }
 #endif

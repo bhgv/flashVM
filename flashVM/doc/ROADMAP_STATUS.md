@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.686
+# FlashVM stage status / Состояние стадий — v0.687
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.687 adds explicit bounded native GET redirects with one total deadline,
+final-only body/provenance, strict destinations and per-hop TLS trust. Old fetch
+contracts remain redirect-free. Raw HTTP/URL/framing checks pass.
+[EN](HTTP_REDIRECTS.md) / [RU](HTTP_REDIRECTS.ru.md). All stages remain open.
 
 v0.686 exposes the same monitor through a default-provider playlist C API and
 strict --load-timeout/--load-progress CLI translation. No scalar ABI change or

@@ -41,7 +41,7 @@ if(FVM_PLAYER_SOCKET_HTTP)
   if(FVM_PLAYER_HTTP)
     message(FATAL_ERROR "Choose exactly one default HTTP provider: CURL or SOCKET_HTTP")
   endif()
-  add_library(flashvm_socket_transport STATIC common/socket_http.c common/socket_url.c
+  add_library(flashvm_socket_transport STATIC common/socket_http.c common/socket_url.c common/http_redirect.c ../ports/network/clock.c
     ../ports/network/socket.c)
   target_include_directories(flashvm_socket_transport PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common ${PROJECT_SOURCE_DIR}/include)
   if(FVM_PLAYER_SOCKET_TLS)
@@ -735,6 +735,16 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT AN
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/async_example.py $<TARGET_FILE:flashvm_example_monitored_loading>
       ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
     set_tests_properties(flashvm_example_monitored_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+  endif()
+endif()
+
+if(FVM_PLAYER_SOCKET_HTTP AND FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_redirect_client tests/redirect_client.c)
+  target_link_libraries(flashvm_redirect_client PRIVATE flashvm_socket_transport)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_redirect_http COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/redirect_http.py $<TARGET_FILE:flashvm_redirect_client>)
+    set_tests_properties(flashvm_redirect_http PROPERTIES TIMEOUT 25)
   endif()
 endif()
 

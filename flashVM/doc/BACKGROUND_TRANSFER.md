@@ -11,9 +11,9 @@ alive until return. It runs on the transfer thread: it must be short, thread-saf
 nonthrowing, and must not enter VM/SDL UI or destroy provider state.
 
 FVM_SocketHTTPRequest in [socket_http.h](../frontend/common/socket_http.h) wraps
-unchanged socket options and control. [fvm_desktop_socket_request_init](../frontend/common/socket_http.h#L55) initializes
+unchanged socket options and control. [fvm_desktop_socket_request_init](../frontend/common/socket_http.h#L56) initializes
 all fields without startup (1 success, 0 null).
-[fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L59) uses the ordinary fetch signature; userdata
+[fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L60) uses the ordinary fetch signature; userdata
 is null for defaults or points to this request. [fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L29)
 in [http.h](../frontend/common/http.h) instead accepts null or [FVM_NetControl](../ports/network/socket.h#L21).
 The original libcurl callback still rejects nonnull userdata.
@@ -69,7 +69,7 @@ yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L50) refuses cl
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
 
-[fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L64) adapts native options (null defaults) to the job
+[fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L65) adapts native options (null defaults) to the job
 signature. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L34) requires null userdata and a libcurl
 SDK reporting CURL_VERSION_THREADSAFE; older global init/cleanup implementations
 return UNSUPPORTED instead of being called from an arbitrary worker. The original

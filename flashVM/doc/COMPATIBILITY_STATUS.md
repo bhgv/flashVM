@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/5/9: bounded HTTP redirects | Проверено v0.687, native Linux HTTP | Explicit policy, five GET redirect codes, final source URL, one chain deadline and bounded transitions. TLS/curl/player integration checked in subsequent work. [EN](HTTP_REDIRECTS.md) / [RU](HTTP_REDIRECTS.ru.md). |
 | 3/5/7/9: host load monitoring | Проверено v0.685–0.686, Linux HTTP/HTTPS | Owner BEGIN/WAIT/terminal notices, startup/child stop, cooperative total deadlines, joined cleanup and C89/C++98 API. Host notices are not Flash loader events. [EN](LOAD_MONITOR.md) / [RU](LOAD_MONITOR.ru.md). |
 | 3/5/7/9: asynchronous child/form loading | Проверено v0.683, Linux | Opt-in FIFO network jobs with pinned targets, continuing timeline/timers/input/GC and owner-safe completion; 91 selected tests with HTTP/HTTPS and negative controls. Full MovieClipLoader lifecycle, progressive decode, DNS interruption and foreign runtime acceptance remain open. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md). |
 | 3/5/7/9: controlled/background transfers | Проверено v0.680–0.682, Linux | Additive C jobs, bounded immutable byte publication, cancel/join, shutdown quota guard and opt-in UI event pumping. Timeline waits at resource safe point; full async semantics/DNS interruption/foreign execution remain open. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md). |

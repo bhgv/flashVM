@@ -41,8 +41,8 @@ bytes and GC pins. The caller ends the matching player library session afterward
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned scalar player options; no allocation or display access. |
 | [fvm_desktop_loader_init](../../../frontend/common/source.h#L51) | Initialize caller-owned callback policy with no transport and one load. |
-| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L35) | Initialize caller-owned native transport deadlines; opens no sockets. |
-| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L42) | Synchronously resolve/connect/fetch each resource through a borrowed sink; closes owned sockets and retains no pointers. |
+| [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L36) | Initialize caller-owned native transport deadlines; opens no sockets. |
+| [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L43) | Synchronously resolve/connect/fetch each resource through a borrowed sink; closes owned sockets and retains no pointers. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Run on the UI/VM thread, borrowing all descriptors until return; resource callbacks execute at safe points. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | End the matching player-library session after playback; refuses active SDL subsystems. |
 

@@ -1,6 +1,7 @@
 /* Strict bounded HTTP/1.x over the native TCP adapter. No socket operation invokes the VM. */
 #include "socket_http.h"
 #include "socket_url.h"
+#include "http_redirect.h"
 #include <string.h>
 #include <stdlib.h>
 #ifdef FVM_DESKTOP_SOCKET_TLS
@@ -22,6 +23,7 @@ typedef struct FVM_SocketReader
     unsigned long body_bytes;               /* Total forwarded decoded body bytes. */
     FVM_DesktopWrite write;                 /* Borrowed sink, never retained after return. */
     void *userdata;                         /* Borrowed sink state. */
+    FVM_HTTPResponse *response; /* Optional caller-owned redirect metadata; no body ownership. */
 } FVM_SocketReader;
 /* Framing is explicit: a transfer coding never silently overrides an ambiguous length. */
 typedef struct FVM_SocketFraming
@@ -147,6 +149,12 @@ static int http_field(FVM_SocketReader *r, char *line, FVM_SocketFraming *framin
     while (end > value && (end[-1] == ' ' || end[-1] == '\t'))
         --end;
     *end = 0;
+    if (r->response && !trailer && fvm_http_redirect_status(r->response->status) &&
+        http_equal(line, "location"))
+    {
+        if (!fvm_http_redirect_location(r->response, value, strlen(value)))
+            return 0;
+    }
     if (http_equal(line, "content-length"))
     {
         if (trailer || framing->length_seen || !http_decimal(value, &framing->length))
@@ -183,6 +191,12 @@ static int http_headers(FVM_SocketReader *r, FVM_SocketFraming *framing, int *st
             line[11] > '9' || (size > 12 && line[12] != ' '))
             return 0;
         *status = (line[9] - '0') * 100 + (line[10] - '0') * 10 + (line[11] - '0');
+        if (r->response)
+        {
+            r->response->status = *status;
+            r->response->location_seen = 0;
+            r->response->location[0] = 0;
+        }
         for (;;)
         {
             if (!http_line(r, line, 1))
@@ -371,7 +385,8 @@ int fvm_desktop_socket_options_init(FVM_SocketHTTPOptions *out)
 /* Resolve, fetch, validate framing, deliver bounded bytes, then publish canonical provenance. */
 static FVM_Result socket_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
                                void *write_userdata, char *resolved, size_t capacity,
-                               const FVM_SocketHTTPOptions *options, const FVM_NetControl *control)
+                               const FVM_SocketHTTPOptions *options, const FVM_NetControl *control,
+                               FVM_HTTPResponse *response)
 {
     FVM_SocketURL url;
     FVM_SocketHTTPOptions defaults;
@@ -401,6 +416,7 @@ static FVM_Result socket_fetch(const char *reference, const char *base, FVM_Desk
     memset(&reader, 0, sizeof(reader));
     reader.write = write;
     reader.userdata = write_userdata;
+    reader.response = response;
     reader.socket = fvm_net_open_controlled(url.host, url.port, options->connect_ms,
                                             options->total_ms, control);
     if (!reader.socket)
@@ -414,8 +430,15 @@ static FVM_Result socket_fetch(const char *reference, const char *base, FVM_Desk
             goto cleanup;
     }
 #endif
-    if (!http_request(&reader, &url) || !http_headers(&reader, &framing, &status) ||
-        status < FVM_SOCKET_STATUS_MIN || status >= FVM_SOCKET_STATUS_END)
+    if (!http_request(&reader, &url) || !http_headers(&reader, &framing, &status))
+        goto cleanup;
+    if (response && fvm_http_redirect_status(status))
+    {
+        if (response->location_seen && fvm_net_active(reader.socket))
+            result = FVM_OK;
+        goto cleanup; /* Close without forwarding or waiting for the redirect body. */
+    }
+    if (status < FVM_SOCKET_STATUS_MIN || status >= FVM_SOCKET_STATUS_END)
         goto cleanup;
     if (status == FVM_SOCKET_STATUS_EMPTY || status == FVM_SOCKET_STATUS_RESET)
     {
@@ -473,7 +496,7 @@ FVM_Result fvm_desktop_socket_fetch(const char *reference, const char *base, FVM
                                     void *userdata)
 {
     return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
-                        (const FVM_SocketHTTPOptions *)userdata, 0);
+                        (const FVM_SocketHTTPOptions *)userdata, 0, 0);
 }
 /* Initialize all fields of the additive controlled policy without native startup. */
 int fvm_desktop_socket_request_init(FVM_SocketHTTPRequest *out)
@@ -492,7 +515,7 @@ FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char
 {
     const FVM_SocketHTTPRequest *request = (const FVM_SocketHTTPRequest *)userdata;
     return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
-                        request ? &request->options : 0, request ? &request->control : 0);
+                        request ? &request->options : 0, request ? &request->control : 0, 0);
 }
 
 /* Explicit worker adapter preserves immutable options and supplies the job's cancellation hook. */
@@ -502,5 +525,37 @@ FVM_Result fvm_desktop_socket_transfer_fetch(const char *reference, const char *
                                              const FVM_NetControl *control, void *userdata)
 {
     return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
-                        (const FVM_SocketHTTPOptions *)userdata, control);
+                        (const FVM_SocketHTTPOptions *)userdata, control, 0);
+}
+
+/* Adapt one verified native hop to the shared policy loop; stack options never escape. */
+static FVM_Result socket_policy_hop(const FVM_SocketURL *url, FVM_DesktopWrite write, void *sink,
+                                    const FVM_DesktopHTTPPolicy *policy,
+                                    const FVM_NetControl *control, FVM_HTTPResponse *response)
+{
+    FVM_SocketHTTPOptions options;
+    char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+    options.connect_ms = policy->connect_ms;
+    options.total_ms = policy->total_ms;
+    options.ca_file = policy->ca_file;
+    return socket_fetch(url->canonical, 0, write, sink, resolved, sizeof(resolved), &options,
+                        control, response);
+}
+/* Synchronous C callback with explicit bounded redirects; old fetch remains redirect-free. */
+FVM_Result fvm_desktop_socket_fetch_policy(const char *reference, const char *base,
+                                           FVM_DesktopWrite write, void *sink, char *resolved,
+                                           size_t capacity, void *userdata)
+{
+    return fvm_http_redirect_fetch(reference, base, write, sink, resolved, capacity,
+                                   (const FVM_DesktopHTTPPolicy *)userdata, 0, socket_policy_hop);
+}
+/* Worker receives only immutable native policy and its cooperative cancellation bridge. */
+FVM_Result fvm_desktop_socket_transfer_policy(const char *reference, const char *base,
+                                              FVM_DesktopWrite write, void *sink, char *resolved,
+                                              size_t capacity, const FVM_NetControl *control,
+                                              void *userdata)
+{
+    return fvm_http_redirect_fetch(reference, base, write, sink, resolved, capacity,
+                                   (const FVM_DesktopHTTPPolicy *)userdata, control,
+                                   socket_policy_hop);
 }
