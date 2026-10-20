@@ -51,7 +51,7 @@ without consuming intent. Returns 1 for STOP, null or mutex failure, otherwise 0
 It works before the first snapshot, including during startup fetching.
 
 [fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` returns the live native-handle count without
-SDK startup. [fvm_desktop_shutdown](../frontend/common/player.h#L53)()` returns ERROR while any mailbox remains, even
+SDK startup. [fvm_desktop_shutdown](../frontend/common/player.h#L54)()` returns ERROR while any mailbox remains, even
 without a window/transfer, leaving the active SDK untouched.
 
 [fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L42)(mailbox)` returns OK; null is accepted.

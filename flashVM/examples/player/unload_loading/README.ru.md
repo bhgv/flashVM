@@ -44,7 +44,7 @@ UI, VM, доставка и очистка выполняются в поток�
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native adapter с заимствованной неизменной политикой и cooperative stop; SOCKET_TRANSPORT.md. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный curl adapter с проверкой безопасной global initialization; BACKGROUND_TRANSFER.md. |
 | [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Заимствует структуры до синхронного возврата; доставка child/form в безопасных точках; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Завершает SDK после возврата плеера и join; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершает SDK после возврата плеера и join; PLAYER_HOST_OWNERSHIP.md. |
 
 Контракты: [worker](../../../doc/BACKGROUND_TRANSFER.ru.md),
 [параметры](../../../doc/PLAYER_CONFIGURATION.ru.md),

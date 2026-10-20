@@ -33,8 +33,8 @@ cmake --build build-player --target flashvm_example_configured_host --parallel
 | API | Назначение и владение |
 | --- | --- |
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализирует структуру [FVM_DesktopOptions](../../../frontend/common/options.h#L29) приложения, включая 100 процентов авторской частоты. Null возвращает 0; ресурсы не создаются |
-| [fvm_desktop_run](../../../frontend/common/player.h#L38) | Проверяет весь плейлист, затем синхронно загружает, играет и освобождает ресурсы. Массив и неизменные пути заимствуются до возврата. Коды 0/1/2 описаны в контракте |
-| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L16) | Ошибка аргументов/конфигурации до запуска |
+| [fvm_desktop_run](../../../frontend/common/player.h#L39) | Проверяет весь плейлист, затем синхронно загружает, играет и освобождает ресурсы. Массив и неизменные пути заимствуются до возврата. Коды 0/1/2 описаны в контракте |
+| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L17) | Ошибка аргументов/конфигурации до запуска |
 
 Пример выбирает interpreter, mute, два tick и явный FPS, оставляя percent по
 умолчанию. Он линкует flashvm_player_host — ту же статическую реализацию, что
@@ -42,7 +42,7 @@ cmake --build build-player --target flashvm_example_configured_host --parallel
 OS entrypoint в библиотеку не включён. Структура и строки принадлежат приложению.
 Runner владеет временной VM, [GC:] корнями и native-ресурсами; управляемые объекты
 наружу не выходят. Статический текст ошибки освобождать нельзя. Запуск — на
-основном UI-потоке, без рекурсии и параллельных вызовов. Финальный [fvm_desktop_shutdown](../../../frontend/common/player.h#L53)
+основном UI-потоке, без рекурсии и параллельных вызовов. Финальный [fvm_desktop_shutdown](../../../frontend/common/player.h#L54)
 принадлежит встраивающему приложению.
 
 Ограничения: синхронное воспроизведение, текущая диагностика через стандартные

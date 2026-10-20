@@ -39,7 +39,7 @@ bytes; pin, декодирование и публикация выполняю�
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker, заимствованная policy, cooperative stop; SOCKET_TRANSPORT.md. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker с проверкой global initialization; BACKGROUND_TRANSFER.md. |
 | [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Заимствует descriptors до синхронного возврата; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Завершает SDK после join/cleanup; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Завершает SDK после join/cleanup; PLAYER_HOST_OWNERSHIP.md. |
 
 Только static full-canvas GIF89a; GIF87a/animation, root image startup и synthetic
 loader/unload events не реализованы. Действуют source profiles и пределы bytes/

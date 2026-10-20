@@ -8,7 +8,7 @@ Current v0.686 supports child movies and loadVariables; it supersedes the histor
 
 ## Memory input since v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L46) in [player.h](../frontend/common/player.h) accepts scalar
+[fvm_desktop_run_memory](../frontend/common/player.h#L47) in [player.h](../frontend/common/player.h) accepts scalar
 [FVM_DesktopOptions](../frontend/common/options.h#L29), a const void pointer, the exact size_t byte count, a nonempty
 source name and optional static error output. char buf[] and read-only linked
 arrays both work; binary NUL is ordinary data. No temporary file, strlen(data),
@@ -221,7 +221,7 @@ and a host-supplied callback; see [native transport](SOCKET_TRANSPORT.md).
 [HTTP/embedded tests](../frontend/tests/child_loading.py)
 ### Opaque session cleanup and Windows exports
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L53) in player.h explicitly ends the matching library's SDL
+[fvm_desktop_shutdown](../frontend/common/player.h#L54) in player.h explicitly ends the matching library's SDL
 session on its UI owner thread after playback returns. If SDL_WasInit reports any
 active subsystem, it returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) without touching it; otherwise it calls
 SDL_Quit and returns [FVM_OK](../include/flashvm/flashvm.h#L42), including repeated shutdown of an unused session.

@@ -91,7 +91,7 @@ output pointers without allocation or native service startup.
 | [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Fill asynchronous observation/deadline defaults without creating jobs. [LOAD_MONITOR.md](../../../doc/LOAD_MONITOR.md). |
 | [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Synchronously run source with optional loader and required control; borrow all storage until return; status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
 | [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Synchronously own playback; require provider/monitor/control; join workers before return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Release SDK session after runner-owned windows/jobs are gone; caller controls process lifetime. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Release SDK session after runner-owned windows/jobs are gone; caller controls process lifetime. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Selected native worker adapter; cooperatively fetch immutable bytes without VM/SDL calls. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate curl worker adapter; checks SDK global thread safety before fetching. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
 

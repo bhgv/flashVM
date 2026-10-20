@@ -109,7 +109,7 @@ Each row describes its individual function and links to the full contract.
 | [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Local/memory controlled runner with optional loader; borrows input until return, status 0/1/2. [PLAYBACK_CONTROL.md](../../../doc/PLAYBACK_CONTROL.md). |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Configured native worker byte provider; cooperative cancellation, no VM/SDL events. [SOCKET_TRANSPORT.md](../../../doc/SOCKET_TRANSPORT.md). |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate worker-safe curl provider with SDK global-safety check. [BACKGROUND_TRANSFER.md](../../../doc/BACKGROUND_TRANSFER.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Explicit SDK session teardown after every native mailbox/worker/window/transfer is gone. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Explicit SDK session teardown after every native mailbox/worker/window/transfer is gone. [PLAYER_HOST_OWNERSHIP.md](../../../doc/PLAYER_HOST_OWNERSHIP.md). |
 
 The example native adapter uses: [SDL_CreateThread](https://wiki.libsdl.org/SDL2/SDL_CreateThread), [SDL_WaitThread](https://wiki.libsdl.org/SDL2/SDL_WaitThread), [SDL_AtomicGet](https://wiki.libsdl.org/SDL2/SDL_AtomicGet), [SDL_AtomicSet](https://wiki.libsdl.org/SDL2/SDL_AtomicSet), [SDL_GetTicks](https://wiki.libsdl.org/SDL2/SDL_GetTicks), [SDL_Delay](https://wiki.libsdl.org/SDL2/SDL_Delay).
 

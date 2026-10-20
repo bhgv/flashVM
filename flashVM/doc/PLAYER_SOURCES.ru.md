@@ -8,7 +8,7 @@
 
 ## Вход из памяти с v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L46) из [player.h](../frontend/common/player.h) принимает
+[fvm_desktop_run_memory](../frontend/common/player.h#L47) из [player.h](../frontend/common/player.h) принимает
 скалярные [FVM_DesktopOptions](../frontend/common/options.h#L29), const void указатель, точное число байтов size_t,
 непустое имя источника и необязательный указатель на статическую ошибку.
 Подходят char buf[] и read-only массивы в исполняемом файле. NUL — обычный байт,
@@ -219,7 +219,7 @@ target против GET/POST аргументов. Полная историче
 [HTTP/embedded тесты](../frontend/tests/child_loading.py)
 ### Непрозрачное завершение сеанса и экспорт Windows
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L53) из player.h явно завершает SDL именно этой библиотеки на
+[fvm_desktop_shutdown](../frontend/common/player.h#L54) из player.h явно завершает SDL именно этой библиотеки на
 её UI-потоке после возврата playback. Если SDL_WasInit видит активную подсистему,
 возвращается [FVM_ERROR](../include/flashvm/flashvm.h#L43) без изменений; иначе вызывается SDL_Quit и возвращается
 [FVM_OK](../include/flashvm/flashvm.h#L42), в том числе при повторном завершении неиспользуемого сеанса. Операция

@@ -52,7 +52,7 @@ All calls use the native UI/VM owner thread. The synchronous player call borrows
 stack descriptors, URL and provider userdata until return. Workers only manipulate
 native bytes; the owner pins managed targets and joins workers before unpinning.
 The script only queues unloading; the owner commits it after leaving VM execution.
-No script value or VM pointer enters the network worker. [fvm_desktop_shutdown](../../../frontend/common/player.h#L53)
+No script value or VM pointer enters the network worker. [fvm_desktop_shutdown](../../../frontend/common/player.h#L54)
 ends the SDK session after all request and window cleanup.
 
 | C API | Purpose, ownership and blocking; guide |

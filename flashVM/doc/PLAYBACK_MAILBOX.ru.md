@@ -52,7 +52,7 @@ native mutex, не ждёт кадра/сети и не входит в VM. Ск
 Доступен до появления первого снимка, в том числе при начальной загрузке.
 
 [fvm_desktop_playback_mailbox_active](../frontend/common/playback_mailbox.h#L69)()` возвращает число живых native-объектов без
-запуска SDK. [fvm_desktop_shutdown](../frontend/common/player.h#L53)()` возвращает ERROR, пока остаётся хотя бы один
+запуска SDK. [fvm_desktop_shutdown](../frontend/common/player.h#L54)()` возвращает ERROR, пока остаётся хотя бы один
 ящик, даже без открытого окна/задания; активный SDK при этом не изменяется.
 
 [fvm_desktop_playback_mailbox_release](../frontend/common/playback_mailbox.h#L42)(mailbox)` возвращает OK, null тоже допустим.

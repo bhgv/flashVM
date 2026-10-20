@@ -215,6 +215,7 @@ special/printable selectors without allocation or state mutation.
 
 [Owner playback commands / Управление воспроизведением](PLAYBACK_CONTROL.md) / [RU](PLAYBACK_CONTROL.ru.md).
 [Thread-safe playback mailbox / Межпоточный ящик команд](PLAYBACK_MAILBOX.md) / [RU](PLAYBACK_MAILBOX.ru.md).
+[RGBA frame observation / Наблюдение RGBA-кадров](FRAME_CAPTURE.md) / [RU](FRAME_CAPTURE.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

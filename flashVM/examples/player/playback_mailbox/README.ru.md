@@ -110,7 +110,7 @@ DLL/shared-library search path задавайте по [правилам SDK](..
 | [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Локальный/буферный управляемый запуск с необязательным loader; вход заимствован до возврата, статус 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Настроенный native worker provider байтов; кооперативная отмена, без VM/SDL-событий. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный worker-safe curl provider с проверкой SDK globals. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Явное завершение SDK после всех native mailbox/worker/окон/заданий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L54) | Явное завершение SDK после всех native mailbox/worker/окон/заданий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
 
 Native-адаптер примера использует: [SDL_CreateThread](https://wiki.libsdl.org/SDL2/SDL_CreateThread), [SDL_WaitThread](https://wiki.libsdl.org/SDL2/SDL_WaitThread), [SDL_AtomicGet](https://wiki.libsdl.org/SDL2/SDL_AtomicGet), [SDL_AtomicSet](https://wiki.libsdl.org/SDL2/SDL_AtomicSet), [SDL_GetTicks](https://wiki.libsdl.org/SDL2/SDL_GetTicks), [SDL_Delay](https://wiki.libsdl.org/SDL2/SDL_Delay).
 

@@ -11,6 +11,7 @@
 #include "network_loader.h"
 #include "playback.h"
 #include "playback_mailbox.h"
+#include "frame.h"
 #define FVM_DESKTOP_EXIT_OK 0       /* Completed playback or a successful informational query. */
 #define FVM_DESKTOP_EXIT_PLAYBACK 1 /* File, VM, presentation or device failure. */
 #define FVM_DESKTOP_EXIT_ARGUMENT 2 /* Invalid CLI or structured configuration. */
