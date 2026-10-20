@@ -25,6 +25,13 @@ static FVM_Result provider(const char *reference, const char *base, FVM_DesktopW
         assert(state->worker != state->owner);
         assert(!strcmp(reference, "http://copied/start"));
         assert(!strcmp(base, "http://copied/base"));
+        if (state->mode == 10) {
+            result = write(data, sizeof(data), sink);
+            assert(result == FVM_OK);
+            while (!control->cancelled(control->userdata)) SDL_Delay(1);
+            return FVM_OK; /* A provider cannot publish late success past a deadline. */
+        }
+        if (state->mode == 11) { SDL_Delay(80); return FVM_OK; }
         if (state->mode == 6) {
             while (!control->cancelled(control->userdata)) SDL_Delay(1);
             return FVM_ERROR;
@@ -107,7 +114,25 @@ int main(void)
         assert(fvm_desktop_transfer_release(job) == FVM_OK);
         assert(!fvm_desktop_transfer_active());
     }
+    /* Total job deadlines include idle workers and survive ignored late success. */
     SDL_DestroySemaphore(state.gate);
+    state.gate = 0;
+    for (i = 0; i < 3; ++i) {
+        state.mode = i == 2 ? 11 : (i == 1 ? 6 : 10);
+        assert(fvm_desktop_transfer_begin_timed(reference, base, &options,
+                                               40, &job) == FVM_OK);
+        if (i == 1) assert(fvm_desktop_transfer_cancel(job));
+        view = done(job);
+        assert(view.state == (i == 1 ? FVM_DESKTOP_TRANSFER_CANCELLED : FVM_DESKTOP_TRANSFER_TIMED_OUT));
+        assert(view.result == FVM_ERROR && !view.bytes && !view.size && !view.location);
+        if (i == 0) assert(view.received == 4);
+        assert(!fvm_desktop_transfer_cancel(job));
+        assert(fvm_desktop_transfer_release(job) == FVM_OK);
+    }
+    job = 0;
+    assert(fvm_desktop_transfer_begin_timed(reference, base, &options,
+        FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS + 1UL, &job) == FVM_INVALID_ARGUMENT && !job);
+
     options.userdata = 0; options.max_bytes = 64;
     for (i = 0; i < FVM_DESKTOP_TRANSFER_MAX_JOBS; ++i) {
         assert(fvm_desktop_transfer_begin("http://a/", 0, &options, &jobs[i]) == FVM_OK);

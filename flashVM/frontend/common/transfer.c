@@ -21,7 +21,10 @@ struct FVM_DesktopTransfer
     size_t size, capacity; /* Written size and bounded allocation capacity. */
     size_t received;       /* Retained progress after error buffer disposal. */
     unsigned int state;    /* Synchronized terminal state. */
-    int cancelled;         /* Synchronized cooperative stop request. */
+    int cancelled;         /* Synchronized explicit cooperative stop request. */
+    int timed_out;         /* First stop reason was the elapsed deadline. */
+    Uint32 started;        /* Monotonic SDL tick origin, unsigned rollover subtraction. */
+    Uint32 timeout;        /* Zero or bounded duration copied before worker launch. */
     FVM_Result result;     /* First sink error or final provider/validation result. */
 };
 /* Validate accessible bounded C text without unbounded strlen. */
@@ -35,13 +38,21 @@ static int transfer_text(const char *text, int empty)
             return i != 0 || empty;
     return 0;
 }
+/* Caller holds mutex. Latch one stop reason; completed publication is immutable. */
+static void transfer_deadline(FVM_DesktopTransfer *job)
+{
+    if (job->state == FVM_DESKTOP_TRANSFER_PENDING && !job->cancelled && !job->timed_out &&
+        job->timeout && (Uint32)(SDL_GetTicks() - job->started) >= job->timeout)
+        job->timed_out = 1;
+}
 /* Read cancellation without exposing atomic/platform fields to a provider. */
 static int transfer_cancelled(void *userdata)
 {
     FVM_DesktopTransfer *job = (FVM_DesktopTransfer *)userdata;
     int cancelled;
     SDL_LockMutex(job->mutex);
-    cancelled = job->cancelled;
+    transfer_deadline(job);
+    cancelled = job->cancelled || job->timed_out;
     SDL_UnlockMutex(job->mutex);
     return cancelled;
 }
@@ -58,7 +69,8 @@ static FVM_Result transfer_write(const void *bytes, size_t size, void *userdata)
         result = job->result;
         goto done;
     }
-    if (job->cancelled)
+    transfer_deadline(job);
+    if (job->cancelled || job->timed_out)
     {
         job->result = FVM_ERROR;
         goto failed;
@@ -118,9 +130,11 @@ static int transfer_worker(void *userdata)
         result = job->result;
     if (result == FVM_OK && (!memchr(job->location, 0, sizeof(job->location)) || !job->location[0]))
         result = FVM_INVALID_ARGUMENT;
-    if (job->cancelled)
+    transfer_deadline(job);
+    if (job->cancelled || job->timed_out)
     {
-        job->state = FVM_DESKTOP_TRANSFER_CANCELLED;
+        job->state =
+            job->timed_out ? FVM_DESKTOP_TRANSFER_TIMED_OUT : FVM_DESKTOP_TRANSFER_CANCELLED;
         result = FVM_ERROR;
     }
     else
@@ -151,15 +165,15 @@ int fvm_desktop_transfer_options_init(FVM_DesktopTransferOptions *out)
     return 1;
 }
 /* Reserve before starting a thread so every terminal/failure path balances the quota. */
-FVM_Result fvm_desktop_transfer_begin(const char *reference, const char *base,
-                                      const FVM_DesktopTransferOptions *options,
-                                      FVM_DesktopTransfer **out)
+FVM_Result fvm_desktop_transfer_begin_timed(const char *reference, const char *base,
+                                            const FVM_DesktopTransferOptions *options,
+                                            unsigned long timeout_ms, FVM_DesktopTransfer **out)
 {
     FVM_DesktopTransfer *job;
     int handles;
-    if (!out || !options || !options->fetch || !options->max_bytes ||
-        options->max_bytes > FVM_DESKTOP_TRANSFER_MAX_BYTES || !transfer_text(reference, 0) ||
-        (base && !transfer_text(base, 0)))
+    if (timeout_ms > FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS || !out || !options || !options->fetch ||
+        !options->max_bytes || options->max_bytes > FVM_DESKTOP_TRANSFER_MAX_BYTES ||
+        !transfer_text(reference, 0) || (base && !transfer_text(base, 0)))
         return FVM_INVALID_ARGUMENT;
     do
     {
@@ -172,6 +186,8 @@ FVM_Result fvm_desktop_transfer_begin(const char *reference, const char *base,
         goto failed;
     job->options = *options;
     job->owner = SDL_ThreadID();
+    job->started = SDL_GetTicks();
+    job->timeout = (Uint32)timeout_ms;
     job->result = FVM_OK;
     strcpy(job->reference, reference);
     if (base)
@@ -193,12 +209,20 @@ failed:
     SDL_AtomicAdd(&transfer_handles, -1);
     return FVM_OUT_OF_MEMORY;
 }
+/* Original ABI has no deadline; caller retains explicit cancellation/join control. */
+FVM_Result fvm_desktop_transfer_begin(const char *reference, const char *base,
+                                      const FVM_DesktopTransferOptions *options,
+                                      FVM_DesktopTransfer **out)
+{
+    return fvm_desktop_transfer_begin_timed(reference, base, options, 0, out);
+}
 /* Never expose an accumulating allocation that a worker might realloc or discard. */
 FVM_Result fvm_desktop_transfer_poll(FVM_DesktopTransfer *job, FVM_DesktopTransferView *out)
 {
     if (!job || !out)
         return FVM_INVALID_ARGUMENT;
     SDL_LockMutex(job->mutex);
+    transfer_deadline(job);
     out->state = job->state;
     out->result = job->state == FVM_DESKTOP_TRANSFER_PENDING ? FVM_NOT_FOUND : job->result;
     out->received = job->received;
@@ -216,7 +240,8 @@ int fvm_desktop_transfer_cancel(FVM_DesktopTransfer *job)
         return 0;
     SDL_LockMutex(job->mutex);
     accepted = job->state == FVM_DESKTOP_TRANSFER_PENDING;
-    if (accepted)
+    transfer_deadline(job);
+    if (accepted && !job->timed_out)
         job->cancelled = 1;
     SDL_UnlockMutex(job->mutex);
     return accepted;

@@ -46,7 +46,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 ## Транспорт хоста и корневая загрузка с v0.674
 
 [source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L22)
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 и [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают

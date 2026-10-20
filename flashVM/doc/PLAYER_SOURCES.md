@@ -46,7 +46,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 ## Host transport and root loading since v0.674
 
 [source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L22)
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
 and [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
 validation, ignored playlist, return/error and main-thread rules as memory run.

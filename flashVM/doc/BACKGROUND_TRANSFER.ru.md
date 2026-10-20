@@ -34,20 +34,20 @@ Loopback-тесты отменяют запрос до connect, молчащий
 ## Фоновые задания C89 с v0.681
 
 [transfer.h](../frontend/common/transfer.h) предоставляет opaque
-[FVM_DesktopTransfer](../frontend/common/transfer.h#L34) и структуры [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L27)/View.
-[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L47) задаёт max_bytes=64MiB без провайдера: 1 — успех,
-0 — null. Нужен worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L21) и необязательный immutable
+[FVM_DesktopTransfer](../frontend/common/transfer.h#L37) и структуры [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L30)/View.
+[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L50) задаёт max_bytes=64MiB без провайдера: 1 — успех,
+0 — null. Нужен worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L24) и необязательный immutable
 userdata; callback расширяет обычный fetch явным cancellation control. VM-объекты,
 managed strings и UI-объекты не передаются потоку. Импорт байтов выполняет owner.
 
-[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L51)(reference,base,options,out) копирует ограниченные строки
+[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L54)(reference,base,options,out) копирует ограниченные строки
 и options, резервирует один из 64 живых handles этого SDK и запускает SDL worker.
 Userdata и вложенные строки/CA заимствованы до release. max_bytes: 1..64MiB.
 Ошибки: INVALID_ARGUMENT, ERROR при квоте, OUT_OF_MEMORY при allocation/thread.
 *out при ошибке не меняется. Video/audio не инициализируются; provider/network
 не выполняются на вызывающем потоке.
 
-[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L55) копирует view под mutex: OK либо INVALID_ARGUMENT для
+[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L66) копирует view под mutex: OK либо INVALID_ARGUMENT для
 null. PENDING: result=NOT_FOUND, изменяемые байты/адрес не выдаются. DONE:
 immutable counted bytes (допустимо пустое тело) и непустой provenance, заимствованы
 до release. FAILED: точная первая ошибка sink/provider без payload. CANCELLED:
@@ -55,16 +55,16 @@ ERROR без payload. received сохраняет накопленный progres
 ошибочного/отменённого буфера. Игнорирование ошибки sink провайдером не превращается
 в успех. Пустой/неограниченный NUL provenance — ошибка.
 
-[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L59) возвращает 1 для pending, 0 для terminal/null;
+[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L70) возвращает 1 для pending, 0 для terminal/null;
 не блокирует, не освобождает storage и не отзывает готовый view. Отмена до
 terminal publication побеждает поздний успех provider.
-[fvm_desktop_transfer_release](../frontend/common/transfer.h#L63) отменяет, join и освобождает на создавшем потоке:
+[fvm_desktop_transfer_release](../frontend/common/transfer.h#L74) отменяет, join и освобождает на создавшем потоке:
 OK, null также OK, другой поток INVALID_ARGUMENT. Некоперативный provider/DNS
 может задержать join. Нет detach/forced kill. Нельзя одновременно release и
 poll/cancel или выгружать библиотеку с активным worker. Все borrowed данные
 сохраняются до возврата release.
 
-[fvm_desktop_transfer_active](../frontend/common/transfer.h#L65) считает живые handles, включая готовые до release.
+[fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) считает живые handles, включая готовые до release.
 [fvm_desktop_shutdown](../frontend/common/player.h#L49) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L64) принимает native options либо
@@ -176,6 +176,26 @@ libcurl запрещена для worker; при отсутствии подде
 Дополнительно прошли 12 проверок shared-libcurl и 16 shared native-TLS.
 C-код player/transfer прошёл UBSan на настоящем async HTTP сценарии; SDL, ядро VM
 и криптобиблиотеки в этой проверке не инструментировались.
+
+## Общий кооперативный дедлайн задания (v0.684)
+
+[fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L62) добавляет общий бюджет в миллисекундах без
+изменения существующих options/view и прежнего begin без дедлайна. Ноль отключает
+бюджет; максимум — FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS. Неверный бюджет сохраняет
+*out и не запускает worker. Беззнаковое вычитание SDL ticks учитывает переполнение.
+Бюджет включает работу провайдера со старта, а не только отдельные socket операции.
+
+Истечение запрашивает кооперативную отмену: проверяется poll, sink, cancellation
+callback и итоговая публикация. Поздний успешный ответ не публикует байты.
+FVM_DESKTOP_TRANSFER_TIMED_OUT содержит [FVM_ERROR](../include/flashvm/flashvm.h#L43), без данных/адреса, с сохранением
+received. Побеждает первая зафиксированная причина cancel/deadline; готовый view
+не меняется. Pending может сохраняться после дедлайна, пока DNS или пользовательский
+код не вернулся. Release всегда делает join: это не принудительное прерывание
+и не разрешение освобождать borrowed userdata раньше времени.
+
+Нативные тесты проверяют частичные байты, поздний игнорируемый успех, приоритет
+ранней явной отмены, неверный timeout и прежние случаи заданий. Штатное поведение
+плеера и отдельные I/O дедлайны провайдера не меняются.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

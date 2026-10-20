@@ -33,21 +33,21 @@ are protocol tests, not complete Flash or native foreign OS/device acceptance.
 ## Background C89 jobs since v0.681
 
 [transfer.h](../frontend/common/transfer.h) provides an opaque
-[FVM_DesktopTransfer](../frontend/common/transfer.h#L34) and caller-owned [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L27)/View.
-[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L47) sets max_bytes=64MiB and no provider (1 success,
-0 null). Supply a worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L21) callback and optional
+[FVM_DesktopTransfer](../frontend/common/transfer.h#L37) and caller-owned [FVM_DesktopTransferOptions](../frontend/common/transfer.h#L30)/View.
+[fvm_desktop_transfer_options_init](../frontend/common/transfer.h#L50) sets max_bytes=64MiB and no provider (1 success,
+0 null). Supply a worker-safe [FVM_DesktopTransferFetch](../frontend/common/transfer.h#L24) callback and optional
 immutable userdata. Its signature extends the usual fetch with an explicit
 borrowed cancellation control. No VM object, managed string or UI object may
 cross this worker boundary. Native bytes are imported only by the owner later.
 
-[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L51)(reference,base,options,out) copies bounded text and
+[fvm_desktop_transfer_begin](../frontend/common/transfer.h#L54)(reference,base,options,out) copies bounded text and
 options, reserves one of 64 live handles in this SDK and starts an SDL worker.
 Userdata and nested options/CA filenames remain borrowed through release.
 max_bytes must be 1..64MiB. Invalid input returns INVALID_ARGUMENT, quota ERROR,
 allocation/thread failure OUT_OF_MEMORY; *out is unchanged on failure. This does
 not initialize video/audio or perform provider/network work on the calling thread.
 
-[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L55) copies a mutex-protected view (OK, or INVALID_ARGUMENT
+[fvm_desktop_transfer_poll](../frontend/common/transfer.h#L66) copies a mutex-protected view (OK, or INVALID_ARGUMENT
 for null). PENDING has result=NOT_FOUND and exposes no mutable bytes/provenance.
 DONE exposes immutable counted bytes (possibly empty) and nonempty provenance,
 borrowed until release. FAILED exposes the exact first sink/provider error and
@@ -55,16 +55,16 @@ no payload. CANCELLED returns ERROR and no payload. received retains accumulated
 progress even when a failed/cancelled buffer has been discarded. Providers that
 ignore a sink error cannot publish success. Missing/unterminated provenance fails.
 
-[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L59) returns 1 for a pending request and 0 for terminal/null;
+[fvm_desktop_transfer_cancel](../frontend/common/transfer.h#L70) returns 1 for a pending request and 0 for terminal/null;
 it requests a stop without blocking, freeing bytes or revoking a completed view.
 Cancellation before terminal publication wins over a late provider success.
-[fvm_desktop_transfer_release](../frontend/common/transfer.h#L63) cancels, joins and frees the handle on its creating
+[fvm_desktop_transfer_release](../frontend/common/transfer.h#L74) cancels, joins and frees the handle on its creating
 thread: OK, null also OK, wrong thread INVALID_ARGUMENT. It may block for an
 uncooperative provider/DNS; no detach/forced kill is used. Never release concurrently
 with poll/cancel or unload a library while its worker is alive. All argument and
 callback storage remains live until release returns.
 
-[fvm_desktop_transfer_active](../frontend/common/transfer.h#L65) reports live handles, including terminal handles not
+[fvm_desktop_transfer_active](../frontend/common/transfer.h#L76) reports live handles, including terminal handles not
 yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L49) refuses cleanup while any remain, even when
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
@@ -186,6 +186,26 @@ do not close stage9 or all nine roadmap stages.
 Additional current validation: 12 shared-libcurl and 16 shared native-TLS checks
 pass. Player/transfer C implementations pass UBSan on the real async HTTP fixture;
 SDL, core VM and crypto dependencies were not instrumented by that probe.
+
+## Cooperative total job deadlines (v0.684)
+
+[fvm_desktop_transfer_begin_timed](../frontend/common/transfer.h#L62) adds a total elapsed-millisecond budget without
+changing existing options/view layouts or the unlimited begin API. Zero disables
+the budget; the maximum is FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS. Invalid values
+preserve *out and start no worker. Unsigned SDL tick subtraction tolerates rollover.
+The budget includes provider work from launch, not just each socket operation.
+
+Expiry requests cooperative cancellation; it is checked by polling, sink writes,
+provider cancellation queries and final publication. A late successful provider
+cannot publish bytes. The terminal FVM_DESKTOP_TRANSFER_TIMED_OUT view has [FVM_ERROR](../include/flashvm/flashvm.h#L43),
+no payload/provenance and retained received progress. First latched explicit
+cancel/deadline wins; completed views remain immutable. A pending view may persist
+past the budget while DNS/noncooperative code runs. Release always joins, so this
+is not hard preemption and never authorizes unloading borrowed provider storage.
+
+Native worker tests cover partial received bytes, a late ignored-success provider,
+explicit cancellation winning first, invalid timeout and all previous job cases.
+This does not change default player or provider-specific I/O deadlines.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

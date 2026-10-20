@@ -5,9 +5,12 @@
 #include "../../ports/network/socket.h"
 #define FVM_DESKTOP_TRANSFER_PENDING 0U /* Worker still owns mutable input/result storage. */
 #define FVM_DESKTOP_TRANSFER_DONE 1U    /* Complete immutable bytes/provenance are available. */
-#define FVM_DESKTOP_TRANSFER_FAILED 2U  /* Provider/validation/sink failed; no payload is exposed. \
-                                         */
+#define FVM_DESKTOP_TRANSFER_FAILED                                                                \
+    2U /* Provider/validation/sink failed; no payload is exposed.                                  \
+        */
 #define FVM_DESKTOP_TRANSFER_CANCELLED 3U /* Cancellation won before terminal publication. */
+#define FVM_DESKTOP_TRANSFER_TIMED_OUT 4U /* Cooperative deadline expired before publication. */
+#define FVM_DESKTOP_TRANSFER_MAX_TIMEOUT_MS 2147483647UL /* At most half a 32-bit tick period. */
 #define FVM_DESKTOP_TRANSFER_MAX_BYTES 67108864UL /* Independent decoded-byte bound per job. */
 #define FVM_DESKTOP_TRANSFER_INITIAL 4096U        /* Initial accumulation allocation. */
 #define FVM_DESKTOP_TRANSFER_MAX_JOBS 64          /* Maximum live handles in this SDK instance. */
@@ -51,6 +54,14 @@ extern "C"
     FVM_DESKTOP_API FVM_Result fvm_desktop_transfer_begin(const char *reference, const char *base,
                                                           const FVM_DesktopTransferOptions *options,
                                                           FVM_DesktopTransfer **out);
+    /* Additive deadline variant. Zero disables timeout; values above MAX_TIMEOUT_MS fail
+     * without changing *out. Time starts before worker launch and includes provider work.
+     * Deadline requests cooperative cancellation; DNS/user code may delay terminal publication
+     * and release. TIMED_OUT has ERROR/no payload, retaining received progress. This is not
+     * a hard realtime preemption guarantee. First explicit cancellation/deadline reason wins. */
+    FVM_DESKTOP_API FVM_Result fvm_desktop_transfer_begin_timed(
+        const char *reference, const char *base, const FVM_DesktopTransferOptions *options,
+        unsigned long timeout_ms, FVM_DesktopTransfer **out);
     /* Copy a synchronized snapshot; null returns INVALID_ARGUMENT without modifying output. */
     FVM_DESKTOP_API FVM_Result fvm_desktop_transfer_poll(FVM_DesktopTransfer *job,
                                                          FVM_DesktopTransferView *out);

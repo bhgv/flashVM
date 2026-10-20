@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.683
+# FlashVM stage status / Состояние стадий — v0.684
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,10 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.684 adds additive cooperative total job deadlines with timeout-specific terminal
+views, retained partial progress, immutable publication and joined lifetime. Native
+job fixtures and C++98 ABI checks pass; DNS/hard preemption remain outside the contract.
 
 v0.683 adds opt-in asynchronous network child/form delivery: one pinned FIFO
 request, continuing frames/timers/input/GC, owner-thread import/onData and joined
