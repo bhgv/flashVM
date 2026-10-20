@@ -119,3 +119,6 @@ both async/blocking child modes, and runtime/early-import failure cleanup. Netwo
 subcases are explicitly omitted when no provider is compiled. Native foreign-OS,
 physical display/audio, race-detector/endurance and full debugger acceptance remain
 open; no additional roadmap stage is declared complete.
+
+[Executable C89/AS/SWF tutorial](../examples/player/playback_mailbox/README.md):
+confirmed steps from a separate OS thread, early errors, native/cross builds.

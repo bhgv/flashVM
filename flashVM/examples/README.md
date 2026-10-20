@@ -162,6 +162,7 @@
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
   - [playback_control](#example-player-playback_control) — <small><em>C89: пауза, шаг, продолжение и STOP для file/embedded/HTTP</em></small>
+  - [playback_mailbox](#example-player-playback_mailbox) — <small><em>C89: OS-поток контроллера, подтверждённые шаги и копии без VM-указателей</em></small>
   - [redirect_loading](#example-player-redirect_loading) — <small><em>Ограниченные redirects и конечные root/child/form origin через C API</em></small>
   - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
   - [unload_loading](#example-player-unload_loading) — <small><em>Очистка child, отмена поддерева, сохранение peer и новая загрузка</em></small>
@@ -1809,6 +1810,18 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 явным provider. Пауза шкалы не замораживает скриптовые таймеры и не является
 пошаговым отладчиком AVM1.
 
+<a id="example-player-playback_mailbox"></a>
+### playback_mailbox
+
+Самостоятельный C89-хост с отдельным OS-потоком контроллера: последнее намерение,
+подтверждённые одиночные шаги, STOP и копии скаляров/источника без VM-указателей.
+Старт из файла, immutable linked-буфера и HTTP; общий stop latch действует также
+при начальной загрузке. Каждый выход будит/дожидается контроллера до release SDK.
+[README EN](player/playback_mailbox/README.md) / [RU](player/playback_mailbox/README.ru.md),
+[C](player/playback_mailbox/main.c), [SWF](player/playback_mailbox/start.swf),
+[AS-пояснение](player/playback_mailbox/start.as), [генератор](player/playback_mailbox/make_movie.py).
+Это интерфейс для C/IDE, не готовое GUI и не очередь инструкций отладчика.
+
 <a id="example-player-redirect_loading"></a>
 ### redirect_loading
 
@@ -1962,6 +1975,7 @@ Source line links describe the current checkout, including in historical notes.
 - [parallel_render — embedding/parallel_render](#example-embedding-parallel_render)
 - [parsing.as — actionscript/parsing.as](#example-actionscript-parsing-as)
 - [playback_control — player/playback_control](#example-player-playback_control)
+- [playback_mailbox — player/playback_mailbox](#example-player-playback_mailbox)
 - [property_resolve — embedding/property_resolve](#example-embedding-property_resolve)
 - [prototypes — embedding/prototypes](#example-embedding-prototypes)
 - [prototypes — extending/prototypes](#example-extending-prototypes)

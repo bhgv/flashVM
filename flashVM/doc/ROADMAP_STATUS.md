@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.714
+# FlashVM stage status / Состояние стадий — v0.715
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,29 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.715 adds a standalone C89/AS/SWF tutorial with a separate native controller,
+confirmed step acknowledgements and explicit done/join/release/shutdown on every
+runner exit. FILE/MEMORY/HTTP and early-error tutorial regressions accompany
+native/cross build instructions. All stages remain open.
+
+Final v0.713–v0.715 verification: 61 selected native loading/control/mailbox checks
+and 13 additional audio/timer/redraw/final-frame/build-info regressions pass.
+Shared host configurations pass 31 socket-TLS, 29 curl, 23 no-provider and 17
+codec-disabled checks. ASan/UBSan instrument the C mailbox/player/transfer/
+audio/control modules and their native allocation/concurrency/live-player/tutorial
+fixtures; leak detection is disabled because the traced environment cannot perform
+LeakSanitizer /proc thread enumeration. VM, SDL and transports remain uninstrumented.
+A renamed detached VM component freshly builds/runs the no-provider tutorial.
+Audio-enabled player and the new C tutorial cross-link for Linux ARM64, Linux
+RISC-V64 and Windows x86-64 without foreign execution. Source links, individual API
+example tables/comments, catalog and deterministic SWF/linked-byte checks pass.
+Native foreign OS/device, full reference/debugger, race-detector/endurance
+acceptance and all nine roadmap stages remain open.
+
+Русский: прошли 74 выбранные native-проверки и четыре shared-конфигурации,
+C-only ASan/UBSan без LeakSanitizer, свежая сборка отделённого компонента и три
+кросс-линковки. Нативный запуск других ОС/устройств и завершение пункта 9 не заявлены.
 
 v0.714 binds native mailbox intent to owner playback/load-monitor callbacks.
 Real controller-thread interpreter/JIT fixtures pass for file/memory/HTTP,

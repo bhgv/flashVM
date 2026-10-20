@@ -982,3 +982,20 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
     endforeach()
   endif()
 endif()
+
+# Native thread adapter is confined to this tutorial; mailbox clients may use their own OS threads.
+if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_playback_mailbox ../examples/player/playback_mailbox/main.c)
+  target_link_libraries(flashvm_example_playback_mailbox PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_playback_mailbox PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+endif()
+if(TARGET flashvm_example_playback_mailbox AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_playback_mailbox COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/playback_mailbox_example.py $<TARGET_FILE:flashvm_example_playback_mailbox>
+    ${PROJECT_SOURCE_DIR}/examples/player/playback_mailbox)
+  set_tests_properties(flashvm_example_playback_mailbox PROPERTIES TIMEOUT 25)
+  if(UNIX AND NOT APPLE)
+    set_property(TEST flashvm_example_playback_mailbox APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endif()
+endif()
