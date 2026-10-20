@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.698
+# FlashVM stage status / Состояние стадий — v0.699
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,18 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.699 preserves direct object destinations in global movie/form calls and receiver
+methods, without target stringification or path round-trips. Per-run bindings
+share the existing bounded queue; URL coercion and detached/reused destinations
+are checked in actual local/HTTP/async SWFs with negative controls. Final series:
+46 selected native checks pass with SDL audio enabled; shared native-TLS 20,
+shared curl 18 and no-provider nine pass. Shared test discovery was corrected;
+TLS fixtures explicitly select their CA, and async root forms wait for completion.
+C-only player/transfer/audio UBSan passes interpreter/JIT, root TLS and C tutorial
+fixtures with uninstrumented VM/SDL/transport dependencies. Three audio-enabled
+foreign player/tutorial builds cross-link for Linux ARM64/RISC-V64 and Windows
+x86_64 without target execution. All nine stages remain open.
 
 v0.698 adds level-zero loadMovieNum/unloadMovieNum facades over the shared queue,
 AVM1 numeric coercion and new-root provenance. Unsupported levels and POST fail

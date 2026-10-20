@@ -129,7 +129,7 @@ synthesized, and no multi-level display stack is implied.
 
 The root SWF fixture keeps an onEnterFrame handler across the clear, rejects old
 frame actions, checks identity state/children and relative fresh form delivery,
-and rejects a wrong reply. With SDL audio enabled it starts a looping PCM sound,
+and rejects a wrong reply over HTTP and TLS. With SDL audio enabled it starts a looping PCM sound,
 then verifies the device has closed and the event counter remains one. Dummy SDL
 is a native ownership/protocol test, not audible hardware or foreign-OS acceptance.
 ## Numbered level-zero entrypoints since v0.698
@@ -147,6 +147,25 @@ and source lifecycle. Relative requests from that replacement use its actual
 source directory. The `numbered_loading.py` fixture checks local and HTTP roots,
 cancelled earlier child/root loads, numeric string levels, nested new provenance,
 unsupported levels/methods and a wrong-response negative control in interpreter/JIT.
+## Direct object destinations since v0.699
+
+Global `loadMovie(url, clip)` and `loadVariables(url, clip)` now retain the exact
+native destination. Calls inherited through a clip prototype still recognize the
+global argument shape. Receiver methods also retain the receiver directly instead
+of converting it into a path. String-target forms keep normal AVM1 scope lookup.
+
+Object targets are never stringified: target.toString is not a path resolver.
+URL values use version-aware AVM1 ToString, including script callbacks. Membership
+is checked after URL coercion and again at safe-point delivery. If conversion
+removes/replaces the target, the obsolete reference is rejected; a new object at
+the old path never receives that request. A removed queued object is dropped
+without I/O. All forms share one bounded copy/pin queue and source-base policy.
+The public host options/loader structs and C ABI are unchanged.
+
+The object fixture exercises real local/HTTP/async SWFs, forbidden target.toString,
+removed/reused paths, URL coercion that replaces the target, and a wrong-body
+negative control in interpreter/JIT. The independent child/root tutorial also
+uses direct global object destinations for form loading.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

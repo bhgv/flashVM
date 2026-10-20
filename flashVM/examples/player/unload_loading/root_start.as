@@ -10,7 +10,7 @@ _root.onEnterFrame = function() // The root instance and handler survive the con
     if (_root.turn === 1) // Clear only once rather than repeatedly replacing new content.
     { // The native callback queues the operation until the next owner safe point.
         unloadMovie("_level0"); // Clear the root, cancel earlier subtree loads and release native root audio.
-        _root.loadVariables("fresh.txt"); // This later request survives and keeps the original network base.
+        loadVariables("fresh.txt", _root); // This later request survives and keeps the original network base.
     } // The current script returns before native cleanup can join another thread.
     if (_root.turn > 1) // Only subsequent turns may inspect the committed empty root.
     { // Root content now contains one stopped frame without the old child name.

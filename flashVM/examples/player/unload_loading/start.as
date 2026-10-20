@@ -6,7 +6,7 @@ _root.createEmptyMovieClip("peer", 2); // Keep an unrelated target to demonstrat
 _root.child.kept = 42; // An own property survives clearing the clip's contents.
 _root.saved = _root.child; // Retain identity independently of the script path.
 _root.iter = 0; // Bound the later wait loop.
-_root.child.loadVariables("slow.txt"); // Start an intentionally delayed request containing poison=1.
+loadVariables("slow.txt", _root.child); // Start an intentionally delayed request containing poison=1.
 _root.child.grand.loadVariables("never.txt"); // This queued descendant request must never perform I/O.
 _root.peer.loadVariables("peer.txt"); // Unrelated pending work must survive the unload.
 // Frame 2 clears contents and requests fresh data on the retained instance.

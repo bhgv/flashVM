@@ -4,24 +4,34 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import os
 from pathlib import Path
 import subprocess
+import struct
 import sys
 import tempfile
 import threading
 from child_loading import push, global_call, method_call, swf, require
+from async_loading import get, when, equal
 
 
 def startup():
     first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
     first += method_call('_root.child', 'loadVariables', 'never.txt')
     first += global_call('loadMovieNum', 'never.swf', 0)
-    first += global_call('unloadMovieNum', '0')
+    first += push('_root.level', 0) + b'\x43\x1d'
+    body = push('_root.coerced', 1) + b'\x1d' + push(0) + b'\x3e\0'
+    definition = b'\0\0\0' + struct.pack('<H', len(body)) + body
+    first += push('_root.level') + b'\x1c' + push('valueOf') + b'\x9b' + struct.pack('<H', len(definition)) + definition + b'\x4f'
+    first += push('_root.level') + b'\x1c' + push(1, 'unloadMovieNum') + b'\x3d\x17'
+    first += require('_root.coerced', 1)
     first += global_call('loadMovieNum', 'nested/next.swf', '0', 'GET')
     return swf([first, push('old root continued after replacement') + b'\x2a'])
 
 
 def next_movie():
-    first = method_call('_root', 'loadVariables', 'vars.txt')
-    return swf([first, require('_root.answer', 'new root origin') + b'\x07'])
+    first = push('_root.iter', 0) + b'\x1d' + method_call('_root', 'loadVariables', 'vars.txt')
+    second = push('_root.iter') + get('_root.iter') + push(1) + b'\x47\x1d'
+    second += when(get('_root.iter') + push(150) + b'\x67', require('_root.finished', 1))
+    second += when(equal('_root.answer', 'new root origin'), push('_root.finished', 1) + b'\x1d\x07')
+    return swf([first, second, b'\x81\x02\x00\x01\x00\x06'])
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -53,7 +63,7 @@ def main():
         (folder / 'start.swf').write_bytes(startup())
         (folder / 'nested/next.swf').write_bytes(next_movie())
         (folder / 'nested/vars.txt').write_text('answer=new+root+origin')
-        command = [player, mode, '--loads', '4', '--frames', '4', '--fps', '1000', '--mute']
+        command = [player, mode, '--loads', '4', '--frames', '400', '--fps', '1000', '--mute']
         result = subprocess.run(command + [str(folder / 'start.swf')], env=env, capture_output=True, timeout=10)
         if mode == '--jit' and b'requested JIT backend unavailable' in result.stderr:
             raise SystemExit(77)

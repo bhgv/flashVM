@@ -4986,6 +4986,14 @@ audio. Interpreter/JIT SWFs and dummy SDL audio fixtures: [EN](MOVIE_UNLOAD.md) 
 [RU](MOVIE_UNLOAD.ru.md). Full event lifecycle, streaming playback and foreign
 runtime acceptance remain open; this does not close a roadmap stage.
 
+## v0.698–0.699 level zero and direct destinations / Уровень 0 и объектные цели
+
+Verified subset: loadMovieNum/unloadMovieNum level zero with AVM1 operand coercion;
+loadMovie/loadVariables object references and receiver identities; URL coercion
+callbacks, removed/reused paths, actual local/HTTP/async delivery and standalone
+numbered SWFs. [EN](MOVIE_UNLOAD.md) / [RU](MOVIE_UNLOAD.ru.md). Other levels,
+POST and the full loader event lifecycle remain open. No stage is closed.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

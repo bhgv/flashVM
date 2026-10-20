@@ -125,3 +125,15 @@ not the window or context. To test ownership without hardware, set SDL_AUDIODRIV
 that demonstrates worker/device cleanup, not audible output. Without audio support
 use --mute. The four-case C-host fixture checks child/root × URL/embedded startup.
 `--root` chooses the linked root payload; URL mode still fetches the URL supplied.
+
+Since v0.699 the child slow-form and root fresh-form scripts pass direct MovieClip
+objects to global loadVariables. These destinations retain exact identity without
+calling target.toString; URL and receiver forms share the same bounded owner queue.
+
+The generator also emits [numbered_start.swf](numbered_start.swf) and
+[numbered_next.swf](numbered_next.swf), explained by [numbered.as](numbered.as).
+Run the same C host with `http://127.0.0.1:8000/numbered_start.swf` (URL mode).
+It cancels earlier child/root requests through unloadMovieNum(0), loads the new
+root with loadMovieNum(..., "0", "GET"), and waits for relative fresh.txt data.
+Expected requests: numbered_start.swf, numbered_next.swf, fresh.txt; neither
+never.txt nor never.swf is fetched. Other levels and POST remain unsupported.

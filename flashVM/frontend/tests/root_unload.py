@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import os
 from pathlib import Path
 import struct
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -71,7 +72,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    player, mode = sys.argv[1:]
+    player, mode, *tls = sys.argv[1:]
     player = str(Path(player).resolve())
     audio_enabled = b'sdl_audio_compiled=yes' in subprocess.check_output([player, '--version'])
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', SDL_AUDIODRIVER='dummy')
@@ -94,13 +95,23 @@ def main():
         print('PASS local root clear and joined audio without network provider')
         return
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    certificates_folder = tempfile.TemporaryDirectory() if tls else None
+    if tls:
+        from socket_tls import certificates
+        folder = Path(certificates_folder.name)
+        ca, key = certificates(folder, tls[0])
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(str(folder / 'valid.pem'), str(key))
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+        env['SSL_CERT_FILE'] = str(ca)
+        env['SSL_CERT_DIR'] = str(folder / 'missing')
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         for wrong in (False, True):
             Handler.paths.clear()
             Handler.wrong = wrong
             result = subprocess.run([player, mode, '--async-loads', '--loads', '8', '--frames', '160',
-                                     '--fps', '1000', '--mute', 'http://127.0.0.1:%d/app/start.swf' % server.server_port],
+                                     '--fps', '1000', '--mute', *(['--http-ca-file', str(ca)] if tls else []), ('https' if tls else 'http') + '://127.0.0.1:%d/app/start.swf' % server.server_port],
                                     env=env, capture_output=True, timeout=10)
             assert result.returncode == (1 if wrong else 0), result.stderr
             assert '/app/never.txt' not in Handler.paths, Handler.paths
@@ -108,6 +119,8 @@ def main():
     finally:
         server.shutdown()
         server.server_close()
+        if certificates_folder:
+            certificates_folder.cleanup()
     print('PASS root content/audio clear, retained callback, subtree cancellation and relative reload')
 
 

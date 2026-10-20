@@ -836,3 +836,38 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
     set_tests_properties(flashvm_numbered_loading_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
   endforeach()
 endif()
+
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_object_loading_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/object_loading.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_object_loading_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+  endforeach()
+endif()
+
+if((FVM_PLAYER_SOCKET_TLS OR FVM_PLAYER_HTTP) AND FVM_OPENSSL_PROGRAM AND FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_root_unload_tls_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/root_unload.py $<TARGET_FILE:flashvm_player> --${mode} ${FVM_OPENSSL_PROGRAM})
+    set_tests_properties(flashvm_root_unload_tls_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+  endforeach()
+endif()
+
+# New subprocess fixtures must locate the same private shared host as earlier player tests.
+if(FVM_PLAYER_HOST_SHARED AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    foreach(family root_unload root_unload_tls numbered_loading object_loading)
+      if(TEST flashvm_${family}_${mode})
+        set_property(TEST flashvm_${family}_${mode} APPEND PROPERTY ENVIRONMENT
+          "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+      endif()
+    endforeach()
+  endforeach()
+endif()
+
+if(TARGET flashvm_example_unload_loading AND FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_numbered_loading COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/numbered_example.py $<TARGET_FILE:flashvm_example_unload_loading>
+    ${PROJECT_SOURCE_DIR}/examples/player/unload_loading)
+  set_tests_properties(flashvm_example_numbered_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+endif()

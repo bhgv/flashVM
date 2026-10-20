@@ -94,7 +94,7 @@ def movie(network=True, object_form=False):
     first += push('_root.saved') + get('_root.child') + b'\x1d'
     first += push('_root.iter', 0) + b'\x1d'
     if network:
-        first += method_call('_root.child', 'loadVariables', 'slow.txt')
+        first += get('_root.child') + push('slow.txt', 2, 'loadVariables') + b'\x3d\x17'
         first += method_call('_root.child.grand', 'loadVariables', 'never.txt')
         first += method_call('_root.peer', 'loadVariables', 'peer.txt')
     second = b''
@@ -126,11 +126,11 @@ def root_movie(network=True, audio=True):
     first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
     first += push('_root.kept', 42) + b'\x1d' + push('_root.turn', 0) + b'\x1d'
     if network:
-        first += method_call('_root.child', 'loadVariables', 'slow.txt')
+        first += get('_root.child') + push('slow.txt', 2, 'loadVariables') + b'\x3d\x17'
         first += method_call('_root', 'loadVariables', 'never.txt')
     clear = global_call('unloadMovie', '_level0')
     if network:
-        clear += method_call('_root', 'loadVariables', 'fresh.txt')
+        clear += get('_root') + push('fresh.txt', 2, 'loadVariables') + b'\x3d\x17'
     checks = require('_root.kept', 42) + require('_root._totalframes', 1)
     checks += require_undefined('_root.child') + require_undefined('_root.poison')
     body = push('_root.turn') + get('_root.turn') + push(1) + b'\x47\x1d'
@@ -153,6 +153,25 @@ def root_movie(network=True, audio=True):
     return b'FWS\x08' + struct.pack('<I', len(data) + 8) + data
 
 
+def numbered_start_movie():
+    """Cancel earlier child/root requests and replace level zero through the public facades."""
+    first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
+    first += method_call('_root.child', 'loadVariables', 'never.txt')
+    first += global_call('loadMovieNum', 'never.swf', 0)
+    first += global_call('unloadMovieNum', 0)
+    first += global_call('loadMovieNum', 'numbered_next.swf', '0', 'GET')
+    return swf([first, push('old root survived replacement') + b'\x2a'])
+
+
+def numbered_next_movie():
+    """Wait explicitly for asynchronous fresh data rather than assuming next-frame arrival."""
+    first = push('_root.iter', 0) + b'\x1d' + method_call('_root', 'loadVariables', 'fresh.txt')
+    second = push('_root.iter') + get('_root.iter') + push(1) + b'\x47\x1d'
+    second += when(get('_root.iter') + push(200) + b'\x67', require('_root.finished', 1))
+    second += when(equal('_root.answer', 'fresh'), push('_root.finished', 1) + b'\x1d\x07')
+    return swf([first, second, b'\x81\x02\x00\x01\x00\x06'])
+
+
 def write_embedded(folder, name, identifier, data):
     """Emit a counted immutable C payload with a comment on every nonempty line."""
     lines = ['/* Generated immutable SWF bytes; regenerate with make_movies.py. */',
@@ -170,6 +189,8 @@ def main():
     data = movie()
     (folder / 'start.swf').write_bytes(data)
     write_embedded(folder, 'movie.inc', 'embedded_movie', data)
+    (folder / 'numbered_start.swf').write_bytes(numbered_start_movie())
+    (folder / 'numbered_next.swf').write_bytes(numbered_next_movie())
     data = root_movie()
     (folder / 'root_start.swf').write_bytes(data)
     write_embedded(folder, 'root_movie.inc', 'embedded_root_movie', data)

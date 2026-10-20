@@ -97,3 +97,15 @@ SDL_AUDIODRIVER=dummy проверяет cleanup worker/device без доказ
 Без audio support используется --mute. C-host тест проверяет четыре сочетания
 child/root × URL/embedded. `--root` выбирает встроенный root payload; в URL-режиме
 по-прежнему скачивается явно переданный URL.
+
+С v0.699 скрипты child slow-form и root fresh-form передают прямой объект MovieClip
+в глобальную loadVariables. Цель сохраняет точную идентичность без target.toString;
+объектная, строковая и method формы используют общую ограниченную owner-очередь.
+
+Генератор также создаёт [numbered_start.swf](numbered_start.swf) и
+[numbered_next.swf](numbered_next.swf); пояснение — [numbered.as](numbered.as).
+Тот же C-хост запускается с `http://127.0.0.1:8000/numbered_start.swf` (URL mode).
+Он отменяет старые child/root запросы через unloadMovieNum(0), загружает новый
+корень через loadMovieNum(..., "0", "GET") и ждёт относительный fresh.txt.
+Ожидаются только numbered_start.swf, numbered_next.swf, fresh.txt; never.txt и
+never.swf не запрашиваются. Остальные уровни и POST не поддерживаются.

@@ -59,7 +59,7 @@ def check():
     for name in ("movie.inc", "root_movie.inc"):
         for number, line in enumerate((tutorial / name).read_text().splitlines(), 1):
             assert not line.strip() or "/*" in line, (tutorial, name, number)
-    for name in ("start.as", "root_start.as"):
+    for name in ("start.as", "root_start.as", "numbered.as"):
         for number, line in enumerate((tutorial / name).read_text().splitlines(), 1):
             assert not line.strip() or "//" in line, (tutorial, name, number)
     assert catalog.count("example-player-unload_loading") == 3
