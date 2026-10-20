@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.702
+# FlashVM stage status / Состояние стадий — v0.703
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,15 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.703 makes upstream image/vendor dialects target-private and configures Cairo
+integer sizes for cross builds, including Windows LLP64/MinGW CRT declarations.
+Final series: 40 selected native tests pass; shared socket-TLS 15 and shared curl
+13 pass. Earlier same-series no-provider seven and codec-disabled two pass.
+C-only player/transfer/audio UBSan covers interpreter/JIT and URL/embedded hosts;
+VM/codecs/SDL/transport are not instrumented. Audio-enabled player and both C
+examples cross-link for Linux ARM64/RISC-V64 and Windows x86-64 without execution.
+All nine stages remain open; this does not certify complete loader/API conformance.
 
 v0.702 adds executable core C89 and standalone player C/AS/SWF image tutorials,
 with reproducible PNG/GIF/JPEG assets, URL/linked-memory startup, API/ownership

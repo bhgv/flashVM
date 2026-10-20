@@ -12,3 +12,6 @@ target_link_libraries(fvm_png PUBLIC fvm_zlib)
 if(NOT WIN32)
   target_link_libraries(fvm_png PUBLIC m)
 endif()
+
+# Upstream sources use C99 integer/types; keep this private to the vendor target.
+set_target_properties(fvm_png PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)

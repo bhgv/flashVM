@@ -306,7 +306,7 @@ extern "C" FVM_Result fvm_movieclip_replace_image(FVM_Context *c, FVM_Object *ta
             : gif ? fvm_swf_decode_gif(bytes, size, FVM_SWF_DEFAULT_LIMIT, &width, &height,
                                        &decoded.bytes)
                   : fvm_swf_decode_jpeg_versioned(bytes, size, FVM_SWF_DEFAULT_LIMIT,
-                                                  !version || version >= FVM_IMAGE_LOSSLESS_MIN_SWF,
+                                                  !version || version >= FVM_IMAGE_PROGRESSIVE_JPEG_MIN_SWF,
                                                   &width, &height, &decoded.bytes);
         if (r != FVM_OK)
             return r;

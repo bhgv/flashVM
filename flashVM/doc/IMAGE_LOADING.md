@@ -40,7 +40,7 @@ quota. C decoder allocations are released on C++ allocation failure as well.
 uses the corresponding atomic operation. Invalid SWF never falls back to image
 decoding. The existing [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L114) remains SWF-only. These additive
 functions do not change any existing public descriptor or callback structure.
-The desktop loader integration is documented separately as it becomes available.
+Desktop child delivery is described below.
 
 ## Build and tests
 
@@ -85,6 +85,26 @@ Actual PNG/GIF/JPEG SWFs test local/waiting/async delivery, opaque MIME and `.bi
 URLs, dimensions, child removal, identity/own data, unload then SWF reload, malformed
 reply and TLS with an explicit CA. Codec-disabled builds do not silently accept images.
 [Core C89 tutorial](../examples/embedding/image_codecs_loading/README.md) / [RU](../examples/embedding/image_codecs_loading/README.ru.md); [player C/AS/SWF tutorial](../examples/player/image_loading/README.md) / [RU](../examples/player/image_loading/README.ru.md).
+
+## Portable image-profile builds
+
+Use the bundled `cmake/profiles/player-images.defs` together with
+`-DFVM_ENABLE_IMAGE_CODECS=ON`; the player tutorials above give native and cross
+commands and explicit SDK paths. This profile statically links its codecs.
+First-party C interfaces/hosts remain C89 and the VM remains C++98.
+The upstream codec, pixman and Cairo targets privately select C99; MinGW Cairo
+uses GNU99 because its Windows CRT aliases require legacy declarations.
+Cairo probes target `int`, `long` and `long long` sizes at configure time without
+running target programs, including the Windows LLP64 pointer model.
+
+The v0.700–v0.703 series passes 40 selected native tests, 15 in the shared
+socket-TLS configuration and 13 in the shared curl configuration. Earlier in the
+same series, the no-network image configuration passed seven checks and the
+codec-disabled configuration passed two. Player and both C examples cross-link
+for Linux ARM64, Linux RISC-V64 and Windows x86-64 with audio enabled; these
+foreign executables were not run. C-only player/transfer/audio UBSan checks cover
+interpreter/JIT and the URL/embedded example; VM, codecs, SDL and transport
+libraries in that check are ordinary uninstrumented dependencies.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

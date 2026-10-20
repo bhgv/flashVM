@@ -50,3 +50,6 @@ target_compile_definitions(fvm_pixman PRIVATE HAVE_CONFIG_H=1)
 if(NOT WIN32)
   target_link_libraries(fvm_pixman PUBLIC Threads::Threads m)
 endif()
+
+# Upstream sources use C99 integer/types; keep this private to the vendor target.
+set_target_properties(fvm_pixman PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)

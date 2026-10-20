@@ -123,9 +123,16 @@ endif()
 if(FVM_ENABLE_FONTS)
   list(APPEND FVM_CAIRO_SOURCES upstream/src/cairo-ft-font.c)
 endif()
+# Probe upstream C99 integer models using the target compiler, without executing target code.
+# Directory scope keeps the public host/VM C89 settings unchanged.
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED YES)
+set(CMAKE_C_EXTENSIONS OFF)
 include(CheckTypeSize)
 include(TestBigEndian)
+check_type_size("int" FVM_VENDOR_SIZEOF_INT)
 check_type_size("long" FVM_VENDOR_SIZEOF_LONG)
+check_type_size("long long" FVM_VENDOR_SIZEOF_LONG_LONG)
 test_big_endian(FVM_VENDOR_BIG_ENDIAN)
 set(FVM_VENDOR_PTHREAD 1)
 if(WIN32)
@@ -155,4 +162,12 @@ endif()
 
 if(FVM_ENABLE_FONTS)
   target_link_libraries(fvm_cairo PUBLIC fvm_freetype)
+endif()
+
+# Upstream sources use C99 integer/types; keep this private to the vendor target.
+set_target_properties(fvm_cairo PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+# MinGW hides legacy CRT declarations (_hypot/_fdopen/etc.) in strict ANSI mode.
+# Cairo's own Windows aliases require them; do not relax first-party C89 targets.
+if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
+  set_target_properties(fvm_cairo PROPERTIES C_EXTENSIONS YES)
 endif()

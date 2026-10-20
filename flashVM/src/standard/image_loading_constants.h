@@ -9,5 +9,6 @@
 #define FVM_IMAGE_JPEG_SOI 216U           /* JPEG SOI marker byte. */
 #define FVM_IMAGE_JPEG_MIN_SWF 6U         /* Standalone JPEG loading profile. */
 #define FVM_IMAGE_LOSSLESS_MIN_SWF 8U     /* PNG/GIF loading profile. */
+#define FVM_IMAGE_PROGRESSIVE_JPEG_MIN_SWF 8U /* Progressive standalone JPEG loading profile. */
 #define FVM_IMAGE_RGBA_CHANNELS 4U        /* Straight red/green/blue/alpha bytes per pixel. */
 #endif

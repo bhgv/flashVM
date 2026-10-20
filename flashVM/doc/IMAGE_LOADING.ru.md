@@ -36,7 +36,7 @@ GIF и неподдержанное цветовое пространство JP
 [`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L129) выбирает SWF или изображение по сигнатуре;
 повреждённый SWF не переходит в image fallback. [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L114) остаётся
 только для SWF. Публичные структуры и callbacks не менялись. Интеграция с очередью
-плеера описывается отдельно по мере реализации.
+плеера описана ниже.
 
 ## Сборка и проверки
 
@@ -68,6 +68,24 @@ import и публикация выполняются владельцем VM. �
 размеры, удаление детей, идентичность/свойства, unload затем SWF reload, повреждённый
 ответ и TLS с явным CA. Сборка без codecs не выдаёт принятие изображения за успех.
 [Core C89 tutorial](../examples/embedding/image_codecs_loading/README.md) / [RU](../examples/embedding/image_codecs_loading/README.ru.md); [player C/AS/SWF tutorial](../examples/player/image_loading/README.md) / [RU](../examples/player/image_loading/README.ru.md).
+
+## Переносимая сборка с изображениями
+
+Выберите `cmake/profiles/player-images.defs` вместе с
+`-DFVM_ENABLE_IMAGE_CODECS=ON`: примеры выше содержат команды нативной и
+кросс-сборки с явными путями SDK. Кодеки этого профиля линкуются статически.
+Интерфейсы и хосты FlashVM сохраняют C89, VM — C++98. Для внешних кодеков,
+pixman и Cairo локально выбран C99; только Cairo под MinGW использует GNU99
+для объявления старых функций Windows CRT. Размеры `int`, `long`, `long long`
+определяются целевым компилятором без запуска целевого кода, включая LLP64 Windows.
+
+Серия v0.700–v0.703 прошла 40 выбранных нативных тестов, 15 в конфигурации
+разделяемой библиотеки с socket-TLS и 13 с curl. Ранее в этой же серии прошли
+семь проверок изображений без сетевого провайдера и две проверки без кодеков.
+Плеер и оба C-примера скомпонованы для Linux ARM64, Linux RISC-V64 и Windows
+x86-64 со звуком; целевые программы не запускались. UBSan для C-кода
+player/transfer/audio проверяет интерпретатор/JIT и пример с URL/встроенным
+буфером; VM, кодеки, SDL и транспорт в этой проверке не инструментированы.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
