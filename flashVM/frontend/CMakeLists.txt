@@ -1064,3 +1064,11 @@ if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
     endforeach()
   endif()
 endif()
+
+# The same tutorial compares every output pixel with a deliberately unusable video driver.
+if(TARGET flashvm_example_frame_capture AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_offscreen_capture COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/frame_example.py $<TARGET_FILE:flashvm_example_frame_capture>
+    ${PROJECT_SOURCE_DIR}/examples/player/frame_capture --offscreen)
+  set_tests_properties(flashvm_example_offscreen_capture PROPERTIES TIMEOUT 30)
+endif()

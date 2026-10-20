@@ -18,13 +18,13 @@ def expected(tick):
 
 
 def main():
-    executable,directory=[Path(p).resolve() for p in sys.argv[1:]]
-    env=dict(os.environ,SDL_VIDEODRIVER='dummy',SDL_AUDIODRIVER='dummy')
+    executable,directory=[Path(p).resolve() for p in sys.argv[1:3]]
+    env=dict(os.environ,SDL_VIDEODRIVER=('flashvm-driver-that-does-not-exist' if '--offscreen' in sys.argv else 'dummy'),SDL_AUDIODRIVER='dummy')
     with tempfile.TemporaryDirectory(prefix='frame-example-') as temporary:
         folder=Path(temporary);output=folder/'capture.ppm';source=directory/'start.swf'
         def run(arguments,tick=None,status=0):
             if output.exists():output.unlink()
-            result=subprocess.run([str(executable),*map(str,arguments)],env=env,capture_output=True,text=True,timeout=8)
+            result=subprocess.run([str(executable),*(['--offscreen'] if '--offscreen' in sys.argv else []),*map(str,arguments)],env=env,capture_output=True,text=True,timeout=8)
             assert result.returncode==status,(arguments,result.stdout,result.stderr)
             if tick is not None:
                 assert result.stdout.strip()=='captured_tick=%d width=32 height=32'%tick,result.stdout
@@ -41,7 +41,7 @@ def main():
         for arguments in ([],[source],['--tick','0',source,output],['--tick','-1',source,output],
             ['--tick','1001',source,output],['--tick','1x',source,output],
             ['--tick','999999999999999999999999',source,output],['--unknown',source,output],
-            ['--embedded','--embedded',source,output],['--tick','1','--tick','2',source,output]):
+            ['--offscreen','--offscreen',source,output],['--embedded','--embedded',source,output],['--tick','1','--tick','2',source,output]):
             run(arguments,status=2);assert not output.exists()
         class Handler(SimpleHTTPRequestHandler):
             paths=[]
@@ -51,7 +51,7 @@ def main():
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         base='http://127.0.0.1:%d/'%server.server_port
         try:
-            result=subprocess.run([str(executable),'--tick','2',base+'start.swf',str(output)],env=env,capture_output=True,text=True,timeout=8)
+            result=subprocess.run([str(executable),*(['--offscreen'] if '--offscreen' in sys.argv else []),'--tick','2',base+'start.swf',str(output)],env=env,capture_output=True,text=True,timeout=8)
             if result.returncode and 'URL loading requires' in result.stderr:
                 assert not Handler.paths
                 print('PASS all-pixel PPM file/embedded capture and early/output errors; HTTP not compiled')

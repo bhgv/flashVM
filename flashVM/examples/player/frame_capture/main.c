@@ -102,12 +102,13 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
     FVM_DesktopPlaybackControl control; /* Successful owner STOP once the desired raster is copied. */
     FVM_DesktopFrameObserver observer; /* Separate additive pixel callback policy. */
     const char *error = 0; /* Borrowed static diagnostic text, never freed by this caller. */
-    int embedded = 0, tick_selected = 0; /* Reject repeated console selectors. */
+    int embedded = 0, offscreen = 0, tick_selected = 0; /* Reject repeated console selectors. */
     int valid = argc >= 3, argument, status; /* Require source and output filename after optional arguments. */
     memset(&capture, 0, sizeof(capture)); capture.wanted = 1; /* Default selects the first successful tick raster. */
     for (argument = 1; argument < argc - 2; ++argument) /* Leave exactly source and output positional arguments. */
     { /* The shared library never needs this argv vocabulary. */
         if (!strcmp(argv[argument], "--embedded") && !embedded) embedded = 1; /* Select linked bytes once. */
+        else if (!strcmp(argv[argument], "--offscreen") && !offscreen) offscreen = 1; /* Select timer-only delivery once. */
         else if (!strcmp(argv[argument], "--tick") && !tick_selected && argument + 1 < argc - 2) /* Require a numeric value. */
         { /* Consume one complete bounded tick count. */
             tick_selected = 1; /* A second selector is an argument error. */
@@ -117,7 +118,7 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
     } /* Final positional storage remains owned by this process through playback/output. */
     if (!valid || argv[argc - 2][0] == '-' || argv[argc - 1][0] == '-') /* Avoid ambiguous missing/unknown options. */
     { /* Show this adapter's complete syntax and leave the filesystem untouched. */
-        fprintf(stderr, "Usage: %s [--embedded] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
+        fprintf(stderr, "Usage: %s [--embedded] [--offscreen] [--tick 1..1000] file-or-http[s]-URL output.ppm\n", argv[0]); /* Explicit image destination. */
         return 2; /* Argument failure without any native resources or output file. */
     } /* Source/provider validation is delegated to the ordinary typed API. */
     fvm_desktop_options_init(&options); /* Initialize every scalar playback option. */
@@ -149,13 +150,19 @@ int main(int argc, char **argv) /* A native IDE can replace file output and cons
         loader.transfer.fetch = fvm_desktop_http_transfer_fetch; /* Worker fetches bytes, never scene pixels. */
 #endif /* No implicit provider substitution occurs. */
         loader.max_loads = EXAMPLE_CAPTURE_LOADS; monitor.timeout_ms = EXAMPLE_CAPTURE_TIMEOUT_MS; /* Explicit finite resource policy. */
-        status = fvm_desktop_run_source_background_observed(&options, &source, &loader, &monitor, &control, &observer, &error); /* Owner loop. */
+        if (offscreen) /* No video/window/event queue ownership is acquired. */
+            status = fvm_desktop_run_source_background_offscreen(&options, &source, &loader, &monitor, &control, &observer, &error); /* Explicit provider, same copied pixels. */
+        else /* Native presentation remains the default for existing console commands. */
+            status = fvm_desktop_run_source_background_observed(&options, &source, &loader, &monitor, &control, &observer, &error); /* Owner loop. */
     } /* No callback retains loader/monitor stack storage after the runner returns. */
 #else /* HTTP-free SDK keeps local/embedded capture and deferred local resources available. */
     { /* An ordinary loader permits bounded local child/form requests. */
         FVM_DesktopLoader loader; /* No network provider or SDL types are needed in this policy. */
         fvm_desktop_loader_init(&loader); loader.max_loads = EXAMPLE_CAPTURE_LOADS; /* Explicit resource budget. */
-        status = fvm_desktop_run_source_observed(&options, &source, &loader, &control, &observer, &error); /* URL reports unsupported transport. */
+        if (offscreen) /* Timer-only local/linked execution requires no working video driver. */
+            status = fvm_desktop_run_source_offscreen(&options, &source, &loader, &control, &observer, &error); /* Borrow source only through return. */
+        else /* Keep the existing windowed tutorial route. */
+            status = fvm_desktop_run_source_observed(&options, &source, &loader, &control, &observer, &error); /* URL reports unsupported transport. */
     } /* All borrowed source bytes remain owned until this synchronous return. */
 #endif /* Output happens only after player-owned resources have been disposed. */
     if (status && error) fprintf(stderr, "%s\n", error); /* Report static text without freeing it. */

@@ -27,7 +27,8 @@ cmake -S flashVM -B build-capture -DFVM_BUILD_DESKTOP_FRONTEND=ON \
   -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" \
   -DSDL2_DIR=/path/to/native-sdl/lib/cmake/SDL2
 cmake --build build-capture --target flashvm_example_frame_capture \
-  flashvm_frontend_frame_copy flashvm_frontend_frame_capture --parallel
+  flashvm_frontend_frame_copy flashvm_frontend_frame_capture \
+  flashvm_frontend_offscreen_window flashvm_frontend_offscreen_capture --parallel
 ./build-capture/frontend/flashvm_example_frame_capture flashVM/examples/player/frame_capture/start.swf first.ppm
 ./build-capture/frontend/flashvm_example_frame_capture --tick 2 flashVM/examples/player/frame_capture/start.swf second.ppm
 ./build-capture/frontend/flashvm_example_frame_capture --embedded --tick 3 "$PWD/not-read.swf" embedded.ppm
@@ -124,3 +125,28 @@ No foreign SDL-event router, GPU screenshot, audio/video encoder or full debugge
 is added. No reentrant/concurrent runner; VM/SDL stay with the UI owner. Captured
 RGBA does not certify complete Flash/SWF8/reference compatibility. Native foreign
 OS/device acceptance and all stages, including stage 9, remain open.
+
+## Windowless / Без собственного окна (v0.721)
+
+```sh
+./build-capture/frontend/flashvm_example_frame_capture --offscreen --tick 2 flashVM/examples/player/frame_capture/start.swf offscreen.ppm
+./build-capture/frontend/flashvm_example_frame_capture --offscreen --embedded --tick 3 "$PWD/not-read.swf" linked.ppm
+ctest --test-dir build-capture -R 'offscreen|frame_capture|frontend_frame_copy' --output-on-failure
+```
+
+`--offscreen` selects timer-only software output and leaves the application's SDL
+events/cursor/video alone. The selected tick still follows real-time scheduling.
+The same copied PPM remains valid after SDK cleanup. SDL is still linked. Audio is
+muted by this tutorial. Native video is the default without this flag. No input
+injection or native OS/widget certification is implied.
+
+`--offscreen` выбирает программный растр без окна и не читает SDL-события хоста,
+не меняет курсор и не запускает video. Такт по-прежнему зависит от часов реального
+времени. PPM записывается из своей копии после завершения SDK; SDL остаётся
+линкуемой зависимостью. В примере звук отключён. Без флага сохраняется окно.
+Инъекция ввода/приёмка native OS/widget здесь не заявляются.
+
+| C API | Purpose / Назначение и владение |
+| --- | --- |
+| [fvm_desktop_run_source_offscreen](../../../frontend/common/frame.h#L95) | Synchronous FILE/MEMORY source/control/observer borrows through return; no video/events/cursor. Синхронный local/linked запуск; заимствования до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |
+| [fvm_desktop_run_source_background_offscreen](../../../frontend/common/frame.h#L100) | Explicit provider/monitor version; worker cancellation/join precedes return, pixels borrowed only inside observer. Явный provider/monitor, отмена/join до возврата. [EN](../../../doc/OFFSCREEN_PLAYER.md) / [RU](../../../doc/OFFSCREEN_PLAYER.ru.md). |

@@ -157,7 +157,7 @@
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
-  - [frame_capture](#example-player-frame_capture) — <small><em>C89: копия RGBA-кадра и PPM после очистки VM/SDK</em></small>
+  - [frame_capture](#example-player-frame_capture) — <small><em>C89: RGBA/PPM после SDK cleanup, окно или offscreen</em></small>
   - [image_loading](#example-player-image_loading) — <small><em>PNG/GIF/JPEG, URL/embedded старт и image-to-SWF reload</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
@@ -1766,7 +1766,8 @@ FILE/linked-memory/HTTP, отдельный C API от CLI, checked stride/capac
 [RU](player/frame_capture/README.ru.md), [C](player/frame_capture/main.c),
 [SWF8](player/frame_capture/start.swf), [AS-пояснение](player/frame_capture/start.as),
 [генератор](player/frame_capture/make_movie.py). Это logical raster, не screenshot
-window chrome/letterbox и не windowless widget.
+window chrome/letterbox. Флаг --offscreen отключает собственное окно; SDL timer остаётся.
+Это не готовый GUI widget/input adapter.
 
 <a id="example-player-image_loading"></a>
 ### image_loading

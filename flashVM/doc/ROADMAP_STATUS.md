@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.720
+# FlashVM stage status / Состояние стадий — v0.721
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,25 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.721 extends the annotated capture tutorial with --offscreen and all-pixel PPM
+checks using an invalid video driver. Existing windowed commands remain the
+default. [EN](../examples/player/frame_capture/README.md) /
+[RU](../examples/player/frame_capture/README.ru.md).
+
+Final v0.719–v0.721 verification: 16 selected Linux static-host tests pass,
+including windowless/ordinary capture, C++98 linkage, control policy and keyboard/
+pointer/clip input adapters. The opt-in window/presentation tests were run with
+explicit dummy video; no physical display acceptance is claimed. Shared hosts
+pass nine focused checks with native socket HTTP and nine with no provider;
+the latter report unavailable HTTP while exercising local/embedded paths.
+ASan/UBSan pass for C player/window/frame plus timer-only/live-player/tutorial
+fixtures. Leak checks are disabled because the traced runtime cannot enumerate
+/proc threads; VM, SDL and transports remain uninstrumented. Public C89/C++98
+clients compile for ARM64, RISC-V64 and Windows x86-64: compile-only ABI evidence,
+not full foreign SDK linkage/execution. SDL 2.30.0 is a separately built static
+SDK, with real native video/device validation still open. Source-link and example
+comment/catalog checks pass. No roadmap stage is closed.
 
 v0.720 exposes two additive windowless C runners using the established source,
 control, observer and loader contracts. Real rasters, pause/step, root navigation
