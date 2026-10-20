@@ -359,6 +359,8 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
   add_test(NAME flashvm_ctest_evidence_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_ctest_evidence.py
             --ctest ${CMAKE_CTEST_COMMAND})
+  add_test(NAME flashvm_release_matrix_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_release_matrix.py)
   add_test(NAME flashvm_native_target_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_native_target.py)
   add_test(NAME flashvm_platform_encoder_host

@@ -1,6 +1,6 @@
 # Native release evidence
 
-v0.642. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
+v0.643. [Русский](RELEASE_EVIDENCE.ru.md). Roadmap stage 9 remains open.
 
 [validate_platform.py](../scripts/validate_platform.py) now writes schema 2
 platform-evidence.json. Each profile retains commands, compiler identities,
@@ -53,3 +53,40 @@ requires separate device acceptance.
 Seven tests validate metadata policy; Windows/macOS/RISC-V cases are fixtures,
 not foreign-platform executions. The actual active Linux x86-64 GNU C/C++
 configuration separately passed the identity check.
+
+## Aggregate matrix — v0.643
+
+[release_matrix.py](../scripts/release_matrix.py) consumes portable report
+folders: platform-evidence.json and profile subdirectories containing
+test-inventory.log, test-inventory-after.log and ctest-results.xml. All four
+files are required; JSON alone is insufficient. Recorded absolute foreign-host
+paths are never executed. Artifacts, including symlinks, must stay in the bundle.
+
+Require one version/full commit ID, a clean worktree, matching source endpoints
+within each report, valid ABI and command ordering. Cross-OS source hashes need
+not match because filesystem modes differ. Inventory/JUnit hashes and counts
+are recomputed. Duplicate cells, modified artifacts, schema 1, dirty sources or
+another commit fail. Skips need independent exact OS/architecture/profile/name
+acknowledgements.
+
+```sh
+python3 scripts/release_matrix.py --commit FULL_COMMIT_ID --version 0.643 \
+  --report /evidence/linux/platform-evidence.json \
+  --report /evidence/windows/platform-evidence.json \
+  --output /results/release-matrix.json
+```
+
+The default matrix has 16 cells: agg/cairo/minimal/minimal-jit for Linux x86_64,
+Windows x86_64, macOS aarch64 and Android aarch64. The desktop reporter cannot
+supply Android evidence; device acceptance remains open. Missing cells return
+1/blocked; invalid evidence returns 2/invalid. Explicit
+`--require Linux:x86_64:minimal` checks a subset only; its exit 0 does not close
+stage 9. Output includes exact cells, limitations and scope.
+`--allow-skip Linux:x86_64:minimal:EXACT_NAME` acknowledges one skip. Output must
+be outside every input bundle; JSON is published atomically. Reports are not
+signed: deliberate coordinated fabrication is outside this local tool's scope;
+it does not replace trusted CI/native execution.
+
+Eleven tests cover missing platforms, relocation, wrong ABI/version/commit,
+skips, altered JUnit, duplicates, escaping symlinks and replacing previous success
+with blocked/invalid output. These fixtures are not foreign-platform runs.

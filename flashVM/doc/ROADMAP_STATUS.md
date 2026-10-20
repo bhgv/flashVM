@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.642
+# FlashVM stage status / Состояние стадий — v0.643
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,14 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.643 portable native matrix / Сводная матрица платформ
+
+A separate audit recomputes relocated CTest artifacts and checks source revision,
+clean state, native ABI and command provenance. Missing required OS/profile cells
+block the matrix; exact skips remain limitations. Eleven fixture tests pass.
+[EN](RELEASE_EVIDENCE.md) / [RU](RELEASE_EVIDENCE.ru.md).
+This is not full stage-9 certification. Все девять стадий остаются открытыми.
 
 ## v0.642 active native target / Нативная цель и ABI
 
