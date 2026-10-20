@@ -1,6 +1,6 @@
 # AS1 syntax frontend
 
-Version 0.2.6. [Русская версия](README.ru.md).
+Version 0.3.0. [Русская версия](README.ru.md).
 
 The readable [as1.atg](as1.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -66,12 +66,16 @@ LabelAhead distinguishes labels through whitespace/comments without consuming
 scanner state. Explicit predicates resolve block/function statement ambiguity
 and bind else to the nearest if. Syntax tests include both valid and invalid input.
 
-This initial grammar requires explicit semicolons; automatic semicolon insertion
-and newline-sensitive return/postfix rules are not implemented. Regular-expression
-literals, preprocessing (`#include`), timeline
-`on`/`onClipEvent` attachment syntax, escaped identifiers and a complete Unicode
-identifier-category check are not implemented. It is a documented initial syntax
-profile, not full AS language conformance. The parser does not execute source.
+Automatic `;` insertion is supported at a line break, before `}` and at EOF.
+Return/break/continue and postfix ++/-- respect line breaks, including comments;
+after throw a line break is rejected (E1102). For-header semicolons remain mandatory.
+Classic on/onClipEvent wrappers, #include and paired #initclip/#endinitclip are
+recognized without opening includes or attaching events to a scene. Ordinary
+on/onClipEvent calls without a following block retain expression syntax.
+Legacy and/or/not operators are supported; event names need profile validation.
+Regexp literals, escaped identifiers, complete Unicode-category tables and
+assignment-target/context checks remain unimplemented. This syntax profile is
+not a complete compiler implementation.
 
 ## Checks
 
@@ -82,7 +86,7 @@ with `-pedantic-errors`.
 
 ## Grammar rule index
 
-[letter](as1.atg#L74) | [digit](as1.atg#L80) | [hex](as1.atg#L85) | [dq](as1.atg#L90) | [sq](as1.atg#L95) | [linechar](as1.atg#L100) | [escaped](as1.atg#L105) | [nonstar](as1.atg#L111) | [nonstarslash](as1.atg#L115) | [ident](as1.atg#L121) | [number](as1.atg#L130) | [hexnum](as1.atg#L164) | [text](as1.atg#L177) | [blockcomment](as1.atg#L194) | [linecomment](as1.atg#L212) | [As1](as1.atg#L225) | [Item](as1.atg#L233) | [Block](as1.atg#L238) | [Statement](as1.atg#L249) | [IfStatement](as1.atg#L284) | [WhileStatement](as1.atg#L292) | [ForStatement](as1.atg#L299) | [SwitchStatement](as1.atg#L322) | [TryStatement](as1.atg#L331) | [SwitchPart](as1.atg#L343) | [Variables](as1.atg#L354) | [Variable](as1.atg#L362) | [FunctionTail](as1.atg#L370) | [Parameter](as1.atg#L384) | [Expression](as1.atg#L389) | [Assignment](as1.atg#L398) | [AssignOp](as1.atg#L410) | [Conditional](as1.atg#L427) | [LogicalOr](as1.atg#L439) | [LogicalAnd](as1.atg#L447) | [BitOr](as1.atg#L455) | [BitXor](as1.atg#L463) | [BitAnd](as1.atg#L471) | [Equality](as1.atg#L479) | [Relational](as1.atg#L495) | [Shift](as1.atg#L516) | [Additive](as1.atg#L529) | [Product](as1.atg#L542) | [Unary](as1.atg#L555) | [Postfix](as1.atg#L577) | [Arguments](as1.atg#L591) | [Primary](as1.atg#L604) | [Subscript](as1.atg#L630) | [ArrayLiteral](as1.atg#L637) | [ObjectLiteral](as1.atg#L653) | [GroupedExpression](as1.atg#L666) | [Property](as1.atg#L673)
+[letter](as1.atg#L158) | [digit](as1.atg#L164) | [hex](as1.atg#L169) | [dq](as1.atg#L174) | [sq](as1.atg#L179) | [linechar](as1.atg#L184) | [escaped](as1.atg#L189) | [nonstar](as1.atg#L195) | [nonstarslash](as1.atg#L199) | [ident](as1.atg#L205) | [number](as1.atg#L214) | [hexnum](as1.atg#L248) | [text](as1.atg#L261) | [blockcomment](as1.atg#L278) | [linecomment](as1.atg#L296) | [As1](as1.atg#L309) | [Item](as1.atg#L317) | [Block](as1.atg#L327) | [Statement](as1.atg#L338) | [IfStatement](as1.atg#L379) | [WhileStatement](as1.atg#L387) | [ForStatement](as1.atg#L394) | [SwitchStatement](as1.atg#L417) | [TryStatement](as1.atg#L426) | [SwitchPart](as1.atg#L438) | [Variables](as1.atg#L449) | [Variable](as1.atg#L457) | [FunctionTail](as1.atg#L465) | [Parameter](as1.atg#L479) | [Expression](as1.atg#L484) | [Assignment](as1.atg#L493) | [AssignOp](as1.atg#L510) | [Conditional](as1.atg#L527) | [LogicalOr](as1.atg#L539) | [LogicalAnd](as1.atg#L551) | [BitOr](as1.atg#L563) | [BitXor](as1.atg#L571) | [BitAnd](as1.atg#L579) | [Equality](as1.atg#L587) | [Relational](as1.atg#L603) | [Shift](as1.atg#L624) | [Additive](as1.atg#L637) | [Product](as1.atg#L651) | [Unary](as1.atg#L665) | [Postfix](as1.atg#L688) | [Arguments](as1.atg#L708) | [Primary](as1.atg#L721) | [Subscript](as1.atg#L747) | [ArrayLiteral](as1.atg#L754) | [ObjectLiteral](as1.atg#L770) | [GroupedExpression](as1.atg#L783) | [Property](as1.atg#L790)
 
 ## Language reference
 
@@ -90,3 +94,5 @@ with `-pedantic-errors`.
 
 `in` is supported in expressions; NoIn applies only to for initializers.
 Groups, arguments, subscripts and literals restore ordinary expressions.
+
+New rules / [ClipInitializer](as1.atg#L800) | [EventHandler](as1.atg#L813) | [Terminator](as1.atg#L831)

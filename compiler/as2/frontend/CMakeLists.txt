@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(as2_frontend VERSION 0.2.6 LANGUAGES C)
+project(as2_frontend VERSION 0.3.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -59,4 +59,8 @@ endif()
 
 if(BUILD_TESTING)
   add_test(NAME as2_recovery COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_check.py $<TARGET_FILE:as2_parse>)
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME as2_asi COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/asi_check.py $<TARGET_FILE:as2_parse>)
 endif()

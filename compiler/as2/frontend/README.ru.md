@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS2
 
-Версия 0.2.6. [English](README.md).
+Версия 0.3.0. [English](README.md).
 
 Читаемый файл [as2.atg](as2.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -68,16 +68,16 @@ LabelAhead распознаёт метку через пробелы/комме�
 Явные предикаты различают блок/объявление функции и выражение, а else связывают
 с ближайшим if. Есть проверки принятия и отклонения программ.
 
-Первая версия требует явных точек с запятой. Автоматическая вставка `;` и правила
-перевода строки для return/postfix пока не реализованы. Пока отсутствуют литералы
-регулярных выражений, препроцессор (`#include`),
-контекст привязки к timeline `on`/`onClipEvent`, escape в идентификаторах и полная
-проверка категорий Unicode в именах. Это начальный явно ограниченный профиль,
-а не заявление о полном соответствии языку AS. Исходный текст не исполняется.
-
-AS2 дополнительно распознаёт типы переменных/параметров/результата, import, class,
-interface, extends, implements, модификаторы, методы и форму членов get/set.
-Допустимость модификаторов, accessor и расположения деклараций проверит семантика.
+Автоматическая вставка `;` поддержана на переводе строки, перед `}` и EOF.
+Для `return`, `break`, `continue`, постфиксных `++/--` учитывается перевод строки,
+включая комментарии; после `throw` он запрещён (E1102). В заголовке for точки
+с запятой обязательны. `on`/`onClipEvent` с блоком, `#include` и парные
+`#initclip`/`#endinitclip` распознаются без открытия include-файлов и привязки
+событий к сцене. Имена on/onClipEvent остаются обычными в вызовах без блока.
+Поддержаны старые словесные and/or/not; события и допустимость их имён требуют
+проверки профиля. Пока не реализованы литералы regexp, escape в идентификаторах,
+полная таблица категорий Unicode и проверки левых частей/контекста. Это
+синтаксический профиль, а не полная реализация компилятора.
 
 ## Проверки
 
@@ -88,7 +88,7 @@ interface, extends, implements, модификаторы, методы и фор
 
 ## Указатель правил грамматики
 
-[As2](as2.atg#L225) | [Item](as2.atg#L233) | [Block](as2.atg#L241) | [Statement](as2.atg#L252) | [IfStatement](as2.atg#L287) | [WhileStatement](as2.atg#L295) | [ForStatement](as2.atg#L302) | [SwitchStatement](as2.atg#L325) | [TryStatement](as2.atg#L334) | [SwitchPart](as2.atg#L350) | [Variables](as2.atg#L361) | [Variable](as2.atg#L369) | [FunctionTail](as2.atg#L380) | [Parameter](as2.atg#L398) | [Expression](as2.atg#L406) | [Assignment](as2.atg#L415) | [AssignOp](as2.atg#L427) | [Conditional](as2.atg#L444) | [LogicalOr](as2.atg#L456) | [LogicalAnd](as2.atg#L464) | [BitOr](as2.atg#L472) | [BitXor](as2.atg#L480) | [BitAnd](as2.atg#L488) | [Equality](as2.atg#L496) | [Relational](as2.atg#L512) | [Shift](as2.atg#L533) | [Additive](as2.atg#L546) | [Product](as2.atg#L559) | [Unary](as2.atg#L572) | [Postfix](as2.atg#L594) | [Arguments](as2.atg#L608) | [Primary](as2.atg#L621) | [Property](as2.atg#L690) | [TypeName](as2.atg#L700) | [Import](as2.atg#L708) | [Class](as2.atg#L721) | [Interface](as2.atg#L743) | [Modifier](as2.atg#L759) | [Member](as2.atg#L768) | [Signature](as2.atg#L784)
+[As2](as2.atg#L309) | [Item](as2.atg#L317) | [Block](as2.atg#L330) | [Statement](as2.atg#L341) | [IfStatement](as2.atg#L382) | [WhileStatement](as2.atg#L390) | [ForStatement](as2.atg#L397) | [SwitchStatement](as2.atg#L420) | [TryStatement](as2.atg#L429) | [SwitchPart](as2.atg#L445) | [Variables](as2.atg#L456) | [Variable](as2.atg#L464) | [FunctionTail](as2.atg#L475) | [Parameter](as2.atg#L493) | [Expression](as2.atg#L501) | [Assignment](as2.atg#L510) | [AssignOp](as2.atg#L527) | [Conditional](as2.atg#L544) | [LogicalOr](as2.atg#L556) | [LogicalAnd](as2.atg#L568) | [BitOr](as2.atg#L580) | [BitXor](as2.atg#L588) | [BitAnd](as2.atg#L596) | [Equality](as2.atg#L604) | [Relational](as2.atg#L620) | [Shift](as2.atg#L641) | [Additive](as2.atg#L654) | [Product](as2.atg#L668) | [Unary](as2.atg#L682) | [Postfix](as2.atg#L705) | [Arguments](as2.atg#L725) | [Primary](as2.atg#L738) | [Property](as2.atg#L807) | [TypeName](as2.atg#L817) | [Import](as2.atg#L825) | [Class](as2.atg#L838) | [Interface](as2.atg#L860) | [Modifier](as2.atg#L876) | [Member](as2.atg#L885) | [Signature](as2.atg#L901)
 
 ## Описание языка
 
@@ -96,3 +96,5 @@ interface, extends, implements, модификаторы, методы и фор
 
 `in` поддержан в выражениях; NoIn действует только в инициализации for.
 Скобки, аргументы, индексы и литералы возвращают обычный контекст выражения.
+
+Новые правила / [ClipInitializer](as2.atg#L917) | [EventHandler](as2.atg#L930) | [Terminator](as2.atg#L948)

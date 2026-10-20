@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS1
 
-Версия 0.2.6. [English](README.md).
+Версия 0.3.0. [English](README.md).
 
 Читаемый файл [as1.atg](as1.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -68,12 +68,16 @@ LabelAhead распознаёт метку через пробелы/комме�
 Явные предикаты различают блок/объявление функции и выражение, а else связывают
 с ближайшим if. Есть проверки принятия и отклонения программ.
 
-Первая версия требует явных точек с запятой. Автоматическая вставка `;` и правила
-перевода строки для return/postfix пока не реализованы. Пока отсутствуют литералы
-регулярных выражений, препроцессор (`#include`),
-контекст привязки к timeline `on`/`onClipEvent`, escape в идентификаторах и полная
-проверка категорий Unicode в именах. Это начальный явно ограниченный профиль,
-а не заявление о полном соответствии языку AS. Исходный текст не исполняется.
+Автоматическая вставка `;` поддержана на переводе строки, перед `}` и EOF.
+Для `return`, `break`, `continue`, постфиксных `++/--` учитывается перевод строки,
+включая комментарии; после `throw` он запрещён (E1102). В заголовке for точки
+с запятой обязательны. `on`/`onClipEvent` с блоком, `#include` и парные
+`#initclip`/`#endinitclip` распознаются без открытия include-файлов и привязки
+событий к сцене. Имена on/onClipEvent остаются обычными в вызовах без блока.
+Поддержаны старые словесные and/or/not; события и допустимость их имён требуют
+проверки профиля. Пока не реализованы литералы regexp, escape в идентификаторах,
+полная таблица категорий Unicode и проверки левых частей/контекста. Это
+синтаксический профиль, а не полная реализация компилятора.
 
 ## Проверки
 
@@ -84,7 +88,7 @@ LabelAhead распознаёт метку через пробелы/комме�
 
 ## Указатель правил грамматики
 
-[As1](as1.atg#L225) | [Item](as1.atg#L233) | [Block](as1.atg#L238) | [Statement](as1.atg#L249) | [IfStatement](as1.atg#L284) | [WhileStatement](as1.atg#L292) | [ForStatement](as1.atg#L299) | [SwitchStatement](as1.atg#L322) | [TryStatement](as1.atg#L331) | [SwitchPart](as1.atg#L343) | [Variables](as1.atg#L354) | [Variable](as1.atg#L362) | [FunctionTail](as1.atg#L370) | [Parameter](as1.atg#L384) | [Expression](as1.atg#L389) | [Assignment](as1.atg#L398) | [AssignOp](as1.atg#L410) | [Conditional](as1.atg#L427) | [LogicalOr](as1.atg#L439) | [LogicalAnd](as1.atg#L447) | [BitOr](as1.atg#L455) | [BitXor](as1.atg#L463) | [BitAnd](as1.atg#L471) | [Equality](as1.atg#L479) | [Relational](as1.atg#L495) | [Shift](as1.atg#L516) | [Additive](as1.atg#L529) | [Product](as1.atg#L542) | [Unary](as1.atg#L555) | [Postfix](as1.atg#L577) | [Arguments](as1.atg#L591) | [Primary](as1.atg#L604) | [Property](as1.atg#L673)
+[As1](as1.atg#L309) | [Item](as1.atg#L317) | [Block](as1.atg#L327) | [Statement](as1.atg#L338) | [IfStatement](as1.atg#L379) | [WhileStatement](as1.atg#L387) | [ForStatement](as1.atg#L394) | [SwitchStatement](as1.atg#L417) | [TryStatement](as1.atg#L426) | [SwitchPart](as1.atg#L438) | [Variables](as1.atg#L449) | [Variable](as1.atg#L457) | [FunctionTail](as1.atg#L465) | [Parameter](as1.atg#L479) | [Expression](as1.atg#L484) | [Assignment](as1.atg#L493) | [AssignOp](as1.atg#L510) | [Conditional](as1.atg#L527) | [LogicalOr](as1.atg#L539) | [LogicalAnd](as1.atg#L551) | [BitOr](as1.atg#L563) | [BitXor](as1.atg#L571) | [BitAnd](as1.atg#L579) | [Equality](as1.atg#L587) | [Relational](as1.atg#L603) | [Shift](as1.atg#L624) | [Additive](as1.atg#L637) | [Product](as1.atg#L651) | [Unary](as1.atg#L665) | [Postfix](as1.atg#L688) | [Arguments](as1.atg#L708) | [Primary](as1.atg#L721) | [Property](as1.atg#L790)
 
 ## Описание языка
 
@@ -92,3 +96,5 @@ LabelAhead распознаёт метку через пробелы/комме�
 
 `in` поддержан в выражениях; NoIn действует только в инициализации for.
 Скобки, аргументы, индексы и литералы возвращают обычный контекст выражения.
+
+Новые правила / [ClipInitializer](as1.atg#L800) | [EventHandler](as1.atg#L813) | [Terminator](as1.atg#L831)

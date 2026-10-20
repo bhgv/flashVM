@@ -7,6 +7,7 @@
  */
 /* AS2 syntax frontend. C99 target; no bytecode generation. */
 COMPILER As2
+#include <string.h>
 /* LabelAhead: inspect the bytes after an identifier without consuming a token.
  * Whitespace and both comment forms may separate the name from its colon.
  * Returning zero leaves the identifier available to the expression production. */
@@ -49,6 +50,72 @@ static int LabelAhead(void)
     }
 }
 
+/* Skip trivia for contextual event-wrapper lookahead; source bytes are never changed.
+ */
+static long EventTrivia(long pos)
+{
+    for (;;)
+    {
+        int ch = S_CurrentCh(pos), next = S_CurrentCh(pos + 1);
+        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+            ++pos;
+        else if (ch == '/' && next == '/')
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+                ++pos;
+        else if (ch == '/' && next == '*')
+        {
+            pos += 2;
+            while (S_CurrentCh(pos) &&
+                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+                ++pos;
+            if (!S_CurrentCh(pos))
+                return pos;
+            pos += 2;
+        }
+        else
+            return pos;
+    }
+}
+/* An on/onClipEvent call is an authoring wrapper only when its balanced header is
+ * followed by {. Ordinary calls/variables with these names keep ordinary expression
+ * syntax. */
+static int EventHandlerAhead(void)
+{
+    char name[16];
+    long pos;
+    int depth = 0, quote = 0;
+    if (S_NextLen > 15)
+        return 0;
+    S_GetString(S_NextPos, S_NextLen, name, 15);
+    if (strcmp(name, "on") && strcmp(name, "onClipEvent"))
+        return 0;
+    pos = EventTrivia(S_NextPos + S_NextLen);
+    if (S_CurrentCh(pos) != '(')
+        return 0;
+    for (;; ++pos)
+    {
+        int ch = S_CurrentCh(pos);
+        if (!ch)
+            return 0;
+        if (quote)
+        {
+            if (ch == 92 && S_CurrentCh(pos + 1))
+                ++pos;
+            else if (ch == quote)
+                quote = 0;
+        }
+        else if (ch == 34 || ch == 39)
+            quote = ch;
+        else if (ch == '/' &&
+                 (S_CurrentCh(pos + 1) == '/' || S_CurrentCh(pos + 1) == '*'))
+            pos = EventTrivia(pos) - 1;
+        else if (ch == '(')
+            ++depth;
+        else if (ch == ')' && !--depth)
+            return S_CurrentCh(EventTrivia(pos + 1)) == '{';
+    }
+}
+
 /* NoIn applies only to an unparenthesized for initializer. Parentheses and
  * nested function bodies restore ordinary expression grammar locally. */
 static int allow_in = 1;
@@ -60,6 +127,23 @@ static int RelationalAhead(int token)
            token == GreaterEqualSym || token == instanceofSym || token == ltSym ||
            token == gtSym || token == leSym || token == geSym ||
            (token == inSym && allow_in);
+}
+
+/* Restricted productions inspect original trivia, including line breaks inside
+ * comments. Do not use token line numbers: a skipped pragma must not hide its newline.
+ */
+static int LineBreak(void)
+{
+    long pos;
+    for (pos = S_Pos + S_Len; pos < S_NextPos; ++pos)
+    {
+        int ch = S_CurrentCh(pos);
+        if (ch == 10 || ch == 13 ||
+            (ch == 226 && S_CurrentCh(pos + 1) == 128 &&
+             (S_CurrentCh(pos + 2) == 168 || S_CurrentCh(pos + 2) == 169)))
+            return 1;
+    }
+    return 0;
 }
 
 /* Recursive grammar boundaries call a C99 guard owned by this parser only.
@@ -231,7 +315,12 @@ PRODUCTIONS
 
   /* Элемент программы или тела: выбор между декларацией и инструкцией. */
   Item =
-    Import
+    "#include" text
+    [
+        IF(Sym == SemicolonSym) ";"
+    ]
+    | ClipInitializer
+    | Import
     | Class
     | Interface
     | Statement
@@ -252,10 +341,11 @@ PRODUCTIONS
   Statement =
                                                                         (. as2_syntax_enter(); .)
     (
-        IF(Sym == identSym && LabelAhead()) ident ":" Statement
+        IF(Sym == identSym && EventHandlerAhead()) EventHandler
+        | IF(Sym == identSym && LabelAhead()) ident ":" Statement
         | IF(Sym == LbraceSym) Block
         | ";"
-        | "var" Variables ";"
+        | "var" Variables Terminator
         | IF(Sym == functionSym) "function" ident FunctionTail
         | IfStatement
         | WhileStatement
@@ -264,21 +354,26 @@ PRODUCTIONS
         | TryStatement
         | "return"
         [
+            IF(!LineBreak() && Sym != SemicolonSym && Sym != RbraceSym && Sym != EOF_Sym)
             Expression
         ]
-        ";"
-        | "throw" Expression ";"
+        Terminator
+        | "throw"                                                       (.
+                                                                            if (LineBreak())
+                                                                                SemError(1102);
+                                                                        .)
+        Expression Terminator
         |
         (
             "break"
             | "continue"
         )
         [
-            ident
+            IF(Sym == identSym && !LineBreak()) ident
         ]
-        ";"
+        Terminator
         | "with" "(" Expression ")" Statement
-        | Expression ";"
+        | Expression Terminator
     )
                                                                         (. as2_syntax_leave(); .)
   .
@@ -294,7 +389,7 @@ PRODUCTIONS
   /* Проверка до тела и проверка после тела используют одно правило Statement. */
   WhileStatement =
     "while" "(" Expression ")" Statement
-    | "do" Statement "while" "(" Expression ")" ";"
+    | "do" Statement "while" "(" Expression ")" Terminator
   .
 
   /* Suppress relational in until the for-in separator is decided. The saved
@@ -417,6 +512,11 @@ PRODUCTIONS
     (
         Conditional
         [
+            IF(Sym == EqualSym || Sym == PlusEqualSym || Sym == MinusEqualSym ||
+               Sym == StarEqualSym || Sym == SlashEqualSym || Sym == PercentEqualSym ||
+               Sym == LessLessEqualSym || Sym == GreaterGreaterEqualSym ||
+               Sym == GreaterGreaterGreaterEqualSym || Sym == AndEqualSym ||
+               Sym == BarEqualSym || Sym == UparrowEqualSym)
             AssignOp Assignment
         ]
     )
@@ -456,7 +556,11 @@ PRODUCTIONS
   LogicalOr =
     LogicalAnd
     {
-        "||" LogicalAnd
+        (
+            "||"
+            | "or"
+        )
+        LogicalAnd
     }
   .
 
@@ -464,7 +568,11 @@ PRODUCTIONS
   LogicalAnd =
     BitOr
     {
-        "&&" BitOr
+        (
+            "&&"
+            | "and"
+        )
+        BitOr
     }
   .
 
@@ -546,6 +654,7 @@ PRODUCTIONS
   Additive =
     Product
     {
+        IF(Sym == PlusSym || Sym == MinusSym || Sym == addSym)
         (
             "+"
             | "-"
@@ -559,6 +668,7 @@ PRODUCTIONS
   Product =
     Unary
     {
+        IF(Sym == StarSym || Sym == SlashSym || Sym == PercentSym)
         (
             "*"
             | "/"
@@ -574,6 +684,7 @@ PRODUCTIONS
     (
         (
             "!"
+            | "not"
             | "~"
             | "+"
             | "-"
@@ -594,13 +705,19 @@ PRODUCTIONS
   Postfix =
     Primary
     {
-        "." ident
-        | Subscript
-        | Arguments
+        IF(Sym == PointSym || Sym == LbrackSym || Sym == LparenSym)
+        (
+            "." ident
+            | Subscript
+            | Arguments
+        )
     }
     [
-        "++"
-        | "--"
+        IF(!LineBreak() && (Sym == PlusPlusSym || Sym == MinusMinusSym))
+        (
+            "++"
+            | "--"
+        )
     ]
   .
 
@@ -714,7 +831,7 @@ PRODUCTIONS
             | "*"
         )
     }
-    ";"
+    Terminator
   .
 
   /* Класс AS2 с базовым классом, интерфейсами и списком членов. */
@@ -770,7 +887,7 @@ PRODUCTIONS
         Modifier
     }
     (
-        "var" Variables ";"
+        "var" Variables Terminator
         | "function" ident
         [
             ident
@@ -794,6 +911,49 @@ PRODUCTIONS
         ":" TypeName
     ]
     ";"
+  .
+
+  /* Timeline clip-initializer wrapper; includes are recognized but never opened. */
+  ClipInitializer =
+                                                                        (. as2_syntax_enter(); .)
+    "#initclip"
+    [
+        IF(Sym == numberSym) number
+    ]
+    {
+        Item
+    }
+    "#endinitclip"                                                      (. as2_syntax_leave(); .)
+  .
+
+  /* Flash authoring event lists permit keyPress followed by its string key description. */
+  EventHandler =
+    ident "(" EventName
+    {
+        "," EventName
+    }
+    ")" Block
+  .
+
+  /* Event names remain contextual identifiers; event validity belongs to the selected SWF profile. */
+  EventName =
+    ident
+    [
+        text
+    ]
+  .
+
+  /* Automatic insertion is allowed at a line break, before } or at EOF.
+  An explicit semicolon always wins; for-header separators remain mandatory. */
+  Terminator =
+                                                                        (. int explicit_semi = 0; .)
+    [
+        IF(Sym == SemicolonSym) ";"                                     (. explicit_semi = 1; .)
+    ]
+                                                                        (.
+                                                                            if (!explicit_semi && Sym != RbraceSym && Sym != EOF_Sym && !LineBreak())
+                                                                                SemError(1101);
+                                                                        .)
   .
 
 END
