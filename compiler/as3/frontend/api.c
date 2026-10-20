@@ -12,6 +12,9 @@ static void report(int code, int line, int column, long offset)
 {
     if(!active || active->message[0]) return;
     active->code=code; active->line=line; active->column=column; active->offset=offset;
+    if(code==1201) { snprintf(active->message,sizeof(active->message),"required parameter follows optional parameter"); return; }
+    if(code==1203) { snprintf(active->message,sizeof(active->message),"rest parameter must be last"); return; }
+    if(code==1202) { snprintf(active->message,sizeof(active->message),"for each requires in, not three clauses"); return; }
     snprintf(active->message,sizeof(active->message),"%s",code>=0 && (size_t)code<sizeof(messages)/sizeof(messages[0]) ? messages[code] : "syntax error");
 }
 static int valid_utf8(const unsigned char *text, size_t n)

@@ -13,5 +13,7 @@ int main(void)
         if(as3_check("for(var x in)",13,&diagnostic)) return 5;
         if(!as3_check("trace(x in obj);",strlen("trace(x in obj);"),&diagnostic)) return 6;
     }
+    if(as3_check("function f(a:Number=1,b:Number):void {}",strlen("function f(a:Number=1,b:Number):void {}"),&diagnostic) || diagnostic.code!=1201) return 7;
+    if(!as3_check("function f(a:Number=1,...rest):void {}",strlen("function f(a:Number=1,...rest):void {}"),&diagnostic)) return 8;
     return 0;
 }

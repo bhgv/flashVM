@@ -5,8 +5,9 @@
  * Квадратные скобки — необязательная часть, фигурные — повторение.
  * IF(...) проверяет выбор без потребления входного токена.
  */
-/* AS3 core syntax subset. No E4X, namespaces, vectors, metadata or ABC emission. */
+/* AS3 core syntax subset. No E4X, vectors, metadata or ABC emission. */
 COMPILER As3
+#include <string.h>
 
 /* LabelAhead: inspect the bytes after an identifier without consuming a token.
  * Whitespace and both comment forms may separate the name from its colon.
@@ -34,7 +35,7 @@ static int LabelAhead(void)
                 ++pos; /* Skip the line comment, including any apparent colon. */
             }
         } else {
-            return ch == ':'; /* Only the next non-comment byte decides. */
+            return ch == ':' && S_CurrentCh(pos+1) != ':'; /* Only the next non-comment byte decides. */
         }
     }
 }
@@ -56,6 +57,67 @@ static int RelationalAhead(int token)
         (token == inSym && allow_in);
 }
 
+
+/* Skip whitespace/comments without consuming a scanner token. */
+static long Trivia(long pos)
+{
+    for (;;) {
+        int ch=S_CurrentCh(pos),next=S_CurrentCh(pos+1);
+        if(ch==' ' || ch==9 || ch==10 || ch==13) ++pos;
+        else if(ch=='/' && next=='/') { while(S_CurrentCh(pos) && S_CurrentCh(pos)!=10) ++pos; }
+        else if(ch=='/' && next=='*') {
+            pos+=2;
+            while(S_CurrentCh(pos) && !(S_CurrentCh(pos)=='*' && S_CurrentCh(pos+1)=='/')) ++pos;
+            if(!S_CurrentCh(pos)) return pos;
+            pos+=2;
+        } else return pos;
+    }
+}
+/* Whole ASCII contextual keyword; Unicode continuation is never a boundary. */
+static int WordAt(long pos, const char *word)
+{
+    int ch;
+    while(*word) if(S_CurrentCh(pos++)!=(unsigned char)*word++) return 0;
+    ch=S_CurrentCh(pos);
+    return !((ch>='A' && ch<='Z') || (ch>='a' && ch<='z') ||
+             (ch>='0' && ch<='9') || ch=='_' || ch=='$' || ch>=128);
+}
+/* A custom namespace attribute precedes a member keyword; ordinary expressions
+ * beginning with an identifier remain available to Statement. */
+static int CustomModifierAhead(void)
+{
+    long pos=Trivia(S_NextPos+S_NextLen);
+    return WordAt(pos,"function") || WordAt(pos,"var") || WordAt(pos,"const");
+}
+/* Complete repetition FIRST set, including contextual namespace attributes. */
+static int ModifierAhead(int token)
+{
+    return token==publicSym || token==privateSym || token==protectedSym ||
+        token==internalSym || token==staticSym || token==dynamicSym ||
+        token==overrideSym || token==finalSym || (token==identSym && CustomModifierAhead());
+}
+static int MemberAhead(int token)
+{
+    return ModifierAhead(token) || token==functionSym || token==varSym ||
+        token==constSym || token==namespaceSym || token==useSym || token==SemicolonSym;
+}
+/* Explicit declaration resolver factors common modifier prefixes from items. */
+static int DeclarationAhead(int token)
+{
+    return token==classSym || token==interfaceSym || token==functionSym ||
+        token==varSym || token==constSym || token==namespaceSym || token==publicSym ||
+        token==privateSym || token==protectedSym || token==internalSym ||
+        token==staticSym || token==dynamicSym || token==overrideSym || token==finalSym ||
+        (token==identSym && CustomModifierAhead());
+}
+/* get/set are contextual names, not globally reserved scanner keywords. */
+static int AccessorName(void)
+{
+    char name[8];
+    if(S_Len>7) return 0;
+    S_GetString(S_Pos,S_Len,name,7);
+    return !strcmp(name,"get") || !strcmp(name,"set");
+}
 
 /* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
 CHARACTERS
@@ -104,12 +166,13 @@ PRODUCTIONS
     .
 
   /* Package may be anonymous; qualified names use the ordinary type spelling. */
-  Package = "package" [ TypeName ] "{" { Item } "}" .
+  Package = "package" [ QualifiedName ] "{" { Item } "}" .
 
   /* Элемент программы или тела: выбор между декларацией и инструкцией. */
   Item =
     Import
-    | TypeDeclaration
+    | IF(DeclarationAhead(Sym)) Declaration
+    | UseNamespace
     | Statement
     .
 
@@ -153,11 +216,11 @@ PRODUCTIONS
 
   /* Suppress relational in until the for-in separator is decided. The saved
    * mode makes nested for/function/group parses independent of their caller. */
-  ForStatement = (. int outer = allow_in; .)
-    "for" "(" (. allow_in = 0; .) [ ("var" | "const") Variables | Expression ]
+  ForStatement = (. int outer = allow_in, each = 0; .)
+    "for" [ IF(Sym==identSym && WordAt(S_NextPos,"each")) ident (. each=1; .) ] "(" (. allow_in = 0; .) [ ("var" | "const") Variables | Expression ]
     (. allow_in = outer; .)
     ( "in" Expression ")" Statement
-    | ";" [ Expression ] ";" [ Expression ] ")" Statement ) .
+    | ";" (. if(each) SemError(1202); .) [ Expression ] ";" [ Expression ] ")" Statement ) .
 
   /* Метки и тела ветвей вынесены в SwitchPart для читаемости. */
   SwitchStatement =
@@ -165,13 +228,10 @@ PRODUCTIONS
     .
 
   /* try обязан иметь catch или finally; допускается их сочетание. */
-  TryStatement =
-    "try" Block
-    (
-      "catch" "(" ident [ ":" TypeName ] ")" Block [ "finally" Block ]
-    | "finally" Block
-    )
-    .
+  TryStatement = "try" Block
+    ( CatchClause { CatchClause } [ "finally" Block ] | "finally" Block ) .
+  /* Multiple typed handlers are preserved in source order; types are not resolved. */
+  CatchClause = "catch" "(" ident [ ":" TypeName ] ")" Block .
 
   /* Метка case/default и её инструкции; следующая метка начинает новую ветвь. */
   SwitchPart =
@@ -190,13 +250,20 @@ PRODUCTIONS
 
   /* Параметры, необязательный возвращаемый тип AS3 и тело функции. */
   FunctionTail = (. int outer = allow_in; .)
-    "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] (. allow_in = 1; .) Block (. allow_in = outer; .)
-    .
-
-  /* Один формальный параметр; в AS3 после имени допускается аннотация типа. */
-  Parameter =
-    ident [ ":" TypeName ]
-    .
+    Parameters [ ":" ReturnType ] (. allow_in = 1; .) Block (. allow_in = outer; .) .
+  /* Iteration avoids stack growth with the number of parameters. Local flags
+   * enforce optional ordering and reject every parameter after rest. */
+  Parameters = (. int optional = 0, rest = 0; .)
+    "(" [ ParameterItem<&optional,&rest> { "," ParameterItem<&optional,&rest> } ] ")" .
+  /* Reject misplaced rest while still consuming the item for error recovery. */
+  ParameterItem<int *optional, int *rest> = (. if(*rest) SemError(1203); .)
+      "..." ident [ ":" TypeName ] (. *rest=1; .)
+    | Parameter<optional> .
+  /* Default-expression constness/type checking belongs to future semantics. */
+  Parameter<int *optional> = (. int has_default = 0; .)
+    ident [ ":" TypeName ] [ "=" Assignment (. has_default=1; .) ]
+    (. if(*optional && !has_default) SemError(1201);
+       if(has_default) *optional=1; .) .
 
   /* Самый низкий приоритет: последовательность выражений через запятую. */
   Expression =
@@ -289,7 +356,7 @@ PRODUCTIONS
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
-    Primary { "." ident | Subscript | Arguments } [ "++" | "--" ]
+    Primary { "." ident [ "::" ident ] | Subscript | Arguments } [ "++" | "--" ]
     .
 
   /* Аргументы разделены запятыми; запятая внутри аргумента требует скобок. */
@@ -299,7 +366,7 @@ PRODUCTIONS
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
   Primary =
-    ident
+    ident [ "::" ident ]
     | number
     | hexnum
     | text
@@ -336,9 +403,11 @@ PRODUCTIONS
     .
 
   /* Квалифицированное имя типа AS3; разрешение имени будет отдельным проходом. */
-  TypeName =
-    (ident { "." ident } | "*" | "void")
-    .
+  TypeName = QualifiedName | "*" .
+  /* void is only a return annotation, never a class/variable/parameter type. */
+  ReturnType = TypeName | "void" .
+  /* Qualified declaration names cannot be wildcard or void. */
+  QualifiedName = ident { "." ident } .
 
   /* Импорт AS3; допускается последняя компонента-звёздочка. */
   Import =
@@ -346,11 +415,18 @@ PRODUCTIONS
     .
 
   /* Factor modifiers before class/interface to keep the grammar LL(1). */
-  TypeDeclaration = { Modifier }
-      ( "class" TypeName [ "extends" TypeName ]
-        [ "implements" TypeName { "," TypeName } ] "{" { Member } "}"
-      | "interface" TypeName [ "extends" TypeName { "," TypeName } ]
-        "{" { Signature } "}" ) .
+  Declaration = { IF(ModifierAhead(Sym)) Modifier }
+      ( "class" ident [ "extends" QualifiedName ]
+        [ "implements" QualifiedName { "," QualifiedName } ] "{" { IF(MemberAhead(Sym)) Member } "}"
+      | "interface" ident [ "extends" QualifiedName { "," QualifiedName } ]
+        "{" { Signature } "}"
+      | "function" MethodName FunctionTail
+      | ("var" | "const") Variables ";"
+      | NamespaceDeclaration ) .
+  /* Namespace resolution/visibility are not performed by a syntax frontend. */
+  NamespaceDeclaration = "namespace" ident [ "=" (text | QualifiedName) ] ";" .
+  /* Contextual namespace selection does not make arbitrary identifiers modifiers. */
+  UseNamespace = "use" "namespace" QualifiedName ";" .
 
   /* Модификаторы AS3; допустимость их сочетаний проверяется семантически. */
   Modifier =
@@ -362,16 +438,18 @@ PRODUCTIONS
     | "internal"
     | "override"
     | "final"
+    | IF(Sym==identSym && CustomModifierAhead()) ident
     .
 
   /* Поле или метод класса; дополнительное имя используется для get/set. */
   Member =
-    { Modifier } ( ("var" | "const") Variables ";" | "function" ident [ ident ] FunctionTail | ";" )
+    { IF(ModifierAhead(Sym)) Modifier } ( ("var" | "const") Variables ";" | "function" MethodName FunctionTail | NamespaceDeclaration | UseNamespace | ";" )
     .
 
   /* Сигнатура метода интерфейса завершается точкой с запятой вместо тела. */
-  Signature =
-    "function" ident "(" [ Parameter { "," Parameter } ] ")" [ ":" TypeName ] ";"
-    .
+  Signature = "function" MethodName Parameters [ ":" ReturnType ] ";" .
+  /* Only get/set admit a second identifier; f g() is rejected. */
+  MethodName = (. int accessor = 0; .)
+    ident (. accessor=AccessorName(); .) [ IF(Sym==identSym && accessor) ident ] .
 
 END As3.

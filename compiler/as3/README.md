@@ -1,10 +1,10 @@
-# AS3 syntax frontend 0.2.1
+# AS3 syntax frontend 0.3.0
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
 It accepts package/import, class/interface, extends/implements, modifiers,
 var/const, signatures, blocks, loops, exceptions and is/as expressions.
-E4X/XML, metadata, namespaces, Vector.<T> and regular expressions are unsupported.
+E4X/XML, metadata, Vector.<T> and regular expressions are unsupported.
 Modifier combinations, return and const validity need a future semantic pass.
 The separate AS3 → FIR → AVM1 tutorial lives in `../../fir/v1`; it is not AVM2.
 
@@ -47,3 +47,20 @@ Relational, ForStatement, GroupedExpression, Arguments, Subscript. This is synta
 recognition, not property enumeration or FIR lowering.
 
 [Grammar](frontend/as3.atg): Relational/ForStatement. [Example](examples/in.as).
+
+### Declarations and functions 0.3.0
+
+Default parameters, a final `...rest`, for-each, multiple catch handlers,
+namespace/use-namespace declarations and `ns::name` qualifiers are supported.
+Package functions/variables accept modifiers; get/set methods are recognized.
+`void` is a return type only. A required parameter after an optional one fails
+with E1201; any parameter after rest fails with E1203; E1202 rejects classic
+three-clause for-each. each/get/set remain contextual names, not globally reserved
+words. Parameter lists iterate without stack growth proportional to their size.
+
+[Grammar](frontend/as3.atg): Declaration, Parameters, ParameterItem, MethodName,
+NamespaceDeclaration, UseNamespace, CatchClause. [Example](examples/Functions.as).
+Name/type resolution, modifier validity, default-expression constness and
+namespace execution are not implemented. Vector, metadata, E4X and ABC remain
+outside this series; numeric AS3 lowering does not acquire these constructs
+implicitly.
