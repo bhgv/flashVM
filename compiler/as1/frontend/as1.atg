@@ -59,6 +59,11 @@ static int RelationalAhead(int token)
 }
 
 
+/* Recursive grammar boundaries call a C99 guard owned by this parser only.
+ * The embedding wrapper turns limit exhaustion into a returned diagnostic. */
+void as1_syntax_enter(void);
+void as1_syntax_leave(void);
+
 /* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
@@ -118,7 +123,7 @@ PRODUCTIONS
   /* Инструкции языка. Метка проверяется до выражения; блок и объявление
      функции выбираются явно, чтобы не спутать их с object/function expression.
      Условие перед else связывает его с ближайшим незавершённым if. */
-  Statement =
+  Statement = (. as1_syntax_enter(); .) (
       IF(Sym == identSym && LabelAhead()) ident ":" Statement
     | IF(Sym == LbraceSym) Block
     | ";"
@@ -134,7 +139,7 @@ PRODUCTIONS
     | ( "break" | "continue" ) [ ident ] ";"
     | "with" "(" Expression ")" Statement
     | Expression ";"
-    .
+     ) (. as1_syntax_leave(); .) .
 
   /* else относится к ближайшему if; предикат не потребляет токен. */
   IfStatement =
@@ -202,9 +207,9 @@ PRODUCTIONS
 
   /* Присваивание разбирается рекурсией справа: a = b = c.
      Проверка допустимости левой части относится к будущему семантическому проходу. */
-  Assignment =
+  Assignment = (. as1_syntax_enter(); .) (
     Conditional [ AssignOp Assignment ]
-    .
+     ) (. as1_syntax_leave(); .) .
 
   /* Обычное и составные присваивания; конкретные операции сохраняются в токенах. */
   AssignOp =
@@ -224,9 +229,9 @@ PRODUCTIONS
 
   /* Тернарный оператор. Правая ветвь рекурсивна, поэтому a?b:c?d:e
      группируется как a?b:(c?d:e); средняя ветвь допускает присваивание. */
-  Conditional =
+  Conditional = (. as1_syntax_enter(); .) (
     LogicalOr [ "?" Assignment ":" Conditional ]
-    .
+     ) (. as1_syntax_leave(); .) .
 
   /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
   LogicalOr =
@@ -279,10 +284,10 @@ PRODUCTIONS
     .
 
   /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
-  Unary =
+  Unary = (. as1_syntax_enter(); .) (
     ( "!" | "~" | "+" | "-" | "++" | "--" | "typeof" | "void" | "delete" | "new" ) Unary
     | Postfix
-    .
+     ) (. as1_syntax_leave(); .) .
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
@@ -295,7 +300,7 @@ PRODUCTIONS
     .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
-  Primary =
+  Primary = (. as1_syntax_enter(); .) (
     ident
     | number
     | hexnum
@@ -310,7 +315,7 @@ PRODUCTIONS
     | ArrayLiteral
     | ObjectLiteral
     | "function" [ ident ] FunctionTail
-    .
+     ) (. as1_syntax_leave(); .) .
 
   /* Subscripts and literal contents use ordinary expressions, even in NoIn. */
   Subscript = (. int outer = allow_in; .)

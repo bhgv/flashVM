@@ -1,6 +1,6 @@
 # AS1
 
-Version 0.2.1. [Русский](README.ru.md).
+Version 0.2.2. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -38,3 +38,13 @@ Relational, ForStatement, GroupedExpression, Arguments, Subscript. This is synta
 recognition, not property enumeration or FIR lowering.
 
 [Grammar](frontend/as1.atg): Relational/ForStatement. [Example](examples/in.as).
+
+### C API parsing limits
+
+Recursive grammar boundaries are limited to 512 active calls and 4000000 visits.
+Exhaustion reports diagnostic.code -3/-4 instead of terminating the IDE; the next
+file can still be parsed. Counters and Coco/R state reset before each call.
+Resource-failure coordinates may be zero. Limits do not count parentheses:
+one expression level traverses several productions. This is an implementation
+bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
+are C99.

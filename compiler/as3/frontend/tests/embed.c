@@ -1,6 +1,8 @@
 /* Several compilations, including recovery, inside the host process. */
 #include "frontend.h"
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 int main(void)
 {
     unsigned i; As3Diagnostic diagnostic;
@@ -15,5 +17,25 @@ int main(void)
     }
     if(as3_check("function f(a:Number=1,b:Number):void {}",strlen("function f(a:Number=1,b:Number):void {}"),&diagnostic) || diagnostic.code!=1201) return 7;
     if(!as3_check("function f(a:Number=1,...rest):void {}",strlen("function f(a:Number=1,...rest):void {}"),&diagnostic)) return 8;
+    {
+        char deep[4096]; unsigned j;
+        strcpy(deep,"trace(");
+        for(j=0;j<600;++j) strcat(deep,"(");
+        strcat(deep,"1");
+        for(j=0;j<600;++j) strcat(deep,")");
+        strcat(deep,");");
+        if(as3_check(deep,strlen(deep),&diagnostic) || diagnostic.code!=-3) return 20;
+        if(!as3_check(valid,strlen(valid),&diagnostic)) return 21;
+    }
+    {
+        size_t limit=2u*1024u*1024u,used; char *flat=(char *)malloc(limit+1);
+        if(!flat) return 30;
+        strcpy(flat,"function f(){"); used=strlen(flat);
+        while(used+3<limit) { flat[used++]='a'; flat[used++]=';'; }
+        flat[used++]='}'; flat[used]=0;
+        if(as3_check(flat,used,&diagnostic) || diagnostic.code!=-4) { fprintf(stderr,"work diagnostic %d: %s\n",diagnostic.code,diagnostic.message); free(flat); return 31; }
+        free(flat);
+        if(!as3_check(valid,strlen(valid),&diagnostic)) return 32;
+    }
     return 0;
 }

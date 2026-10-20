@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.3.0 LANGUAGES C)
+project(limbo_frontend VERSION 0.3.1 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -51,4 +51,8 @@ if(BUILD_TESTING)
   add_executable(limbo_embed tests/embed.c)
   target_link_libraries(limbo_embed PRIVATE limbo_frontend)
   add_test(NAME limbo_embedding COMMAND limbo_embed)
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME limbo_recovery COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_check.py $<TARGET_FILE:limbo_parse>)
 endif()

@@ -7,7 +7,7 @@ int main(int argc, char **argv)
     if(argc==2 && !strcmp(argv[1],"--help")) {
         puts("usage: as3_parse SOURCE\nSyntax only, no FIR/bytecode/SWF output.\nC API: as3_check(bytes,size,diagnostic), as3_read(stream,diagnostic).\nLimit: 2 MiB, UTF-8 without NUL; serialize parser calls.\nExit: 0 accepted, 1 rejected, 2 usage/I/O error.\nSee compiler/as3/README.md and README.ru.md."); return 0;
     }
-    if(argc==2 && !strcmp(argv[1],"--version")) { puts("as3_parse 0.3.0 (C99 syntax API)"); return 0; }
+    if(argc==2 && !strcmp(argv[1],"--version")) { puts("as3_parse 0.3.1 (C99 syntax API)"); return 0; }
     if(argc!=2) return 2;
     input=fopen(argv[1],"rb"); if(!input) { perror(argv[1]); return 2; }
     ok=as3_read(input,&diagnostic);

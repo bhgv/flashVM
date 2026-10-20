@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.3.0. [Русский](README.ru.md).
+Version 0.3.1. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -29,7 +29,7 @@ symbols have a language prefix; multiple libraries can link into one IDE. State
 resets before every call, but each parser requires external serialization (not
 reentrant). `tests/embed.c` checks in-process recovery after invalid input.
 
-### Syntax 0.3.0
+### Syntax 0.3.1
 
 Added list-of literals, trailing array-initializer commas, unary dereference `*`
 and labels on while/do/for/case/alt/pick. Typed declarations after a colon do
@@ -43,3 +43,13 @@ Qualifier, Subscript, Unary. [Example](examples/Syntax.b). Based on
 [Limbo reference sections 8 and 9](https://www.inferno-os.org/inferno/papers/limbo.html).
 Label scopes, list/channel types and alt/pick execution are not checked. This
 is not FIR lowering. The C API retains recovery after invalid input.
+
+### C API parsing limits
+
+Recursive grammar boundaries are limited to 512 active calls and 4000000 visits.
+Exhaustion reports diagnostic.code -3/-4 instead of terminating the IDE; the next
+file can still be parsed. Counters and Coco/R state reset before each call.
+Resource-failure coordinates may be zero. Limits do not count parentheses:
+one expression level traverses several productions. This is an implementation
+bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
+are C99.

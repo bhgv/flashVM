@@ -4,6 +4,7 @@
 #include <string.h>
 extern Error_Func Custom_Error;
 extern int as3_parser_run(unsigned char *, int);
+extern int as3_parser_limit_hit(void);
 static As3Diagnostic *active;
 static const char *const messages[] = {
 #include "as3e.h"
@@ -52,7 +53,11 @@ int as3_check(const void *data, size_t size, As3Diagnostic *diagnostic)
     }
     active=diagnostic; Custom_Error=report;
     ok=as3_parser_run((unsigned char *)data,(int)size);
-    if(!ok) { diagnostic->code=-2; snprintf(diagnostic->message,sizeof(diagnostic->message),"scanner allocation failure"); }
+    if(!ok) {
+        int limit=as3_parser_limit_hit();
+        diagnostic->code=limit ? limit==1 ? -3 : -4 : -2;
+        snprintf(diagnostic->message,sizeof(diagnostic->message),"%s",limit ? limit==1 ? "parser nesting limit exceeded" : "parser work limit exceeded" : "scanner allocation failure");
+    }
     ok=ok && Successful(); Custom_Error=0; active=NULL; return ok;
 }
 int as3_read(FILE *input, As3Diagnostic *diagnostic)

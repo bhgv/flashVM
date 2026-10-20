@@ -19,14 +19,15 @@ int main(int argc, char **argv)
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"
-             "Numeric subset: literals, names, + - *, parentheses.\n"
-             "AS: var x = 1; x = x + 2; trace(x);\n"
+             "Numeric subset: literals, names, unary +/-, + - * /, parentheses.\n"
+             "AS: var x = 1, y = .5; x += y; trace(x); AS3 const supported.\n"
              "AS2/AS3 also allow var x:Number = 1; AS1 rejects annotations.\n"
-             "Limbo: value(): int tutorial with x: int = 1; and return.\n"
+             "Limbo: value(): int tutorial with x: int = 1; or x:=16r2a; and return.\n"
              "One scope, initialized declarations, no implicit globals/hoisting.\n"
-             "AS uses f64; Limbo uses i32 wrap. AS3 emits AVM1 compatibility, not ABC.\n"
+             "AS uses f64 including / and /=; Limbo i32 wrap rejects division.\n"
+             "AS3 emits AVM1 compatibility, not ABC. FIR carries a source profile.\n"
              "Limits: 64 KiB input, 255-byte tokens, 256 names, 1000 SSA values,\n"
-             "64 nested groups. Source syntax is compiler/src1.atg; lowering is C99.\n"
+             "64 nested group/unary levels. Source syntax is compiler/src1.atg; lowering is C99.\n"
              "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"
              "See fir/v1/doc/COVERAGE.md and examples/ (also .ru.md).");
         return 0;

@@ -15,7 +15,7 @@ frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
 | `# comment` | rejected | yes |
 | `;` | empty statement | empty statement |
 
-Precedence: unary, then *, then +/-. Binary operators associate left-to-right.
+Precedence: unary, then */ (AS division only), then +/-. Binary operators associate left-to-right.
 A signed literal admits i32 minimum; minus on groups/variables lowers as multiply
 by -1, preserving AS signed zero. ++/-- are rejected, never interpreted as two
 unary signs. The Limbo profile remains i32; big/real are not implemented. Range,

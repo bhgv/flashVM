@@ -1,6 +1,6 @@
 # C99 compiler projects
 
-Version 0.2.1. [Русский](README.ru.md).
+Version 0.3.1. [Русский](README.ru.md).
 
 | Project | Current component |
 | --- | --- |
@@ -13,8 +13,9 @@ Each language and each frontend configures independently with CMake. The optiona
 CMakeLists.txt here builds all four executables; the explicit external generator
 options are the same as in each frontend guide. The projects use C99, not the VM's
 C89/C++98 ABI/implementation rules. There is no shared C runtime or sibling-source
-include dependency. No compiler emits bytecode/SWF yet; see each coverage table.
-The separate [linker project](../linker/README.md) is a reserved project boundary.
+include dependency. These four frontends recognize syntax. The separate numeric
+[fir1_source adapter](../fir/v1/doc/SOURCE_SYNTAX.md) emits FIR; fir1 compiles
+it into SWO objects and [SWL](../linker/README.md) links SWF.
 
 For detached distribution, carry the common root MIT LICENSE and any generated
 upstream notices. Root workspace orchestration and Git history are optional.
@@ -22,3 +23,5 @@ upstream notices. Root workspace orchestration and Git history are optional.
 [AS3 core syntax subset](as3/README.md), standalone C99/Coco-R; no ABC backend.
 
 [Source-to-SWF workflow and help](../fir/v1/doc/PIPELINE.md).
+
+[Syntax series, examples and API](SYNTAX.md).

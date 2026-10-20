@@ -24,6 +24,7 @@ good = [
     '// EOF comment' , '/* stars **/ var x:Number = 1;',
 ]
 good += [p.read_text() for p in sorted((Path(__file__).resolve().parents[2] / 'examples').glob('*.as'))]
+good += ['function many('+','.join('p%d:Number'%i for i in range(2000))+'):void {}']
 bad = ['function f(...rest,x:Number):void {}', 'function f(a:Number=1,b:Number):void {}',
        'function f(a:Number,):void {}', 'function f(...args=1):void {}',
        'for each(var x=0;x<3;x++) f();', 'class * {}', 'class void {}',

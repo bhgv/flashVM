@@ -8,6 +8,11 @@
 
 /* Limbo syntax frontend. C99 target; no Dis or SWF code generation. */
 COMPILER Limbo
+/* Recursive grammar boundaries call a C99 guard owned by this parser only.
+ * The embedding wrapper turns limit exhaustion into a returned diagnostic. */
+void limbo_syntax_enter(void);
+void limbo_syntax_leave(void);
+
 /* Scan ahead without changing Coco/R scanner state. Delimiters inside strings,
    comments or nested expressions do not terminate the current qualifier. */
 static int AheadArrow(void)
@@ -157,14 +162,14 @@ PRODUCTIONS
     .
 
   /* Категории объявлений Limbo: константа, импорт, псевдоним, module, adt или тип. */
-  DeclType =
+  DeclType = (. limbo_syntax_enter(); .) (
     "con" Expression
     | "import" ident
     | "type" Type
     | "module" "{" { Top } "}"
     | "adt" "{" { AdtMember } "}"
     | [ "cyclic" ] Type [ "=" Expression ]
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* Члены ADT, включая размеченные варианты pick.
      Предпросмотр => не позволяет принять имя следующего варианта за поле. */
@@ -192,7 +197,7 @@ PRODUCTIONS
 
   /* Базовые, составные и именованные типы Limbo. ref и контейнеры
      рекурсивно охватывают внутренний тип; fn содержит отдельную сигнатуру. */
-  Type =
+  Type = (. limbo_syntax_enter(); .) (
     "byte"
     | "int"
     | "big"
@@ -203,7 +208,7 @@ PRODUCTIONS
     | "fn" Parameters [ IF(Sym == ColonSym ) ":" Type ]
     | "(" Type { "," Type } ")"
     | ident { "->" ident | "." ident }
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* Скобки вокруг необязательного списка формальных параметров Limbo. */
   Parameters =
@@ -229,7 +234,7 @@ PRODUCTIONS
   /* Инструкции Limbo. Декларация локальной переменной использует общий
      префикс выражения; после двоеточия разбирается DeclType.
      Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
-  Statement =
+  Statement = (. limbo_syntax_enter(); .) (
       IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
     | Block
     | ";"
@@ -241,7 +246,7 @@ PRODUCTIONS
     | "exit" ";"
     | "spawn" Expression ";"
     | Expression [ ":" DeclType ] ";"
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* Only the six labelable control statements admit a leading label. */
   LabeledStatement = WhileStatement | ForStatement | CaseStatement | AltStatement | PickStatement .
@@ -313,15 +318,15 @@ PRODUCTIONS
 
   /* Присваивание разбирается рекурсией справа: a = b = c.
      Проверка допустимости левой части относится к будущему семантическому проходу. */
-  Assignment =
+  Assignment = (. limbo_syntax_enter(); .) (
     Cons [ ( "=" | ":=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>="
       | "<-=" | "<-" "=" ) Assignment ]
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* Конструирование списка :: рекурсивно справа и связывается слабее логических операций. */
-  Cons =
+  Cons = (. limbo_syntax_enter(); .) (
     LogicalOr [ "::" Cons ]
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* Логическое ИЛИ; более сильные операторы разбираются внутри LogicalAnd. */
   LogicalOr =
@@ -376,7 +381,7 @@ PRODUCTIONS
   /* Префиксные операции рекурсивны; Postfix отвечает за вызовы и обращения. */
   /* chan/array создают составные значения; ref, <- и преобразования типов
      являются префиксами. load содержит имя типа загружаемого модуля. */
-  Unary =
+  Unary = (. limbo_syntax_enter(); .) (
     ( "!" | "~" | "+" | "-" | "++" | "--" | "<-" | "hd" | "tl" | "len" | "tagof" | "ref" |
       "byte" | "int" | "big" | "real" | "string" | "*" ) Unary
     | "load" ident Unary
@@ -384,7 +389,7 @@ PRODUCTIONS
     | ArrayCreation
     | "list" "of" "{" Expression "}"
     | Postfix
-    .
+     ) (. limbo_syntax_leave(); .) .
 
   /* An omitted size is legal only when initializer values determine it. */
   ArrayCreation = (. int sized = 0; .)
@@ -411,7 +416,7 @@ PRODUCTIONS
   Subscript = "[" Expression [ ":" [ Expression ] ] "]" .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
-  Primary =
+  Primary = (. limbo_syntax_enter(); .) (
     ident
     | number
     | radix
@@ -419,6 +424,6 @@ PRODUCTIONS
     | character
     | "nil"
     | "(" Expression ")"
-    .
+     ) (. limbo_syntax_leave(); .) .
 
 END Limbo.

@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.3.0
+# AS3 syntax frontend 0.3.1
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -48,7 +48,7 @@ recognition, not property enumeration or FIR lowering.
 
 [Grammar](frontend/as3.atg): Relational/ForStatement. [Example](examples/in.as).
 
-### Declarations and functions 0.3.0
+### Declarations and functions 0.3.1
 
 Default parameters, a final `...rest`, for-each, multiple catch handlers,
 namespace/use-namespace declarations and `ns::name` qualifiers are supported.
@@ -64,3 +64,13 @@ Name/type resolution, modifier validity, default-expression constness and
 namespace execution are not implemented. Vector, metadata, E4X and ABC remain
 outside this series; numeric AS3 lowering does not acquire these constructs
 implicitly.
+
+### C API parsing limits
+
+Recursive grammar boundaries are limited to 512 active calls and 4000000 visits.
+Exhaustion reports diagnostic.code -3/-4 instead of terminating the IDE; the next
+file can still be parsed. Counters and Coco/R state reset before each call.
+Resource-failure coordinates may be zero. Limits do not count parentheses:
+one expression level traverses several productions. This is an implementation
+bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
+are C99.

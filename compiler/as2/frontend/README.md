@@ -1,6 +1,6 @@
 # AS2 syntax frontend
 
-Version 0.1.0. [Русская версия](README.ru.md).
+Version 0.2.2. [Русская версия](README.ru.md).
 
 The readable [as2.atg](as2.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -46,17 +46,15 @@ UTF-8 BOM is supported by the selected generator. Inputs must be seekable files.
 The scanner counts **bytes**, not Unicode columns; identifier category restrictions
 and escape-value semantics remain future validation work. Strings preserve bytes.
 
-| Driver function | Contract |
-| --- | --- |
-| [main](main.c#L97) | One input path; opens/closes the descriptor; returns 0 for syntax acceptance, 1 for syntax/encoding rejection, 2 for usage/I/O failure |
-| [validate_source](main.c#L33) | Validates encoding without modifying source bytes; returns 0/1/2 and rewinds the descriptor on success |
-| [report_error](main.c#L85) | Synchronous generated-parser callback; prints path, line, byte column, diagnostic text/code and byte offset; owns no memory |
+Public interface: [frontend.h](frontend.h), [api.c](api.c).
 
-The driver uses generated `Parse`, `Successful` and `Custom_Error`; these are
-upstream generated interfaces, not a stable public compiler API. Error recovery
-may stop at the first useful diagnostic; process status is authoritative. A syntax
-acceptance does not prove valid types, assignable left operands, valid modifiers,
-control-flow placement or any bytecode/SWF compatibility.
+`as2_check(bytes, size, diagnostic)` / `as2_read(FILE*, diagnostic)`
+return 1 accepted / 0 rejected; diagnostic may be NULL. Input storage and
+streams belong to the caller. Serialize calls to one parser; calls after
+failure are supported. Input is limited to 2 MiB UTF-8. Codes -3/-4 indicate
+nesting/work exhaustion; they are implementation limits, not language errors.
+Coordinates may be zero on resource failure. Syntax recognition does not
+replace type, symbol or return/break context analysis.
 
 ## Syntax coverage and boundaries
 
@@ -70,7 +68,7 @@ and bind else to the nearest if. Syntax tests include both valid and invalid inp
 
 This initial grammar requires explicit semicolons; automatic semicolon insertion
 and newline-sensitive return/postfix rules are not implemented. Regular-expression
-literals, the general `in` expression operator, preprocessing (`#include`), timeline
+literals, preprocessing (`#include`), timeline
 `on`/`onClipEvent` attachment syntax, escaped identifiers and a complete Unicode
 identifier-category check are not implemented. It is a documented initial syntax
 profile, not full AS language conformance. The parser does not execute source.
@@ -88,8 +86,11 @@ with `-pedantic-errors`.
 
 ## Grammar rule index
 
-[As2](as2.atg#L84) | [Item](as2.atg#L89) | [Block](as2.atg#L97) | [Statement](as2.atg#L104) | [IfStatement](as2.atg#L123) | [WhileStatement](as2.atg#L129) | [ForStatement](as2.atg#L136) | [SwitchStatement](as2.atg#L145) | [TryStatement](as2.atg#L150) | [SwitchPart](as2.atg#L159) | [Variables](as2.atg#L164) | [Variable](as2.atg#L169) | [FunctionTail](as2.atg#L174) | [Parameter](as2.atg#L179) | [Expression](as2.atg#L184) | [Assignment](as2.atg#L190) | [AssignOp](as2.atg#L195) | [Conditional](as2.atg#L212) | [LogicalOr](as2.atg#L217) | [LogicalAnd](as2.atg#L222) | [BitOr](as2.atg#L227) | [BitXor](as2.atg#L232) | [BitAnd](as2.atg#L237) | [Equality](as2.atg#L242) | [Relational](as2.atg#L247) | [Shift](as2.atg#L252) | [Additive](as2.atg#L257) | [Product](as2.atg#L262) | [Unary](as2.atg#L267) | [Postfix](as2.atg#L273) | [Arguments](as2.atg#L278) | [Primary](as2.atg#L283) | [Property](as2.atg#L301) | [TypeName](as2.atg#L306) | [Import](as2.atg#L311) | [Class](as2.atg#L316) | [Interface](as2.atg#L322) | [Modifier](as2.atg#L327) | [Member](as2.atg#L336) | [Signature](as2.atg#L341)
+[letter](as2.atg#L70) | [digit](as2.atg#L72) | [hex](as2.atg#L74) | [dq](as2.atg#L76) | [sq](as2.atg#L78) | [linechar](as2.atg#L80) | [escaped](as2.atg#L82) | [nonstar](as2.atg#L85) | [nonstarslash](as2.atg#L86) | [ident](as2.atg#L89) | [number](as2.atg#L91) | [hexnum](as2.atg#L95) | [text](as2.atg#L97) | [blockcomment](as2.atg#L100) | [linecomment](as2.atg#L102) | [As2](as2.atg#L109) | [Item](as2.atg#L114) | [Block](as2.atg#L122) | [Statement](as2.atg#L129) | [IfStatement](as2.atg#L148) | [WhileStatement](as2.atg#L154) | [ForStatement](as2.atg#L161) | [SwitchStatement](as2.atg#L168) | [TryStatement](as2.atg#L173) | [SwitchPart](as2.atg#L182) | [Variables](as2.atg#L187) | [Variable](as2.atg#L192) | [FunctionTail](as2.atg#L197) | [Parameter](as2.atg#L202) | [Expression](as2.atg#L207) | [Assignment](as2.atg#L213) | [AssignOp](as2.atg#L218) | [Conditional](as2.atg#L235) | [LogicalOr](as2.atg#L240) | [LogicalAnd](as2.atg#L245) | [BitOr](as2.atg#L250) | [BitXor](as2.atg#L255) | [BitAnd](as2.atg#L260) | [Equality](as2.atg#L265) | [Relational](as2.atg#L270) | [Shift](as2.atg#L275) | [Additive](as2.atg#L280) | [Product](as2.atg#L285) | [Unary](as2.atg#L290) | [Postfix](as2.atg#L296) | [Arguments](as2.atg#L301) | [Primary](as2.atg#L306) | [Subscript](as2.atg#L324) | [ArrayLiteral](as2.atg#L327) | [ObjectLiteral](as2.atg#L331) | [GroupedExpression](as2.atg#L335) | [Property](as2.atg#L339) | [TypeName](as2.atg#L344) | [Import](as2.atg#L349) | [Class](as2.atg#L354) | [Interface](as2.atg#L360) | [Modifier](as2.atg#L365) | [Member](as2.atg#L374) | [Signature](as2.atg#L379)
 
 ## Language reference
 
 [ActionScript language reference (archived Adobe documentation)](https://open-flash.github.io/mirrors/as2-language-reference/language-elements.html).
+
+`in` is supported in expressions; NoIn applies only to for initializers.
+Groups, arguments, subscripts and literals restore ordinary expressions.
