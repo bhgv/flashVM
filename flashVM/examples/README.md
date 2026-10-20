@@ -1801,7 +1801,8 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [README EN](player/unload_loading/README.md) / [RU](player/unload_loading/README.ru.md).
 [C](player/unload_loading/main.c), [AS-эскиз](player/unload_loading/start.as),
 [генератор](player/unload_loading/make_movies.py), [SWF](player/unload_loading/start.swf),
-[сервер](player/unload_loading/serve.py). Корень и unload events не реализованы.
+[сервер](player/unload_loading/serve.py). С v0.697 добавлен корневой вариант с looping PCM: [AS](player/unload_loading/root_start.as),
+[SWF](player/unload_loading/root_start.swf). Синтетические unload events не реализованы.
 
 <a id="example-player-wheel_cursor"></a>
 ### wheel_cursor

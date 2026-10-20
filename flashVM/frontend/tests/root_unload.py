@@ -37,8 +37,8 @@ def movie(network=False, audio=False):
     first += push('_root.onEnterFrame') + b'\x9b' + struct.pack('<H', len(definition)) + definition + b'\x1d'
     data = rect(0, 640, 0, 640) + struct.pack('<HH', 24 * 256, 3)
     if audio:
-        pcm = struct.pack('<h', 512) * 4410
-        data += tag(14, struct.pack('<HBI', 1, 0x3e, 4410) + pcm)
+        pcm = struct.pack('<h', 512) * 64
+        data += tag(14, struct.pack('<HBI', 1, 0x3e, 64) + pcm)
         data += tag(15, struct.pack('<HBH', 1, 4, 65535))
     data += tag(12, first + b'\0') + tag(1)
     data += tag(1)

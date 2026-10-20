@@ -121,18 +121,58 @@ def movie(network=True, object_form=False):
     return swf([first, second, third, fourth])
 
 
-def main():
-    """Write reproducible bytecode and form files without a compiler or test imports."""
-    folder = Path(__file__).resolve().parent
-    data = movie()
-    (folder / 'start.swf').write_bytes(data)
+def root_movie(network=True, audio=True):
+    """Clear root contents and native audio while retaining its owner-thread handler."""
+    first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
+    first += push('_root.kept', 42) + b'\x1d' + push('_root.turn', 0) + b'\x1d'
+    if network:
+        first += method_call('_root.child', 'loadVariables', 'slow.txt')
+        first += method_call('_root', 'loadVariables', 'never.txt')
+    clear = global_call('unloadMovie', '_level0')
+    if network:
+        clear += method_call('_root', 'loadVariables', 'fresh.txt')
+    checks = require('_root.kept', 42) + require('_root._totalframes', 1)
+    checks += require_undefined('_root.child') + require_undefined('_root.poison')
+    body = push('_root.turn') + get('_root.turn') + push(1) + b'\x47\x1d'
+    body += when(equal('_root.turn', 1), clear)
+    body += when(get('_root.turn') + push(1) + b'\x67', checks)
+    ready = equal('_root.answer', 'fresh') if network else get('_root.turn') + push(1) + b'\x67'
+    body += when(ready, push('_root.finished', 1) + b'\x1d')
+    body += when(get('_root.turn') + push(100) + b'\x67', require('_root.finished', 1))
+    body += b'\x96\x01\0\x03\x3e\0'
+    definition = b'\0\0\0' + struct.pack('<H', len(body)) + body
+    first += push('_root.onEnterFrame') + b'\x9b' + struct.pack('<H', len(definition)) + definition + b'\x1d'
+    data = rect(0, 640, 0, 640) + struct.pack('<HH', 24 * 256, 3)
+    if audio:
+        pcm = struct.pack('<h', 512) * 64
+        data += tag(14, struct.pack('<HBI', 1, 0x3e, 64) + pcm)
+        data += tag(15, struct.pack('<HBH', 1, 4, 65535))
+    data += tag(12, first + b'\0') + tag(1)
+    data += tag(1)
+    data += tag(12, push('old root frame executed after unload') + b'\x2a\0') + tag(1) + tag(0)
+    return b'FWS\x08' + struct.pack('<I', len(data) + 8) + data
+
+
+def write_embedded(folder, name, identifier, data):
+    """Emit a counted immutable C payload with a comment on every nonempty line."""
     lines = ['/* Generated immutable SWF bytes; regenerate with make_movies.py. */',
-             'static const unsigned char embedded_movie[] = { /* Linked startup data, never mutated. */']
+             'static const unsigned char ' + identifier + '[] = { /* Linked startup data. */']
     for offset in range(0, len(data), 12):
         lines.append('    ' + ', '.join('0x%02x' % byte for byte in data[offset:offset+12]) +
                      ', /* Counted binary payload; NUL is ordinary data. */')
-    lines.append('}; /* sizeof(embedded_movie) is the exact SWF byte count. */')
-    (folder / 'movie.inc').write_text('\n'.join(lines) + '\n', encoding='ascii')
+    lines.append('}; /* sizeof gives the exact SWF byte count. */')
+    (folder / name).write_text('\n'.join(lines) + '\n', encoding='ascii')
+
+
+def main():
+    """Write child/root bytecode and linked payloads without a compiler or test imports."""
+    folder = Path(__file__).resolve().parent
+    data = movie()
+    (folder / 'start.swf').write_bytes(data)
+    write_embedded(folder, 'movie.inc', 'embedded_movie', data)
+    data = root_movie()
+    (folder / 'root_start.swf').write_bytes(data)
+    write_embedded(folder, 'root_movie.inc', 'embedded_root_movie', data)
     for name, body in {'slow.txt': 'poison=1', 'never.txt': 'poison=1',
                        'peer.txt': 'answer=peer', 'fresh.txt': 'answer=fresh'}.items():
         (folder / name).write_text(body, encoding='ascii')

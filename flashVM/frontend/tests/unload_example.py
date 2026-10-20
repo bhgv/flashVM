@@ -27,10 +27,11 @@ def main():
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     try:
-        for embedded in (False, True):
+        for root, embedded in ((False, False), (False, True), (True, False), (True, True)):
             Handler.paths.clear()
-            command = [executable] + (['--embedded'] if embedded else [])
-            command += ['http://127.0.0.1:%d/start.swf' % server.server_port]
+            command = [executable] + (['--root'] if root else []) + (['--embedded'] if embedded else [])
+            resource = '/root_start.swf' if root else '/start.swf'
+            command += ['http://127.0.0.1:%d%s' % (server.server_port, resource)]
             result = subprocess.run(command,
                                     env=dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software'),
                                     capture_output=True, timeout=10)
@@ -38,7 +39,7 @@ def main():
                 raise SystemExit(77)
             assert result.returncode == 0, result.stderr
             assert '/never.txt' not in Handler.paths, Handler.paths
-            expected = ([] if embedded else ['/start.swf']) + ['/peer.txt', '/fresh.txt']
+            expected = ([] if embedded else [resource]) + ([] if root else ['/peer.txt']) + ['/fresh.txt']
             assert [x for x in Handler.paths if x != '/slow.txt'] == expected, Handler.paths
 
     finally:

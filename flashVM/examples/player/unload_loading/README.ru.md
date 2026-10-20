@@ -80,3 +80,20 @@ close/error выполняется join, принудительного унич
 очистки содержимого. Явно заданный origin не подменяется cwd. Временный SWF-файл
 не создаётся; массив живёт до синхронного возврата плеера. Один C-host тест проверяет
 оба способа старта и отсутствие HTTP `/start.swf` для встроенного массива.
+
+## Корневой вариант и звук с v0.697
+
+Генератор создаёт [root_start.swf](root_start.swf), [root_movie.inc](root_movie.inc)
+и пояснительный [AS](root_start.as). Сохранённый onEnterFrame очищает `_level0`,
+проверяет собственное свойство/пустой timeline и ждёт относительную форму fresh.
+Отменяются child и root запросы; peer здесь не сохраняется, поскольку всё дерево
+принадлежит корню. В SWF есть looping PCM. C-пример явно включает mute.
+
+Команды URL/embedded и CLI со звуком приведены в
+[English](README.md#root-and-audio-variant-since-v0697). CLI со звуком требует
+FVM_ENABLE_SDL_AUDIO=ON при configure и рабочего SDL audio backend. Итоговые stats:
+sound_events=1, audio_device=0. Закрывается старое аудиоустройство, не окно/контекст.
+SDL_AUDIODRIVER=dummy проверяет cleanup worker/device без доказательства слышимости.
+Без audio support используется --mute. C-host тест проверяет четыре сочетания
+child/root × URL/embedded. `--root` выбирает встроенный root payload; в URL-режиме
+по-прежнему скачивается явно переданный URL.

@@ -102,3 +102,26 @@ The origin is explicit; it does not silently become the process working director
 No temporary SWF file is created. The array lives throughout synchronous playback.
 The same automated C-host fixture checks URL and linked-memory startup and asserts
 that memory startup performs no `/start.swf` HTTP request.
+
+## Root and audio variant since v0.697
+
+The same generator emits [root_start.swf](root_start.swf), [root_movie.inc](root_movie.inc)
+and the matching explanatory [root AS](root_start.as). A retained onEnterFrame handler
+clears `_level0`, verifies its own property and empty timeline, then receives a fresh
+relative form response. The root variant drops both child and root pending loads;
+no peer survives because every clip belongs to that root subtree. A looping PCM
+control is included. The C tutorial explicitly mutes it and still checks lifecycle.
+
+```sh
+./build-unload/frontend/flashvm_example_unload_loading --root http://127.0.0.1:8000/root_start.swf
+./build-unload/frontend/flashvm_example_unload_loading --root --embedded http://127.0.0.1:8000/root_start.swf
+./build-unload/frontend/flashvm_player --async-loads --loads 8 --frames 160 --fps 1000 --stats http://127.0.0.1:8000/root_start.swf
+```
+
+The last command requires FVM_ENABLE_SDL_AUDIO=ON and a working native SDL audio
+backend; configure that option before building. Expected final stats include
+sound_events=1 and audio_device=0. Root unloading closes the old native device,
+not the window or context. To test ownership without hardware, set SDL_AUDIODRIVER=dummy;
+that demonstrates worker/device cleanup, not audible output. Without audio support
+use --mute. The four-case C-host fixture checks child/root × URL/embedded startup.
+`--root` chooses the linked root payload; URL mode still fetches the URL supplied.

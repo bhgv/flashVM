@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.696
+# FlashVM stage status / Состояние стадий — v0.697
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.697 adds standalone root/audio SWF and linked-array variants to the annotated
+C/AS tutorial. Four C-host cases cover child/root and URL/embedded startup with
+explicit provenance. Native audio CLI setup and dummy-device limits are documented.
+All nine stages remain open.
 
 v0.696 enables root/_level0 content clearing without ending context/window.
 The owner detaches sound delivery and joins/releases native PCM before network
