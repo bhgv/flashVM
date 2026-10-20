@@ -22,6 +22,9 @@ static void wheel(FVM_DesktopWindow *v, double amount, Uint32 direction)
 #if SDL_VERSION_ATLEAST(2,0,18)
     e.wheel.preciseY = (float)amount;
 #endif
+#if SDL_VERSION_ATLEAST(2,26,0)
+    e.wheel.mouseX = 10; e.wheel.mouseY = 20;
+#endif
     assert(handle_event(v, &e));
 }
 int main(void)
@@ -45,6 +48,19 @@ int main(void)
     fail = 0;
     assert(fvm_desktop_window_pump_input(v,c,5,7) == FVM_OK && calls == 2 && !v->event_count);
     assert(deltas[0] == 6 && deltas[1] == -3);
+#if SDL_VERSION_ATLEAST(2,0,18)
+    wheel(v,0.5,SDL_MOUSEWHEEL_NORMAL);
+    assert(fvm_desktop_window_pump_input(v,c,5,7)==FVM_OK && calls==3 && deltas[2]==1.5);
+#endif
+#if SDL_VERSION_ATLEAST(2,26,0)
+    SDL_SetWindowSize(v->window,64,32);
+    assert(fvm_desktop_window_events(v,0));
+    memset(&e,0,sizeof(e)); e.type=SDL_MOUSEWHEEL;
+    e.wheel.y=1; e.wheel.preciseY=1; e.wheel.mouseX=26; e.wheel.mouseY=20;
+    assert(handle_event(v,&e) && v->event_count==1);
+    assert(v->pending_events[v->event_head].x==10 && v->pending_events[v->event_head].y==20);
+    assert(fvm_desktop_window_pump_input(v,c,5,7)==FVM_OK && calls==4);
+#endif
     wheel(v,0,SDL_MOUSEWHEEL_NORMAL); assert(!v->event_count);
     memset(&e,0,sizeof(e)); e.type=SDL_MOUSEWHEEL; e.wheel.y=1;
 #if SDL_VERSION_ATLEAST(2,0,18)
