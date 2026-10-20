@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.3.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.3.1**, текстовый формат **FIR 1.0**.
 Код — C99. Оба парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/Limbo. Сгенерированный код остаётся
@@ -48,9 +48,11 @@ python fir/v1/view_docs.py --no-browser --port 8766
 Для отдельной сборки инструментов движок просмотра не требуется; документы
 в отделённой копии можно читать как Markdown.
 
-## Изменение backend в 0.3.0
+## Изменение backend в 0.3.1
 
 `fir1 swf` и `fir1 actions` удалены. Используйте `fir1 object INPUT OUTPUT.swo`,
 затем [SWL](../../linker/README.ru.md): `swl link OUTPUT.swf INPUT.swo`.
 Прежние команды в исторических примерах заменяются этим двухэтапным путём.
 Для тестов выполнения задайте `FIR_SWL` вместе с `FIR_FLASHVM_RUNNER`.
+
+[C API и встраивание](compiler/API.ru.md).

@@ -1,5 +1,5 @@
 /* Coco/R semantic builder and input validation. The generated scanner/parser
- * has process-global state: parse one input per executable process, no threads.
+ * has process-global state: serialize parsing; sequential calls reset state.
  * Verification/optimisation/emission use caller-owned modules independently. */
 #include "builder.h"
 #include "fir1s.h"
@@ -19,6 +19,7 @@ typedef struct {
 } Builder;
 static Builder *active;
 extern Error_Func Custom_Error;
+extern int fir_parser_run(unsigned char *, int);
 /* Keep the first semantic failure; later recovery actions cannot overwrite it. */
 void fir_build_error(const char *message, int line)
 {
@@ -156,8 +157,9 @@ int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
     memset(m, 0, sizeof(*m)); memset(&builder, 0, sizeof(builder));
     builder.module = m; builder.block = -1; builder.error = error; builder.capacity = capacity;
     active = &builder; Custom_Error = syntax_error;
-    Parse(text, (int)length);
-    ok = Successful() && !builder.failed;
+    ok = fir_parser_run(text, (int)length);
+    if (!ok) snprintf(error, capacity, "scanner allocation failure");
+    ok = ok && Successful() && !builder.failed;
     Custom_Error = 0; active = 0; free(text);
     return ok;
 }

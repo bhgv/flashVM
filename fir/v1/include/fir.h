@@ -3,6 +3,9 @@
 #define FIR_H
 #include <stdio.h>
 #include <stdint.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* Initial hard bounds; exceeding them is a diagnostic, never truncation. */
 #define FIR_LIMIT 4096
 #define FIR_BLOCKS 256
@@ -52,7 +55,7 @@ typedef struct {
 } FirModule;
 /* All functions return 1 on success and 0 with a diagnostic on failure.
  * The caller owns the module, streams and diagnostic buffer. The generated
- * parser has global state: one input per process, not thread-safe. */
+ * parser has global state: sequential calls reset state; parsing is not thread-safe. */
 /* Read and construct one FIR translation unit from a binary input stream. */
 int fir_parse(FILE *input, FirModule *module, char *error, size_t capacity);
 /* Reject malformed control flow, invalid SSA uses and incompatible types. */
@@ -63,4 +66,15 @@ int fir_print(FILE *output, const FirModule *module);
 int fir_optimise(FirModule *module, char *error, size_t capacity);
 /* Compile verified FIR into a versioned SWO1 object, never a SWF container. */
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
+/* Non-console entry points; caller owns every stream and diagnostic buffer.
+ * Parser calls must be serialized; sequential calls reset state after errors. */
+typedef enum { FIR_AS1=1, FIR_AS2, FIR_AS3, FIR_LIMBO } FirLanguage;
+typedef enum { FIR_CHECK, FIR_PRINT, FIR_OPT, FIR_OBJECT } FirTask;
+typedef int (*FirSnapshot)(void *user, const char *phase, const FirModule *module);
+typedef struct { int optimise; FirSnapshot snapshot; void *user; } FirRunOptions;
+int fir_source(FILE *, FILE *, FirLanguage, const char *module_name, char *, size_t);
+int fir_run(FirTask, FILE *, FILE *, const FirRunOptions *, char *, size_t);
+#ifdef __cplusplus
+}
+#endif
 #endif

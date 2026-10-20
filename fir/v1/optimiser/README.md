@@ -44,3 +44,5 @@ unreachable blocks, including cycles, are removed and labels remapped. Effects
 are removed only on a proven unexecuted path. CSE reuses identical ordered
 arithmetic in one block, without constant-folding f64. Dynamic conversions,
 channels and trace remain even when their results are unused.
+
+[C API and embedding](../compiler/API.md).

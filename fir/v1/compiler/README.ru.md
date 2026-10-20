@@ -60,3 +60,5 @@ COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` ката�
 На Linux/Termux `TMPDIR` задаёт каталог безопасных временных файлов.
 Числовая семантика и окружение SSA: [lower.c](lower.c), интерфейс: [lower.h](lower.h).
 [Полный цикл](../doc/PIPELINE.ru.md).
+
+[C API и встраивание](API.ru.md).

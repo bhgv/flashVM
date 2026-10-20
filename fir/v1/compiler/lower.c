@@ -6,14 +6,17 @@
 #include <math.h>
 #include <stdint.h>
 static FILE *destination;
+static char *diagnostic;
+static size_t diagnostic_capacity;
 static char token[256];
 static int integer_mode, serial, failed, profile;
 static char module_name[256];
 static char names[256][256];
 static int bindings[256], name_count, source_line;
 /* Configure one translation unit; each process owns one generated parser. */
-void source_config(FILE *out, int language)
+void source_config(FILE *out, int language, char *error, size_t capacity)
 {
+    diagnostic = error; diagnostic_capacity = capacity; source_line = 0;
     destination = out; profile = language; integer_mode = language == 4;
     serial = failed = name_count = 0;
 }
@@ -22,7 +25,8 @@ int source_failed(void) { return failed; }
 /* Report the first semantic failure without producing a deliverable file. */
 static void reject(const char *message)
 {
-    if (!failed) fprintf(stderr, "source line %d: %s\n", source_line, message);
+    if (!failed && diagnostic && diagnostic_capacity)
+        snprintf(diagnostic, diagnostic_capacity, "source line %d: %s", source_line, message);
     failed = 1;
 }
 /* Capture a complete spelling; never silently truncate a long token. */

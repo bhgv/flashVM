@@ -2,7 +2,7 @@
 #ifndef FIR_SOURCE_LOWER_H
 #define FIR_SOURCE_LOWER_H
 #include <stdio.h>
-void source_config(FILE *, int);
+void source_config(FILE *, int, char *, size_t);
 int source_failed(void);
 void source_token(const char *, int, int);
 int source_constant(int);

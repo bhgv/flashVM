@@ -61,3 +61,5 @@ File-free help: `fir1 --help`, `fir1_source --help`; versions: `--version`.
 On Linux/Termux, `TMPDIR` selects the secure temporary-file directory.
 Numeric semantics and SSA bindings: [lower.c](lower.c), API: [lower.h](lower.h).
 [Complete workflow](../doc/PIPELINE.md).
+
+[C API and embedding](API.md).
