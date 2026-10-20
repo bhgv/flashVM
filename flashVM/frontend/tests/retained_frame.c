@@ -1,8 +1,10 @@
 /* Real SDL dummy renderer: copied frame lifetime, pitch and rejected input. */
 #include <SDL.h>
 static int fail_create;
+static unsigned creates;
 static SDL_Texture *test_create(SDL_Renderer *r, Uint32 f, int a, int w, int h)
 {
+    ++creates;
     if (fail_create) { SDL_SetError("injected texture allocation failure"); return NULL; }
     return SDL_CreateTexture(r, f, a, w, h);
 }
@@ -41,6 +43,24 @@ int main(void)
         assert(handle_event(view, &event));
         assert(fvm_desktop_window_status(view) == FVM_OK);
         assert(fvm_desktop_window_status(NULL) == FVM_INVALID_ARGUMENT);
+    }
+    {
+        SDL_Event event;
+        SDL_Texture *old = view->texture;
+        unsigned before = creates;
+        memset(&event, 0, sizeof(event)); event.type = SDL_APP_WILLENTERBACKGROUND;
+        assert(handle_event(view, &event));
+        event.type = SDL_RENDER_DEVICE_RESET;
+        assert(handle_event(view, &event)); assert(handle_event(view, &event));
+        assert(view->texture_invalid && view->texture == old && creates == before);
+        event.type = SDL_APP_WILLENTERFOREGROUND;
+        assert(handle_event(view, &event));
+        assert(view->texture_invalid && creates == before);
+        event.type = SDL_APP_DIDENTERFOREGROUND;
+        assert(handle_event(view, &event));
+        assert(!view->texture_invalid && creates == before + 1);
+        assert(fvm_desktop_window_status(view) == FVM_OK);
+        assert(!memcmp(view->last_frame, expected, sizeof(expected)));
     }
     memset(source, 0, sizeof(source));
     assert(!memcmp(view->last_frame, expected, sizeof(expected)));

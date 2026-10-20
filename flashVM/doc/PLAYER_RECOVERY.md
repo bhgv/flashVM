@@ -49,3 +49,14 @@ explicit synthetic/unassigned events. Touch keeps its selected-contact routing;
 this change does not claim a complete multi-window SDL host. The lifecycle test
 uses the real SDL queue for application events and injected native transitions,
 not a physical Android Activity.
+
+## Deferred foreground recovery (v0.650)
+
+Device resets during a background interval only mark texture storage invalid.
+They never allocate/upload/draw while suspended. DIDENTERFOREGROUND performs one
+recreation for any number of intervening device resets, then displays the last
+frame immediately, even if the next authored frame is seconds away. A foreground
+notification also redraws a valid retained texture. WILLENTERFOREGROUND alone
+keeps suspension. Recovery before the first frame does not draw uninitialized
+pixels. The fixture counts actual texture creation calls to distinguish deferred
+recovery from redundant recreations. Native GPU/surface loss remains untested.

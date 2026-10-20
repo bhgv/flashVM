@@ -38,6 +38,7 @@ struct FVM_DesktopWindow
     FVM_Result event_error; /* Latched overflow, never silently reported as successful delivery. */
     int pumping_events;     /* Reject recursive host pumping from a script/native handler. */
     int ready; /* Nonzero after a complete upload; permits repaint without another VM tick. */
+    int texture_invalid;       /* Defer lost-device storage recreation until foreground. */
     unsigned char *last_frame; /* Owned packed RGBA snapshot; never a borrowed VM/raster pointer. */
     size_t last_frame_size;    /* Allocated snapshot bytes, logical width * height * RGBA bytes. */
 };
@@ -121,13 +122,21 @@ static int restore_texture(FVM_DesktopWindow *view)
     }
     SDL_DestroyTexture(view->texture);
     view->texture = replacement;
+    view->texture_invalid = 0;
     return 1;
 }
 
 /* An event-triggered draw failure is a host error, never a request to quit. */
 static void repaint_texture(FVM_DesktopWindow *view)
 {
-    if (view->ready && !view->background && !draw_texture(view))
+    if (view->background)
+        return;
+    if (view->texture_invalid && !restore_texture(view))
+    {
+        view->event_error = FVM_ERROR;
+        return;
+    }
+    if (view->ready && !draw_texture(view))
         view->event_error = FVM_ERROR;
 }
 
@@ -160,6 +169,8 @@ static FVM_Result present_sdl(const FVM_RasterSurface *surface, void *userdata)
         view->last_frame = snapshot;
         view->last_frame_size = frame_bytes;
     }
+    if (view->texture_invalid && !restore_texture(view))
+        return FVM_ERROR;
     if (SDL_UpdateTexture(view->texture, 0, surface->pixels, (int)surface->stride) != 0)
         return FVM_ERROR;
     for (row = 0; row < surface->height; ++row)
@@ -289,10 +300,8 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         return 0;
     if (event->type == SDL_RENDER_DEVICE_RESET)
     {
-        if (!restore_texture(view))
-            view->event_error = FVM_ERROR;
-        else
-            repaint_texture(view);
+        view->texture_invalid = 1;
+        repaint_texture(view);
         return 1;
     }
     if (event->type == SDL_RENDER_TARGETS_RESET)
@@ -304,7 +313,10 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND)
         view->background = 1;
     if (event->type == SDL_APP_DIDENTERFOREGROUND)
+    {
         view->background = 0;
+        repaint_texture(view);
+    }
     if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND ||
         (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST))
     {

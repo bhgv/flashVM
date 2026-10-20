@@ -43,3 +43,6 @@ double fvm_desktop_now(void) { return milliseconds; }
 const char *fvm_desktop_window_error(void) { return "capture presenter protocol failure"; }
 /* Release no OS resource; each test runs in a separate process with a fresh static clock. */
 void fvm_desktop_window_close(FVM_DesktopWindow *window) { (void)window; }
+/* Protocol presenter has no SDL storage failures; keep the host status contract explicit. */
+FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *window)
+{ return window == &view ? FVM_OK : FVM_INVALID_ARGUMENT; }
