@@ -31,3 +31,14 @@ ctest --test-dir build-player -R frontend_sdl_ownership --output-on-failure
 [Интерфейс](../frontend/common/window.h) · [Реализация](../frontend/common/sdl_window.c) ·
 [Тест](../frontend/tests/sdl_ownership.c) · [Сборка](DESKTOP_FRONTEND.ru.md) ·
 [Состояние этапов](ROADMAP_STATUS.md)
+
+## Политика ввода приложения с v0.671
+
+Открытие окна больше не меняет SDL_TOUCH_MOUSE_EVENTS и SDL_MOUSE_TOUCH_EVENTS.
+Значения и приоритеты остаются у приложения, в том числе при ошибке запуска.
+Адаптер локально отбрасывает синтетические события мыши SDL_TOUCH_MOUSEID и,
+при наличии поддержки SDK, пальца SDL_MOUSE_TOUCHID. Отслеживание основного
+пальца также подавляет дублирующие переходы мыши. Регрессия владения проверяет
+значения normal-priority и их защиту от записи с меньшим приоритетом; pointer
+проверяет подавление повторного ввода. Сохранение и восстановление глобальных
+hint не используется: оно могло бы затереть обновление приложения.

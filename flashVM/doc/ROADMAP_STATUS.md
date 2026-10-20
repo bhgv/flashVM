@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.670
+# FlashVM stage status / Состояние стадий — v0.671
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -21,6 +21,8 @@ This is bounded progress on stages 3/7/9; all nine stages remain open.
 v0.670 replaces global SDL shutdown with balanced per-window VIDEO/TIMER references.
 Host windows and unrelated subsystem references survive player cleanup and video failure.
 [Embedding ownership EN](PLAYER_HOST_OWNERSHIP.md) / [RU](PLAYER_HOST_OWNERSHIP.ru.md).
+
+v0.671 preserves embedding-host touch/mouse SDL hint values and priorities.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

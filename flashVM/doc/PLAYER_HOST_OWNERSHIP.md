@@ -31,3 +31,15 @@ ctest --test-dir build-player -R frontend_sdl_ownership --output-on-failure
 [Interface](../frontend/common/window.h) · [Implementation](../frontend/common/sdl_window.c) ·
 [Test](../frontend/tests/sdl_ownership.c) · [Build guide](DESKTOP_FRONTEND.md) ·
 [Roadmap status](ROADMAP_STATUS.md)
+
+## Host input policy since v0.671
+
+Opening a player window no longer writes SDL_TOUCH_MOUSE_EVENTS or
+SDL_MOUSE_TOUCH_EVENTS. Existing values and their priority remain owned by the
+embedding application, including on startup failure. Synthetic mouse events
+(SDL_TOUCH_MOUSEID) and, with supporting SDKs, synthetic finger events
+(SDL_MOUSE_TOUCHID) are rejected locally by the input adapter. Real primary
+finger tracking still suppresses duplicate mouse transitions. The ownership
+fixture checks normal-priority hint values and their protection against later
+lower-priority writes; the pointer fixture checks duplicate input suppression.
+The player does not save/restore hints, which could overwrite a host update.

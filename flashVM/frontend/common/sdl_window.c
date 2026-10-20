@@ -62,9 +62,8 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
     view->cursor_initial = FVM_DESKTOP_CURSOR_UNSET;
     view->cursor_applied = FVM_DESKTOP_CURSOR_UNSET;
     SDL_SetMainReady();
-    /* Handle real finger events once, independently of SDL's configurable mouse synthesis. */
-    SDL_SetHint(FVM_DESKTOP_TOUCH_MOUSE_HINT, "0");
-    SDL_SetHint(FVM_DESKTOP_MOUSE_TOUCH_HINT, "0");
+    /* Keep embedding-host synthesis hints intact. Event identity filters below
+     * suppress mouse/touch duplicates locally without changing global SDL policy. */
     /* Acquire each reference separately so a failed video initialization releases
      * the timer acquired here without touching any embedding host ownership. */
     if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0)
