@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     char error[512] = "source operation failed";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.4.5 (numeric tutorial profiles)");
+        puts("fir1_source 0.5.0 (numeric tutorial profiles)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

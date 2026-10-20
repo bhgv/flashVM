@@ -20,3 +20,5 @@ index; the workspace viewer includes the same files.
 
 
 [Building examples for the host or another OS/CPU](../../../BUILDING.md).
+
+[structural](structural/README.md) — function/block parameters, syntax profile only.

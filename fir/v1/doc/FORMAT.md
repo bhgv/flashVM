@@ -149,3 +149,5 @@ Numeric literals admit explicit +, .5/2. for f64 and 0x/0X. i32 is still signed:
 octal. f64.div uses IEEE binary64 without compiler constant folding; ±0, Infinity
 and NaN are not replaced by integer identities. [Example](../examples/profiles/main.fir).
 The compiler emits SWO1 only; Divide needs SWL >=0.3.2. First line remains FIR 1.0.
+
+[The new structural parser](../frontend/README.md) recognizes extended structure separately; executable-profile limits above remain effective.

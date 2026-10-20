@@ -205,3 +205,15 @@ The template explicitly prevents host C++ fallback: enabling C++ without
 FVM_TARGET_CXX stops configuration with FVM_TARGET_CXX_REQUIRED. C99-only
 components may omit it. Four actual configure probes test this contract:
 [test_toolchain_contract.py](tools/test_toolchain_contract.py).
+
+## Structural FIR parser and five C APIs
+
+Standalone FIR parser: `cmake -S fir/v1/frontend -B build-fir-syntax`, with the same
+explicit COCOR_ROOT/COCOR_EXECUTABLE options. Targets: firsyn_parse and firsyn_frontend.
+The full fir/v1 enables `fir1 syntax` by default; FIR_BUILD_SYNTAX_FRONTEND=OFF
+disables it. To link all five APIs from compiler, explicitly pass
+FIR_SYNTAX_ROOT=/absolute/path/to/fir/v1/frontend; see the [example](compiler/PARSER_COVERAGE.md).
+The CMake toolchain/system/processor/compiler options above also apply to this
+C99 project. Coco/R stays a HOST tool. Libraries and CLIs must be built for the
+target platform, not copied from the host build. Carry the common MIT LICENSE
+and generated-frame notices when detaching a component.

@@ -12,3 +12,5 @@
 [Числовые примеры FIR и оптимизации](../fir/v1/examples/README.ru.md),
 [общий C-пример IDE](../linker/examples/ide/README.ru.md),
 [нативная/cross сборка](../BUILDING.ru.md).
+
+[Новые примеры и границы парсеров](PARSER_COVERAGE.ru.md): Automatic.as (AS1/AS2), XmlVector.as, Polymorphic.b и FIR structural.

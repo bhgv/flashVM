@@ -3,7 +3,7 @@
 [Русский](README.ru.md). These optional host-side tools are not build/runtime
 requirements of detached compilers, FIR or the VM.
 
-[atg_format.py](atg_format.py) formats the six current Coco/R C grammars. It
+[atg_format.py](atg_format.py) formats the seven current Coco/R C grammars. It
 lexes strings, comments, C actions and attributes separately; it preserves the
 order of grammar tokens and semantic C tokens. It is a layout tool, not a parser
 generator or semantic verifier. Coco/R generation and component tests remain
@@ -20,11 +20,11 @@ Quoted periods and C tokens are not grammar terminators.
 From repository root:
 
 ```sh
-python3 tools/atg_format.py --check compiler/*/frontend/*.atg fir/v1/compiler/*.atg
+python3 tools/atg_format.py --check compiler/*/frontend/*.atg fir/v1/compiler/*.atg fir/v1/frontend/*.atg
 python3 tools/test_atg_format.py
 # Optional first-party C formatting inside the prelude and semantic actions:
 python3 tools/atg_format.py --clang-format /host/path/clang-format \
-  compiler/*/frontend/*.atg fir/v1/compiler/*.atg
+  compiler/*/frontend/*.atg fir/v1/compiler/*.atg fir/v1/frontend/*.atg
 ```
 
 Without --check, explicit files are rewritten. --check writes nothing and needs

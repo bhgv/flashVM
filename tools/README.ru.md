@@ -3,7 +3,7 @@
 [English](README.md). Эти необязательные инструменты хоста не требуются для
 сборки или выполнения отделённых компиляторов, FIR и VM.
 
-[atg_format.py](atg_format.py) оформляет шесть текущих Coco/R C-грамматик.
+[atg_format.py](atg_format.py) оформляет семь текущих Coco/R C-грамматик.
 Строки, комментарии, C-действия и атрибуты выделяются отдельно; порядок команд
 парсера и C-токенов сохраняется. Это форматирование, а не генератор/верификатор:
 после правок нужны настоящий Coco/R и тесты компонентов. Разбор атрибутов
@@ -19,10 +19,10 @@ C-коде не являются концом правила.
 Из корня репозитория:
 
 ```sh
-python3 tools/atg_format.py --check compiler/*/frontend/*.atg fir/v1/compiler/*.atg
+python3 tools/atg_format.py --check compiler/*/frontend/*.atg fir/v1/compiler/*.atg fir/v1/frontend/*.atg
 python3 tools/test_atg_format.py
 python3 tools/atg_format.py --clang-format /host/path/clang-format \
-  compiler/*/frontend/*.atg fir/v1/compiler/*.atg
+  compiler/*/frontend/*.atg fir/v1/compiler/*.atg fir/v1/frontend/*.atg
 ```
 
 Без --check явно перечисленные файлы перезаписываются. Проверка --check ничего

@@ -1,6 +1,6 @@
 # C99 compiler projects
 
-Version 0.4.2. [Русский](README.ru.md).
+Version 0.5.0. [Русский](README.ru.md).
 
 | Project | Current component |
 | --- | --- |
@@ -35,3 +35,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Complete example catalog](examples.md).
 
 [Build for the host or another OS/CPU](../BUILDING.md).
+
+[All five C APIs in one process](PARSER_COVERAGE.md).

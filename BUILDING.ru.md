@@ -204,3 +204,15 @@ python3 tools/test_portable_headers.py --cc /host/path/cc
 FVM_TARGET_CXX не задан, CMake прекращает конфигурацию с FVM_TARGET_CXX_REQUIRED.
 Для C99-only компонентов отсутствие C++ допустимо. Четыре настоящие configure
 пробы проверяют этот контракт: [test_toolchain_contract.py](tools/test_toolchain_contract.py).
+
+## Структурный FIR-парсер и пять C API
+
+FIR-парсер отдельно: `cmake -S fir/v1/frontend -B build-fir-syntax` с теми же
+явными COCOR_ROOT/COCOR_EXECUTABLE. Цели: firsyn_parse и firsyn_frontend.
+У полного fir/v1 режим `fir1 syntax` включён по умолчанию; отключение —
+FIR_BUILD_SYNTAX_FRONTEND=OFF. Для всех пяти API в compiler передайте явный
+FIR_SYNTAX_ROOT=/absolute/path/to/fir/v1/frontend; [пример](compiler/PARSER_COVERAGE.ru.md).
+Те же параметры CMake toolchain/system/processor/compiler из разделов выше
+применяются к этому C99-проекту. Coco/R остаётся HOST-инструментом. Библиотеки
+и CLI должны быть собраны для целевой платформы, а не скопированы из host-build.
+При отделении проекта сохраните общую MIT LICENSE и уведомления generated frames.

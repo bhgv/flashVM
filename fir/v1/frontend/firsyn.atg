@@ -1,0 +1,464 @@
+/* Extended FIR 1.0 structural syntax. This parser does not lower or authorize code generation.
+ * The existing fir1 compiler continues to reject unsupported executable IR. */
+COMPILER Firsyn
+#include <string.h>
+void firsyn_syntax_enter(void);
+void firsyn_syntax_leave(void);
+
+/* A value beginning the next SSA definition is not an operand of the preceding
+ * operation. */
+static int OperandAhead(int token)
+{
+    long pos;
+    if (token != valueSym)
+        return token == symbolSym || token == labelSym || token == numericSym ||
+               token == hexnumSym || token == textlitSym || token == trueSym ||
+               token == falseSym || token == nullSym || token == undefinedSym;
+    pos = S_NextPos + S_NextLen;
+    for (;;)
+    {
+        int ch = S_CurrentCh(pos);
+        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+            ++pos;
+        else if (ch == '/' && S_CurrentCh(pos + 1) == '/')
+            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+                ++pos;
+        else if (ch == '/' && S_CurrentCh(pos + 1) == '*')
+        {
+            pos += 2;
+            while (S_CurrentCh(pos) &&
+                   !(S_CurrentCh(pos) == '*' && S_CurrentCh(pos + 1) == '/'))
+                ++pos;
+            if (!S_CurrentCh(pos))
+                return 0;
+            pos += 2;
+        }
+        else
+            return ch != ':';
+    }
+}
+/* Version is a syntax contract, never a floating-point comparison. */
+static void CheckVersion(void)
+{
+    char version[8];
+    S_GetString(S_Pos, S_Len, version, 7);
+    if (S_Len != 3 || strcmp(version, "1.0") || S_Line != 1)
+        SemError(1401);
+}
+
+CHARACTERS
+  /* ASCII identifiers keep emitted symbol names portable. */
+  letter =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
+  .
+
+  /* Decimal digits for integer and floating-point constants. */
+  digit =
+    "0123456789"
+  .
+
+  /* Hexadecimal constant digits. */
+  hex =
+    digit + "abcdefABCDEF"
+  .
+
+  /* Bytes inside UTF-8 strings, excluding quote, escape, NUL and newlines. */
+  quotedbyte =
+    ANY - '"' - "\\" - CHR(0) - CHR(10) - CHR(13)
+  .
+
+  /* Only these escape letters have FIR 1.0 meanings. */
+  escaped =
+    '"' + "\\nrt"
+  .
+
+  /* Complete line comment, possibly ending at EOF. */
+  linebyte =
+    ANY - CHR(0) - CHR(10) - CHR(13)
+  .
+
+  /* Block-comment components ensure a closing delimiter is mandatory. */
+  nonstar =
+    ANY - "*" - CHR(0)
+  .
+
+  nonstarslash =
+    ANY - "*" - "/" - CHR(0)
+  .
+
+TOKENS
+  /* Opcode, profile or capability name; contextual keywords are generated literals. */
+  ident =
+    letter
+    {
+        letter
+        | digit
+        | "."
+        | "_"
+    }
+  .
+
+  /* File/location/debug reference, distinct from globals and SSA values. */
+  metadata =
+    "!" digit
+    {
+        digit
+    }
+  .
+
+  /* SSA value, symbol symbol and basic-block label. */
+  value =
+    "%" letter
+    {
+        letter
+        | digit
+        | "."
+    }
+  .
+
+  symbol =
+    "@" letter
+    {
+        letter
+        | digit
+        | "."
+    }
+  .
+
+  label =
+    "^" letter
+    {
+        letter
+        | digit
+        | "."
+    }
+  .
+
+  /* One decimal numeric token; semantic actions distinguish i32/f64 ranges. */
+  numeric =
+    [
+        "+"
+        | "-"
+    ]
+    (
+        digit
+        {
+            digit
+        }
+        [
+            "."
+            {
+                digit
+            }
+        ]
+        | "." digit
+        {
+            digit
+        }
+    )
+    [
+        (
+            "e"
+            | "E"
+        )
+        [
+            "+"
+            | "-"
+        ]
+        digit
+        {
+            digit
+        }
+    ]
+  .
+
+  /* Explicit hexadecimal spelling; overflow is checked by the C99 builder. */
+  hexnum =
+    [
+        "+"
+        | "-"
+    ]
+    "0"
+    (
+        "x"
+        | "X"
+    )
+    hex
+    {
+        hex
+    }
+  .
+
+  /* UTF-8 string; byte validity is checked before the generated scanner. */
+  textlit =
+    '"'
+    {
+        quotedbyte
+        | "\\" escaped
+    }
+    '"'
+  .
+
+PRAGMAS
+  /* Comments do not enter IR and are regenerated as source-line notes. */
+  linecomment =
+    "//"
+    {
+        linebyte
+    }
+  .
+
+  /* Non-nesting C-style comments, with a required terminator. */
+  blockcomment =
+    "/*"
+    {
+        nonstar
+        | "*"
+        {
+            "*"
+        }
+        nonstarslash
+    }
+    "*"
+    {
+        "*"
+    }
+    "/"
+  .
+
+IGNORE
+  CHR(9) + CHR(10) + CHR(13)
+
+PRODUCTIONS
+  /* A module can declare provenance, debug records, capabilities, symbols and multiple functions. */
+  Firsyn =
+    "FIR" numeric                                                       (. CheckVersion(); .)
+    "module" symbol
+    {
+        ModuleItem
+    }
+    EOF
+  .
+
+  /* Semantic ordering, duplicate records and symbol resolution belong to a verifier. */
+  ModuleItem =
+    "source_language" ident
+    | "source_semantics" ident
+    | "file" metadata textlit
+    | "loc" metadata metadata ":" numeric ":" numeric
+    | "requires"
+    (
+        symbol
+        | ident
+    )
+    [
+        "version" numeric
+    ]
+    | "type" symbol "=" Type
+    | "global" symbol ":" Type
+    [
+        "=" Literal
+    ]
+    | "import"
+    (
+        "func" symbol Signature
+        | "global" symbol ":" Type
+    )
+    | "export" symbol
+    [
+        "as" textlit
+    ]
+    | Function
+  .
+
+  /* Definitions use named parameters; imports share the same signature syntax. */
+  Signature =
+    "("
+    [
+        Parameters
+    ]
+    ")" "->" Type
+  .
+
+  /* Parameter values and block arguments are explicit typed SSA declarations. */
+  Parameters =
+    value ":" Type
+    {
+        "," value ":" Type
+    }
+  .
+
+  /* Functions contain at least one named block; no implicit fall-through is invented. */
+  Function =
+    "func" symbol Signature
+    [
+        "loc" metadata
+    ]
+    "{" Block
+    {
+        Block
+    }
+    "}"
+  .
+
+  /* Generic types preserve source-language distinctions rather than flattening to any. */
+  Type =
+                                                                        (. firsyn_syntax_enter(); .)
+    (
+        "void"
+        | "bool"
+        | "i8"
+        | "u8"
+        | "i32"
+        | "u32"
+        | "i64"
+        | "u64"
+        | "f32"
+        | "f64"
+        | "any"
+        | "string"
+        | "channel"
+        | "as.string"
+        | "limbo.string"
+        | "as3.namespace"
+        | "as3.multiname"
+        | "ref" "<" symbol ">"
+        |
+        (
+            "array"
+            | "chan"
+        )
+        "<" Type ">"
+        | "tuple" "<" TypeList ">"
+        | "func" "("
+        [
+            TypeList
+        ]
+        ")" "->" Type
+        | symbol
+    )
+                                                                        (. firsyn_syntax_leave(); .)
+  .
+
+  /* Tuple and function types retain ordered element types. */
+  TypeList =
+    Type
+    {
+        "," Type
+    }
+  .
+
+  /* Every branch argument remains visible in the textual syntax. */
+  Block =
+    label
+    [
+        "("
+        [
+            Parameters
+        ]
+        ")"
+    ]
+    ":"
+    {
+        Instruction
+    }
+  .
+
+  /* Result definitions, ordinary effects and explicit exceptional control flow. */
+  Instruction =
+    (
+        value ":" Type "=" Operation
+        | "if" value "," Target "," Target
+        | "jump" Target
+        | "return"
+        [
+            IF(OperandAhead(Sym)) Operand
+        ]
+        | "invoke" Operation "normal" Target "catch" Target
+        | Operation
+    )
+    [
+        "loc" metadata
+    ]
+  .
+
+  /* Opcode identity/arity/types/effects are verifier work, never guessed by a syntax checker. */
+  Operation =
+    "const.any"
+    (
+        "number"
+        (
+            numeric
+            | hexnum
+        )
+        | "string" textlit
+        | "bool"
+        (
+            "true"
+            | "false"
+        )
+        | "null"
+        | "undefined"
+    )
+    | ident
+    [
+        IF(OperandAhead(Sym)) Operands
+    ]
+  .
+
+  /* Comma-separated operation operands; call operands may have their own argument list. */
+  Operands =
+    Operand
+    {
+        "," Operand
+    }
+  .
+
+  /* Values/symbols can be called; labels carry explicit edge arguments. */
+  Operand =
+                                                                        (. firsyn_syntax_enter(); .)
+    (
+        (
+            value
+            | symbol
+        )
+        [
+            "("
+            [
+                Operands
+            ]
+            ")"
+        ]
+        | Target
+        | Literal
+    )
+                                                                        (. firsyn_syntax_leave(); .)
+  .
+
+  /* An omitted edge argument list differs syntactically from a malformed comma list. */
+  Target =
+    label
+    [
+        "("
+        [
+            Operands
+        ]
+        ")"
+    ]
+  .
+
+  /* Literal syntax only: numeric bounds and type compatibility remain explicit verifier checks. */
+  Literal =
+    numeric
+    | hexnum
+    | textlit
+    | "true"
+    | "false"
+    | "null"
+    | "undefined"
+  .
+
+END
+  Firsyn
+  .
+

@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     }
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("as2_parse 0.3.0 (C99 syntax API)");
+        puts("as2_parse 0.3.1 (C99 syntax API)");
         return 0;
     }
     if (argc != 2)

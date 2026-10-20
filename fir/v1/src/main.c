@@ -1,6 +1,9 @@
 /* One explicit subcommand per operation keeps verification separate from
  * bytecode emission. Output is opened only after the input verifies. */
 #include "fir.h"
+#ifdef FIR_HAS_SYNTAX_FRONTEND
+#include "firsyn.h"
+#endif
 #include <stdlib.h>
 #include <string.h>
 /* Validate CLI arguments, run the selected pipeline, and stage output on success. */
@@ -12,13 +15,16 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.4.5 (FIR 1.0; SWO1)");
+        puts("fir1 0.5.0 (FIR 1.0; SWO1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
         puts("fir1 - FIR 1.0 compiler and verifier\n"
              "usage: fir1 check INPUT.fir\n"
+#ifdef FIR_HAS_SYNTAX_FRONTEND
+             "       fir1 syntax INPUT.fir (structural syntax only; no lowering)\n"
+#endif
              "       fir1 print|opt|object INPUT.fir OUTPUT\n"
              "check: syntax, SSA dominance, types and CFG; no output\n"
              "print: canonical FIR; opt: conservative FIR peephole\n"
@@ -32,6 +38,25 @@ int main(int argc, char **argv)
              "See fir/v1/doc/FORMAT.md and compiler/README.md (also .ru.md).");
         return 0;
     }
+#ifdef FIR_HAS_SYNTAX_FRONTEND
+    if (argc == 3 && !strcmp(argv[1], "syntax"))
+    {
+        FirSyntaxDiagnostic diagnostic;
+        input = fopen(argv[2], "rb");
+        if (!input)
+        {
+            perror(argv[2]);
+            return 2;
+        }
+        ok = firsyn_read(input, &diagnostic);
+        if (fclose(input))
+            return 2;
+        if (!ok)
+            fprintf(stderr, "%s:%d:%d: %s E%d (byte %ld)\n", argv[2], diagnostic.line,
+                    diagnostic.column, diagnostic.message, diagnostic.code, diagnostic.offset);
+        return ok ? 0 : 1;
+    }
+#endif
     if (argc < 3)
         goto usage;
     check = !strcmp(argv[1], "check");

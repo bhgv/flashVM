@@ -1,3 +1,8 @@
+# Current parser validation, series 0.5.0
+
+See [current evidence](PARSER_COVERAGE.md). The following report is historical;
+its sanitizer/VM/IDE results are not a fresh 0.5.0 run.
+
 # Syntax series validation
 
 2026-10-20, Linux C99; [Русский](VALIDATION.ru.md).

@@ -15,7 +15,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CC = 'cc'
 HEADERS = ['compiler/' + lang + '/frontend/frontend.h' for lang in ('as1', 'as2', 'as3', 'limbo')]
-HEADERS += ['fir/v1/include/fir.h', 'linker/include/swl.h']
+HEADERS += ['fir/v1/frontend/firsyn.h', 'fir/v1/include/fir.h', 'linker/include/swl.h']
 
 
 class PortableHeaderTests(unittest.TestCase):

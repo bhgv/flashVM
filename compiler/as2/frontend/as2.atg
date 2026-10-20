@@ -910,7 +910,7 @@ PRODUCTIONS
     [
         ":" TypeName
     ]
-    ";"
+    Terminator
   .
 
   /* Timeline clip-initializer wrapper; includes are recognized but never opened. */

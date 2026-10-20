@@ -1,3 +1,10 @@
+# Current parser syntax 0.5.0
+
+[Coverage, checks and remaining work](PARSER_COVERAGE.md) describe the current
+series. ASI, AS3 regexp/metadata/Vector/E4X and newer Limbo constructs are added;
+extended FIR structure is separate from executable-profile verification. The
+0.3.1 checkpoint below is historical; its former limits are not the current list.
+
 # Syntax series 0.3.1
 
 [Русский](SYNTAX.ru.md). All parsers use readable Coco/R grammars generated

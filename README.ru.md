@@ -112,3 +112,5 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 
 [Нативная и cross-сборка всех компонентов](BUILDING.ru.md),
 [каталог примеров компиляторов](compiler/examples.ru.md).
+
+[Парсеры AS1/AS2/AS3/Limbo/FIR: серия 0.5.0](compiler/PARSER_COVERAGE.ru.md).

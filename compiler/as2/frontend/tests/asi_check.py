@@ -6,6 +6,7 @@ import sys
 import tempfile
 
 accepted = [
+    "interface I { function f(x:Number):Number\nfunction g():String }",
     'var on=f; on(1); onClipEvent(2);', 'on(release,press){trace(1)}', 'on(keyPress "<Space>"){trace(1)}',
     'onClipEvent(load){trace(1)}', '#include "library.as"',
     '#initclip 1\nvar x=1\n#endinitclip', 'x = not a and b or c;',

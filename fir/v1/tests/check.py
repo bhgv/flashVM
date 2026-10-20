@@ -98,7 +98,8 @@ with tempfile.TemporaryDirectory() as directory:
                 assert result == expected, (source.read_text(), result, expected)
 
     for folder in sorted((ROOT / 'examples').iterdir()):
-        if not folder.is_dir():
+        # Structural-only examples are covered by the separate syntax/backend-boundary tests.
+        if not folder.is_dir() or folder.name == 'structural':
             continue
         if folder.name in ('as1', 'as2', 'as3', 'limbo'):
             source = folder / ('main.b' if folder.name == 'limbo' else 'main.as')

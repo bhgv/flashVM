@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.16)
-project(fir1 VERSION 0.4.5 LANGUAGES C)
+project(fir1 VERSION 0.5.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -90,3 +90,11 @@ endif()
 # Generated parser configuration is never part of the embedding interface.
 target_compile_definitions(fir1_ir PRIVATE CUSTOM_BUFF)
 target_compile_definitions(fir1_source_api PRIVATE CUSTOM_BUFF)
+
+# The structural language frontend is separate from the executable IR verifier/backend.
+option(FIR_BUILD_SYNTAX_FRONTEND "Build extended FIR structural syntax API and CLI mode" ON)
+if(FIR_BUILD_SYNTAX_FRONTEND)
+  add_subdirectory(frontend)
+  target_link_libraries(fir1 PRIVATE firsyn_frontend)
+  target_compile_definitions(fir1 PRIVATE FIR_HAS_SYNTAX_FRONTEND=1)
+endif()
