@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.640
+# FlashVM stage status / Состояние стадий — v0.641
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,15 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.641 complete CTest execution evidence / Полнота CTest
+
+Native platform reports now bind exact configured names to fresh JUnit outcomes,
+record acknowledged skips separately and reject disabled/incomplete executions.
+Real CTest filter/skip/disable fixtures and source-identity regressions pass.
+[EN](RELEASE_EVIDENCE.md) / [RU](RELEASE_EVIDENCE.ru.md).
+This advances release tooling, not full VM or foreign-platform acceptance.
+Все девять стадий остаются открытыми.
 
 ## v0.640 canonical root sound frames / Канонические звуковые кадры
 

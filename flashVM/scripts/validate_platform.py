@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 from elf_dependencies import validate_elf_dependencies
+from ctest_evidence import inventory, results
 
 
 def source_identity(root):
@@ -179,13 +180,15 @@ def main():
     parser.add_argument('--elf-dependencies', action='store_true',
                         help='audit direct Linux ELF dependencies of CTest artifacts')
     parser.add_argument('--readelf', default='readelf', help='GNU readelf executable for ELF audit')
+    parser.add_argument('--allow-skip', action='append', default=[], metavar='TEST_NAME',
+                        help='acknowledge one exact skipped test name; never counts as passed')
     args = parser.parse_args()
     if args.jobs < 1:
         parser.error('--jobs must be positive')
     root = Path(__file__).resolve().parents[1]
     output = (args.build_root or root / 'build-platform').resolve()
     output.mkdir(parents=True, exist_ok=True)
-    report = {'schema': 1, 'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    report = {'schema': 2, 'started_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'host': {'system': platform.system(), 'machine': platform.machine(),
                        'release': platform.release(), 'python': platform.python_version()},
               'version': (root / 'VERSION.txt').read_text().strip(),
@@ -247,8 +250,20 @@ def main():
             # Isolate CTest from inherited filters that could silently reduce evidence.
             if any(key in os.environ for key in ['CTEST_TESTS_TO_RUN', 'CTEST_TEST_LOAD']):
                 raise RuntimeError('clear inherited CTest selection/load variables')
+            execute('test-inventory', [args.ctest, '--test-dir', str(build), '-C', 'Release',
+                                       '--show-only=json-v1'])
+            expected = inventory(build / 'test-inventory.log')
+            # Remove old success before execution, including reruns that fail to emit XML.
+            junit = build / 'ctest-results.xml'
+            junit.unlink(missing_ok=True)
             execute('test', [args.ctest, '--test-dir', str(build), '-C', 'Release',
-                             '--output-on-failure', '--no-tests=error', '--parallel', str(args.jobs)])
+                             '--output-on-failure', '--no-tests=error', '--parallel', str(args.jobs),
+                             '--output-junit', str(junit)])
+            record['tests'] = results(junit, expected, args.allow_skip)
+            execute('test-inventory-after', [args.ctest, '--test-dir', str(build), '-C', 'Release',
+                                             '--show-only=json-v1'])
+            if inventory(build / 'test-inventory-after.log') != expected:
+                raise ValueError('CTest definitions changed during execution')
             if args.jit_emulator:
                 validate_encoder(root, build, args.ctest, execute, record)
             if args.elf_dependencies:

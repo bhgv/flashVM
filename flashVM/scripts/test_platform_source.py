@@ -101,7 +101,14 @@ class SourceEvidenceTests(unittest.TestCase):
                 return real_run(command, **kwargs)
             phases.append(command)
             if command[0] == 'ctest':
-                if mutate:
+                if '--show-only=json-v1' in command:
+                    kwargs['stdout'].write(json.dumps({'version': {'major': 1}, 'tests': [
+                        {'name': 'fixture', 'command': ['fixture-tool']}]}))
+                elif '--output-junit' in command:
+                    Path(command[command.index('--output-junit') + 1]).write_text(
+                        '<testsuite tests="1" failures="0" disabled="0" skipped="0">'
+                        '<testcase name="fixture" status="run"/></testsuite>')
+                if mutate and '--output-junit' in command:
                     (self.root / 'input file.cpp').write_bytes(b'changed during tests')
                 return subprocess.CompletedProcess(command, 1 if fail else 0)
             return subprocess.CompletedProcess(command, 0)
@@ -122,7 +129,7 @@ class SourceEvidenceTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(report['status'], 'passed')
         self.assertEqual(report['source_start'], report['source_end'])
-        self.assertEqual(len(phases), 3)
+        self.assertEqual(len(phases), 5)
 
     def test_main_successful_tools_cannot_mask_source_drift(self):
         result, report, _ = self.exercise_main(mutate=True)

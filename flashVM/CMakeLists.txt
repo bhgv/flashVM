@@ -356,6 +356,9 @@ if(FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_elf_dependencies.py)
   add_test(NAME flashvm_platform_source_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_platform_source.py)
+  add_test(NAME flashvm_ctest_evidence_host
+    COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_ctest_evidence.py
+            --ctest ${CMAKE_CTEST_COMMAND})
   add_test(NAME flashvm_platform_encoder_host
     COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/scripts/test_platform_encoder.py)
   add_test(NAME flashvm_android_adapter_host

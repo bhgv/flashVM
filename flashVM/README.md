@@ -1,5 +1,5 @@
-Development version: **0.640** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.640 ` and an English description. Increase the subversion before each
+Development version: **0.641** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.641 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
@@ -707,6 +707,7 @@ source checks and host-local callback registration.
 Explicit mixed-rate/channel audio: [EN](doc/SWF_SOUND_CONVERSION.md) /
 [RU](doc/SWF_SOUND_CONVERSION.ru.md); configured output including 48000 Hz stereo,
 with legacy strict API preserved and an annotated --convert-demo tutorial.
+[Auditable native release evidence](doc/RELEASE_EVIDENCE.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
