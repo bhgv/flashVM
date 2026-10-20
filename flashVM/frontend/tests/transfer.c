@@ -1,4 +1,5 @@
 /* Worker publication, copied text, sink latching, cancellation, quota and joined SDK lifetime. */
+#define SDL_MAIN_HANDLED
 #include "player.h"
 #include <SDL.h>
 #include <assert.h>

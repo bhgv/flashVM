@@ -10,6 +10,7 @@
 
 | Пункт | Статус | Подтверждение и оставшаяся работа |
 | --- | --- | --- |
+| 3/5/7/9: controlled/background transfers | Проверено v0.680–0.682, Linux | Additive C jobs, bounded immutable byte publication, cancel/join, shutdown quota guard and opt-in UI event pumping. Timeline waits at resource safe point; full async semantics/DNS interruption/foreign execution remain open. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md). |
 | 3/5/9: verified native HTTPS | Проверено v0.678, Linux loopback | Optional OpenSSL TLS1.2/1.3, CA/DNS/IP/SNI verification, deadlines, authenticated EOF and HTTPS child/form origins in interpreter/JIT. Transport-only UBSan passes. Target TLS SDK/runtime acceptance remains open. [EN](SOCKET_TRANSPORT.md#verified-https-since-v0678) / [RU](SOCKET_TRANSPORT.ru.md#проверяемый-https-с-v0678). |
 | 3/5/9: native socket HTTP | Проверено v0.677, Linux loopback | POSIX/Winsock GET, canonical movie bases, strict bounded framing and total native I/O deadline without libcurl. URI/raw TCP and interpreter/JIT loading tests; three cross-builds link, foreign programs not run. DNS remains synchronous; TLS/async and full Flash networking remain open. [EN](SOCKET_TRANSPORT.md) / [RU](SOCKET_TRANSPORT.ru.md). |
 | 3/5/7/9: embedded/network child loading | Проверено в v0.673–676 | Exact FWS/CWS buffers, optional HTTP GET, child identity/placement, form decode/onData, per-source bases and pinned deferred FIFO. PLAYER_SOURCES.md / .ru.md; POST, progressive loading, child streams and complete historical compatibility remain open. |

@@ -2,13 +2,13 @@
 
 [Русский](PLAYER_SOURCES.ru.md).
 
-Current v0.679 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
+Current v0.682 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
 
 [Native POSIX/Winsock transport without libcurl](SOCKET_TRANSPORT.md) is available since v0.677.
 
 ## Memory input since v0.673
 
-[fvm_desktop_run_memory](../frontend/common/player.h#L40) in [player.h](../frontend/common/player.h) accepts scalar
+[fvm_desktop_run_memory](../frontend/common/player.h#L42) in [player.h](../frontend/common/player.h) accepts scalar
 [FVM_DesktopOptions](../frontend/common/options.h#L29), a const void pointer, the exact size_t byte count, a nonempty
 source name and optional static error output. char buf[] and read-only linked
 arrays both work; binary NUL is ordinary data. No temporary file, strlen(data),
@@ -89,7 +89,7 @@ unsupported requests and loop limits in both interpreter and JIT.
 
 FVM_PLAYER_HTTP=ON adds the independent libcurl 7.62+ SDK dependency to the
 optional frontend only. Default is OFF; custom transport and memory/file playback
-remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L19) in [http.h](../frontend/common/http.h)
+remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L21) in [http.h](../frontend/common/http.h)
 is an [FVM_DesktopFetch](../frontend/common/source.h#L40) provider: set loader.fetch to it and keep userdata null.
 It resolves reference/base with libcurl's URL API, returns canonical provenance,
 performs HTTP(S) GET with TLS peer/hostname verification, checks the entire transfer
@@ -116,7 +116,7 @@ cmake --build build-player --target flashvm_player
 
 For C/C++ embedding, include player.h and http.h, initialize options/loader, set
 source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0 and location to the URL;
-set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L19) and call [fvm_desktop_run_source](../frontend/common/source.h#L60). For a
+set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L21) and call [fvm_desktop_run_source](../frontend/common/source.h#L60). For a
 linked startup resource choose MEMORY and the exact array size; the same loader
 can service absolute/relative requests made by the embedded movie. The provider
 resolves relative references only when the supplied base is a valid HTTP(S) URL.
@@ -221,7 +221,7 @@ and a host-supplied callback; see [native transport](SOCKET_TRANSPORT.md).
 [HTTP/embedded tests](../frontend/tests/child_loading.py)
 ### Opaque session cleanup and Windows exports
 
-[fvm_desktop_shutdown](../frontend/common/player.h#L46) in player.h explicitly ends the matching library's SDL
+[fvm_desktop_shutdown](../frontend/common/player.h#L49) in player.h explicitly ends the matching library's SDL
 session on its UI owner thread after playback returns. If SDL_WasInit reports any
 active subsystem, it returns [FVM_ERROR](../include/flashvm/flashvm.h#L43) without touching it; otherwise it calls
 SDL_Quit and returns [FVM_OK](../include/flashvm/flashvm.h#L42), including repeated shutdown of an unused session.
@@ -242,6 +242,7 @@ where sandbox /proc restrictions prevent $ORIGIN discovery. Busy-owner shutdown
 is tested against a shared SDL instance in the static-host fixture; opaque DLL
 cleanup is tested through the module interface.
 GET here means retrieving the supplied URL. Automatic serialization of current-clip variables into query parameters or a POST body is not implemented.
+[Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.682.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

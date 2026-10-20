@@ -379,7 +379,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID)
-  add_executable(flashvm_frontend_input_reader tests/input_reader.c common/options.c
+  add_executable(flashvm_frontend_input_reader tests/input_reader.c common/transfer.c common/options.c
     common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_input_reader PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_input_reader PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
@@ -406,7 +406,7 @@ endif()
 
 # Real collector safe points between slow frames; no native-window acceptance claim.
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_event_gc ${frontend_os}/main.c tests/event_gc.c
+  add_executable(flashvm_frontend_event_gc ${frontend_os}/main.c tests/event_gc.c common/transfer.c
     common/options.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_event_gc PRIVATE flashvm SDL2::SDL2)
   if(WIN32)
@@ -607,15 +607,7 @@ if(FVM_PLAYER_SOCKET_TLS AND FVM_BUILD_TESTS AND FVM_BUILD_EXAMPLES AND NOT ANDR
   endif()
 endif()
 
-# Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
-# Keep production RPATH relocatable; supply only the build-tree test environment here.
-if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
-  get_property(player_host_tests DIRECTORY PROPERTY TESTS)
-  foreach(host_test ${player_host_tests})
-    set_property(TEST ${host_test} APPEND PROPERTY ENVIRONMENT
-      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
-  endforeach()
-endif()
+
 
 if(FVM_PLAYER_SOCKET_HTTP AND FVM_BUILD_TESTS AND NOT ANDROID)
   add_executable(flashvm_cancel_client tests/cancel_client.c)
@@ -647,4 +639,44 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
   endif()
   add_test(NAME flashvm_transfer_tests COMMAND flashvm_transfer_tests)
   set_tests_properties(flashvm_transfer_tests PROPERTIES TIMEOUT 20)
+endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_background_close tests/background_close.c)
+  target_link_libraries(flashvm_background_close PRIVATE flashvm_player_host)
+  if(NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_background_close COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/background_close.py $<TARGET_FILE:flashvm_background_close>
+      $<TARGET_FILE:flashvm_player>)
+    set_tests_properties(flashvm_background_close PROPERTIES TIMEOUT 15)
+    foreach(mode interpreter jit)
+      add_test(NAME flashvm_background_http_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/http_player.py $<TARGET_FILE:flashvm_player> --${mode} --background-loads)
+      add_test(NAME flashvm_background_child_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/child_loading.py $<TARGET_FILE:flashvm_player>
+        $<TARGET_FILE:flashvm_frontend_memory_origin> --${mode} --background-loads)
+      set_tests_properties(flashvm_background_http_${mode} flashvm_background_child_${mode}
+        PROPERTIES TIMEOUT 60 SKIP_RETURN_CODE 77)
+    endforeach()
+  endif()
+endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_background_loading ../examples/player/background_loading/main.c)
+  target_link_libraries(flashvm_example_background_loading PRIVATE flashvm_player_host)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_example_background_loading COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/background_example.py $<TARGET_FILE:flashvm_example_background_loading>)
+    set_tests_properties(flashvm_example_background_loading PROPERTIES TIMEOUT 20)
+  endif()
+endif()
+
+# Native shared tests also run where sandboxed /proc prevents the loader's $ORIGIN discovery.
+# Keep production RPATH relocatable; supply only the build-tree test environment here.
+if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
+  get_property(player_host_tests DIRECTORY PROPERTY TESTS)
+  foreach(host_test ${player_host_tests})
+    set_property(TEST ${host_test} APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endforeach()
 endif()

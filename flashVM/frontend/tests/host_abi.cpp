@@ -16,6 +16,11 @@ int main()
     if (!fvm_desktop_transfer_options_init(&transfer) || transfer.fetch ||
         fvm_desktop_transfer_active() || fvm_desktop_transfer_release(0) != FVM_OK)
         return 1;
+    FVM_DesktopBackgroundLoader background;
+    if (!fvm_desktop_background_loader_init(&background) || background.transfer.fetch ||
+        background.max_loads != 1 ||
+        fvm_desktop_run_source_background(0, 0, &background, 0) != FVM_DESKTOP_EXIT_ARGUMENT)
+        return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;
     FVM_DesktopBuildInfo info;

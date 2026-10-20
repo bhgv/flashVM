@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.681
+# FlashVM stage status / Состояние стадий — v0.682
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -79,6 +79,14 @@ v0.681 adds joined background byte-transfer jobs, synchronized polling/cancellat
 immutable result views, bounded buffers/handle quota and SDK shutdown protection.
 Owner/worker, errors, cancellation, quota and cleanup fixtures pass; VM objects
 never cross the worker boundary. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md).
+
+v0.682 integrates explicit --background-loads and C background runners with native
+event/audio pumping, joined cancellation on close and owner-thread import/GC.
+Timeline/timers still wait at the resource safe point; startup/root transitions
+have no active progress view. 86 native, 11 shared TLS, 9 shared curl and 3 no-provider
+checks pass; transfer-only UBSan passes with SDK libraries uninstrumented.
+Three plain HTTP cross targets and Windows DLL/C/C++98 fixtures link, not run.
+[EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md). All stages remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

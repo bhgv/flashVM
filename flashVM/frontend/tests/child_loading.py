@@ -85,19 +85,19 @@ def checked(command, env, cwd=None):
 
 
 def main():
-    player, memory_host, mode = sys.argv[1:]
+    player, memory_host, mode, *extra = sys.argv[1:]
     player, memory_host = str(Path(player).resolve()), str(Path(memory_host).resolve())
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', NO_PROXY='127.0.0.1')
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        checked([player, mode, '--frames', '3', '--fps', '1000', '--mute', '--loads', '8',
+        checked([player] + extra + [mode, '--frames', '3', '--fps', '1000', '--mute', '--loads', '8',
                  'http://127.0.0.1:%d/app/start.swf' % server.server_port], env)
         assert Handler.paths == ['/app/start.swf', '/app/nested/child.swf', '/app/root-vars.txt',
                                  '/app/nested/child-vars.txt'], Handler.paths
         Handler.wrong = True
-        result = subprocess.run([player, mode, '--frames', '3', '--fps', '1000', '--mute', '--loads', '8',
+        result = subprocess.run([player] + extra + [mode, '--frames', '3', '--fps', '1000', '--mute', '--loads', '8',
                                  'http://127.0.0.1:%d/app/start.swf' % server.server_port], env=env,
                                 capture_output=True, text=True, timeout=20)
         assert result.returncode != 0, 'wrong-value control must fail the SWF assertion'

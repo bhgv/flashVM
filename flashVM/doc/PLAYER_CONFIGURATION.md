@@ -3,21 +3,21 @@
 [Русский](PLAYER_CONFIGURATION.ru.md).
 
 A C89/C++98 application can link the optional CMake target `flashvm_player_host`
-and call [fvm_desktop_run](../frontend/common/player.h#L30) without constructing a command line. This static target
+and call [fvm_desktop_run](../frontend/common/player.h#L34) without constructing a command line. This static target
 contains the shared scheduler, scene/VM integration, input, renderer and audio
 adapters. It links FlashVM and the selected SDL SDK transitively. The console
-entrypoint [fvm_desktop_main](../frontend/common/player.h#L37) parses arguments and invokes the same runner.
+entrypoint [fvm_desktop_main](../frontend/common/player.h#L56) parses arguments and invokes the same runner.
 This is an internal frontend contract, not a new stable VM ABI or an installed SDK.
 
 ## API and lifetime
 
 Include frontend/common/player.h; the target exports that include directory.
-[fvm_desktop_options_init](../frontend/common/options.h#L45) accepts required [FVM_DesktopOptions](../frontend/common/options.h#L27) storage, returns
+[fvm_desktop_options_init](../frontend/common/options.h#L48) accepts required [FVM_DesktopOptions](../frontend/common/options.h#L29) storage, returns
 one on success and zero for null, and sets automatic execution, HIGH quality,
 authored timing at 100 percent, no limits/flags and an empty playlist. It does
 not allocate or open anything. Select at least one file before calling run.
 
-[fvm_desktop_options_validate](../frontend/common/options.h#L48) returns one for valid settings, otherwise zero.
+[fvm_desktop_options_validate](../frontend/common/options.h#L51) returns one for valid settings, otherwise zero.
 The optional error pointer receives null on success or a static diagnostic on
 failure; callers must not free it. Validation does not modify the options, open
 files, initialize SDL/VM, allocate, print, or change the process locale.
@@ -29,12 +29,12 @@ remain 100 when explicit FPS is selected. Enum values outside the declared
 choices and flags other than zero/one are rejected. Counts must describe actual
 accessible storage; C cannot validate arbitrary addresses or determine its size.
 
-[fvm_desktop_run](../frontend/common/player.h#L30) returns [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L8) (2) for malformed configuration
+[fvm_desktop_run](../frontend/common/player.h#L34) returns [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L12) (2) for malformed configuration
 before opening even the first file. It copies scalar settings and borrows the
 playlist array and NUL-terminated path strings until synchronous return; keep
 all of them immutable and accessible. Empty/null later paths reject the entire
-playlist before startup. It returns [FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L6) (0) on normal completion
-or user close, and [FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L7) (1) for file, VM or device failure.
+playlist before startup. It returns [FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L10) (0) on normal completion
+or user close, and [FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L11) (1) for file, VM or device failure.
 The optional error is null on success, a detailed static validation diagnostic
 on invalid input, or a generic playback diagnostic; existing playback errors,
 trace and stats still use standard streams. This is not a diagnostic callback API.

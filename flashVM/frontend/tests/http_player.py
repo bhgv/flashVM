@@ -56,13 +56,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    executable, mode = sys.argv[1:]
+    executable, mode, *extra = sys.argv[1:]
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     root = 'http://127.0.0.1:%d' % server.server_port
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', NO_PROXY='127.0.0.1')
-    args = [executable, mode, '--frames', '1', '--fps', '1000', '--mute', '--stats']
+    args = [executable] + extra + [mode, '--frames', '1', '--fps', '1000', '--mute', '--stats']
     try:
         for path, loads, expected in [('/movies/start.swf', 2, 0), ('/movies/start.swf', 1, 1),
                                       ('/chunked', 1, 0), ('/missing', 1, 1),

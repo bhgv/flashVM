@@ -3,22 +3,22 @@
 [English](PLAYER_CONFIGURATION.md).
 
 Приложение C89/C++98 может линковать необязательную статическую цель CMake
-`flashvm_player_host` и вызывать [fvm_desktop_run](../frontend/common/player.h#L30) без сборки командной строки.
+`flashvm_player_host` и вызывать [fvm_desktop_run](../frontend/common/player.h#L34) без сборки командной строки.
 Цель содержит общий планировщик, интеграцию VM/сцены, ввод, вывод и аудиоадаптер;
 FlashVM и выбранный SDL SDK подключаются транзитивно. Консольный
-[fvm_desktop_main](../frontend/common/player.h#L37) разбирает аргументы и вызывает тот же runner. Это внутренний
+[fvm_desktop_main](../frontend/common/player.h#L56) разбирает аргументы и вызывает тот же runner. Это внутренний
 контракт frontend, а не новый стабильный ABI VM или установленный SDK.
 
 ## API и владение
 
 Подключите frontend/common/player.h; цель экспортирует каталог заголовка.
-[fvm_desktop_options_init](../frontend/common/options.h#L45) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/options.h#L27),
+[fvm_desktop_options_init](../frontend/common/options.h#L48) принимает обязательную структуру [FVM_DesktopOptions](../frontend/common/options.h#L29),
 возвращает 1 при успехе, 0 для null. По умолчанию: автоматический режим,
 качество HIGH, авторская частота на 100 процентов, пустой плейлист, нулевые
 ограничения и флаги. Выделения памяти и запуска устройств нет. Перед run
 задайте хотя бы один файл.
 
-[fvm_desktop_options_validate](../frontend/common/options.h#L48) возвращает 1 при корректных параметрах, иначе 0.
+[fvm_desktop_options_validate](../frontend/common/options.h#L51) возвращает 1 при корректных параметрах, иначе 0.
 Необязательный error получает null при успехе или статический текст ошибки;
 освобождать его нельзя. Проверка не меняет структуру, не открывает файлы,
 не запускает SDL/VM, не выделяет память, не печатает и не меняет локаль процесса.
@@ -30,13 +30,13 @@ FPS равен нулю (авторская частота) либо 0.1..1000; 
 отклоняются. Массив должен действительно содержать доступное число элементов:
 C не позволяет проверить произвольный адрес или узнать размер выделенной памяти.
 
-[fvm_desktop_run](../frontend/common/player.h#L30) возвращает [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L8) (2) до открытия первого
+[fvm_desktop_run](../frontend/common/player.h#L34) возвращает [FVM_DESKTOP_EXIT_ARGUMENT](../frontend/common/player.h#L12) (2) до открытия первого
 файла при некорректной конфигурации. Скалярные настройки копируются, массив и
 строки путей с завершающим NUL заимствуются до синхронного возврата: сохраняйте
 их доступными и неизменными. Пустой/null последующий путь отклоняет весь
 плейлист до запуска. Успех или закрытие пользователем возвращает
-[FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L6) (0); ошибка файла, VM или устройства —
-[FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L7) (1). Необязательный error получает null при успехе,
+[FVM_DESKTOP_EXIT_OK](../frontend/common/player.h#L10) (0); ошибка файла, VM или устройства —
+[FVM_DESKTOP_EXIT_PLAYBACK](../frontend/common/player.h#L11) (1). Необязательный error получает null при успехе,
 подробный статический текст валидации или общее сообщение ошибки исполнения.
 Текущие ошибки воспроизведения, trace и статистика используют стандартные
 потоки: интерфейс обратного вызова диагностики пока не добавлен.

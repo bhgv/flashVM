@@ -298,6 +298,65 @@ static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ord
     return FVM_OK;
 }
 
+/* Explicit background session borrows only owner-thread native window/audio pointers. */
+typedef struct FVM_DesktopBackgroundSession
+{
+    FVM_DesktopTransferOptions options; /* Immutable provider policy copied before playback. */
+    FVM_DesktopWindow *window;          /* Borrowed only while play_bytes owns a live view. */
+    FVM_DesktopAudio *audio;            /* Borrowed only while its native output is live. */
+    int closed; /* Owner-thread close request, independent of worker status. */
+} FVM_DesktopBackgroundSession;
+/* The worker owns only bytes; event/audio pumping and the consumer callback stay on the owner. */
+static FVM_Result background_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
+                                   void *write_userdata, char *resolved, size_t capacity,
+                                   void *userdata)
+{
+    FVM_DesktopBackgroundSession *session = (FVM_DesktopBackgroundSession *)userdata;
+    FVM_DesktopTransfer *job = 0;
+    FVM_DesktopTransferView view;
+    FVM_Result result = fvm_desktop_transfer_begin(reference, base, &session->options, &job);
+    if (result != FVM_OK)
+        return result;
+    for (;;)
+    {
+        result = fvm_desktop_transfer_poll(job, &view);
+        if (result != FVM_OK || view.state != FVM_DESKTOP_TRANSFER_PENDING)
+            break;
+        if (session->window)
+        {
+            if (!fvm_desktop_window_events(session->window, 0))
+                session->closed = 1;
+            result = fvm_desktop_window_status(session->window);
+            if (result == FVM_OK && session->audio && session->audio->output)
+                result = fvm_desktop_window_active(session->window)
+                             ? fvm_desktop_audio_tick(session->audio)
+                             : fvm_desktop_audio_pause(session->audio, 1);
+            if (session->closed || result != FVM_OK)
+                break;
+        }
+        SDL_Delay(FVM_DESKTOP_BACKGROUND_WAIT_MS);
+    }
+    if (session->closed)
+        result = FVM_ERROR;
+    else if (result == FVM_OK)
+    {
+        result = view.result;
+        if (result == FVM_OK)
+        {
+            if (!resolved || !capacity || strlen(view.location) >= capacity)
+                result = FVM_INVALID_ARGUMENT;
+            else
+            {
+                result = write(view.bytes, view.size, write_userdata);
+                if (result == FVM_OK)
+                    strcpy(resolved, view.location);
+            }
+        }
+    }
+    fvm_desktop_transfer_release(job); /* Always cancel/join before session or VM teardown. */
+    return result;
+}
+
 /* A copied request owns its text and one explicit target root until safe-point delivery. */
 typedef struct FVM_DesktopRequest
 {
@@ -316,8 +375,9 @@ typedef struct FVM_DesktopNavigation
     size_t count;                    /* Bound queued requests by the remaining load budget. */
     FVM_Object *root;                /* Borrowed active root, pinned by play_bytes. */
     const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
-    const FVM_DesktopLoader *policy; /* Borrowed for the entire source run. */
-    unsigned long remaining;         /* Remaining requests, including child and variable fetches. */
+    const FVM_DesktopLoader *policy;          /* Borrowed for the entire source run. */
+    FVM_DesktopBackgroundSession *background; /* Optional borrowed owner-thread transfer session. */
+    unsigned long remaining; /* Remaining requests, including child and variable fetches. */
 } FVM_DesktopNavigation;
 
 /* Service is defined after the bounded transport helpers below. */
@@ -676,6 +736,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         fprintf(stderr, "%s: cannot open desktop window\n", path);
         goto cleanup;
     }
+    if (navigation && navigation->background)
+    {
+        navigation->background->window = window;
+        navigation->background->audio = &audio;
+    }
     if (options->mute && !checked(fvm_movieclip_set_sound_callback(context, muted_sound, &audio),
                                   "muted event sound", path))
         goto cleanup;
@@ -730,6 +795,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         if (navigation &&
             !checked(service_requests(context, navigation), "deferred resource load", path))
             goto cleanup;
+        if (navigation && navigation->background && navigation->background->closed)
+        {
+            *quit = 1;
+            break;
+        }
         if (navigation && navigation->pending)
             break;
         /* [GC:] Input listeners and HostInput publication also allocate without timers.
@@ -801,6 +871,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         if (navigation &&
             !checked(service_requests(context, navigation), "frame resource load", path))
             goto cleanup;
+        if (navigation && navigation->background && navigation->background->closed)
+        {
+            *quit = 1;
+            break;
+        }
         /* [GC:] Collect only at a safe host boundary; the root and its library remain pinned. */
         if (!checked(fvm_gc_step(context, 0), "GC step", path))
             goto cleanup;
@@ -846,6 +921,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     }
     status = 0;
 cleanup:
+    if (navigation && navigation->background)
+    {
+        navigation->background->window = 0;
+        navigation->background->audio = 0;
+    }
     if (context)
         discard_requests(context, navigation);
     /* Release both real-output and explicit-mute registrations before audio userdata cleanup. */
@@ -1040,7 +1120,9 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
                     status = FVM_ERROR;
                 bytes = file_bytes;
             }
-            if (status == FVM_OK)
+            if (navigation->background && navigation->background->closed)
+                status = FVM_OK;
+            else if (status == FVM_OK)
             {
                 if (variables)
                     status = fvm_object_load_variables(context, request->target, bytes, size);
@@ -1058,6 +1140,8 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
         free(request);
         if (status != FVM_OK)
             return status;
+        if (navigation->background && navigation->background->closed)
+            return FVM_OK;
     }
     return FVM_OK;
 }
@@ -1065,7 +1149,8 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
 /* Keep transport and successive VM lifetimes disjoint; this is root replacement, not child import.
  */
 static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
-                      const FVM_DesktopLoader *loader, const char **error, int *closed)
+                      const FVM_DesktopLoader *loader, const char **error, int *closed,
+                      FVM_DesktopBackgroundSession *background)
 {
     FVM_DesktopOptions value;
     FVM_DesktopLoader policy;
@@ -1098,6 +1183,7 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
         return status;
     if (!memory_options(options, source->location, &value, error))
         return status;
+    navigation.background = background;
     navigation.policy = &policy;
     navigation.remaining = policy.max_loads - 1;
     kind = source->kind;
@@ -1182,7 +1268,80 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
 int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                            const FVM_DesktopLoader *loader, const char **error)
 {
-    return run_source(options, source, loader, error, 0);
+    return run_source(options, source, loader, error, 0, 0);
+}
+
+/* Initialize an explicitly selected worker provider without native startup. */
+int fvm_desktop_background_loader_init(FVM_DesktopBackgroundLoader *out)
+{
+    if (!out)
+        return 0;
+    fvm_desktop_transfer_options_init(&out->transfer);
+    out->max_loads = 1;
+    return 1;
+}
+/* Private session never escapes this synchronous owner-thread call. */
+static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                          const FVM_DesktopBackgroundLoader *loader, const char **error,
+                          int *closed)
+{
+    FVM_DesktopBackgroundSession session;
+    FVM_DesktopLoader policy;
+    if (!loader || !loader->transfer.fetch || !loader->transfer.max_bytes ||
+        loader->transfer.max_bytes > FVM_DESKTOP_TRANSFER_MAX_BYTES)
+    {
+        if (error)
+            *error = "invalid background provider policy";
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    }
+    memset(&session, 0, sizeof(session));
+    session.options = loader->transfer;
+    policy.fetch = background_fetch;
+    policy.userdata = &session;
+    policy.max_loads = loader->max_loads;
+    return run_source(options, source, &policy, error, closed, &session);
+}
+/* Native app/IDE entrypoint keeps provider opt-in explicit instead of moving old callbacks. */
+int fvm_desktop_run_source_background(const FVM_DesktopOptions *options,
+                                      const FVM_DesktopSource *source,
+                                      const FVM_DesktopBackgroundLoader *loader, const char **error)
+{
+    return run_background(options, source, loader, error, 0);
+}
+/* Default-provider playlist shares the same import/GC/render/cleanup implementation. */
+int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **error)
+{
+    FVM_DesktopOptions value;
+    FVM_DesktopBackgroundLoader loader;
+    FVM_DesktopSource source;
+    size_t i;
+    int status = FVM_DESKTOP_EXIT_OK, closed = 0;
+    if (!fvm_desktop_options_validate(options, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    fvm_desktop_background_loader_init(&loader);
+#ifdef FVM_DESKTOP_SOCKET_HTTP
+    loader.transfer.fetch = fvm_desktop_socket_transfer_fetch;
+#elif defined(FVM_DESKTOP_HTTP)
+    loader.transfer.fetch = fvm_desktop_http_transfer_fetch;
+#else
+    return fvm_desktop_run(options, error);
+#endif
+    value = *options;
+    loader.max_loads = value.max_loads;
+    if (value.file_count > 1 && !value.frames)
+        value.once = 1;
+    source.bytes = 0;
+    source.size = 0;
+    for (i = 0; i < value.file_count; ++i)
+    {
+        source.location = value.files[i];
+        source.kind =
+            strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
+        status = run_background(&value, &source, &loader, error, &closed);
+        if (status || closed)
+            break;
+    }
+    return status;
 }
 
 /* Shared synchronous runner; the CLI translates arguments into this same contract. */
@@ -1212,7 +1371,7 @@ int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_source(&value, &source, &loader, error, &closed);
+        status = run_source(&value, &source, &loader, error, &closed, 0);
         if (status || closed)
             break;
     }
@@ -1225,6 +1384,8 @@ int fvm_desktop_main(int argc, char **argv)
     FVM_DesktopOptions options;
     const char *error = 0;
     const char **files;
+    char **arguments;
+    int i, count = 1, literal = 0, background = 0;
     int parsed, status = FVM_DESKTOP_EXIT_OK;
     if (!fvm_desktop_arguments_valid(argc, argv))
     {
@@ -1234,7 +1395,34 @@ int fvm_desktop_main(int argc, char **argv)
     files = (const char **)malloc((size_t)argc * sizeof(*files));
     if (!files)
         return FVM_DESKTOP_EXIT_PLAYBACK;
-    parsed = fvm_desktop_parse(argc, argv, files, &options, &error);
+    arguments = (char **)malloc((size_t)argc * sizeof(*arguments));
+    if (!arguments)
+    {
+        free(files);
+        return FVM_DESKTOP_EXIT_PLAYBACK;
+    }
+    arguments[0] = argv[0];
+    for (i = 1; i < argc; ++i)
+    {
+        if (!literal && !strcmp(argv[i], "--background-loads"))
+        {
+            if (background)
+            {
+                fprintf(stderr, "duplicate --background-loads\n");
+                free(arguments);
+                free(files);
+                return FVM_DESKTOP_EXIT_ARGUMENT;
+            }
+            background = 1;
+        }
+        else
+        {
+            if (!strcmp(argv[i], "--"))
+                literal = 1;
+            arguments[count++] = argv[i];
+        }
+    }
+    parsed = fvm_desktop_parse(count, arguments, files, &options, &error);
     if (parsed == FVM_DESKTOP_PARSE_HELP)
         fvm_desktop_help(argv[0]);
     else if (parsed == FVM_DESKTOP_PARSE_VERSION)
@@ -1246,10 +1434,12 @@ int fvm_desktop_main(int argc, char **argv)
     }
     else
     {
-        status = fvm_desktop_run(&options, &error);
+        status = background ? fvm_desktop_run_background(&options, &error)
+                            : fvm_desktop_run(&options, &error);
         if (status == FVM_DESKTOP_EXIT_ARGUMENT)
             fprintf(stderr, "%s\n", error);
     }
+    free(arguments);
     free(files);
     return status;
 }

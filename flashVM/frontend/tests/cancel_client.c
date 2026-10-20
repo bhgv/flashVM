@@ -1,4 +1,5 @@
 /* Controlled transport probe: cancel actual silent/slow TCP or TLS I/O without entering a VM. */
+#define SDL_MAIN_HANDLED
 #include "socket_http.h"
 #include <SDL.h>
 #include <stdio.h>
@@ -37,8 +38,7 @@ int main(int argc, char **argv)
     request.options.total_ms = request.options.connect_ms = 3000;
     if (argc > 3)
         request.options.ca_file = argv[3];
-    request.control.cancelled = cancelled;
-    request.control.userdata = 0;
+    request.control = control;
 #endif
     after_ms = strtoul(argv[2], 0, 10);
     started = SDL_GetTicks();

@@ -184,9 +184,9 @@ def main():
         ChildHandler.wrong = False
         with server(contexts['valid'], ChildHandler, child=True) as live:
             root = 'https://localhost:%d/app/start.swf' % live.server_port
-            for mode in ('--interpreter', '--jit'):
+            for mode, background in ((m, b) for m in ('--interpreter', '--jit') for b in (False, True)):
                 ChildHandler.paths.clear()
-                result = subprocess.run([player, mode, '--frames', '3', '--fps', '1000', '--mute',
+                result = subprocess.run([player] + (['--background-loads'] if background else []) + [mode, '--frames', '3', '--fps', '1000', '--mute',
                                          '--loads', '8', root], env=env, capture_output=True, timeout=10)
                 if mode == '--jit' and b'requested JIT backend unavailable' in result.stderr:
                     continue

@@ -51,8 +51,8 @@ The loader contract is in [source.h](../frontend/common/source.h).
 
 | API | Contract |
 | --- | --- |
-| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34) | Nonnull caller-owned [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
-| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L41) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
+| [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L35) | Nonnull caller-owned [FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) receives 10000ms connect and 30000ms total. Returns 1; null returns 0. No I/O/allocation or retained pointers. |
+| [fvm_desktop_socket_fetch](../frontend/common/socket_http.h#L42) | reference, write, resolved and nonzero capacity are required. base is optional for absolute URLs. userdata is null for defaults or a borrowed options pointer. Synchronously sends GET and streams decoded binary chunks through write(bytes,size,write_userdata). Resolved receives canonical provenance plus NUL only on success. |
 
 Options require 0 < connect_ms <= total_ms <= 120000. DNS is synchronous
 getaddrinfo: elapsed resolver time counts, but the resolver call itself cannot
@@ -148,8 +148,8 @@ find-root/sysroot for a foreign SDK. Never mix host OpenSSL with a cross target.
 With TLS OFF no OpenSSL headers/libraries are required; HTTPS returns
 [FVM_UNSUPPORTED](../include/flashvm/flashvm.h#L46) before DNS/TCP. TLS ON without SOCKET_HTTP is a configuration error.
 
-[FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L26) now includes ca_file, borrowed until fetch returns. Always
-initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L34), which sets ca_file
+[FVM_SocketHTTPOptions](../frontend/common/socket_http.h#L27) now includes ca_file, borrowed until fetch returns. Always
+initialize the structure with [fvm_desktop_socket_options_init](../frontend/common/socket_http.h#L35), which sets ca_file
 to null. Null selects OpenSSL default trust paths, including its standard
 SSL_CERT_FILE/SSL_CERT_DIR environment configuration. A nonnull filename selects
 only that PEM CA bundle for this request; missing/empty/unreadable/invalid trust
@@ -194,8 +194,8 @@ It describes the compiled default, not a custom loader.fetch or current Internet
 certificate/device readiness. A separate function avoids changing the existing
 FVM_DesktopBuildInfo layout. Use the native host thread; with older libcurl,
 coordinate concurrent initialization/queries according to that SDK's thread rules.
-The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L45) and
-[fvm_desktop_http_capabilities](../frontend/common/http.h#L23) report their own linked provider. The libcurl query
+The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L46) and
+[fvm_desktop_http_capabilities](../frontend/common/http.h#L25) report their own linked provider. The libcurl query
 checks the actual linked protocol list/SSL feature rather than assuming HTTPS.
 
 `--version` prints network_provider=none/socket/curl, http=yes/no, https=yes/no and

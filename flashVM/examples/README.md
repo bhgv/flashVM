@@ -152,6 +152,7 @@
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
@@ -1699,6 +1700,15 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 CLI проверяет 120 кадров каждого в interpreter/JIT.
 [Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
 
+<a id="example-player-background_loading"></a>
+### background_loading
+
+C89-хост с явным worker-safe провайдером: байты загружаются на joined worker,
+основной поток обрабатывает native окно; VM остаётся на безопасной границе.
+[README EN](player/background_loading/README.md) / [RU](player/background_loading/README.ru.md),
+[исходник](player/background_loading/main.c), [контракт](../doc/BACKGROUND_TRANSFER.ru.md).
+Timeline при fetch ждёт; это не полная async Flash loading semantics.
+
 <a id="example-player-configured_host"></a>
 ### configured_host
 
@@ -1792,6 +1802,7 @@ Source line links describe the current checkout, including in historical notes.
 - [alsa_output — multimedia/alsa_output](#example-multimedia-alsa_output)
 - [animation_audio — player/animation_audio](#example-player-animation_audio)
 - [audio_channels — multimedia/audio_channels](#example-multimedia-audio_channels)
+- [background_loading — player/background_loading](#example-player-background_loading)
 - [backtrace — debugger/backtrace](#example-debugger-backtrace)
 - [bitmap_fill — embedding/bitmap_fill](#example-embedding-bitmap_fill)
 - [broadcaster — embedding/broadcaster](#example-embedding-broadcaster)
