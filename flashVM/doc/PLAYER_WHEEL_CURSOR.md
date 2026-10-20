@@ -34,8 +34,9 @@ already use logical coordinates, like other explicit synthetic input.
 The player now queries the existing VM cursor request after input/timers and after
 frame execution, before rendering or waiting. Mouse.hide/show therefore reach
 SDL_ShowCursor without requiring a later timeline tick. Repeated unchanged
-requests do not repeat the native operation. Background calls defer application
-until foreground. This SDL host owns its SDL session and cursor policy; the SDL
+requests do not repeat the native operation. Since v0.660 leave, focus loss and
+background restore host visibility; requests apply again only inside the foreground
+window. [Ownership policy](PLAYER_EVENT_FAIRNESS.md). This SDL host owns its SDL session and cursor policy; the SDL
 visibility switch is global to that session, not an independently scoped cursor
 for every possible foreign SDL window.
 

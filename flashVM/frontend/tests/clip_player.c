@@ -54,6 +54,11 @@ static int inject_wheel(FVM_DesktopWindow *view)
 /* Feed SDL's real queue at a visible-scene boundary, then use the real drain/wait implementation. */
 int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout)
 {
+    if (view && !view->ready && SDL_getenv("FLASHVM_TEST_WHEEL"))
+    {
+        SDL_Event event; memset(&event,0,sizeof(event)); event.type=SDL_WINDOWEVENT;
+        event.window.event=SDL_WINDOWEVENT_ENTER; handle_event(view,&event);
+    }
     if (view && view->ready && !injected)
     {
         SDL_Event event;

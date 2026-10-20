@@ -28,9 +28,10 @@ struct FVM_DesktopWindow
     int touch_active; /* One selected primary contact; additional fingers do not replace it. */
     SDL_TouchID touch_device;  /* Borrowed numeric identity of the selected touch device. */
     SDL_FingerID touch_finger; /* Borrowed numeric identity of the selected contact. */
-    int cursor_initial;        /* Saved SDL-global visibility restored before this host closes. */
-    int cursor_applied;        /* Last issued visibility, avoiding redundant SDK calls. */
-    int background; /* Suspend timeline/audio while Android activity is not foreground. */
+    int cursor_inside;  /* Apply movie visibility only while the pointer belongs to this window. */
+    int cursor_initial; /* Saved SDL-global visibility restored before this host closes. */
+    int cursor_applied; /* Last issued visibility, avoiding redundant SDK calls. */
+    int background;     /* Suspend timeline/audio while Android activity is not foreground. */
     FVM_DesktopInput
         input; /* Own host state; SDL logical rendering also maps mouse-event positions. */
     FVM_DesktopEvent
@@ -100,6 +101,7 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *title, unsigned int width
         fvm_desktop_window_close(view);
         return 0;
     }
+    view->cursor_inside = SDL_GetMouseFocus() == view->window;
     return view;
 }
 
@@ -314,6 +316,17 @@ static int belongs_to_window(FVM_DesktopWindow *view, const SDL_Event *event)
     return !id || id == SDL_GetWindowID(view->window);
 }
 
+/* Return the SDL-global cursor to its host baseline outside movie ownership. */
+static void release_cursor(FVM_DesktopWindow *view)
+{
+    if (view->cursor_applied == view->cursor_initial)
+        return;
+    if (SDL_ShowCursor(view->cursor_initial) < 0)
+        view->event_error = FVM_ERROR;
+    else
+        view->cursor_applied = view->cursor_initial;
+}
+
 /* Handle OS events without advancing the VM. Expose/resize can repaint during a slow frame. */
 static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 {
@@ -322,6 +335,19 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     if (event->type == SDL_QUIT ||
         (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE))
         return 0;
+    if (event->type == SDL_WINDOWEVENT)
+    {
+        if (event->window.event == SDL_WINDOWEVENT_ENTER)
+            view->cursor_inside = 1;
+        if (event->window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+            view->cursor_inside = SDL_GetMouseFocus() == view->window;
+        if (event->window.event == SDL_WINDOWEVENT_LEAVE ||
+            event->window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+        {
+            view->cursor_inside = 0;
+            release_cursor(view);
+        }
+    }
     if (event->type == SDL_RENDER_DEVICE_RESET)
     {
         view->texture_invalid = 1;
@@ -335,10 +361,15 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         return 1;
     }
     if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND)
+    {
         view->background = 1;
+        view->cursor_inside = 0;
+        release_cursor(view);
+    }
     if (event->type == SDL_APP_DIDENTERFOREGROUND)
     {
         view->background = 0;
+        view->cursor_inside = SDL_GetMouseFocus() == view->window;
         repaint_texture(view);
     }
     if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND ||
@@ -573,8 +604,12 @@ FVM_Result fvm_desktop_window_sync_cursor(FVM_DesktopWindow *view, FVM_Context *
     if (!view)
         return FVM_INVALID_ARGUMENT;
     result = fvm_input_get_cursor_visible(context, &visible);
-    if (result != FVM_OK || view->background || visible == view->cursor_applied)
+    if (result != FVM_OK)
         return result;
+    if (view->background || !view->cursor_inside)
+        visible = view->cursor_initial;
+    if (visible == view->cursor_applied)
+        return FVM_OK;
     if (SDL_ShowCursor(visible ? SDL_ENABLE : SDL_DISABLE) < 0)
     {
         view->event_error = FVM_ERROR;

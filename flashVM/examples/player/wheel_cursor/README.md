@@ -44,6 +44,7 @@ The generator owns its bytes and uses only Python's standard library. It emits a
 small deterministic test movie directly; it is not an AS compiler and does not
 change the FIR → SWO → linker → SWF architecture. The .as file explains semantics;
 the current numeric FIR source profile cannot compile this object/listener script.
-If focus is lost before release, no synthetic release callback is invented; close
-or a subsequent press/release restores the native cursor. Cross-built executables
+Leaving the window or losing focus restores the host cursor immediately. No
+synthetic release callback is invented: the VM hide request remains until show,
+so entering again can hide it; a subsequent press/release requests show. Cross-built executables
 must be run on their own target, with the corresponding target SDL video backend.

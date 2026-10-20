@@ -26,3 +26,14 @@ with matching touch/finger IDs: it cannot terminate our contact. Zero IDs remain
 explicit synthetic/unassigned input; older SDKs retain their device/finger-only
 routing. Primary-contact selection and focus/background cancellation are unchanged.
 The lifecycle fixture checks foreign start/release suppression and owned release.
+
+## Cursor ownership boundary (v0.660)
+
+The movie's cursor request is now applied only while the pointer belongs to its
+foreground window. Leave/focus loss/background immediately restore the visibility
+captured when the host opened; they do not change the VM's requested value.
+Re-entering allows the next normal owner-thread sync to apply that request again.
+Foreground/focus regain refresh ownership from SDL_GetMouseFocus. This avoids
+leaving the SDL-global cursor hidden over another window after Mouse.hide.
+A missing physical cursor is still not an error. The cursor fixture checks real
+SDL visibility across enter/leave/background and unchanged context requests.
