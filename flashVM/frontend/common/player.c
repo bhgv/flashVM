@@ -22,6 +22,7 @@
 #include "flashvm/swf.h"
 #include "flashvm/swf_stream_sound.h"
 #include "options.h"
+#include "request_constants.h"
 #include "window.h"
 #ifdef FVM_DESKTOP_HTTP
 #include "http.h"
@@ -464,7 +465,8 @@ typedef struct FVM_DesktopRequest
     char *url;                       /* Owned reference copied from the VM's counted string. */
     char *base;                      /* Owned origin provenance, independent of selected target. */
     FVM_Object *target;              /* [GC:] Explicitly pinned while queued. */
-    unsigned int flags;              /* LOAD_TARGET or LOAD_VARIABLES with optional GET. */
+    unsigned int flags;              /* Load family or private deferred unload operation. */
+    int discard;                     /* Staged cancellation decision; publication happens later. */
     struct FVM_DesktopRequest *next; /* Native FIFO link. */
 } FVM_DesktopRequest;
 /* Per-run transport and request queue; no mutable process-wide registration. */
@@ -473,9 +475,10 @@ typedef struct FVM_DesktopNavigation
     char *pending;                   /* Owned next root URL after the old VM is released. */
     char *pending_base;              /* Owned provenance for the next root request. */
     FVM_DesktopRequest *head, *tail; /* Owned FIFO, drained only outside VM callbacks. */
-    size_t count;                    /* Bound queued requests by the remaining load budget. */
-    unsigned long transfer_id;       /* Native observation ordinal for the active request. */
-    FVM_DesktopTransfer *transfer;   /* Owned in-flight native-byte job, joined before GC unpin. */
+    size_t count;                    /* Bound queued fetches by the remaining load budget. */
+    size_t unload_count;           /* Independently bound unloads even when fetch budget is zero. */
+    unsigned long transfer_id;     /* Native observation ordinal for the active request. */
+    FVM_DesktopTransfer *transfer; /* Owned in-flight native-byte job, joined before GC unpin. */
     FVM_DesktopRequest *active_request; /* [GC:] Keeps its target pinned across VM turns. */
     FVM_Object *root;                   /* Borrowed active root, pinned by play_bytes. */
     const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
@@ -526,7 +529,186 @@ static void discard_requests(FVM_Context *context, FVM_DesktopNavigation *naviga
     {
         navigation->tail = 0;
         navigation->count = 0;
+        navigation->unload_count = 0;
     }
+}
+
+/* [GC:] Join an abandoned job before releasing the target pin or copied request text. */
+static void abandon_active(FVM_Context *context, FVM_DesktopNavigation *navigation)
+{
+    FVM_DesktopRequest *request = navigation->active_request;
+    FVM_DesktopTransferView view;
+    if (!request)
+        return;
+    memset(&view, 0, sizeof(view));
+    fvm_desktop_transfer_poll(navigation->transfer, &view);
+    background_terminal(navigation->background, navigation->transfer_id,
+                        request->flags & FVM_AVM1_URL_LOAD_VARIABLES ? FVM_DESKTOP_LOAD_VARIABLES
+                                                                     : FVM_DESKTOP_LOAD_CHILD,
+                        request->url, request->base, &view, FVM_ERROR, 1);
+    fvm_desktop_transfer_release(navigation->transfer);
+    navigation->transfer = 0;
+    navigation->active_request = 0;
+    fvm_gc_unpin(context, request->target);
+    free(request->url);
+    free(request->base);
+    free(request);
+}
+
+/* [GC:] Remove one linked request after its native effects have committed or been discarded. */
+static void release_request(FVM_Context *context, FVM_DesktopRequest *request)
+{
+    fvm_gc_unpin(context, request->target);
+    free(request->url);
+    free(request->base);
+    free(request);
+}
+
+/* Resolve the global target argument or method receiver while still in the calling AVM1 scope. */
+static FVM_Result unload_builtin(FVM_Context *context, FVM_Object *receiver, unsigned int argc,
+                                 const FVM_Value *args, FVM_Value *result, void *userdata)
+{
+    FVM_DesktopNavigation *navigation = (FVM_DesktopNavigation *)userdata;
+    FVM_AVM1TargetInfo info;
+    FVM_Value target;
+    FVM_DesktopRequest *request;
+    FVM_Result status;
+    int attached = 0;
+    if (result)
+        fvm_value_undefined(result);
+    if (!navigation || argc > FVM_DESKTOP_UNLOAD_MAX_ARGS || (argc && !args))
+        return FVM_INVALID_ARGUMENT;
+    fvm_value_undefined(&target);
+    if (!argc)
+    {
+        target.type = FVM_VALUE_OBJECT;
+        target.object = receiver;
+    }
+    else if (args[0].type == FVM_VALUE_OBJECT)
+        target = args[0];
+    else if (args[0].type == FVM_VALUE_STRING)
+    {
+        info.struct_size = sizeof(info);
+        status = fvm_avm1_get_target_info(context, &info);
+        if (status != FVM_OK || !info.active || !info.base_clip)
+            return FVM_INVALID_ARGUMENT;
+        if (fvm_value_string_size(args) == strlen("_level0") &&
+            !memcmp(args[0].string, "_level0", strlen("_level0")))
+        {
+            target.type = FVM_VALUE_OBJECT;
+            target.object = navigation->root;
+        }
+        else
+        {
+            status =
+                fvm_exec_scope_target(context, 0, info.target_clip, info.base_clip, args, &target);
+            if (status != FVM_OK)
+                return status;
+        }
+    }
+    else
+        return FVM_INVALID_ARGUMENT;
+    if (target.type != FVM_VALUE_OBJECT || !target.object)
+        return FVM_NOT_FOUND;
+    /* Root audio/window/source teardown still requires a distinct owner lifecycle. */
+    if (target.object == navigation->root)
+        return FVM_UNSUPPORTED;
+    status = fvm_movieclip_attached_to(context, target.object, navigation->root, &attached);
+    if (status != FVM_OK || !attached)
+        return status != FVM_OK ? status : FVM_NOT_FOUND;
+    if (navigation->unload_count >= FVM_DESKTOP_MAX_LOADS)
+        return FVM_UNSUPPORTED;
+    request = (FVM_DesktopRequest *)calloc(1, sizeof(*request));
+    if (!request)
+        return FVM_OUT_OF_MEMORY;
+    request->target = target.object;
+    request->flags = FVM_DESKTOP_REQUEST_UNLOAD;
+    status = fvm_gc_pin(context, request->target);
+    if (status != FVM_OK)
+    {
+        free(request);
+        return status;
+    }
+    if (navigation->tail)
+        navigation->tail->next = request;
+    else
+        navigation->head = request;
+    navigation->tail = request;
+    ++navigation->unload_count;
+    return FVM_OK;
+}
+
+/* Process urgent unloads in script order before polling an in-flight transfer.
+ * Only requests preceding the unload are cancelled; later reloads of the instance survive. */
+static FVM_Result service_unloads(FVM_Context *context, FVM_DesktopNavigation *navigation)
+{
+    while (navigation->unload_count)
+    {
+        FVM_DesktopRequest *unload = navigation->head, *request, *previous;
+        FVM_Result status;
+        int attached = 0, cancel_active = 0;
+        while (unload && unload->flags != FVM_DESKTOP_REQUEST_UNLOAD)
+            unload = unload->next;
+        if (!unload)
+            return FVM_ERROR;
+        status = fvm_movieclip_attached_to(context, unload->target, navigation->root, &attached);
+        if (status != FVM_OK)
+            return status;
+        if (attached && navigation->active_request)
+        {
+            status = fvm_movieclip_attached_to(context, navigation->active_request->target,
+                                               unload->target, &cancel_active);
+            if (status != FVM_OK)
+                return status;
+        }
+        /* Stage all subtree decisions before the atomic clear detaches native parent edges. */
+        for (request = navigation->head; request != unload; request = request->next)
+        {
+            request->discard = 0;
+            if (attached)
+            {
+                status = fvm_movieclip_attached_to(context, request->target, unload->target,
+                                                   &request->discard);
+                if (status != FVM_OK)
+                    return status;
+            }
+        }
+        if (attached)
+        {
+            status = fvm_movieclip_unload(context, unload->target);
+            if (status != FVM_OK)
+                return status; /* No cancellation or old-content mutation on allocation failure. */
+        }
+        if (cancel_active)
+            abandon_active(context, navigation);
+        previous = 0;
+        request = navigation->head;
+        while (request)
+        {
+            FVM_DesktopRequest *next = request->next;
+            int done = request == unload;
+            if (done || request->discard)
+            {
+                if (previous)
+                    previous->next = next;
+                else
+                    navigation->head = next;
+                if (navigation->tail == request)
+                    navigation->tail = previous;
+                if (done)
+                    --navigation->unload_count;
+                else
+                    --navigation->count;
+                release_request(context, request);
+            }
+            else
+                previous = request;
+            if (done)
+                break;
+            request = next;
+        }
+    }
+    return FVM_OK;
 }
 
 /* Copy counted source text without accepting embedded NUL or overlong locations. */
@@ -686,7 +868,7 @@ static FVM_Result load_builtin(FVM_Context *context, FVM_Object *receiver, unsig
 }
 
 /* Install loader facades in the optional host only; the standalone VM remains transport-neutral. */
-static FVM_Result install_load_functions(FVM_Context *context)
+static FVM_Result install_load_functions(FVM_Context *context, FVM_DesktopNavigation *navigation)
 {
     FVM_Value constructor, prototype;
     FVM_Result status = fvm_register_function_rooted_bytes(
@@ -709,6 +891,12 @@ static FVM_Result install_load_functions(FVM_Context *context)
     if (status == FVM_OK)
         status = fvm_object_define_method_rooted(context, prototype.object, "loadVariables",
                                                  load_builtin, (void *)&load_variables_method, 0);
+    if (status == FVM_OK)
+        status = fvm_register_function_rooted_bytes(context, "unloadMovie", strlen("unloadMovie"),
+                                                    unload_builtin, navigation, 0);
+    if (status == FVM_OK)
+        status = fvm_object_define_method_rooted(context, prototype.object, "unloadMovie",
+                                                 unload_builtin, navigation, 0);
     return status;
 }
 
@@ -839,7 +1027,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     host_value.object = host_input;
     if (!checked(fvm_set_global(context, "HostInput", &host_value), "HostInput binding", path))
         goto cleanup;
-    if (navigation && !checked(install_load_functions(context), "loader functions", path))
+    if (navigation &&
+        !checked(install_load_functions(context, navigation), "loader functions", path))
         goto cleanup;
     mode = options->mode;
     if (mode == FVM_DESKTOP_MODE_AUTO)
@@ -1197,6 +1386,9 @@ static int local_location(const char *reference, const char *base, char *out)
 /* Drain bounded queued requests on the VM owner thread after script/native callbacks return. */
 static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *navigation)
 {
+    FVM_Result unloaded = service_unloads(context, navigation);
+    if (unloaded != FVM_OK)
+        return unloaded;
     /* [GC:] The active request retains its explicit target root while the VM keeps running. */
     if (navigation->active_request)
     {

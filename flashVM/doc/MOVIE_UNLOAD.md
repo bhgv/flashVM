@@ -42,7 +42,8 @@ borrowed objects through the call. This is a snapshot, not a retained subscripti
 This C operation is a foundation for host-managed unloading. It does not install
 ActionScript `unloadMovie`, cancel network requests, dispatch `onUnload`, stop an
 independently owned audio device or implement the full Flash loader lifecycle.
-The desktop player still owns outstanding transfers and their pinned targets.
+Since v0.692 the desktop player also installs the bounded script interface below.
+Other embeddings still own outstanding transfers and their pinned targets.
 An embedding must coordinate these separately before accepting subsequent delivery;
 calling this API alone does not prevent a later request from replacing the clip.
 No public host options or callback structure layout changes.
@@ -64,6 +65,32 @@ ctest --test-dir build -R 'movieclip_(loading|unload)|examples_embedding_moviecl
 The example uses only the public C API and needs no SDL, network or SWF compiler.
 Use the normal [native/cross-build guide](DESKTOP_FRONTEND.md) for toolchain setup;
 foreign linking is not evidence of execution on that processor or operating system.
+## Desktop script interface since v0.692
+
+The optional player accepts `unloadMovie("child")`, `unloadMovie(child)` and
+`child.unloadMovie()`. String targets resolve in the calling AVM1 scope; object
+arguments retain the exact native identity. Only attached child instances are
+supported. Root/_level0 unloading returns UNSUPPORTED: its audio, source and window
+lifecycle is not implemented by this child operation. No onUnload event is generated.
+
+The script callback pins and queues the operation. The next owner safe point
+clears contents before it polls an active transfer. An earlier active child/form
+request targeting that clip or its physical descendants is cancelled and joined
+before its target pin is released. Earlier queued requests in that subtree are
+dropped without I/O. Requests to unrelated instances retain FIFO order. Requests
+queued after the unload may reload the retained instance. No worker calls the VM.
+
+Unloads have a separate queue bound of 1024 and do not consume fetch budget;
+`--loads 1` still permits local unloading. All subtree decisions and core content
+allocations precede cancellation; a failed clear does not commit those cancellations.
+Normal close/error cleanup releases queued unload pins together with fetch pins.
+The C host interface and CLI select the same player implementation. This remains
+safe-point deferral, not synchronous Flash timing or complete loader event support.
+
+`unload_loading.py` executes real local and HTTP SWFs in interpreter/JIT, checks
+string/object/method forms, retained properties and identity, descendant deletion,
+active/queued cancellation, unrelated delivery, later reload and a wrong-reply
+negative control. Network-free builds still execute its local cases.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

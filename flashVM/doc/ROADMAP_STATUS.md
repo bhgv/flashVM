@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.691
+# FlashVM stage status / Состояние стадий — v0.692
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.692 adds deferred child unloadMovie in the player, before active-job polling.
+Earlier subtree requests are cancelled/joined or dropped; later reloads and unrelated
+FIFO requests survive. Local forms work with zero remaining fetches. Actual HTTP
+and local SWFs pass interpreter/JIT including negative control. Root unload and
+full unload events remain unsupported; all nine stages remain open.
 
 v0.691 adds atomic C API content clearing and native ancestry queries, retaining
 instance identity, placement, handlers and source bases. Rendering, GC and

@@ -794,3 +794,16 @@ if(FVM_PLAYER_HOST_SHARED AND FVM_BUILD_TESTS AND UNIX AND NOT APPLE AND NOT CMA
       "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
   endforeach()
 endif()
+
+# Script unloading is transport-independent; the fixture additionally probes an available worker.
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_unload_loading_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/unload_loading.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_unload_loading_${mode} PROPERTIES TIMEOUT 30 SKIP_RETURN_CODE 77)
+    if(FVM_PLAYER_HOST_SHARED AND UNIX AND NOT APPLE)
+      set_property(TEST flashvm_unload_loading_${mode} APPEND PROPERTY ENVIRONMENT
+        "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+    endif()
+  endforeach()
+endif()
