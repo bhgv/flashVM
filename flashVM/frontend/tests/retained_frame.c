@@ -2,15 +2,23 @@
 #include <SDL.h>
 static int fail_create;
 static unsigned creates;
+static int fail_draw;
+static int test_copy(SDL_Renderer *r, SDL_Texture *t, const SDL_Rect *a, const SDL_Rect *b)
+{
+    if (fail_draw) { SDL_SetError("injected repaint failure"); return -1; }
+    return SDL_RenderCopy(r, t, a, b);
+}
 static SDL_Texture *test_create(SDL_Renderer *r, Uint32 f, int a, int w, int h)
 {
     ++creates;
     if (fail_create) { SDL_SetError("injected texture allocation failure"); return NULL; }
     return SDL_CreateTexture(r, f, a, w, h);
 }
+#define SDL_RenderCopy test_copy
 #define SDL_CreateTexture test_create
 #include "../common/sdl_window.c"
 #undef SDL_CreateTexture
+#undef SDL_RenderCopy
 #include <assert.h>
 int main(void)
 {
@@ -23,6 +31,13 @@ int main(void)
     assert(SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software"));
     view = fvm_desktop_window_open("retained-frame", 2, 2);
     assert(view);
+    {
+        SDL_Event event;
+        memset(&event, 0, sizeof(event)); event.type = SDL_RENDER_DEVICE_RESET;
+        assert(handle_event(view, &event));
+        assert(!view->ready && !view->last_frame && !view->texture_invalid);
+        assert(fvm_desktop_window_status(view) == FVM_OK);
+    }
     memset(&surface, 0, sizeof(surface));
     surface.pixels = source; surface.width = 2; surface.height = 2; surface.stride = 12;
     assert(fvm_desktop_window_present(view, &surface, sizeof(source)));
@@ -83,6 +98,18 @@ int main(void)
         fail_create = 0;
         assert(handle_event(view, &event));
         assert(fvm_desktop_window_status(view) == FVM_ERROR);
+    }
+    fvm_desktop_window_close(view);
+    view = fvm_desktop_window_open("repaint-error", 2, 2); assert(view);
+    assert(fvm_desktop_window_present(view, &surface, sizeof(source)));
+    {
+        SDL_Event event;
+        memset(&event, 0, sizeof(event)); event.type = SDL_WINDOWEVENT;
+        event.window.event = SDL_WINDOWEVENT_EXPOSED;
+        fail_draw = 1;
+        assert(handle_event(view, &event));
+        assert(fvm_desktop_window_status(view) == FVM_ERROR);
+        fail_draw = 0;
     }
     fvm_desktop_window_close(view);
     return 0;

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.650
+# FlashVM stage status / Состояние стадий — v0.651
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,17 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.651 player lifecycle recovery / Восстановление проигрывателя
+
+The optional SDL player owns the last packed frame, restores lost device textures,
+defers background recovery and redraws on foreground without an extra VM tick.
+Suspended transitions and foreign-window key/mouse/window events are discarded;
+repaint failures propagate separately from close. The final-frame audio hold now
+honors background pause. [Contract and checks EN](PLAYER_RECOVERY.md) /
+[RU](PLAYER_RECOVERY.ru.md). Native Linux dummy-video and protocol checks do not
+certify a physical GPU, audible device, Activity or foreign native runtime.
+All nine stages remain open. Все девять стадий остаются открытыми.
 
 ## v0.646 cross SDK fixes and readable tools / Cross SDK и читаемые исходники
 

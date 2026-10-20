@@ -406,7 +406,13 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     while (!*quit && fvm_desktop_now() < next)
     {
         int wait = (int)(next - fvm_desktop_now());
-        if (!checked(fvm_desktop_audio_tick(&audio), "tail PCM queue", path))
+        if (!fvm_desktop_window_active(window))
+        {
+            if (audio.output &&
+                !checked(fvm_desktop_audio_pause(&audio, 1), "tail background audio pause", path))
+                goto cleanup;
+        }
+        else if (!checked(fvm_desktop_audio_tick(&audio), "tail PCM queue", path))
             goto cleanup;
         if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
             wait = FVM_DESKTOP_AUDIO_WAIT;

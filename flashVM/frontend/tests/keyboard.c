@@ -64,6 +64,10 @@ int main(void)
     assert(view.input.keyboard.struct_size == sizeof(view.input.keyboard));
     event.type = SDL_APP_WILLENTERBACKGROUND;
     assert(handle_event(&view, &event) && view.background);
+    key(&view, SDL_KEYDOWN, SDLK_LEFT, 0);
+    assert(!view.event_count && !view.input.keyboard.down[FVM_KEY_LEFT]);
+    event.type = SDL_APP_DIDENTERFOREGROUND;
+    assert(handle_event(&view, &event) && !view.background);
     assert(fvm_config_init(&config) == FVM_OK && fvm_runtime_create(&config, &runtime) == FVM_OK);
     assert(fvm_context_create(runtime, &context) == FVM_OK);
     assert(fvm_standard_install(context) == FVM_OK && fvm_standard_keyboard_install(context) == FVM_OK);
