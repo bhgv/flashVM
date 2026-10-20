@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.675
+# FlashVM stage status / Состояние стадий — v0.676
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -41,6 +41,14 @@ Child-clip/progressive loading and full loadMovie semantics remain open.
 v0.675 adds optional HTTP(S), CLI root-load budgets and static/shared resource modules.
 Full child-clip loading, asynchronous/progressive transport and actual foreign-platform
 acceptance remain open.
+
+v0.676 adds same-context child replacement, form variables/onData, per-movie origins,
+executable-base memory loading and a pinned safe-point FIFO. [Contracts/tests EN](PLAYER_SOURCES.md) / [RU](PLAYER_SOURCES.ru.md).
+Validation: 75 selected native tests and 8 shared-host tests passed, with subsequent
+focused checks after source-origin changes. Static cross-builds cover Linux ARM64,
+Linux RISC-V64 and Windows x86_64; Windows DLL exports and C/C++98 consumers link.
+Foreign executables were not run. Full historical loading and actual foreign runtime
+acceptance remain open; none of the nine stages is declared complete.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

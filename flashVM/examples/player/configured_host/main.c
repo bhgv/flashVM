@@ -1,7 +1,5 @@
 /* Direct structured playback tutorial; see README.md and README.ru.md for the full contract. */
 #include "../../../frontend/common/player.h" /* C89 host boundary, options and scalar statuses. */
-#define SDL_MAIN_HANDLED /* This host supplies its own portable console entrypoint. */
-#include <SDL.h> /* This standalone application owns final process-wide SDL shutdown. */
 #include <stdio.h> /* The embedding host selects where to report its static error text. */
 #define EXAMPLE_CONFIGURED_FRAMES 2UL /* Two timeline ticks keep automated runs bounded. */
 #define EXAMPLE_CONFIGURED_FPS 1000.0 /* Fast deterministic scheduling, within the player limit. */
@@ -29,7 +27,7 @@ int main(int argc, char **argv) /* Supply exactly one SWF path, without player C
     options.frames = EXAMPLE_CONFIGURED_FRAMES; /* Stop without requiring user input. */
     options.fps = EXAMPLE_CONFIGURED_FPS; /* Leave the default percentage unchanged. */
     result = fvm_desktop_run(&options, &error); /* Validate all fields, load, play and release. */
-    SDL_Quit(); /* End this standalone host session after all player-owned views are gone. */
+    fvm_desktop_shutdown(); /* End the matching library session after all player resources. */
     if (error) /* The runner returns borrowed static text only on failure. */
     { /* Select the diagnostic sink in application code. */
         fprintf(stderr, "%s\n", error); /* Never free this message. */

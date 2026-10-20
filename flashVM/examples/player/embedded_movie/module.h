@@ -15,6 +15,8 @@ extern "C" { /* Begin C linkage. */
 #endif /* End language selection. */
 /* Call on the native UI thread; return the player status after two muted ticks. */
 EXAMPLE_EMBEDDED_API int embedded_movie_play(void); /* Synchronous, no retained caller state. */
+/* Finish the matching library SDL session only when all subsystem owners are done. */
+EXAMPLE_EMBEDDED_API int embedded_movie_shutdown(void); /* Zero on success; active owners preserved. */
 #ifdef __cplusplus /* Close only the C++ linkage block. */
 } /* End C linkage. */
 #endif /* End language selection. */

@@ -18,7 +18,7 @@ video checks script/runtime behavior, not a physical cursor or complete Flash AP
 
 Root streaming sound is validated before window/device setup. Unmuted movies
 with root streams report unsupported playback instead of silently omitting audio.
-With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L90) API and
+With --mute the player uses the additive [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L92) API and
 [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L82). It validates and omits only root stream controls
 from scene playback. The original [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L43) remains strict.
 
@@ -66,7 +66,7 @@ and the speed suffix. It is a deterministic dependency/grammar test, not a fresh
 runtime validation of an installed foreign locale or every floating-point target.
 ## C interface details and tutorial (v0.666)
 
-[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L90) receives the owning context, borrowed complete FWS/CWS
+[fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L92) receives the owning context, borrowed complete FWS/CWS
 bytes and exact size, a borrowed clip name, flags, and mandatory object-output
 pointer. Install the standard object model first. The byte/name inputs need only
 outlive the call; imported storage is owned by the context. The returned object
@@ -114,7 +114,7 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:90](../include/flashvm/movieclip.h#L90) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:92](../include/flashvm/movieclip.h#L92) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |

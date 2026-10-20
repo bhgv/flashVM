@@ -32,9 +32,9 @@ metadata must not be reused across targets. No foreign runtime is implied.
 
 | API | Purpose and ownership |
 | --- | --- |
-| [fvm_desktop_options_init](../../../frontend/common/options.h#L45) | Initialize caller-owned [FVM_DesktopOptions](../../../frontend/common/options.h#L27), including 100-percent authored timing. Null returns zero; no resources are acquired |
-| [fvm_desktop_run](../../../frontend/common/player.h#L30) | Validate the complete playlist, then synchronously load/play/clean up. Borrow the immutable paths and array until return. Return 0, 1 or 2 as documented in the contract |
-| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L8) | Return a usage/configuration failure before starting playback |
+| [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Initialize caller-owned [FVM_DesktopOptions](../../../frontend/common/options.h#L61), including 100-percent authored timing. Null returns zero; no resources are acquired |
+| [fvm_desktop_run](../../../frontend/common/player.h#L31) | Validate the complete playlist, then synchronously load/play/clean up. Borrow the immutable paths and array until return. Return 0, 1 or 2 as documented in the contract |
+| [FVM_DESKTOP_EXIT_ARGUMENT](../../../frontend/common/player.h#L9) | Return a usage/configuration failure before starting playback |
 
 The program selects interpreter, mute, two ticks and explicit FPS, leaving the
 percentage at its required default. It links flashvm_player_host, the same static

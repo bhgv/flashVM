@@ -23,8 +23,8 @@ extern "C"
     /* Neutral SWF document metadata; strings are borrowed from the rooted clip graph. */
     typedef struct FVM_SWFDocumentInfo
     {
-        unsigned long struct_size; /* Exact structure size required by this API. */
-        int file_attributes_present; /* Distinguish absent attributes from explicit zero flags. */
+        unsigned long struct_size;     /* Exact structure size required by this API. */
+        int file_attributes_present;   /* Distinguish absent attributes from explicit zero flags. */
         unsigned long file_attributes; /* Supported flags are zero or HasMetadata (0x10). */
         FVM_Value metadata; /* Undefined if absent; otherwise counted context-owned UTF-8. */
     } FVM_SWFDocumentInfo;
@@ -53,16 +53,16 @@ extern "C"
     /* Owner-thread synchronous ticks, including onEnterFrame on stopped/single-frame clips.
        Optional handlers use receiver/defining-owner method lookup; missing/noncallable is ignored.
        All ticks, callback AVM1 and charged native traversal share the outer instruction/work limit
-       (zero disables the numeric limit, not cooperative worker cancellation). On error/OOM/exception
-       completed actions, playhead changes and callbacks remain committed; later work is skipped.
-       After parent delivery, capture child identities and sort ascending native depth under budget.
-       Later same-depth replacements/newborns wait for the next snapshot; depth changes do not reorder it.
-       Validate local snapshots before child callbacks; detached/moved children are skipped.
-       A malformed/aliased/foreign or oversized child table fails after any committed parent work.
-       No rendering or timer polling occurs. [GC:] The native barrier retains the traversed graph;
-       explicit collect returns INVALID_ARGUMENT and gc_step does no collection until return.
-       Null/foreign clips, lifecycle phases, sound
-       callback reentry and excessive tick counts return INVALID_ARGUMENT. Zero ticks does no work. */
+       (zero disables the numeric limit, not cooperative worker cancellation). On
+       error/OOM/exception completed actions, playhead changes and callbacks remain committed; later
+       work is skipped. After parent delivery, capture child identities and sort ascending native
+       depth under budget. Later same-depth replacements/newborns wait for the next snapshot; depth
+       changes do not reorder it. Validate local snapshots before child callbacks; detached/moved
+       children are skipped. A malformed/aliased/foreign or oversized child table fails after any
+       committed parent work. No rendering or timer polling occurs. [GC:] The native barrier retains
+       the traversed graph; explicit collect returns INVALID_ARGUMENT and gc_step does no collection
+       until return. Null/foreign clips, lifecycle phases, sound callback reentry and excessive tick
+       counts return INVALID_ARGUMENT. Zero ticks does no work. */
     FVM_API FVM_Result fvm_movieclip_advance(FVM_Context *, FVM_Object *, unsigned int ticks);
     /* Render owner-thread geometry into the caller-owned raster surface (no timeline tick).
        Children use ascending signed depth and a bounded local identity snapshot after parent
@@ -77,9 +77,11 @@ extern "C"
     /* Render through a finite host viewport without changing script-visible clip transforms.
        Viewport applies once to every world-space node, preserving root visibility/color. */
     FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
-                                                const FVM_Affine *viewport);
+                                                 const FVM_Affine *viewport);
     /* Explicit import policy; no other flag bits are accepted. */
-#define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS 1UL /* Validate and omit root streaming sound controls. */
+#define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS                                                           \
+    1UL /* Validate and omit root streaming sound controls.                                        \
+         */
     /* Import with optional root-stream muting; zero flags retain load_swf behavior.
      * Muting requires input to match the context's current fvm_load_memory source
      * after FWS/CWS decoding, so root stream validation uses the exact same bytes.
@@ -87,8 +89,37 @@ extern "C"
      * scene allocation; does not decode compressed sound or support sprite streams.
      * Event sounds retain their existing explicit host callback policy. Runs no actions.
      * On failure *out is null. Owner thread, outside GC/teardown. [GC:] Root returned clip. */
-    FVM_API FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *, const void *, size_t,
-                                                 const char *, unsigned long flags, FVM_Object **out);
+    FVM_API FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *, const void *, size_t, const char *,
+                                                 unsigned long flags, FVM_Object **out);
+/* Source/location and form bounds are independent of wire SWF identities. */
+#define FVM_MOVIE_SOURCE_MAX_BYTES 4096U /* Maximum retained source provenance bytes. */
+#define FVM_FORM_MAX_FIELDS 65536U       /* Bound decoded loadVariables assignments. */
+#define FVM_FORM_HEX_ALPHA 10            /* First hexadecimal letter digit. */
+#define FVM_FORM_HEX_RADIX 16            /* Percent-escape digit radix. */
+#define FVM_FORM_ESCAPE_BYTES 3U         /* Percent marker and exactly two hexadecimal digits. */
+    /* Store a copied counted nonempty source location on a same-context clip's private graph.
+     * Owner thread, outside GC/teardown. No script callback. Invalid input preserves prior source.
+     */
+    FVM_API FVM_Result fvm_movieclip_set_source(FVM_Context *, FVM_Object *, const char *, size_t);
+    /* Read nearest native ancestor source; NOT_FOUND/errors preserve required output.
+     * Returned string is borrowed managed storage: retain the clip across later GC. No callbacks.
+     */
+    FVM_API FVM_Result fvm_movieclip_get_source(FVM_Context *, FVM_Object *, FVM_Value *out);
+    /* Import a strict supported SWF into an existing clip without changing its identity/placement.
+     * Retain host/script own properties, remove old child bindings and detach old children.
+     * Runs no frame action. All allocation precedes publication; import/OOM errors preserve target.
+     * Store source provenance with the new content. Root streaming audio remains unsupported here.
+     * Owner thread outside active VM/native callbacks and GC/teardown; nested replacement
+     * is INVALID_ARGUMENT. The native barrier protects temporary graphs. */
+    FVM_API FVM_Result fvm_movieclip_replace_swf(FVM_Context *, FVM_Object *, const void *, size_t,
+                                                 const char *source, size_t source_size);
+    /* Decode bounded form bytes (percent escapes, plus=space, ampersand separators), then
+     * assign counted string properties in order through public setters. Duplicate keys: last wins.
+     * Empty keys ignored. Decode WTF-8/percent escapes before mutation; malformed input changes no
+     * properties. Invoke optional onData after assignments; setter/handler failures retain prior
+     * committed effects. Empty input succeeds. Owner thread; context/target must remain alive.
+     * Native collection barrier retains destination during callbacks; no transport occurs here. */
+    FVM_API FVM_Result fvm_object_load_variables(FVM_Context *, FVM_Object *, const void *, size_t);
 #ifdef __cplusplus
 }
 #endif

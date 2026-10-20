@@ -21,29 +21,35 @@ extern "C"
 {
 #endif
     /* Fill caller storage without allocating; reject a null output pointer. */
-    FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out);
+    FVM_DESKTOP_API FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out);
     /* Synchronous structured playback on the native UI/VM owner thread, without argv.
      * Validate every field/path before any startup; shallow-copy scalar configuration.
      * Paths/array remain borrowed and immutable until return. Optional error receives
      * a static message; playback diagnostics/traces still use the existing streams.
      * Returns EXIT_OK, EXIT_PLAYBACK or EXIT_ARGUMENT. No concurrent/reentrant runs.
      * Null/malformed input causes no file, SDL or VM initialization. */
-    int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error);
+    FVM_DESKTOP_API int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error);
     /* Play an exact borrowed binary buffer; no temporary file or strlen(data).
-     * Nonempty name labels diagnostics/window and supplies future source provenance.
+     * Nonempty name labels diagnostics/window; local relative loads default to the executable
+     * directory. An absolute path/HTTP(S) name explicitly supplies source provenance.
      * bytes/name remain accessible and immutable until synchronous return; never freed.
      * Size must be 1..FVM_SWF_DEFAULT_LIMIT. Playlist fields are ignored; scalar
      * options and UI/thread/error/return rules match run. Malformed SWF returns
      * EXIT_PLAYBACK before window creation; malformed descriptors return EXIT_ARGUMENT. */
-    int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes, size_t length,
-                               const char *name, const char **error);
+    FVM_DESKTOP_API int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes,
+                                               size_t length, const char *name, const char **error);
+    /* End this library's SDL session on its native owner thread after playback returns.
+     * OK when no subsystem references remain; ERROR leaves active host/player SDL untouched.
+     * Explicit only: may clear SDL hints/TLS, so call only when the application ends that session.
+     * Also works when a shared host contains a private static SDL copy. Idempotent when unused. */
+    FVM_DESKTOP_API FVM_Result fvm_desktop_shutdown(void);
     /* Return 0 on help/version/normal close, 1 on playback failure, 2 on invalid command line.
      * argc must be positive; argv must contain argc non-null pointers to NUL-terminated strings.
      * Invalid pointer entries/counts fail before SDL/file/VM initialization. The caller
      * owns accessible storage throughout the synchronous call; no argv[argc] is read.
      * Playback must run on the native UI/VM owner thread; concurrent/reentrant calls
      * are not supported. The metadata query above does not enter the VM or collector. */
-    int fvm_desktop_main(int argc, char **argv);
+    FVM_DESKTOP_API int fvm_desktop_main(int argc, char **argv);
 #ifdef __cplusplus
 }
 #endif

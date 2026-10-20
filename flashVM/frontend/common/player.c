@@ -1,10 +1,17 @@
 /* Host-owned desktop playback: load, root, advance, rasterize, present, release. */
+#if defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE 1 /* Expose native executable-path/realpath declarations in C89. */
+#endif
+#if defined(__ANDROID__) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L /* Expose readlink without depending on process CWD. */
+#endif
 #define SDL_MAIN_HANDLED
 #include "player.h"
 #include "desktop_build_version.h"
 #include "audio.h"
 #include "flashvm/gc.h"
 #include "flashvm/avm1.h"
+#include "flashvm/execution.h"
 #include "flashvm/broadcaster.h"
 #include "flashvm/input.h"
 #include "flashvm/keyboard.h"
@@ -25,6 +32,47 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(__ANDROID__)
+#include <unistd.h>
+#endif
+
+/* Return an SDL-allocated executable directory, never a Cocoa Resources directory or CWD. */
+static char *executable_base_path(void)
+{
+#if defined(__APPLE__)
+    char path[FVM_DESKTOP_MAX_LOCATION + 1], canonical[PATH_MAX];
+    uint32_t capacity = sizeof(path);
+    char *slash;
+    if (_NSGetExecutablePath(path, &capacity) != 0 || !realpath(path, canonical))
+        return 0;
+    slash = strrchr(canonical, '/');
+    if (!slash)
+        return 0;
+    slash[1] = 0;
+    return SDL_strdup(canonical);
+#elif defined(__ANDROID__)
+    char path[FVM_DESKTOP_MAX_LOCATION + 1];
+    ssize_t size = readlink("/proc/self/exe", path, FVM_DESKTOP_MAX_LOCATION);
+    char *slash;
+    if (size <= 0 || (size_t)size >= FVM_DESKTOP_MAX_LOCATION)
+        return 0;
+    path[(size_t)size] = 0;
+    slash = strrchr(path, '/');
+    if (!slash)
+        return 0;
+    slash[1] = 0;
+    return SDL_strdup(path);
+#else
+    return SDL_GetBasePath();
+#endif
+}
+#ifndef FVM_DESKTOP_EXECUTABLE_BASE
+#define FVM_DESKTOP_EXECUTABLE_BASE                                                                \
+    executable_base_path /* Isolate OS discovery in protocol tests. */
+#endif
+
 /* Query linked/build metadata without creating runtime state or probing native devices. */
 FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out)
 {
@@ -39,6 +87,15 @@ FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out)
 #else
     out->sdl_audio_compiled = 0;
 #endif
+    return FVM_OK;
+}
+
+/* An opaque C host can finish the matching SDL instance without linking another SDK copy. */
+FVM_Result fvm_desktop_shutdown(void)
+{
+    if (SDL_WasInit(0))
+        return FVM_ERROR;
+    SDL_Quit();
     return FVM_OK;
 }
 
@@ -60,7 +117,7 @@ static void print_build_info(void)
 }
 
 /* Read one bounded UTF-8 path with SDL's platform file adapter, including Unicode Windows paths. */
-static unsigned char *read_movie(const char *path, size_t *size)
+static unsigned char *read_resource(const char *path, size_t *size, int allow_empty)
 {
     SDL_RWops *file = SDL_RWFromFile(path, "rb");
     Sint64 length;
@@ -73,13 +130,13 @@ static unsigned char *read_movie(const char *path, size_t *size)
         return 0;
     }
     length = SDL_RWsize(file);
-    if (length <= 0 || length > (Sint64)FVM_SWF_DEFAULT_LIMIT)
+    if (length < 0 || (!length && !allow_empty) || length > (Sint64)FVM_SWF_DEFAULT_LIMIT)
     {
         fprintf(stderr, "%s: empty, unseekable or larger than 64 MiB\n", path);
         SDL_RWclose(file);
         return 0;
     }
-    bytes = (unsigned char *)malloc((size_t)length);
+    bytes = (unsigned char *)malloc(length ? (size_t)length : 1);
     if (!bytes)
     {
         fprintf(stderr, "%s: input allocation failed\n", path);
@@ -109,6 +166,12 @@ static unsigned char *read_movie(const char *path, size_t *size)
     }
     *size = (size_t)length;
     return bytes;
+}
+
+/* Movie input remains nonempty; form-variable resources may be empty. */
+static unsigned char *read_movie(const char *path, size_t *size)
+{
+    return read_resource(path, size, 0);
 }
 
 /* Print the operation and exact VM status; unsupported features must not be silently skipped. */
@@ -213,48 +276,231 @@ static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ord
     return FVM_OK;
 }
 
-/* Owned pending request; copied out of counted VM operands before callback return. */
+/* A copied request owns its text and one explicit target root until safe-point delivery. */
+typedef struct FVM_DesktopRequest
+{
+    char *url;                       /* Owned reference copied from the VM's counted string. */
+    char *base;                      /* Owned origin provenance, independent of selected target. */
+    FVM_Object *target;              /* [GC:] Explicitly pinned while queued. */
+    unsigned int flags;              /* LOAD_TARGET or LOAD_VARIABLES with optional GET. */
+    struct FVM_DesktopRequest *next; /* Native FIFO link. */
+} FVM_DesktopRequest;
+/* Per-run transport and request queue; no mutable process-wide registration. */
 typedef struct FVM_DesktopNavigation
 {
-    char *pending; /* Owned reference; at most one outstanding root replacement. */
+    char *pending;                   /* Owned next root URL after the old VM is released. */
+    char *pending_base;              /* Owned provenance for the next root request. */
+    FVM_DesktopRequest *head, *tail; /* Owned FIFO, drained only outside VM callbacks. */
+    size_t count;                    /* Bound queued requests by the remaining load budget. */
+    FVM_Object *root;                /* Borrowed active root, pinned by play_bytes. */
+    const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
+    const FVM_DesktopLoader *policy; /* Borrowed for the entire source run. */
+    unsigned long remaining;         /* Remaining requests, including child and variable fetches. */
 } FVM_DesktopNavigation;
 
-/* Copy root-load requests only; actual fetching/replacement occurs after VM destruction. */
+/* Service is defined after the bounded transport helpers below. */
+static FVM_Result service_requests(FVM_Context *, FVM_DesktopNavigation *);
+
+/* [GC:] Release all native FIFO ownership before the corresponding context is destroyed. */
+static void discard_requests(FVM_Context *context, FVM_DesktopNavigation *navigation)
+{
+    while (navigation && navigation->head)
+    {
+        FVM_DesktopRequest *request = navigation->head;
+        navigation->head = request->next;
+        fvm_gc_unpin(context, request->target);
+        free(request->url);
+        free(request->base);
+        free(request);
+    }
+    if (navigation)
+    {
+        navigation->tail = 0;
+        navigation->count = 0;
+    }
+}
+
+/* Copy counted source text without accepting embedded NUL or overlong locations. */
+static char *copy_location(const FVM_Value *value, FVM_Result *status)
+{
+    size_t size = fvm_value_string_size(value);
+    char *copy;
+    if (!size || size > FVM_DESKTOP_MAX_LOCATION || memchr(value->string, 0, size))
+    {
+        *status = FVM_INVALID_ARGUMENT;
+        return 0;
+    }
+    if (*status != FVM_OK)
+        return 0;
+    copy = (char *)malloc(size + 1);
+    if (!copy)
+        *status = FVM_OUT_OF_MEMORY;
+    if (copy)
+    {
+        memcpy(copy, value->string, size);
+        copy[size] = 0;
+    }
+    return copy;
+}
+
+/* Resolve and retain target/origin inside the active frame; transport waits for a safe point. */
 static FVM_Result request_movie(FVM_Context *context, FVM_Object *receiver, unsigned int argc,
                                 const FVM_Value *args, FVM_Value *result, void *userdata)
 {
     FVM_DesktopNavigation *navigation = (FVM_DesktopNavigation *)userdata;
-    const FVM_Value *url, *target;
-    size_t size, target_size;
+    FVM_DesktopRequest *request;
+    FVM_AVM1TargetInfo info;
+    FVM_Value target, base;
     unsigned int flags;
-    (void)context;
+    FVM_Result status;
+    size_t target_size;
     (void)receiver;
     (void)result;
-    if (argc != FVM_DESKTOP_URL_ARGUMENTS || !args || !navigation)
-        return FVM_INVALID_ARGUMENT;
-    url = args + FVM_DESKTOP_URL_URL;
-    target = args + FVM_DESKTOP_URL_TARGET;
-    if (url->type != FVM_VALUE_STRING || target->type != FVM_VALUE_STRING ||
+    if (argc != FVM_DESKTOP_URL_ARGUMENTS || !args || !navigation ||
+        args[FVM_DESKTOP_URL_URL].type != FVM_VALUE_STRING ||
+        args[FVM_DESKTOP_URL_TARGET].type != FVM_VALUE_STRING ||
         args[FVM_DESKTOP_URL_FLAGS].type != FVM_VALUE_NUMBER)
         return FVM_INVALID_ARGUMENT;
-    size = fvm_value_string_size(url);
-    target_size = fvm_value_string_size(target);
     flags = (unsigned int)args[FVM_DESKTOP_URL_FLAGS].number;
-    if ((flags != FVM_AVM1_URL_LOAD_TARGET &&
-         flags != (FVM_AVM1_URL_LOAD_TARGET | FVM_AVM1_URL_METHOD_GET)) ||
-        !((target_size == strlen("_root") && !memcmp(target->string, "_root", target_size)) ||
-          (target_size == strlen("_level0") && !memcmp(target->string, "_level0", target_size))))
+    if (((flags & ~FVM_DESKTOP_URL_METHOD_MASK) != FVM_AVM1_URL_LOAD_TARGET &&
+         (flags & ~FVM_DESKTOP_URL_METHOD_MASK) != FVM_AVM1_URL_LOAD_VARIABLES) ||
+        (flags & FVM_DESKTOP_URL_METHOD_MASK) > FVM_AVM1_URL_METHOD_GET ||
+        navigation->count >= navigation->remaining)
         return FVM_UNSUPPORTED;
-    if (!size || size > FVM_DESKTOP_MAX_LOCATION || memchr(url->string, 0, size))
+    info.struct_size = sizeof(info);
+    status = fvm_avm1_get_target_info(context, &info);
+    if (status != FVM_OK || !info.active || !info.base_clip)
         return FVM_INVALID_ARGUMENT;
-    if (navigation->pending)
-        return FVM_UNSUPPORTED;
-    navigation->pending = (char *)malloc(size + 1);
-    if (!navigation->pending)
+    target_size = fvm_value_string_size(args + FVM_DESKTOP_URL_TARGET);
+    fvm_value_undefined(&target);
+    if (target_size == strlen("_level0") &&
+        !memcmp(args[FVM_DESKTOP_URL_TARGET].string, "_level0", target_size))
+    {
+        target.type = FVM_VALUE_OBJECT;
+        target.object = navigation->root;
+    }
+    else if (!target_size)
+    {
+        target.type = FVM_VALUE_OBJECT;
+        target.object = info.target_clip;
+    }
+    else
+        status = fvm_exec_scope_target(context, 0, info.target_clip, info.base_clip,
+                                       args + FVM_DESKTOP_URL_TARGET, &target);
+    if (status != FVM_OK || target.type != FVM_VALUE_OBJECT || !target.object)
+        return FVM_NOT_FOUND;
+    status = fvm_movieclip_get_source(context, info.base_clip, &base);
+    if (status != FVM_OK)
+        return status;
+    request = (FVM_DesktopRequest *)calloc(1, sizeof(*request));
+    if (!request)
         return FVM_OUT_OF_MEMORY;
-    memcpy(navigation->pending, url->string, size);
-    navigation->pending[size] = 0;
+    request->url = copy_location(args + FVM_DESKTOP_URL_URL, &status);
+    request->base = copy_location(&base, &status);
+    request->target = target.object;
+    request->flags = flags;
+    if (status == FVM_OK)
+        status = fvm_gc_pin(context, request->target);
+    if (status != FVM_OK)
+    {
+        free(request->url);
+        free(request->base);
+        free(request);
+        return status;
+    }
+    if (navigation->tail)
+        navigation->tail->next = request;
+    else
+        navigation->head = request;
+    navigation->tail = request;
+    ++navigation->count;
     return FVM_OK;
+}
+
+/* Immutable descriptors distinguish global and MovieClip entrypoints without pointer casts. */
+typedef struct FVM_DesktopLoadBuiltin
+{
+    unsigned int flags; /* LOAD_TARGET or LOAD_VARIABLES request family. */
+    int method;         /* Nonzero for MovieClip receiver form. */
+} FVM_DesktopLoadBuiltin;
+static const FVM_DesktopLoadBuiltin load_movie_global = {FVM_AVM1_URL_LOAD_TARGET, 0};
+static const FVM_DesktopLoadBuiltin load_variables_global = {FVM_AVM1_URL_LOAD_VARIABLES, 0};
+static const FVM_DesktopLoadBuiltin load_movie_method = {FVM_AVM1_URL_LOAD_TARGET, 1};
+static const FVM_DesktopLoadBuiltin load_variables_method = {FVM_AVM1_URL_LOAD_VARIABLES, 1};
+
+/* Standard host-facing loader spellings reuse the VM's counted/coerced URL service. */
+static FVM_Result load_builtin(FVM_Context *context, FVM_Object *receiver, unsigned int argc,
+                               const FVM_Value *args, FVM_Value *result, void *userdata)
+{
+    const FVM_DesktopLoadBuiltin *builtin = (const FVM_DesktopLoadBuiltin *)userdata;
+    FVM_Value target, owner;
+    int method_form = builtin->method;
+    unsigned int method_index;
+    FVM_Result status;
+    if (!argc || !args)
+        return FVM_INVALID_ARGUMENT;
+    /* AVM1 unqualified names may resolve through a clip prototype before globals.
+     * Preserve both public argument shapes when that shared spelling is inherited. */
+    if (method_form && argc >= FVM_DESKTOP_LOAD_GLOBAL_MIN_ARGS &&
+        (argc >= FVM_DESKTOP_LOAD_GLOBAL_FULL_ARGS ||
+         (args[FVM_DESKTOP_LOAD_TARGET_INDEX].type == FVM_VALUE_STRING &&
+          !((fvm_value_string_size(args + FVM_DESKTOP_LOAD_TARGET_INDEX) == strlen("GET") &&
+             !memcmp(args[FVM_DESKTOP_LOAD_TARGET_INDEX].string, "GET", strlen("GET"))) ||
+            (fvm_value_string_size(args + FVM_DESKTOP_LOAD_TARGET_INDEX) == strlen("POST") &&
+             !memcmp(args[FVM_DESKTOP_LOAD_TARGET_INDEX].string, "POST", strlen("POST")))))))
+        method_form = 0;
+    method_index =
+        method_form ? FVM_DESKTOP_LOAD_METHOD_INDEX : FVM_DESKTOP_LOAD_GLOBAL_METHOD_INDEX;
+    if (result)
+        fvm_value_undefined(result);
+    if (!method_form && argc < FVM_DESKTOP_LOAD_GLOBAL_MIN_ARGS)
+        return FVM_INVALID_ARGUMENT;
+    if (argc > method_index && args[method_index].type != FVM_VALUE_UNDEFINED)
+    {
+        const FVM_Value *method = args + method_index;
+        if (method->type != FVM_VALUE_STRING || fvm_value_string_size(method) != strlen("GET") ||
+            memcmp(method->string, "GET", strlen("GET")))
+            return FVM_UNSUPPORTED;
+    }
+    if (method_form)
+    {
+        fvm_value_undefined(&owner);
+        owner.type = FVM_VALUE_OBJECT;
+        owner.object = receiver;
+        status = fvm_exec_target_path(context, &owner, &target);
+        if (status != FVM_OK)
+            return status;
+    }
+    else
+        target = args[FVM_DESKTOP_LOAD_TARGET_INDEX];
+    return fvm_exec_url(context, args, &target, builtin->flags);
+}
+
+/* Install loader facades in the optional host only; the standalone VM remains transport-neutral. */
+static FVM_Result install_load_functions(FVM_Context *context)
+{
+    FVM_Value constructor, prototype;
+    FVM_Result status = fvm_register_function_rooted_bytes(
+        context, "loadMovie", strlen("loadMovie"), load_builtin, (void *)&load_movie_global, 0);
+    if (status == FVM_OK)
+        status =
+            fvm_register_function_rooted_bytes(context, "loadVariables", strlen("loadVariables"),
+                                               load_builtin, (void *)&load_variables_global, 0);
+    if (status == FVM_OK)
+        status = fvm_get_global(context, "MovieClip", &constructor);
+    if (status == FVM_OK && constructor.type == FVM_VALUE_OBJECT)
+        status = fvm_object_get(context, constructor.object, "prototype", &prototype);
+    else if (status == FVM_OK)
+        status = FVM_INVALID_ARGUMENT;
+    if (status == FVM_OK && prototype.type == FVM_VALUE_OBJECT)
+        status = fvm_object_define_method_rooted(context, prototype.object, "loadMovie",
+                                                 load_builtin, (void *)&load_movie_method, 0);
+    else if (status == FVM_OK)
+        status = FVM_INVALID_ARGUMENT;
+    if (status == FVM_OK)
+        status = fvm_object_define_method_rooted(context, prototype.object, "loadVariables",
+                                                 load_builtin, (void *)&load_variables_method, 0);
+    return status;
 }
 
 /* Play borrowed binary input. VM/SDL objects stay on this thread; source bytes are never freed. */
@@ -365,6 +611,14 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     if (!checked(fvm_gc_pin(context, clip), "root pin", path))
         goto cleanup;
     pinned = 1;
+    if (navigation)
+    {
+        navigation->root = clip;
+        if (!checked(fvm_movieclip_set_source(context, clip, navigation->initial_base,
+                                              strlen(navigation->initial_base)),
+                     "source base", path))
+            goto cleanup;
+    }
     if (!checked(fvm_object_create(context, &host_input), "HostInput object", path))
         goto cleanup;
     /* [GC:] Keep the host-owned input object live even if a script replaces its global binding. */
@@ -375,6 +629,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     host_value.type = FVM_VALUE_OBJECT;
     host_value.object = host_input;
     if (!checked(fvm_set_global(context, "HostInput", &host_value), "HostInput binding", path))
+        goto cleanup;
+    if (navigation && !checked(install_load_functions(context), "loader functions", path))
         goto cleanup;
     mode = options->mode;
     if (mode == FVM_DESKTOP_MODE_AUTO)
@@ -449,8 +705,11 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
         /* Input may register timers; deliver due work even between timeline frames. */
         if (!checked(fvm_timers_poll(context, &timer_callbacks), "scheduled callbacks", path))
             goto cleanup;
+        if (navigation &&
+            !checked(service_requests(context, navigation), "deferred resource load", path))
+            goto cleanup;
         if (navigation && navigation->pending)
-            break; /* Callback has returned; dispose this VM before executing its request. */
+            break;
         /* [GC:] Input listeners and HostInput publication also allocate without timers.
          * Step once per foreground turn after all callbacks return; roots stay pinned.
          * The collector threshold decides whether this safe point actually collects. */
@@ -517,6 +776,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             goto cleanup;
         ++presentations;
         ++ticks;
+        if (navigation &&
+            !checked(service_requests(context, navigation), "frame resource load", path))
+            goto cleanup;
         /* [GC:] Collect only at a safe host boundary; the root and its library remain pinned. */
         if (!checked(fvm_gc_step(context, 0), "GC step", path))
             goto cleanup;
@@ -562,6 +824,8 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     }
     status = 0;
 cleanup:
+    if (context)
+        discard_requests(context, navigation);
     /* Release both real-output and explicit-mute registrations before audio userdata cleanup. */
     if (context && clip)
         fvm_movieclip_set_sound_callback(context, 0, 0);
@@ -605,22 +869,19 @@ static int memory_options(const FVM_DesktopOptions *options, const char *name,
 int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes, size_t length,
                            const char *name, const char **error)
 {
-    FVM_DesktopOptions value;
-    int quit = 0, status;
-    if (error)
-        *error = 0;
-    if (!bytes || !length || length > FVM_SWF_DEFAULT_LIMIT || !name || !*name)
-    {
-        if (error)
-            *error = "invalid movie buffer, size or source name";
-        return FVM_DESKTOP_EXIT_ARGUMENT;
-    }
-    if (!memory_options(options, name, &value, error))
-        return FVM_DESKTOP_EXIT_ARGUMENT;
-    status = play_bytes(&value, name, bytes, length, &quit, 0);
-    if (status && error)
-        *error = "player buffer playback failed";
-    return status;
+    FVM_DesktopSource source;
+    FVM_DesktopLoader loader;
+    source.kind = FVM_DESKTOP_SOURCE_MEMORY;
+    source.bytes = bytes;
+    source.size = length;
+    source.location = name;
+    fvm_desktop_loader_init(&loader);
+    if (options)
+        loader.max_loads = options->max_loads;
+#ifdef FVM_DESKTOP_HTTP
+    loader.fetch = fvm_desktop_http_fetch;
+#endif
+    return fvm_desktop_run_source(options, &source, &loader, error);
 }
 
 /* Accumulator owns only transport bytes; sink errors remain latched even if ignored by a provider.
@@ -699,6 +960,84 @@ static int local_location(const char *reference, const char *base, char *out)
     return 1;
 }
 
+/* Drain bounded queued requests on the VM owner thread after script/native callbacks return. */
+static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *navigation)
+{
+    while (navigation->head && !navigation->pending)
+    {
+        FVM_DesktopRequest *request = navigation->head;
+        FVM_DesktopDownload download;
+        unsigned char *file_bytes = 0;
+        const void *bytes = 0;
+        size_t size = 0;
+        char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+        int variables = (request->flags & FVM_AVM1_URL_LOAD_VARIABLES) != 0;
+        FVM_Result status = FVM_OK;
+        navigation->head = request->next;
+        if (!navigation->head)
+            navigation->tail = 0;
+        --navigation->count;
+        if (!navigation->remaining)
+            status = FVM_UNSUPPORTED;
+        else
+            --navigation->remaining;
+        /* Whole-root replacement retains its textual request beyond old-context cleanup. */
+        if (status == FVM_OK && !variables && request->target == navigation->root)
+        {
+            navigation->pending = request->url;
+            navigation->pending_base = request->base;
+            request->url = request->base = 0;
+        }
+        else if (status == FVM_OK)
+        {
+            memset(&download, 0, sizeof(download));
+            download.status = FVM_OK;
+            memset(resolved, 0, sizeof(resolved));
+            if (strstr(request->url, "://") || strstr(request->base, "://"))
+            {
+                status = navigation->policy->fetch
+                             ? navigation->policy->fetch(request->url, request->base, collect_movie,
+                                                         &download, resolved, sizeof(resolved),
+                                                         navigation->policy->userdata)
+                             : FVM_UNSUPPORTED;
+                if (download.status != FVM_OK)
+                    status = download.status;
+                if (!memchr(resolved, 0, sizeof(resolved)) || !location_size(resolved))
+                    status = FVM_INVALID_ARGUMENT;
+                bytes = download.bytes;
+                size = download.size;
+            }
+            else if (!local_location(request->url, request->base, resolved))
+                status = FVM_INVALID_ARGUMENT;
+            else
+            {
+                file_bytes = read_resource(resolved, &size, variables);
+                if (!file_bytes)
+                    status = FVM_ERROR;
+                bytes = file_bytes;
+            }
+            if (status == FVM_OK)
+            {
+                if (variables)
+                    status = fvm_object_load_variables(context, request->target, bytes, size);
+                else
+                    status = fvm_movieclip_replace_swf(context, request->target, bytes, size,
+                                                       resolved, strlen(resolved));
+            }
+            free(file_bytes);
+            free(download.bytes);
+        }
+        /* [GC:] User setters have returned; drop only this queue entry's explicit root. */
+        fvm_gc_unpin(context, request->target);
+        free(request->url);
+        free(request->base);
+        free(request);
+        if (status != FVM_OK)
+            return status;
+    }
+    return FVM_OK;
+}
+
 /* Keep transport and successive VM lifetimes disjoint; this is root replacement, not child import.
  */
 static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
@@ -714,7 +1053,8 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
     unsigned char *file_bytes;
     size_t size;
     unsigned int kind;
-    unsigned long loads = 0;
+    char provenance[FVM_DESKTOP_MAX_LOCATION + 1];
+    char *executable_base = 0;
     int quit = 0, status = FVM_DESKTOP_EXIT_ARGUMENT;
     FVM_Result fetched;
     memset(&navigation, 0, sizeof(navigation));
@@ -734,6 +1074,8 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
         return status;
     if (!memory_options(options, source->location, &value, error))
         return status;
+    navigation.policy = &policy;
+    navigation.remaining = policy.max_loads - 1;
     kind = source->kind;
     reference = source->location;
     for (;;)
@@ -771,29 +1113,40 @@ static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource
             bytes = file_bytes;
         }
         memcpy(location, resolved, strlen(resolved) + 1);
+        navigation.initial_base = location;
+        if (kind == FVM_DESKTOP_SOURCE_MEMORY && location[0] != '/' && location[0] != '\\' &&
+            !(strlen(location) > 2 && location[1] == ':' &&
+              (location[2] == '/' || location[2] == '\\')) &&
+            strncmp(location, "http://", strlen("http://")) &&
+            strncmp(location, "https://", strlen("https://")))
+        {
+            executable_base = FVM_DESKTOP_EXECUTABLE_BASE();
+            if (!executable_base || !local_location("embedded.swf", executable_base, provenance))
+            {
+                /* Hosts with restricted OS path discovery may supply an absolute source name.
+                 * Never silently substitute process CWD for the executable directory. */
+                navigation.initial_base = "unavailable://executable/embedded.swf";
+            }
+            else
+                navigation.initial_base = provenance;
+            SDL_free(executable_base);
+        }
         /* The pending reference belongs to the previous VM and is no longer needed. */
         free(navigation.pending);
-        navigation.pending = 0;
-        status = play_bytes(&value, location, bytes, size, &quit,
-                            policy.max_loads > 1 ? &navigation : 0);
+        free(navigation.pending_base);
+        navigation.pending = navigation.pending_base = 0;
+        status = play_bytes(&value, location, bytes, size, &quit, &navigation);
         free(file_bytes);
         free(download.bytes);
-        ++loads;
         if (status || quit || !navigation.pending)
             break;
-        if (loads >= policy.max_loads)
-        {
-            fprintf(stderr, "%s: root movie load limit reached\n", location);
-            status = FVM_DESKTOP_EXIT_PLAYBACK;
-            break;
-        }
         reference = navigation.pending;
-        base = location;
-        kind = strstr(reference, "://") || kind != FVM_DESKTOP_SOURCE_FILE
-                   ? FVM_DESKTOP_SOURCE_URL
-                   : FVM_DESKTOP_SOURCE_FILE;
+        base = navigation.pending_base;
+        kind = strstr(reference, "://") || (base && strstr(base, "://")) ? FVM_DESKTOP_SOURCE_URL
+                                                                         : FVM_DESKTOP_SOURCE_FILE;
     }
     free(navigation.pending);
+    free(navigation.pending_base);
     if (closed)
         *closed = quit;
     if (error)

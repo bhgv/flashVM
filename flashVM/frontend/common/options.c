@@ -277,7 +277,7 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
             if (++i == argc || !frame_limit(argv[i], &value.max_loads) ||
                 value.max_loads > FVM_DESKTOP_MAX_LOADS)
             {
-                message = "--loads requires 1..1024 total movies";
+                message = "--loads requires 1..1024 total resource loads";
                 goto failed;
             }
         }
@@ -342,8 +342,7 @@ void fvm_desktop_help(const char *program)
     puts("  --fps N                 Absolute movie ticks/second, 0.1..1000");
     puts("  --speed N[%]            Percent of SWF FPS, 0.1..10000 (default: 100)");
     puts("                          --fps and --speed cannot be combined");
-    puts(
-        "  --loads N               Allow up to 1..1024 root movies, including startup (default 1)");
+    puts("  --loads N               Allow 1..1024 resource loads, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
     puts("  --mute                  Mute event sound and validated root streams; no device");

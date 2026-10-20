@@ -154,6 +154,7 @@
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
+  - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
@@ -1717,6 +1718,16 @@ CLI проверяет 120 кадров каждого в interpreter/JIT.
 [обычный хост](player/embedded_movie/module_host.c),
 [контракт](../doc/PLAYER_SOURCES.ru.md), [API](../frontend/common/player.h).
 
+<a id="example-player-loading"></a>
+### loading
+
+Встроенный C89 старт, два отложенных запроса за кадр, дочерний SWF и loadVariables
+относительно собственного source base. Самопроверяющиеся фильмы и автономный генератор.
+[README EN](player/loading/README.md) / [RU](player/loading/README.ru.md),
+[C89](player/loading/main.c), [linked bytes](player/loading/startup.h),
+[генератор](player/loading/make_movies.py), [AS root](player/loading/start.as),
+[AS child](player/loading/nested/child.as), [API](../include/flashvm/movieclip.h).
+
 <a id="example-player-muted_stream"></a>
 ### muted_stream
 
@@ -1821,6 +1832,7 @@ Source line links describe the current checkout, including in historical notes.
 - [keyboard_polling — embedding/keyboard_polling](#example-embedding-keyboard_polling)
 - [linux_fb — frontends/linux_fb](#example-frontends-linux_fb)
 - [live_variables — debugger/live_variables](#example-debugger-live_variables)
+- [loading — player/loading](#example-player-loading)
 - [lua_style — extending/lua_style](#example-extending-lua_style)
 - [main — embedding/main](#example-embedding-main)
 - [main — extending/main](#example-extending-main)

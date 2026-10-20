@@ -47,7 +47,7 @@ SDK must match target OS/CPU, and the resulting host must run there.
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L72) | Copies canonical source into the context before flagged import; input remains caller-owned. |
 | [fvm_standard_install](../../../include/flashvm/standard.h#L20) | Prepares the standard MovieClip model; no audio device. |
 | [fvm_swf_stream_sound_count](../../../include/flashvm/swf_stream_sound.h#L53) | Validates root streams and returns a copied scalar count. |
-| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L90) | Uses explicit [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L82); requires matching decoded canonical source, clears output on failure. |
+| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L92) | Uses explicit [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L82); requires matching decoded canonical source, clears output on failure. |
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L48) / [fvm_gc_unpin](../../../include/flashvm/gc.h#L54) | Host retains/releases the managed clip/library across collection; neither transfers allocation ownership. |
 | [fvm_gc_step](../../../include/flashvm/gc.h#L90) | Owner-thread safe-point collection, outside callbacks. |
 | [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L66) | Executes supported root frame behavior while stream controls remain muted. |
@@ -77,7 +77,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../../../include/flashvm/flashvm.h#L72) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:90](../../../include/flashvm/movieclip.h#L90) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:92](../../../include/flashvm/movieclip.h#L92) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |

@@ -1,6 +1,4 @@
 /* Embedded SWF playback; see README.md / README.ru.md for ownership and builds. */
-#define SDL_MAIN_HANDLED /* Supply our own native entrypoint. */
-#include <SDL.h> /* The standalone application owns final SDL shutdown. */
 #include "../../../frontend/common/player.h" /* Shared C89 playback API. */
 #include "movie.h" /* Linked read-only SWF, no installed asset file. */
 #define EXAMPLE_EMBEDDED_TICKS 2UL /* Bound automated playback. */
@@ -18,6 +16,6 @@ int main(void) /* Can also be called from an application-owned launcher. */
     options.fps = EXAMPLE_EMBEDDED_FPS; /* Keep percent at the default 100. */
     result = fvm_desktop_run_memory(&options, embedded_movie, sizeof(embedded_movie), /* Exact bytes. */
                                    "embedded://startup.swf", 0); /* Label, not a disk path. */
-    SDL_Quit(); /* End only this standalone application's complete SDL session. */
+    fvm_desktop_shutdown(); /* End the matching library session after all player resources. */
     return result; /* No managed/native resource escapes the synchronous runner. */
 } /* End host ownership; the immutable SWF remains part of the executable. */

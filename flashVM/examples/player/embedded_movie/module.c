@@ -17,3 +17,9 @@ int embedded_movie_play(void) /* No CLI, filename or application-specific struct
     return fvm_desktop_run_memory(&options, embedded_movie, sizeof(embedded_movie), /* Exact binary. */
                                   "embedded://module.swf", 0); /* No runtime asset lookup. */
 } /* Player releases VM roots/window; the module retains its immutable movie bytes. */
+
+/* Keep SDK cleanup in the same library instance as its playback resources. */
+int embedded_movie_shutdown(void) /* Optional, called explicitly by the owning application. */
+{ /* Reject cleanup while any owner retains SDL subsystems. */
+    return (int)fvm_desktop_shutdown(); /* The host need not include or call SDL directly. */
+} /* End the module's matching cleanup entrypoint. */

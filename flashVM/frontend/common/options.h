@@ -1,6 +1,7 @@
 /* Internal player configuration and CLI contract; validation never starts a window or VM. */
 #ifndef FVM_DESKTOP_OPTIONS_H
 #define FVM_DESKTOP_OPTIONS_H
+#include "export.h"
 #include "flashvm/execution_mode.h"
 #include "flashvm/stage.h"
 #define FVM_DESKTOP_DECIMAL_MAX_TEXT                                                               \
@@ -31,7 +32,7 @@ typedef struct FVM_DesktopOptions
     FVM_StageQuality quality; /* Host starting quality, later changeable by SWF actions. */
     double fps;               /* Explicit absolute rate, or zero for authored-rate scaling. */
     double percent;          /* Percentage of the SWF rate; mutually exclusive with explicit fps. */
-    unsigned long max_loads; /* Root-load budget, including startup; default one. */
+    unsigned long max_loads; /* Resource-load budget, including startup; default one. */
     unsigned long frames;    /* Per-file tick limit, or zero for the normal playback policy. */
     int once; /* Stop after the authored frame count; multiple files imply this by default. */
     int mute; /* Explicitly skip device opening and event sound for headless/audio-free sessions. */
@@ -44,21 +45,23 @@ extern "C"
 {
 #endif
     /* Initialize defaults without allocation; null output is rejected. No files are selected. */
-    int fvm_desktop_options_init(FVM_DesktopOptions *out);
+    FVM_DESKTOP_API int fvm_desktop_options_init(FVM_DesktopOptions *out);
     /* Validate all fields and every borrowed playlist path before any file/device startup.
      * Optional error receives a static message on failure, null on success. No fields change. */
-    int fvm_desktop_options_validate(const FVM_DesktopOptions *options, const char **error);
+    FVM_DESKTOP_API int fvm_desktop_options_validate(const FVM_DesktopOptions *options,
+                                                     const char **error);
     /* Check argc and every pointer in the caller-owned argc-element argv array.
      * A trailing argv[argc] sentinel is not read; strings remain borrowed. */
-    int fvm_desktop_arguments_valid(int argc, char **argv);
+    FVM_DESKTOP_API int fvm_desktop_arguments_valid(int argc, char **argv);
     /* Parse atomically into out; files is scratch storage with at least argc elements.
      * Return PARSE_HELP/PARSE_VERSION without opening files or touching graphics. */
-    int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOptions *out,
-                          const char **error);
+    FVM_DESKTOP_API int fvm_desktop_parse(int argc, char **argv, const char **files,
+                                          FVM_DesktopOptions *out, const char **error);
     /* Validate authored/effective rate; output is unchanged on failure. */
-    int fvm_desktop_rate(const FVM_DesktopOptions *, double authored_fps, double *out);
+    FVM_DESKTOP_API int fvm_desktop_rate(const FVM_DesktopOptions *, double authored_fps,
+                                         double *out);
     /* Print complete user-facing command-line help to stdout. */
-    void fvm_desktop_help(const char *program);
+    FVM_DESKTOP_API void fvm_desktop_help(const char *program);
 #ifdef __cplusplus
 }
 #endif
