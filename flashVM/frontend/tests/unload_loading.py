@@ -53,15 +53,46 @@ def movie(network=False, object_form=False):
     return swf([first, second, third, fourth])
 
 
+def detached_movie(callback=False):
+    first = method_call('_root', 'createEmptyMovieClip', 'child', 1)
+    first += method_call('_root.child', 'createEmptyMovieClip', 'grand', 1)
+    first += method_call('_root', 'createEmptyMovieClip', 'peer', 2)
+    first += push('_root.retained') + get('_root.child.grand') + b'\x1d'
+    first += push('_root.iter', 0) + b'\x1d'
+    if callback:
+        body = global_call('unloadMovie', '_root.child') + UNDEFINED + b'\x3e\x00'
+        definition = b'\0\0\0' + struct.pack('<H', len(body)) + body
+        first += get('_root.child') + push('onData') + b'\x9b' + struct.pack('<H', len(definition)) + definition + b'\x4f'
+        first += method_call('_root.child', 'loadVariables', 'trigger.txt')
+    else:
+        first += method_call('_root.child.grand', 'loadVariables', 'slow.txt')
+    first += method_call('_root.child.grand', 'loadVariables', 'never.txt')
+    first += method_call('_root.peer', 'loadVariables', 'peer.txt')
+    second = b''
+    if not callback:
+        second += method_call('_root.child', 'removeMovieClip')
+        second += method_call('_root', 'createEmptyMovieClip', 'child', 1)
+        second += push('_root.child.fresh', 1) + b'\x1d'
+    checks = require_undefined('_root.retained.poison') + require_undefined('_root.child.grand')
+    if not callback:
+        checks += require('_root.child.fresh', 1)
+    checks += push('_root.finished', 1) + b'\x1d\x07'
+    third = push('_root.iter') + get('_root.iter') + push(1) + b'\x47\x1d'
+    third += when(get('_root.iter') + push(250) + b'\x67', require('_root.finished', 1))
+    third += when(equal('_root.peer.answer', 'peer'), checks)
+    return swf([first, second, third, b'\x81\x02\x00\x02\x00\x06'])
+
+
 class Handler(BaseHTTPRequestHandler):
     paths = []
     wrong = False
+    scenario = "unload"
     def log_message(self, *_):
         pass
     def do_GET(self):
         self.paths.append(self.path)
-        resources = {'/app/start.swf': movie(True), '/app/slow.txt': b'poison=1',
-                     '/app/never.txt': b'poison=1', '/app/peer.txt': b'answer=peer',
+        resources = {'/app/start.swf': (movie(True) if self.scenario == 'unload' else detached_movie(self.scenario == 'callback')), '/app/slow.txt': b'poison=1',
+                     '/app/never.txt': b'poison=1', '/app/trigger.txt': b'trigger=1', '/app/peer.txt': b'answer=peer',
                      '/app/fresh.txt': b'answer=' + (b'wrong' if self.wrong else b'fresh')}
         if self.path not in resources:
             self.send_error(404)
@@ -107,7 +138,24 @@ def main():
             assert result.returncode == (1 if wrong else 0), result.stderr
             assert '/app/never.txt' not in Handler.paths, Handler.paths
             assert '/app/peer.txt' in Handler.paths and '/app/fresh.txt' in Handler.paths, Handler.paths
-        print('PASS local/global/object/method unload, active/subtree cancellation, reload and negative control')
+        Handler.wrong = False
+        for scenario in ('removed', 'callback'):
+            Handler.paths.clear()
+            Handler.scenario = scenario
+            result = subprocess.run([player, mode, '--async-loads', '--loads', '8', '--frames', '600',
+                                     '--fps', '1000', '--mute', root], env=env, capture_output=True, timeout=10)
+            assert result.returncode == 0, result.stderr
+            assert '/app/never.txt' not in Handler.paths, (scenario, Handler.paths)
+            assert '/app/peer.txt' in Handler.paths, (scenario, Handler.paths)
+        Handler.scenario = 'callback'
+        for transport in ([], ['--background-loads']):
+            Handler.paths.clear()
+            result = subprocess.run([player, mode, *transport, '--loads', '8', '--frames', '600',
+                                     '--fps', '1000', '--mute', root], env=env, capture_output=True, timeout=10)
+            assert result.returncode == 0, result.stderr
+            assert '/app/never.txt' not in Handler.paths, Handler.paths
+            assert '/app/peer.txt' in Handler.paths, Handler.paths
+        print('PASS unload forms, cancellation, reload, detached ancestry and sync/waiting/async onData unload')
     finally:
         server.shutdown()
         server.server_close()

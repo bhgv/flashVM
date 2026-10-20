@@ -1389,6 +1389,17 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
     FVM_Result unloaded = service_unloads(context, navigation);
     if (unloaded != FVM_OK)
         return unloaded;
+    /* A pin retains storage, not membership: removed ancestors invalidate an active target. */
+    if (navigation->active_request)
+    {
+        int attached = 0;
+        FVM_Result status = fvm_movieclip_attached_to(context, navigation->active_request->target,
+                                                      navigation->root, &attached);
+        if (status != FVM_OK)
+            return status;
+        if (!attached)
+            abandon_active(context, navigation);
+    }
     /* [GC:] The active request retains its explicit target root while the VM keeps running. */
     if (navigation->active_request)
     {
@@ -1437,12 +1448,26 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
         const void *bytes = 0;
         size_t size = 0;
         char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
-        int variables = (request->flags & FVM_AVM1_URL_LOAD_VARIABLES) != 0;
-        FVM_Result status = FVM_OK;
+        int variables, attached = 0;
+        FVM_Result status = service_unloads(context, navigation);
+        if (status != FVM_OK)
+            return status;
+        if (!navigation->head)
+            break;
+        request = navigation->head;
+        variables = (request->flags & FVM_AVM1_URL_LOAD_VARIABLES) != 0;
         navigation->head = request->next;
         if (!navigation->head)
             navigation->tail = 0;
         --navigation->count;
+        status = fvm_movieclip_attached_to(context, request->target, navigation->root, &attached);
+        if (status != FVM_OK || !attached)
+        {
+            release_request(context, request);
+            if (status != FVM_OK)
+                return status;
+            continue; /* Detached storage is not a resource destination and consumes no budget. */
+        }
         if (!navigation->remaining)
             status = FVM_UNSUPPORTED;
         else

@@ -91,6 +91,19 @@ safe-point deferral, not synchronous Flash timing or complete loader event suppo
 string/object/method forms, retained properties and identity, descendant deletion,
 active/queued cancellation, unrelated delivery, later reload and a wrong-reply
 negative control. Network-free builds still execute its local cases.
+## Removed targets and delivery callbacks since v0.693
+
+Before polling an active job and before starting a queued fetch, the player checks
+physical ancestry to the current root. A retained detached child or a child below
+a removed ancestor is discarded, even if a new instance now occupies the same
+script path. Started jobs report cancellation and join; queued stale jobs perform
+no I/O and consume no fetch budget. GC pinning alone never establishes membership.
+
+After form assignment/onData returns, the owner drains newly queued unloads before
+starting the next fetch. This applies to synchronous, background-waiting and async
+transport. Thus an onData handler may clear its subtree without the next queued
+request racing ahead and delivering to an obsolete child. Same-instance own
+properties and handlers remain subject to the earlier content-clear contract.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
