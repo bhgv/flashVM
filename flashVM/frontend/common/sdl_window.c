@@ -369,19 +369,10 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         else if (delta != 0)
         {
 #if SDL_VERSION_ATLEAST(2, 26, 0)
-            float logical_x, logical_y;
-            /* Wheel positions are window pixels, not the logical mouse-motion coordinates.
-             * Convert through SDL's current letterbox/scale before queuing the snapshot. */
-            SDL_RenderWindowToLogical(view->renderer, event->wheel.mouseX, event->wheel.mouseY,
-                                      &logical_x, &logical_y);
-            if (!(logical_x >= -DBL_MAX && logical_x <= DBL_MAX && logical_y >= -DBL_MAX &&
-                  logical_y <= DBL_MAX))
-            {
-                view->event_error = FVM_ERROR;
-                return 1;
-            }
-            view->input.x = logical_x;
-            view->input.y = logical_y;
+            /* SDL's renderer event watch has already applied logical size, viewport
+             * and DPI scaling to queued wheel positions. Never transform twice. */
+            view->input.x = event->wheel.mouseX;
+            view->input.y = event->wheel.mouseY;
 #endif
             queue_input(view, FVM_DESKTOP_EVENT_WHEEL, FVM_MOUSE_EVENT_MOVE, 0, delta);
         }

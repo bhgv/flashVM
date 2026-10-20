@@ -57,7 +57,8 @@ int main(void)
     assert(fvm_desktop_window_events(v,0));
     memset(&e,0,sizeof(e)); e.type=SDL_MOUSEWHEEL;
     e.wheel.y=1; e.wheel.preciseY=1; e.wheel.mouseX=26; e.wheel.mouseY=20;
-    assert(handle_event(v,&e) && v->event_count==1);
+    e.wheel.windowID=SDL_GetWindowID(v->window);
+    assert(SDL_PushEvent(&e)==1 && fvm_desktop_window_events(v,0) && v->event_count==1);
     assert(v->pending_events[v->event_head].x==10 && v->pending_events[v->event_head].y==20);
     assert(fvm_desktop_window_pump_input(v,c,5,7)==FVM_OK && calls==4);
 #endif
