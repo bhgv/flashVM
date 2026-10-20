@@ -15,13 +15,15 @@ from async_loading import get, equal, when
 from smoke import rect, tag
 
 
-def movie(request=None, audio=False):
+def movie(request=None, audio=False, timers=True):
     increment = push('_root.actions') + get('_root.actions') + push(1) + b'\x47\x1d'
     beat = push('_root.timerRuns') + get('_root.timerRuns') + push(1) + b'\x47\x1d'
     beat += global_call('updateAfterEvent') + b'\0'
     definition = b'controlBeat\0\0\0' + struct.pack('<H', len(beat)) + beat
     setup = b'\x9b' + struct.pack('<H', len(definition)) + definition
     setup += push(10) + get('controlBeat') + push(2, 'setInterval') + b'\x3d\x17'
+    if not timers:
+        setup = b''
     if request == 'navigation':
         setup += global_call('loadMovie', 'next.swf', '_level0')
     elif request:
@@ -87,16 +89,17 @@ def main():
         folder = Path(temporary)
         source = folder/'start.swf'
         source.write_bytes(movie())
-        for scenario in ('sequence', 'slow', 'ready-stop', 'bad'):
+        for scenario in ('sequence', 'slow', 'ready-stop', 'bad', 'wait-stop', 'tail-stop'):
+            source.write_bytes(movie(timers=scenario not in ('wait-stop', 'tail-stop')))
             for memory in (None, source):
                 started = time.monotonic()
                 result = run(source, scenario, memory)
                 assert result.returncode == 0, (scenario, result.stdout, result.stderr)
-                if scenario == 'slow':
+                if scenario in ('slow', 'wait-stop', 'tail-stop'):
                     assert time.monotonic() - started < 2, result.stderr
                 if scenario not in ('ready-stop', 'bad'):
                     stats = re.search(r'frames=(\d+) native=(\d+) interpreter=(\d+)', result.stderr)
-                    assert stats and int(stats[1]) == 3, result.stderr
+                    assert stats and int(stats[1]) == (1 if scenario in ('wait-stop', 'tail-stop') else 3), result.stderr
                     assert int(stats[2 if mode == '--jit' else 3]) > 0, result.stderr
         source.write_bytes(movie('navigation'))
         (folder/'next.swf').write_bytes(movie())

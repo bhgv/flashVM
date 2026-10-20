@@ -68,7 +68,8 @@ def check():
         for api in set(re.findall(r"\b(fvm_desktop_\w+)\s*\(", source)):
             assert re.search(r"\|.*" + api + r".*\|", manual), (language, api)
     for relative, anchor in (("embedding/image_codecs_loading", "embedding-image_codecs_loading"),
-                             ("player/image_loading", "player-image_loading")):
+                             ("player/image_loading", "player-image_loading"),
+                             ("player/playback_control", "player-playback_control")):
         tutorial = ROOT / "examples" / relative
         source = (tutorial / "main.c").read_text()
         for file in [tutorial / "main.c"] + list(tutorial.glob("*.inc")):

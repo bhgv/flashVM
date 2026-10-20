@@ -81,10 +81,20 @@ static FVM_DesktopPlaybackCommand observe(const FVM_DesktopPlaybackState *state,
             return FVM_DESKTOP_PLAYBACK_STOP;
         if (!strcmp(test->scenario, "bad"))
             return (FVM_DesktopPlaybackCommand)999;
+        if (!strcmp(test->scenario, "wait-stop") || !strcmp(test->scenario, "tail-stop"))
+            return FVM_DESKTOP_PLAYBACK_RESUME;
         return FVM_DESKTOP_PLAYBACK_STEP;
     }
     if (!number(state, "actions", &actions) || actions != (double)state->movie_ticks)
         return failure(test, "timeline advanced outside permitted ticks");
+    if (!strcmp(test->scenario, "wait-stop") || !strcmp(test->scenario, "tail-stop"))
+    {
+        if (state->phase == FVM_DESKTOP_PLAYBACK_TICK)
+            test->paused_at = state->elapsed_ms;
+        return state->movie_ticks == 1 && state->elapsed_ms - test->paused_at >= 40
+                   ? FVM_DESKTOP_PLAYBACK_STOP
+                   : FVM_DESKTOP_PLAYBACK_KEEP;
+    }
     if (state->phase == FVM_DESKTOP_PLAYBACK_TICK)
     {
         if (!strcmp(test->scenario, "cancel-navigation"))
@@ -190,8 +200,11 @@ int main(int argc, char **argv)
     control.notify = observe;
     control.userdata = &test;
     options.mode = !strcmp(argv[2], "--jit") ? FVM_EXECUTION_JIT : FVM_EXECUTION_INTERPRETER;
-    options.frames = 500;
-    options.fps = (!strcmp(argv[3], "slow") || !strcmp(argv[3], "audio")) ? 0.1 : 1000;
+    options.frames = !strcmp(argv[3], "tail-stop") ? 1 : 500;
+    options.fps = (!strcmp(argv[3], "slow") || !strcmp(argv[3], "audio") ||
+                   !strcmp(argv[3], "wait-stop") || !strcmp(argv[3], "tail-stop"))
+                      ? 0.1
+                      : 1000;
     options.mute = strcmp(argv[3], "audio") != 0;
     options.stats = 1;
     options.max_loads = 8;
@@ -233,7 +246,8 @@ int main(int argc, char **argv)
     {
         unsigned long expected = (!strcmp(argv[3], "ready-stop")) ? 0
                                  : (!strcmp(argv[3], "cancel") || !strcmp(argv[3], "network") ||
-                                    !strcmp(argv[3], "cancel-navigation"))
+                                    !strcmp(argv[3], "cancel-navigation") ||
+                                    !strcmp(argv[3], "wait-stop") || !strcmp(argv[3], "tail-stop"))
                                      ? 1
                                  : !strcmp(argv[3], "navigation") ? 2
                                                                   : 3;

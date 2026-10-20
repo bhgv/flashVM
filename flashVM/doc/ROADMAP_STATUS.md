@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.711
+# FlashVM stage status / Состояние стадий — v0.712
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,27 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.712 delivers a standalone annotated C89/AS/SWF playback tutorial with native/
+cross-build instructions and an argv-only adapter. Owner commands remain polled
+while slow timer-free movies await the next or final frame; real interpreter/JIT
+fixtures stop both waits without waiting for the ten-second authored period.
+All nine stages remain open.
+
+Final v0.710–v0.712 verification: 56 selected native loading/control checks plus
+13 additional audio/timer/redraw/final-frame/build-info regressions pass. Shared
+host configurations pass 26 socket-TLS, 24 curl, 18 no-provider and 12 codec-
+disabled checks. The changed C playback/player/transfer/audio modules pass UBSan
+with interpreter/JIT and the standalone tutorial; VM/SDL/transport dependencies
+are not instrumented. Audio-enabled player and the C playback tutorial cross-link
+for Linux ARM64, Linux RISC-V64 and Windows x86-64, without foreign execution.
+Source links, per-line tutorial comments/API tables, catalog ordering and
+reproducible SWF/linked bytes pass. Native device/foreign OS/reference acceptance
+and all nine roadmap stages remain open.
+
+Русский: проверены 69 выбранных native-сценариев, четыре конфигурации shared-хоста,
+C-only UBSan и кросс-линковка трёх CPU/OS. Нативного запуска на других ОС,
+прослушивания/аппаратной приёмки и завершения пункта 9 это не подтверждает.
 
 v0.711 integrates owner-thread pause/step/resume/stop with FILE/MEMORY/URL
 runners, background loading, paused redraw/timers and suspended native PCM.

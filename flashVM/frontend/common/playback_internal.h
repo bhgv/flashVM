@@ -2,7 +2,7 @@
 #ifndef FVM_DESKTOP_PLAYBACK_INTERNAL_H
 #define FVM_DESKTOP_PLAYBACK_INTERNAL_H /* Guard private scheduling declarations. */
 #include "playback.h"
-#define FVM_DESKTOP_PLAYBACK_WAIT_MS 10U /* Bound paused polling without busy spinning. */
+#define FVM_DESKTOP_PLAYBACK_WAIT_MS 10U /* Bound owner command polling without busy spinning. */
 /* No managed roots live here: each notify uses the player-owned pinned root. */
 typedef struct FVM_DesktopPlaybackSession
 {

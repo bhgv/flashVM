@@ -27,7 +27,7 @@ int main(void)
            session.step_pending == 1);
     fvm_desktop_playback_consume_step(&session);
     assert(session.paused && !fvm_desktop_playback_can_tick(&session));
-    before = session;
+    memcpy(&before, &session, sizeof(session)); /* Include padding in the rejection snapshot. */
     assert(!fvm_desktop_playback_apply(&session, (FVM_DesktopPlaybackCommand)-1));
     assert(!memcmp(&before, &session, sizeof(session)));
     assert(fvm_desktop_playback_apply(&session, FVM_DESKTOP_PLAYBACK_RESUME) &&
@@ -35,7 +35,7 @@ int main(void)
     assert(fvm_desktop_playback_apply(&session, FVM_DESKTOP_PLAYBACK_STOP));
     assert(fvm_desktop_playback_apply(&session, FVM_DESKTOP_PLAYBACK_RESUME) &&
            !fvm_desktop_playback_can_tick(&session));
-    before = session;
+    memcpy(&before, &session, sizeof(session)); /* Include padding in the rejection snapshot. */
     --control.struct_size;
     assert(!fvm_desktop_playback_session_init(&session, &control) &&
            !memcmp(&before, &session, sizeof(session)));
@@ -45,7 +45,7 @@ int main(void)
     control.notify = observe;
     assert(fvm_desktop_playback_session_init(&session, &control) && session.paused);
     control.initially_paused = 2;
-    before = session;
+    memcpy(&before, &session, sizeof(session)); /* Include padding in the rejection snapshot. */
     assert(!fvm_desktop_playback_session_init(&session, &control) &&
            !memcmp(&before, &session, sizeof(session)));
     return 0;

@@ -1352,6 +1352,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
             wait = (int)(next - now);
             if (audio.output && wait > FVM_DESKTOP_AUDIO_WAIT)
                 wait = FVM_DESKTOP_AUDIO_WAIT;
+            /* Poll owner commands even when a slow, timer-free movie has no SDL events. */
+            if (control && control->policy.notify && wait > (int)FVM_DESKTOP_PLAYBACK_WAIT_MS)
+                wait = FVM_DESKTOP_PLAYBACK_WAIT_MS;
             if (wait < 1)
                 wait = 1;
             /* Do not sleep past a pending deadline when the authored frame rate is low. */
@@ -1423,7 +1426,22 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
     while (!*quit && !(navigation && navigation->pending) && !(control && control->paused) &&
            fvm_desktop_now() < next)
     {
-        int wait = (int)(next - fvm_desktop_now());
+        int wait;
+        /* Final-frame visibility must not postpone an embedding host's STOP command. */
+        if (!checked(playback_observe(control, FVM_DESKTOP_PLAYBACK_TURN, context, clip, path,
+                                      ticks, presentations),
+                     "tail playback control", path))
+            goto cleanup;
+        if (control && control->stopped)
+        {
+            *quit = 1;
+            break;
+        }
+        if (control && control->paused)
+            break; /* The frame bound already completed; a paused tail need not delay return. */
+        wait = (int)(next - fvm_desktop_now());
+        if (control && control->policy.notify && wait > (int)FVM_DESKTOP_PLAYBACK_WAIT_MS)
+            wait = FVM_DESKTOP_PLAYBACK_WAIT_MS;
         if (!fvm_desktop_window_active(window))
         {
             if (audio.output &&

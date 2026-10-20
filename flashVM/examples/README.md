@@ -161,6 +161,7 @@
   - [loading](#example-player-loading) — <small><em>Встроенный старт, дочерний SWF и form-переменные</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [monitored_loading](#example-player-monitored_loading) — <small><em>Owner callbacks, общий дедлайн и отмена старта из C</em></small>
+  - [playback_control](#example-player-playback_control) — <small><em>C89: пауза, шаг, продолжение и STOP для file/embedded/HTTP</em></small>
   - [redirect_loading](#example-player-redirect_loading) — <small><em>Ограниченные redirects и конечные root/child/form origin через C API</em></small>
   - [socket_loading](#example-player-socket_loading) — <small><em>HTTP через POSIX/Winsock без libcurl</em></small>
   - [unload_loading](#example-player-unload_loading) — <small><em>Очистка child, отмена поддерева, сохранение peer и новая загрузка</em></small>
@@ -1795,6 +1796,19 @@ C89-хост: owner-thread BEGIN/WAIT/result, per-job deadline и stop до star
 [README EN](player/monitored_loading/README.md) / [RU](player/monitored_loading/README.ru.md),
 [C](player/monitored_loading/main.c), [контракт](../doc/LOAD_MONITOR.ru.md).
 
+<a id="example-player-playback_control"></a>
+### playback_control
+
+Самостоятельный C89-хост с командами на безопасных границах владельца: пауза,
+одиночные шаги, продолжение и остановка всего запуска. Тонкий CLI переводит
+аргументы в C API; IDE может использовать тот же callback без консоли.
+[README EN](player/playback_control/README.md) / [RU](player/playback_control/README.ru.md),
+[C](player/playback_control/main.c), [SWF8](player/playback_control/start.swf),
+[AS-пояснение](player/playback_control/start.as), [генератор](player/playback_control/make_movie.py).
+Локальный/linked-buffer запуск не требует сети или image codecs; HTTP включается
+явным provider. Пауза шкалы не замораживает скриптовые таймеры и не является
+пошаговым отладчиком AVM1.
+
 <a id="example-player-redirect_loading"></a>
 ### redirect_loading
 
@@ -1947,6 +1961,7 @@ Source line links describe the current checkout, including in historical notes.
 - [os_ports — embedding/os_ports](#example-embedding-os_ports)
 - [parallel_render — embedding/parallel_render](#example-embedding-parallel_render)
 - [parsing.as — actionscript/parsing.as](#example-actionscript-parsing-as)
+- [playback_control — player/playback_control](#example-player-playback_control)
 - [property_resolve — embedding/property_resolve](#example-embedding-property_resolve)
 - [prototypes — embedding/prototypes](#example-embedding-prototypes)
 - [prototypes — extending/prototypes](#example-extending-prototypes)

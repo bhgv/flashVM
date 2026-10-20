@@ -108,3 +108,11 @@ stop before navigation, invalid commands, pinned-root collection and cancellatio
 after a response body has started. SDK shutdown checks worker cleanup. Policy
 checks also run without starting VM/SDL. These fixtures are not a full debugger,
 reference Flash comparison or native foreign-OS/device acceptance.
+
+[Standalone C89/AS/SWF tutorial](../examples/player/playback_control/README.md):
+native/cross builds, CLI as an adapter and callback ownership.
+
+Since v0.712, TURN also runs during final bounded-frame visibility waits.
+With notify installed, timer-free slow-frame waits are capped at a 10 ms polling
+interval. This is a polling policy, not a real-time guarantee: VM/provider/platform
+work may postpone delivery.

@@ -928,3 +928,20 @@ if(TARGET flashvm_frontend_playback_control AND Python3_Interpreter_FOUND AND NO
     endif()
   endforeach()
 endif()
+
+# Independent C89 playback-control tutorial; local/embedded modes need no HTTP or image codec.
+if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_playback_control ../examples/player/playback_control/main.c)
+  target_link_libraries(flashvm_example_playback_control PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_example_playback_control PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+endif()
+if(TARGET flashvm_example_playback_control AND FVM_BUILD_TESTS AND Python3_Interpreter_FOUND AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME flashvm_example_playback_control COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/playback_example.py $<TARGET_FILE:flashvm_example_playback_control>
+    ${PROJECT_SOURCE_DIR}/examples/player/playback_control)
+  set_tests_properties(flashvm_example_playback_control PROPERTIES TIMEOUT 25)
+  if(UNIX AND NOT APPLE)
+    set_property(TEST flashvm_example_playback_control APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endif()
+endif()
