@@ -57,6 +57,9 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     executable, mode, *extra = sys.argv[1:]
+    if extra:
+        metadata = subprocess.check_output([executable, '--version'])
+        if b'background_provider=no' in metadata: raise SystemExit(77)
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()

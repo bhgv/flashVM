@@ -2,7 +2,7 @@
 
 [English](PLAYER_SOURCES.md).
 
-Текущая v0.682 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
+Текущая v0.683 поддерживает дочерние фильмы и loadVariables; она заменяет описанные ниже исторические ограничения root-only.
 
 [Встроенный транспорт POSIX/Winsock без libcurl](SOCKET_TRANSPORT.ru.md) доступен с v0.677.
 
@@ -45,9 +45,9 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Этапы](ROADMAP_STATUS.md)
 ## Транспорт хоста и корневая загрузка с v0.674
 
-[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/source.h#L27) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L35)
-и [FVM_DesktopFetch](../frontend/common/source.h#L40). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
+[source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L22)
+и [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают
 с memory run. Для FILE/URL bytes=null и size=0. Имя — 1..4096 байтов;
@@ -90,7 +90,7 @@ GetURL2 LOAD_TARGET к _root или _level0 с GET/без метода копи�
 FVM_PLAYER_HTTP=ON подключает отдельный SDK libcurl 7.62+ только к необязательному
 frontend. По умолчанию OFF: память, файлы и пользовательский транспорт остаются
 доступны без curl. [fvm_desktop_http_fetch](../frontend/common/http.h#L21) из [http.h](../frontend/common/http.h)
-соответствует [FVM_DesktopFetch](../frontend/common/source.h#L40): присвойте loader.fetch, userdata оставьте null.
+соответствует [FVM_DesktopFetch](../frontend/common/http.h#L16): присвойте loader.fetch, userdata оставьте null.
 URL API curl разрешает reference/base и возвращает canonical provenance.
 HTTP(S) GET проверяет TLS peer/hostname, полное завершение передачи и код 2xx.
 Редиректы отклоняются. POST, настройка авторизации, progressive loading и отмена
@@ -239,7 +239,7 @@ Shared native CTest явно добавляет build-каталог библи�
 /proc мешает $ORIGIN. Защита активных владельцев проверяется в static-host
 фикстуре с общим SDL; opaque DLL cleanup проверяется через интерфейс модуля.
 GET в этой серии — получение ресурса по заданному URL. Автоматическая отправка переменных текущего клипа в query и POST-body ещё не реализована.
-[Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.ru.md), v0.680–0.682.
+[Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.ru.md), v0.680–0.683.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

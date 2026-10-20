@@ -40,6 +40,9 @@ For libcurl disable SOCKET_HTTP/TLS and enable FVM_PLAYER_HTTP; background mode
 requires CURL_VERSION_THREADSAFE in the linked SDK. See the transport guide for
 static SDK and foreign OS/CPU build instructions. Cross-linking is not target execution.
 
+[fvm_desktop_background_supported](../../../frontend/common/background.h#L49)() checks default worker support before startup.
+The asynchronous companion is [here](../async_loading/README.md).
+
 [main.c](main.c) explains every line. The options, source URL and loader remain
 borrowed until return; nested userdata must remain immutable/thread-safe. Native
 bytes are accumulated on the worker; VM import and setters remain on the owner.

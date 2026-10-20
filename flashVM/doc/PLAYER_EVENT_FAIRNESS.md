@@ -1,7 +1,7 @@
 # Bounded SDL event processing
 
 [Русский](PLAYER_EVENT_FAIRNESS.ru.md). Since v0.658 each call to
-[`fvm_desktop_window_events`](../frontend/common/window.h#L58) handles at most 64 SDL records. On reaching that limit
+[`fvm_desktop_window_events`](../frontend/common/window.h#L59) handles at most 64 SDL records. On reaching that limit
 it returns immediately without waiting, leaving the remaining queue intact.
 The player can then deliver input, poll timers, take a safe GC step and advance
 or draw the movie. Window/exposure/user event storms cannot trap the host in one

@@ -152,6 +152,7 @@
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [async_loading](#example-player-async_loading) — <small><em>Timeline/timers во время HTTP/TLS, безопасная доставка и C/AS пример</em></small>
   - [background_loading](#example-player-background_loading) — <small><em>Worker fetch, отмена и native события без VM в потоке</em></small>
   - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [embedded_movie](#example-player-embedded_movie) — <small><em>SWF в исполняемом файле без runtime-файла</em></small>
@@ -1700,6 +1701,16 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 CLI проверяет 120 кадров каждого в interpreter/JIT.
 [Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
 
+<a id="example-player-async_loading"></a>
+### async_loading
+
+Самодостаточный C89/AS/AVM1 пример неблокирующих network child/form запросов:
+frames/timers продолжаются, готовые байты применяются на owner safe points.
+[README EN](player/async_loading/README.md) / [RU](player/async_loading/README.ru.md),
+[C](player/async_loading/main.c), [root AS](player/async_loading/start.as),
+[child AS](player/async_loading/nested/child.as), [генератор](player/async_loading/make_movies.py).
+Root/startup lifecycle, strict loading errors и отсутствие полного MovieClipLoader остаются явными.
+
 <a id="example-player-background_loading"></a>
 ### background_loading
 
@@ -1801,6 +1812,7 @@ Source line links describe the current checkout, including in historical notes.
 
 - [alsa_output — multimedia/alsa_output](#example-multimedia-alsa_output)
 - [animation_audio — player/animation_audio](#example-player-animation_audio)
+- [async_loading — player/async_loading](#example-player-async_loading)
 - [audio_channels — multimedia/audio_channels](#example-multimedia-audio_channels)
 - [background_loading — player/background_loading](#example-player-background_loading)
 - [backtrace — debugger/backtrace](#example-debugger-backtrace)

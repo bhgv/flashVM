@@ -33,6 +33,20 @@ extern "C"
      * local playback and unsupported URL input. The options struct layout remains unchanged. */
     FVM_DESKTOP_API int fvm_desktop_run_background(const FVM_DesktopOptions *options,
                                                    const char **error);
+    /* Async network child/form variant: timeline/timers continue while one FIFO request
+     * is in flight. Completion imports only at owner safe points. Startup and whole-root
+     * replacement retain the background runner's blocking/no-active-view behavior.
+     * Frame limits/close/error cancel and join unfinished requests before VM teardown. */
+    FVM_DESKTOP_API int fvm_desktop_run_source_async(const FVM_DesktopOptions *options,
+                                                     const FVM_DesktopSource *source,
+                                                     const FVM_DesktopBackgroundLoader *loader,
+                                                     const char **error);
+    /* Playlist adapter selecting the compiled default worker-safe provider. */
+    FVM_DESKTOP_API int fvm_desktop_run_async(const FVM_DesktopOptions *options,
+                                              const char **error);
+    /* Query compiled default-provider worker support without VM/display/network startup.
+     * Does not describe a custom callback or prove remote connectivity/trust readiness. */
+    FVM_DESKTOP_API int fvm_desktop_background_supported(void);
 #ifdef __cplusplus
 }
 #endif

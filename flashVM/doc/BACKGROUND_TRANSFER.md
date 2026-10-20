@@ -142,6 +142,51 @@ x86_64 player/example cross-builds link; Windows DLL C/C++98 consumers and trans
 fixtures link, without target execution. Complete asynchronous loading, DNS
 interruption, foreign runtime/device and stage 9 release acceptance remain open.
 
+
+## Asynchronous child and form delivery (v0.683)
+
+Use `--async-loads --loads 8` or [fvm_desktop_run_source_async](../frontend/common/background.h#L40) /
+[fvm_desktop_run_async](../frontend/common/background.h#L45) to keep frames, timers, input and GC running while a
+network child SWF or loadVariables response is pending. The same
+`FVM_DesktopBackgroundLoader` supplies an explicit worker-safe provider and
+budgets. Existing options/source/loader layouts and synchronous APIs are unchanged.
+Only one network request is in flight; later requests retain FIFO order and their
+source bases. The pending target stays explicitly GC-pinned across frames.
+
+The worker publishes immutable bytes only after complete successful fetch.
+At an owner-thread safe point the player imports the child or applies form
+variables/onData, then releases the job and target pin. No worker calls VM,
+window or audio objects. Pending completion is polled at intervals capped at
+5ms even in a low-frame-rate movie; this is a scheduling bound, not a realtime
+guarantee. Closing, reaching the frame limit or an error cancels and joins the
+job before releasing pins/context; incomplete bytes are never imported.
+
+`--background-loads` retains its v0.682 waiting-at-safe-point behavior. The two
+mode flags are mutually exclusive; after `--` either is a literal filename.
+Startup and whole-root replacement retain the prior background lifecycle without
+an active player view. Local file reads stay synchronous on the owner. There is
+no progressive decoding or complete MovieClipLoader event protocol; network/import
+errors still fail playback. DNS/noncooperative providers may delay final join.
+
+[fvm_desktop_background_supported](../frontend/common/background.h#L49)() and `--version`'s
+`background_provider=yes/no` query the compiled default provider without startup.
+A custom callback has its own contract. Unsafe old libcurl global initialization
+is rejected for workers; unavailable-provider tests explicitly skip with status77.
+See the [standalone annotated C/AS example](../examples/player/async_loading/README.md)
+and [cross-platform build guide](SOCKET_TRANSPORT.md). The tutorial generator is
+standard-library Python and does not depend on unfinished compiler backends.
+
+The v0.683 native selection passes 91 tests, including HTTP/HTTPS interpreter/JIT,
+real close/cancel, short frame limits, timer/frame progress and a 1Hz onData
+completion deadline. Waiting-mode and wrong-data negative controls must fail.
+Linux ARM64/RISC-V64 and Windows x86_64 player/example builds and Windows DLL
+consumers cross-link; foreign binaries are not executed. These bounded results
+do not close stage9 or all nine roadmap stages.
+
+Additional current validation: 12 shared-libcurl and 16 shared native-TLS checks
+pass. Player/transfer C implementations pass UBSan on the real async HTTP fixture;
+SDL, core VM and crypto dependencies were not instrumented by that probe.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

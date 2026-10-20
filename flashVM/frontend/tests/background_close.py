@@ -31,6 +31,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     host, player = sys.argv[1:]
+    if b'background_provider=no' in subprocess.check_output([player, '--version']): raise SystemExit(77)
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     worker = threading.Thread(target=server.serve_forever, daemon=True); worker.start()
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software')
@@ -42,6 +43,11 @@ def main():
             result = subprocess.run([host, str(root)], env=env, capture_output=True, timeout=5)
             assert result.returncode == 0, result.stderr
             assert time.monotonic() - started < 2.5, 'close waited for the stalled body'
+            assert Handler.paths == ['/app/nested/child.swf'], Handler.paths
+            Handler.paths.clear()
+            started = time.monotonic()
+            result = subprocess.run([host, str(root), '--async'], env=env, capture_output=True, timeout=5)
+            assert result.returncode == 0 and time.monotonic() - started < 2.5, result.stderr
             assert Handler.paths == ['/app/nested/child.swf'], Handler.paths
             result = subprocess.run([player, '--background-loads', '--background-loads', str(root)],
                                     env=env, capture_output=True, timeout=5)

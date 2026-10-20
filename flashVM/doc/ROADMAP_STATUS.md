@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.682
+# FlashVM stage status / Состояние стадий — v0.683
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,17 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.683 adds opt-in asynchronous network child/form delivery: one pinned FIFO
+request, continuing frames/timers/input/GC, owner-thread import/onData and joined
+cancellation before context teardown. 91 selected native tests pass, including
+HTTP/HTTPS interpreter/JIT and 1Hz completion latency with negative controls.
+12 shared-libcurl and 16 shared native-TLS tests pass; player/transfer C-only
+UBSan passes the async HTTP fixture. Dependencies are not instrumented.
+Player/example cross-builds link for Linux ARM64/RISC-V64 and Windows x86_64;
+Windows DLL C/C++98 consumers link without target execution. Full load lifecycle,
+progressive decoding, DNS interruption and foreign runtime acceptance remain open.
+[EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md). All nine stages remain open.
 
 v0.667 adds a foreground event-loop GC safe point independent of fired timers.
 [Contract and regression](PLAYER_EVENT_GC.md) / [Контракт и проверка](PLAYER_EVENT_GC.ru.md).

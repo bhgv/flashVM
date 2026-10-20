@@ -35,6 +35,8 @@ extern "C"
                                                FVM_DesktopWrite write, void *write_userdata,
                                                char *resolved, size_t capacity,
                                                const FVM_NetControl *control, void *userdata);
+    /* Report whether the linked SDK supports worker-safe HTTP global initialization. */
+    int fvm_desktop_http_background_supported(void);
 #ifdef __cplusplus
 }
 #endif

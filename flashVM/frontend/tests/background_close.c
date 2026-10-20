@@ -55,14 +55,14 @@ int main(int argc, char **argv)
     FVM_DesktopSource source;
     FVM_DesktopBackgroundLoader loader;
     int status;
-    if (argc != 2)
+    if (argc != 2 && argc != 3)
         return 2;
     owner = SDL_ThreadID();
     fvm_desktop_options_init(&options);
     fvm_desktop_background_loader_init(&loader);
     options.mode = FVM_EXECUTION_INTERPRETER;
     options.frames = 3;
-    options.fps = 1000;
+    options.fps = 10;
     options.mute = 1;
     loader.max_loads = 8;
     loader.transfer.fetch = fetch;
@@ -70,7 +70,8 @@ int main(int argc, char **argv)
     source.location = argv[1];
     source.bytes = 0;
     source.size = 0;
-    status = fvm_desktop_run_source_background(&options, &source, &loader, 0);
+    status = argc == 3 ? fvm_desktop_run_source_async(&options, &source, &loader, 0)
+                       : fvm_desktop_run_source_background(&options, &source, &loader, 0);
     if (!SDL_AtomicGet(&injected) || fvm_desktop_transfer_active() ||
         fvm_desktop_shutdown() != FVM_OK)
         return 3;

@@ -88,6 +88,9 @@ def main():
     player, memory_host, mode, *extra = sys.argv[1:]
     player, memory_host = str(Path(player).resolve()), str(Path(memory_host).resolve())
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', SDL_RENDER_DRIVER='software', NO_PROXY='127.0.0.1')
+    if extra:
+        metadata = subprocess.check_output([player, '--version'])
+        if b'background_provider=no' in metadata: raise SystemExit(77)
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()

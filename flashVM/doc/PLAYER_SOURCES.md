@@ -2,7 +2,7 @@
 
 [Русский](PLAYER_SOURCES.ru.md).
 
-Current v0.682 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
+Current v0.683 supports child movies and loadVariables; it supersedes the historical root-only restrictions below.
 
 [Native POSIX/Winsock transport without libcurl](SOCKET_TRANSPORT.md) is available since v0.677.
 
@@ -45,9 +45,9 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 [Roadmap status](ROADMAP_STATUS.md)
 ## Host transport and root loading since v0.674
 
-[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/source.h#L27) (kind, bytes,
-size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/source.h#L35)
-and [FVM_DesktopFetch](../frontend/common/source.h#L40). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
+[source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/background.h#L29) (kind, bytes,
+size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L22)
+and [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
 validation, ignored playlist, return/error and main-thread rules as memory run.
 Non-memory sources must have null bytes and zero size. Names are 1..4096 bytes;
@@ -90,7 +90,7 @@ unsupported requests and loop limits in both interpreter and JIT.
 FVM_PLAYER_HTTP=ON adds the independent libcurl 7.62+ SDK dependency to the
 optional frontend only. Default is OFF; custom transport and memory/file playback
 remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L21) in [http.h](../frontend/common/http.h)
-is an [FVM_DesktopFetch](../frontend/common/source.h#L40) provider: set loader.fetch to it and keep userdata null.
+is an [FVM_DesktopFetch](../frontend/common/http.h#L16) provider: set loader.fetch to it and keep userdata null.
 It resolves reference/base with libcurl's URL API, returns canonical provenance,
 performs HTTP(S) GET with TLS peer/hostname verification, checks the entire transfer
 and accepts only 2xx. Redirects are rejected, not followed; POST/authentication
@@ -242,7 +242,7 @@ where sandbox /proc restrictions prevent $ORIGIN discovery. Busy-owner shutdown
 is tested against a shared SDL instance in the static-host fixture; opaque DLL
 cleanup is tested through the module interface.
 GET here means retrieving the supplied URL. Automatic serialization of current-clip variables into query parameters or a POST body is not implemented.
-[Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.682.
+[Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.683.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

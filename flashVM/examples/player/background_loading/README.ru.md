@@ -38,6 +38,9 @@ OpenSSL, включая SSL_CERT_FILE, либо явные native options. Дл�
 SOCKET_HTTP/TLS и включите FVM_PLAYER_HTTP; нужен linked SDK с CURL_VERSION_THREADSAFE.
 Static SDK и cross-build OS/CPU описаны в руководстве транспорта; link не равен run.
 
+[fvm_desktop_background_supported](../../../frontend/common/background.h#L49)() проверяет штатную worker-поддержку до старта.
+Асинхронный вариант: [пример](../async_loading/README.ru.md).
+
 В [main.c](main.c) объяснена каждая строка. Options, URL и loader заимствованы до
 возврата; вложенный userdata immutable/thread-safe. Worker накапливает native
 bytes; импорт/setters выполняет owner. VM-объекты не передаются callback. Все

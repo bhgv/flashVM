@@ -342,6 +342,8 @@ void fvm_desktop_help(const char *program)
     puts("  --fps N                 Absolute movie ticks/second, 0.1..1000");
     puts("  --speed N[%]            Percent of SWF FPS, 0.1..10000 (default: 100)");
     puts("                          --fps and --speed cannot be combined");
+    puts(
+        "  --async-loads           Keep timeline/timers running during network child/form fetches");
     puts("  --background-loads      Fetch network bytes on joined workers; pump the active window");
     puts("  --loads N               Allow 1..1024 resource loads, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");

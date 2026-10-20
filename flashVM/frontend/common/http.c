@@ -168,22 +168,21 @@ FVM_Result fvm_desktop_http_transfer_fetch(const char *reference, const char *ba
                                            char *resolved, size_t capacity,
                                            const FVM_NetControl *control, void *userdata)
 {
-#ifdef CURL_VERSION_THREADSAFE
-    const curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
-    if (!info || !(info->features & CURL_VERSION_THREADSAFE))
+    if (!fvm_desktop_http_background_supported())
         return FVM_UNSUPPORTED;
     if (userdata)
         return FVM_INVALID_ARGUMENT;
     return http_fetch(reference, base, write, write_userdata, resolved, capacity, control);
+}
+
+/* Owner-thread metadata check also lets an IDE avoid unsupported older libcurl worker APIs. */
+int fvm_desktop_http_background_supported(void)
+{
+#ifdef CURL_VERSION_THREADSAFE
+    const curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
+    return info && (info->features & CURL_VERSION_THREADSAFE) &&
+           (fvm_desktop_http_capabilities() & FVM_DESKTOP_NETWORK_HTTP);
 #else
-    (void)reference;
-    (void)base;
-    (void)write;
-    (void)write_userdata;
-    (void)resolved;
-    (void)capacity;
-    (void)control;
-    (void)userdata;
-    return FVM_UNSUPPORTED;
+    return 0;
 #endif
 }

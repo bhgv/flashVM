@@ -22,6 +22,11 @@ int main(int argc, char **argv) /* One absolute HTTP(S) URL selects the startup 
         fprintf(stderr, "Usage: %s http[s]://host/path/start.swf\n", argv[0]); /* Required URL. */
         return 2; /* Argument error, matching the player convention. */
     } /* Complete argument shape; URI validation belongs to the provider. */
+    if (!fvm_desktop_background_supported()) /* Query the actual linked default SDK before startup. */
+    { /* Older libcurl global initialization must not run on arbitrary workers. */
+        fprintf(stderr, "background provider unavailable\n"); /* No UI/network state was opened. */
+        return 1; /* Report a capability failure through this executable's ordinary status. */
+    } /* A custom host may instead supply a separately verified worker-safe callback. */
     fvm_desktop_options_init(&options); /* No caller field remains uninitialized. */
     fvm_desktop_background_loader_init(&loader); /* No hidden provider registration. */
 #ifdef FVM_DESKTOP_SOCKET_HTTP /* Select the native TCP/TLS worker adapter. */

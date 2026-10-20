@@ -648,7 +648,7 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_TESTS AND NOT ANDRO
     add_test(NAME flashvm_background_close COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/background_close.py $<TARGET_FILE:flashvm_background_close>
       $<TARGET_FILE:flashvm_player>)
-    set_tests_properties(flashvm_background_close PROPERTIES TIMEOUT 15)
+    set_tests_properties(flashvm_background_close PROPERTIES TIMEOUT 15 SKIP_RETURN_CODE 77)
     foreach(mode interpreter jit)
       add_test(NAME flashvm_background_http_${mode} COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/http_player.py $<TARGET_FILE:flashvm_player> --${mode} --background-loads)
@@ -667,7 +667,42 @@ if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT AN
   if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
     add_test(NAME flashvm_example_background_loading COMMAND ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/background_example.py $<TARGET_FILE:flashvm_example_background_loading>)
-    set_tests_properties(flashvm_example_background_loading PROPERTIES TIMEOUT 20)
+    set_tests_properties(flashvm_example_background_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
+  endif()
+endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_async_loading_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/async_loading.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_async_loading_${mode} PROPERTIES TIMEOUT 45 SKIP_RETURN_CODE 77)
+    if(FVM_PLAYER_HOST_SHARED AND UNIX AND NOT APPLE)
+      set_property(TEST flashvm_async_loading_${mode} APPEND PROPERTY ENVIRONMENT
+        "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+    endif()
+  endforeach()
+endif()
+
+if(FVM_PLAYER_SOCKET_TLS AND FVM_OPENSSL_PROGRAM AND FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_async_tls_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/async_loading.py $<TARGET_FILE:flashvm_player> --${mode} ${FVM_OPENSSL_PROGRAM})
+    set_tests_properties(flashvm_async_tls_${mode} PROPERTIES TIMEOUT 45 SKIP_RETURN_CODE 77)
+    if(FVM_PLAYER_HOST_SHARED AND UNIX AND NOT APPLE)
+      set_property(TEST flashvm_async_tls_${mode} APPEND PROPERTY ENVIRONMENT
+        "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+    endif()
+  endforeach()
+endif()
+
+if((FVM_PLAYER_HTTP OR FVM_PLAYER_SOCKET_HTTP) AND FVM_BUILD_EXAMPLES AND NOT ANDROID)
+  add_executable(flashvm_example_async_loading ../examples/player/async_loading/main.c)
+  target_link_libraries(flashvm_example_async_loading PRIVATE flashvm_player_host)
+  if(FVM_BUILD_TESTS AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME flashvm_example_async_loading COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/async_example.py $<TARGET_FILE:flashvm_example_async_loading>
+      ${PROJECT_SOURCE_DIR}/examples/player/async_loading)
+    set_tests_properties(flashvm_example_async_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
   endif()
 endif()
 

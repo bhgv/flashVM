@@ -135,6 +135,7 @@ static void print_build_info(void)
                                                 : "none",
            network & FVM_DESKTOP_NETWORK_HTTP ? "yes" : "no",
            network & FVM_DESKTOP_NETWORK_HTTPS ? "yes" : "no");
+    printf("background_provider=%s\n", fvm_desktop_background_supported() ? "yes" : "no");
     puts("Build metadata only; no device or target-runtime acceptance is implied.");
 }
 
@@ -194,6 +195,18 @@ static unsigned char *read_resource(const char *path, size_t *size, int allow_em
 static unsigned char *read_movie(const char *path, size_t *size)
 {
     return read_resource(path, size, 0);
+}
+
+/* Default provider metadata is separate from custom per-run worker policies. */
+int fvm_desktop_background_supported(void)
+{
+#ifdef FVM_DESKTOP_SOCKET_HTTP
+    return 1;
+#elif defined(FVM_DESKTOP_HTTP)
+    return fvm_desktop_http_background_supported();
+#else
+    return 0;
+#endif
 }
 
 /* Print the operation and exact VM status; unsupported features must not be silently skipped. */
@@ -304,7 +317,8 @@ typedef struct FVM_DesktopBackgroundSession
     FVM_DesktopTransferOptions options; /* Immutable provider policy copied before playback. */
     FVM_DesktopWindow *window;          /* Borrowed only while play_bytes owns a live view. */
     FVM_DesktopAudio *audio;            /* Borrowed only while its native output is live. */
-    int closed; /* Owner-thread close request, independent of worker status. */
+    int closed;       /* Owner-thread close request, independent of worker status. */
+    int asynchronous; /* Keep the timeline running for deferred network child/form jobs. */
 } FVM_DesktopBackgroundSession;
 /* The worker owns only bytes; event/audio pumping and the consumer callback stay on the owner. */
 static FVM_Result background_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
@@ -373,7 +387,9 @@ typedef struct FVM_DesktopNavigation
     char *pending_base;              /* Owned provenance for the next root request. */
     FVM_DesktopRequest *head, *tail; /* Owned FIFO, drained only outside VM callbacks. */
     size_t count;                    /* Bound queued requests by the remaining load budget. */
-    FVM_Object *root;                /* Borrowed active root, pinned by play_bytes. */
+    FVM_DesktopTransfer *transfer;   /* Owned in-flight native-byte job, joined before GC unpin. */
+    FVM_DesktopRequest *active_request; /* [GC:] Keeps its target pinned across VM turns. */
+    FVM_Object *root;                   /* Borrowed active root, pinned by play_bytes. */
     const char *initial_base; /* Borrowed initial canonical location or executable resource path. */
     const FVM_DesktopLoader *policy;          /* Borrowed for the entire source run. */
     FVM_DesktopBackgroundSession *background; /* Optional borrowed owner-thread transfer session. */
@@ -386,6 +402,20 @@ static FVM_Result service_requests(FVM_Context *, FVM_DesktopNavigation *);
 /* [GC:] Release all native FIFO ownership before the corresponding context is destroyed. */
 static void discard_requests(FVM_Context *context, FVM_DesktopNavigation *navigation)
 {
+    if (navigation && navigation->transfer)
+    {
+        fvm_desktop_transfer_release(navigation->transfer);
+        navigation->transfer = 0;
+    }
+    if (navigation && navigation->active_request)
+    {
+        FVM_DesktopRequest *request = navigation->active_request;
+        navigation->active_request = 0;
+        fvm_gc_unpin(context, request->target);
+        free(request->url);
+        free(request->base);
+        free(request);
+    }
     while (navigation && navigation->head)
     {
         FVM_DesktopRequest *request = navigation->head;
@@ -840,6 +870,9 @@ static int play_bytes(const FVM_DesktopOptions *options, const char *path, const
                          "timer wakeup", path))
                 goto cleanup;
             wait = (int)timer_wait;
+            if (navigation && navigation->transfer && wait > FVM_DESKTOP_BACKGROUND_WAIT_MS)
+                wait =
+                    FVM_DESKTOP_BACKGROUND_WAIT_MS; /* Publish completions even at low movie FPS. */
             if (!wait)
                 continue; /* A deadline became due after polling; retry without a blocking wait. */
             if (!fvm_desktop_window_events(window, wait))
@@ -1067,6 +1100,34 @@ static int local_location(const char *reference, const char *base, char *out)
 /* Drain bounded queued requests on the VM owner thread after script/native callbacks return. */
 static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *navigation)
 {
+    /* [GC:] The active request retains its explicit target root while the VM keeps running. */
+    if (navigation->active_request)
+    {
+        FVM_DesktopTransferView view;
+        FVM_DesktopRequest *request = navigation->active_request;
+        FVM_Result status = fvm_desktop_transfer_poll(navigation->transfer, &view);
+        if (status == FVM_OK && view.state == FVM_DESKTOP_TRANSFER_PENDING)
+            return FVM_OK;
+        if (status == FVM_OK)
+            status = view.result;
+        if (status == FVM_OK)
+        {
+            if (request->flags & FVM_AVM1_URL_LOAD_VARIABLES)
+                status = fvm_object_load_variables(context, request->target, view.bytes, view.size);
+            else
+                status = fvm_movieclip_replace_swf(context, request->target, view.bytes, view.size,
+                                                   view.location, strlen(view.location));
+        }
+        fvm_desktop_transfer_release(navigation->transfer);
+        navigation->transfer = 0;
+        navigation->active_request = 0;
+        fvm_gc_unpin(context, request->target);
+        free(request->url);
+        free(request->base);
+        free(request);
+        if (status != FVM_OK)
+            return status;
+    }
     while (navigation->head && !navigation->pending)
     {
         FVM_DesktopRequest *request = navigation->head;
@@ -1091,6 +1152,20 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
             navigation->pending = request->url;
             navigation->pending_base = request->base;
             request->url = request->base = 0;
+        }
+        else if (status == FVM_OK && navigation->background &&
+                 navigation->background->asynchronous &&
+                 (strstr(request->url, "://") || strstr(request->base, "://")))
+        {
+            status =
+                fvm_desktop_transfer_begin(request->url, request->base,
+                                           &navigation->background->options, &navigation->transfer);
+            if (status == FVM_OK)
+            {
+                navigation->active_request = request;
+                return FVM_OK; /* One FIFO resource; owner loop continues input/timers/timeline/GC.
+                                */
+            }
         }
         else if (status == FVM_OK)
         {
@@ -1283,7 +1358,7 @@ int fvm_desktop_background_loader_init(FVM_DesktopBackgroundLoader *out)
 /* Private session never escapes this synchronous owner-thread call. */
 static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
                           const FVM_DesktopBackgroundLoader *loader, const char **error,
-                          int *closed)
+                          int *closed, int asynchronous)
 {
     FVM_DesktopBackgroundSession session;
     FVM_DesktopLoader policy;
@@ -1296,6 +1371,7 @@ static int run_background(const FVM_DesktopOptions *options, const FVM_DesktopSo
     }
     memset(&session, 0, sizeof(session));
     session.options = loader->transfer;
+    session.asynchronous = asynchronous;
     policy.fetch = background_fetch;
     policy.userdata = &session;
     policy.max_loads = loader->max_loads;
@@ -1306,10 +1382,11 @@ int fvm_desktop_run_source_background(const FVM_DesktopOptions *options,
                                       const FVM_DesktopSource *source,
                                       const FVM_DesktopBackgroundLoader *loader, const char **error)
 {
-    return run_background(options, source, loader, error, 0);
+    return run_background(options, source, loader, error, 0, 0);
 }
 /* Default-provider playlist shares the same import/GC/render/cleanup implementation. */
-int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **error)
+static int run_background_playlist(const FVM_DesktopOptions *options, const char **error,
+                                   int asynchronous)
 {
     FVM_DesktopOptions value;
     FVM_DesktopBackgroundLoader loader;
@@ -1337,11 +1414,28 @@ int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **e
         source.location = value.files[i];
         source.kind =
             strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
-        status = run_background(&value, &source, &loader, error, &closed);
+        status = run_background(&value, &source, &loader, error, &closed, asynchronous);
         if (status || closed)
             break;
     }
     return status;
+}
+
+/* Preserve the explicit event-pumping/waiting mode introduced before asynchronous delivery. */
+int fvm_desktop_run_background(const FVM_DesktopOptions *options, const char **error)
+{
+    return run_background_playlist(options, error, 0);
+}
+/* Keep child/form transfer completion separate from active timeline/timer execution. */
+int fvm_desktop_run_source_async(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                                 const FVM_DesktopBackgroundLoader *loader, const char **error)
+{
+    return run_background(options, source, loader, error, 0, 1);
+}
+/* Async playlist adapter retains ordinary whole-root replacement and close semantics. */
+int fvm_desktop_run_async(const FVM_DesktopOptions *options, const char **error)
+{
+    return run_background_playlist(options, error, 1);
 }
 
 /* Shared synchronous runner; the CLI translates arguments into this same contract. */
@@ -1404,16 +1498,17 @@ int fvm_desktop_main(int argc, char **argv)
     arguments[0] = argv[0];
     for (i = 1; i < argc; ++i)
     {
-        if (!literal && !strcmp(argv[i], "--background-loads"))
+        if (!literal &&
+            (!strcmp(argv[i], "--background-loads") || !strcmp(argv[i], "--async-loads")))
         {
             if (background)
             {
-                fprintf(stderr, "duplicate --background-loads\n");
+                fprintf(stderr, "duplicate --background-loads/--async-loads selection\n");
                 free(arguments);
                 free(files);
                 return FVM_DESKTOP_EXIT_ARGUMENT;
             }
-            background = 1;
+            background = !strcmp(argv[i], "--async-loads") ? 2 : 1;
         }
         else
         {
@@ -1434,8 +1529,9 @@ int fvm_desktop_main(int argc, char **argv)
     }
     else
     {
-        status = background ? fvm_desktop_run_background(&options, &error)
-                            : fvm_desktop_run(&options, &error);
+        status = background == 2   ? fvm_desktop_run_async(&options, &error)
+                 : background == 1 ? fvm_desktop_run_background(&options, &error)
+                                   : fvm_desktop_run(&options, &error);
         if (status == FVM_DESKTOP_EXIT_ARGUMENT)
             fprintf(stderr, "%s\n", error);
     }
