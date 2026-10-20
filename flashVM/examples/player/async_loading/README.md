@@ -60,7 +60,7 @@ in the transport guide. This example uses no mutable global provider setter.
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter, immutable borrowed options and cooperative cancellation. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker adapter; rejects older unsafe global initialization. |
 | fvm_desktop_run_source_async | Synchronous whole-player call with nonblocking child/form delivery at owner safe points. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | End this SDK session only after joined jobs and window/audio cleanup. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | End this SDK session only after joined jobs and window/audio cleanup. |
 
 All stack descriptors and nested provider userdata remain live/immutable until
 return. No VM object crosses a worker boundary. Each active target stays pinned

@@ -213,6 +213,8 @@ special/printable selectors without allocation or state mutation.
 
 [Committed content metadata / Сведения о содержимом](MOVIECLIP_CONTENT_INFO.md) / [RU](MOVIECLIP_CONTENT_INFO.ru.md).
 
+[Owner playback commands / Управление воспроизведением](PLAYBACK_CONTROL.md) / [RU](PLAYBACK_CONTROL.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

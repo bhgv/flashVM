@@ -52,6 +52,6 @@ Dummy SDL проверяет протокол, не физические уст�
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Worker-safe native provider; nested userdata borrowed through return. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker-safe curl alternative, requires thread-safe global SDK. |
 | [fvm_desktop_run_source_monitored](../../../frontend/common/load_monitor.h#L57) | Whole-player call; notify runs on owner, provider on worker. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | Cleanup only after joined workers/window/audio disposal. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | Cleanup only after joined workers/window/audio disposal. |
 
 Та же политика доступна через [CLI/playlist API](../../../doc/LOAD_MONITOR.ru.md#адаптеры-playlist-и-консоли-v0686).

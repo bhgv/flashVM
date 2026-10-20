@@ -44,7 +44,7 @@ bytes and GC pins. The caller ends the matching player library session afterward
 | [fvm_desktop_socket_options_init](../../../frontend/common/socket_http.h#L36) | Initialize caller-owned native transport deadlines; opens no sockets. |
 | [fvm_desktop_socket_fetch](../../../frontend/common/socket_http.h#L43) | Synchronously resolve/connect/fetch each resource through a borrowed sink; closes owned sockets and retains no pointers. |
 | [fvm_desktop_run_source](../../../frontend/common/source.h#L60) | Run on the UI/VM thread, borrowing all descriptors until return; resource callbacks execute at safe points. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L51) | End the matching player-library session after playback; refuses active SDL subsystems. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | End the matching player-library session after playback; refuses active SDL subsystems. |
 
 Each API's detailed arguments/status/lifetime contract is linked in the
 [transport guide](../../../doc/SOCKET_TRANSPORT.md#c-api) and
