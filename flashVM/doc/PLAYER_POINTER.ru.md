@@ -61,7 +61,8 @@ OOM подготовки, расходует его, оставляя поздн
 `fvm_desktop_window_pump_keyboard` остаётся внутренней совместимой обёрткой
 над общей FIFO с нулевым stage origin.
 
-Плеер явно устанавливает Mouse только для SWF6–8; старые ролики запускаются без
+Плеер явно устанавливает Mouse cursor namespace для SWF5–8, listeners — SWF6–8;
+[проверки версий](PLAYER_PREFLIGHT.ru.md). Старые ролики запускаются без
 нового namespace. Исходный мост v0.596 не поддерживал колесо и курсор; основной SDL-плейер теперь
 имеет ограниченный [wheel/cursor bridge](PLAYER_WHEEL_CURSOR.ru.md) и
 [политику владения](PLAYER_EVENT_FAIRNESS.ru.md). Retained scene input описан в

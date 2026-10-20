@@ -63,7 +63,8 @@ Callbacks must not destroy/reenter the host presentation lifecycle or throw
 across C. `fvm_desktop_window_pump_keyboard` remains an internal compatibility
 wrapper over the same shared FIFO with zero stage origin.
 
-Mouse namespace installation is explicit in the player for SWF6–8. Older movies
+Mouse cursor namespace installation is explicit for SWF5–8; listeners remain
+SWF6–8. [Version checks](PLAYER_PREFLIGHT.md). Older movies
 remain playable without the new namespace. The original v0.596 bridge lacked
 wheel/cursor support; the main SDL player now has the bounded
 [wheel/cursor bridge](PLAYER_WHEEL_CURSOR.md) and [ownership policy](PLAYER_EVENT_FAIRNESS.md).

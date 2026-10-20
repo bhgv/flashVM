@@ -289,3 +289,12 @@ if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
   endforeach()
   set_tests_properties(flashvm_player_event_storm_jit PROPERTIES SKIP_RETURN_CODE 77)
 endif()
+
+if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_player_legacy_cursor_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/legacy_cursor.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_player_legacy_cursor_${mode} PROPERTIES TIMEOUT 30)
+  endforeach()
+  set_tests_properties(flashvm_player_legacy_cursor_jit PROPERTIES SKIP_RETURN_CODE 77)
+endif()

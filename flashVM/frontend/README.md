@@ -125,3 +125,5 @@ checks use actual SDL adapter/host with synthetic input, not physical-device evi
 [Wheel and cursor bridge](../doc/PLAYER_WHEEL_CURSOR.md).
 
 [Bounded event processing](../doc/PLAYER_EVENT_FAIRNESS.md).
+
+[Compatibility and input preflight](../doc/PLAYER_PREFLIGHT.md).

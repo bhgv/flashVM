@@ -235,8 +235,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         goto cleanup;
     if (!checked(fvm_standard_keyboard_install(context), "Key polling namespace", path))
         goto cleanup;
-    /* The explicit MovieClip Selection subset starts at SWF6; keep older movies playable. */
-    if (info.version >= FVM_MOUSE_MIN_SWF_VERSION &&
+    /* Mouse cursor methods start at SWF5; listener methods keep their own SWF6 gate. */
+    if (info.version >= FVM_MOUSE_CURSOR_MIN_SWF_VERSION &&
         !checked(fvm_standard_mouse_install(context), "Mouse pointer namespace", path))
         goto cleanup;
     if (info.version >= FVM_SELECTION_MIN_SWF_VERSION &&
