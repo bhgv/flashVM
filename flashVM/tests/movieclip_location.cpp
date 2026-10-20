@@ -3,6 +3,7 @@
 #include "avm1_target_scope.cpp"
 #include "flashvm/serialization.h"
 #include "flashvm/execution_mode.h"
+#include "flashvm/jit.h"
 #include "../src/standard/movieclip_location.hpp"
 static unsigned coercions;
 /* Readonly assignment must not invoke input conversion. */
@@ -74,6 +75,13 @@ int main()
             actions.push_back(0x4e);
             actions.push_back(0x1d);
             assert(execute(c, root, actions) == FVM_OK);
+            FVM_ExecutionStats stats;
+            stats.struct_size = sizeof(stats);
+            assert(fvm_execution_get_stats(c, &stats) == FVM_OK);
+            if (mode && fvm_jit_available())
+                assert(stats.native_entries > 0);
+            else
+                assert(stats.interpreter_entries > 0);
             assert(fvm_object_get(c, root, "namedLocation", &out) == FVM_OK &&
                    !std::strcmp(out.string, old));
             /* Unload detaches the child with its old origin before the root source changes. */

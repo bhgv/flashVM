@@ -30,12 +30,28 @@ def dimension(index):
     return push('_root.picture', index) + b'\x22'
 
 
+def named_dimension(index):
+    """GetMember uses the same intrinsic geometry as numeric ActionGetProperty."""
+    return get('_root.picture') + push('_width' if index == 8 else '_height') + b'\x4e'
+
+
+def require_named_dimension(index, expected):
+    """Require an exact dimension read through the ordinary property descriptor."""
+    failed = push('named dimension mismatch') + b'\x2a'
+    return named_dimension(index) + push(expected) + b'\x66\x9d\x02\0' + struct.pack('<h',len(failed)) + failed
+
+
+def assign_member(name, value):
+    """Assign through SetMember, retaining an explicit MovieClip receiver."""
+    return get('_root.picture') + push(name,value) + b'\x4f'
+
+
 def require_dimension(index, expected):
     failed = push('image dimension mismatch') + b'\x2a'
     return dimension(index) + push(expected) + b'\x66\x9d\x02\0' + struct.pack('<h',len(failed)) + failed
 
 
-def root(kind=0):
+def root(kind=0, expected_source=None):
     width = 1 if kind == 1 else 8
     first = method_call('_root','createEmptyMovieClip','picture',1)
     first += method_call('_root.picture','createEmptyMovieClip','old',1)
@@ -43,15 +59,25 @@ def root(kind=0):
     first += push('_root.iter',0)+b'\x1d'+push('_root.phase',0)+b'\x1d'
     first += get('_root.picture')+push('image.bin',2,'loadMovie')+b'\x3d\x17'
     ready = require('_root.picture.kept',42)+require_dimension(9,width)
+    ready += require_named_dimension(8,width) + require_named_dimension(9,width)
+    ready += assign_member('_width',width*2) + assign_member('_height',width*3)
+    ready += require_dimension(8,width*2) + require_dimension(9,width*3)
+    ready += require_named_dimension(8,width*2) + require_named_dimension(9,width*3)
+    ready += push('_root.imageOrigin')+get('_root.picture')+push('_url')+b'\x4e\x1d'
+    ready += assign_member('_url','ignored source')
+    failed_url = push('readonly image origin changed')+b'\x2a'
+    ready += get('_root.imageOrigin')+get('_root.picture')+push('_url')+b'\x4e\x66\x9d\x02\0'+struct.pack('<h',len(failed_url))+failed_url
     ready += require_undefined('_root.picture.old')
     failed=push('image target changed')+b'\x2a'
     ready += get('_root.saved')+get('_root.picture')+b'\x66\x9d\x02\0'+struct.pack('<h',len(failed))+failed
+    if expected_source is not None:
+        ready += require('_root.picture._url',expected_source)
     ready += push('_root.phase',1)+b'\x1d'+method_call('_root.picture','unloadMovie')
     ready += global_call('loadMovie','after.swf','picture')
     second = push('_root.iter')+get('_root.iter')+push(1)+b'\x47\x1d'
     second += when(get('_root.iter')+push(200)+b'\x67',require('_root.finished',1))
     second += when(equal('_root.phase',0)+(dimension(8)+push(width)+b'\x66')+b'\x10',ready)
-    second += when(equal('_root.picture.loaded',1),require('_root.picture.kept',42)+require_dimension(8,0)+push('_root.finished',1)+b'\x1d\x07')
+    second += when(equal('_root.picture.loaded',1),require('_root.picture.kept',42)+require_dimension(8,0)+require_named_dimension(8,0)+push('_root.finished',1)+b'\x1d\x07')
     return swf([first,second,b'\x81\x02\0\x01\0\x06'])
 
 
@@ -63,11 +89,17 @@ class Handler(BaseHTTPRequestHandler):
     paths=[]
     kind=0
     bad=False
+    redirect=False
     def log_message(self,*_):
         pass
     def do_GET(self):
         self.paths.append(self.path)
-        resources={'/app/start.swf':root(self.kind),'/app/image.bin': [png(),GIF,JPEG][self.kind],'/app/after.swf':after()}
+        scheme='https' if isinstance(self.connection,ssl.SSLSocket) else 'http'
+        origin=scheme+'://'+self.headers['Host']+('/assets/final.bin' if self.redirect else '/app/image.bin')
+        if self.redirect and self.path=='/app/image.bin':
+            self.send_response(302);self.send_header('Location','/assets/final.bin');self.send_header('Content-Length','0');self.end_headers();return
+        resources={'/app/start.swf':root(self.kind,origin),'/app/image.bin': [png(),GIF,JPEG][self.kind],'/app/after.swf':after()}
+        resources['/assets/final.bin']=resources['/app/image.bin']
         if self.path not in resources:
             self.send_error(404);return
         data=resources[self.path]
@@ -84,7 +116,7 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         folder=Path(directory);(folder/'after.swf').write_bytes(after())
         for kind,data in enumerate([png(),GIF,JPEG]):
-            (folder/'start.swf').write_bytes(root(kind));(folder/'image.bin').write_bytes(data)
+            (folder/'start.swf').write_bytes(root(kind,str(folder/'image.bin')));(folder/'image.bin').write_bytes(data)
             result=subprocess.run(command+[str(folder/'start.swf')],env=env,capture_output=True,timeout=10)
             if mode=='--jit' and b'requested JIT backend unavailable' in result.stderr:raise SystemExit(77)
             assert result.returncode==0,result.stderr
@@ -105,6 +137,15 @@ def main():
                 result=subprocess.run(command+policy+extra+[('https' if tls else 'http')+'://127.0.0.1:%d/app/start.swf'%server.server_port],env=env,capture_output=True,timeout=10)
                 assert result.returncode==0,result.stderr
                 assert Handler.paths==['/app/start.swf','/app/image.bin','/app/after.swf'],Handler.paths
+        # The image records its final URL; the root caller still resolves its own reload URL.
+        Handler.redirect=True;Handler.kind=0
+        for asynchronous in (False,True):
+            Handler.paths.clear()
+            policy=['--async-loads' if asynchronous else '--background-loads','--redirects','1']
+            result=subprocess.run(command+policy+extra+[('https' if tls else 'http')+'://127.0.0.1:%d/app/start.swf'%server.server_port],env=env,capture_output=True,timeout=10)
+            assert result.returncode==0,result.stderr
+            assert Handler.paths==['/app/start.swf','/app/image.bin','/assets/final.bin','/app/after.swf'],Handler.paths
+        Handler.redirect=False
         Handler.bad=True
         result=subprocess.run(command+['--async-loads']+extra+[('https' if tls else 'http')+'://127.0.0.1:%d/app/start.swf'%server.server_port],env=env,capture_output=True,timeout=10)
         assert result.returncode==1,result.stderr

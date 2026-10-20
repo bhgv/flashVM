@@ -3,6 +3,7 @@
 #include "avm1_target_scope.cpp"
 #include "flashvm/serialization.h"
 #include "flashvm/execution_mode.h"
+#include "flashvm/jit.h"
 #include <cmath>
 #include "../src/standard/movieclip_dimensions.hpp"
 static unsigned conversions;
@@ -98,6 +99,13 @@ int main()
             actions.push_back(0x4e);
             actions.push_back(0x1d);
             assert(execute(c, root, actions) == FVM_OK);
+            FVM_ExecutionStats stats;
+            stats.struct_size = sizeof(stats);
+            assert(fvm_execution_get_stats(c, &stats) == FVM_OK);
+            if (mode && fvm_jit_available())
+                assert(stats.native_entries > 0);
+            else
+                assert(stats.interpreter_entries > 0);
             number(c, root, "namedResult", 50);
             fvm_value_undefined(&value);
             assert(fvm_object_set(c, clip, "_width", &value) == FVM_OK);

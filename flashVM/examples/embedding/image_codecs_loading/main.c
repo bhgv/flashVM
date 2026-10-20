@@ -12,7 +12,7 @@ int main(void) /* Build target: flashvm_examples_embedding_image_codecs_loading_
     FVM_Runtime *runtime = 0; /* Outlive the managed context. */
     FVM_Context *context = 0; /* Own clip state, bitmap pixels and its host pin. */
     FVM_Object *clip = 0; /* Borrow this identity until context destruction. */
-    FVM_Value value; /* Carry a scalar own property independent of image contents. */
+    FVM_Value value; /* Carry copied scalars and borrowed source strings between host calls. */
     unsigned char pixels[16]; /* Four caller-owned straight RGBA pixels. */
     FVM_RasterSurface surface = {0, 2, 2, 8}; /* Borrow output storage only during rendering. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
@@ -34,6 +34,24 @@ int main(void) /* Build target: flashvm_examples_embedding_image_codecs_loading_
         status = fvm_movieclip_replace_image(context, clip, picture_png, sizeof(picture_png), "embedded.png", 12); /* Borrow counted bytes. */
     if (status == FVM_OK) /* The generic entrypoint selects the same image by its signature. */
         status = fvm_movieclip_replace_resource(context, clip, picture_png, sizeof(picture_png), "resource", 8); /* Preserve identity again. */
+    if (status == FVM_OK) /* Read the current painted extent through the standard object API. */
+        status = fvm_object_get(context, clip, "_width", &value); /* Named geometry is not a cached scalar. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != 2)) /* PNG width is two pixels. */
+        status = FVM_ERROR; /* Keep an unexpected getter result observable. */
+    fvm_value_number(&value, 4); /* Request twice the original width. */
+    if (status == FVM_OK) /* The same named setter is available to an IDE or C application. */
+        status = fvm_object_set(context, clip, "_width", &value); /* Convert once and update native scales. */
+    if (status == FVM_OK) /* Confirm the next read reflects the resized geometry. */
+        status = fvm_object_get(context, clip, "_width", &value); /* No console command or AS compiler. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != 4)) /* Expect the requested width. */
+        status = FVM_ERROR; /* Preserve failed verification through cleanup. */
+    fvm_value_number(&value, 2); /* Restore original dimensions for the deterministic pixel comparison. */
+    if (status == FVM_OK) /* Width changes keep the same managed image and clip identity. */
+        status = fvm_object_set(context, clip, "_width", &value); /* Return the horizontal scale to 100 percent. */
+    if (status == FVM_OK) /* Source comes from the last successful content publication. */
+        status = fvm_object_get(context, clip, "_url", &value); /* Borrow managed text only until the next collecting call. */
+    if (status == FVM_OK && (value.type != FVM_VALUE_STRING || fvm_value_string_size(&value) != 8 || memcmp(value.string, "resource", 8))) /* Compare counted source. */
+        status = FVM_ERROR; /* No strlen on binary movie bytes or borrowed unvalidated values. */
     if (status == FVM_OK) /* [GC:] The host pin must keep the bitmap drawing graph alive. */
         status = fvm_gc_collect(context, 0); /* The bitmap's owned pixels remain reachable. */
     memset(pixels, 0, sizeof(pixels)); /* Render onto a transparent caller-owned surface. */

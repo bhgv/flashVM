@@ -30,6 +30,7 @@ pixels. Выход RGBA заимствуется на render. Ошибки ид�
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Trusted native classes; API_INDEX.md. |
 | [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | Заимствованный экземпляр; MOVIECLIP_TICKS.md. |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Удержание графа между вызовами; GC.md. |
+| [`fvm_value_string_size`](../../../include/flashvm/value.h#L51) | Получить длину заимствованного источника без выделения памяти и передачи владения; API_INDEX.md. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Scalar без managed storage; API_INDEX.md. |
 | [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Копирование свойства; API_INDEX.md. |
 | [`fvm_movieclip_replace_image`](../../../include/flashvm/movieclip.h#L125) | Заимствование input/source и атомарная замена; IMAGE_LOADING.ru.md. |
@@ -40,6 +41,12 @@ pixels. Выход RGBA заимствуется на render. Ошибки ид�
 | [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Чтение сохранённого scalar; API_INDEX.md. |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Освобождает graph/pin; API_INDEX.md. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Освобождает runtime после context; API_INDEX.md. |
+
+
+C89-пример также читает и меняет `_width` через [fvm_object_get](../../../include/flashvm/value.h#L72)/set, восстанавливает
+геометрию перед сравнением пикселей и читает источник `_url` с явной длиной.
+Правила преобразования, времени жизни и переноса описаны в
+[руководстве свойств](../../../doc/MOVIECLIP_NAMED_PROPERTIES.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -66,4 +73,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_value_string_size` | function | [include/flashvm/value.h:51](../../../include/flashvm/value.h#L51) |
 <!-- source-links:end -->

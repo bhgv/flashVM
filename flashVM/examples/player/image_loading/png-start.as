@@ -13,12 +13,24 @@ if (_root.iter > 200 && _root.finished !== 1) // Missing or wrong completion mus
 { // This bound is for loopback demonstration, not an Internet timing promise.
     throw "image reload did not finish"; // Surface an ordinary VM failure to the C host.
 } // Continue while the image or replacement SWF is pending.
-if (_root.phase === 0 && getProperty(_root.picture, 8) === 8) // Index 8 reads native width after import.
+if (_root.phase === 0 && _root.picture._width === 8) // Named width reads the same native rectangle as index 8.
 { // The complete image graph has been published at a prior safe point.
     if (_root.picture !== _root.saved || _root.picture.kept !== 42) // Image arrival must retain instance state.
     { // A new object at the same path would violate this contract.
         throw "image target changed"; // Do not hide a lost instance behind a visual success.
     } // Continue only with the original object identity.
+    _root.picture._width = 16; // Resize through the named width setter after decoding.
+    _root.picture._height = 24; // Both setters reuse the numeric AVM1 scaling rules.
+    if (getProperty(_root.picture, 8) !== 16 || getProperty(_root.picture, 9) !== 24) // Compare numeric geometry.
+    { // Named setters and legacy instructions must describe the same shape.
+        throw "image dimension mismatch"; // Report a real VM error to the host.
+    } // Proceed with the resized, still identical target.
+    _root.imageOrigin = _root.picture._url; // Save the loader's managed source location.
+    _root.picture._url = "ignored source"; // Readonly assignment must preserve the private base.
+    if (_root.picture._url !== _root.imageOrigin) // Do not silently corrupt later relative loading.
+    { // URL mutation would break source ownership and relative reloads.
+        throw "readonly image origin changed"; // Make provenance regressions visible.
+    } // The next SWF request still uses the original source directory.
     _root.phase = 1; // Prevent the completed image phase from reissuing requests.
     _root.picture.unloadMovie(); // Cancel earlier subtree work and queue empty contents.
     loadMovie("after.swf", _root.picture); // This later reload survives and uses the same destination.

@@ -100,6 +100,22 @@ def dimension(index):
     return push('_root.picture', index) + b'\x22'
 
 
+def named_dimension(index):
+    """GetMember uses the same intrinsic geometry as numeric ActionGetProperty."""
+    return get('_root.picture') + push('_width' if index == 8 else '_height') + b'\x4e'
+
+
+def require_named_dimension(index, expected):
+    """Require an exact dimension read through the ordinary property descriptor."""
+    failed = push('named dimension mismatch') + b'\x2a'
+    return named_dimension(index) + push(expected) + b'\x66\x9d\x02\0' + struct.pack('<h',len(failed)) + failed
+
+
+def assign_member(name, value):
+    """Assign through SetMember, retaining an explicit MovieClip receiver."""
+    return get('_root.picture') + push(name,value) + b'\x4f'
+
+
 def require_dimension(index, expected):
     failed = push('image dimension mismatch') + b'\x2a'
     return dimension(index) + push(expected) + b'\x66\x9d\x02\0' + struct.pack('<h',len(failed)) + failed
@@ -114,6 +130,14 @@ def root(kind=0, image_file="picture.png"):
     first += push('_root.iter',0)+b'\x1d'+push('_root.phase',0)+b'\x1d'
     first += get('_root.picture')+push(image_file,2,'loadMovie')+b'\x3d\x17'
     ready = require('_root.picture.kept',42)+require_dimension(9,width)
+    ready += require_named_dimension(8,width) + require_named_dimension(9,width)
+    ready += assign_member('_width',width*2) + assign_member('_height',width*3)
+    ready += require_dimension(8,width*2) + require_dimension(9,width*3)
+    ready += require_named_dimension(8,width*2) + require_named_dimension(9,width*3)
+    ready += push('_root.imageOrigin')+get('_root.picture')+push('_url')+b'\x4e\x1d'
+    ready += assign_member('_url','ignored source')
+    failed_url = push('readonly image origin changed')+b'\x2a'
+    ready += get('_root.imageOrigin')+get('_root.picture')+push('_url')+b'\x4e\x66\x9d\x02\0'+struct.pack('<h',len(failed_url))+failed_url
     ready += require_undefined('_root.picture.old')
     failed=push('image target changed')+b'\x2a'
     ready += get('_root.saved')+get('_root.picture')+b'\x66\x9d\x02\0'+struct.pack('<h',len(failed))+failed
@@ -122,7 +146,7 @@ def root(kind=0, image_file="picture.png"):
     second = push('_root.iter')+get('_root.iter')+push(1)+b'\x47\x1d'
     second += when(get('_root.iter')+push(200)+b'\x67',require('_root.finished',1))
     second += when(equal('_root.phase',0)+(dimension(8)+push(width)+b'\x66')+b'\x10',ready)
-    second += when(equal('_root.picture.loaded',1),require('_root.picture.kept',42)+require_dimension(8,0)+push('_root.finished',1)+b'\x1d\x07')
+    second += when(equal('_root.picture.loaded',1),require('_root.picture.kept',42)+require_dimension(8,0)+require_named_dimension(8,0)+push('_root.finished',1)+b'\x1d\x07')
     return swf([first,second,b'\x81\x02\0\x01\0\x06'])
 
 

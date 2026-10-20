@@ -86,6 +86,21 @@ or all source providers is implied.
 readonly coercion guards, inherited and detached origins, unload/reload failure,
 independent serialized contexts, GC and named-shadow/numeric separation.
 
+## Executable player and C examples (v0.706)
+
+The updated [C89 core example](../examples/embedding/image_codecs_loading/README.md)
+reads/resizes width through the object API, restores geometry for the pixel check,
+and verifies counted source text. The [C/AS/SWF player example](../examples/player/image_loading/README.md)
+resizes PNG/GIF/JPEG via SetMember, compares named and numeric dimensions, verifies
+readonly location and then unloads/reloads SWF on the same instance. Startup is
+available by URL or as a linked immutable byte array.
+
+The actual player fixtures additionally require exact local/network source strings
+and final image URLs after redirects, with HTTP and explicitly trusted HTTPS.
+A relative request from the root frame uses its caller origin; the image location
+does not replace the root origin. Native execution counters confirm emitted-code
+entry in supported-JIT core tests rather than counting a requested mode alone.
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 

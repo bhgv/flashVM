@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.705
+# FlashVM stage status / Состояние стадий — v0.706
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,21 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.706 upgrades executable C/AS/SWF tutorials and local/HTTP/HTTPS fixtures with
+named resizing, readonly origins and image redirects into another source directory.
+All stages remain open.
+
+Final v0.704–v0.706 series: 48 selected native checks pass; shared socket-TLS
+18, shared curl 16, no-provider 10 and codec-disabled five pass. UBSan passes for
+MovieClip geometry/dimension/location implementation tests, and separately for
+C player/transfer/audio with interpreter/JIT and URL/embedded examples. Other VM,
+codec, SDL and transport dependencies are uninstrumented in those checks.
+Audio-enabled player and both image C tutorials cross-link for Linux ARM64,
+Linux RISC-V64 and Windows x86-64; foreign executables are not run. Generated
+assets are deterministic; source links and tutorial/catalog checks pass.
+All nine stages remain open; full SWF/API, native OS/device and reference-player
+acceptance remains outstanding.
 
 v0.705 exposes readonly _url through named and numeric access, retaining the
 loader source across unload/detachment/serialization. All stages remain open.

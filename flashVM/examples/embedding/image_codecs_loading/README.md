@@ -42,16 +42,23 @@ specified in IMAGE_LOADING.md. This small example does not certify every codec.
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Install trusted native classes; API_INDEX.md. |
 | [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | Return borrowed native instance; MOVIECLIP_TICKS.md. |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain graph across later calls; GC.md. |
+| [`fvm_value_string_size`](../../../include/flashvm/value.h#L51) | Read counted borrowed source length without allocation or ownership transfer; API_INDEX.md. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L42) | Initialize a scalar with no managed storage; API_INDEX.md. |
-| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Copy own property; API_INDEX.md. |
+| [`fvm_object_set`](../../../include/flashvm/value.h#L74) | Copy own data or invoke a named dimension setter synchronously; API_INDEX.md. |
 | [`fvm_movieclip_replace_image`](../../../include/flashvm/movieclip.h#L125) | Borrow image/source during atomic owner-safe replacement; IMAGE_LOADING.md. |
 | [`fvm_movieclip_replace_resource`](../../../include/flashvm/movieclip.h#L129) | Select SWF/image by bytes with the same transaction; IMAGE_LOADING.md. |
 | [`fvm_gc_collect`](../../../include/flashvm/gc.h#L44) | Collect while pin retains the clip; GC.md. |
 | [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L76) | Borrow caller RGBA during synchronous native rendering; IMAGE_LOADING.md. |
 | [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L148) | Clear content, retain identity/data; MOVIE_UNLOAD.md. |
-| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read retained scalar; API_INDEX.md. |
+| [`fvm_object_get`](../../../include/flashvm/value.h#L72) | Read scalars or a borrowed managed source string; API_INDEX.md. |
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | Release graph/pin before runtime; API_INDEX.md. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | Release enclosing runtime after context; API_INDEX.md. |
+
+
+The C89 example also reads and resizes `_width` through [fvm_object_get](../../../include/flashvm/value.h#L72)/set,
+restores the original geometry before checking pixels, and reads the counted
+`_url` source. See [named properties](../../../doc/MOVIECLIP_NAMED_PROPERTIES.md)
+for conversion, callback lifetime and transport behavior.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -78,4 +85,5 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:20](../../../include/flashvm/standard.h#L20) |
 | `fvm_value_number` | function | [include/flashvm/value.h:42](../../../include/flashvm/value.h#L42) |
+| `fvm_value_string_size` | function | [include/flashvm/value.h:51](../../../include/flashvm/value.h#L51) |
 <!-- source-links:end -->

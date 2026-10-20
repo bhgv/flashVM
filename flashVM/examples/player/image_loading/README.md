@@ -67,3 +67,24 @@ Limits: static full-canvas GIF89a only; GIF87a/animation and root image startup
 remain unsupported. Source SWF profiles and byte/dimension bounds apply. No synthetic
 MovieClipLoader/unload events, progressive streaming decode or physical display/OS
 acceptance is implied. The C tutorial is muted; root streaming/audio limits remain.
+
+## Named geometry and location (v0.706)
+
+The delivered SWFs now read `_width`/`_height`, double the image width and triple
+its height through SetMember, and compare the result with numeric indices 8/9.
+They retain `_url`, attempt a readonly assignment, then unload and reload the SWF
+using the unchanged private source base. The linked startup payload is regenerated
+from the same generator. `png-start.as` is the commented timeline sketch.
+
+| Script property | Meaning and ownership |
+| --- | --- |
+| `_width` | Current parent-space painted width; assignment converts once and changes native scales. |
+| `_height` | Current parent-space painted height; uses the same geometry as numeric index 9. |
+| `_url` | Readonly retained source origin; assignment does not change relative-load resolution. |
+
+[Full named-property contract](../../../doc/MOVIECLIP_NAMED_PROPERTIES.md) /
+[RU](../../../doc/MOVIECLIP_NAMED_PROPERTIES.ru.md). No full loader-event lifecycle
+or original-player acceptance is implied.
+
+Relative requests in the root frame use the root caller origin. The image
+`_url` separately describes the image origin, including a final redirect URL.
