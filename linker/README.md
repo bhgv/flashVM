@@ -1,4 +1,4 @@
-# SWL linker 0.3.8
+# SWL linker 0.3.9
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -57,3 +57,5 @@ repeated stage options use the last value. Invalid/missing stage values return
 usage status 2 before opening inputs or output. Resource operand slots are never
 interpreted as options: a file literally named `--extensions` cannot enable
 FlashVM requirements. The standalone C API continues to use `SwlOptions`.
+
+[C inspection tutorial](examples/inspect/README.md).
