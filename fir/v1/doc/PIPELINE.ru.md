@@ -1,7 +1,7 @@
-# Исходник → FIR → SWF
+# Исходник → FIR → оптимайзер → SWO → линкер → SWF
 
-Команды выполняются из корня репозитория. На Termux нужны `git clang make cmake python`.
-Генератор внешний, его исходники и runtime не копируются в flashVM.
+Команды из корня репозитория. В Termux: `pkg install git clang make cmake python`.
+Генератор — внешний bhgv/coco-r-C; его исходники/runtime не копируются в flashVM.
 
 ```sh
 export TMPDIR="${TMPDIR:-$PWD/build/tmp}"
@@ -12,29 +12,29 @@ cmake -S fir/v1 -B build/fir1 \
   -DCOCOR_ROOT="$TMPDIR/coco-r-C" \
   -DCOCOR_EXECUTABLE="$TMPDIR/coco-r-C/sources/cocor"
 cmake --build build/fir1
-ctest --test-dir build/fir1 --output-on-failure
-build/fir1/fir1_source as2 --input fir/v1/examples/as2/variables.as build/variables.fir
+cmake -S linker -B build/linker
+cmake --build build/linker
+build/fir1/fir1_source as2 --input fir/v1/examples/as2/variables.as build/variables.fir --module variables
 build/fir1/fir1 check build/variables.fir
-build/fir1/fir1 opt build/variables.fir build/variables.opt.fir
-build/fir1/fir1 swf build/variables.opt.fir build/variables.swf
-build/fir1/fir1 actions build/variables.opt.fir build/variables.actions
-build/fir1/fir1 --help
-build/fir1/fir1_source --help
+build/fir1/fir1_opt build/variables.fir build/variables.opt.fir
+build/fir1/fir1 object build/variables.opt.fir build/variables.swo
+build/linker/swl archive build/library.swa build/variables.swo
+build/linker/swl link build/variables.swf build/library.swa
+FIR_SWL="$PWD/build/linker/swl" ctest --test-dir build/fir1 --output-on-failure
+ctest --test-dir build/linker --output-on-failure
 ```
 
-Ожидаемый trace: 36 и 42. Это один кадр FWS8 с AVM1, без графики.
-Для AS1/AS3 замените профиль и каталог примера; для Limbo используйте `limbo`
-и `fir/v1/examples/limbo/variables.b` (вывод 36). AS3 здесь — числовой
-профиль совместимости AVM1, без ABC/AVM2. `actions` — сырые записи AVM1,
-а не объектный формат линкера. Оптимизация отдельная, `swf` её не запускает.
+Ожидаемый trace: 36, 42. SWO1 — типизированный по целевому профилю объект
+AVM1; он не содержит SWF-контейнера. SWA1 включает объекты целиком. Несколько
+модулей исполняются по порядку входов; дубликаты имён запрещены. Межмодульные
+вызовы функций, imports/exports функций и их релокации пока не реализованы.
+Для каналов FIR требуется `swl link ... --extensions ...` и установка расширений
+в host. [Ресурсы SVF/JPEG/WAV](../../../linker/ASSETS.ru.md) добавляются линкером,
+не компилятором. Оптимизация явная, формат текста остаётся `FIR 1.0`.
 
-Синтаксические фронтенды `compiler/{as1,as2,as3,limbo}` принимают более широкий
-синтаксис и собираются отдельно. Их `--help` не обещает FIR/SWF-генерацию.
-Парсер FIR находится в `compiler/fir1.atg`, учебных исходников — в
-`compiler/src1.atg`; семантика — C99 `compiler/lower.c`. Добавлять конструкции
-нужно одновременно в грамматику, семантику, отрицательные тесты и документацию.
-
-Проверка CTest без `FIR_FLASHVM_RUNNER` не исполняет SWF; подключение VM
-описано в [TESTING.ru.md](TESTING.ru.md). Формат остаётся `FIR 1.0`.
-Параметры блоков, функции с аргументами, invoke/catch, полные AS/Limbo и ABC
-пока не реализованы; это не завершение всего компиляторного роудмапа.
+[Пример C IDE](../../../linker/examples/ide/README.ru.md) связывает все библиотеки
+в один процесс. [API](../compiler/API.ru.md). Верификатор дополнительно проверяет
+индексы, размеры таблиц, арность и имена IR, созданного из C. Разбор исходников
+пока требует внешней сериализации, поэтому API не следует вызывать параллельно
+без мутекса. Полные языки, ABC, invoke/catch и параметры блоков остаются будущей
+работой. Windows/физический Android в этой серии не проверялись.

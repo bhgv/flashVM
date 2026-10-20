@@ -102,6 +102,12 @@ with tempfile.TemporaryDirectory() as tmp:
     # JPEG is preserved byte-for-byte; its generated display shape has another ID.
     assert records[1][1][2:]==(root/'tile.jpg').read_bytes()
     assert struct.unpack_from('<H',records[2][1])[0]!=struct.unpack_from('<H',records[1][1])[0]
+    image=records[2][1];bounds,pos=rect(image,2)
+    assert bounds==[0,160,0,160] and image[pos:pos+2]==b'\x01\x41'
+    assert struct.unpack_from('<H',image,pos+2)[0]==struct.unpack_from('<H',records[1][1])[0]
+    matrix=Bits(image,(pos+4)*8);assert matrix.read(1)==1;n=matrix.read(5)
+    assert [matrix.signed(n),matrix.signed(n)]==[20<<16,20<<16] and matrix.read(1)==0
+    n=matrix.read(5);assert [matrix.signed(n),matrix.signed(n)]==[0,0]
     import wave
     with wave.open(str(root/'tone.wav'),'rb') as f:
         samples=f.readframes(f.getnframes());count=f.getnframes()
@@ -130,5 +136,15 @@ with tempfile.TemporaryDirectory() as tmp:
         data=source.read_bytes()
         for cut in [0,1,4,12,len(data)//2,len(data)-1]:
             wav.write_bytes(data[:cut]);out.write_bytes(b'keep');call('link',out,'--'+kind,'asset',wav,good=False);assert out.read_bytes()==b'keep'
+    for rate_code,rate in enumerate((5512,11025,22050,44100)):
+        for channels in (1,2):
+            for sample_bytes in (1,2):
+                pcm=bytes([128 if sample_bytes==1 else 0])*8*channels*sample_bytes
+                with wave.open(str(wav),'wb') as f:
+                    f.setparams((channels,sample_bytes,rate,0,'NONE','not compressed'));f.writeframes(pcm)
+                call('link',out,'--wav','sound',wav)
+                body=next(body for tag,body in tags(out.read_bytes()) if tag==14)
+                assert body[2]==0x30|(rate_code<<2)|(2 if sample_bytes==2 else 0)|(channels-1)
+                assert struct.unpack_from('<I',body,3)[0]==8 and body[7:]==pcm
     out.write_bytes(b'keep');call('link',out,'--svf','panel',root/'panel.svf','--place','missing','0','0','1',good=False);assert out.read_bytes()==b'keep'
 print(f'{checks} total linker/resource subprocess checks')

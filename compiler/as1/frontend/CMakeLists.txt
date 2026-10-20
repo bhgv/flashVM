@@ -38,7 +38,7 @@ target_include_directories(as1_frontend PRIVATE "${generated}")
 target_compile_definitions(as1_frontend PRIVATE CUSTOM_BUFF Custom_Error=as1_Custom_Error GenError=as1_GenError Parse=as1_Parse SemError=as1_SemError Successful=as1_Successful SynError=as1_SynError S_Col=as1_S_Col S_CurrLine=as1_S_CurrLine S_CurrentCh=as1_S_CurrentCh S_Get=as1_S_Get S_GetName=as1_S_GetName S_GetString=as1_S_GetString S_Len=as1_S_Len S_Line=as1_S_Line S_LineStart=as1_S_LineStart S_NextCol=as1_S_NextCol S_NextLen=as1_S_NextLen S_NextLine=as1_S_NextLine S_NextPos=as1_S_NextPos S_Pos=as1_S_Pos S_Reset=as1_S_Reset S_src=as1_S_src)
 add_executable(as1_parse main.c)
 target_link_libraries(as1_parse PRIVATE as1_frontend)
-# Each executable owns its generator globals; do not link different parsers together.
+# Each library owns namespaced globals; serialize calls to the same parser.
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

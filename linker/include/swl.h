@@ -34,4 +34,7 @@ int swl_play(SwlContext *, const char *name, char *, size_t);
 int swl_emit(SwlContext *, SwlWriter, void *, char *, size_t);
 /* Whole-member archive, no implicit search path or lazy symbol resolution. */
 int swl_archive(const SwlObject *, size_t, SwlWriter, void *, char *, size_t);
+#ifdef __cplusplus
+}
+#endif
 #endif

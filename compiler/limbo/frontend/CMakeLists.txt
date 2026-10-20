@@ -38,7 +38,7 @@ target_include_directories(limbo_frontend PRIVATE "${generated}")
 target_compile_definitions(limbo_frontend PRIVATE CUSTOM_BUFF Custom_Error=limbo_Custom_Error GenError=limbo_GenError Parse=limbo_Parse SemError=limbo_SemError Successful=limbo_Successful SynError=limbo_SynError S_Col=limbo_S_Col S_CurrLine=limbo_S_CurrLine S_CurrentCh=limbo_S_CurrentCh S_Get=limbo_S_Get S_GetName=limbo_S_GetName S_GetString=limbo_S_GetString S_Len=limbo_S_Len S_Line=limbo_S_Line S_LineStart=limbo_S_LineStart S_NextCol=limbo_S_NextCol S_NextLen=limbo_S_NextLen S_NextLine=limbo_S_NextLine S_NextPos=limbo_S_NextPos S_Pos=limbo_S_Pos S_Reset=limbo_S_Reset S_src=limbo_S_src)
 add_executable(limbo_parse main.c)
 target_link_libraries(limbo_parse PRIVATE limbo_frontend)
-# Each executable owns its generator globals; do not link different parsers together.
+# Each library owns namespaced globals; serialize calls to the same parser.
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

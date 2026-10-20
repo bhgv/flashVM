@@ -13,7 +13,8 @@
 ```sh
 build/fir1/fir1 check fir/v1/examples/channels/main.fir
 build/fir1/fir1 opt fir/v1/examples/channels/main.fir build/fir1/channels.fir
-build/fir1/fir1 swf build/fir1/channels.fir build/fir1/channels.swf
+build/fir1/fir1 object build/fir1/channels.fir build/fir1/channels.swo
+build/linker/swl link build/fir1/channels.swf --extensions build/fir1/channels.swo
 ```
 
 Ожидаемый trace: `42`.

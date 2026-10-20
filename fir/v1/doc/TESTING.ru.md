@@ -10,9 +10,9 @@ CTest проверяет отрицательные синтаксические
 
 ```sh
 cc -std=c99 -IflashVM/include -c fir/v1/tests/run_flashvm.c -o /tmp/fir-run.o
-c++ /tmp/fir-run.o VM_BUILD/libflashvm.a VM_BUILD/libfvm_agg.a \
+c++ /tmp/fir-run.o VM_BUILD/libflashvm.a \
   VM_BUILD/libfvm_zlib.a -lpthread -ldl -lm -o /tmp/fir-run
-FIR_FLASHVM_RUNNER=/tmp/fir-run ctest --test-dir build/fir1 --output-on-failure
+FIR_SWL="$PWD/build/linker/swl" FIR_FLASHVM_RUNNER=/tmp/fir-run ctest --test-dir build/fir1 --output-on-failure
 ```
 
 `VM_BUILD` — каталог существующей совместимой Linux static сборки FlashVM;
@@ -50,3 +50,23 @@ source-адаптера. В этой среде отключены ASan stack in
 `b91b65233c264d92c63a5c8cd855e7fc784bca53`. Физический Android не проверялся.
 Для среды без /tmp задайте существующий доступный TMPDIR; временные файлы
 создаются mkstemp и сразу удаляются из каталога, оставаясь открытыми потоками.
+
+## SWO toolchain 0.3.2 / SWL 0.3.1
+
+Текущий compiler-only CTest проверяет SWO1. Для сборки SWF задайте
+`FIR_SWL` (полный путь к `swl`); для выполнения — также `FIR_FLASHVM_RUNNER`.
+Нельзя задавать runner без линкера. Верификация/оптимизация выполняется до
+объектной генерации; собственно SWF создаётся только SWL.
+
+Linux GCC 13.3 C99: прошли все 15 CTest-тестов (FIR 3, frontends 9, linker 2,
+IDE 1) в обычной и ASan/UBSan-сборке. FIR: 558 проверок подпроцессов с настоящим
+FlashVM runner до/после оптимизации. SWL: 96 проверок объектов, библиотек,
+ресурсов и ошибок, включая все 16 сочетаний PCM rate/channels/sample width.
+C embedding-тесты проверяют повторные вызовы после ошибок, совместную линковку
+всех парсеров, snapshots, некорректные C-структуры IR, откат архива и повторный
+вывод после отказа callback. IDE SWF выводит 42 и 36 через FlashVM.
+Отделённые переименованные AS1/AS2/AS3/Limbo/FIR/SWL собраны и протестированы
+без скрытых sibling-зависимостей. Санитайзерный host отключает LSan и ASan
+stack instrumentation; проверены heap/global ASan и UBSan, не утечки/стек.
+Ресурсный SWF загружен VM; физическая отрисовка/аудиовывод не проверялись.
+Coco/R revision: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.

@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 {
     SwlOptions options={550,400,12,0}; SwlContext *c; SwlObject *objects=NULL;
     int i,archive,ok=1; size_t count=0; char error[256]="read/allocation failure";
-    if(argc==2 && !strcmp(argv[1],"--version")) { puts("swl 0.3.0 (SWO1/SWA1 to SWF8)"); return 0; }
+    if(argc==2 && !strcmp(argv[1],"--version")) { puts("swl 0.3.1 (SWO1/SWA1 to SWF8)"); return 0; }
     if(argc==2 && !strcmp(argv[1],"--help")) {
         puts("usage: swl link OUTPUT.swf [--extensions] INPUT.swo|INPUT.swa ...\n"
              "       swl archive OUTPUT.swa INPUT.swo ...\n"

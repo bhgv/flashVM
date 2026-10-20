@@ -15,7 +15,7 @@ int main(int argc, char **argv)
     int ok;
     char error[512] = "source operation failed";
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1_source 0.3.1 (numeric tutorial profiles)"); return 0;
+        puts("fir1_source 0.3.2 (numeric tutorial profiles)"); return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir [--module NAME]\n"
@@ -43,7 +43,6 @@ int main(int argc, char **argv)
     ok = fir_source(input, temporary,
          (FirLanguage)(!strcmp(argv[1], "limbo") ? 4 : argv[1][2] - '0'),
          argc == 7 ? argv[6] : NULL, error, sizeof(error));
-    if (!ok) fprintf(stderr, "%s\n", error);
     if (ok && (fflush(temporary) || fseek(temporary, 0, SEEK_SET))) ok = 0;
     if (ok) {
         output = fopen(argv[4], "wb");
@@ -56,5 +55,6 @@ int main(int argc, char **argv)
         }
     }
     fclose(input); fclose(temporary); free(text);
+    if (!ok) fprintf(stderr, "%s\n", error[0] ? error : "source output/I/O failure");
     return ok ? 0 : 1;
 }

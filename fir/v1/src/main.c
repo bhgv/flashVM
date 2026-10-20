@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     char error[512] = "operation failed";
     int ok, check, optimise, compile;
     if (argc == 2 && !strcmp(argv[1], "--version")) {
-        puts("fir1 0.3.1 (FIR 1.0; SWO1)"); return 0;
+        puts("fir1 0.3.2 (FIR 1.0; SWO1)"); return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help")) {
         puts("fir1 - FIR 1.0 compiler and verifier\n"
@@ -25,7 +25,7 @@ int main(int argc, char **argv)
              "Comments: // and /* ... */. Channels require FlashVM extensions.\n"
              "Limits: one main() -> void, 4096 instructions/values, 256 blocks.\n"
              "TMPDIR selects secure temporary staging on Linux/Termux.\n"
-             "Exit: 0 success, 1 invalid input, 2 CLI/I/O/backend failure.\n"
+             "Exit: 0 success, 1 pipeline/output failure, 2 CLI/setup failure.\n"
              "See fir/v1/doc/FORMAT.md and compiler/README.md (also .ru.md).");
         return 0;
     }
@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     if (check) {
         ok = fir_run(FIR_CHECK, input, NULL, NULL, error, sizeof(error));
         fclose(input);
-        if (!ok) fprintf(stderr, "%s\n", error);
+        if (!ok) fprintf(stderr, "%s\n", error[0] ? error : "FIR output/I/O failure");
         return ok ? 0 : 1;
     }
     /* Staging also protects against aliases/hard links to the input file. */
@@ -65,8 +65,8 @@ int main(int argc, char **argv)
     }
     if (fclose(output)) ok = 0;
 
-    if (!ok) fprintf(stderr, "%s\n", error);
-    return ok ? 0 : 2;
+    if (!ok) fprintf(stderr, "%s\n", error[0] ? error : "FIR output/I/O failure");
+    return ok ? 0 : 1;
 usage:
     fprintf(stderr, "usage: fir1 check INPUT\n       fir1 print|opt|object INPUT OUTPUT\n");
     return 2;

@@ -14,7 +14,8 @@ From the repository root, after [building](../../README.md):
 build/fir1/fir1_source limbo --input fir/v1/examples/limbo/main.b build/fir1/limbo.fir
 build/fir1/fir1 check build/fir1/limbo.fir
 build/fir1/fir1 opt build/fir1/limbo.fir build/fir1/limbo.opt.fir
-build/fir1/fir1 swf build/fir1/limbo.opt.fir build/fir1/limbo.swf
+build/fir1/fir1 object build/fir1/limbo.opt.fir build/fir1/limbo.swo
+build/linker/swl link build/fir1/limbo.swf build/fir1/limbo.swo
 ```
 
 Example API: `trace(value)` prints the computed number; `value` is its single

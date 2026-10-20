@@ -38,7 +38,7 @@ target_include_directories(as3_frontend PRIVATE "${generated}")
 target_compile_definitions(as3_frontend PRIVATE CUSTOM_BUFF Custom_Error=as3_Custom_Error GenError=as3_GenError Parse=as3_Parse SemError=as3_SemError Successful=as3_Successful SynError=as3_SynError S_Col=as3_S_Col S_CurrLine=as3_S_CurrLine S_CurrentCh=as3_S_CurrentCh S_Get=as3_S_Get S_GetName=as3_S_GetName S_GetString=as3_S_GetString S_Len=as3_S_Len S_Line=as3_S_Line S_LineStart=as3_S_LineStart S_NextCol=as3_S_NextCol S_NextLen=as3_S_NextLen S_NextLine=as3_S_NextLine S_NextPos=as3_S_NextPos S_Pos=as3_S_Pos S_Reset=as3_S_Reset S_src=as3_S_src)
 add_executable(as3_parse main.c)
 target_link_libraries(as3_parse PRIVATE as3_frontend)
-# Each executable owns its generator globals; do not link different parsers together.
+# Each library owns namespaced globals; serialize calls to the same parser.
 include(CTest)
 if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)

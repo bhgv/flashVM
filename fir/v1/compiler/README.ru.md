@@ -1,64 +1,35 @@
-# Компилятор FIR и API C99
+# Компилятор FIR 0.3.2 и C API
 
-[English](README.md). [Сборка](../README.ru.md).
+Компилятор создаёт объектники `.swo`, не SWF. Линкер — независимый проект
+[SWL](../../../linker/README.ru.md). Оптимайзер выполняется отдельно или по
+явному `FirRunOptions.optimise`; консольные приложения вызывают тот же C API.
 
 ```sh
-build/fir1/fir1 check INPUT.fir
-build/fir1/fir1 print INPUT.fir OUTPUT.fir
-build/fir1/fir1 opt INPUT.fir OUTPUT.fir
-build/fir1/fir1 swf INPUT.fir OUTPUT.swf
-build/fir1/fir1 actions INPUT.fir OUTPUT.actions
-build/fir1/fir1_source as2 --input INPUT.as OUTPUT.fir
+build/fir1/fir1_source as2 --input a.as a.fir --module a
+build/fir1/fir1 check a.fir
+build/fir1/fir1 print a.fir canonical.fir
+build/fir1/fir1_opt a.fir optimized.fir
+build/fir1/fir1 object optimized.fir a.swo
+build/linker/swl link movie.swf a.swo
 ```
 
-`check` разбирает и проверяет без вывода; `print` канонизирует; `opt` добавляет
-peephole; `swf` пишет FWS8; `actions` — сырые AVM1 records с ActionEnd.
-`swf` не оптимизирует неявно: вход выбирается явно. Язык адаптера: `as1`, `as2`,
-`as3` или `limbo`; после `--input` идёт входной путь, последний аргумент — выход.
-См. [покрытие](../doc/COVERAGE.ru.md). Неявного поиска include/модулей нет.
-Коды fir1: 0 — успех, 1 — неверный вход/семантика, 2 — CLI/I/O/backend.
-У fir1_source: 1 — разбор/преобразование/вывод, 2 — CLI или подготовка.
+[Встраиваемый API](API.ru.md), [формат SWO1](../../../linker/FORMAT.ru.md),
+[покрытие](../doc/COVERAGE.ru.md). `fir1 swf`, `fir1 actions` и `fir_swf`
+удалены; скрытого обхода линкера больше нет. `fir1_source` поддерживает числовые
+учебные профили AS1/AS2/AS3/Limbo, не полные языки. Аннотации AS2/AS3 — Number;
+AS3 пока понижает в AVM1, не ABC. Имена модулей при связывании должны различаться.
 
-## Исходники
+Источники: [fir1.atg](fir1.atg), [src1.atg](src1.atg), [lower.c](lower.c),
+[source_api.c](source_api.c), [pipeline.c](../src/pipeline.c),
+[object.c](object.c), [верификатор](../src/ir.c).
+Парсеры генерируются внешним bhgv/coco-r-C в build. Wrappers отдельно сбрасывают
+ошибки и переводят фатальные пути сканера в возвращаемые ошибки. Namespace
+позволяет связать парсеры в одну программу, но вызовы одного парсера нужно
+сериализовать. Модули IR достаточно большие — выделяйте их в heap.
 
-- [fir1.atg](fir1.atg): scanner/parser FIR и семантические действия.
-- [src1.atg](src1.atg): учебные source-адаптеры, приоритеты, генерация FIR.
-- [source.c](source.c): CLI адаптеров с отдельными globals.
-- [builder.c](../src/builder.c): построение IR с проверкой границ, версии, UTF-8.
-- [ir.c](../src/ir.c): проверка и принтер.
-- [swf.c](swf.c): AVM1, relocation и контейнер SWF.
-- [main.c](../src/main.c): команды FIR, временный вывод перед публикацией файла.
-
-## Внутренний API C99
-
-Объявления: [fir.h](../include/fir.h). Возврат 1 — успех, 0 — ошибка.
-
-| Функция | Параметры и владение |
-| --- | --- |
-| `fir_parse(input, module, error, capacity)` | Читает binary FILE с текущей позиции; module принадлежит вызывающему; error — изменяемый буфер, capacity — его размер в байтах. Из-за globals: один разбор на процесс, не thread-safe embedding API. |
-| `fir_verify(module, error, capacity)` | Проверяет разобранный модуль вызывающего; диагностический буфер как выше. |
-| `fir_print(output, module)` | Пишет канонический текст в FILE вызывающего, не закрывает поток. |
-| `fir_optimise(module, error, capacity)` | Меняет проверенный модуль и проверяет повторно; сохраняет эффекты. |
-| `fir_swf(output, module, raw, error, capacity)` | Только проверенный модуль; raw=0 — FWS8, иначе actions; поток не закрывает. |
-
-Диагностика содержит строки FIR; синтаксические ошибки source-адаптера — также
-колонку/байтовое смещение. Полного debugger/source map пока нет. Модуль крупный:
-выделяйте его в куче, как CLI. ABI структур внутренний.
-
-Backend использует зарезервированные movie-local имена `__fir1_value_N`.
-Фильм trace-only, с нулевым размером сцены; это не пример визуального фронтенда.
-Сложение/вычитание i32 заворачиваются через BitOr 0, умножение использует 16-битные
-частичные произведения, сохраняя младшие биты. Смещения переходов проверяются
-после генерации. Каналы требуют установки существующего расширения хостом.
-Оба парсера генерирует один явно заданный внешний Coco/R, их globals никогда
-не линкуются в одном executable. Сгенерированные файлы сборки не редактируются.
-
-Локальная CMake-сборка: можно конфигурировать эту папку с теми же параметрами
-COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` каталога сборки.
-
-Справка без файла: `fir1 --help`, `fir1_source --help`; версии: `--version`.
-На Linux/Termux `TMPDIR` задаёт каталог безопасных временных файлов.
-Числовая семантика и окружение SSA: [lower.c](lower.c), интерфейс: [lower.h](lower.h).
-[Полный цикл](../doc/PIPELINE.ru.md).
-
-[C API и встраивание](API.ru.md).
+Потоки принадлежат вызывающему коду; NULL/0 допустим для диагностики. `fir_run`
+принимает задачу, потоки и настройки, `fir_optimise` работает с модулем напрямую,
+`fir_object` проверяет модуль до генерации SWO1. Версии API/структур пока внутренние,
+стабильный бинарный ABI не обещается. CLI: 0 успех, 1 ошибка pipeline/вывода,
+2 неверные аргументы/начальная ошибка открытия. Ошибка валидации не портит
+существующий выход; ошибка записи может оставить частичный файл.

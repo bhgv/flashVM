@@ -10,7 +10,7 @@
 | Limbo teaching adapter | Exact `implement Name; Name: module { value: fn(): int; }; value(): int { return expression; }` | General modules, channels/source operators, procedures, imports |
 | Expressions | Decimal literals, unary minus on literals; * before +/-, left associative | Division, unary minus on groups |
 | FIR channels | Create/send/receive/close mapped to existing extension | Source Limbo channel lowering, alt, spawn, capacity, typed graphs |
-| SWF backend | FWS8, one trace-only frame, DoAction AVM1 | ABC/AVM2, visual assets, linker/imports, exceptions |
+| SWF backend | SWO1 AVM1 objects; SWL links SWF8 | ABC/AVM2, function imports/relocations, exceptions |
 
 AS numeric adapter results use f64. Limbo literals must be integer spellings fitting i32 and arithmetic
 wraps. The Limbo tutorial harness prints value() rather than implementing an
@@ -28,3 +28,5 @@ Future FIR types/operations must preserve language semantics before LLVM export.
 ## 0.2.0 update
 
 Numeric adapters now accept initialized declarations (`var x = 1;` in AS, `x: int = 1;` inside Limbo), assignments and variable reads. AS2/AS3 allow only `:Number` annotations; AS1 rejects annotations. One program-wide environment holds at most 256 names. Duplicate declarations, reads before initialization and implicit globals fail. This restricted profile does not implement AS hoisting or nested scopes. AS accepts decimal exponents; Limbo requires integer spellings. Semantics live in `compiler/lower.c`, syntax in `compiler/src1.atg`.
+
+The compiler writes SWO1 only. [Linker and resources](../../../linker/README.md).

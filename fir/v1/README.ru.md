@@ -1,15 +1,17 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.3.1**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.3.2**, текстовый формат **FIR 1.0**.
 Код — C99. Оба парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
-используют синтаксические фронтенды AS1/AS2/Limbo. Сгенерированный код остаётся
+используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
 в каталоге сборки и не хранится в Git.
 
 ## Сборка из корня репозитория
 
 ```sh
-COCO_DIR="${TMPDIR:-/tmp}/coco-r-C"
+export TMPDIR="${TMPDIR:-$PWD/build/tmp}"
+mkdir -p "$TMPDIR"
+COCO_DIR="$TMPDIR/coco-r-C"
 git clone https://github.com/bhgv/coco-r-C.git "$COCO_DIR"
 make -C "$COCO_DIR/sources" -f unix.mk
 cmake -S fir/v1 -B build/fir1 \
@@ -48,7 +50,7 @@ python fir/v1/view_docs.py --no-browser --port 8766
 Для отдельной сборки инструментов движок просмотра не требуется; документы
 в отделённой копии можно читать как Markdown.
 
-## Изменение backend в 0.3.1
+## Изменение backend в 0.3.2
 
 `fir1 swf` и `fir1 actions` удалены. Используйте `fir1 object INPUT OUTPUT.swo`,
 затем [SWL](../../linker/README.ru.md): `swl link OUTPUT.swf INPUT.swo`.
@@ -56,3 +58,5 @@ python fir/v1/view_docs.py --no-browser --port 8766
 Для тестов выполнения задайте `FIR_SWL` вместе с `FIR_FLASHVM_RUNNER`.
 
 [C API и встраивание](compiler/API.ru.md).
+
+[Сборка и объектный pipeline](doc/PIPELINE.ru.md). [Пример IDE](../../linker/examples/ide/README.ru.md).

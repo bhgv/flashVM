@@ -3,6 +3,7 @@
 #include "fir.h"
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 /* Format a bounded verifier diagnostic and return failure. */
 static int fail(char *error, size_t cap, const char *format, ...)
 {
@@ -11,6 +12,18 @@ static int fail(char *error, size_t cap, const char *format, ...)
     vsnprintf(error, cap, format, args);
     va_end(args);
     return 0;
+}
+/* Public IR spelling has the same bounded ASCII grammar as .fir input. */
+static int symbol_name(const char *text, char prefix)
+{
+    size_t i;
+    if (!memchr(text, 0, FIR_TEXT) || text[0] != prefix || !text[1]) return 0;
+    for (i=1; text[i]; ++i) {
+        unsigned ch=(unsigned char)text[i];
+        if (!((ch>='A' && ch<='Z') || (ch>='a' && ch<='z') || ch=='_' ||
+            (i>1 && ((ch>='0' && ch<='9') || ch=='.')))) return 0;
+    }
+    return 1;
 }
 static const char *const types[] = {"void", "i32", "f64", "bool", "string", "any", "channel"};
 static const char *const ops[] = {
@@ -28,7 +41,42 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     unsigned char dom[FIR_BLOCKS][FIR_BLOCKS], reachable[FIR_BLOCKS] = {0};
     int first[FIR_BLOCKS], last[FIR_BLOCKS], terminated[FIR_BLOCKS] = {0};
     int i, b, j, k, changed, entry;
-    if (!m->count || !m->block_count) return fail(error, cap, "empty function");
+    /* Public C callers can build IR themselves; reject indices before any
+     * table lookup. Removed instructions retain definitions but no live CFG. */
+    if (!m || m->count < 1 || m->count > FIR_LIMIT || m->value_count < 0 ||
+        m->value_count > FIR_LIMIT || m->block_count < 1 || m->block_count > FIR_BLOCKS)
+        return fail(error, cap, "invalid IR table counts");
+    if (!symbol_name(m->module, '@')) return fail(error, cap, "invalid module spelling");
+    for (b = 0; b < m->block_count; ++b)
+        if (!symbol_name(m->blocks[b].name, '^')) return fail(error, cap, "unterminated block name");
+    for (i = 0; i < m->value_count; ++i) {
+        int d = m->values[i].definition;
+        if (!symbol_name(m->values[i].name, '%') || d < -1 || d >= m->count ||
+            (unsigned)m->values[i].type > T_CHANNEL ||
+            (d >= 0 && (m->instructions[d].result != i || m->instructions[d].type != m->values[i].type)))
+            return fail(error, cap, "invalid value definition table");
+    }
+    for (i = 0; i < m->count; ++i) {
+        FirInstruction *in = &m->instructions[i];
+        int unary, binary;
+        if ((unsigned)in->op > O_RETURN || (unsigned)in->type > T_CHANNEL ||
+            in->block < 0 || in->block >= m->block_count ||
+            in->result < -1 || in->result >= m->value_count ||
+            in->a < -1 || in->a >= m->value_count || in->b < -1 || in->b >= m->value_count ||
+            in->yes < -1 || in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count ||
+            !memchr(in->text, 0, FIR_TEXT)) return fail(error, cap, "invalid instruction fields");
+        if (in->removed) continue;
+        if ((in->op == O_BOOL && in->integer != 0 && in->integer != 1) ||
+            (in->op == O_F64 && !isfinite(in->real))) return fail(error, cap, "invalid constant payload");
+        unary = in->op == O_COPY || in->op == O_NUMBER || in->op == O_RECEIVE ||
+            in->op == O_TRACE || in->op == O_CLOSE || in->op == O_IF;
+        binary = (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND;
+        if ((in->a >= 0) != (unary || binary) || (in->b >= 0) != binary ||
+            (in->yes >= 0) != (in->op == O_IF || in->op == O_JUMP) ||
+            (in->no >= 0) != (in->op == O_IF) ||
+            (in->result >= 0 && m->values[in->result].definition != i))
+            return fail(error, cap, "invalid operand/target arity");
+    }
     for (b = 0; b < m->block_count; ++b) {
         first[b] = last[b] = -1;
         if (!m->blocks[b].defined) return fail(error, cap, "undefined block %s", m->blocks[b].name);

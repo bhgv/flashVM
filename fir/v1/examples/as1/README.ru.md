@@ -16,7 +16,8 @@
 build/fir1/fir1_source as1 --input fir/v1/examples/as1/main.as build/fir1/as1.fir
 build/fir1/fir1 check build/fir1/as1.fir
 build/fir1/fir1 opt build/fir1/as1.fir build/fir1/as1.opt.fir
-build/fir1/fir1 swf build/fir1/as1.opt.fir build/fir1/as1.swf
+build/fir1/fir1 object build/fir1/as1.opt.fir build/fir1/as1.swo
+build/linker/swl link build/fir1/as1.swf build/fir1/as1.swo
 ```
 
 API примера: `trace(value)` выводит вычисленное число; `value` — единственный

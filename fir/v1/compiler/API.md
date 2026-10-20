@@ -1,4 +1,4 @@
-# Embeddable C APIs 0.3.1
+# Embeddable C APIs 0.3.2
 
 [FIR API](../include/fir.h) works without argv, stdout/stderr or subprocesses.
 CLI drivers only open files, select operations and present returned diagnostics.

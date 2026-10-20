@@ -10,9 +10,9 @@ Actual runtime acceptance is optional and explicitly reported separately:
 
 ```sh
 cc -std=c99 -IflashVM/include -c fir/v1/tests/run_flashvm.c -o /tmp/fir-run.o
-c++ /tmp/fir-run.o VM_BUILD/libflashvm.a VM_BUILD/libfvm_agg.a \
+c++ /tmp/fir-run.o VM_BUILD/libflashvm.a \
   VM_BUILD/libfvm_zlib.a -lpthread -ldl -lm -o /tmp/fir-run
-FIR_FLASHVM_RUNNER=/tmp/fir-run ctest --test-dir build/fir1 --output-on-failure
+FIR_SWL="$PWD/build/linker/swl" FIR_FLASHVM_RUNNER=/tmp/fir-run ctest --test-dir build/fir1 --output-on-failure
 ```
 
 `VM_BUILD` is an existing compatible Linux static FlashVM build directory;
@@ -51,3 +51,23 @@ Markdown links resolved. Coco/R revision:
 `b91b65233c264d92c63a5c8cd855e7fc784bca53`. No physical Android test was run.
 Without /tmp, set TMPDIR to an existing writable directory; temporary files use
 mkstemp and are immediately unlinked, leaving only their open streams.
+
+## SWO toolchain 0.3.2 / SWL 0.3.1
+
+Current compiler-only CTest validates SWO1. Set `FIR_SWL` to the absolute `swl`
+path for SWF assembly; also set `FIR_FLASHVM_RUNNER` for execution. A runner
+without a linker is invalid. Verification/optimization precede object generation;
+only SWL creates the SWF container.
+
+Linux GCC 13.3 C99: all 15 CTest tests passed (FIR 3, frontends 9, linker 2,
+IDE 1), in ordinary and ASan/UBSan builds. FIR: 558 subprocess checks with the
+real FlashVM runner before/after optimization. SWL: 96 object/library/resource
+and rejection checks, including all 16 PCM rate/channel/sample-width profiles.
+C embedding tests cover repeated calls after errors, linking every parser,
+snapshots, invalid C-constructed IR, archive rollback and re-emission after
+callback failure. The IDE SWF traces 42 and 36 through FlashVM. Detached renamed
+AS1/AS2/AS3/Limbo/FIR/SWL copies built and tested without hidden sibling source
+dependencies. The sanitizer host disables LSan and ASan stack instrumentation;
+heap/global ASan and UBSan were exercised, not leaks/stack. The resource SWF
+loaded in the VM; physical rendering/audio-device playback was not tested.
+Coco/R revision: `b91b65233c264d92c63a5c8cd855e7fc784bca53`.

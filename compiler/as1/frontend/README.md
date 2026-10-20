@@ -34,13 +34,13 @@ This directory can be copied or renamed and configured without FlashVM, linker,
 other frontends or workspace helpers. Keep the common root MIT LICENSE in a
 separated distribution; generated files also carry their upstream frame notices.
 Generated C and headers live only in `build/generated/` and are not source commits.
-Each frontend executable is separate: generated names/global state are not safe
-to combine in one library or call concurrently. Use one file per process for now.
+Each frontend also exposes a namespaced C library. Sequential calls reset
+state; serialize calls to the same parser. See the language README for C API.
 
 ## Driver and diagnostics
 
-[main.c](main.c) opens exactly one source file, validates UTF-8 and rewinds the same
-descriptor before parsing. Malformed UTF-8, surrogates, overlong encodings, values
+[main.c](main.c) opens one source file and delegates to [api.c](api.c),
+which validates UTF-8 before parsing. Malformed UTF-8, surrogates, overlong encodings, values
 above U+10FFFF, incomplete sequences and embedded NUL are rejected. An initial
 UTF-8 BOM is supported by the selected generator. Inputs must be seekable files.
 The scanner counts **bytes**, not Unicode columns; identifier category restrictions

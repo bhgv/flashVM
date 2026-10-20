@@ -66,6 +66,8 @@ int fir_print(FILE *output, const FirModule *module);
 int fir_optimise(FirModule *module, char *error, size_t capacity);
 /* Compile verified FIR into a versioned SWO1 object, never a SWF container. */
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
+/* Optional caller-owned temporary stream; honors TMPDIR on POSIX. */
+FILE *fir_temporary(void);
 /* Non-console entry points; caller owns every stream and diagnostic buffer.
  * Parser calls must be serialized; sequential calls reset state after errors. */
 typedef enum { FIR_AS1=1, FIR_AS2, FIR_AS3, FIR_LIMBO } FirLanguage;

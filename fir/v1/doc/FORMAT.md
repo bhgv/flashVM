@@ -11,7 +11,7 @@ blank line or comment precedes it. The file suffix is `.fir`; directory `v1`
 denotes the major family, while header `1.0` identifies this exact grammar.
 Unknown versions are rejected before parsing. A new accepted grammar requires
 an explicit reader change; silently interpreting future minor versions is forbidden.
-Implementation version 0.2.2 and FlashVM development version are independent.
+Implementation version 0.3.2 and FlashVM development version are independent.
 
 UTF-8 is validated, including comments; embedded NUL and malformed UTF-8 fail.
 `//` runs to newline/EOF. `/* ... */` is non-nesting and must terminate.
@@ -123,8 +123,7 @@ spelling (including string quotes/escapes); decoded strings fit that bound.
 Backend buffers are each 2 MiB. AVM1 jumps use signed 16-bit offsets; out-of-range
 jumps are rejected, not truncated. No automatic long-jump trampolines yet.
 
-The generated parser owns global state. One input per process, no concurrent
-parse calls. The IR structures are an internal C99 API, not a stable embedding
+The generated parser owns global state. Sequential parses reset state; serialize calls to each parser. The IR structures are an internal C99 API, not a stable embedding
 ABI or binary file format. The text is the interchange format. Failed syntax,
 type, dominance or backend-range checks do not overwrite an existing output.
 OS write failures can still leave a partial destination file.

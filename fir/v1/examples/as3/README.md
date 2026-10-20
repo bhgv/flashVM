@@ -16,7 +16,8 @@ From the repository root, after [building](../../README.md):
 build/fir1/fir1_source as3 --input fir/v1/examples/as3/main.as build/fir1/as3.fir
 build/fir1/fir1 check build/fir1/as3.fir
 build/fir1/fir1 opt build/fir1/as3.fir build/fir1/as3.opt.fir
-build/fir1/fir1 swf build/fir1/as3.opt.fir build/fir1/as3.swf
+build/fir1/fir1 object build/fir1/as3.opt.fir build/fir1/as3.swo
+build/linker/swl link build/fir1/as3.swf build/fir1/as3.swo
 ```
 
 Example API: `trace(value)` prints the computed number; `value` is its single

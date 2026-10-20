@@ -16,6 +16,8 @@ static int snapshots(void *user, const char *phase, const FirModule *m)
     if(strcmp(phase,(*count%2) ? "after" : "before") || !m->count) return 0;
     ++*count; return 1;
 }
+static int cancel(void *user, const char *phase, const FirModule *module)
+{ (void)user; (void)phase; (void)module; return 0; }
 int main(void)
 {
     int i,j,count=0; char error[512];
@@ -36,6 +38,16 @@ int main(void)
         rewind(obj);
         if(fread(magic,1,4,obj)!=4 || memcmp(magic,"SWO1",4)) return 6;
         fclose(obj); fclose(fir);
+    }
+    {
+        FILE *fir=input("FIR 1.0\nmodule @callback\nfunc @main() -> void { ^entry: return }\n"),*out=fir_temporary();
+        FirRunOptions canceled={1,cancel,NULL};
+        if(!fir || !out) return 8;
+        strcpy(error,"stale diagnostic");
+        if(fir_run(FIR_OBJECT,fir,out,&canceled,error,sizeof(error)) || !strstr(error,"rejected") || ftell(out)!=0) return 9;
+        rewind(fir);
+        if(!fir_run(FIR_CHECK,fir,NULL,NULL,error,sizeof(error))) return 10;
+        fclose(fir); fclose(out);
     }
     return count==64 ? 0 : 7;
 }

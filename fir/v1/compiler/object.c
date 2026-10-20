@@ -1,4 +1,4 @@
-/* Standalone SWO1 object emitter. Values are movie-local generated variables.
+/* Standalone SWO1 object emitter. Values are object-local generated variables.
  * Build everything in memory before writing: branch range failures never
  * produce a partially emitted object. No private FlashVM structures are used. */
 #include "fir.h"
@@ -45,7 +45,7 @@ static void variable(Bytes *b, const FirModule *m, int index)
     snprintf(name, sizeof(name), "__fir1_%s_value_%d", m->module + 1, index);
     text(b, name);
 }
-/* Retrieve one SSA value from its generated movie-local variable. */
+/* Retrieve one SSA value from its generated object-local variable. */
 static void load(Bytes *b, const FirModule *m, int index) { variable(b, m, index); byte(b, 0x1c); }
 /* Push the low unsigned 16-bit half of an i32 value. */
 static void low(Bytes *b, const FirModule *m, int index)
@@ -77,15 +77,15 @@ static size_t branch(Bytes *b, int conditional)
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
-    Bytes actions, movie;
+    Bytes actions, object;
     Fixup fixes[FIR_LIMIT * 2];
     size_t labels[FIR_BLOCKS], end;
     int i, nf = 0, previous = -1, ok = 0;
     if (!fir_verify(m, error, cap)) return 0;
     actions.data = (unsigned char *)malloc(BYTE_LIMIT);
-    movie.data = (unsigned char *)malloc(BYTE_LIMIT);
-    actions.n = movie.n = 0; actions.failed = movie.failed = 0;
-    if (!actions.data || !movie.data) { snprintf(error, cap, "out of memory"); goto done; }
+    object.data = (unsigned char *)malloc(BYTE_LIMIT);
+    actions.n = object.n = 0; actions.failed = object.failed = 0;
+    if (!actions.data || !object.data) { snprintf(error, cap, "out of memory"); goto done; }
     if (sizeof(double) != 8 || DBL_MANT_DIG != 53) {
         snprintf(error, cap, "backend requires IEEE binary64 double"); goto done;
     }
@@ -156,16 +156,16 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
         size_t length = strlen((const char *)name);
         for (end = 0; end < length; ++end) hash = (hash ^ name[end]) * UINT32_C(16777619);
         for (end = 0; end < actions.n; ++end) hash = (hash ^ actions.data[end]) * UINT32_C(16777619);
-        byte(&movie, 'S'); byte(&movie, 'W'); byte(&movie, 'O'); byte(&movie, '1');
-        dword(&movie, 1); dword(&movie, m->channels ? 1 : 0);
-        dword(&movie, (uint32_t)length); dword(&movie, (uint32_t)actions.n); dword(&movie, hash);
-        for (end = 0; end < length; ++end) byte(&movie, name[end]);
-        for (end = 0; end < actions.n; ++end) byte(&movie, actions.data[end]);
-        if (movie.failed) { snprintf(error, cap, "object size limit exceeded"); goto done; }
-        ok = fwrite(movie.data, 1, movie.n, output) == movie.n;
+        byte(&object, 'S'); byte(&object, 'W'); byte(&object, 'O'); byte(&object, '1');
+        dword(&object, 1); dword(&object, m->channels ? 1 : 0);
+        dword(&object, (uint32_t)length); dword(&object, (uint32_t)actions.n); dword(&object, hash);
+        for (end = 0; end < length; ++end) byte(&object, name[end]);
+        for (end = 0; end < actions.n; ++end) byte(&object, actions.data[end]);
+        if (object.failed) { snprintf(error, cap, "object size limit exceeded"); goto done; }
+        ok = fwrite(object.data, 1, object.n, output) == object.n;
     }
     if (!ok) snprintf(error, cap, "output write failed");
 done:
-    free(actions.data); free(movie.data);
+    free(actions.data); free(object.data);
     return ok;
 }
