@@ -1,7 +1,7 @@
 # Ограниченная обработка событий SDL
 
 [English](PLAYER_EVENT_FAIRNESS.md). С v0.658 один вызов
-fvm_desktop_window_events обрабатывает не более 64 записей SDL. При достижении
+[`fvm_desktop_window_events`](../frontend/common/window.h#L58) обрабатывает не более 64 записей SDL. При достижении
 предела он возвращается без ожидания, оставляя остальную очередь. Проигрыватель
 может доставить ввод, опросить таймеры, выполнить безопасный шаг GC и продолжить
 кадры. Поток window/expose/user events не удерживает хост в бесконечном drain.
@@ -36,3 +36,30 @@ Leave, потеря фокуса и фон немедленно восстана
 принадлежность через SDL_GetMouseFocus. Mouse.hide больше не оставляет глобальный
 курсор SDL скрытым над другим окном. Отсутствие физического курсора не ошибочно.
 Тест проверяет состояние настоящего SDL при enter/leave/background.
+
+## Повторение и проверки (v0.661)
+
+Используйте [сборку AGG/JIT + SDL](PLAYER_RECOVERY.ru.md#сборка-и-повторение), затем:
+
+```sh
+cmake --build build/player --target flashvm_player flashvm_frontend_clip_player \
+  flashvm_frontend_event_budget flashvm_frontend_wheel flashvm_frontend_lifecycle \
+  flashvm_frontend_cursor
+ctest --test-dir build/player \
+  -R '^flashvm_(frontend_(event_budget|wheel|lifecycle|cursor)|player_(wheel|event_storm)_)' \
+  --output-on-failure
+```
+
+Storm-фикстуры ставят три полные порции перед motion/wheel и исполняют настоящие
+SWF6–8 callback в interpreter/native JIT. Корректные и заведомо неверные фильмы
+проверяют сохранение порядка за хвостом. Только тестовый контроль курсора ждёт
+доставки и очереди SDL, и копированного FIFO; производственный плейер ничего
+не инжектирует. Физический дисплей не нужен.
+
+Linux x86-64/GCC 13.3, внешний SDL2 2.30.12: выбранный frontend suite содержит
+38 тестов. Исправленная wheel-регрессия также отвергает реализацию v0.656.
+Полный AGG/JIT player с отдельными целевыми SDL SDK слинкован для Linux ARM64,
+Linux RISC-V64 и Windows x64 прежней документированной оболочкой Zig; чужие
+программы не запускались. [Происхождение SDK](PLAYER_RECOVERY.ru.md#проверки-серии).
+Физический ввод/курсор, Android/macOS, GPU-loss, длительная нагрузка, полный core
+и новый sanitizer-прогон не заявляются. Все девять стадий остаются открытыми.

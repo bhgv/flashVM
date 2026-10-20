@@ -62,9 +62,11 @@ OOM подготовки, расходует его, оставляя поздн
 над общей FIFO с нулевым stage origin.
 
 Плеер явно устанавливает Mouse только для SWF6–8; старые ролики запускаются без
-нового namespace. Колесо, видимость курсора, Button/ClipActions, автофокус/цель,
-IME, multitouch-жесты и security origins этим мостом не добавлены. Ядро без
-плеера по прежнему собирается без SDL.
+нового namespace. Исходный мост v0.596 не поддерживал колесо и курсор; основной SDL-плейер теперь
+имеет ограниченный [wheel/cursor bridge](PLAYER_WHEEL_CURSOR.ru.md) и
+[политику владения](PLAYER_EVENT_FAIRNESS.ru.md). Retained scene input описан в
+[CLIP_INPUT.md](CLIP_INPUT.md). Автофокус/hit routing, полная модель Button, IME,
+multitouch и security-origin остаются открытыми. Core-only по-прежнему не требует SDL.
 
 ## Ролики без звука
 

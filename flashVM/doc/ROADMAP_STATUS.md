@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.660
+# FlashVM stage status / Состояние стадий — v0.661
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,17 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.661 queued input fairness / Очередь и границы ввода
+
+A real queued-wheel regression corrects v0.653's double viewport conversion.
+SDL event batches yield after 64 records; subsequent key/close records survive.
+Modern touch records honor window identity, while leave/focus/background restore
+host cursor visibility without overwriting the VM request. SWF6–8 storm fixtures
+exercise the actual SDL queue, copied FIFO and interpreter/native JIT callbacks.
+[Contract EN](PLAYER_EVENT_FAIRNESS.md) / [RU](PLAYER_EVENT_FAIRNESS.ru.md).
+No physical/foreign runtime or complete stage acceptance is claimed.
+All nine stages remain open. Все девять стадий остаются открытыми.
 
 ## v0.656 player wheel and cursor / Колесо и курсор проигрывателя
 

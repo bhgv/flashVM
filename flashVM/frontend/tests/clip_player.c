@@ -30,6 +30,13 @@ static int inject_keypress(void)
 static int inject_wheel(FVM_DesktopWindow *view)
 {
     SDL_Event event;
+    if (SDL_getenv("FLASHVM_TEST_EVENT_STORM"))
+    {
+        unsigned int i;
+        memset(&event,0,sizeof(event)); event.type=SDL_USEREVENT;
+        for(i=0;i<FVM_DESKTOP_EVENT_BATCH*3;++i)
+            if(SDL_PushEvent(&event)!=1)return 0;
+    }
     if (view->cursor_applied != SDL_DISABLE)
         return 0;
     memset(&event, 0, sizeof(event)); event.type = SDL_MOUSEMOTION;
@@ -94,7 +101,8 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout)
             }
         }
     }
-    if (injected && SDL_getenv("FLASHVM_TEST_WHEEL") && view->cursor_applied != SDL_ENABLE)
+    if (injected && SDL_getenv("FLASHVM_TEST_WHEEL") && !SDL_HasEvent(SDL_MOUSEWHEEL) &&
+        !view->event_count && view->cursor_applied != SDL_ENABLE)
         view->event_error = FVM_ERROR;
     return clip_player_real_events(view, timeout);
 }

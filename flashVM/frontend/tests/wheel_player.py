@@ -37,8 +37,11 @@ def movie(version, wrong=False):
 
 
 def main():
-    executable, mode = sys.argv[1:]
+    executable, mode = sys.argv[1:3]
     env = dict(os.environ, SDL_VIDEODRIVER='dummy', FLASHVM_TEST_WHEEL='1')
+    if len(sys.argv) == 4:
+        assert sys.argv[3] == 'storm'
+        env['FLASHVM_TEST_EVENT_STORM'] = '1'
     with tempfile.TemporaryDirectory() as directory:
         for version in range(6,9):
             for wrong in (False,True):

@@ -64,9 +64,12 @@ across C. `fvm_desktop_window_pump_keyboard` remains an internal compatibility
 wrapper over the same shared FIFO with zero stage origin.
 
 Mouse namespace installation is explicit in the player for SWF6–8. Older movies
-remain playable without the new namespace. The bridge does not add wheel,
-cursor visibility, Button/ClipActions, automatic focus/hit routing, IME,
-multitouch gestures or security-origin policy. Core-only builds still need no SDL.
+remain playable without the new namespace. The original v0.596 bridge lacked
+wheel/cursor support; the main SDL player now has the bounded
+[wheel/cursor bridge](PLAYER_WHEEL_CURSOR.md) and [ownership policy](PLAYER_EVENT_FAIRNESS.md).
+Retained scene input is described in [CLIP_INPUT.md](CLIP_INPUT.md).
+Automatic focus/hit routing, full Button behavior, IME, multitouch gestures and
+security-origin policy remain open. Core-only builds still need no SDL.
 
 ## Muted movie playback
 
