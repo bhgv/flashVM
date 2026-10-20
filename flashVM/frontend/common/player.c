@@ -1543,7 +1543,7 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
             if (request->flags & FVM_AVM1_URL_LOAD_VARIABLES)
                 status = fvm_object_load_variables(context, request->target, view.bytes, view.size);
             else
-                status = fvm_movieclip_replace_swf(context, request->target, view.bytes, view.size,
+                status = fvm_movieclip_replace_resource(context, request->target, view.bytes, view.size,
                                                    view.location, strlen(view.location));
         }
         fvm_desktop_transfer_release(navigation->transfer);
@@ -1648,7 +1648,7 @@ static FVM_Result service_requests(FVM_Context *context, FVM_DesktopNavigation *
                 if (variables)
                     status = fvm_object_load_variables(context, request->target, bytes, size);
                 else
-                    status = fvm_movieclip_replace_swf(context, request->target, bytes, size,
+                    status = fvm_movieclip_replace_resource(context, request->target, bytes, size,
                                                        resolved, strlen(resolved));
             }
             free(file_bytes);

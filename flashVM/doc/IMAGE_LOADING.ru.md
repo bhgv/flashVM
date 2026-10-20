@@ -51,6 +51,22 @@ definitions file с противоположным CMake override: выбира�
 отсоединённые origin/GC, повреждённый вход, animated GIF, SWF/image dispatch и
 baseline/progressive JPEG при SWF7. Перебор C++ new/new[] отказов проверяет старый
 граф и связи. Он не заменяет отдельные проверки C-декодеров и их allocator paths.
+## Доставка дочерних изображений плеером с v0.701
+
+Дочерний loadMovie теперь вызывает общий resource API для local, synchronous,
+background-waiting и async. Сокеты HTTP/TLS и libcurl сохраняют существующие policy,
+deadline, monitor, cancel и provenance. Worker обрабатывает только bytes; decoder,
+import и публикация выполняются владельцем VM. Очередь с pin и отмена через unload
+защищают и изображения. MIME и расширение не определяют доверие к формату.
+
+Ширина/высота доступны через обычные индексы ActionGetProperty. Однокадровое
+изображение остановлено и не исполняет source actions. Тот же экземпляр можно
+очистить и загрузить в него SWF с сохранением свойств/размещения. Старт и замена
+корня всё ещё требуют SWF: root image/window sizing и loader events не реализованы.
+
+Реальные PNG/GIF/JPEG проверяют local/waiting/async, opaque MIME и .bin URL,
+размеры, удаление детей, идентичность/свойства, unload затем SWF reload, повреждённый
+ответ и TLS с явным CA. Сборка без codecs не выдаёт принятие изображения за успех.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

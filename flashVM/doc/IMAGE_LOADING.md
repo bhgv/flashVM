@@ -66,6 +66,24 @@ check detached origins/GC, malformed input, animated GIF, SWF/image dispatch and
 SWF7 baseline/progressive profile distinctions. The allocation fixture walks C++
 new/new[] failure boundaries and verifies unchanged old graph/bindings. It does
 not replace the C decoders' separate malformed-input and allocator tests.
+## Desktop child delivery since v0.701
+
+The optional player now dispatches child `loadMovie` bytes through the same resource
+API in local, synchronous network, background-waiting and async paths. Native socket
+HTTP/TLS and libcurl retain their existing policy, deadline, monitor, cancellation
+and provenance behavior. Workers handle only bytes; decoding/import/drawing publication
+happens on the VM owner thread. The existing pinned queue and unload cancellation
+also protect image destinations. No automatic MIME or extension trust is added.
+
+After import, ordinary ActionGetProperty width/height indices reflect the image
+rectangle. A stopped one-frame image runs no source actions. The instance can be
+unloaded and receive another SWF without losing its own properties or placement.
+Startup/root replacement still requires SWF; root image/window sizing and image
+loader lifecycle events are not implemented by this child-only integration.
+
+Actual PNG/GIF/JPEG SWFs test local/waiting/async delivery, opaque MIME and `.bin`
+URLs, dimensions, child removal, identity/own data, unload then SWF reload, malformed
+reply and TLS with an explicit CA. Codec-disabled builds do not silently accept images.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

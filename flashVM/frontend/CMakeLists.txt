@@ -871,3 +871,24 @@ if(TARGET flashvm_example_unload_loading AND FVM_BUILD_TESTS AND NOT CMAKE_CROSS
     ${PROJECT_SOURCE_DIR}/examples/player/unload_loading)
   set_tests_properties(flashvm_example_numbered_loading PROPERTIES TIMEOUT 20 SKIP_RETURN_CODE 77)
 endif()
+
+if(FVM_ENABLE_IMAGE_CODECS AND FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  foreach(mode interpreter jit)
+    add_test(NAME flashvm_image_loading_${mode} COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/image_loading.py $<TARGET_FILE:flashvm_player> --${mode})
+    set_tests_properties(flashvm_image_loading_${mode} PROPERTIES TIMEOUT 40 SKIP_RETURN_CODE 77)
+    if((FVM_PLAYER_SOCKET_TLS OR FVM_PLAYER_HTTP) AND FVM_OPENSSL_PROGRAM)
+      add_test(NAME flashvm_image_loading_tls_${mode} COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/image_loading.py $<TARGET_FILE:flashvm_player> --${mode} ${FVM_OPENSSL_PROGRAM})
+      set_tests_properties(flashvm_image_loading_tls_${mode} PROPERTIES TIMEOUT 50 SKIP_RETURN_CODE 77)
+    endif()
+    if(FVM_PLAYER_HOST_SHARED AND UNIX AND NOT APPLE)
+      foreach(family image_loading image_loading_tls)
+        if(TEST flashvm_${family}_${mode})
+          set_property(TEST flashvm_${family}_${mode} APPEND PROPERTY ENVIRONMENT
+            "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+endif()
