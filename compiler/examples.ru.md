@@ -14,3 +14,5 @@
 [нативная/cross сборка](../BUILDING.ru.md).
 
 [Новые примеры и границы парсеров](PARSER_COVERAGE.ru.md): Automatic.as (AS1/AS2), XmlVector.as, Polymorphic.b и FIR structural.
+
+0.5.2: [AS3 XML references](as3/examples/XmlReferences.as) / [README](as3/examples/README.md); [Limbo named casts](limbo/examples/NamedCasts.b) / [README](limbo/examples/README.md).

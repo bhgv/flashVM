@@ -6,6 +6,16 @@ import tempfile
 from pathlib import Path
 
 CASES = [
+ ('instantiated-casts', 'implement L; f() { x := Box[int] value; y := m->Box[array of byte] value; }', True),
+ ('bad-instantiated-cast', 'implement L; f() { x := Box[1+2] value; }', False),
+
+ ('export-conversions', 'implement L; f() { x := a[int value + 1]; y := a[list of {1,2}]; z := g[int, array of byte]; }', True),
+ ('export-bad-conversion', 'implement L; f() { x := a[int !]; }', False),
+
+ ('named-cast', 'implement L; f() { x := Point value; y := m->Point value; z := m->Point other->Point value; }', True),
+ ('cast-precedence', 'implement L; f() { x := Point value + other; y := a * b + c; z := m->f(value); }', True),
+ ('cast-missing-operand', 'implement L; f() { x := m->Point !; }', False),
+
  ('labels', 'implement L; f() { outer: for(;;) { inner: while() { continue outer; } break outer; } select: case x { 1 => break select; } ready: alt { <-c => break ready; } choice: pick v := p { A => break choice; } }', True),
  ('label-comments','implement L; f() { outer # comment\n : # comment\n while() break outer; x: int = 1; }',True),
  ('list-literal','implement L; f() { xs := list of {1,2,3}; v := hd xs; }',True),

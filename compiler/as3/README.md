@@ -1,4 +1,4 @@
-# AS3 syntax frontend 0.4.0
+# AS3 syntax frontend 0.4.1
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
@@ -76,7 +76,7 @@ are C99.
 
 [Detailed examples](examples/README.md).
 
-## Current syntax 0.4.0
+## Current syntax 0.4.1
 
 Supports ASI/restricted line breaks; declaration/member metadata; nested
 Vector.<...>; regexp with g/i/m/s/x and duplicate-flag checks; E4X XML/XMLList,
@@ -84,9 +84,9 @@ comments, CDATA, PI, expression-interpolated names/values, attribute/wildcard/
 namespace/computed selectors, descendants and filters; default xml namespace.
 XML interpolations use the ordinary Coco/R expression grammar, including nested
 XML/regexp. Shift operators remain ordinary operators outside type context.
-Static closing names and delimiter termination are checked. XML entities, DTD,
-full Unicode name categories, namespace/type resolution and regexp-program
-validity are not checked. This is not complete XML validation or E4X execution.
+Static closing names, delimiters, Unicode XML names, reference spelling,
+numeric reference ranges, comments and PI are checked. Entity/namespace/type
+resolution, DTD and complete regexp-program validity are not implemented. This is not complete XML validation or E4X execution.
 Escaped identifiers, AST construction and assignment-target/context checks still
 need work before a complete frontend can be claimed.
 

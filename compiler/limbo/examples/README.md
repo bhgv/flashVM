@@ -44,3 +44,5 @@ build/frontend/limbo_parse examples/Polymorphic.b
 ```
 
 [Grammar and API contract](../README.md) · [Build](../../../BUILDING.md)
+
+[NamedCasts.b](NamedCasts.b) is a new 0.4.1 syntax fixture. Check it with `build/frontend/limbo_parse examples/NamedCasts.b`. Exit 0 means accepted syntax, without execution or type checking.

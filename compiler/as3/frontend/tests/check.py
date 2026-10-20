@@ -5,6 +5,10 @@ import sys
 import tempfile
 exe = sys.argv[1]
 good = [
+    'include "defs.as"; class C {}',
+    'include /* path */ "defs.as"\nvar x=1;',
+    'var include=1; include(2); obj.include();',
+
     '', 'package { public class Main { public function Main() {} } }',
     'package demo.core { import flash.display.*; public class C extends Sprite implements I { private var n:Number = 1; public function f(x:int):Number { return x + n; } } }',
     'public interface I extends J { function f(x:int):Number; }',
@@ -63,6 +67,24 @@ bad = ['var x=<a></b>;', 'var x=<a>;', 'var x=<a x=bare/>;',
 
         '/* missing', 'var x = 1; @',
        'package x { class C {} } trailing nonsense', 'var x = ;', 'trace(1 add 2);', 'trace(1 eq 2);']
+# XML references, UTF-8 names and delimiters are checked in raw XML mode.
+good += [
+    'var x=<корень имя="&quot;&#65;&#x1F600;">&amp;&custom;</корень>;',
+    'var x=<a><!-- a-b --><![CDATA[&raw;]]><?target data?></a>;',
+    'var x=<a>&#9;&#10;&#13;&#x10FFFF;</a>;',
+]
+bad += [
+    'var x=<{tag}></>;', 'var x=<></ >;',
+    'var x=<a><?xml version="1.0"?></a>;',
+    'var x=<a>&missing</a>;', 'var x=<a>&;</a>;',
+    'var x=<a>&#;</a>;', 'var x=<a>&#x;</a>;',
+    'var x=<a>&#0;</a>;', 'var x=<a>&#xD800;</a>;',
+    'var x=<a>&#x110000;</a>;', 'var x=<a>&#999999999999999999999;</a>;',
+    'var x=<a p="&bad"/>;', 'var x=<a><!--bad--comment--></a>;',
+    'var x=<a>]]></a>;', 'var x=<></{tag}>;',
+    'var x=<a><??></a>;', 'var x=<a><?1target?></a>;',
+    'var x=<\u0301bad/>;', 'var x=<a>\x01</a>;',
+]
 with tempfile.TemporaryDirectory() as tmp:
     path = Path(tmp) / 'input.as'
     for accepted, cases in [(True, good), (False, bad)]:

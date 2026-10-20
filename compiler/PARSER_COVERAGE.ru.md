@@ -1,4 +1,4 @@
-# Парсеры: покрытие и границы серии 0.5.1
+# Парсеры: покрытие и границы серии 0.5.2
 
 Эта серия существенно расширяет все пять синтаксических интерфейсов, но не
 объявляет их полными компиляторами или полностью соответствующими языкам.
@@ -8,11 +8,11 @@
 | Компонент | Добавлено и проверено | Что ещё нужно для полного фронтенда |
 | --- | --- | --- |
 | AS1/AS2 | ASI; ограничения перевода строки; and/or/not; on/onClipEvent; include/initclip-обёртки | Escape в идентификаторах, Unicode-категории и точный профиль Flash, AST/контекст/левая часть; раскрытие include отдельно |
-| AS3 | ASI, metadata, вложенные Vector, regexp lexical goal, XML/XMLList/E4X и выражения внутри XML | Полная regexp/XML-валидация, Unicode/escape, оставшиеся директивы/лексические случаи и AST/контекст |
-| Limbo | Полиморфизм/constraints, exceptions, fixed, **, срезы, типовые аргументы | Именованные casts, полное различение type/value по символам, оставшиеся неоднозначности qualifier и AST/контекст |
+| AS3 | ASI, metadata, вложенные Vector, regexp lexical goal, XML/XMLList/E4X и выражения внутри XML | Полная regexp-валидация, XML namespace/entity resolution, Unicode/escape, оставшиеся директивы/лексические случаи и AST/контекст |
+| Limbo | Полиморфизм/constraints, exceptions, fixed, **, срезы, типовые аргументы | Полное различение type/value по символам, оставшиеся неоднозначности qualifier и AST/контекст |
 | FIR | Несколько сигнатур, параметры блоков/рёбер, invoke, декларации/отладочные записи и составные типы | Построение и верификация расширенного IR, opcode-каталог/эффекты, полноценное понижение новых конструкций |
 
-AS1 имеет версию 0.3.0, AS2 — 0.3.1, AS3/Limbo — 0.4.0, инструменты FIR — 0.5.0,
+AS1 имеет версию 0.3.0, AS2 — 0.3.1, AS3/Limbo — 0.4.1, инструменты FIR — 0.5.0,
 отдельный FIR syntax API — 0.1.0. Формат текста FIR остаётся 1.0; ABI и версии
 компонентов не связаны с версией проигрывателя. Файлы ATG — авторитетные
 источники; C99-код генерируется внешним bhgv/coco-r-C в каталогах сборки.
@@ -44,7 +44,7 @@ FIR_SYNTAX_ROOT — явный необязательный SDK/source-root. Б�
 
 ## Проверка и ограничения доказательств
 
-База серии: GitHub master 54f324c5b37c7cbbe65c58f3fb774cf01099b776.
+База 0.5.2: GitHub master 1c5c8c49833e139191d50d6f4ffacca78f57f43f. Предыдущая серия 0.5.1 основана на 54f324c5b37c7cbbe65c58f3fb774cf01099b776.
 На Linux x86-64 прошли 19 CTest-групп компиляторов и 6 FIR, включая реальные
 C API и запрет обхода backend через syntax-режим. Отдельно проверен хост всех
 пяти API. Переименованные отдельные копии compiler и fir/v1 также собраны и
@@ -74,3 +74,32 @@ x86-64 Windows/GNU; проверены ELF/PE и коды архитектур. 
 [Five-API host](tests/embed_five.c) · [Build guide](../BUILDING.md) ·
 [FIR executable format](../fir/v1/doc/FORMAT.md) ·
 [Inferno reference grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y)
+
+## Изменения 0.5.2
+
+AS3 0.4.1 проверяет XML NameStartChar/NameChar по Unicode независимо от locale,
+форму entity-ссылок и диапазоны числовых ссылок, XML-комментарии, PI,
+запрещённые символы и `]]>` в тексте. XMLList требует пустого закрывающего имени.
+Контекстный `include "file.as"` распознаётся без чтения файла; обычное имя
+`include` продолжает работать. Это XML 1.0 fifth-edition lexical profile,
+а не обещание точного поведения всех версий Adobe E4X.
+
+Limbo 0.4.1 распознаёт `Point value`, `m->Point value`, цепочки casts и
+преобразования внутри export/index. `list of {...}` там остаётся выражением.
+Типовые параметры допустимы на каждом уровне имени cast; общее различение
+type/value ещё требует работы. Проверки AST, типов, левых частей и полного regexp Pattern не добавлены.
+FIR и исполняемый backend не менялись. Полное соответствие пяти языкам пока
+не подтверждено; этот релиз закрывает перечисленные конкретные пробелы.
+
+Новые примеры: [XML](as3/examples/XmlReferences.as),
+[Limbo casts](limbo/examples/NamedCasts.b). Подробные инструкции сборки выше.
+
+Проверка 0.5.2: 19 native CTest-групп compiler и 6 FIR; те же тесты
+в отдельных переименованных каталогах; пять API в одном C99-хосте.
+Кросс-сборки compiler/FIR для ARM64 Linux/musl, RISC-V64 Linux/musl и
+Windows x86-64/GNU повторены, проверены машинные коды ELF/PE без запуска.
+Обновлённые тесты включают XML references, Unicode-имена, контрольные символы,
+обрывы XML на каждой байтовой границе, C API error/recovery, include, named casts,
+типовые аргументы casts, exports и сохранение арифметических выражений.
+Правила XML: [W3C XML 1.0](https://www.w3.org/TR/xml/);
+синтаксис casts: [Inferno limbo.y](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).

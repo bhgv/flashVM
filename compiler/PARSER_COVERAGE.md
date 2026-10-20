@@ -1,4 +1,4 @@
-# Parser coverage and boundaries, series 0.5.1
+# Parser coverage and boundaries, series 0.5.2
 
 This series substantially extends all five syntax interfaces, but does not claim
 complete compilers or full language conformance. Source-language parsers do not
@@ -8,11 +8,11 @@ remaining frontend work are explicitly separated below.
 | Component | Added and checked | Remaining before a complete frontend |
 | --- | --- | --- |
 | AS1/AS2 | ASI/restricted line breaks; and/or/not; on/onClipEvent; include/initclip wrappers | Escaped identifiers, Unicode categories/exact Flash profile, AST/context/assignment targets; include expansion separately |
-| AS3 | ASI, metadata, nested Vector, regexp lexical goal, XML/XMLList/E4X and real AS interpolations | Full regexp/XML validation, Unicode/escapes, remaining directives/lexical cases and AST/context |
-| Limbo | Polymorphism/constraints, exceptions, fixed, **, slices and type arguments | Named casts, complete symbol-based type/value disambiguation, remaining qualifier ambiguities and AST/context |
+| AS3 | ASI, metadata, nested Vector, regexp lexical goal, XML/XMLList/E4X and real AS interpolations | Full regexp validation, XML namespace/entity resolution, Unicode/escapes, remaining directives/lexical cases and AST/context |
+| Limbo | Polymorphism/constraints, exceptions, fixed, **, slices and type arguments | Complete symbol-based type/value disambiguation, remaining qualifier ambiguities and AST/context |
 | FIR | Multiple signatures, block/edge parameters, invoke, declarations/debug records and composite types | Extended IR construction/verification, opcode/effect catalog and complete lowering of new constructs |
 
-AS1 is 0.3.0, AS2 0.3.1, AS3/Limbo 0.4.0, FIR tools 0.5.0, independent FIR
+AS1 is 0.3.0, AS2 0.3.1, AS3/Limbo 0.4.1, FIR tools 0.5.0, independent FIR
 syntax API 0.1.0. The text header remains FIR 1.0; ABI/component versions are
 independent of the player. ATG files are authoritative sources; external
 bhgv/coco-r-C generates C99 into build directories. C actions end their physical
@@ -44,7 +44,7 @@ C99 process, alternates errors/successes and uses no CLI/subprocess adapter.
 
 ## Validation and evidence limits
 
-Series baseline: GitHub master 54f324c5b37c7cbbe65c58f3fb774cf01099b776.
+0.5.2 baseline: GitHub master 1c5c8c49833e139191d50d6f4ffacca78f57f43f. Earlier 0.5.1 used 54f324c5b37c7cbbe65c58f3fb774cf01099b776.
 On Linux x86-64, 19 compiler CTest groups and 6 FIR groups passed, including real
 C APIs and the syntax/backend boundary. The five-API host was checked separately.
 Renamed detached copies of compiler and fir/v1 also built and passed their tests;
@@ -74,3 +74,33 @@ its counts, sanitizer and VM evidence are not attributed to this series.
 [Five-API host](tests/embed_five.c) · [Build guide](../BUILDING.md) ·
 [FIR executable format](../fir/v1/doc/FORMAT.md) ·
 [Inferno reference grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y)
+
+## Changes in 0.5.2
+
+AS3 0.4.1 validates Unicode XML NameStartChar/NameChar independently of locale,
+entity reference spelling, numeric reference ranges, comments, PI, forbidden
+characters and `]]>` in text. XMLList requires an empty closing name.
+Contextual `include "file.as"` is recognized without reading a host file;
+ordinary identifiers named `include` remain usable. This is an XML 1.0
+fifth-edition lexical profile, not a claim of exact Adobe E4X compatibility.
+
+Limbo 0.4.1 accepts `Point value`, `m->Point value`, cast chains and
+conversion expressions inside export/index brackets. `list of {...}` remains
+a value expression there. General type/value disambiguation still needs work. Named cast prefixes may
+include type arguments at each qualification level. AST/type/lvalue checks and complete regexp
+Pattern validation were not added. FIR and executable backends are unchanged.
+Complete conformance of all five languages is still unproven; this release
+closes the specific gaps listed here.
+
+New fixtures: [XML](as3/examples/XmlReferences.as),
+[Limbo casts](limbo/examples/NamedCasts.b). Build instructions appear above.
+
+0.5.2 validation: 19 native compiler CTest groups and 6 FIR groups; the same
+tests in renamed detached directories; five APIs in one C99 host. Compiler/FIR
+cross-builds were repeated for ARM64 Linux/musl, RISC-V64 Linux/musl and
+Windows x86-64/GNU, checking ELF/PE machine IDs without foreign execution.
+Updated tests cover XML references, Unicode names, controls, every byte-prefix
+truncation of XML fixtures, C API error/recovery, include, named and instantiated
+casts, exports and preservation of ordinary arithmetic expressions.
+XML rules: [W3C XML 1.0](https://www.w3.org/TR/xml/);
+cast syntax: [Inferno limbo.y](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).

@@ -44,3 +44,5 @@ build/frontend/limbo_parse examples/Polymorphic.b
 ```
 
 [Контракт грамматики и API](../README.ru.md) · [Сборка](../../../BUILDING.ru.md)
+
+[NamedCasts.b](NamedCasts.b) — новый синтаксический пример версии 0.4.1. Проверка: `build/frontend/limbo_parse examples/NamedCasts.b`. Парсер возвращает 0 при корректном синтаксисе; исполнения и проверки типов нет.

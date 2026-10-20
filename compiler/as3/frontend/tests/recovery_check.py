@@ -3,7 +3,11 @@ from pathlib import Path
 import subprocess,sys,tempfile
 seed='for(var k in obj) { if(k in obj) { f(k); } } function g(){return (1+2);}'
 cases=[seed[:i] for i in range(len(seed)+1)]
-cases += ['@', '/*', 'for(', 'f(){', '}', seed+'@', seed+'(']
+# Every byte boundary of nested XML/interpolation/reference input must terminate.
+for xml in ('var x=<a p="&#x41;">&amp;{f(/x/)}</a>;',
+            'var x=<a><!--x--><![CDATA[text]]><?p v?></a>;'):
+ cases += [xml[:i] for i in range(len(xml)+1)]
+cases += ['@' , '/*', 'for(', 'f(){', '}', seed+'@', seed+'(']
 with tempfile.TemporaryDirectory() as tmp:
  p=Path(tmp)/'truncated.src'
  for source in cases:

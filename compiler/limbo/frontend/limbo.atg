@@ -83,6 +83,57 @@ static long Trivia(long pos)
             return pos;
     }
 }
+/* A named conversion has a type-shaped prefix followed by a unary operand.
+ * Calls and binary operators retain their existing precedence. Symbol resolution
+ * later decides whether the qualified name actually denotes a type. */
+static int NamedCastAhead(int is_ident)
+{
+    long pos = S_NextPos;
+    int ch;
+    if (!is_ident)
+        return 0;
+    for (;;)
+    {
+        ch = S_CurrentCh(pos);
+        if (!((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' ||
+              ch >= 128))
+            return 0;
+        do
+        {
+            ch = S_CurrentCh(++pos);
+        } while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                 (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128);
+        pos = Trivia(pos);
+        /* Instantiations can occur at every qualification level. This only
+         * finds the matching bracket; NamedType validates its type contents. */
+        if (S_CurrentCh(pos) == '[')
+        {
+            unsigned depth = 0;
+            do
+            {
+                pos = Trivia(pos);
+                ch = S_CurrentCh(pos++);
+                if (!ch)
+                    return 0;
+                if (ch == '[')
+                    ++depth;
+                else if (ch == ']')
+                    --depth;
+            } while (depth);
+            pos = Trivia(pos);
+        }
+        if (S_CurrentCh(pos) == '.')
+            pos = Trivia(pos + 1);
+        else if (S_CurrentCh(pos) == '-' && S_CurrentCh(pos + 1) == '>')
+            pos = Trivia(pos + 2);
+        else
+            break;
+    }
+    ch = S_CurrentCh(pos);
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+           (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128 || ch == 34 || ch == 39 ||
+           ch == '!' || ch == '~';
+}
 /* Match a whole keyword after a candidate label without reading a token. */
 static int WordAt(long pos, const char *word)
 {
@@ -827,6 +878,8 @@ PRODUCTIONS
   Unary =
                                                                         (. limbo_syntax_enter(); .)
     (
+        IF(NamedCastAhead(Sym == identSym)) NamedType Unary
+        |
         (
             "!"
             | "~"
@@ -929,7 +982,7 @@ PRODUCTIONS
     ]
   .
 
-  /* Index or slice: lower bound is mandatory, upper bound may be omitted. */
+  /* Index or slice: either bound may be omitted, but an empty index is illegal. */
   Subscript =
     "["
     (
@@ -1101,15 +1154,22 @@ PRODUCTIONS
     ]
   .
 
-  /* Index arguments can export builtin/composite types to a polymorphic operation. */
+  /* Export brackets accept either types or expressions. A builtin/composite type
+  may also prefix a conversion expression; list-of-{...} stays a value literal.
+  Type-name binding and instantiation arity are checked by a later semantic pass. */
   Export =
     IF(Sym == byteSym || Sym == intSym || Sym == bigSym || Sym == realSym ||
-       Sym == stringSym || Sym == cyclicSym || Sym == listSym ||
+       Sym == stringSym || Sym == cyclicSym ||
+       (Sym == listSym && S_CurrentCh(Trivia(Trivia(S_NextPos + S_NextLen) + 2)) != '{') ||
        (Sym == arraySym && S_CurrentCh(Trivia(S_NextPos + S_NextLen)) != '['))
     [
         "cyclic"
     ]
     Type
+    [
+        IF(Sym != RbrackSym && Sym != CommaSym && Sym != ColonSym && Sym != EOF_Sym)
+        Assignment
+    ]
     | Assignment
   .
 

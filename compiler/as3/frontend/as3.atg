@@ -247,20 +247,108 @@ static int XmlAt(long pos, const char *text)
             return 0;
     return 1;
 }
-/* XML names retain qualified spelling; namespace resolution is a later operation. */
+/* Decode validated UTF-8 without locale dependence. The public API validates bytes. */
+static unsigned long XmlCode(long *pos)
+{
+    unsigned long value = (unsigned char)S_CurrentCh((*pos)++);
+    int count = 0;
+    if (value >= 240)
+    {
+        value &= 7;
+        count = 3;
+    }
+    else if (value >= 224)
+    {
+        value &= 15;
+        count = 2;
+    }
+    else if (value >= 192)
+    {
+        value &= 31;
+        count = 1;
+    }
+    while (count--)
+        value = value * 64 + ((unsigned char)S_CurrentCh((*pos)++) & 63);
+    return value;
+}
+/* XML 1.0 fifth-edition NameStartChar; independent of the host's wchar_t. */
+static int XmlStart(unsigned long c)
+{
+    return c == ':' || c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= 0xc0 && c <= 0xd6) || (c >= 0xd8 && c <= 0xf6) ||
+           (c >= 0xf8 && c <= 0x2ff) || (c >= 0x370 && c <= 0x37d) ||
+           (c >= 0x37f && c <= 0x1fff) || (c >= 0x200c && c <= 0x200d) ||
+           (c >= 0x2070 && c <= 0x218f) || (c >= 0x2c00 && c <= 0x2fef) ||
+           (c >= 0x3001 && c <= 0xd7ff) || (c >= 0xf900 && c <= 0xfdcf) ||
+           (c >= 0xfdf0 && c <= 0xfffd) || (c >= 0x10000 && c <= 0xeffff);
+}
+/* XML names retain qualified spelling; namespace resolution remains separate. */
 static long XmlName(long pos)
 {
-    int ch = S_CurrentCh(pos);
-    if (!((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_' ||
-          ch == ':' || ch >= 128))
+    long next = pos;
+    unsigned long c = XmlCode(&next);
+    if (!XmlStart(c))
         return pos;
     do
     {
-        ch = S_CurrentCh(++pos);
-    } while ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
-             (ch >= '0' && ch <= '9') || ch == '_' || ch == ':' || ch == '.' ||
-             ch == '-' || ch >= 128);
+        pos = next;
+        c = XmlCode(&next);
+    } while (XmlStart(c) || c == '-' || c == '.' || (c >= '0' && c <= '9') ||
+             c == 0xb7 || (c >= 0x300 && c <= 0x36f) || (c >= 0x203f && c <= 0x2040));
     return pos;
+}
+/* XML Char excludes surrogate code points, forbidden controls and noncharacters. */
+static int XmlChar(unsigned long c)
+{
+    return c == 9 || c == 10 || c == 13 || (c >= 32 && c <= 0xd7ff) ||
+           (c >= 0xe000 && c <= 0xfffd) || (c >= 0x10000 && c <= 0x10ffff);
+}
+/* Validate reference spelling and numeric scalar range, without resolving entities. */
+static long XmlReference(long pos)
+{
+    long end;
+    if (S_CurrentCh(++pos) != '#')
+    {
+        end = XmlName(pos);
+        return end != pos && S_CurrentCh(end) == ';' ? end + 1 : -1;
+    }
+    {
+        unsigned long value = 0;
+        int base = 10, digit, count = 0, ch;
+        ++pos;
+        if (S_CurrentCh(pos) == 'x')
+        {
+            base = 16;
+            ++pos;
+        }
+        while ((ch = S_CurrentCh(pos)) != ';')
+        {
+            digit = ch >= '0' && ch <= '9'   ? ch - '0'
+                    : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                    : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10
+                                             : -1;
+            if (digit < 0 || digit >= base || value > (0x10ffffUL - digit) / base)
+                return -1;
+            value = value * base + digit;
+            ++count;
+            ++pos;
+        }
+        return count && XmlChar(value) ? pos + 1 : -1;
+    }
+}
+/* A double hyphen is legal only as the final comment delimiter. */
+static long XmlComment(long pos)
+{
+    while (S_CurrentCh(pos))
+    {
+        long next = pos;
+        if (XmlAt(pos, "--"))
+            return XmlAt(pos, "-->") ? pos + 3 : -1;
+        if (!XmlChar(XmlCode(&next)))
+            return -1;
+        pos = next;
+    }
+    return -1;
 }
 /* Delimited XML markup has mandatory terminators, including at end of input. */
 static long XmlUntil(long pos, const char *end)
@@ -269,7 +357,12 @@ static long XmlUntil(long pos, const char *end)
     {
         if (XmlAt(pos, end))
             return pos + (long)strlen(end);
-        ++pos;
+        {
+            long next = pos;
+            if (!XmlChar(XmlCode(&next)))
+                return -1;
+            pos = next;
+        }
     }
     return -1;
 }
@@ -291,11 +384,22 @@ static long XmlElement(long pos)
     int dynamic = 0, list = 0, ch;
     as3_syntax_enter();
     if (XmlAt(pos, "<!--"))
-        next = XmlUntil(pos + 4, "-->");
+        next = XmlComment(pos + 4);
     else if (XmlAt(pos, "<![CDATA["))
         next = XmlUntil(pos + 9, "]]>");
     else if (XmlAt(pos, "<?"))
-        next = XmlUntil(pos + 2, "?>");
+    {
+        next = XmlName(pos + 2);
+        if (next == pos + 2 || (XmlSpace(next) == next && !XmlAt(next, "?>")))
+            next = -1;
+        else if (next - pos == 5 &&
+                 (S_CurrentCh(pos + 2) == 'x' || S_CurrentCh(pos + 2) == 'X') &&
+                 (S_CurrentCh(pos + 3) == 'm' || S_CurrentCh(pos + 3) == 'M') &&
+                 (S_CurrentCh(pos + 4) == 'l' || S_CurrentCh(pos + 4) == 'L'))
+            next = -1;
+        else
+            next = XmlUntil(next, "?>");
+    }
     else
     {
         open = ++pos;
@@ -375,8 +479,25 @@ static long XmlElement(long pos)
                 ++pos;
                 while (S_CurrentCh(pos) && S_CurrentCh(pos) != ch &&
                        S_CurrentCh(pos) != '<')
-                    ++pos;
-                if (S_CurrentCh(pos++) != ch)
+                {
+                    if (S_CurrentCh(pos) == '&')
+                    {
+                        pos = XmlReference(pos);
+                        if (pos < 0)
+                            break;
+                    }
+                    else
+                    {
+                        long end = pos;
+                        if (!XmlChar(XmlCode(&end)))
+                        {
+                            pos = -1;
+                            break;
+                        }
+                        pos = end;
+                    }
+                }
+                if (pos < 0 || S_CurrentCh(pos++) != ch)
                 {
                     as3_syntax_leave();
                     return -1;
@@ -406,6 +527,11 @@ static long XmlElement(long pos)
                 close = pos + 2;
                 if (S_CurrentCh(close) == '{')
                 {
+                    if (list)
+                    {
+                        as3_syntax_leave();
+                        return -1;
+                    }
                     close_end = XmlInterpolation(close);
                     if (close_end < 0)
                     {
@@ -416,6 +542,12 @@ static long XmlElement(long pos)
                 else
                 {
                     close_end = XmlName(close);
+                    if ((!list && close_end == close) ||
+                        (list && S_CurrentCh(close) != '>'))
+                    {
+                        as3_syntax_leave();
+                        return -1;
+                    }
                     if (!dynamic && (open_end - open != close_end - close))
                     {
                         as3_syntax_leave();
@@ -445,8 +577,15 @@ static long XmlElement(long pos)
                 pos = XmlElement(pos);
             else if (ch == '{')
                 pos = XmlInterpolation(pos);
+            else if (ch == '&')
+                pos = XmlReference(pos);
+            else if (XmlAt(pos, "]]>"))
+                pos = -1;
             else
-                ++pos;
+            {
+                long end = pos;
+                pos = XmlChar(XmlCode(&end)) ? end : -1;
+            }
             if (pos < 0)
             {
                 as3_syntax_leave();
@@ -653,11 +792,21 @@ PRODUCTIONS
 
   /* Элемент программы или тела: выбор между декларацией и инструкцией. */
   Item =
-    Import
+    IF(Sym == identSym && WordAt(S_NextPos, "include") &&
+       (S_CurrentCh(Trivia(S_NextPos + S_NextLen)) == 34 ||
+        S_CurrentCh(Trivia(S_NextPos + S_NextLen)) == 39))
+    IncludeDirective
+    | Import
     | IF(Sym == LbrackSym && MetadataAhead()) MetadataDeclaration
     | IF(DeclarationAhead(Sym)) Declaration
     | UseNamespace
     | Statement
+  .
+
+  /* Contextual include accepts a filename but never reads a host file.
+  Calls/variables named include remain ordinary ActionScript expressions. */
+  IncludeDirective =
+    ident text Terminator
   .
 
   /* Блок ограничивает последовательность элементов фигурными скобками. */

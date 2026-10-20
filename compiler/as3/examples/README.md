@@ -47,3 +47,5 @@ build/frontend/as3_parse examples/XmlVector.as
 ```
 
 [Grammar and API contract](../README.md) · [Build](../../../BUILDING.md)
+
+[XmlReferences.as](XmlReferences.as) is a new 0.4.1 syntax fixture. Check it with `build/frontend/as3_parse examples/XmlReferences.as`. Exit 0 means accepted syntax, without execution or type checking.

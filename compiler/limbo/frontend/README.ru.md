@@ -1,6 +1,6 @@
 # Синтаксический фронтенд LIMBO
 
-Версия 0.4.0. [English](README.md).
+Версия 0.4.1. [English](README.md).
 
 Читаемый файл [limbo.atg](limbo.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -68,7 +68,7 @@ pick, определения функций, группы параметров, 
 комментарии и вложенность круглых/квадратных скобок. Пустые тела ветвей допустимы.
 
 Это начальный профиль классического языка, а не полный компилятор Inferno.
-Полиморфные/exception-конструкции добавлены в 0.4.0; проверки типов/контекста
+Полиморфные/exception-конструкции добавлены в 0.4.1; проверки типов/контекста
 пока отсутствуют. Предпросмотр условий не заменяет семантическое разрешение:
 сложным условиям с фигурными скобками требуется доработка. include распознаётся,
 но файлы не открываются и не разворачиваются. Проверки числовых диапазонов,
@@ -83,7 +83,7 @@ pick, определения функций, группы параметров, 
 
 ## Указатель правил грамматики
 
-[Limbo](limbo.atg#L297) | [Top](limbo.atg#L308) | [NamedTop](limbo.atg#L315) | [DeclarationTail](limbo.atg#L329) | [DeclType](limbo.atg#L340) | [AdtMember](limbo.atg#L374) | [Tags](limbo.atg#L389) | [Names](limbo.atg#L396) | [Name](limbo.atg#L404) | [Type](limbo.atg#L411) | [Parameters](limbo.atg#L440) | [Formal](limbo.atg#L459) | [FunctionTail](limbo.atg#L473) | [Block](limbo.atg#L482) | [Statement](limbo.atg#L493) | [IfStatement](limbo.atg#L553) | [WhileStatement](limbo.atg#L561) | [ForStatement](limbo.atg#L575) | [CaseStatement](limbo.atg#L593) | [AltStatement](limbo.atg#L602) | [CaseArm](limbo.atg#L612) | [PickStatement](limbo.atg#L622) | [PickArm](limbo.atg#L631) | [ArmBody](limbo.atg#L645) | [Qualifiers](limbo.atg#L654) | [Expression](limbo.atg#L671) | [Assignment](limbo.atg#L680) | [Cons](limbo.atg#L712) | [LogicalOr](limbo.atg#L722) | [LogicalAnd](limbo.atg#L730) | [BitOr](limbo.atg#L738) | [BitXor](limbo.atg#L746) | [BitAnd](limbo.atg#L754) | [Equality](limbo.atg#L762) | [Relational](limbo.atg#L774) | [Shift](limbo.atg#L788) | [Additive](limbo.atg#L800) | [Product](limbo.atg#L812) | [Unary](limbo.atg#L827) | [Initializer](limbo.atg#L905) | [Postfix](limbo.atg#L914) | [Primary](limbo.atg#L956)
+[Limbo](limbo.atg#L348) | [Top](limbo.atg#L359) | [NamedTop](limbo.atg#L366) | [DeclarationTail](limbo.atg#L380) | [DeclType](limbo.atg#L391) | [AdtMember](limbo.atg#L425) | [Tags](limbo.atg#L440) | [Names](limbo.atg#L447) | [Name](limbo.atg#L455) | [Type](limbo.atg#L462) | [Parameters](limbo.atg#L491) | [Formal](limbo.atg#L510) | [FunctionTail](limbo.atg#L524) | [Block](limbo.atg#L533) | [Statement](limbo.atg#L544) | [IfStatement](limbo.atg#L604) | [WhileStatement](limbo.atg#L612) | [ForStatement](limbo.atg#L626) | [CaseStatement](limbo.atg#L644) | [AltStatement](limbo.atg#L653) | [CaseArm](limbo.atg#L663) | [PickStatement](limbo.atg#L673) | [PickArm](limbo.atg#L682) | [ArmBody](limbo.atg#L696) | [Qualifiers](limbo.atg#L705) | [Expression](limbo.atg#L722) | [Assignment](limbo.atg#L731) | [Cons](limbo.atg#L763) | [LogicalOr](limbo.atg#L773) | [LogicalAnd](limbo.atg#L781) | [BitOr](limbo.atg#L789) | [BitXor](limbo.atg#L797) | [BitAnd](limbo.atg#L805) | [Equality](limbo.atg#L813) | [Relational](limbo.atg#L825) | [Shift](limbo.atg#L839) | [Additive](limbo.atg#L851) | [Product](limbo.atg#L863) | [Unary](limbo.atg#L878) | [Initializer](limbo.atg#L958) | [Postfix](limbo.atg#L967) | [Primary](limbo.atg#L1009)
 
 ## Описание языка
 
@@ -92,7 +92,7 @@ pick, определения функций, группы параметров, 
 Добавлены метки while/do/for/case/alt/pick, list of, унарный *,
 проверяемая форма array и срезы с необязательными границами. См. [обзор](../README.ru.md).
 
-## Синтаксис 0.4.0
+## Синтаксис 0.4.1
 
 Добавлены implement со списком модулей, полиморфные функции/ADT/типы и for-ограничения,
 exception/raises/raise и обработчики блока, fixed-типы/преобразования, **/**=,
@@ -100,10 +100,14 @@ array of byte-преобразование, завершающая запята�
 границами. Последний параметр * проверяется (E1302); пустые case/alt/pick и
 пустое for-ограничение отклоняются. Сверка с текущей грамматикой Inferno исправила
 старый запрет нижней границы среза: a[:n] и a[:] допустимы.
-Include-файлы не раскрываются; символы/типы, cast по именованному типу и полная
+Include-файлы не раскрываются; cast по именованному/параметризованному типу поддержан. Символы/типы и полная
 семантическая неоднозначность type/value в полиморфных аргументах ещё требуют
 работы. Это не полный Inferno-компилятор и не генератор Dis.
 
 [Полиморфный пример](../examples/Polymorphic.b), [официальная грамматика](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).
 
-Новые правила / [PolyParameters](limbo.atg#L971) | [ForPoly](limbo.atg#L1012) | [Raises](limbo.atg#L1036) | [FixedType](limbo.atg#L1066) | [Export](limbo.atg#L1105)
+Новые правила / [PolyParameters](limbo.atg#L1024) | [ForPoly](limbo.atg#L1065) | [Raises](limbo.atg#L1089) | [FixedType](limbo.atg#L1119) | [Export](limbo.atg#L1160)
+
+[Parser coverage 0.5.2](../../PARSER_COVERAGE.ru.md) documents XML/cast fixes and remaining boundaries.
+
+Вспомогательный C-код в авторитетной ATG: [NamedCastAhead](limbo.atg#L89).

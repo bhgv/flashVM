@@ -47,3 +47,5 @@ build/frontend/as3_parse examples/XmlVector.as
 ```
 
 [Контракт грамматики и API](../README.ru.md) · [Сборка](../../../BUILDING.ru.md)
+
+[XmlReferences.as](XmlReferences.as) — новый синтаксический пример версии 0.4.1. Проверка: `build/frontend/as3_parse examples/XmlReferences.as`. Парсер возвращает 0 при корректном синтаксисе; исполнения и проверки типов нет.
