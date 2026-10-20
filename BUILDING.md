@@ -33,7 +33,7 @@ backend is not implemented.
 
 ## Build and test on the current machine
 
-Requirements: native C/C++ compilers, CMake 3.16+ for C99 components, Python 3
+Requirements: native C/C++ compilers, CMake 3.16+ for C99 components, Python 3.9+
 for tests and an explicitly supplied host Coco/R. The VM accepts CMake 3.10+;
 its native release reporter requires CMake/CTest 3.26+. Examples below use a
 single-configuration generator. With Visual Studio/Xcode use `--config Release`
@@ -200,3 +200,8 @@ limit/float macro fixtures. These are conditional-policy fixtures, not actual
 ```sh
 python3 tools/test_portable_headers.py --cc /host/path/cc
 ```
+
+The template explicitly prevents host C++ fallback: enabling C++ without
+FVM_TARGET_CXX stops configuration with FVM_TARGET_CXX_REQUIRED. C99-only
+components may omit it. Four actual configure probes test this contract:
+[test_toolchain_contract.py](tools/test_toolchain_contract.py).

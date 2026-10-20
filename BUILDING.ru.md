@@ -33,7 +33,7 @@ LLVM backend FIR пока нет.
 
 ## Сборка и тесты на текущей машине
 
-Нужны компиляторы C/C++, CMake 3.16+ для компонентов C99, Python 3 для тестов,
+Нужны компиляторы C/C++, CMake 3.16+ для компонентов C99, Python 3.9+ для тестов,
 внешний Coco/R для хоста. VM допускает CMake 3.10+, её отчёт нативной приёмки
 требует CMake/CTest 3.26+. Команды ниже рассчитаны на одноконфигурационный
 генератор. Для Visual Studio/Xcode добавляйте --config Release и ctest -C Release;
@@ -199,3 +199,8 @@ compile-only проб настоящим GCC/Clang хоста: обычный с
 ```sh
 python3 tools/test_portable_headers.py --cc /host/path/cc
 ```
+
+Шаблон явно запрещает fallback на host C++: если проект включает C++, но
+FVM_TARGET_CXX не задан, CMake прекращает конфигурацию с FVM_TARGET_CXX_REQUIRED.
+Для C99-only компонентов отсутствие C++ допустимо. Четыре настоящие configure
+пробы проверяют этот контракт: [test_toolchain_contract.py](tools/test_toolchain_contract.py).

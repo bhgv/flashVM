@@ -28,7 +28,7 @@ python3 tools/atg_format.py --clang-format /host/path/clang-format \
 ```
 
 Without --check, explicit files are rewritten. --check writes nothing and needs
-only Python 3. The formatter verifies token-order preservation before publishing
+only Python 3.9+.9+. The formatter verifies token-order preservation before publishing
 each file. Optional clang-format is a HOST executable, never a cross-built binary.
 Seven regression tests cover action ordering, opaque quoted/comment delimiters,
 pragma ordering, indentation, idempotence and malformed groups/actions. All six
@@ -39,3 +39,7 @@ project grammar/prelude/action streams were compared with their prior versions;
 C99 headers and diagnostics for unsupported byte/int/double representations.
 Run python3 tools/test_portable_headers.py --cc /host/path/cc with GCC/Clang
 command syntax; generated target code is never executed by this checker.
+
+[test_toolchain_contract.py](test_toolchain_contract.py) runs actual isolated
+CMake configure probes; --cmake, --cc and --cxx select host tools. It checks
+that missing target C++ cannot silently fall back to a host compiler.

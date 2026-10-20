@@ -26,6 +26,13 @@ set(CMAKE_SYSTEM_NAME "${FVM_TARGET_SYSTEM}")
 set(CMAKE_SYSTEM_PROCESSOR "${FVM_TARGET_PROCESSOR}")
 set(CMAKE_C_COMPILER "${FVM_TARGET_CC}")
 
+# A C-only project does not need C++. If a project enables C++ later, an unset
+# SDK compiler must fail instead of silently discovering the host's g++.
+# This intentional nonexistent path is inspected only when C++ is enabled.
+if(NOT FVM_TARGET_CXX)
+  set(CMAKE_CXX_COMPILER "${CMAKE_CURRENT_LIST_DIR}/FVM_TARGET_CXX_REQUIRED")
+endif()
+
 foreach(pair IN ITEMS CXX AR RANLIB RC)
   if(FVM_TARGET_${pair})
     if(NOT IS_ABSOLUTE "${FVM_TARGET_${pair}}" OR NOT EXISTS "${FVM_TARGET_${pair}}")

@@ -56,5 +56,9 @@ formatter groups and five public-header compile-probe groups pass.
 Six projects (AS1/AS2/AS3/Limbo/FIR/SWL) were independently copied/renamed into
 paths with spaces. Each passed native build/its CTests and ARM64 cross build
 using a separately copied SDK toolchain: 12 additional configuration/build checks.
-Detached FIR used no implicit SWL/VM. All 1489 modified-document relative links
+Detached FIR used no implicit SWL/VM. All 1493 modified-document relative links
 resolved; source-link freshness and ATG style checks passed.
+
+Four isolated SDK CMake configure probes pass: C-only without C++, rejection
+of missing target C++, successful compiler/link probes with explicit C++, and
+rejection of a missing processor. These are host SDK-selection policy fixtures.
