@@ -1,6 +1,6 @@
 # LIMBO syntax frontend
 
-Version 0.3.4. [Русская версия](README.ru.md).
+Version 0.3.5. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).

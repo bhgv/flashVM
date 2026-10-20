@@ -40,3 +40,18 @@ jobs. Это не проверка AGG/Cairo/SDL/шрифтов/media SDK, ус�
 Android NDK/APK/устройства, macOS SDK/подписи/нативного запуска, foreign JIT или
 выпускных длительных испытаний. Команды Android/macOS — инструкция, не результат
 исполнения. Все девять стадий открыты. [Инструкция сборки](../BUILDING.ru.md).
+
+## Окончательные проверки читаемой/cross серии
+
+После окончательных изменений повторно прошли 22 нативных C99 CTest и восемь
+выбранных VM/tooling CTest: AVM1 number text, conversions, JIT numbers, speech
+bridges/Vosk parser, version refresh, debugger tutorial и source links. Полный
+набор VM и новая ASan/UBSan-приёмка не запускались. По ELF/PE проверены 30 реальных
+executable: по десять на каждую из трёх целей, включая C89 VM-клиент и общий IDE.
+Семь групп форматтера и пять групп public-header compile probes успешны.
+
+Шесть проектов (AS1/AS2/AS3/Limbo/FIR/SWL) отдельно скопированы и переименованы
+в папки с пробелами. Каждый прошёл нативную сборку/свои CTest и ARM64 cross-сборку
+с отдельно скопированным SDK toolchain. Это ещё 12 проверок конфигурации/сборки;
+отделённый FIR не использовал неявный SWL/VM. Проверены 1489 относительных ссылок
+изменённых документов; source-link freshness и ATG style checks успешны.

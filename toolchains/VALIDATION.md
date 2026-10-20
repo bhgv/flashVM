@@ -43,3 +43,18 @@ Windows speech devices, Android NDK/APK/device runs, macOS SDK/signing/native ru
 foreign JIT equivalence or release/endurance acceptance. The supplied Android and
 macOS commands are build instructions, not execution evidence. All nine roadmap
 stages remain open. [Build instructions](../BUILDING.md).
+
+## Final readable/cross series checks
+
+After final changes, 22 native C99 CTests and eight selected VM/tooling CTests
+passed: AVM1 number text, conversions, JIT numbers, speech bridges/Vosk parser,
+version refresh, debugger tutorial and source links. The entire VM suite and
+new ASan/UBSan checks were not run. ELF/PE checks cover 30 actual executables,
+ten per target including a real C89 VM client and combined IDE host. Seven
+formatter groups and five public-header compile-probe groups pass.
+
+Six projects (AS1/AS2/AS3/Limbo/FIR/SWL) were independently copied/renamed into
+paths with spaces. Each passed native build/its CTests and ARM64 cross build
+using a separately copied SDK toolchain: 12 additional configuration/build checks.
+Detached FIR used no implicit SWL/VM. All 1489 modified-document relative links
+resolved; source-link freshness and ATG style checks passed.

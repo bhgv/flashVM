@@ -34,3 +34,8 @@ Seven regression tests cover action ordering, opaque quoted/comment delimiters,
 pragma ordering, indentation, idempotence and malformed groups/actions. All six
 project grammar/prelude/action streams were compared with their prior versions;
 16 frontend and 3 FIR CTests passed after regeneration.
+
+[test_portable_headers.py](test_portable_headers.py) checks combined public
+C99 headers and diagnostics for unsupported byte/int/double representations.
+Run python3 tools/test_portable_headers.py --cc /host/path/cc with GCC/Clang
+command syntax; generated target code is never executed by this checker.

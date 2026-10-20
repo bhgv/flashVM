@@ -182,3 +182,21 @@ Current build evidence and SDK limitations: [toolchains/VALIDATION.md](toolchain
 Source/example navigation: [compiler catalog](compiler/examples.md),
 [FIR examples](fir/v1/examples/README.md), [linker tutorial](linker/examples/ide/README.md),
 [VM examples](flashVM/examples/README.md), [ATG style](tools/README.md).
+
+## C99 representation contract
+
+Frontends and SWL require eight-bit char and at least 32-bit int: UTF-8, the
+2 MiB input bound and octet wire formats cannot silently become wide characters.
+FIR additionally requires an eight-byte binary64 double (radix 2, 53 mantissa
+bits, maximum exponent 1024). Known mixed float/integer word order is rejected
+when the compiler exposes both macros. This is not a substitute for checking
+IEEE representation on an unknown exotic target. Incompatible public headers
+fail at compile time, before SWO payload copying can corrupt memory/output.
+Five [header test groups](tools/test_portable_headers.py) execute 17 compile-only
+GCC/Clang host probes: a combined normal C99 include and deliberate incompatible
+limit/float macro fixtures. These are conditional-policy fixtures, not actual
+16-bit CPU executions.
+
+```sh
+python3 tools/test_portable_headers.py --cc /host/path/cc
+```

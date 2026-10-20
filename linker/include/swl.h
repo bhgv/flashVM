@@ -1,6 +1,11 @@
 /* Independent C99 SWO1/SWA1 linker API. No compiler or VM headers required. */
 #ifndef SWL_H
 #define SWL_H
+/* SWO/SWA/SWF lengths and bit writers describe octets, never host-wide chars. */
+#include <limits.h>
+#if CHAR_BIT != 8 || INT_MAX < 2147483647
+#error "SWL requires 8-bit bytes and at least 32-bit int"
+#endif
 #include <stddef.h>
 #include <stdint.h>
 #ifdef __cplusplus

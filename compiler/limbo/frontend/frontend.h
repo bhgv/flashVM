@@ -1,6 +1,11 @@
 /* Standalone C99 syntax API; no argv, output streams, exit or subprocesses. */
 #ifndef limbo_FRONTEND_H
 #define limbo_FRONTEND_H
+/* UTF-8 scanner units and the 2 MiB input bound require octets and >=32-bit int. */
+#include <limits.h>
+#if CHAR_BIT != 8 || INT_MAX < 2147483647
+#error "This syntax frontend requires 8-bit bytes and at least 32-bit int"
+#endif
 #include <stddef.h>
 #include <stdio.h>
 #ifdef __cplusplus

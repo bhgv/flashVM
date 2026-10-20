@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.3.4. [Русский](README.ru.md).
+Version 0.3.5. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -29,7 +29,7 @@ symbols have a language prefix; multiple libraries can link into one IDE. State
 resets before every call, but each parser requires external serialization (not
 reentrant). `tests/embed.c` checks in-process recovery after invalid input.
 
-### Syntax 0.3.4
+### Syntax 0.3.5
 
 Added list-of literals, trailing array-initializer commas, unary dereference `*`
 and labels on while/do/for/case/alt/pick. Typed declarations after a colon do

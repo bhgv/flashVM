@@ -1,8 +1,26 @@
 /* FIR 1.0: standalone C99, no FlashVM headers or private ABI dependency. */
 #ifndef FIR_H
 #define FIR_H
+/* SWO is an octet format. Numeric lowering stores i32 in a normal C int and
+ * the object backend writes IEEE binary64 bits; reject incompatible targets. */
+#include <limits.h>
+#include <float.h>
+#if CHAR_BIT != 8 || INT_MAX < 2147483647
+#error "FIR requires 8-bit bytes and at least 32-bit int"
+#endif
+#if FLT_RADIX != 2 || DBL_MANT_DIG != 53 || DBL_MAX_EXP != 1024
+#error "FIR SWO requires an IEEE binary64 double target"
+#endif
+/* Reject known mixed-word-order targets: memcpy into uint64_t would swap words. */
+#if defined(__FLOAT_WORD_ORDER__) && defined(__BYTE_ORDER__)
+#if __FLOAT_WORD_ORDER__ != __BYTE_ORDER__
+#error "FIR SWO requires matching floating/integer word order"
+#endif
+#endif
 #include <stdio.h>
 #include <stdint.h>
+/* C99 compile-time assertion: binary64 payload copying must read exactly 8 bytes. */
+typedef char FirDoubleMustBeEightBytes[(sizeof(double) == 8) ? 1 : -1];
 #ifdef __cplusplus
 extern "C"
 {

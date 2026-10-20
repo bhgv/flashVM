@@ -1,5 +1,5 @@
 # Standalone language project; frontend owns all required source and tooling.
 cmake_minimum_required(VERSION 3.16)
-project(as1_compiler VERSION 0.2.5 LANGUAGES C)
+project(as1_compiler VERSION 0.2.6 LANGUAGES C)
 include(CTest)
 add_subdirectory(frontend)

@@ -32,3 +32,8 @@ python3 tools/atg_format.py --clang-format /host/path/clang-format \
 pragma, отступы, повторяемость и повреждённые группы/блоки. Потоки токенов всех
 шести грамматик, включая прелюдию и C-действия, сверены с предыдущей версией;
 после генерации прошли 16 CTest фронтендов и 3 CTest FIR.
+
+[test_portable_headers.py](test_portable_headers.py) проверяет совместное
+подключение публичных C99 API и диагностику неподдерживаемых byte/int/double ABI.
+Запуск: python3 tools/test_portable_headers.py --cc /host/path/cc. Требуется
+компилятор с синтаксисом GCC/Clang; проверка не исполняет полученный код.
