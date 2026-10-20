@@ -17,3 +17,12 @@ flashvm_frontend_event_budget uses an actual dummy SDL queue, verifies remaining
 records after each batch and proves that queued keyboard/quit records survive.
 The deliberately long wait argument must not block while a full batch was used.
 This is a scheduling/queue contract check, not OS/device endurance acceptance.
+
+## Touch window identity (v0.659)
+
+SDL 2.0.12+ identifies a touch event's destination window. The same owned-window
+filter now covers down/motion/up finger records, including a foreign release
+with matching touch/finger IDs: it cannot terminate our contact. Zero IDs remain
+explicit synthetic/unassigned input; older SDKs retain their device/finger-only
+routing. Primary-contact selection and focus/background cancellation are unchanged.
+The lifecycle fixture checks foreign start/release suppression and owned release.

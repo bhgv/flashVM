@@ -284,6 +284,13 @@ static int belongs_to_window(FVM_DesktopWindow *view, const SDL_Event *event)
     Uint32 id = 0;
     switch (event->type)
     {
+#if SDL_VERSION_ATLEAST(2, 0, 12)
+    case SDL_FINGERDOWN:
+    case SDL_FINGERMOTION:
+    case SDL_FINGERUP:
+        id = event->tfinger.windowID;
+        break;
+#endif
     case SDL_WINDOWEVENT:
         id = event->window.windowID;
         break;

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.658
+# FlashVM stage status / Состояние стадий — v0.659
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix

@@ -43,6 +43,19 @@ int main(void)
     e.window.windowID = other; e.window.event = SDL_WINDOWEVENT_CLOSE;
     assert(handle_event(v, &e));
     assert(!v->event_count && !v->input.right);
+#if SDL_VERSION_ATLEAST(2,0,12)
+    memset(&e,0,sizeof(e)); e.type=SDL_FINGERDOWN;
+    e.tfinger.windowID=other; e.tfinger.touchId=1; e.tfinger.fingerId=2;
+    e.tfinger.x=0.5f; e.tfinger.y=0.5f;
+    assert(handle_event(v,&e) && !v->touch_active && !v->event_count);
+    e.tfinger.windowID=own;
+    assert(handle_event(v,&e) && v->touch_active && v->event_count==1);
+    e.type=SDL_FINGERUP; e.tfinger.windowID=other;
+    assert(handle_event(v,&e) && v->touch_active && v->event_count==1);
+    e.tfinger.windowID=own;
+    assert(handle_event(v,&e) && !v->touch_active && v->event_count==2);
+    v->event_count=v->event_head=0;
+#endif
     assert(key(v, SDLK_RIGHT, own));
     assert(v->event_count == 1 && v->input.right);
     event(v, SDL_APP_DIDENTERBACKGROUND);
