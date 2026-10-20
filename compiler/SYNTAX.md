@@ -1,4 +1,4 @@
-# Current parser syntax 0.5.0
+# Current parser syntax 0.5.1
 
 [Coverage, checks and remaining work](PARSER_COVERAGE.md) describe the current
 series. ASI, AS3 regexp/metadata/Vector/E4X and newer Limbo constructs are added;

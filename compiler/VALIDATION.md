@@ -1,4 +1,4 @@
-# Current parser validation, series 0.5.0
+# Current parser validation, series 0.5.1
 
 See [current evidence](PARSER_COVERAGE.md). The following report is historical;
 its sanitizer/VM/IDE results are not a fresh 0.5.0 run.

@@ -1,6 +1,10 @@
 # Optional compiler-only orchestration; each language/frontend builds alone too.
 cmake_minimum_required(VERSION 3.16)
 project(flash_compilers LANGUAGES C)
+# Apply the same C99 contract to orchestration-owned embedding hosts.
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 include(CTest)
 add_subdirectory(as1)
 add_subdirectory(as2)

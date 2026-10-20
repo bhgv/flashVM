@@ -1,4 +1,4 @@
-# Parser coverage and boundaries, series 0.5.0
+# Parser coverage and boundaries, series 0.5.1
 
 This series substantially extends all five syntax interfaces, but does not claim
 complete compilers or full language conformance. Source-language parsers do not
