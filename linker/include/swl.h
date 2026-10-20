@@ -46,6 +46,22 @@ extern "C"
                   size_t);
     int swl_play(SwlContext *, const char *name, char *, size_t);
     int swl_emit(SwlContext *, SwlWriter, void *, char *, size_t);
+    /* Validated module metadata. No bytecode or context ownership is transferred. */
+    typedef struct
+    {
+        const char *name;      /* Borrowed NUL-terminated name, valid during callback only. */
+        size_t code_size;      /* AVM1 bytes including the final ActionEnd. */
+        unsigned requirements; /* SWO1 capability mask: bit 0 requires FlashVM channels. */
+    } SwlModuleInfo;
+    /* Return zero to stop visiting and report failure. Copy metadata you retain. */
+    typedef int (*SwlModuleVisitor)(void *user, const SwlModuleInfo *module);
+    /* Inspect one SWO1 or SWA1 buffer, selected by magic. Validate the ENTIRE input
+     * before the first callback. Visits are in archive order; extension requirements
+     * are reported without authorizing execution. No filesystem, output or shared
+     * context state. Callback cancellation cannot undo earlier caller side effects.
+     * Return 1 on complete visitation, 0 on invalid input/allocation/cancellation.
+     * NULL visitor is invalid; NULL/zero diagnostic storage is permitted. */
+    int swl_inspect(const void *, size_t, SwlModuleVisitor, void *, char *, size_t);
     /* Whole-member archive, no implicit search path or lazy symbol resolution. */
     int swl_archive(const SwlObject *, size_t, SwlWriter, void *, char *, size_t);
 #ifdef __cplusplus
