@@ -1,4 +1,4 @@
-# Линкер SWL 0.3.9
+# Линкер SWL 0.3.10
 
 Рабочий независимый C99-компонент. FIR компилируется в `.swo`, SWL связывает
 объекты и библиотеки `.swa` в SWF8. Компилятор больше не создаёт SWF.
@@ -59,3 +59,5 @@ build/linker/swl inspect library.swa
 расширения FlashVM. Для C API по-прежнему используется `SwlOptions`.
 
 [Пример просмотра из C](examples/inspect/README.ru.md).
+
+[Каталог примеров](examples/README.ru.md).

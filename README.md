@@ -21,18 +21,20 @@ with Python 3, not presented as a fresh Python 2.7.9 runtime validation.
 | Path | Purpose |
 | --- | --- |
 | [LICENSE](LICENSE) | Shared MIT license for first-party workspace code, copyright bhgv |
-| [compiler/](compiler/README.md) | Independent AS1, AS2 and Limbo C99 projects |
-| [linker/](linker/README.md) | Reserved independent C99 SWF linker project |
+| [compiler/](compiler/README.md) | Independent AS1, AS2, AS3 and Limbo C99 syntax projects |
+| [linker/](linker/README.md) | Independent C99 SWO/SWA and resource linker to SWF8 |
 | [flashVM/](flashVM/README.md) | VM source, bundled dependencies, examples, documentation, tools and build configuration |
 | [flashVM/README.md](flashVM/README.md) | English VM guide and current capabilities |
 | [flashVM/README.ru.md](flashVM/README.ru.md) | Russian VM guide |
 | [flashVM/VERSION.txt](flashVM/VERSION.txt) | FlashVM development version |
 | [view_docs.py](view_docs.py) | Workspace documentation entry point; currently delegates to FlashVM |
 
-Compiler projects now live in [compiler/](compiler/README.md); the independent
-[linker/](linker/README.md) directory reserves the linker project. Frontends
-currently recognize a documented initial syntax profile and do not emit SWF. Third-party dependencies retain
-their own license notices inside the component.
+Syntax frontends live in [compiler/](compiler/README.md). The separate
+[FIR toolchain](fir/v1/README.md) includes numeric source adapters, verification,
+optimization and SWO object emission. [SWL](linker/README.md) links objects,
+whole-member libraries, shapes, JPEG and PCM WAV resources into SWF8. This is a
+bounded working pipeline, not complete AS/Limbo language support. Third-party
+dependencies retain their own license notices inside each component.
 
 ## Build FlashVM
 
@@ -50,10 +52,10 @@ not close any compatibility or platform acceptance stage.
 
 ## Independent projects
 
-The workspace will contain separate projects: FlashVM, ActionScript compilers,
-a Limbo compiler, a SWF linker and, later, a Flash editor/IDE. FlashVM and initial compiler syntax frontends are implemented;
-the linker and editor remain future work. Each project owns its source, dependencies, build entry
-point, version, documentation, examples and tests. No root build is required.
+FlashVM, language syntax frontends, FIR/compiler/optimizer and SWL are separate
+working projects. A Flash source/image editor remains future work. Each project
+owns its source, dependencies, build entry point, version, documentation,
+examples and tests. No root build is required.
 Future workspace automation may orchestrate builds, but must remain optional.
 
 A project must remain buildable after copying its directory to another location
@@ -73,14 +75,21 @@ files are not build dependencies.
 
 ## Compiler and linker projects
 
-[compiler/](compiler/README.md) contains independent C99 projects for
-[AS1](compiler/as1/frontend/README.md), [AS2](compiler/as2/frontend/README.md)
-and [Limbo](compiler/limbo/frontend/README.md). Each owns a readable, commented
-`.atg` grammar, C99 driver, CMake build and regression tests. Their version is
-0.1.0; the VM viewer also gains workspace navigation and .atg source browsing in 0.575.
-Component versions remain independent.
-[linker/](linker/README.md) is reserved for an independent C99 implementation;
-there is no linker executable yet. Editor/IDE implementation remains future work.
+[compiler/](compiler/README.md) contains independently buildable C99 syntax
+frontends for [AS1](compiler/as1/frontend/README.md),
+[AS2](compiler/as2/frontend/README.md), [AS3](compiler/as3/frontend/README.md)
+and [Limbo](compiler/limbo/frontend/README.md). Each uses a readable authoritative
+`.atg`, external bhgv/coco-r-C, a C API, a console driver and syntax tests.
+Component versions are independent; consult each project's VERSION or README.
+
+The separate numeric [source adapters](fir/v1/doc/SOURCE_SYNTAX.md) emit FIR.
+FIR verification/optimization precedes SWO generation; the FIR compiler never
+creates a SWF container. [SWL](linker/README.md) combines SWO/SWA and resources,
+with explicit FlashVM extension opt-in. Broad syntax recognition is not full
+semantic lowering: AS3 ABC and FIR cross-module function relocations remain
+unimplemented. [Pipeline help](fir/v1/doc/PIPELINE.md),
+[SWL examples](linker/examples/README.md),
+[typed C inspection API](linker/INSPECTION.md).
 
 ## Desktop SWF player
 

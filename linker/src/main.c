@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     char error[256] = "read/allocation failure";
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("swl 0.3.9 (SWO1/SWA1 to SWF8)");
+        puts("swl 0.3.10 (SWO1/SWA1 to SWF8)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
