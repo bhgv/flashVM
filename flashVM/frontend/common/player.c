@@ -46,13 +46,12 @@ static void print_build_info(void)
     fvm_desktop_build_info(&info);
     SDL_GetVersion(&linked);
     printf("FlashVM player %s\n", info.version);
-    printf("abi=%lu pointer_bits=%u jit_backend=%s sdl_audio_compiled=%s\n",
-           info.abi_version, info.pointer_bits, info.jit_available ? "available" : "unavailable",
+    printf("abi=%lu pointer_bits=%u jit_backend=%s sdl_audio_compiled=%s\n", info.abi_version,
+           info.pointer_bits, info.jit_available ? "available" : "unavailable",
            info.sdl_audio_compiled ? "yes" : "no");
-    printf("sdl_headers=%u.%u.%u sdl_linked=%u.%u.%u\n",
-           (unsigned int)SDL_MAJOR_VERSION, (unsigned int)SDL_MINOR_VERSION,
-           (unsigned int)SDL_PATCHLEVEL, (unsigned int)linked.major,
-           (unsigned int)linked.minor, (unsigned int)linked.patch);
+    printf("sdl_headers=%u.%u.%u sdl_linked=%u.%u.%u\n", (unsigned int)SDL_MAJOR_VERSION,
+           (unsigned int)SDL_MINOR_VERSION, (unsigned int)SDL_PATCHLEVEL,
+           (unsigned int)linked.major, (unsigned int)linked.minor, (unsigned int)linked.patch);
     puts("Build metadata only; no device or target-runtime acceptance is implied.");
 }
 
@@ -62,7 +61,8 @@ static unsigned char *read_movie(const char *path, size_t *size)
     SDL_RWops *file = SDL_RWFromFile(path, "rb");
     Sint64 length;
     unsigned char *bytes;
-    unsigned char extra; /* Probe measured EOF so a growing file is not loaded as a silent prefix. */
+    unsigned char
+        extra; /* Probe measured EOF so a growing file is not loaded as a silent prefix. */
     if (!file)
     {
         fprintf(stderr, "%s: %s\n", path, SDL_GetError());
@@ -139,13 +139,15 @@ static int clear_stage(FVM_Context *context, FVM_RasterSurface *surface)
     return 1;
 }
 
-/* Render the current scene without advancing timeline, input, timers or the authored frame count. */
+/* Render the current scene without advancing timeline, input, timers or the authored frame count.
+ */
 static int present_stage(FVM_Context *context, FVM_Object *clip, FVM_DesktopWindow *window,
-                          FVM_RasterSurface *surface, const FVM_Affine *viewport, const char *path)
+                         FVM_RasterSurface *surface, const FVM_Affine *viewport, const char *path)
 {
     if (!clear_stage(context, surface))
         return 0;
-    if (!checked(fvm_movieclip_render_view(context, clip, surface, viewport), "raster render", path))
+    if (!checked(fvm_movieclip_render_view(context, clip, surface, viewport), "raster render",
+                 path))
         return 0;
     if (!fvm_desktop_window_present(window, surface, surface->stride * surface->height))
     {
@@ -197,7 +199,7 @@ static FVM_Result publish_input(FVM_Context *context, FVM_Object *object,
 
 /* Explicit --mute acknowledges validated root sound events without decoding or opening audio. */
 static FVM_Result muted_sound(FVM_Context *context, FVM_Object *clip, size_t ordinal,
-                               void *userdata)
+                              void *userdata)
 {
     FVM_DesktopAudio *audio = (FVM_DesktopAudio *)userdata;
     (void)context;
@@ -229,11 +231,14 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     size_t stream_count = 0; /* Detect unsupported root streaming playback before native setup. */
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
-    unsigned long presentations = 0, refreshes = 0; /* Count successful draws separately from timeline ticks. */
-    int update_requested = 0; /* Consume coalesced requests before presentation, preserving later requests. */
-    unsigned int timer_callbacks = 0; /* Receive each active-loop poll's attempted delivery count. */
+    unsigned long presentations = 0,
+                  refreshes = 0; /* Count successful draws separately from timeline ticks. */
+    int update_requested =
+        0; /* Consume coalesced requests before presentation, preserving later requests. */
+    unsigned int timer_callbacks =
+        0;                        /* Receive each active-loop poll's attempted delivery count. */
     unsigned long timer_wait = 0; /* Cap SDL waiting at the nearest pending timer deadline. */
-    int timers_pending = 0; /* Receive the queue hint without retaining any managed state. */
+    int timers_pending = 0;       /* Receive the queue hint without retaining any managed state. */
     int status = 1, pinned = 0, input_pinned = 0;
     memset(&input, 0, sizeof(input));
     memset(&audio, 0, sizeof(audio));
@@ -255,11 +260,13 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         goto cleanup;
     if (!checked(fvm_swf_stage_bounds(context, &bounds), "stage rectangle", path))
         goto cleanup;
-    if (!checked(fvm_swf_stream_sound_count(context, &stream_count), "root stream validation", path))
+    if (!checked(fvm_swf_stream_sound_count(context, &stream_count), "root stream validation",
+                 path))
         goto cleanup;
     if (stream_count && !options->mute)
     {
-        fprintf(stderr, "%s: root streaming audio playback is unsupported; use --mute to play silently\n",
+        fprintf(stderr,
+                "%s: root streaming audio playback is unsupported; use --mute to play silently\n",
                 path);
         goto cleanup;
     }
@@ -303,7 +310,9 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         !checked(fvm_standard_broadcaster_install(context), "AsBroadcaster namespace", path))
         goto cleanup;
     if (!checked(fvm_movieclip_load_swf_ex(context, bytes, length, "_root",
-                      options->mute ? FVM_SWF_IMPORT_MUTE_ROOT_STREAMS : 0, &clip), "scene import", path))
+                                           options->mute ? FVM_SWF_IMPORT_MUTE_ROOT_STREAMS : 0,
+                                           &clip),
+                 "scene import", path))
         goto cleanup;
     /* [GC:] Pin the published root before any script/frame operation can collect it. */
     if (!checked(fvm_gc_pin(context, clip), "root pin", path))
@@ -344,9 +353,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         fprintf(stderr, "%s: cannot open desktop window\n", path);
         goto cleanup;
     }
-    if (options->mute &&
-        !checked(fvm_movieclip_set_sound_callback(context, muted_sound, &audio),
-                  "muted event sound", path))
+    if (options->mute && !checked(fvm_movieclip_set_sound_callback(context, muted_sound, &audio),
+                                  "muted event sound", path))
         goto cleanup;
     if (!options->mute && !checked(fvm_desktop_audio_open(context, clip, &audio),
                                    "event audio (use --mute to disable)", path))
@@ -383,7 +391,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         }
         if (!checked(fvm_desktop_audio_tick(&audio), "PCM queue", path))
             goto cleanup;
-        if (!checked(fvm_desktop_window_pump_clip_input(window, context, clip, -viewport.x0, -viewport.y0),
+        if (!checked(fvm_desktop_window_pump_clip_input(window, context, clip, -viewport.x0,
+                                                        -viewport.y0),
                      "input listeners", path))
             goto cleanup;
         fvm_desktop_window_input(window, &input);
@@ -415,7 +424,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                 ++presentations;
                 ++refreshes;
                 /* A new request made during rendering must not be lost behind a long frame wait. */
-                if (!checked(fvm_stage_get_update(context, &update_requested), "redraw state", path))
+                if (!checked(fvm_stage_get_update(context, &update_requested), "redraw state",
+                             path))
                     goto cleanup;
                 now = fvm_desktop_now();
                 if (update_requested || now >= next)
@@ -428,7 +438,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                 wait = 1;
             /* Do not sleep past a pending deadline when the authored frame rate is low. */
             if (!checked(fvm_timers_next_delay(context, (unsigned long)wait, &timer_wait,
-                                               &timers_pending), "timer wakeup", path))
+                                               &timers_pending),
+                         "timer wakeup", path))
                 goto cleanup;
             wait = (int)timer_wait;
             if (!wait)
@@ -449,9 +460,11 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             goto cleanup;
         if (!checked(fvm_desktop_audio_tick(&audio), "frame PCM queue", path))
             goto cleanup;
-        if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request", path))
+        if (!checked(fvm_stage_take_update(context, &update_requested), "frame redraw request",
+                     path))
             goto cleanup;
-        if (!checked(fvm_desktop_window_sync_cursor(window, context), "frame cursor visibility", path))
+        if (!checked(fvm_desktop_window_sync_cursor(window, context), "frame cursor visibility",
+                     path))
             goto cleanup;
         if (!present_stage(context, clip, window, &surface, &viewport, path))
             goto cleanup;
@@ -521,22 +534,41 @@ cleanup:
     return status;
 }
 
+/* Shared synchronous runner; the CLI translates arguments into this same contract. */
+int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
+{
+    FVM_DesktopOptions value;
+    size_t i;
+    int status = FVM_DESKTOP_EXIT_OK, quit = 0;
+    if (!fvm_desktop_options_validate(options, error))
+        return FVM_DESKTOP_EXIT_ARGUMENT;
+    value = *options;
+    for (i = 0; i < value.file_count && !quit; ++i)
+    {
+        status = play(&value, value.files[i], &quit);
+        if (status)
+            break;
+    }
+    if (status && error)
+        *error = "player playback failed";
+    return status;
+}
+
 /* Parse before SDL/VM startup so help and invalid arguments work without a display server. */
 int fvm_desktop_main(int argc, char **argv)
 {
     FVM_DesktopOptions options;
     const char *error = 0;
     const char **files;
-    size_t i;
-    int parsed, status = 0, quit = 0;
+    int parsed, status = FVM_DESKTOP_EXIT_OK;
     if (!fvm_desktop_arguments_valid(argc, argv))
     {
         fprintf(stderr, "invalid player argument vector\n");
-        return 2;
+        return FVM_DESKTOP_EXIT_ARGUMENT;
     }
     files = (const char **)malloc((size_t)argc * sizeof(*files));
     if (!files)
-        return 1;
+        return FVM_DESKTOP_EXIT_PLAYBACK;
     parsed = fvm_desktop_parse(argc, argv, files, &options, &error);
     if (parsed == FVM_DESKTOP_PARSE_HELP)
         fvm_desktop_help(argv[0]);
@@ -545,15 +577,14 @@ int fvm_desktop_main(int argc, char **argv)
     else if (parsed == FVM_DESKTOP_PARSE_ERROR)
     {
         fprintf(stderr, "%s\nUse --help for options.\n", error ? error : "invalid arguments");
-        status = 2;
+        status = FVM_DESKTOP_EXIT_ARGUMENT;
     }
     else
-        for (i = 0; i < options.file_count && !quit; ++i)
-        {
-            status = play(&options, options.files[i], &quit);
-            if (status)
-                break;
-        }
+    {
+        status = fvm_desktop_run(&options, &error);
+        if (status == FVM_DESKTOP_EXIT_ARGUMENT)
+            fprintf(stderr, "%s\n", error);
+    }
     free(files);
     return status;
 }

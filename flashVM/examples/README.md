@@ -152,6 +152,7 @@
     - [speech_tts](#example-multimedia-speech_tts) — <small><em>Системный TTS: подготовка голоса и реальная речь</em></small>
 - [player](#group-player)
   - [animation_audio](#example-player-animation_audio) — <small><em>Три SWF: анимация, клавиши/мышь и PCM/ADPCM в interpreter/JIT</em></small>
+  - [configured_host](#example-player-configured_host) — <small><em>Запуск C89 через структуру без CLI-парсера</em></small>
   - [muted_stream](#example-player-muted_stream) — <small><em>Корневой PCM stream без звука: явный импорт, C89 и GC</em></small>
   - [wheel_cursor](#example-player-wheel_cursor) — <small><em>Остановленный SWF8: колесо в trace и нативный Mouse.hide/show</em></small>
 - [Сборка, типы примеров и чтение API](#using-examples)
@@ -1695,6 +1696,16 @@ loops/no-multiple/stop по ID. Пакеты Linux/Windows и Android menu/SDLAc
 CLI проверяет 120 кадров каждого в interpreter/JIT.
 [Контракт](../doc/PLAYER_POINTER.ru.md#ролики-без-звука).
 
+<a id="example-player-configured_host"></a>
+### configured_host
+
+Исполняемый построчно пояснённый C89-хост: структура параметров, два muted tick,
+общая статическая цель и синхронное владение VM/SDL-ресурсами.
+[README EN](player/configured_host/README.md) / [RU](player/configured_host/README.ru.md),
+[исходник](player/configured_host/main.c),
+[контракт C/C++98 API](../doc/PLAYER_CONFIGURATION.ru.md),
+[объявления](../frontend/common/player.h). Не требует разбора CLI; это не widget API.
+
 <a id="example-player-muted_stream"></a>
 ### muted_stream
 
@@ -1761,6 +1772,7 @@ Source line links describe the current checkout, including in historical notes.
 - [clip_actions — embedding/clip_actions](#example-embedding-clip_actions)
 - [clutter3d — frontends/clutter3d](#example-frontends-clutter3d)
 - [color_matrix_filter — embedding/color_matrix_filter](#example-embedding-color_matrix_filter)
+- [configured_host — player/configured_host](#example-player-configured_host)
 - [cpp98_stack — embedding/cpp98_stack](#example-embedding-cpp98_stack)
 - [custom_audio_bridge — multimedia/custom_audio_bridge](#example-multimedia-custom_audio_bridge)
 - [custom_video_output — multimedia/custom_video_output](#example-multimedia-custom_video_output)

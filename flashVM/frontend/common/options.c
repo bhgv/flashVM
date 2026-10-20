@@ -117,6 +117,60 @@ int fvm_desktop_arguments_valid(int argc, char **argv)
     return 1;
 }
 
+/* Default state shared by CLI parsing and direct C/C++ embedding. */
+int fvm_desktop_options_init(FVM_DesktopOptions *out)
+{
+    if (!out)
+        return 0;
+    memset(out, 0, sizeof(*out));
+    out->mode = FVM_DESKTOP_MODE_AUTO;
+    out->quality = FVM_STAGE_QUALITY_HIGH;
+    out->percent = FVM_DESKTOP_PERCENT_UNIT;
+    return 1;
+}
+
+/* Validate the entire configuration before even the first playlist file is opened. */
+int fvm_desktop_options_validate(const FVM_DesktopOptions *options, const char **error)
+{
+    const char *message = 0;
+    size_t i;
+    if (!options)
+        message = "null player options";
+    else if (options->mode != FVM_DESKTOP_MODE_AUTO && options->mode != FVM_EXECUTION_INTERPRETER &&
+             options->mode != FVM_EXECUTION_JIT)
+        message = "invalid execution mode";
+    else if (options->quality < FVM_STAGE_QUALITY_LOW || options->quality > FVM_STAGE_QUALITY_BEST)
+        message = "invalid stage quality";
+    else if (!(options->fps == FVM_DESKTOP_DEFAULT_FPS ||
+               (options->fps >= FVM_DESKTOP_MIN_RATE && options->fps <= FVM_DESKTOP_MAX_FPS)))
+        message = "invalid absolute frame rate";
+    else if (!(options->percent >= FVM_DESKTOP_MIN_RATE &&
+               options->percent <= FVM_DESKTOP_MAX_PERCENT))
+        message = "invalid frame rate percentage";
+    else if (options->fps != FVM_DESKTOP_DEFAULT_FPS &&
+             options->percent != FVM_DESKTOP_PERCENT_UNIT)
+        message = "absolute frame rate conflicts with percentage";
+    else if ((options->once != 0 && options->once != 1) ||
+             (options->mute != 0 && options->mute != 1) ||
+             (options->stats != 0 && options->stats != 1))
+        message = "player flags must be zero or one";
+    else if (options->once && options->frames)
+        message = "once conflicts with explicit frame limit";
+    else if (!options->files || !options->file_count ||
+             options->file_count > (size_t)-1 / sizeof(*options->files))
+        message = "invalid playlist storage or count";
+    else
+        for (i = 0; i < options->file_count; ++i)
+            if (!options->files[i] || !options->files[i][0])
+            {
+                message = "null or empty movie path";
+                break;
+            }
+    if (error)
+        *error = message;
+    return message == 0;
+}
+
 /* Keep every failure message stable and usable before any SDL initialization. */
 int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOptions *out,
                       const char **error)
@@ -128,10 +182,7 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
         *error = "invalid argument vector or parser storage";
     if (!files || !out || !error || !fvm_desktop_arguments_valid(argc, argv))
         return FVM_DESKTOP_PARSE_ERROR;
-    memset(&value, 0, sizeof(value));
-    value.mode = FVM_DESKTOP_MODE_AUTO;
-    value.quality = FVM_STAGE_QUALITY_HIGH;
-    value.percent = FVM_DESKTOP_PERCENT_UNIT;
+    fvm_desktop_options_init(&value);
     value.files = files;
     *error = 0;
     for (i = 1; i < argc; ++i)

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.671
+# FlashVM stage status / Состояние стадий — v0.672
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,14 @@ Host windows and unrelated subsystem references survive player cleanup and video
 [Embedding ownership EN](PLAYER_HOST_OWNERSHIP.md) / [RU](PLAYER_HOST_OWNERSHIP.ru.md).
 
 v0.671 preserves embedding-host touch/mouse SDL hint values and priorities.
+
+v0.672 adds a direct C89/C++98 configured runner, complete pre-start configuration
+validation, the optional static host target and an annotated embedding example.
+[Structured runner EN](PLAYER_CONFIGURATION.md) / [RU](PLAYER_CONFIGURATION.ru.md).
+The muted-stream tutorial CTest now supplies its required SWF argument.
+Current v0.672 validation: 65 selected native checks pass. Full players and the
+new configured-host example cross-link for ARM64/RISC-V64 Linux and x86-64
+Windows; target executables are not run. This does not close stage 9.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

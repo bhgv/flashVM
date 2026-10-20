@@ -1,7 +1,11 @@
-/* Shared desktop application entry; OS adapters supply process arguments only. */
+/* Shared C89 player host boundary; structured configuration and optional CLI adapter. */
 #ifndef FVM_DESKTOP_PLAYER_H
 #define FVM_DESKTOP_PLAYER_H
 #include "flashvm/flashvm.h"
+#include "options.h"
+#define FVM_DESKTOP_EXIT_OK 0       /* Completed playback or a successful informational query. */
+#define FVM_DESKTOP_EXIT_PLAYBACK 1 /* File, VM, presentation or device failure. */
+#define FVM_DESKTOP_EXIT_ARGUMENT 2 /* Invalid CLI or structured configuration. */
 /* Borrowed build metadata; no VM, device, window or process locale is initialized. */
 typedef struct FVM_DesktopBuildInfo
 {
@@ -17,6 +21,13 @@ extern "C"
 #endif
     /* Fill caller storage without allocating; reject a null output pointer. */
     FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out);
+    /* Synchronous structured playback on the native UI/VM owner thread, without argv.
+     * Validate every field/path before any startup; shallow-copy scalar configuration.
+     * Paths/array remain borrowed and immutable until return. Optional error receives
+     * a static message; playback diagnostics/traces still use the existing streams.
+     * Returns EXIT_OK, EXIT_PLAYBACK or EXIT_ARGUMENT. No concurrent/reentrant runs.
+     * Null/malformed input causes no file, SDL or VM initialization. */
+    int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error);
     /* Return 0 on help/version/normal close, 1 on playback failure, 2 on invalid command line.
      * argc must be positive; argv must contain argc non-null pointers to NUL-terminated strings.
      * Invalid pointer entries/counts fail before SDL/file/VM initialization. The caller

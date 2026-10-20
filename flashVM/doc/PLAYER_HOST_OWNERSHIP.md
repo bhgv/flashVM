@@ -1,7 +1,7 @@
 # SDL ownership in an embedding host
 
-Since v0.670, fvm_desktop_window_open acquires TIMER and VIDEO subsystem
-references independently. fvm_desktop_window_close destroys only its own native
+Since v0.670, [fvm_desktop_window_open](../frontend/common/window.h#L53) acquires TIMER and VIDEO subsystem
+references independently. [fvm_desktop_window_close](../frontend/common/window.h#L88) destroys only its own native
 resources and releases references actually acquired by that view. Null close is
 harmless. Neither normal cleanup nor failed startup calls global SDL_Quit.
 A host's windows and preexisting subsystem references remain alive. Multiple

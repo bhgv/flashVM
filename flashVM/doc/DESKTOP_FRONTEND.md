@@ -175,6 +175,7 @@ Four Cairo core rendering/RECT tests and eight viewer tests also pass.
 The current bounded Key/Mouse listener routing and primary touch adapter are
 described in [player input](PLAYER_POINTER.md). Full scene/button routing remains open.
 [Current build metadata](PLAYER_BUILD_INFO.md) · [GC and C host arguments](PLAYER_EVENT_GC.md).
+[Structured C89/C++98 host / Встраивание через структуру](PLAYER_CONFIGURATION.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

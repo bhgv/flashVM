@@ -229,6 +229,9 @@ function(fvm_add_program source)
   if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
     return() # This contract requires actual target Windows SDK declarations.
   endif()
+  if(relative STREQUAL "examples/player/configured_host/main.c")
+    return() # Requires the optional player's generated metadata and SDL SDK.
+  endif()
   if(relative MATCHES "^examples/frontends/(sdl|clutter3d|gtk3|qt5|linux_fb)/")
     return() # SDK-specific tutorial targets are registered by examples/frontends/CMakeLists.txt.
   endif()
@@ -264,7 +267,12 @@ function(fvm_add_program source)
     target_compile_options(${target} PRIVATE -fno-omit-frame-pointer)
   endif()
   if(FVM_BUILD_TESTS)
-    add_test(NAME ${target} COMMAND ${target})
+    if(target STREQUAL "flashvm_examples_player_muted_stream_main")
+      add_test(NAME ${target} COMMAND ${target}
+        ${PROJECT_SOURCE_DIR}/examples/player/muted_stream/muted-stream.swf)
+    else()
+      add_test(NAME ${target} COMMAND ${target})
+    endif()
     set_tests_properties(${target} PROPERTIES TIMEOUT 30)
     if(target STREQUAL "flashvm_examples_frontends_headless_main" OR
        target STREQUAL "flashvm_tests_jit_macos_native" OR

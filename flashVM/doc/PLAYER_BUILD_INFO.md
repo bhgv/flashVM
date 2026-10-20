@@ -54,6 +54,7 @@ The full player also linked with target-specific static SDL for ARM64 Linux
 codes 183, 243 and 0x8664 were verified. These builds used the existing host-adapted
 Zig 0.13, not an unmodified SDK acceptance run. Foreign binaries were not executed.
 No new macOS/Android, physical window/audio or endurance acceptance is claimed.
+[Structured C89/C++98 host / Встраивание через структуру](PLAYER_CONFIGURATION.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
