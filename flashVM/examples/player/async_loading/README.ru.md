@@ -56,7 +56,7 @@ mutable setter провайдера нет.
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация scalar options вызывающей программы. |
 | [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Инициализация caller policy без worker. |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter с immutable borrowed options/cancel. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L34) | Curl worker adapter, отклоняющий старый unsafe global init. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Curl worker adapter, отклоняющий старый unsafe global init. |
 | fvm_desktop_run_source_async | Синхронный whole-player call с неблокирующей доставкой child/form на owner safe points. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Завершение SDK после joined jobs и очистки window/audio. |
 

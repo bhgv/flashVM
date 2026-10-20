@@ -1,4 +1,4 @@
-# Bounded HTTP GET redirects (v0.687)
+# Bounded HTTP GET redirects (v0.688)
 
 [Русский](HTTP_REDIRECTS.ru.md) · [Socket transport](SOCKET_TRANSPORT.md) ·
 [Load monitoring](LOAD_MONITOR.md).
@@ -37,6 +37,23 @@ Existing native URL/framing tests still pass. This does not certify a complete
 browser/Flash networking stack or foreign runtime/device acceptance.
 
 Protocol reference: [RFC9110, Location and redirection](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2).
+
+## Matching libcurl profile and verified TLS (v0.688)
+
+[fvm_desktop_http_fetch_policy](../frontend/common/http.h#L43) and [fvm_desktop_http_transfer_policy](../frontend/common/http.h#L47) use the same
+policy/URI/chain loop as the socket provider. Worker calls retain the linked SDK's
+thread-safe-global prerequisite. libcurl does not auto-follow: bounded header
+callbacks abort before intermediate bodies; each next hop is explicitly validated.
+The explicit profile disables environment proxies and does not add authentication,
+cookies or decompression. Existing curl callbacks keep their old behavior.
+
+ca_file applies to every TLS hop via the provider's verified trust API; null retains
+that provider's defaults. No peer/hostname verification is disabled. Tests use a
+local temporary CA to prove HTTP→HTTPS upgrade, verified HTTPS→HTTPS, wrong-certificate
+failure on a later hop and rejection of HTTPS→HTTP before plain-server contact.
+Both providers pass the same raw HTTP redirect regression and TLS chain tests.
+Old callbacks still reject redirects. DNS/CA/provider code can delay final cleanup;
+no hard preemption or full Flash/browser policy is claimed.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

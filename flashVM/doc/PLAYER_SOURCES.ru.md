@@ -47,7 +47,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 
 [source.h](../frontend/common/source.h) содержит [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
-и [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
+и [FVM_DesktopFetch](../frontend/common/http.h#L17). [fvm_desktop_loader_init](../frontend/common/source.h#L51) задаёт отсутствие транспорта и
 max_loads=1. [fvm_desktop_run_source](../frontend/common/source.h#L60) принимает MEMORY, FILE или URL; проверки
 скалярных параметров, игнорирование плейлиста, коды/ошибки и UI-поток совпадают
 с memory run. Для FILE/URL bytes=null и size=0. Имя — 1..4096 байтов;
@@ -89,8 +89,8 @@ GetURL2 LOAD_TARGET к _root или _level0 с GET/без метода копи�
 
 FVM_PLAYER_HTTP=ON подключает отдельный SDK libcurl 7.62+ только к необязательному
 frontend. По умолчанию OFF: память, файлы и пользовательский транспорт остаются
-доступны без curl. [fvm_desktop_http_fetch](../frontend/common/http.h#L21) из [http.h](../frontend/common/http.h)
-соответствует [FVM_DesktopFetch](../frontend/common/http.h#L16): присвойте loader.fetch, userdata оставьте null.
+доступны без curl. [fvm_desktop_http_fetch](../frontend/common/http.h#L22) из [http.h](../frontend/common/http.h)
+соответствует [FVM_DesktopFetch](../frontend/common/http.h#L17): присвойте loader.fetch, userdata оставьте null.
 URL API curl разрешает reference/base и возвращает canonical provenance.
 HTTP(S) GET проверяет TLS peer/hostname, полное завершение передачи и код 2xx.
 Редиректы отклоняются. POST, настройка авторизации, progressive loading и отмена
@@ -117,7 +117,7 @@ cmake --build build-player --target flashvm_player
 
 При встраивании C/C++ подключите player.h и http.h, инициализируйте options/loader,
 задайте source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0, location=URL;
-loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L21), затем [fvm_desktop_run_source](../frontend/common/source.h#L60). Для стартового
+loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L22), затем [fvm_desktop_run_source](../frontend/common/source.h#L60). Для стартового
 ресурса в программе выберите MEMORY и точный sizeof массива; тот же loader
 может обслуживать запросы из встроенного фильма. Относительная ссылка разрешается
 провайдером только при корректной HTTP(S)-базе источника.

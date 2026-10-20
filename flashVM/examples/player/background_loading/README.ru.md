@@ -51,7 +51,7 @@ bytes; импорт/setters выполняет owner. VM-объекты не п�
 | [fvm_desktop_options_init](../../../frontend/common/options.h#L48) | Инициализация scalar options вызывающей программы без startup. |
 | [fvm_desktop_background_loader_init](../../../frontend/common/background.h#L21) | Инициализация caller policy без запуска worker. |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker provider с borrowed options/cancel; DNS может блокировать. |
-| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L34) | Worker adapter libcurl; SDK без thread-safe global APIs отклоняется. |
+| [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker adapter libcurl; SDK без thread-safe global APIs отклоняется. |
 | [fvm_desktop_run_source_background](../../../frontend/common/background.h#L28) | Синхронный owner loop с native events во время ожидания; импорт только готовых байтов. |
 | [fvm_desktop_shutdown](../../../frontend/common/player.h#L50) | Завершение соответствующего SDK после join/очистки окна; живые jobs запрещают его. |
 

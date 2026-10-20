@@ -1,4 +1,4 @@
-# Ограниченные HTTP GET перенаправления (v0.687)
+# Ограниченные HTTP GET перенаправления (v0.688)
 
 [English](HTTP_REDIRECTS.md) · [Socket-транспорт](SOCKET_TRANSPORT.ru.md) ·
 [Наблюдение загрузок](LOAD_MONITOR.ru.md).
@@ -33,6 +33,23 @@ loops, sink failure, timeout/cancel. Прежние URL/framing тесты пр�
 Flash сеть, foreign runtime/device acceptance не заявляются.
 
 Нормативная ссылка: [RFC9110, Location и redirects](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.2).
+
+## Аналогичный libcurl-профиль и проверяемый TLS (v0.688)
+
+[fvm_desktop_http_fetch_policy](../frontend/common/http.h#L43) и [fvm_desktop_http_transfer_policy](../frontend/common/http.h#L47) используют те же
+policy/URI/chain loop, что socket-провайдер. Worker требует linked SDK с thread-safe
+global APIs. libcurl сам redirects не выполняет: ограниченный header callback
+останавливает передачу до промежуточного тела, следующий hop проверяется явно.
+Этот профиль отключает environment proxies; authentication/cookies/decompression
+не добавлены. Старые curl callbacks сохраняют прежнее поведение.
+
+ca_file применяется к каждому TLS hop через verified trust API; null оставляет
+штатные defaults провайдера. Проверка peer/hostname не отключается. Тест с локальным
+временным CA проверяет HTTP→HTTPS, HTTPS→HTTPS, неверный сертификат на следующем
+hop и запрет HTTPS→HTTP до обращения к plain-server. Оба провайдера проходят один
+raw HTTP regression и TLS chain tests. Старые callbacks по-прежнему отвергают
+redirects. DNS/CA/provider code могут задержать cleanup; hard preemption и полная
+Flash/browser policy не заявляются.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

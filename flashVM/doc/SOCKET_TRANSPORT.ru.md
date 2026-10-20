@@ -174,7 +174,7 @@ Transport probe дополнительно проверен UBSan в Linux; Open
 сборки, а не произвольного loader.fetch и не проверка Internet/сертификатов/устройств.
 Отдельная функция сохраняет layout FVM_DesktopBuildInfo. Вызывайте на потоке хоста;
 со старым libcurl согласуйте параллельные init/query по правилам его SDK.
-Отдельные функции [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L47) и [fvm_desktop_http_capabilities](../frontend/common/http.h#L25)
+Отдельные функции [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L47) и [fvm_desktop_http_capabilities](../frontend/common/http.h#L26)
 описывают собственный провайдер. Libcurl query проверяет реальные protocols/SSL
 связанного SDK, а не предполагает наличие HTTPS.
 

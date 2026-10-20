@@ -83,6 +83,8 @@ int fvm_http_redirect_header(FVM_HTTPResponse *response, const char *bytes, size
     }
     if (size == 2)
         return 1;
+    if (bytes[0] == ' ' || bytes[0] == '\t')
+        return 0; /* No obsolete folded fields, even when libcurl tolerates them. */
     if (++response->fields > FVM_HTTP_HEADER_FIELDS)
         return 0;
     if (!fvm_http_redirect_status(response->status) || !redirect_location_name(bytes, size))

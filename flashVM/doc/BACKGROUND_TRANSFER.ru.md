@@ -15,7 +15,7 @@ FVM_SocketHTTPRequest в [socket_http.h](../frontend/common/socket_http.h)
 [fvm_desktop_socket_request_init](../frontend/common/socket_http.h#L56) инициализирует все поля без startup: 1 — успех,
 0 — null. [fvm_desktop_socket_fetch_controlled](../frontend/common/socket_http.h#L60) имеет обычную сигнатуру fetch;
 userdata — null для defaults либо указатель request.
-[fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L29) из [http.h](../frontend/common/http.h)
+[fvm_desktop_http_fetch_controlled](../frontend/common/http.h#L30) из [http.h](../frontend/common/http.h)
 принимает null либо [FVM_NetControl](../ports/network/socket.h#L21). Прежний libcurl callback по-прежнему
 отклоняет ненулевой userdata.
 
@@ -68,7 +68,7 @@ poll/cancel или выгружать библиотеку с активным w
 [fvm_desktop_shutdown](../frontend/common/player.h#L50) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L65) принимает native options либо
-null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L34) требует null userdata и libcurl с флагом
+null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L35) требует null userdata и libcurl с флагом
 CURL_VERSION_THREADSAFE; старые global init/cleanup возвращают UNSUPPORTED.
 Синхронный API сохраняет прежние SDK и правила координации.
 

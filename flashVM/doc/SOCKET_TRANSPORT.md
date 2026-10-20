@@ -195,7 +195,7 @@ certificate/device readiness. A separate function avoids changing the existing
 FVM_DesktopBuildInfo layout. Use the native host thread; with older libcurl,
 coordinate concurrent initialization/queries according to that SDK's thread rules.
 The standalone transport functions [fvm_desktop_socket_capabilities](../frontend/common/socket_http.h#L47) and
-[fvm_desktop_http_capabilities](../frontend/common/http.h#L25) report their own linked provider. The libcurl query
+[fvm_desktop_http_capabilities](../frontend/common/http.h#L26) report their own linked provider. The libcurl query
 checks the actual linked protocol list/SSL feature rather than assuming HTTPS.
 
 `--version` prints network_provider=none/socket/curl, http=yes/no, https=yes/no and

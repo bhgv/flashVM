@@ -1,5 +1,6 @@
 /* Optional synchronous HTTP(S) transport with explicit transfer/status/ownership checks. */
 #include "http.h"
+#include "http_redirect.h"
 #include <curl/curl.h>
 #include <string.h>
 
@@ -9,6 +10,8 @@ typedef struct FVM_HTTPWrite
     FVM_DesktopWrite write;        /* Borrowed bounded consumer. */
     void *userdata;                /* Borrowed consumer state. */
     const FVM_NetControl *control; /* Borrowed, thread-safe cancellation callback. */
+    FVM_HTTPResponse *response;    /* Optional owner-supplied policy-hop metadata. */
+    int redirect_ready;            /* Header callback deliberately aborts before a redirect body. */
     FVM_Result status;             /* First consumer error survives curl's generic write failure. */
 } FVM_HTTPWrite;
 
@@ -29,6 +32,8 @@ static size_t http_write(char *bytes, size_t width, size_t count, void *userdata
         return 0;
     }
     size = width * count;
+    if (state->response && state->response->status >= FVM_DESKTOP_HTTP_SUCCESS_END)
+        return size; /* Failed/redirect representations are never resource payloads. */
     if (state->status != FVM_OK)
         return 0;
     state->status = state->write(bytes, size, state->userdata);
@@ -47,10 +52,34 @@ static int http_progress(void *userdata, curl_off_t download_total, curl_off_t d
     return state->control && state->control->cancelled &&
            state->control->cancelled(state->control->userdata);
 }
+/* Abort at complete redirect headers: the shared loop opens the next hop, not libcurl. */
+static size_t http_policy_header(char *bytes, size_t width, size_t count, void *userdata)
+{
+    FVM_HTTPWrite *state = (FVM_HTTPWrite *)userdata;
+    size_t size;
+    if (width && count > (size_t)-1 / width)
+        return 0;
+    size = width * count;
+    if (!fvm_http_redirect_header(state->response, bytes, size))
+    {
+        state->status = FVM_ERROR;
+        return 0;
+    }
+    if (size == 2 && fvm_http_redirect_status(state->response->status))
+    {
+        if (!state->response->location_seen)
+            state->status = FVM_ERROR;
+        else
+            state->redirect_ready = 1;
+        return 0; /* Expected CURLE_WRITE_ERROR only when redirect_ready is true. */
+    }
+    return size;
+}
 /* Independent handles and balanced global references preserve embedding-host curl ownership. */
 static FVM_Result http_fetch(const char *reference, const char *base, FVM_DesktopWrite write,
                              void *write_userdata, char *resolved, size_t capacity,
-                             const FVM_NetControl *control)
+                             const FVM_NetControl *control, const FVM_DesktopHTTPPolicy *policy,
+                             FVM_HTTPResponse *response_metadata)
 {
     CURLU *url = 0;
     CURL *easy = 0;
@@ -89,6 +118,8 @@ static FVM_Result http_fetch(const char *reference, const char *base, FVM_Deskto
     state.write = write;
     state.userdata = write_userdata;
     state.status = FVM_OK;
+    state.response = response_metadata;
+    state.redirect_ready = 0;
     /* Check every setting: a rejected option must not silently weaken the request. */
     if (curl_easy_setopt(easy, CURLOPT_URL, canonical) != CURLE_OK ||
         curl_easy_setopt(easy, CURLOPT_WRITEFUNCTION, http_write) != CURLE_OK ||
@@ -98,16 +129,28 @@ static FVM_Result http_fetch(const char *reference, const char *base, FVM_Deskto
         curl_easy_setopt(easy, CURLOPT_NOPROGRESS, control && control->cancelled ? 0L : 1L) !=
             CURLE_OK ||
         curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L) != CURLE_OK ||
-        curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT_MS, FVM_DESKTOP_HTTP_CONNECT_MS) !=
+        curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT_MS,
+                         policy ? (long)policy->connect_ms : FVM_DESKTOP_HTTP_CONNECT_MS) !=
             CURLE_OK ||
-        curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS, FVM_DESKTOP_HTTP_TOTAL_MS) != CURLE_OK ||
+        curl_easy_setopt(easy, CURLOPT_TIMEOUT_MS,
+                         policy ? (long)policy->total_ms : FVM_DESKTOP_HTTP_TOTAL_MS) != CURLE_OK ||
         curl_easy_setopt(easy, CURLOPT_FOLLOWLOCATION, 0L) != CURLE_OK ||
         curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 1L) != CURLE_OK ||
         curl_easy_setopt(easy, CURLOPT_SSL_VERIFYHOST, 2L) != CURLE_OK)
         goto cleanup;
+    if (policy &&
+        (curl_easy_setopt(easy, CURLOPT_HEADERFUNCTION, http_policy_header) != CURLE_OK ||
+         curl_easy_setopt(easy, CURLOPT_HEADERDATA, &state) != CURLE_OK ||
+         curl_easy_setopt(easy, CURLOPT_PROXY, "") != CURLE_OK ||
+         (policy->ca_file && curl_easy_setopt(easy, CURLOPT_CAINFO, policy->ca_file) != CURLE_OK)))
+        goto cleanup;
     if (curl_easy_perform(easy) != CURLE_OK || state.status != FVM_OK)
     {
-        result = state.status != FVM_OK ? state.status : FVM_ERROR;
+        result = state.redirect_ready && state.status == FVM_OK
+                     ? FVM_OK
+                     : (state.status != FVM_OK ? state.status : FVM_ERROR);
+        if (control && control->cancelled && control->cancelled(control->userdata))
+            result = FVM_ERROR;
         goto cleanup;
     }
     if (curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &response) != CURLE_OK ||
@@ -151,7 +194,7 @@ FVM_Result fvm_desktop_http_fetch(const char *reference, const char *base, FVM_D
 {
     if (userdata)
         return FVM_INVALID_ARGUMENT;
-    return http_fetch(reference, base, write, write_userdata, resolved, capacity, 0);
+    return http_fetch(reference, base, write, write_userdata, resolved, capacity, 0, 0, 0);
 }
 /* Additive controlled entrypoint; the callback state remains borrowed until return. */
 FVM_Result fvm_desktop_http_fetch_controlled(const char *reference, const char *base,
@@ -159,7 +202,7 @@ FVM_Result fvm_desktop_http_fetch_controlled(const char *reference, const char *
                                              char *resolved, size_t capacity, void *userdata)
 {
     return http_fetch(reference, base, write, write_userdata, resolved, capacity,
-                      (const FVM_NetControl *)userdata);
+                      (const FVM_NetControl *)userdata, 0, 0);
 }
 
 /* Older libcurl global-init/cleanup APIs cannot safely execute on an arbitrary worker. */
@@ -172,7 +215,7 @@ FVM_Result fvm_desktop_http_transfer_fetch(const char *reference, const char *ba
         return FVM_UNSUPPORTED;
     if (userdata)
         return FVM_INVALID_ARGUMENT;
-    return http_fetch(reference, base, write, write_userdata, resolved, capacity, control);
+    return http_fetch(reference, base, write, write_userdata, resolved, capacity, control, 0, 0);
 }
 
 /* Owner-thread metadata check also lets an IDE avoid unsupported older libcurl worker APIs. */
@@ -185,4 +228,34 @@ int fvm_desktop_http_background_supported(void)
 #else
     return 0;
 #endif
+}
+
+/* One libcurl hop shares the strict resolver, cancellation and policy budgets with native TCP. */
+static FVM_Result http_policy_hop(const FVM_SocketURL *url, FVM_DesktopWrite write, void *sink,
+                                  const FVM_DesktopHTTPPolicy *policy,
+                                  const FVM_NetControl *control, FVM_HTTPResponse *response)
+{
+    char resolved[FVM_DESKTOP_MAX_LOCATION + 1];
+    return http_fetch(url->canonical, 0, write, sink, resolved, sizeof(resolved), control, policy,
+                      response);
+}
+/* Synchronous explicit policy leaves the original no-redirect callback contract intact. */
+FVM_Result fvm_desktop_http_fetch_policy(const char *reference, const char *base,
+                                         FVM_DesktopWrite write, void *sink, char *resolved,
+                                         size_t capacity, void *userdata)
+{
+    return fvm_http_redirect_fetch(reference, base, write, sink, resolved, capacity,
+                                   (const FVM_DesktopHTTPPolicy *)userdata, 0, http_policy_hop);
+}
+/* Keep old libcurl global-init restrictions on every new worker entrypoint as well. */
+FVM_Result fvm_desktop_http_transfer_policy(const char *reference, const char *base,
+                                            FVM_DesktopWrite write, void *sink, char *resolved,
+                                            size_t capacity, const FVM_NetControl *control,
+                                            void *userdata)
+{
+    if (!fvm_desktop_http_background_supported())
+        return FVM_UNSUPPORTED;
+    return fvm_http_redirect_fetch(reference, base, write, sink, resolved, capacity,
+                                   (const FVM_DesktopHTTPPolicy *)userdata, control,
+                                   http_policy_hop);
 }

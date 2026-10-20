@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.687
+# FlashVM stage status / Состояние стадий — v0.688
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,10 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.688 adds the matching libcurl policy through the shared resolver/deadline loop,
+plus verified multi-hop TLS, HTTP upgrade, blocked downgrade and bad later-certificate
+regressions for both providers. Old callbacks retain no-redirect semantics.
 
 v0.687 adds explicit bounded native GET redirects with one total deadline,
 final-only body/provenance, strict destinations and per-hop TLS trust. Old fetch

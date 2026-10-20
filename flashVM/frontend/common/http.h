@@ -2,6 +2,7 @@
 #ifndef FVM_DESKTOP_HTTP_H
 #define FVM_DESKTOP_HTTP_H
 #include "source.h"
+#include "http_policy.h"
 #include "../../ports/network/socket.h"
 #include "network.h"
 #include "transfer.h"
@@ -37,6 +38,16 @@ extern "C"
                                                const FVM_NetControl *control, void *userdata);
     /* Report whether the linked SDK supports worker-safe HTTP global initialization. */
     int fvm_desktop_http_background_supported(void);
+    /* Explicit bounded redirect/total-deadline/trust policy in required immutable userdata.
+     * Shares native GET-only destination rules and final-only body/provenance publication. */
+    FVM_Result fvm_desktop_http_fetch_policy(const char *reference, const char *base,
+                                             FVM_DesktopWrite write, void *write_userdata,
+                                             char *resolved, size_t capacity, void *userdata);
+    /* Worker variant also borrows job cancellation; rejects non-thread-safe older curl SDKs. */
+    FVM_Result fvm_desktop_http_transfer_policy(const char *reference, const char *base,
+                                                FVM_DesktopWrite write, void *write_userdata,
+                                                char *resolved, size_t capacity,
+                                                const FVM_NetControl *control, void *userdata);
 #ifdef __cplusplus
 }
 #endif

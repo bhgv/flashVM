@@ -47,7 +47,7 @@ ctest --test-dir build-player -R 'player_memory|example_embedded' --output-on-fa
 
 [source.h](../frontend/common/source.h) defines [FVM_DesktopSource](../frontend/common/load_monitor.h#L58) (kind, bytes,
 size, location), [FVM_DesktopLoader](../frontend/common/source.h#L44) (fetch, userdata, max_loads), [FVM_DesktopWrite](../frontend/common/transfer.h#L25)
-and [FVM_DesktopFetch](../frontend/common/http.h#L16). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
+and [FVM_DesktopFetch](../frontend/common/http.h#L17). [fvm_desktop_loader_init](../frontend/common/source.h#L51) selects no transport and max_loads=1.
 [fvm_desktop_run_source](../frontend/common/source.h#L60) accepts MEMORY, FILE or URL input with the same scalar
 validation, ignored playlist, return/error and main-thread rules as memory run.
 Non-memory sources must have null bytes and zero size. Names are 1..4096 bytes;
@@ -89,8 +89,8 @@ unsupported requests and loop limits in both interpreter and JIT.
 
 FVM_PLAYER_HTTP=ON adds the independent libcurl 7.62+ SDK dependency to the
 optional frontend only. Default is OFF; custom transport and memory/file playback
-remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L21) in [http.h](../frontend/common/http.h)
-is an [FVM_DesktopFetch](../frontend/common/http.h#L16) provider: set loader.fetch to it and keep userdata null.
+remain available without it. [fvm_desktop_http_fetch](../frontend/common/http.h#L22) in [http.h](../frontend/common/http.h)
+is an [FVM_DesktopFetch](../frontend/common/http.h#L17) provider: set loader.fetch to it and keep userdata null.
 It resolves reference/base with libcurl's URL API, returns canonical provenance,
 performs HTTP(S) GET with TLS peer/hostname verification, checks the entire transfer
 and accepts only 2xx. Redirects are rejected, not followed; POST/authentication
@@ -116,7 +116,7 @@ cmake --build build-player --target flashvm_player
 
 For C/C++ embedding, include player.h and http.h, initialize options/loader, set
 source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0 and location to the URL;
-set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L21) and call [fvm_desktop_run_source](../frontend/common/source.h#L60). For a
+set loader.fetch=[fvm_desktop_http_fetch](../frontend/common/http.h#L22) and call [fvm_desktop_run_source](../frontend/common/source.h#L60). For a
 linked startup resource choose MEMORY and the exact array size; the same loader
 can service absolute/relative requests made by the embedded movie. The provider
 resolves relative references only when the supplied base is a valid HTTP(S) URL.
