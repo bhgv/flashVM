@@ -44,3 +44,5 @@ build/frontend/as2_parse examples/Automatic.as
 ```
 
 [Контракт грамматики и API](../README.ru.md) · [Сборка](../../../BUILDING.ru.md)
+
+[UnicodeNames.as](UnicodeNames.as) — имена и escape-последовательности Unicode 3.2; синтаксический пример. Проверка: `build/frontend/as2_parse examples/UnicodeNames.as`.

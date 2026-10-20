@@ -43,3 +43,8 @@ command syntax; generated target code is never executed by this checker.
 [test_toolchain_contract.py](test_toolchain_contract.py) runs actual isolated
 CMake configure probes; --cmake, --cc and --cxx select host tools. It checks
 that missing target C++ cannot silently fall back to a host compiler.
+
+`generate_parser_unicode.py --check` verifies pinned Unicode 3.2 category data
+and reserved keyword tables of all three AS frontends. Regeneration needs
+Python; building the checked-in C99 tables does not. See
+[lexical profile](../compiler/LEXICAL_PROFILE.md).

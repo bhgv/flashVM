@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(as3_frontend VERSION 0.4.1 LANGUAGES C)
+project(as3_frontend VERSION 0.5.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -21,9 +21,12 @@ add_custom_command(
     "${generated}/as3e.h"
   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/as3.atg"
     "${generated}/as3.atg"
-  COMMAND ${CMAKE_COMMAND} -E env "CRFRAMES=${COCOR_ROOT}/frames" "${COCOR_EXECUTABLE}" as3.atg
+  COMMAND ${CMAKE_COMMAND} "-DCOCOR_EXECUTABLE=${COCOR_EXECUTABLE}"
+    "-DCOCOR_ROOT=${COCOR_ROOT}" -DGRAMMAR=as3
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake"
   WORKING_DIRECTORY "${generated}"
   DEPENDS
+    run_cocor.cmake
     as3.atg
     "${COCOR_EXECUTABLE}"
     "${COCOR_ROOT}/frames/scan_c.frm"
@@ -63,4 +66,22 @@ endif()
 
 if(BUILD_TESTING)
   add_test(NAME as3_asi COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/asi_check.py $<TARGET_FILE:as3_parse>)
+endif()
+
+# Scalar categories and source byte spans are tested independently of the backend.
+if(BUILD_TESTING)
+  add_test(NAME as3_unicode COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/unicode_check.py $<TARGET_FILE:as3_parse>)
+endif()
+
+# Exercise the host generator failure boundary, not the target CLI.
+if(BUILD_TESTING)
+  add_test(NAME as3_generator_failure COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/generator_check.py ${CMAKE_COMMAND}
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake ${COCOR_EXECUTABLE} ${COCOR_ROOT})
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME as3_regexp COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/regexp_check.py $<TARGET_FILE:as3_parse>)
 endif()

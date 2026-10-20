@@ -6,6 +6,10 @@ import tempfile
 from pathlib import Path
 
 CASES = [
+ ('literal-qualifier', 'implement L; f() { case x { 0 => f(); list of {1,2} => g(); (array[] of {0 => 1, * => 2})[0] => h(); } }', True),
+ ('literal-qualifier-comments', 'implement L; f() { case x { 0 => f(); list of # => ignored\n {1,2} => g(); } }', True),
+ ('bad-literal-qualifier', 'implement L; f() { case x { 0 => f(); list of {1,} g(); } }', False),
+
  ('instantiated-casts', 'implement L; f() { x := Box[int] value; y := m->Box[array of byte] value; }', True),
  ('bad-instantiated-cast', 'implement L; f() { x := Box[1+2] value; }', False),
 

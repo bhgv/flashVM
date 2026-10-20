@@ -217,3 +217,5 @@ The CMake toolchain/system/processor/compiler options above also apply to this
 C99 project. Coco/R stays a HOST tool. Libraries and CLIs must be built for the
 target platform, not copied from the host build. Carry the common MIT LICENSE
 and generated-frame notices when detaching a component.
+
+[0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](compiler/LEXICAL_PROFILE.md).

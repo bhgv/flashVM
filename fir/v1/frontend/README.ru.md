@@ -1,6 +1,6 @@
 # Структурный парсер FIR 1.0
 
-Версия фронтенда 0.1.0; версия инструментов FIR 0.5.0. Это отдельный C99-парсер
+Версия фронтенда 0.1.1; версия инструментов FIR 0.5.1. Это отдельный C99-парсер
 по [firsyn.atg](firsyn.atg), генерируемый внешним bhgv/coco-r-C. Он распознаёт
 расширенную структуру FIR; не строит FirModule и не подтверждает типы, SSA,
 доминирование, таблицу операций, эффекты или возможности backend.
@@ -61,3 +61,5 @@ Coco/R нужен на машине сборки, исполняемый пар�
 [firsyn_check](firsyn.h#L31) · [firsyn_read](firsyn.h#L32)
 
 [letter](firsyn.atg#L51) | [digit](firsyn.atg#L56) | [hex](firsyn.atg#L61) | [quotedbyte](firsyn.atg#L66) | [escaped](firsyn.atg#L71) | [linebyte](firsyn.atg#L76) | [nonstar](firsyn.atg#L81) | [nonstarslash](firsyn.atg#L85) | [ident](firsyn.atg#L91) | [metadata](firsyn.atg#L102) | [value](firsyn.atg#L110) | [symbol](firsyn.atg#L119) | [label](firsyn.atg#L128) | [numeric](firsyn.atg#L138) | [hexnum](firsyn.atg#L176) | [textlit](firsyn.atg#L193) | [linecomment](firsyn.atg#L204) | [blockcomment](firsyn.atg#L212) | [Firsyn](firsyn.atg#L234) | [ModuleItem](firsyn.atg#L244) | [Signature](firsyn.atg#L275) | [Parameters](firsyn.atg#L284) | [Function](firsyn.atg#L292) | [Type](firsyn.atg#L305) | [TypeList](firsyn.atg#L344) | [Block](firsyn.atg#L352) | [Instruction](firsyn.atg#L368) | [Operation](firsyn.atg#L386) | [Operands](firsyn.atg#L410) | [Operand](firsyn.atg#L418) | [Target](firsyn.atg#L439) | [Literal](firsyn.atg#L451)
+
+0.1.1: генерация удаляет старые результаты и проверяет exit status, диагностику и файлы. Тест generator_failure проверяет отклонение ошибочной грамматики.

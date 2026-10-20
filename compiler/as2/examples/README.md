@@ -44,3 +44,5 @@ build/frontend/as2_parse examples/Automatic.as
 ```
 
 [Grammar and API contract](../README.md) · [Build](../../../BUILDING.md)
+
+[UnicodeNames.as](UnicodeNames.as) — Unicode 3.2 names and escape spelling; syntax fixture. Check: `build/frontend/as2_parse examples/UnicodeNames.as`.

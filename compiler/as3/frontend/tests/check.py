@@ -5,6 +5,13 @@ import sys
 import tempfile
 exe = sys.argv[1]
 good = [
+    'CONFIG::debug { var x=1; trace(x); }',
+    'class C { CONFIG::debug { public var x:int; public function f():void {} } }',
+    'CONFIG::debug { CONFIG::verbose { trace(1); } } ns::call();',
+    'var v:Vector.<int>=new <int>[1,2,3]; trace(new <int>[1,2][0]);',
+    'var v=new <Vector.<int>>[new <int>[1], new <int>[2],];',
+    'var v=new <int>[];',
+
     'include "defs.as"; class C {}',
     'include /* path */ "defs.as"\nvar x=1;',
     'var include=1; include(2); obj.include();',
@@ -48,7 +55,10 @@ good += [
 ]
 good += [p.read_text() for p in sorted((Path(__file__).resolve().parents[2] / 'examples').glob('*.as'))]
 good += ['function many('+','.join('p%d:Number'%i for i in range(2000))+'):void {}']
-bad = ['var x=<a></b>;', 'var x=<a>;', 'var x=<a x=bare/>;',
+bad = [
+    'CONFIG::debug { var x=; }', 'class C { CONFIG::debug { trace(1); } }',
+    'var v=new <int>[,1];', 'var v=new <int>[1,,2];', 'var v=new <>[1];',
+'var x=<a></b>;', 'var x=<a>;', 'var x=<a x=bare/>;',
        'var x=<a>{1+}</a>;', 'var x=<a><!--oops</a>;',
        'trace(@@id);', 'default invalid namespace="x";',
 'var x:Vector.<>;', 'var x:Vector.<int,Number>;',

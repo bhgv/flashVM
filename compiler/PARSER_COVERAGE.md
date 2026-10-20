@@ -1,32 +1,47 @@
-# Parser coverage and boundaries, series 0.5.2
+# Parser coverage, series 0.6.0
 
-This series substantially extends all five syntax interfaces, but does not claim
-complete compilers or full language conformance. Source-language parsers do not
-build ASTs, resolve names or check types. Syntax recognition, executable FIR and
-remaining frontend work are explicitly separated below.
+Specific lexical gaps and ambiguities are closed. Full conformance to every version of all five languages is not established; syntax recognition is separate from AST construction, semantics and object generation.
 
-| Component | Added and checked | Remaining before a complete frontend |
+[Detailed lexical profile](LEXICAL_PROFILE.md)
+
+| Parser | Version | Current coverage |
 | --- | --- | --- |
-| AS1/AS2 | ASI/restricted line breaks; and/or/not; on/onClipEvent; include/initclip wrappers | Escaped identifiers, Unicode categories/exact Flash profile, AST/context/assignment targets; include expansion separately |
-| AS3 | ASI, metadata, nested Vector, regexp lexical goal, XML/XMLList/E4X and real AS interpolations | Full regexp validation, XML namespace/entity resolution, Unicode/escapes, remaining directives/lexical cases and AST/context |
-| Limbo | Polymorphism/constraints, exceptions, fixed, **, slices and type arguments | Complete symbol-based type/value disambiguation, remaining qualifier ambiguities and AST/context |
-| FIR | Multiple signatures, block/edge parameters, invoke, declarations/debug records and composite types | Extended IR construction/verification, opcode/effect catalog and complete lowering of new constructs |
+| AS1 | 0.4.0 | Expressions/statements, legacy operators, ASI, authoring wrappers, Unicode/escapes |
+| AS2 | 0.4.0 | AS1 syntax plus classes/interfaces/types, Unicode/escapes |
+| AS3 | 0.5.0 | Packages/classes/interfaces, namespaces, metadata, ASI, E4X, Vector literals, CONFIG blocks, Unicode/escapes, structural regexp validation |
+| Limbo | 0.4.2 | Modules/ADT/polymorphism, fixed, exceptions, channels, casts, slices, exports and brace-containing qualifiers |
+| FIR syntax | 0.1.1 | FIR 1.0 modules/declarations, composite types, functions, SSA/block/edge parameters, invoke/debug records |
 
-AS1 is 0.3.0, AS2 0.3.1, AS3/Limbo 0.4.1, FIR tools 0.5.0, independent FIR
-syntax API 0.1.0. The text header remains FIR 1.0; ABI/component versions are
-independent of the player. ATG files are authoritative sources; external
-bhgv/coco-r-C generates C99 into build directories. C actions end their physical
-line and are aligned by the formatter; production periods have their own line
-and a following blank separator.
+ATGs remain authoritative and human-formatted. Embeddable C99 APIs are
+`as1_check/read`, `as2_check/read`, `as3_check/read`, `limbo_check/read` and
+`firsyn_check/read`. They do not print/exit; input ownership stays with the host.
+Serialize calls to one parser; no reentrancy/thread-safety promise is made.
+CLIs are separate adapters. Limits are 2 MiB input, nesting 512 and 4,000,000
+visits to guarded productions; regexp recursion uses the same guard.
 
-## C interfaces
+FIR tools are 0.5.1. Executable FIR remains a separately verified subset:
+`fir1 syntax` never bypasses verifier/codegen. Object generation emits SWO;
+the linker emits SWF. Extended structural FIR does not automatically become
+executable IR. The player version is unchanged.
 
-AS/Limbo expose *_check(bytes,size,diagnostic) and *_read(FILE*,diagnostic).
-The new FIR API is firsyn_check/firsyn_read in firsyn.h. All return 1/0, retain
-host input ownership, print nothing and never exit. Diagnostics are host-owned
-and may be NULL. Global names have separate prefixes. Serialize access to each
-parser; sequential recovery after errors is supported. This is not a promise of
-reentrancy or thread safety of one API.
+Remaining work includes ASTs, types/context/lvalues, complete regexp-engine
+compatibility, XML namespace/entity resolution, include expansion and
+extended FIR verification/lowering. The Unicode profile is pinned to 3.2.0
+with documented additions, not claimed identical to every Flash release.
+
+Linux x86-64 validation: 27 compiler CTest groups, 7 FIR groups, the separate
+five-C-API host, and 27 compiler groups with UBSan. Detached renamed copies
+also built and passed. ARM64 Linux/musl, RISC-V64 Linux/musl and Windows
+x86-64/GNU cross-builds were repeated; ELF/PE machine IDs were checked,
+without foreign execution. These used host-adapted Zig 0.13.
+Coco/R b91b652 plus the separate errno fix was used; external source is not
+included in FlashVM. No new ASan, Android/macOS execution or complete
+language-conformance suite is claimed.
+
+FlashVM baseline: 39eb951c867382d27eb05dd151e3ed2243e50c28 (master 0.5.2).
+Earlier [VALIDATION](VALIDATION.md) reports retain their recorded versions.
+
+## Build / Сборка
 
 ```sh
 cmake -S compiler -B build-five \
@@ -37,70 +52,8 @@ cmake --build build-five
 ctest --test-dir build-five --output-on-failure
 ```
 
-FIR_SYNTAX_ROOT is an explicit optional SDK/source root. Without it, compiler
-still builds four independent languages and never searches a sibling FIR tree.
-The additional compilers_five_embedding test links all five libraries into one
-C99 process, alternates errors/successes and uses no CLI/subprocess adapter.
-
-## Validation and evidence limits
-
-0.5.2 baseline: GitHub master 1c5c8c49833e139191d50d6f4ffacca78f57f43f. Earlier 0.5.1 used 54f324c5b37c7cbbe65c58f3fb774cf01099b776.
-On Linux x86-64, 19 compiler CTest groups and 6 FIR groups passed, including real
-C APIs and the syntax/backend boundary. The five-API host was checked separately.
-Renamed detached copies of compiler and fir/v1 also built and passed their tests;
-repeat runs in copies are not additional scenarios. External Coco/R code was
-neither changed nor included in this repository.
-
-All five CLIs and fir1 cross-built for ARM64 Linux/musl, RISC-V64 Linux/musl and
-x86-64 Windows/GNU; ELF/PE headers and machine IDs were checked. These builds used
-host-adapted Zig 0.13, not acceptance of an unmodified SDK. Foreign binaries were
-not executed; there were no new macOS/Android runs or sanitizer runs.
-Eight upstream Inferno files (sys/draw/math/string/bufio.m, echo/cat/ls.b) were
-accepted syntactically, not type checked, include-expanded or executed.
-
-Previous [VALIDATION.md](VALIDATION.md) results belong to their recorded version;
-its counts, sanitizer and VM evidence are not attributed to this series.
-
-## Sources / Исходники
-
-| Parser | Grammar | C interface | Examples |
-| --- | --- | --- | --- |
-| AS1 | [as1.atg](as1/frontend/as1.atg) | [frontend.h](as1/frontend/frontend.h) | [README](as1/examples/README.md) |
-| AS2 | [as2.atg](as2/frontend/as2.atg) | [frontend.h](as2/frontend/frontend.h) | [README](as2/examples/README.md) |
-| AS3 | [as3.atg](as3/frontend/as3.atg) | [frontend.h](as3/frontend/frontend.h) | [README](as3/examples/README.md) |
-| Limbo | [limbo.atg](limbo/frontend/limbo.atg) | [frontend.h](limbo/frontend/frontend.h) | [README](limbo/examples/README.md) |
-| FIR | [firsyn.atg](../fir/v1/frontend/firsyn.atg) | [firsyn.h](../fir/v1/frontend/firsyn.h) | [README](../fir/v1/examples/structural/README.md) |
-
-[Five-API host](tests/embed_five.c) · [Build guide](../BUILDING.md) ·
-[FIR executable format](../fir/v1/doc/FORMAT.md) ·
-[Inferno reference grammar](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y)
-
-## Changes in 0.5.2
-
-AS3 0.4.1 validates Unicode XML NameStartChar/NameChar independently of locale,
-entity reference spelling, numeric reference ranges, comments, PI, forbidden
-characters and `]]>` in text. XMLList requires an empty closing name.
-Contextual `include "file.as"` is recognized without reading a host file;
-ordinary identifiers named `include` remain usable. This is an XML 1.0
-fifth-edition lexical profile, not a claim of exact Adobe E4X compatibility.
-
-Limbo 0.4.1 accepts `Point value`, `m->Point value`, cast chains and
-conversion expressions inside export/index brackets. `list of {...}` remains
-a value expression there. General type/value disambiguation still needs work. Named cast prefixes may
-include type arguments at each qualification level. AST/type/lvalue checks and complete regexp
-Pattern validation were not added. FIR and executable backends are unchanged.
-Complete conformance of all five languages is still unproven; this release
-closes the specific gaps listed here.
-
-New fixtures: [XML](as3/examples/XmlReferences.as),
-[Limbo casts](limbo/examples/NamedCasts.b). Build instructions appear above.
-
-0.5.2 validation: 19 native compiler CTest groups and 6 FIR groups; the same
-tests in renamed detached directories; five APIs in one C99 host. Compiler/FIR
-cross-builds were repeated for ARM64 Linux/musl, RISC-V64 Linux/musl and
-Windows x86-64/GNU, checking ELF/PE machine IDs without foreign execution.
-Updated tests cover XML references, Unicode names, controls, every byte-prefix
-truncation of XML fixtures, C API error/recovery, include, named and instantiated
-casts, exports and preservation of ordinary arithmetic expressions.
-XML rules: [W3C XML 1.0](https://www.w3.org/TR/xml/);
-cast syntax: [Inferno limbo.y](https://github.com/inferno-os/inferno-os/blob/master/limbo/limbo.y).
+[Native/cross build guide](../BUILDING.md) ·
+[Five-API C host](tests/embed_five.c) · [Examples](examples.md) ·
+[AS1 ATG](as1/frontend/as1.atg) · [AS2 ATG](as2/frontend/as2.atg) ·
+[AS3 ATG](as3/frontend/as3.atg) · [Limbo ATG](limbo/frontend/limbo.atg) ·
+[FIR ATG](../fir/v1/frontend/firsyn.atg).

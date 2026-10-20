@@ -8,6 +8,216 @@
 /* AS2 syntax frontend. C99 target; no bytecode generation. */
 COMPILER As2
 #include <string.h>
+/* Unicode categories are pinned and shared as data, never taken from locale. */
+#include "unicode_ident.inc"
+
+/* Binary search sorted inclusive category ranges in logarithmic time. */
+static int IdentifierIn(unsigned long value, const IdentifierRange *ranges,
+                        unsigned count)
+{
+    unsigned low = 0;
+    while (low < count)
+    {
+        unsigned middle = low + (count - low) / 2;
+        if (value < ranges[middle].first)
+            count = middle;
+        else if (value > ranges[middle].last)
+            low = middle + 1;
+        else
+            return 1;
+    }
+    return 0;
+}
+/* Decode one validated UTF-8 scalar or one exact four-hex-digit identifier escape. */
+static int IdentifierUnit(long *pos, long end, unsigned long *value)
+{
+    int ch, remaining = 0;
+    unsigned long code;
+    if (*pos >= end)
+        return 0;
+    ch = S_CurrentCh((*pos)++);
+    if (ch == 92)
+    {
+        int i;
+        if (*pos + 5 > end || S_CurrentCh((*pos)++) != 'u')
+            return 0;
+        code = 0;
+        for (i = 0; i < 4; ++i)
+        {
+            int digit;
+            ch = S_CurrentCh((*pos)++);
+            digit = ch >= '0' && ch <= '9'   ? ch - '0'
+                    : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10
+                    : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10
+                                             : -1;
+            if (digit < 0)
+                return 0;
+            code = code * 16 + digit;
+        }
+    }
+    else
+    {
+        code = (unsigned char)ch;
+        if (code >= 240)
+        {
+            code &= 7;
+            remaining = 3;
+        }
+        else if (code >= 224)
+        {
+            code &= 15;
+            remaining = 2;
+        }
+        else if (code >= 192)
+        {
+            code &= 31;
+            remaining = 1;
+        }
+        if (*pos + remaining > end)
+            return 0;
+        while (remaining--)
+            code = code * 64 + (S_CurrentCh((*pos)++) & 63);
+    }
+    *value = code;
+    return code < 0xd800 || (code > 0xdfff && code <= 0x10ffff);
+}
+/* Validate start/part categories after Coco/R has recognized the byte spelling. */
+int as2_identifier_valid(long pos, int length)
+{
+    long end = pos + length;
+    int first = 1;
+    while (pos < end)
+    {
+        unsigned long code;
+        int start;
+        if (!IdentifierUnit(&pos, end, &code))
+            return 0;
+        start = code == '$' || code == '_' ||
+                IdentifierIn(code, identifier_start_ranges,
+                             sizeof(identifier_start_ranges) /
+                                 sizeof(identifier_start_ranges[0]));
+        if (!start && (first || !(code == 0x200c || code == 0x200d ||
+                                  IdentifierIn(code, identifier_part_ranges,
+                                               sizeof(identifier_part_ranges) /
+                                                   sizeof(identifier_part_ranges[0])))))
+            return 0;
+        first = 0;
+    }
+    return !first;
+}
+/* Return raw UTF-8 whitespace width; escape spellings never become whitespace. */
+int as2_identifier_space(long pos, int *line)
+{
+    long next = pos;
+    unsigned long code;
+    *line = 0;
+    if ((S_CurrentCh(pos) >= 128 && S_CurrentCh(pos) < 194) || S_CurrentCh(pos) == 92 ||
+        !IdentifierUnit(&next, pos + 4, &code))
+        return 0;
+    if (code == 0x2028 || code == 0x2029)
+    {
+        *line = 1;
+        return (int)(next - pos);
+    }
+    return code == 11 || code == 12 || code == 0xa0 || code == 0x1680 ||
+                   (code >= 0x2000 && code <= 0x200a) || code == 0x202f ||
+                   code == 0x205f || code == 0x3000 || code == 0xfeff
+               ? (int)(next - pos)
+               : 0;
+}
+/* Compare contextual names by decoded spelling, without changing source bytes. */
+static int IdentifierEqual(long pos, int length, const char *word)
+{
+    long end = pos + length;
+    while (pos < end)
+    {
+        unsigned long code;
+        if (!*word || !IdentifierUnit(&pos, end, &code) ||
+            code != (unsigned char)*word++)
+            return 0;
+    }
+    return !*word;
+}
+/* Escapes may spell names, but may not smuggle a reserved word into a binding.
+ * PropertyName keeps its separate IdentifierName behavior in AS3. */
+static int IdentifierReserved(long pos, int length)
+{
+    long end = pos + length;
+    char word[32];
+    unsigned used = 0, i;
+    static const char *const reserved[] = {
+        "add",        "and",       "break",     "case",       "catch",   "class",
+        "continue",   "default",   "delete",    "do",         "dynamic", "else",
+        "eq",         "extends",   "false",     "finally",    "for",     "function",
+        "ge",         "gt",        "if",        "implements", "import",  "in",
+        "instanceof", "interface", "intrinsic", "le",         "lt",      "ne",
+        "new",        "not",       "null",      "or",         "private", "public",
+        "return",     "static",    "super",     "switch",     "this",    "throw",
+        "true",       "try",       "typeof",    "undefined",  "var",     "void",
+        "while",      "with"};
+    while (pos < end)
+    {
+        unsigned long code;
+        if (!IdentifierUnit(&pos, end, &code) || code > 127 || used + 1 >= sizeof(word))
+            return 0;
+        word[used++] = (char)code;
+    }
+    word[used] = 0;
+    for (i = 0; i < sizeof(reserved) / sizeof(reserved[0]); ++i)
+        if (!strcmp(word, reserved[i]))
+            return 1;
+    return 0;
+}
+
+/* Strings keep UTF-16 escape values, including surrogate code units. Validate
+ * spelling here; identifier category rules must not be applied to string data. */
+int as2_string_valid(long pos, int length)
+{
+    long end = pos + length - 1;
+    ++pos;
+    while (pos < end)
+    {
+        int ch = S_CurrentCh(pos++);
+        if (ch == 92)
+        {
+            int count = 0, i;
+            if (pos >= end)
+                return 0;
+            ch = S_CurrentCh(pos++);
+            if (ch == 'u')
+                count = 4;
+            else if (ch == 'x')
+                count = 2;
+            for (i = 0; i < count; ++i)
+            {
+                int digit = S_CurrentCh(pos++);
+                if (pos > end ||
+                    !((digit >= '0' && digit <= '9') ||
+                      (digit >= 'a' && digit <= 'f') || (digit >= 'A' && digit <= 'F')))
+                    return 0;
+            }
+            if (ch == 13 && S_CurrentCh(pos) == 10)
+                ++pos;
+            if (ch == 226 && S_CurrentCh(pos) == 128 &&
+                (S_CurrentCh(pos + 1) == 168 || S_CurrentCh(pos + 1) == 169))
+                pos += 2;
+        }
+        else if (ch == 10 || ch == 13 ||
+                 (ch == 226 && S_CurrentCh(pos) == 128 &&
+                  (S_CurrentCh(pos + 1) == 168 || S_CurrentCh(pos + 1) == 169)))
+            return 0;
+    }
+    return pos == end;
+}
+
+/* All four source line terminators also end a single-line comment. */
+static int IdentifierLine(long pos)
+{
+    int ch = S_CurrentCh(pos);
+    return ch == 10 || ch == 13 ||
+           (ch == 226 && S_CurrentCh(pos + 1) == 128 &&
+            (S_CurrentCh(pos + 2) == 168 || S_CurrentCh(pos + 2) == 169));
+}
 /* LabelAhead: inspect the bytes after an identifier without consuming a token.
  * Whitespace and both comment forms may separate the name from its colon.
  * Returning zero leaves the identifier available to the expression production. */
@@ -19,8 +229,11 @@ static int LabelAhead(void)
 
     for (;;)
     {
+        int line, width = as2_identifier_space(pos, &line);
         ch = S_CurrentCh(pos);
-        if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
+        if (width)
+            pos += width;
+        else if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
         {
             ++pos; /* Skip whitespace without altering source positions. */
         }
@@ -38,7 +251,7 @@ static int LabelAhead(void)
         }
         else if (ch == '/' && S_CurrentCh(pos + 1) == '/')
         {
-            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+            while (S_CurrentCh(pos) && !IdentifierLine(pos))
             {
                 ++pos; /* Skip the line comment, including any apparent colon. */
             }
@@ -60,7 +273,7 @@ static long EventTrivia(long pos)
         if (ch == ' ' || ch == 9 || ch == 10 || ch == 13)
             ++pos;
         else if (ch == '/' && next == '/')
-            while (S_CurrentCh(pos) && S_CurrentCh(pos) != 10)
+            while (S_CurrentCh(pos) && !IdentifierLine(pos))
                 ++pos;
         else if (ch == '/' && next == '*')
         {
@@ -200,13 +413,28 @@ CHARACTERS
     ANY - "*" - "/" - CHR(0)
   .
 
+  /* Physical line breaks are permitted only in escaped string continuations. */
+  cr =
+    CHR(13)
+  .
+
+  lf =
+    CHR(10)
+  .
+
 TOKENS
   /* Идентификатор. Ключевые слова выделяются таблицей литералов Coco/R. */
+  /* Identifier escapes remain visible in the source span; scalar/category
+  checks are performed by the C hook declared above, before grammar decisions. */
   ident =
-    letter
+    (
+        letter
+        | "\\" "u" hex hex hex hex
+    )
     {
         letter
         | digit
+        | "\\" "u" hex hex hex hex
     }
   .
 
@@ -262,13 +490,29 @@ TOKENS
     '"'
     {
         dq
-        | "\\" escaped
+        | "\\"
+        (
+            escaped
+            | cr
+            [
+                lf
+            ]
+            | lf
+        )
     }
     '"'
     | "'"
     {
         sq
-        | "\\" escaped
+        | "\\"
+        (
+            escaped
+            | cr
+            [
+                lf
+            ]
+            | lf
+        )
     }
     "'"
   .
@@ -301,7 +545,7 @@ PRAGMAS
   .
 
 IGNORE
-  CHR(9) + CHR(10) + CHR(13)
+  CHR(9) + lf + cr
   /* Entry: consume the entire translation unit, including trailing-token checks. */
 
 PRODUCTIONS
@@ -342,11 +586,12 @@ PRODUCTIONS
                                                                         (. as2_syntax_enter(); .)
     (
         IF(Sym == identSym && EventHandlerAhead()) EventHandler
-        | IF(Sym == identSym && LabelAhead()) ident ":" Statement
+        | IF(Sym == identSym && LabelAhead()) Identifier ":"
+        Statement
         | IF(Sym == LbraceSym) Block
         | ";"
         | "var" Variables Terminator
-        | IF(Sym == functionSym) "function" ident FunctionTail
+        | IF(Sym == functionSym) "function" Identifier FunctionTail
         | IfStatement
         | WhileStatement
         | ForStatement
@@ -369,7 +614,7 @@ PRODUCTIONS
             | "continue"
         )
         [
-            IF(Sym == identSym && !LineBreak()) ident
+            IF(Sym == identSym && !LineBreak()) Identifier
         ]
         Terminator
         | "with" "(" Expression ")" Statement
@@ -429,7 +674,7 @@ PRODUCTIONS
   TryStatement =
     "try" Block
     (
-        "catch" "(" ident
+        "catch" "(" Identifier
         [
             ":" TypeName
         ]
@@ -462,7 +707,7 @@ PRODUCTIONS
 
   /* Имя переменной, необязательный тип AS2 и необязательный инициализатор. */
   Variable =
-    ident
+    Identifier
     [
         ":" TypeName
     ]
@@ -491,7 +736,7 @@ PRODUCTIONS
 
   /* Один формальный параметр; в AS2 после имени допускается аннотация типа. */
   Parameter =
-    ident
+    Identifier
     [
         ":" TypeName
     ]
@@ -707,7 +952,7 @@ PRODUCTIONS
     {
         IF(Sym == PointSym || Sym == LbrackSym || Sym == LparenSym)
         (
-            "." ident
+            "." Identifier
             | Subscript
             | Arguments
         )
@@ -738,7 +983,7 @@ PRODUCTIONS
   Primary =
                                                                         (. as2_syntax_enter(); .)
     (
-        ident
+        Identifier
         | number
         | hexnum
         | text
@@ -753,7 +998,7 @@ PRODUCTIONS
         | ObjectLiteral
         | "function"
         [
-            ident
+            Identifier
         ]
         FunctionTail
     )
@@ -815,19 +1060,19 @@ PRODUCTIONS
 
   /* Квалифицированное имя типа AS2; разрешение имени будет отдельным проходом. */
   TypeName =
-    ident
+    Identifier
     {
-        "." ident
+        "." Identifier
     }
   .
 
   /* Импорт AS2; допускается последняя компонента-звёздочка. */
   Import =
-    "import" ident
+    "import" Identifier
     {
         "."
         (
-            ident
+            Identifier
             | "*"
         )
     }
@@ -888,9 +1133,9 @@ PRODUCTIONS
     }
     (
         "var" Variables Terminator
-        | "function" ident
+        | "function" Identifier
         [
-            ident
+            Identifier
         ]
         FunctionTail
         | ";"
@@ -899,7 +1144,7 @@ PRODUCTIONS
 
   /* Сигнатура метода интерфейса завершается точкой с запятой вместо тела. */
   Signature =
-    "function" ident "("
+    "function" Identifier "("
     [
         Parameter
         {
@@ -928,7 +1173,7 @@ PRODUCTIONS
 
   /* Flash authoring event lists permit keyPress followed by its string key description. */
   EventHandler =
-    ident "(" EventName
+    Identifier "(" EventName
     {
         "," EventName
     }
@@ -937,7 +1182,7 @@ PRODUCTIONS
 
   /* Event names remain contextual identifiers; event validity belongs to the selected SWF profile. */
   EventName =
-    ident
+    Identifier
     [
         text
     ]
@@ -953,6 +1198,14 @@ PRODUCTIONS
                                                                         (.
                                                                             if (!explicit_semi && Sym != RbraceSym && Sym != EOF_Sym && !LineBreak())
                                                                                 SemError(1101);
+                                                                        .)
+  .
+
+  /* A binding/expression identifier cannot decode to a reserved word. */
+  Identifier =
+    ident                                                               (.
+                                                                            if (IdentifierReserved(S_Pos, S_Len))
+                                                                                SemError(1106);
                                                                         .)
   .
 

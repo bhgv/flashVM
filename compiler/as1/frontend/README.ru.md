@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS1
 
-Версия 0.3.0. [English](README.md).
+Версия 0.4.0. [English](README.md).
 
 Читаемый файл [as1.atg](as1.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -44,9 +44,9 @@ C API описан в README проекта языка.
 дескриптор перед разбором. Отклоняются некорректные, усечённые и избыточные
 последовательности, суррогаты, значения выше U+10FFFF и встроенный NUL.
 Начальный UTF-8 BOM поддерживается выбранным генератором. Нужен файл с возможностью
-позиционирования. Позиции и столбцы считаются **в байтах**. Категории Unicode в
-именах и семантика escape-последовательностей пока отдельно не проверяются.
-Строки сохраняют исходные байты.
+позиционирования. Позиции и столбцы считаются **в байтах**. Категории имён, Unicode-пробелы
+и запись escape проверяются по [лексическому профилю](../../LEXICAL_PROFILE.ru.md).
+Значения строк не вычисляются синтаксическим API.
 
 Публичный интерфейс — [frontend.h](frontend.h), [api.c](api.c).
 
@@ -75,8 +75,8 @@ LabelAhead распознаёт метку через пробелы/комме�
 `#initclip`/`#endinitclip` распознаются без открытия include-файлов и привязки
 событий к сцене. Имена on/onClipEvent остаются обычными в вызовах без блока.
 Поддержаны старые словесные and/or/not; события и допустимость их имён требуют
-проверки профиля. Пока не реализованы литералы regexp, escape в идентификаторах,
-полная таблица категорий Unicode и проверки левых частей/контекста. Это
+проверки профиля. Пока не реализованы AS1/AS2 regexp и проверки левых частей/контекста.
+Таблицы Unicode 3.2 и escape идентификаторов поддерживаются. Это
 синтаксический профиль, а не полная реализация компилятора.
 
 ## Проверки
@@ -88,7 +88,7 @@ LabelAhead распознаёт метку через пробелы/комме�
 
 ## Указатель правил грамматики
 
-[As1](as1.atg#L309) | [Item](as1.atg#L317) | [Block](as1.atg#L327) | [Statement](as1.atg#L338) | [IfStatement](as1.atg#L379) | [WhileStatement](as1.atg#L387) | [ForStatement](as1.atg#L394) | [SwitchStatement](as1.atg#L417) | [TryStatement](as1.atg#L426) | [SwitchPart](as1.atg#L438) | [Variables](as1.atg#L449) | [Variable](as1.atg#L457) | [FunctionTail](as1.atg#L465) | [Parameter](as1.atg#L479) | [Expression](as1.atg#L484) | [Assignment](as1.atg#L493) | [AssignOp](as1.atg#L510) | [Conditional](as1.atg#L527) | [LogicalOr](as1.atg#L539) | [LogicalAnd](as1.atg#L551) | [BitOr](as1.atg#L563) | [BitXor](as1.atg#L571) | [BitAnd](as1.atg#L579) | [Equality](as1.atg#L587) | [Relational](as1.atg#L603) | [Shift](as1.atg#L624) | [Additive](as1.atg#L637) | [Product](as1.atg#L651) | [Unary](as1.atg#L665) | [Postfix](as1.atg#L688) | [Arguments](as1.atg#L708) | [Primary](as1.atg#L721) | [Property](as1.atg#L790)
+[As1](as1.atg#L550) | [Item](as1.atg#L558) | [Block](as1.atg#L568) | [Statement](as1.atg#L579) | [IfStatement](as1.atg#L621) | [WhileStatement](as1.atg#L629) | [ForStatement](as1.atg#L636) | [SwitchStatement](as1.atg#L659) | [TryStatement](as1.atg#L668) | [SwitchPart](as1.atg#L680) | [Variables](as1.atg#L691) | [Variable](as1.atg#L699) | [FunctionTail](as1.atg#L707) | [Parameter](as1.atg#L721) | [Expression](as1.atg#L726) | [Assignment](as1.atg#L735) | [AssignOp](as1.atg#L752) | [Conditional](as1.atg#L769) | [LogicalOr](as1.atg#L781) | [LogicalAnd](as1.atg#L793) | [BitOr](as1.atg#L805) | [BitXor](as1.atg#L813) | [BitAnd](as1.atg#L821) | [Equality](as1.atg#L829) | [Relational](as1.atg#L845) | [Shift](as1.atg#L866) | [Additive](as1.atg#L879) | [Product](as1.atg#L893) | [Unary](as1.atg#L907) | [Postfix](as1.atg#L930) | [Arguments](as1.atg#L950) | [Primary](as1.atg#L963) | [Property](as1.atg#L1032)
 
 ## Описание языка
 
@@ -97,4 +97,8 @@ LabelAhead распознаёт метку через пробелы/комме�
 `in` поддержан в выражениях; NoIn действует только в инициализации for.
 Скобки, аргументы, индексы и литералы возвращают обычный контекст выражения.
 
-Новые правила / [ClipInitializer](as1.atg#L800) | [EventHandler](as1.atg#L813) | [Terminator](as1.atg#L831)
+Новые правила / [ClipInitializer](as1.atg#L1042) | [EventHandler](as1.atg#L1055) | [Terminator](as1.atg#L1073)
+
+[Лексический профиль 0.6.0](../../LEXICAL_PROFILE.ru.md).
+
+0.6.0: [Identifier](as1.atg#L1085) | [IdentifierUnit](as1.atg#L32) | [IdentifierLine](as1.atg#L211) | [as1_identifier_valid](as1.atg#L85) | [as1_identifier_space](as1.atg#L109) | [as1_string_valid](as1.atg#L171).

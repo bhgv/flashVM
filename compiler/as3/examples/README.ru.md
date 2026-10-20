@@ -48,4 +48,8 @@ build/frontend/as3_parse examples/XmlVector.as
 
 [Контракт грамматики и API](../README.ru.md) · [Сборка](../../../BUILDING.ru.md)
 
-[XmlReferences.as](XmlReferences.as) — новый синтаксический пример версии 0.4.1. Проверка: `build/frontend/as3_parse examples/XmlReferences.as`. Парсер возвращает 0 при корректном синтаксисе; исполнения и проверки типов нет.
+[XmlReferences.as](XmlReferences.as) — новый синтаксический пример версии 0.5.0. Проверка: `build/frontend/as3_parse examples/XmlReferences.as`. Парсер возвращает 0 при корректном синтаксисе; исполнения и проверки типов нет.
+
+[UnicodeNames.as](UnicodeNames.as) — имена и escape-последовательности Unicode 3.2; синтаксический пример. Проверка: `build/frontend/as3_parse examples/UnicodeNames.as`.
+
+[RegexpVectors.as](RegexpVectors.as) — regexp, Vector, CONFIG; только синтаксис. Проверка: `build/frontend/as3_parse examples/RegexpVectors.as`.

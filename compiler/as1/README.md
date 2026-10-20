@@ -1,6 +1,6 @@
 # AS1
 
-Version 0.3.0. [Русский](README.ru.md).
+Version 0.4.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -50,3 +50,5 @@ bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
 are C99.
 
 [Detailed examples](examples/README.md).
+
+[Lexical profile 0.6.0](../LEXICAL_PROFILE.md).

@@ -112,4 +112,4 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 [Native and cross builds for every component](BUILDING.md),
 [compiler example catalog](compiler/examples.md).
 
-[AS1/AS2/AS3/Limbo/FIR parsers: series 0.5.2](compiler/PARSER_COVERAGE.md).
+[AS1/AS2/AS3/Limbo/FIR parsers: series 0.6.0](compiler/PARSER_COVERAGE.md).

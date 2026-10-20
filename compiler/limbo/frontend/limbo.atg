@@ -19,8 +19,9 @@ static int AheadArrow(void)
 {
     /* Begin at the lookahead token; never call the consuming S_Get here. */
     long pos = S_NextPos;
-    int depth = 0; /* Parenthesis/subscript nesting hides inner arrows. */
-    int quote = 0; /* Zero outside a string, otherwise the opening quote. */
+    int depth = 0;       /* Parenthesis/subscript nesting hides inner arrows. */
+    int initializer = 0; /* Only an of-{...} brace may open at expression depth zero. */
+    int quote = 0;       /* Zero outside a string, otherwise the opening quote. */
     int ch;
     while ((ch = S_CurrentCh(pos)) != 0)
     {
@@ -44,11 +45,31 @@ static int AheadArrow(void)
                 ++pos;
             continue;
         }
+        else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '_' ||
+                 ch >= 128)
+        {
+            long start = pos;
+            do
+            {
+                ch = S_CurrentCh(++pos);
+            } while ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+                     (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128);
+            initializer = pos - start == 2 && S_CurrentCh(start) == 'o' &&
+                          S_CurrentCh(start + 1) == 'f';
+            continue;
+        }
+        else if (ch == '{')
+        {
+            if (!depth && !initializer)
+                return 0;
+            initializer = 0;
+            ++depth;
+        }
         else if (ch == '(' || ch == '[')
         {
             ++depth;
         }
-        else if (ch == ')' || ch == ']')
+        else if (ch == ')' || ch == ']' || ch == '}')
         {
             if (!depth)
                 return 0;
@@ -63,6 +84,8 @@ static int AheadArrow(void)
             if (ch == ';' || ch == '{' || ch == '}')
                 return 0;
         }
+        if (ch != ' ' && ch != 9 && ch != 10 && ch != 13)
+            initializer = 0;
         ++pos;
     }
     return 0;

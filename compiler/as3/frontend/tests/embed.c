@@ -119,5 +119,28 @@ int main(void)
                 return 47;
         }
     }
+    {
+        char pattern[2048];
+        unsigned j;
+        size_t used;
+        strcpy(pattern, "var r=/");
+        used = strlen(pattern);
+        for (j = 0; j < 600; ++j)
+            pattern[used++] = '(';
+        pattern[used++] = 'a';
+        for (j = 0; j < 600; ++j)
+            pattern[used++] = ')';
+        pattern[used++] = '/';
+        pattern[used++] = ';';
+        pattern[used] = 0;
+        if (as3_check(pattern, used, &diagnostic) || diagnostic.code != -3)
+            return 48;
+        if (!as3_check("var r=/(?P<n>a)\\k<n>/;", strlen("var r=/(?P<n>a)\\k<n>/;"), &diagnostic))
+            return 49;
+        if (as3_check("var \\u0030x=1;", strlen("var \\u0030x=1;"), &diagnostic))
+            return 50;
+        if (!as3_check(valid, strlen(valid), &diagnostic))
+            return 51;
+    }
     return 0;
 }

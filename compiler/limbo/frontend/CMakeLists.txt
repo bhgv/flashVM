@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.16)
-project(limbo_frontend VERSION 0.4.1 LANGUAGES C)
+project(limbo_frontend VERSION 0.4.2 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -21,9 +21,12 @@ add_custom_command(
     "${generated}/limboe.h"
   COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/limbo.atg"
     "${generated}/limbo.atg"
-  COMMAND ${CMAKE_COMMAND} -E env "CRFRAMES=${COCOR_ROOT}/frames" "${COCOR_EXECUTABLE}" limbo.atg
+  COMMAND ${CMAKE_COMMAND} "-DCOCOR_EXECUTABLE=${COCOR_EXECUTABLE}"
+    "-DCOCOR_ROOT=${COCOR_ROOT}" -DGRAMMAR=limbo
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake"
   WORKING_DIRECTORY "${generated}"
   DEPENDS
+    run_cocor.cmake
     limbo.atg
     "${COCOR_EXECUTABLE}"
     "${COCOR_ROOT}/frames/scan_c.frm"
@@ -55,4 +58,11 @@ endif()
 
 if(BUILD_TESTING)
   add_test(NAME limbo_recovery COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/recovery_check.py $<TARGET_FILE:limbo_parse>)
+endif()
+
+# Exercise the host generator failure boundary, not the target CLI.
+if(BUILD_TESTING)
+  add_test(NAME limbo_generator_failure COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/generator_check.py ${CMAKE_COMMAND}
+    ${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake ${COCOR_EXECUTABLE} ${COCOR_ROOT})
 endif()

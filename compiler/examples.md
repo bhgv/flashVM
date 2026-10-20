@@ -16,3 +16,7 @@ commands, expected results, ownership and limitations.
 [New examples and parser boundaries](PARSER_COVERAGE.md): Automatic.as (AS1/AS2), XmlVector.as, Polymorphic.b and FIR structural.
 
 0.5.2: [AS3 XML references](as3/examples/XmlReferences.as) / [README](as3/examples/README.md); [Limbo named casts](limbo/examples/NamedCasts.b) / [README](limbo/examples/README.md).
+
+[0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](LEXICAL_PROFILE.md).
+
+[AS1 Unicode](as1/examples/UnicodeNames.as) · [AS2 Unicode](as2/examples/UnicodeNames.as) · [AS3 Unicode](as3/examples/UnicodeNames.as) · [AS3 regexp/Vector/CONFIG](as3/examples/RegexpVectors.as).

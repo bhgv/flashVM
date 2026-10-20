@@ -48,4 +48,8 @@ build/frontend/as3_parse examples/XmlVector.as
 
 [Grammar and API contract](../README.md) · [Build](../../../BUILDING.md)
 
-[XmlReferences.as](XmlReferences.as) is a new 0.4.1 syntax fixture. Check it with `build/frontend/as3_parse examples/XmlReferences.as`. Exit 0 means accepted syntax, without execution or type checking.
+[XmlReferences.as](XmlReferences.as) is a new 0.5.0 syntax fixture. Check it with `build/frontend/as3_parse examples/XmlReferences.as`. Exit 0 means accepted syntax, without execution or type checking.
+
+[UnicodeNames.as](UnicodeNames.as) — Unicode 3.2 names and escape spelling; syntax fixture. Check: `build/frontend/as3_parse examples/UnicodeNames.as`.
+
+[RegexpVectors.as](RegexpVectors.as) — regexp, Vector, CONFIG; syntax only. Check: `build/frontend/as3_parse examples/RegexpVectors.as`.

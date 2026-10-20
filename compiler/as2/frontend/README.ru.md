@@ -1,6 +1,6 @@
 # Синтаксический фронтенд AS2
 
-Версия 0.3.1. [English](README.md).
+Версия 0.4.0. [English](README.md).
 
 Читаемый файл [as2.atg](as2.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -44,9 +44,9 @@ C API описан в README проекта языка.
 дескриптор перед разбором. Отклоняются некорректные, усечённые и избыточные
 последовательности, суррогаты, значения выше U+10FFFF и встроенный NUL.
 Начальный UTF-8 BOM поддерживается выбранным генератором. Нужен файл с возможностью
-позиционирования. Позиции и столбцы считаются **в байтах**. Категории Unicode в
-именах и семантика escape-последовательностей пока отдельно не проверяются.
-Строки сохраняют исходные байты.
+позиционирования. Позиции и столбцы считаются **в байтах**. Категории имён, Unicode-пробелы
+и запись escape проверяются по [лексическому профилю](../../LEXICAL_PROFILE.ru.md).
+Значения строк не вычисляются синтаксическим API.
 
 Публичный интерфейс — [frontend.h](frontend.h), [api.c](api.c).
 
@@ -75,8 +75,8 @@ LabelAhead распознаёт метку через пробелы/комме�
 `#initclip`/`#endinitclip` распознаются без открытия include-файлов и привязки
 событий к сцене. Имена on/onClipEvent остаются обычными в вызовах без блока.
 Поддержаны старые словесные and/or/not; события и допустимость их имён требуют
-проверки профиля. Пока не реализованы литералы regexp, escape в идентификаторах,
-полная таблица категорий Unicode и проверки левых частей/контекста. Это
+проверки профиля. Пока не реализованы AS1/AS2 regexp и проверки левых частей/контекста.
+Таблицы Unicode 3.2 и escape идентификаторов поддерживаются. Это
 синтаксический профиль, а не полная реализация компилятора.
 
 ## Проверки
@@ -88,7 +88,7 @@ LabelAhead распознаёт метку через пробелы/комме�
 
 ## Указатель правил грамматики
 
-[As2](as2.atg#L309) | [Item](as2.atg#L317) | [Block](as2.atg#L330) | [Statement](as2.atg#L341) | [IfStatement](as2.atg#L382) | [WhileStatement](as2.atg#L390) | [ForStatement](as2.atg#L397) | [SwitchStatement](as2.atg#L420) | [TryStatement](as2.atg#L429) | [SwitchPart](as2.atg#L445) | [Variables](as2.atg#L456) | [Variable](as2.atg#L464) | [FunctionTail](as2.atg#L475) | [Parameter](as2.atg#L493) | [Expression](as2.atg#L501) | [Assignment](as2.atg#L510) | [AssignOp](as2.atg#L527) | [Conditional](as2.atg#L544) | [LogicalOr](as2.atg#L556) | [LogicalAnd](as2.atg#L568) | [BitOr](as2.atg#L580) | [BitXor](as2.atg#L588) | [BitAnd](as2.atg#L596) | [Equality](as2.atg#L604) | [Relational](as2.atg#L620) | [Shift](as2.atg#L641) | [Additive](as2.atg#L654) | [Product](as2.atg#L668) | [Unary](as2.atg#L682) | [Postfix](as2.atg#L705) | [Arguments](as2.atg#L725) | [Primary](as2.atg#L738) | [Property](as2.atg#L807) | [TypeName](as2.atg#L817) | [Import](as2.atg#L825) | [Class](as2.atg#L838) | [Interface](as2.atg#L860) | [Modifier](as2.atg#L876) | [Member](as2.atg#L885) | [Signature](as2.atg#L901)
+[As2](as2.atg#L553) | [Item](as2.atg#L561) | [Block](as2.atg#L574) | [Statement](as2.atg#L585) | [IfStatement](as2.atg#L627) | [WhileStatement](as2.atg#L635) | [ForStatement](as2.atg#L642) | [SwitchStatement](as2.atg#L665) | [TryStatement](as2.atg#L674) | [SwitchPart](as2.atg#L690) | [Variables](as2.atg#L701) | [Variable](as2.atg#L709) | [FunctionTail](as2.atg#L720) | [Parameter](as2.atg#L738) | [Expression](as2.atg#L746) | [Assignment](as2.atg#L755) | [AssignOp](as2.atg#L772) | [Conditional](as2.atg#L789) | [LogicalOr](as2.atg#L801) | [LogicalAnd](as2.atg#L813) | [BitOr](as2.atg#L825) | [BitXor](as2.atg#L833) | [BitAnd](as2.atg#L841) | [Equality](as2.atg#L849) | [Relational](as2.atg#L865) | [Shift](as2.atg#L886) | [Additive](as2.atg#L899) | [Product](as2.atg#L913) | [Unary](as2.atg#L927) | [Postfix](as2.atg#L950) | [Arguments](as2.atg#L970) | [Primary](as2.atg#L983) | [Property](as2.atg#L1052) | [TypeName](as2.atg#L1062) | [Import](as2.atg#L1070) | [Class](as2.atg#L1083) | [Interface](as2.atg#L1105) | [Modifier](as2.atg#L1121) | [Member](as2.atg#L1130) | [Signature](as2.atg#L1146)
 
 ## Описание языка
 
@@ -97,4 +97,8 @@ LabelAhead распознаёт метку через пробелы/комме�
 `in` поддержан в выражениях; NoIn действует только в инициализации for.
 Скобки, аргументы, индексы и литералы возвращают обычный контекст выражения.
 
-Новые правила / [ClipInitializer](as2.atg#L917) | [EventHandler](as2.atg#L930) | [Terminator](as2.atg#L948)
+Новые правила / [ClipInitializer](as2.atg#L1162) | [EventHandler](as2.atg#L1175) | [Terminator](as2.atg#L1193)
+
+[Лексический профиль 0.6.0](../../LEXICAL_PROFILE.ru.md).
+
+0.6.0: [Identifier](as2.atg#L1205) | [IdentifierUnit](as2.atg#L32) | [IdentifierLine](as2.atg#L214) | [as2_identifier_valid](as2.atg#L85) | [as2_identifier_space](as2.atg#L109) | [as2_string_valid](as2.atg#L174).

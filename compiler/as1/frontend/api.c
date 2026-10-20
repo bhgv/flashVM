@@ -17,6 +17,19 @@ static void report(int code, int line, int column, long offset)
     active->line = line;
     active->column = column;
     active->offset = offset;
+    if (code == 1107)
+    {
+        snprintf(active->message, sizeof(active->message),
+                 "invalid string escape or line terminator");
+        return;
+    }
+    if (code == 1105 || code == 1106)
+    {
+        snprintf(active->message, sizeof(active->message), "%s",
+                 code == 1105 ? "invalid Unicode identifier character or escape"
+                              : "reserved word is not an identifier binding");
+        return;
+    }
     if (code == 1101 || code == 1102)
     {
         snprintf(active->message, sizeof(active->message), "%s",

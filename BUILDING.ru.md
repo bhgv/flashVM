@@ -216,3 +216,5 @@ FIR_SYNTAX_ROOT=/absolute/path/to/fir/v1/frontend; [пример](compiler/PARSE
 применяются к этому C99-проекту. Coco/R остаётся HOST-инструментом. Библиотеки
 и CLI должны быть собраны для целевой платформы, а не скопированы из host-build.
 При отделении проекта сохраните общую MIT LICENSE и уведомления generated frames.
+
+[0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](compiler/LEXICAL_PROFILE.ru.md).
