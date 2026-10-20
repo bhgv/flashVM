@@ -11,6 +11,10 @@ int main(void)
                      "--speed", "200%",     "a.swf",     "b.swf"};
     char *fps[] = {"player", "--fps", "30", "--frames", "2", "movie.swf"};
     char *mute[] = {"player", "--mute", "movie.swf"};
+    char *null_program[] = {0, "--help"};
+    char *null_file[] = {"player", 0};
+    char *null_operand[] = {"player", "--fps", 0, "a.swf"};
+    char *null_after_help[] = {"player", "--help", 0};
     char *help[] = {"player", "--help"};
     char *dash[] = {"player", "--", "--help"};
     char *conflict[] = {"player", "--jit", "--no-jit", "a.swf"};
@@ -19,6 +23,16 @@ int main(void)
     char *quality[] = {"player", "--quality", "fake", "a.swf"};
     const char *numbers[] = {"0", "-1", "inf", "nan", "1x", "1e999", "1001", " 2", "\n2", "0x1p2"};
     size_t i;
+    memset(&options, 0, sizeof(options));
+    options.frames = 73;
+    assert(!fvm_desktop_arguments_valid(-1, valid));
+    assert(!fvm_desktop_arguments_valid(0, valid));
+    assert(!fvm_desktop_arguments_valid(1, 0));
+    assert(fvm_desktop_parse(2, null_program, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(fvm_desktop_parse(2, null_file, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(fvm_desktop_parse(4, null_operand, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(fvm_desktop_parse(3, null_after_help, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(options.frames == 73 && error);
     assert(fvm_desktop_parse(8, valid, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
     assert(!error && options.mode == FVM_EXECUTION_INTERPRETER &&
            options.quality == FVM_STAGE_QUALITY_BEST);

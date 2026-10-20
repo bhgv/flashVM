@@ -492,6 +492,11 @@ int fvm_desktop_main(int argc, char **argv)
     const char **files;
     size_t i;
     int parsed, status = 0, quit = 0;
+    if (!fvm_desktop_arguments_valid(argc, argv))
+    {
+        fprintf(stderr, "invalid player argument vector\n");
+        return 2;
+    }
     files = (const char **)malloc((size_t)argc * sizeof(*files));
     if (!files)
         return 1;

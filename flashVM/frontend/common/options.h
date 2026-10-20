@@ -35,6 +35,9 @@ typedef struct FVM_DesktopOptions
     const char **files; /* Caller-provided storage for borrowed movie paths. */
     size_t file_count;  /* Number of initialized entries in files. */
 } FVM_DesktopOptions;
+/* Check argc and every pointer in the caller-owned argc-element argv array.
+ * A trailing argv[argc] sentinel is not read; strings remain borrowed. */
+int fvm_desktop_arguments_valid(int argc, char **argv);
 /* Parse atomically into out; files is scratch storage with at least argc elements.
  * Return PARSE_HELP without opening files or touching the graphics subsystem. */
 int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOptions *out,

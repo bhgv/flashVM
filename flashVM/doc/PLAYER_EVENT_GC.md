@@ -30,6 +30,16 @@ ctest --test-dir build-player -R player_event_gc --output-on-failure
 [Acceptance checks](../frontend/tests/event_gc.py) ·
 [Build instructions](DESKTOP_FRONTEND.md) ·
 [Roadmap status](ROADMAP_STATUS.md)
+## C entry and arguments (v0.668)
+
+`fvm_desktop_main` validates positive argc, non-null argv and every argc pointer,
+and guards the path-array allocation size. Invalid vectors return 2 before the
+array allocation, file reads or SDL/VM startup. Null option operands and null
+entries after `--help` also fail. No `argv[argc]` sentinel is read. On failure,
+the parser leaves its result structure unchanged; the path array is scratch
+storage and has no such guarantee. The host must supply an accessible array
+and NUL-terminated strings: pointer checks do not validate memory mappings or
+arbitrary addresses. Calls are synchronous and the strings remain host-owned.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

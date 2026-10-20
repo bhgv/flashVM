@@ -103,6 +103,20 @@ static int frame_limit(const char *text, unsigned long *out)
     return 1;
 }
 
+/* Validate pointers before parsing, help printing or argv-storage allocation.
+ * The caller must still supply an accessible array and terminated argument strings. */
+int fvm_desktop_arguments_valid(int argc, char **argv)
+{
+    int i;
+    if (argc < 1 || !argv ||
+        (unsigned long)argc > (unsigned long)((size_t)-1 / sizeof(const char *)))
+        return 0;
+    for (i = 0; i < argc; ++i)
+        if (!argv[i])
+            return 0;
+    return 1;
+}
+
 /* Keep every failure message stable and usable before any SDL initialization. */
 int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOptions *out,
                       const char **error)
@@ -110,7 +124,9 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
     FVM_DesktopOptions value;
     int i, paths_only = 0, rate_kind = FVM_DESKTOP_RATE_NONE, explicit_mode = 0;
     const char *message = "invalid command line";
-    if (!argv || !files || !out || !error || argc < 1)
+    if (error)
+        *error = "invalid argument vector or parser storage";
+    if (!files || !out || !error || !fvm_desktop_arguments_valid(argc, argv))
         return FVM_DESKTOP_PARSE_ERROR;
     memset(&value, 0, sizeof(value));
     value.mode = FVM_DESKTOP_MODE_AUTO;

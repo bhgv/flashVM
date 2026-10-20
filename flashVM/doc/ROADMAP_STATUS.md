@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.667
+# FlashVM stage status / Состояние стадий — v0.668
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -11,7 +11,8 @@ counts are historical unless explicitly rerun for this revision.
 
 v0.667 adds a foreground event-loop GC safe point independent of fired timers.
 [Contract and regression](PLAYER_EVENT_GC.md) / [Контракт и проверка](PLAYER_EVENT_GC.ru.md).
-This is bounded progress on stages 3/7; all nine stages remain open.
+v0.668 validates embedded player argument vectors before allocation/startup.
+This is bounded progress on stages 3/7/9; all nine stages remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

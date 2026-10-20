@@ -41,6 +41,16 @@ static void check(int success)
 }
 int main(void)
 {
+    char *null_program[] = {NULL, "--help"};
+    char *null_file[] = {"player", NULL};
+    char *null_operand[] = {"player", "--fps", NULL};
+    assert(fvm_desktop_main(-1, NULL) == 2);
+    assert(fvm_desktop_main(0, NULL) == 2);
+    assert(fvm_desktop_main(1, NULL) == 2);
+    assert(fvm_desktop_main(2, null_program) == 2);
+    assert(fvm_desktop_main(2, null_file) == 2);
+    assert(fvm_desktop_main(3, null_operand) == 2);
+    assert(reads == 0 && closes == 0);
     available=2;advertised=2;check(1);
     SDL_SetError("stale unrelated error");check(1);
     advertised=1;check(0);
