@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.708
+# FlashVM stage status / Состояние стадий — v0.709
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,23 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.709 upgrades C and executable AS/SWF tutorials with scalar content snapshots,
+exact image/SWF counters and deferred-publication/version checks for URL/memory
+startup. All nine stages remain open.
+
+Final v0.707–v0.709 series: the 52-check native loading/query set and a broader,
+overlapping 108-check MovieClip/SWF import/timeline/document/sound set pass.
+Shared configurations pass 22 socket-TLS, 20 curl, 14 no-provider and eight
+codec-disabled checks. Six UBSan fixtures instrument the changed MovieClip,
+loading, content and SWF-timeline implementations; separate C player/transfer/audio
+UBSan fixtures cover interpreter/JIT and URL/embedded startup. Other VM, codec,
+SDL and transport dependencies are uninstrumented in those sanitizer runs.
+Audio-enabled player and both image C examples cross-link for Linux ARM64,
+Linux RISC-V64 and Windows x86-64 without execution. Source links, individual API
+example tables, catalog checks and deterministic assets pass. All stages remain
+open; full reference/API, progressive/internal-symbol and native OS/device
+acceptance is outstanding.
 
 v0.708 adds versioned getBytesLoaded/getBytesTotal/getSWFVersion methods backed
 by committed import records. CWS totals use canonical bytes; no progressive or

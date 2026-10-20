@@ -96,6 +96,17 @@ def require_undefined(path):
     failure=push('stale child: '+path)+b'\x2a'
     return get(path)+UNDEFINED+b'\x66\x9d\x02\0'+struct.pack('<h',len(failure))+failure
 
+def content_query(owner, method):
+    """Invoke a zero-argument MovieClip query through ordinary ActionCallMethod."""
+    return push(0,owner)+b'\x1c'+push(method)+b'\x52'
+
+
+def require_content(owner, method, expected):
+    """Require exact completed byte/version metadata in an actual SWF frame."""
+    failed=push('content query mismatch: '+method)+b'\x2a'
+    return content_query(owner,method)+push(expected)+b'\x66\x9d\x02\0'+struct.pack('<h',len(failed))+failed
+
+
 def dimension(index):
     return push('_root.picture', index) + b'\x22'
 
@@ -124,12 +135,17 @@ def require_dimension(index, expected):
 def root(kind=0, image_file="picture.png"):
     """Wait for an image, unload it and verify SWF replacement on the same instance."""
     width = 1 if kind == 1 else 8
+    payload_size = len([png(),GIF,JPEG][kind])
     first = method_call('_root','createEmptyMovieClip','picture',1)
     first += method_call('_root.picture','createEmptyMovieClip','old',1)
     first += push('_root.picture.kept',42)+b'\x1d'+push('_root.saved')+get('_root.picture')+b'\x1d'
     first += push('_root.iter',0)+b'\x1d'+push('_root.phase',0)+b'\x1d'
+    first += require_content('_root','getSWFVersion',8)
     first += get('_root.picture')+push(image_file,2,'loadMovie')+b'\x3d\x17'
     ready = require('_root.picture.kept',42)+require_dimension(9,width)
+    ready += require_content('_root.picture','getBytesLoaded',payload_size)
+    ready += require_content('_root.picture','getBytesTotal',payload_size)
+    ready += require_content('_root.picture','getSWFVersion',-1)
     ready += require_named_dimension(8,width) + require_named_dimension(9,width)
     ready += assign_member('_width',width*2) + assign_member('_height',width*3)
     ready += require_dimension(8,width*2) + require_dimension(9,width*3)
@@ -143,10 +159,19 @@ def root(kind=0, image_file="picture.png"):
     ready += get('_root.saved')+get('_root.picture')+b'\x66\x9d\x02\0'+struct.pack('<h',len(failed))+failed
     ready += push('_root.phase',1)+b'\x1d'+method_call('_root.picture','unloadMovie')
     ready += global_call('loadMovie','after.swf','picture')
+    # Queued unload/reload has not published new content during this same source frame.
+    ready += require_content('_root.picture','getBytesTotal',payload_size)
     second = push('_root.iter')+get('_root.iter')+push(1)+b'\x47\x1d'
     second += when(get('_root.iter')+push(200)+b'\x67',require('_root.finished',1))
     second += when(equal('_root.phase',0)+(dimension(8)+push(width)+b'\x66')+b'\x10',ready)
-    second += when(equal('_root.picture.loaded',1),require('_root.picture.kept',42)+require_dimension(8,0)+require_named_dimension(8,0)+push('_root.finished',1)+b'\x1d\x07')
+    # The replacement SWF has run its own frame and therefore owns the published record.
+    completed = require('_root.picture.kept', 42)
+    completed += require_dimension(8, 0) + require_named_dimension(8, 0)
+    completed += require_content('_root.picture', 'getSWFVersion', 8)
+    completed += require_content('_root.picture', 'getBytesLoaded', len(after()))
+    completed += require_content('_root.picture', 'getBytesTotal', len(after()))
+    completed += push('_root.finished', 1) + b'\x1d\x07'
+    second += when(equal('_root.picture.loaded', 1), completed)
     return swf([first,second,b'\x81\x02\0\x01\0\x06'])
 
 

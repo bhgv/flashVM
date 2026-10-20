@@ -1763,6 +1763,7 @@ SWF reload. URL/linked-memory startup, bounded async ожидание и сам�
 [генератор](player/image_loading/make_movies.py). Ограничения GIF/root/events указаны явно.
 
 Именованные `_width`/`_height` меняют геометрию; readonly `_url` сохраняет источник.
+Методы getBytesLoaded/getBytesTotal/getSWFVersion сверяют сведения картинки и SWF.
 
 <a id="example-player-loading"></a>
 ### loading

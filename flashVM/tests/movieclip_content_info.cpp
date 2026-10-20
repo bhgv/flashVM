@@ -110,6 +110,17 @@ int main()
     assert(fvm_movieclip_get_content_info(c, clip, &info) == FVM_INVALID_ARGUMENT &&
            !std::memcmp(&info, &before, sizeof(info)));
     record->properties["encoded"] = saved;
+    FVM_Value saved_edge = data->properties[FVM_MOVIECLIP_CONTENT_RECORD_NAME];
+    FVM_Object *foreign = 0;
+    assert(fvm_object_create(other, &foreign) == FVM_OK);
+    FVM_Value foreign_edge;
+    fvm_value_undefined(&foreign_edge);
+    foreign_edge.type = FVM_VALUE_OBJECT;
+    foreign_edge.object = foreign;
+    data->properties[FVM_MOVIECLIP_CONTENT_RECORD_NAME] = foreign_edge;
+    assert(fvm_movieclip_get_content_info(c, clip, &info) == FVM_INVALID_ARGUMENT &&
+           !std::memcmp(&info, &before, sizeof(info)));
+    data->properties[FVM_MOVIECLIP_CONTENT_RECORD_NAME] = saved_edge;
     c->gc_collecting = true;
     assert(fvm_movieclip_get_content_info(c, clip, &info) == FVM_INVALID_ARGUMENT &&
            !std::memcmp(&info, &before, sizeof(info)));

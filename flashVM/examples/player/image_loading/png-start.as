@@ -19,6 +19,11 @@ if (_root.phase === 0 && _root.picture._width === 8) // Named width reads the sa
     { // A new object at the same path would violate this contract.
         throw "image target changed"; // Do not hide a lost instance behind a visual success.
     } // Continue only with the original object identity.
+    if (_root.picture.getBytesLoaded() !== _root.picture.getBytesTotal() || // Complete encoded input has arrived.
+        _root.picture.getSWFVersion() !== -1) // Images have no own SWF header version.
+    { // Imported images have encoded byte counts and no own SWF header version.
+        throw "content query mismatch"; // Propagate a real metadata failure to the host.
+    } // The executable generator additionally checks the exact encoded payload length.
     _root.picture._width = 16; // Resize through the named width setter after decoding.
     _root.picture._height = 24; // Both setters reuse the numeric AVM1 scaling rules.
     if (getProperty(_root.picture, 8) !== 16 || getProperty(_root.picture, 9) !== 24) // Compare numeric geometry.
@@ -37,6 +42,11 @@ if (_root.phase === 0 && _root.picture._width === 8) // Named width reads the sa
 } // All decoding, drawing publication and native cleanup occur outside this callback.
 if (_root.picture.loaded === 1) // after.swf sets the marker on its first actual frame.
 { // This proves the replacement SWF was imported and executed, not merely fetched.
+    if (_root.picture.getSWFVersion() !== 8 || // Verify the replacement SWF header version.
+        _root.picture.getBytesLoaded() !== _root.picture.getBytesTotal()) // Canonical bytes are fully published.
+    { // Canonical SWF bytes are fully available after owner publication.
+        throw "replacement content mismatch"; // Keep success tied to actual imported metadata.
+    } // The executable generator also checks the exact length of after.swf.
     _root.finished = 1; // Mark successful completion for the bounded loop assertion.
     stop(); // The C host still owns window events and eventual joined cleanup.
 } // Frame 3 returns to frame 2 if the root remains playing.

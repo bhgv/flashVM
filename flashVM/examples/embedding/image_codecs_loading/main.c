@@ -12,11 +12,14 @@ int main(void) /* Build target: flashvm_examples_embedding_image_codecs_loading_
     FVM_Runtime *runtime = 0; /* Outlive the managed context. */
     FVM_Context *context = 0; /* Own clip state, bitmap pixels and its host pin. */
     FVM_Object *clip = 0; /* Borrow this identity until context destruction. */
+    FVM_MovieClipContentInfo info; /* Copied scalar metadata remains valid independently of the clip. */
     FVM_Value value; /* Carry copied scalars and borrowed source strings between host calls. */
     unsigned char pixels[16]; /* Four caller-owned straight RGBA pixels. */
     FVM_RasterSurface surface = {0, 2, 2, 8}; /* Borrow output storage only during rendering. */
     FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
     surface.pixels = pixels; /* Bind automatic storage after C89 declarations finish. */
+    if (status == FVM_OK) /* Initialize the required descriptor ABI before its first query. */
+        status = fvm_movieclip_content_info_init(&info); /* No context, allocation or borrowed pointers. */
     if (status == FVM_OK) /* Keep setup errors observable through common cleanup. */
         status = fvm_runtime_create(&config, &runtime); /* Create the enclosing owner. */
     if (status == FVM_OK) /* Context requires a live runtime. */
@@ -52,6 +55,15 @@ int main(void) /* Build target: flashvm_examples_embedding_image_codecs_loading_
         status = fvm_object_get(context, clip, "_url", &value); /* Borrow managed text only until the next collecting call. */
     if (status == FVM_OK && (value.type != FVM_VALUE_STRING || fvm_value_string_size(&value) != 8 || memcmp(value.string, "resource", 8))) /* Compare counted source. */
         status = FVM_ERROR; /* No strlen on binary movie bytes or borrowed unvalidated values. */
+    if (status == FVM_OK) /* Read only committed source statistics, independent of live transport. */
+        status = fvm_movieclip_get_content_info(context, clip, &info); /* Copy all fields atomically on success. */
+    if (status == FVM_OK && /* Inspect a fully copied successful snapshot. */
+        (info.format != FVM_MOVIECLIP_CONTENT_PNG || /* Signature identifies the imported PNG. */
+         info.encoded_bytes != sizeof(picture_png) || /* Count the complete input, including its header. */
+         info.decoded_bytes != sizeof(pixels) || /* Original two-by-two straight RGBA payload. */
+         info.pixel_width != 2 || info.pixel_height != 2 || /* Geometry changes did not resize original pixels. */
+         info.swf_version != 0)) /* An image has no SWF header version. */
+        status = FVM_ERROR; /* A misleading snapshot must fail the tutorial. */
     if (status == FVM_OK) /* [GC:] The host pin must keep the bitmap drawing graph alive. */
         status = fvm_gc_collect(context, 0); /* The bitmap's owned pixels remain reachable. */
     memset(pixels, 0, sizeof(pixels)); /* Render onto a transparent caller-owned surface. */
@@ -61,6 +73,12 @@ int main(void) /* Build target: flashvm_examples_embedding_image_codecs_loading_
         status = FVM_ERROR; /* Use ordinary error handling rather than tutorial assertions. */
     if (status == FVM_OK) /* Remove the image while retaining the instance. */
         status = fvm_movieclip_unload(context, clip); /* No script unload event is synthesized. */
+    if (status == FVM_OK) /* An explicit unload has known zero payload, unlike an unmarked native clip. */
+        status = fvm_movieclip_get_content_info(context, clip, &info); /* Reuse the caller-owned descriptor. */
+    if (status == FVM_OK && /* The successful unload published a complete empty record. */
+        (info.format != FVM_MOVIECLIP_CONTENT_EMPTY || /* Distinguish explicit unload from unknown metadata. */
+         info.encoded_bytes != 0 || info.decoded_bytes != 0)) /* No input or decoded payload remains. */
+        status = FVM_ERROR; /* Preserve the error through normal cleanup. */
     if (status == FVM_OK) /* Verify own data survived both replacement and clearing. */
         status = fvm_object_get(context, clip, "kept", &value); /* Scalar output needs no GC root. */
     if (status == FVM_OK && (value.type != FVM_VALUE_NUMBER || value.number != 42)) /* Validate preserved instance data. */

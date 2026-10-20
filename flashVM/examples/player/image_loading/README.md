@@ -88,3 +88,21 @@ or original-player acceptance is implied.
 
 Relative requests in the root frame use the root caller origin. The image
 `_url` separately describes the image origin, including a final redirect URL.
+
+## Completed content queries (v0.709)
+
+The actual SWFs now require exact getBytesLoaded/getBytesTotal input counts for
+each image, getSWFVersion=-1, unchanged counts immediately after a deferred unload
+request in the same frame, and exact canonical counts/version after the SWF reload.
+The root SWF's version is also checked. URL and linked-memory startup execute the
+same regenerated payload.
+
+| Script method | Result used by this example |
+| --- | --- |
+| `getBytesLoaded()` | Complete encoded image length, then canonical uncompressed SWF length. |
+| `getBytesTotal()` | Same committed length; no worker progress or partial decoding. |
+| `getSWFVersion()` | -1 for the image, 8 for the loaded SWF; language profile remains separate. |
+
+[Full counter/version contract](../../../doc/MOVIECLIP_CONTENT_INFO.md) /
+[RU](../../../doc/MOVIECLIP_CONTENT_INFO.ru.md). Unknown internal-symbol counts and
+progressive loader/event acceptance remain open.
