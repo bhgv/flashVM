@@ -5,7 +5,21 @@ import sys
 import tempfile
 from pathlib import Path
 
-CASES = [('hello',
+CASES = [
+ ('labels', 'implement L; f() { outer: for(;;) { inner: while() { continue outer; } break outer; } select: case x { 1 => break select; } ready: alt { <-c => break ready; } choice: pick v := p { A => break choice; } }', True),
+ ('label-comments','implement L; f() { outer # comment\n : # comment\n while() break outer; x: int = 1; }',True),
+ ('list-literal','implement L; f() { xs := list of {1,2,3}; v := hd xs; }',True),
+ ('array-comma','implement L; f() { a := array[] of {1,2,3,}; b := array[8] of {0 => 1,* => 0,}; }',True),
+ ('array-comment-comma','implement L; f() { a := array[] of {1, # tail\n}; }',True),
+ ('deref-slices','implement L; f() { x := *p; y := a[1:]; z := a[0:2]; a[1:] = b; }',True),
+ ('bad-slice-empty','implement L; f() { x := a[]; }',False),
+ ('bad-slice-lower','implement L; f() { x := a[:2]; }',False),
+ ('bad-array-empty','implement L; f() { x := array[] of {}; }',False),
+ ('bad-array-size','implement L; f() { x := array[] of int; }',False),
+ ('bad-list-empty','implement L; f() { x := list of {}; }',False),
+ ('bad-label-return','implement L; f() { invalid: return; }',False),
+ ('bad-array-double-comma','implement L; f() { x := array[] of {1,,}; }',False),
+('hello',
   'implement Command; include "sys.m"; sys: Sys; Command: module { init: fn(nil: ref '
   'Draw->Context, argv: list of string); }; init(nil: ref Draw->Context, argv: list of '
   'string) { sys = load Sys Sys->PATH; sys->print("привет 中文\\n"); }',
@@ -42,6 +56,8 @@ CASES = [('hello',
   True),
  ('utf8-bom', '\ufeffimplement T; x: con "中";', True)]
 
+
+CASES += [('syntax-example', (Path(__file__).resolve().parents[2]/'examples/Syntax.b').read_text(), True)]
 
 def main():
     """Bound each subprocess so recovery bugs cannot hang the test suite."""

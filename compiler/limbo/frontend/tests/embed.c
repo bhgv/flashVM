@@ -11,5 +11,7 @@ int main(void)
         if(limbo_check("\xff",1,&diagnostic) || !strstr(diagnostic.message,"UTF-8")) return 3;
         if(!limbo_check(valid,strlen(valid),NULL)) return 4;
     }
+    if(limbo_check("implement A; f(){ x:=array[] of int; }",strlen("implement A; f(){ x:=array[] of int; }"),&diagnostic) || diagnostic.code!=1301) return 7;
+    if(!limbo_check("implement A; f(){ x:=list of {1,2}; }",strlen("implement A; f(){ x:=list of {1,2}; }"),&diagnostic)) return 8;
     return 0;
 }

@@ -45,6 +45,48 @@ static int AheadArrow(void)
     return 0;
 }
 
+/* Whitespace and # comments are transparent to contextual lookahead. */
+static long Trivia(long pos)
+{
+    for(;;) {
+        int ch=S_CurrentCh(pos);
+        if(ch==' ' || ch==9 || ch==10 || ch==13) ++pos;
+        else if(ch=='#') while(S_CurrentCh(pos) && S_CurrentCh(pos)!=10) ++pos;
+        else return pos;
+    }
+}
+/* Match a whole keyword after a candidate label without reading a token. */
+static int WordAt(long pos, const char *word)
+{
+    int ch;
+    while(*word) if(S_CurrentCh(pos++)!=(unsigned char)*word++) return 0;
+    ch=S_CurrentCh(pos);
+    return !((ch>='A' && ch<='Z') || (ch>='a' && ch<='z') ||
+        (ch>='0' && ch<='9') || ch=='_' || ch>=128);
+}
+/* A colon before a type is a declaration, not a control-statement label. */
+static int LabelAhead(void)
+{
+    long pos=Trivia(S_NextPos+S_NextLen);
+    if(S_CurrentCh(pos)!=':') return 0;
+    pos=Trivia(pos+1);
+    return WordAt(pos,"while") || WordAt(pos,"do") || WordAt(pos,"for") ||
+        WordAt(pos,"case") || WordAt(pos,"alt") || WordAt(pos,"pick");
+}
+/* Repetition resolver includes comma FIRST explicitly to guarantee progress. */
+static int InitializerAfterComma(void)
+{
+    int ch=S_CurrentCh(Trivia(S_NextPos+S_NextLen));
+    return ch && ch!='}';
+}
+
+/* Distinguish wildcard * from unary dereference by its following separator. */
+static int WildcardAhead(void)
+{
+    long pos=Trivia(S_NextPos+S_NextLen);
+    return (S_CurrentCh(pos)=='=' && S_CurrentCh(pos+1)=='>') || WordAt(pos,"or");
+}
+
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
   letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_" + CHR(128)..CHR(255) .
@@ -188,21 +230,21 @@ PRODUCTIONS
      префикс выражения; после двоеточия разбирается DeclType.
      Ветвления каналов/вариантов вынесены в отдельные правила ниже. */
   Statement =
-      Block
+      IF(Sym==identSym && LabelAhead()) ident ":" LabeledStatement
+    | Block
     | ";"
     | "include" text ";"
     | IfStatement
-    | WhileStatement
-    | ForStatement
-    | CaseStatement
-    | AltStatement
-    | PickStatement
+    | LabeledStatement
     | "return" [ Expression ] ";"
     | ( "break" | "continue" ) [ ident ] ";"
     | "exit" ";"
     | "spawn" Expression ";"
     | Expression [ ":" DeclType ] ";"
     .
+
+  /* Only the six labelable control statements admit a leading label. */
+  LabeledStatement = WhileStatement | ForStatement | CaseStatement | AltStatement | PickStatement .
 
   /* Ближайший незавершённый if получает else; вход проверяется без Get(). */
   IfStatement =
@@ -259,9 +301,10 @@ PRODUCTIONS
     .
 
   /* Условия case/alt: выражение, диапазон to, объединение or либо звёздочка. */
-  Qualifiers =
-    ( "*" | Expression [ "to" Expression ] ) { "or" ( "*" | Expression [ "to" Expression ] ) }
-    .
+  Qualifiers = Qualifier { "or" Qualifier } .
+  /* Wildcards end at or/=>; *p is instead an ordinary dereference expression. */
+  Qualifier = IF(Sym==StarSym && WildcardAhead()) "*"
+    | Expression [ "to" Expression ] .
 
   /* Самый низкий приоритет: последовательность выражений через запятую. */
   Expression =
@@ -335,24 +378,37 @@ PRODUCTIONS
      являются префиксами. load содержит имя типа загружаемого модуля. */
   Unary =
     ( "!" | "~" | "+" | "-" | "++" | "--" | "<-" | "hd" | "tl" | "len" | "tagof" | "ref" |
-      "byte" | "int" | "big" | "real" | "string" ) Unary
+      "byte" | "int" | "big" | "real" | "string" | "*" ) Unary
     | "load" ident Unary
     | "chan" [ "[" Expression "]" ] "of" Type
-    | "array" "[" [ Expression ] "]" "of" ( Type | "{" [ Initializer { "," Initializer } ] "}" )
+    | ArrayCreation
+    | "list" "of" "{" Expression "}"
     | Postfix
     .
 
+  /* An omitted size is legal only when initializer values determine it. */
+  ArrayCreation = (. int sized = 0; .)
+    "array" "[" [ Expression (. sized=1; .) ] "]" "of"
+    ( Type (. if(!sized) SemError(1301); .)
+    | "{" InitializerList "}" ) .
+  /* A single trailing comma is allowed; an empty initializer list is not. */
+  InitializerList = Initializer
+    { IF(Sym==CommaSym && InitializerAfterComma()) "," Initializer } [ "," ] .
+
   /* Элемент array initializer либо индекс => значение, включая * => значение. */
   Initializer =
-    Assignment [ "=>" Assignment ]
-    | "*" "=>" Assignment
+    IF(Sym==StarSym && WildcardAhead()) "*" "=>" Assignment
+    | Assignment [ "=>" Assignment ]
     .
 
   /* Цепочка обращений к полям, индексирования и вызовов; затем ++ или --. */
   Postfix =
-    Primary { "." ident | "->" ident | "[" [ Expression ] [ ":" [ Expression ] ] "]" | "(" [
+    Primary { "." ident | "->" ident | Subscript | "(" [
       Expression ] ")" } [ "++" | "--" ]
     .
+
+  /* Index or slice: lower bound is mandatory, upper bound may be omitted. */
+  Subscript = "[" Expression [ ":" [ Expression ] ] "]" .
 
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
   Primary =
