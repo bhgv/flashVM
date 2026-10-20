@@ -53,7 +53,7 @@ Renderer владеет презентацией и обработкой её о
 ## Общий desktop player
 
 Активный цикл потребляет запрос до внеочередного render текущей сцены между
-кадрами. [clear_stage](../frontend/common/player.c#L73) и [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L79) используют тот же presenter,
+кадрами. [clear_stage](../frontend/common/player.c#L73) и [fvm_movieclip_render_view](../include/flashvm/movieclip.h#L112) используют тот же presenter,
 что обычные кадры. Timeline, frame scripts и authored deadline не продвигаются.
 Совпавший с обычным кадром запрос удовлетворяется этим кадром. Запрос во время
 презентации остаётся pending и не теряется за ожиданием. Фоновая приостановка и
@@ -114,7 +114,7 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:79](../include/flashvm/movieclip.h#L79) |
+| `fvm_movieclip_render_view` | function | [include/flashvm/movieclip.h:112](../include/flashvm/movieclip.h#L112) |
 | `fvm_stage_get_update` | function | [include/flashvm/stage.h:41](../include/flashvm/stage.h#L41) |
 | `fvm_stage_request_update` | function | [include/flashvm/stage.h:38](../include/flashvm/stage.h#L38) |
 | `fvm_stage_take_update` | function | [include/flashvm/stage.h:45](../include/flashvm/stage.h#L45) |

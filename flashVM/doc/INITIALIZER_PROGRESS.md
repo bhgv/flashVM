@@ -1,8 +1,8 @@
 # Initializer progress and work — v0.632
 
 Root DoInitAction remains the deferred SWF6–8 policy described in
-[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L43) validates/retains
-code without executing it; [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L66) attempts library initializers
+[SWF_INIT_ACTION.md](SWF_INIT_ACTION.md): [`fvm_movieclip_load_swf`](../include/flashvm/movieclip.h#L76) validates/retains
+code without executing it; [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99) attempts library initializers
 on the source root before scene/frame work, including when a shared descendant
 is advanced first. ActionCall still executes only selected frame actions and does
 not start initialization. Full Player preload/sprite-ID timing remains open.
@@ -108,8 +108,8 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:76](../include/flashvm/movieclip.h#L76) |
 | `FVM_MOVIECLIP_MAX_INITIALIZER_BLOCKS` | macro / define | [src/standard/movieclip_constants.h:27](../src/standard/movieclip_constants.h#L27) |
 | `FVM_NativeCallGuard` | class | [src/core/native_call_guard.hpp:9](../src/core/native_call_guard.hpp#L9) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |

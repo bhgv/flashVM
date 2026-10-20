@@ -1,7 +1,7 @@
 # Снимки звуковых событий корня — v0.637
 
 [English](SOUND_SNAPSHOT.md). Дополнение к [доставке звука MovieClip](MOVIECLIP_SOUND.ru.md).
-[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L66) доставляет root StartSound через
+[`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99) доставляет root StartSound через
 [`fvm_movieclip_set_sound_callback`](../include/flashvm/movieclip.h#L21); изменения не открывают аудиоустройство.
 
 Private `sounds` кадра — плотный список от нуля, ограниченный
@@ -147,7 +147,7 @@ memory channel, уничтожает source context, собирает traced str
 отказ и явную правку/повтор с callbacks получателя в interpreter/native JIT.
 Прежний полный allocation sweep доставки также охватывает подготовку индекса.
 
-[`fvm_movieclip_define_frame`](../include/flashvm/movieclip.h#L51) сохраняет идентичность звуковой таблицы корректного
+[`fvm_movieclip_define_frame`](../include/flashvm/movieclip.h#L84) сохраняет идентичность звуковой таблицы корректного
 импортированного кадра при замене actions/label. Новая запись готовится до
 публикации; OOM сохраняет прежний кадр/таблицу. Это позволяет допустимой замене
 actions не терять звук и не нарушать каноническую полноту. Уже повреждённые metadata
@@ -185,8 +185,8 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
-| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../include/flashvm/movieclip.h#L51) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
+| `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:84](../include/flashvm/movieclip.h#L84) |
 | `fvm_movieclip_set_sound_callback` | function | [include/flashvm/movieclip.h:21](../include/flashvm/movieclip.h#L21) |
 | `FVM_MOVIECLIP_SOUND_MAX_FRAME_EVENTS` | macro / define | [src/standard/movieclip_sound_constants.h:8](../src/standard/movieclip_sound_constants.h#L8) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |

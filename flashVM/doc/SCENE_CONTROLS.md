@@ -1,6 +1,6 @@
 # Captured scene controls — v0.634
 
-[Русский](SCENE_CONTROLS.ru.md). During [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L66), authored SWF
+[Русский](SCENE_CONTROLS.ru.md). During [`fvm_movieclip_advance`](../include/flashvm/movieclip.h#L99), authored SWF
 placement controls can invoke registered constructors. A constructor previously
 could replace a later list slot, change its scalar metadata, clear the list or
 append a new placement into the live traversal. The current frame now captures
@@ -84,7 +84,7 @@ between native-only control applications in `scene_controls_worker`.
 
 ## Graph validation and legacy depths (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2892) validates same-context private state/table ownership
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L2894) validates same-context private state/table ownership
 and [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L32) before normalizing any legacy depths.
 Its output pointer is published only on success. An unnormalized nonempty table
 charges one unit per child before migration; insufficient work leaves the old
@@ -139,9 +139,9 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_ExecutionWorkScope` | class | [src/core/execution_work_scope.hpp:9](../src/core/execution_work_scope.hpp#L9) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../include/flashvm/movieclip.h#L66) |
+| `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:99](../include/flashvm/movieclip.h#L99) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:32](../src/standard/movieclip_constants.h#L32) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:25](../src/standard/movieclip_constants.h#L25) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2892](../src/standard/movieclip.cpp#L2892) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:2894](../src/standard/movieclip.cpp#L2894) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->

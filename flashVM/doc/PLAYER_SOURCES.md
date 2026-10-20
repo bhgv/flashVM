@@ -176,14 +176,14 @@ startup directory. No process-wide chdir or network working-directory global exi
 
 ### Core C89 APIs
 
-[fvm_movieclip_set_source](../include/flashvm/movieclip.h#L103) copies a nonempty counted location (1..4096, no NUL) into
+[fvm_movieclip_set_source](../include/flashvm/movieclip.h#L136) copies a nonempty counted location (1..4096, no NUL) into
 the private managed clip graph. Same-context clip and live owner thread required;
-no script runs. [fvm_movieclip_get_source](../include/flashvm/movieclip.h#L107) reads the nearest native ancestor source,
+no script runs. [fvm_movieclip_get_source](../include/flashvm/movieclip.h#L140) reads the nearest native ancestor source,
 returning a borrowed string; NOT_FOUND/errors preserve out. Retain the clip across
 GC. Private source metadata travels with ordinary graph fields; host callback code
 and transport sessions are not serialized.
 
-[fvm_movieclip_replace_swf](../include/flashvm/movieclip.h#L114) imports into the same context without changing the target
+[fvm_movieclip_replace_swf](../include/flashvm/movieclip.h#L147) imports into the same context without changing the target
 object, parent depth slot, transform/shear or existing host/script own properties.
 Only named bindings of old display children are removed; other saved references
 survive. Old children are detached. The new library root points to the existing
@@ -193,7 +193,7 @@ content. Owner thread, outside VM/native callbacks/GC/teardown; nested replaceme
 returns INVALID_ARGUMENT. The strict current importer rejects unsupported tags and
 child root streaming sound. Successful replacement requests a redraw.
 
-[fvm_object_load_variables](../include/flashvm/movieclip.h#L155) takes a same-context target and counted form bytes up to
+[fvm_object_load_variables](../include/flashvm/movieclip.h#L188) takes a same-context target and counted form bytes up to
 64 MiB. It decodes all percent escapes/plus/spaces and WTF-8 before writing, with
 at most 65536 fields, including ignored empty segments. NUL in decoded values/keys remains counted.
 Duplicate keys assign in input order, last value wins; missing equals means empty
@@ -250,6 +250,8 @@ GET here means retrieving the supplied URL. Automatic serialization of current-c
 
 [Named MovieClip dimensions / Именованные размеры](MOVIECLIP_NAMED_PROPERTIES.md) / [RU](MOVIECLIP_NAMED_PROPERTIES.ru.md).
 
+[Committed content metadata / Сведения о содержимом](MOVIECLIP_CONTENT_INFO.md) / [RU](MOVIECLIP_CONTENT_INFO.ru.md).
+
 <!-- source-links:start -->
 ## Исходники / Source declarations
 
@@ -260,10 +262,10 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
-| `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:107](../include/flashvm/movieclip.h#L107) |
-| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:114](../include/flashvm/movieclip.h#L114) |
-| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:103](../include/flashvm/movieclip.h#L103) |
-| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:155](../include/flashvm/movieclip.h#L155) |
+| `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:140](../include/flashvm/movieclip.h#L140) |
+| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:147](../include/flashvm/movieclip.h#L147) |
+| `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:136](../include/flashvm/movieclip.h#L136) |
+| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:188](../include/flashvm/movieclip.h#L188) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 <!-- source-links:end -->

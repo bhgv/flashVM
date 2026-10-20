@@ -70,7 +70,7 @@ keeps the ordinary native collector barrier. [Observer contract](../../../doc/SE
 | [`fvm_context_create`](../../../include/flashvm/flashvm.h#L68) | Acquire independent globals and focus; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L20) | Prepare MovieClip constructors/prototypes; [SELECTION.md](../../../doc/SELECTION.md#installation). |
 | [`fvm_standard_selection_install`](../../../include/flashvm/keyboard.h#L101) | Atomically publish only the supported Selection methods; [SELECTION.md](../../../doc/SELECTION.md#installation), [RU](../../../doc/SELECTION.ru.md#установка). |
-| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | Create a borrowed native scene; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L69) | Create a borrowed native scene; [KEYBOARD_FOCUS.md](../../../doc/KEYBOARD_FOCUS.md#example-and-verification). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | Retain the clip before eligibility is configured; [GARBAGE_COLLECTION.md](../../../doc/GARBAGE_COLLECTION.md). |
 | [`fvm_get_global`](../../../include/flashvm/value.h#L85) | Borrow the installed namespace; [EMBEDDING_API.md](../../../doc/EMBEDDING_API.md). |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L40) | Initialize values and request clearing without manufacturing a null pointer; [SELECTION.md](../../../doc/SELECTION.md#setfocus). |
@@ -112,7 +112,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
 | `fvm_get_global` | function | [include/flashvm/value.h:85](../../../include/flashvm/value.h#L85) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../../../include/flashvm/movieclip.h#L69) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_create` | function | [include/flashvm/value.h:62](../../../include/flashvm/value.h#L62) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |

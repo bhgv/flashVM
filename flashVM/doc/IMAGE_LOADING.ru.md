@@ -30,11 +30,11 @@ GIF и неподдержанное цветовое пространство JP
 
 Вход и отдельный RGBA payload ограничены [`FVM_SWF_DEFAULT_LIMIT`](../include/flashvm/swf.h#L15), размеры —
 2880 × 2880. Непустой counted source не содержит NUL и не превышает
-[`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L95). Несколько временных копий увеличивают пиковую память;
+[`FVM_MOVIE_SOURCE_MAX_BYTES`](../include/flashvm/movieclip.h#L128). Несколько временных копий увеличивают пиковую память;
 это не общий process memory quota. Память C-декодера освобождается и при C++ exception.
 
-[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L129) выбирает SWF или изображение по сигнатуре;
-повреждённый SWF не переходит в image fallback. [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L114) остаётся
+[`fvm_movieclip_replace_resource`](../include/flashvm/movieclip.h#L162) выбирает SWF или изображение по сигнатуре;
+повреждённый SWF не переходит в image fallback. [`fvm_movieclip_replace_swf`](../include/flashvm/movieclip.h#L147) остаётся
 только для SWF. Публичные структуры и callbacks не менялись. Интеграция с очередью
 плеера описана ниже.
 
@@ -98,10 +98,10 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:95](../include/flashvm/movieclip.h#L95) |
-| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:125](../include/flashvm/movieclip.h#L125) |
-| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:129](../include/flashvm/movieclip.h#L129) |
-| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:114](../include/flashvm/movieclip.h#L114) |
+| `FVM_MOVIE_SOURCE_MAX_BYTES` | macro / define | [include/flashvm/movieclip.h:128](../include/flashvm/movieclip.h#L128) |
+| `fvm_movieclip_replace_image` | function | [include/flashvm/movieclip.h:158](../include/flashvm/movieclip.h#L158) |
+| `fvm_movieclip_replace_resource` | function | [include/flashvm/movieclip.h:162](../include/flashvm/movieclip.h#L162) |
+| `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:147](../include/flashvm/movieclip.h#L147) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |

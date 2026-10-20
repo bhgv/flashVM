@@ -88,7 +88,7 @@ ownership to another UI. OS focus loss resets physical state separately.
 
 [Runnable C89 tutorial](../examples/embedding/keyboard_listeners/README.md) compares
 ordinary listener routing and explicit native clip selection without a window.
-It calls [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L36) after standard installation, then immediately
+It calls [`fvm_movieclip_create`](../include/flashvm/movieclip.h#L69) after standard installation, then immediately
 selects the returned borrowed clip before allocating handler setup. This protects
 the clip during construction; context destruction covers every error path.
 
@@ -120,7 +120,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_input_set_keyboard_focus` | function | [include/flashvm/keyboard.h:83](../include/flashvm/keyboard.h#L83) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../include/flashvm/movieclip.h#L36) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../include/flashvm/movieclip.h#L69) |
 | `FVM_MOVIECLIP_REMOVE_MAX_ANCESTORS` | macro / define | [src/standard/movieclip_constants.h:87](../src/standard/movieclip_constants.h#L87) |
 | `FVM_Object` | struct | [src/core/runtime.hpp:122](../src/core/runtime.hpp#L122) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |

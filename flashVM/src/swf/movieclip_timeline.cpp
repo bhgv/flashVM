@@ -1,5 +1,6 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
+#include "../standard/movieclip_content.hpp"
 #include "flashvm/swf_stream_sound.h"
 #include "sound_stream_constants.h"
 #include "format_constants.h"
@@ -998,6 +999,10 @@ extern "C" FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *c, const void *inpu
             return r;
         /* [GC:] Replace the initially empty frame table with fully linked managed definitions. */
         clip->resource_result.object->properties["frames"] = managed(frames);
+        r = fvm_movieclip_record_content(c, clip->resource_result.object,
+            FVM_MOVIECLIP_CONTENT_SWF, size, bytes.size(), info.version, 0, 0);
+        if (r != FVM_OK)
+            return r;
         *out = clip;
         return FVM_OK;
     }

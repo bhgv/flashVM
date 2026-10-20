@@ -4,6 +4,7 @@
 #include "movieclip_quality.hpp"
 #include "movieclip_dimensions.hpp"
 #include "movieclip_location.hpp"
+#include "movieclip_content.hpp"
 #include "../swf/clip_action_policy.hpp"
 #include "flashvm/clip_actions.h"
 #include "stage_update.hpp"
@@ -769,6 +770,7 @@ FVM_Result duplicate_instance(FVM_Context *c, FVM_Object *o, unsigned int n, con
         return r;
     /* [GC:] Frame definitions remain shared, while the duplicate owns its replaceable table. */
     child_frames->indexed = frames->indexed;
+    fvm_movieclip_copy_content_record(data, child->resource_result.object);
     /* [GC:] Retain the resource library for future descendant attachments and serialization. */
     if (library)
         child->resource_result.object->properties["library"] = object(library);

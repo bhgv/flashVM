@@ -32,6 +32,39 @@ extern "C"
        the returned string before collection. Metadata is not parsed or executed as XML. */
     FVM_API FVM_Result fvm_movieclip_swf_document_info(FVM_Context *, FVM_Object *,
                                                        FVM_SWFDocumentInfo *);
+    /* Committed imported-content identity; independent of display transforms and source profile. */
+    typedef enum FVM_MovieClipContentFormat
+    {
+        FVM_MOVIECLIP_CONTENT_EMPTY = 0, /* Explicit unload: no imported payload. */
+        FVM_MOVIECLIP_CONTENT_SWF = 1,   /* Complete imported FWS/CWS movie. */
+        FVM_MOVIECLIP_CONTENT_PNG = 2,   /* Complete standalone PNG. */
+        FVM_MOVIECLIP_CONTENT_GIF = 3,   /* Complete supported standalone GIF. */
+        FVM_MOVIECLIP_CONTENT_JPEG = 4   /* Complete supported standalone JPEG. */
+    } FVM_MovieClipContentFormat;
+#define FVM_MOVIECLIP_CONTENT_MAX_BYTES 4294967295UL /* Exact portable metadata counter bound. */
+    /* Scalar snapshot of the last successful external import or explicit unload, not live I/O. */
+    typedef struct FVM_MovieClipContentInfo
+    {
+        unsigned long struct_size; /* Must equal sizeof this structure for query. */
+        FVM_MovieClipContentFormat format; /* Imported format, or explicit EMPTY after unload. */
+        unsigned int swf_version; /* Header version for SWF; zero for image/empty content. */
+        size_t encoded_bytes; /* Exact input byte count, including a compressed SWF header. */
+        size_t decoded_bytes; /* Canonical uncompressed SWF bytes, or decoded RGBA payload bytes. */
+        unsigned int pixel_width; /* Original image width; zero for SWF/empty, ignores transforms. */
+        unsigned int pixel_height; /* Original image height; zero for SWF/empty. */
+    } FVM_MovieClipContentInfo;
+    /* Initialize caller-owned scalar storage; null is INVALID_ARGUMENT. No allocation/callback. */
+    FVM_API FVM_Result fvm_movieclip_content_info_init(FVM_MovieClipContentInfo *);
+    /* Read committed metadata without script, decoding, transport or retaining input bytes.
+     * Same-context native instance, owner thread outside GC/teardown. Caller retains the clip.
+     * Exact struct_size required. NOT_FOUND for native/unmarked/internal-symbol/legacy content
+     * with no external import record. Explicit unload is OK with EMPTY and zero counters.
+     * All errors (including OOM/corrupt metadata) preserve the complete output descriptor.
+     * Fields are copied scalars; no pin is needed for the snapshot after successful return.
+     * Publication is atomic with content replacement; failures retain the old record.
+     * Counts fit CONTENT_MAX_BYTES, not process memory usage or progressive transfer progress. */
+    FVM_API FVM_Result fvm_movieclip_get_content_info(FVM_Context *, FVM_Object *,
+                                                       FVM_MovieClipContentInfo *);
     /* Create movieclip. */
     FVM_API FVM_Result fvm_movieclip_create(FVM_Context *, const char *name, unsigned int frames,
                                             FVM_Object **);

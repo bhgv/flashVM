@@ -33,8 +33,8 @@ cmake --build build-examples --target flashvm_examples_embedding_bitmap_fill_mai
 | [`fvm_context_destroy`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L48) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L54) | [GARBAGE_COLLECTION.md#api](../../../doc/GARBAGE_COLLECTION.md#api) — Корни, pin/unpin, режимы и ручная сборка. |
-| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L36) | [STANDARD_OBJECTS.md#movieclip-model](../../../doc/STANDARD_OBJECTS.md#movieclip-model) — MovieClip и host API сцены. |
-| [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L76) | [STANDARD_OBJECTS.md#movieclip-model](../../../doc/STANDARD_OBJECTS.md#movieclip-model) — MovieClip и host API сцены. |
+| [`fvm_movieclip_create`](../../../include/flashvm/movieclip.h#L69) | [STANDARD_OBJECTS.md#movieclip-model](../../../doc/STANDARD_OBJECTS.md#movieclip-model) — MovieClip и host API сцены. |
+| [`fvm_movieclip_render`](../../../include/flashvm/movieclip.h#L109) | [STANDARD_OBJECTS.md#movieclip-model](../../../doc/STANDARD_OBJECTS.md#movieclip-model) — MovieClip и host API сцены. |
 | [`fvm_object_call`](../../../include/flashvm/value.h#L126) | [AVM1_FUNCTIONS.md](../../../doc/AVM1_FUNCTIONS.md) — Метод, receiver и аргументы. |
 | [`fvm_runtime_create`](../../../include/flashvm/flashvm.h#L64) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L66) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
@@ -61,8 +61,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_context_destroy` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_gc_unpin` | function | [include/flashvm/gc.h:54](../../../include/flashvm/gc.h#L54) |
-| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
-| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
+| `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:69](../../../include/flashvm/movieclip.h#L69) |
+| `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:109](../../../include/flashvm/movieclip.h#L109) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:64](../../../include/flashvm/flashvm.h#L64) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:66](../../../include/flashvm/flashvm.h#L66) |

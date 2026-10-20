@@ -2,6 +2,7 @@
 #include "../core/runtime.hpp"
 #include "movieclip_storage.hpp"
 #include "movieclip_construction.hpp"
+#include "movieclip_content.hpp"
 #include "movieclip_state.hpp"
 #include "movieclip_provenance_constants.h"
 #include "movieclip_constants.h"
@@ -326,7 +327,10 @@ extern "C" FVM_Result fvm_movieclip_replace_image(FVM_Context *c, FVM_Object *ta
             return r;
         FVM_Object *next = fresh->resource_result.object;
         next->properties["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
-        r = seed_library(c, target, next);
+        r = fvm_movieclip_record_content(c, next, png ? FVM_MOVIECLIP_CONTENT_PNG :
+            gif ? FVM_MOVIECLIP_CONTENT_GIF : FVM_MOVIECLIP_CONTENT_JPEG, size, count, 0, width, height);
+        if (r == FVM_OK)
+            r = seed_library(c, target, next);
         if (r == FVM_OK)
             r = fvm_movieclip_set_source(c, fresh, source, source_size);
         return r == FVM_OK ? publish_content(c, target, old, next) : r;
@@ -432,7 +436,9 @@ extern "C" FVM_Result fvm_movieclip_unload(FVM_Context *c, FVM_Object *target)
                 return r;
             next->properties["source_base"] = location;
         }
-        r = seed_library(c, target, next);
+        r = fvm_movieclip_record_content(c, next, FVM_MOVIECLIP_CONTENT_EMPTY, 0, 0, 0, 0, 0);
+        if (r == FVM_OK)
+            r = seed_library(c, target, next);
         if (r != FVM_OK)
             return r;
         return publish_content(c, target, old, next);
