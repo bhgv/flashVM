@@ -48,6 +48,22 @@ The input-reader fixture substitutes real SDL memory streams for file opening,
 then controls advertised size and error injection. It checks normal EOF, stale
 errors, growth, truncation, invalid sizes, open/probe/close failures and cleanup
 without initializing a window or device.
+## Locale-independent numeric options (v0.665)
+
+The ASCII --fps/--speed parser no longer calls strtod or changes process locale.
+A C host can invoke it after selecting a comma-decimal locale without breaking
+`--fps 12.5` or changing other threads' locale. Decimal points and optional e/E
+exponents remain supported; a trailing % is allowed only for speed. Signs are
+allowed only on the exponent. Input is bounded to 128 bytes and exponent magnitude
+400; invalid syntax and values outside existing FPS/percentage limits fail.
+Conversion uses finite double presentation arithmetic, not an exact decimal or
+ActionScript number-conversion contract. Extremely long numeric arguments are not
+accepted. Frame limits retain their checked unsigned-integer path.
+
+The standalone options fixture poisons strtod and setlocale and verifies neither
+is called, then checks decimal/exponent forms, comma/garbage rejection, bounds
+and the speed suffix. It is a deterministic dependency/grammar test, not a fresh
+runtime validation of an installed foreign locale or every floating-point target.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

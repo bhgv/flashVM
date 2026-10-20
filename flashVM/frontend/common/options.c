@@ -1,26 +1,84 @@
-/* C89 CLI parsing independent of SDL and VM lifetime. Numeric syntax uses the C locale. */
+/* C89 CLI parsing independent of SDL/VM lifetime and process numeric locale. */
 #include "options.h"
 #include <errno.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Accept a finite, complete decimal argument in the documented inclusive range. */
+/* Parse ASCII decimal syntax without strtod/setlocale or process-global state.
+ * Rates are presentation doubles, not an exact decimal arithmetic/wire format. */
 static int decimal(const char *text, double maximum, int percent, double *out)
 {
-    char *end;
     const char *scan;
-    double value;
-    if (!text || !*text || *text == '-' || *text == '+' || *text == ' ' || *text == '\t')
+    size_t length = 0;
+    double value = 0;
+    int digits = 0, fractional = 0, point = 0, exponent = 0, negative = 0;
+    if (!text || !*text)
         return 0;
     for (scan = text; *scan; ++scan)
-        if (!((*scan >= '0' && *scan <= '9') || *scan == '.' || *scan == 'e' || *scan == 'E' ||
-              *scan == '+' || *scan == '-' || (percent && *scan == '%' && !scan[1])))
+        if (++length > FVM_DESKTOP_DECIMAL_MAX_TEXT)
             return 0;
-    errno = 0;
-    value = strtod(text, &end);
-    if (errno || (*end && !(percent && *end == '%' && !end[1])) || value != value ||
-        value < FVM_DESKTOP_MIN_RATE || value > maximum)
+    scan = text;
+    while ((*scan >= '0' && *scan <= '9') || *scan == '.')
+    {
+        if (*scan == '.')
+        {
+            if (point)
+                return 0;
+            point = 1;
+        }
+        else
+        {
+            unsigned int digit = (unsigned int)(*scan - '0');
+            if (value > (DBL_MAX - digit) / 10)
+                return 0;
+            value = value * 10 + digit;
+            ++digits;
+            if (point)
+                ++fractional;
+        }
+        ++scan;
+    }
+    if (!digits)
+        return 0;
+    if (*scan == 'e' || *scan == 'E')
+    {
+        ++scan;
+        if (*scan == '+' || *scan == '-')
+        {
+            negative = *scan == '-';
+            ++scan;
+        }
+        if (*scan < '0' || *scan > '9')
+            return 0;
+        while (*scan >= '0' && *scan <= '9')
+        {
+            exponent = exponent * 10 + (*scan++ - '0');
+            if (exponent > FVM_DESKTOP_DECIMAL_MAX_EXP)
+                return 0;
+        }
+    }
+    if (*scan == '%' && percent)
+        ++scan;
+    if (*scan)
+        return 0;
+    exponent = (negative ? -exponent : exponent) - fractional;
+    while (exponent > 0)
+    {
+        if (value > maximum / 10)
+            return 0;
+        value *= 10;
+        --exponent;
+    }
+    while (exponent < 0)
+    {
+        value /= 10;
+        if (value < FVM_DESKTOP_MIN_RATE)
+            return 0;
+        ++exponent;
+    }
+    if (value < FVM_DESKTOP_MIN_RATE || value > maximum)
         return 0;
     *out = value;
     return 1;
@@ -205,7 +263,8 @@ void fvm_desktop_help(const char *program)
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
     puts("  --mute                  Disable event-sound device opening/playback");
-    puts("  --stats                 Print interpreter/JIT and presentation counters after playback");
+    puts(
+        "  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");

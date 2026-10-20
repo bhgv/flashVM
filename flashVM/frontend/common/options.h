@@ -3,6 +3,10 @@
 #define FVM_DESKTOP_OPTIONS_H
 #include "flashvm/execution_mode.h"
 #include "flashvm/stage.h"
+#define FVM_DESKTOP_DECIMAL_MAX_TEXT 128U /* Bound CLI numeric scanning independently of locale.   \
+                                           */
+#define FVM_DESKTOP_DECIMAL_MAX_EXP                                                                \
+    400                            /* Larger explicit powers cannot reach the accepted range. */
 #define FVM_DESKTOP_RATE_NONE 0    /* No explicit timing option was selected. */
 #define FVM_DESKTOP_RATE_FPS 1     /* Absolute frame frequency option. */
 #define FVM_DESKTOP_RATE_PERCENT 2 /* Authored frequency multiplier option. */
