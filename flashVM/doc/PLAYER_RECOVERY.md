@@ -33,3 +33,19 @@ checks it in active, background and final-frame waits; failed restoration is not
 reported as successful user cancellation. Repaint errors are latched as well.
 The SDL test injects both reset events and reads actual restored texture pixels
 through the software renderer before presentation. It does not reset a GPU.
+
+## Background input isolation (v0.649)
+
+Both WILLENTERBACKGROUND and DIDENTERBACKGROUND clear held keys/buttons, primary
+touch and the pending transition FIFO. Key/mouse/finger events while backgrounded
+are discarded, including stale Escape/Back. WILLENTERFOREGROUND does not resume;
+DIDENTERFOREGROUND does. Quit, owned-window close and graphics reset still work
+while suspended. Desktop focus loss retains its previous clear-input policy and
+does not pause playback.
+
+Window, keyboard and mouse events carrying a nonzero foreign window ID are
+ignored, including foreign Escape and close. ID zero remains accepted for
+explicit synthetic/unassigned events. Touch keeps its selected-contact routing;
+this change does not claim a complete multi-window SDL host. The lifecycle test
+uses the real SDL queue for application events and injected native transitions,
+not a physical Android Activity.

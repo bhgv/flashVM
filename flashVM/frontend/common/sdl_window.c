@@ -252,13 +252,40 @@ static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *eve
     queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0);
 }
 
+/* Native key/mouse/window events are scoped to our SDL window. ID zero remains
+ * accepted for synthetic/unassigned events used by explicit embedding fixtures. */
+static int belongs_to_window(FVM_DesktopWindow *view, const SDL_Event *event)
+{
+    Uint32 id = 0;
+    switch (event->type)
+    {
+    case SDL_WINDOWEVENT:
+        id = event->window.windowID;
+        break;
+    case SDL_KEYDOWN:
+    case SDL_KEYUP:
+        id = event->key.windowID;
+        break;
+    case SDL_MOUSEMOTION:
+        id = event->motion.windowID;
+        break;
+    case SDL_MOUSEBUTTONDOWN:
+    case SDL_MOUSEBUTTONUP:
+        id = event->button.windowID;
+        break;
+    default:
+        break;
+    }
+    return !id || id == SDL_GetWindowID(view->window);
+}
+
 /* Handle OS events without advancing the VM. Expose/resize can repaint during a slow frame. */
 static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
 {
+    if (!belongs_to_window(view, event))
+        return 1;
     if (event->type == SDL_QUIT ||
-        (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE) ||
-        (event->type == SDL_KEYDOWN &&
-         (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK)))
+        (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_CLOSE))
         return 0;
     if (event->type == SDL_RENDER_DEVICE_RESET)
     {
@@ -274,11 +301,11 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         repaint_texture(view);
         return 1;
     }
-    if (event->type == SDL_APP_WILLENTERBACKGROUND)
+    if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND)
         view->background = 1;
     if (event->type == SDL_APP_DIDENTERFOREGROUND)
         view->background = 0;
-    if (event->type == SDL_APP_WILLENTERBACKGROUND ||
+    if (event->type == SDL_APP_WILLENTERBACKGROUND || event->type == SDL_APP_DIDENTERBACKGROUND ||
         (event->type == SDL_WINDOWEVENT && event->window.event == SDL_WINDOWEVENT_FOCUS_LOST))
     {
         view->input.left = view->input.right = view->input.up = view->input.down = 0;
@@ -290,6 +317,13 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->event_head = view->event_count = 0;
         ++view->event_epoch;
     }
+    /* Suppress stale physical transitions until DIDENTERFOREGROUND. Lifecycle,
+     * device and close events above remain serviced during suspension. */
+    if (view->background)
+        return 1;
+    if (event->type == SDL_KEYDOWN &&
+        (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK))
+        return 0;
     if (event->type == SDL_MOUSEMOTION)
     {
         if (event->motion.which == SDL_TOUCH_MOUSEID || view->touch_active)
