@@ -1,10 +1,10 @@
-# AS3 syntax frontend 0.3.5
+# AS3 syntax frontend 0.4.0
 
 `frontend/as3.atg` is the authoritative Coco/R parser source; the driver is C99.
 This is an AS3 syntax subset, without AST, type checking or ABC generation.
 It accepts package/import, class/interface, extends/implements, modifiers,
 var/const, signatures, blocks, loops, exceptions and is/as expressions.
-E4X/XML, metadata, Vector.<T> and regular expressions are unsupported.
+E4X/XML, metadata, Vector.<T> and regexp syntax are now recognized; see the current extension contract below.
 Modifier combinations, return and const validity need a future semantic pass.
 The separate AS3 → FIR → AVM1 tutorial lives in `../../fir/v1`; it is not AVM2.
 
@@ -61,8 +61,7 @@ words. Parameter lists iterate without stack growth proportional to their size.
 [Grammar](frontend/as3.atg): Declaration, Parameters, ParameterItem, MethodName,
 NamespaceDeclaration, UseNamespace, CatchClause. [Example](examples/Functions.as).
 Name/type resolution, modifier validity, default-expression constness and
-namespace execution are not implemented. Vector, metadata, E4X and ABC remain
-outside this series; numeric AS3 lowering does not acquire these constructs
+namespace execution are not implemented. ABC emission remains outside this series; numeric AS3 lowering does not acquire these constructs
 implicitly.
 
 ### C API parsing limits
@@ -76,3 +75,19 @@ bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
 are C99.
 
 [Detailed examples](examples/README.md).
+
+## Current syntax 0.4.0
+
+Supports ASI/restricted line breaks; declaration/member metadata; nested
+Vector.<...>; regexp with g/i/m/s/x and duplicate-flag checks; E4X XML/XMLList,
+comments, CDATA, PI, expression-interpolated names/values, attribute/wildcard/
+namespace/computed selectors, descendants and filters; default xml namespace.
+XML interpolations use the ordinary Coco/R expression grammar, including nested
+XML/regexp. Shift operators remain ordinary operators outside type context.
+Static closing names and delimiter termination are checked. XML entities, DTD,
+full Unicode name categories, namespace/type resolution and regexp-program
+validity are not checked. This is not complete XML validation or E4X execution.
+Escaped identifiers, AST construction and assignment-target/context checks still
+need work before a complete frontend can be claimed.
+
+[XmlVector.as](examples/XmlVector.as) is a syntax example; see the examples README.

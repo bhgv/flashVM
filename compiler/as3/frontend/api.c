@@ -17,6 +17,20 @@ static void report(int code, int line, int column, long offset)
     active->line = line;
     active->column = column;
     active->offset = offset;
+    if (code == 1103 || code == 1104)
+    {
+        snprintf(active->message, sizeof(active->message), "%s",
+                 code == 1103 ? "malformed regexp literal or flags"
+                              : "malformed XML literal or namespace directive");
+        return;
+    }
+    if (code == 1101 || code == 1102)
+    {
+        snprintf(active->message, sizeof(active->message), "%s",
+                 code == 1101 ? "semicolon required before this token"
+                              : "line terminator is forbidden after throw");
+        return;
+    }
     if (code == 1201)
     {
         snprintf(active->message, sizeof(active->message),

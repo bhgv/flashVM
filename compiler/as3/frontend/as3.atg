@@ -121,7 +121,7 @@ static int MemberAhead(int token)
 {
     return ModifierAhead(token) || token == functionSym || token == varSym ||
            token == constSym || token == namespaceSym || token == useSym ||
-           token == SemicolonSym;
+           token == SemicolonSym || token == LbrackSym;
 }
 /* Explicit declaration resolver factors common modifier prefixes from items. */
 static int DeclarationAhead(int token)
@@ -143,12 +143,339 @@ static int AccessorName(void)
     return !strcmp(name, "get") || !strcmp(name, "set");
 }
 
+/* Restricted productions inspect original trivia, including line breaks inside
+ * comments. Do not use token line numbers: a skipped pragma must not hide its newline.
+ */
+static int LineBreak(void)
+{
+    long pos;
+    for (pos = S_Pos + S_Len; pos < S_NextPos; ++pos)
+    {
+        int ch = S_CurrentCh(pos);
+        if (ch == 10 || ch == 13 ||
+            (ch == 226 && S_CurrentCh(pos + 1) == 128 &&
+             (S_CurrentCh(pos + 2) == 168 || S_CurrentCh(pos + 2) == 169)))
+            return 1;
+    }
+    return 0;
+}
+
+/* A generic suffix is distinguished from a dotted qualified identifier by raw trivia.
+ */
+static int TypeArgumentsAhead(void)
+{
+    return S_CurrentCh(Trivia(S_NextPos + S_NextLen)) == '<';
+}
+/* Metadata is declaration-only: a bracket expression followed by ordinary code stays an
+ * array. Balance brackets/quotes and comments without consuming scanner state. */
+static int MetadataAhead(void)
+{
+    long pos = S_NextPos;
+    int depth = 0, quote = 0;
+    for (;; ++pos)
+    {
+        int ch = S_CurrentCh(pos);
+        if (!ch)
+            return 0;
+        if (quote)
+        {
+            if (ch == 92 && S_CurrentCh(pos + 1))
+                ++pos;
+            else if (ch == quote)
+                quote = 0;
+        }
+        else if (ch == 34 || ch == 39)
+            quote = ch;
+        else if (ch == '/' &&
+                 (S_CurrentCh(pos + 1) == '/' || S_CurrentCh(pos + 1) == '*'))
+            pos = Trivia(pos) - 1;
+        else if (ch == '[')
+            ++depth;
+        else if (ch == ']' && !--depth)
+        {
+            pos = Trivia(pos + 1);
+            return S_CurrentCh(pos) == '[' || WordAt(pos, "class") ||
+                   WordAt(pos, "interface") || WordAt(pos, "function") ||
+                   WordAt(pos, "var") || WordAt(pos, "const") ||
+                   WordAt(pos, "public") || WordAt(pos, "private") ||
+                   WordAt(pos, "protected") || WordAt(pos, "internal") ||
+                   WordAt(pos, "static") || WordAt(pos, "final") ||
+                   WordAt(pos, "override") || WordAt(pos, "dynamic");
+        }
+    }
+}
+/* Scanner extensions stay in this language's generated-scanner translation unit. */
+int as3_scan_regexp(void);
+void as3_split_greater(void);
+
+/* xml remains a normal identifier except after the contextual default prefix. */
+static int DefaultXmlAhead(void)
+{
+    return WordAt(Trivia(S_NextPos + S_NextLen), "xml");
+}
+
 /* Recursive grammar boundaries call a C99 guard owned by this parser only.
  * The embedding wrapper turns limit exhaustion into a returned diagnostic. */
 void as3_syntax_enter(void);
 void as3_syntax_leave(void);
 
 /* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
+
+static int Sym;
+void as3_syntax_enter(void);
+void as3_syntax_leave(void);
+
+/* XML is a parser-selected lexical goal. Interpolations re-enter the ordinary
+ * Coco/R expression grammar; XML text never passes through the AS token DFA. */
+static void Get(void);
+static void Expression(void);
+void as3_seek_source(long position);
+
+/* Raw XML whitespace is not an ActionScript token boundary. */
+static long XmlSpace(long pos)
+{
+    while (S_CurrentCh(pos) == ' ' || S_CurrentCh(pos) == 9 || S_CurrentCh(pos) == 10 ||
+           S_CurrentCh(pos) == 13)
+        ++pos;
+    return pos;
+}
+/* Match a fixed delimiter without advancing or allocating source storage. */
+static int XmlAt(long pos, const char *text)
+{
+    while (*text)
+        if (S_CurrentCh(pos++) != (unsigned char)*text++)
+            return 0;
+    return 1;
+}
+/* XML names retain qualified spelling; namespace resolution is a later operation. */
+static long XmlName(long pos)
+{
+    int ch = S_CurrentCh(pos);
+    if (!((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_' ||
+          ch == ':' || ch >= 128))
+        return pos;
+    do
+    {
+        ch = S_CurrentCh(++pos);
+    } while ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||
+             (ch >= '0' && ch <= '9') || ch == '_' || ch == ':' || ch == '.' ||
+             ch == '-' || ch >= 128);
+    return pos;
+}
+/* Delimited XML markup has mandatory terminators, including at end of input. */
+static long XmlUntil(long pos, const char *end)
+{
+    while (S_CurrentCh(pos))
+    {
+        if (XmlAt(pos, end))
+            return pos + (long)strlen(end);
+        ++pos;
+    }
+    return -1;
+}
+/* Braces contain actual AS expressions, including nested XML/regexp literals. */
+static long XmlInterpolation(long pos)
+{
+    as3_seek_source(pos + 1);
+    Get();
+    Expression();
+    if (Sym != RbraceSym)
+        return -1;
+    return S_NextPos + S_NextLen;
+}
+/* XML element/list validation is bounded by the same nesting/work guard as AS.
+ * A negative return is a syntax failure; no malformed tail is silently ignored. */
+static long XmlElement(long pos)
+{
+    long open, open_end, close, close_end, next;
+    int dynamic = 0, list = 0, ch;
+    as3_syntax_enter();
+    if (XmlAt(pos, "<!--"))
+        next = XmlUntil(pos + 4, "-->");
+    else if (XmlAt(pos, "<![CDATA["))
+        next = XmlUntil(pos + 9, "]]>");
+    else if (XmlAt(pos, "<?"))
+        next = XmlUntil(pos + 2, "?>");
+    else
+    {
+        open = ++pos;
+        if (S_CurrentCh(pos) == '>')
+        {
+            list = 1;
+            open_end = pos;
+        }
+        else if (S_CurrentCh(pos) == '{')
+        {
+            dynamic = 1;
+            open_end = pos = XmlInterpolation(pos);
+            if (pos < 0)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+        }
+        else
+        {
+            open_end = XmlName(pos);
+            if (open_end == pos)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            pos = open_end;
+        }
+        for (;;)
+        {
+            next = XmlSpace(pos);
+            if (XmlAt(next, "/>"))
+            {
+                as3_syntax_leave();
+                return list ? -1 : next + 2;
+            }
+            if (S_CurrentCh(next) == '>')
+            {
+                pos = next + 1;
+                break;
+            }
+            if (list || next == pos)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            pos = next;
+            if (S_CurrentCh(pos) == '{')
+                pos = XmlInterpolation(pos);
+            else
+            {
+                next = XmlName(pos);
+                if (next == pos)
+                {
+                    as3_syntax_leave();
+                    return -1;
+                }
+                pos = next;
+            }
+            if (pos < 0)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            pos = XmlSpace(pos);
+            if (S_CurrentCh(pos++) != '=')
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            pos = XmlSpace(pos);
+            ch = S_CurrentCh(pos);
+            if (ch == '{')
+                pos = XmlInterpolation(pos);
+            else if (ch == 34 || ch == 39)
+            {
+                ++pos;
+                while (S_CurrentCh(pos) && S_CurrentCh(pos) != ch &&
+                       S_CurrentCh(pos) != '<')
+                    ++pos;
+                if (S_CurrentCh(pos++) != ch)
+                {
+                    as3_syntax_leave();
+                    return -1;
+                }
+            }
+            else
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            if (pos < 0)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+        }
+        for (;;)
+        {
+            ch = S_CurrentCh(pos);
+            if (!ch)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+            if (XmlAt(pos, "</"))
+            {
+                close = pos + 2;
+                if (S_CurrentCh(close) == '{')
+                {
+                    close_end = XmlInterpolation(close);
+                    if (close_end < 0)
+                    {
+                        as3_syntax_leave();
+                        return -1;
+                    }
+                }
+                else
+                {
+                    close_end = XmlName(close);
+                    if (!dynamic && (open_end - open != close_end - close))
+                    {
+                        as3_syntax_leave();
+                        return -1;
+                    }
+                    if (!dynamic)
+                    {
+                        long i;
+                        for (i = 0; i < open_end - open; ++i)
+                            if (S_CurrentCh(open + i) != S_CurrentCh(close + i))
+                            {
+                                as3_syntax_leave();
+                                return -1;
+                            }
+                    }
+                }
+                next = XmlSpace(close_end);
+                if (S_CurrentCh(next) != '>')
+                {
+                    as3_syntax_leave();
+                    return -1;
+                }
+                as3_syntax_leave();
+                return next + 1;
+            }
+            if (ch == '<')
+                pos = XmlElement(pos);
+            else if (ch == '{')
+                pos = XmlInterpolation(pos);
+            else
+                ++pos;
+            if (pos < 0)
+            {
+                as3_syntax_leave();
+                return -1;
+            }
+        }
+    }
+    as3_syntax_leave();
+    return next;
+}
+/* Publish one complete XML literal as the consumed token span for later ASI. */
+static void ReadXml(long start)
+{
+    int line = S_Line, column = S_Col;
+    long end = XmlElement(start);
+    if (end < 0)
+    {
+        SemError(1104);
+        end = start;
+        while (S_CurrentCh(end))
+            ++end;
+    }
+    as3_seek_source(end);
+    S_NextPos = start;
+    S_NextLen = (int)(end - start);
+    S_NextLine = line;
+    S_NextCol = column;
+    Get();
+}
 
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
@@ -327,6 +654,7 @@ PRODUCTIONS
   /* Элемент программы или тела: выбор между декларацией и инструкцией. */
   Item =
     Import
+    | IF(Sym == LbrackSym && MetadataAhead()) MetadataDeclaration
     | IF(DeclarationAhead(Sym)) Declaration
     | UseNamespace
     | Statement
@@ -355,8 +683,13 @@ PRODUCTIONS
             "var"
             | "const"
         )
-        Variables ";"
+        Variables Terminator
         | IF(Sym == functionSym) "function" ident FunctionTail
+        | IF(Sym == defaultSym && DefaultXmlAhead()) "default" ident    (.
+                                                                            if (!WordAt(S_Pos, "xml"))
+                                                                                SemError(1104);
+                                                                        .)
+        "namespace" "=" Expression Terminator
         | IfStatement
         | WhileStatement
         | ForStatement
@@ -364,21 +697,26 @@ PRODUCTIONS
         | TryStatement
         | "return"
         [
+            IF(!LineBreak() && Sym != SemicolonSym && Sym != RbraceSym && Sym != EOF_Sym)
             Expression
         ]
-        ";"
-        | "throw" Expression ";"
+        Terminator
+        | "throw"                                                       (.
+                                                                            if (LineBreak())
+                                                                                SemError(1102);
+                                                                        .)
+        Expression Terminator
         |
         (
             "break"
             | "continue"
         )
         [
-            ident
+            IF(Sym == identSym && !LineBreak()) ident
         ]
-        ";"
+        Terminator
         | "with" "(" Expression ")" Statement
-        | Expression ";"
+        | Expression Terminator
     )
                                                                         (. as3_syntax_leave(); .)
   .
@@ -394,7 +732,7 @@ PRODUCTIONS
   /* Проверка до тела и проверка после тела используют одно правило Statement. */
   WhileStatement =
     "while" "(" Expression ")" Statement
-    | "do" Statement "while" "(" Expression ")" ";"
+    | "do" Statement "while" "(" Expression ")" Terminator
   .
 
   /* Suppress relational in until the for-in separator is decided. The saved
@@ -472,6 +810,8 @@ PRODUCTIONS
         | "default" ":"
     )
     {
+        IF(Sym != caseSym && Sym != RbraceSym && Sym != EOF_Sym &&
+           (Sym != defaultSym || DefaultXmlAhead()))
         Item
     }
   .
@@ -567,6 +907,11 @@ PRODUCTIONS
     (
         Conditional
         [
+            IF(Sym == EqualSym || Sym == PlusEqualSym || Sym == MinusEqualSym ||
+               Sym == StarEqualSym || Sym == SlashEqualSym || Sym == PercentEqualSym ||
+               Sym == LessLessEqualSym || Sym == GreaterGreaterEqualSym ||
+               Sym == GreaterGreaterGreaterEqualSym || Sym == AndEqualSym ||
+               Sym == BarEqualSym || Sym == UparrowEqualSym)
             AssignOp Assignment
         ]
     )
@@ -692,6 +1037,7 @@ PRODUCTIONS
   Additive =
     Product
     {
+        IF(Sym == PlusSym || Sym == MinusSym)
         (
             "+"
             | "-"
@@ -704,6 +1050,7 @@ PRODUCTIONS
   Product =
     Unary
     {
+        IF(Sym == StarSym || Sym == SlashSym || Sym == PercentSym)
         (
             "*"
             | "/"
@@ -739,16 +1086,25 @@ PRODUCTIONS
   Postfix =
     Primary
     {
-        "." ident
-        [
-            "::" ident
-        ]
-        | Subscript
-        | Arguments
+        IF(Sym == PointSym || Sym == PointPointSym || Sym == LbrackSym || Sym == LparenSym)
+        (
+            "."
+            (
+                "<" TypeName TypeClose
+                | "(" Expression ")"
+                | XmlProperty
+            )
+            | ".." XmlProperty
+            | Subscript
+            | Arguments
+        )
     }
     [
-        "++"
-        | "--"
+        IF(!LineBreak() && (Sym == PlusPlusSym || Sym == MinusMinusSym))
+        (
+            "++"
+            | "--"
+        )
     ]
   .
 
@@ -771,10 +1127,14 @@ PRODUCTIONS
     (
         ident
         [
-            "::" ident
+            "::" XmlProperty
         ]
+        | "@" XmlSelector
+        | "*" "::" XmlSelector
         | number
         | hexnum
+        | Regexp
+        | XmlLiteral
         | text
         | "true"
         | "false"
@@ -840,17 +1200,25 @@ PRODUCTIONS
   /* Ключ и значение свойства object literal; разделитель — двоеточие. */
   Property =
     (
-        ident
+        PropertyName
         | text
         | number
+        | hexnum
     )
     ":" Assignment
   .
 
   /* Квалифицированное имя типа AS3; разрешение имени будет отдельным проходом. */
   TypeName =
-    QualifiedName
-    | "*"
+                                                                        (. as3_syntax_enter(); .)
+    (
+        QualifiedName
+        [
+            "." "<" TypeName TypeClose
+        ]
+        | "*"
+    )
+                                                                        (. as3_syntax_leave(); .)
   .
 
   /* void is only a return annotation, never a class/variable/parameter type. */
@@ -863,8 +1231,11 @@ PRODUCTIONS
   QualifiedName =
     ident
     {
-        "." ident
+        IF(Sym == PointSym && !TypeArgumentsAhead()) "." ident
     }
+    [
+        "::" ident
+    ]
   .
 
   /* Импорт AS3; допускается последняя компонента-звёздочка. */
@@ -877,7 +1248,7 @@ PRODUCTIONS
             | "*"
         )
     }
-    ";"
+    Terminator
   .
 
   /* Factor modifiers before class/interface to keep the grammar LL(1). */
@@ -919,7 +1290,7 @@ PRODUCTIONS
             "var"
             | "const"
         )
-        Variables ";"
+        Variables Terminator
         | NamespaceDeclaration
     )
   .
@@ -934,12 +1305,12 @@ PRODUCTIONS
             | QualifiedName
         )
     ]
-    ";"
+    Terminator
   .
 
   /* Contextual namespace selection does not make arbitrary identifiers modifiers. */
   UseNamespace =
-    "use" "namespace" QualifiedName ";"
+    "use" "namespace" QualifiedName Terminator
   .
 
   /* Модификаторы AS3; допустимость их сочетаний проверяется семантически. */
@@ -958,6 +1329,9 @@ PRODUCTIONS
   /* Поле или метод класса; дополнительное имя используется для get/set. */
   Member =
     {
+        Metadata
+    }
+    {
         IF(ModifierAhead(Sym)) Modifier
     }
     (
@@ -965,7 +1339,7 @@ PRODUCTIONS
             "var"
             | "const"
         )
-        Variables ";"
+        Variables Terminator
         | "function" MethodName FunctionTail
         | NamespaceDeclaration
         | UseNamespace
@@ -979,7 +1353,7 @@ PRODUCTIONS
     [
         ":" ReturnType
     ]
-    ";"
+    Terminator
   .
 
   /* Only get/set admit a second identifier; f g() is rejected. */
@@ -989,6 +1363,153 @@ PRODUCTIONS
     [
         IF(Sym==identSym && accessor) ident
     ]
+  .
+
+  /* Metadata attributes precede a declaration, never an arbitrary statement. */
+  MetadataDeclaration =
+    Metadata
+    {
+        Metadata
+    }
+    Declaration
+  .
+
+  /* Attribute arguments are assignment expressions; constness is a later semantic check. */
+  Metadata =
+    "[" QualifiedName
+    [
+        "("
+        [
+            Assignment
+            {
+                "," Assignment
+            }
+        ]
+        ")"
+    ]
+    "]"
+  .
+
+  /* In type context >>, >>> and their assignment forms close nested generics one > at a time. */
+  TypeClose =
+                                                                        (.
+                                                                            if (S_CurrentCh(S_NextPos) == '>')
+                                                                            {
+                                                                                as3_split_greater();
+                                                                                Sym = GreaterSym;
+                                                                            }
+                                                                        .)
+    ">"
+  .
+
+  /* Reserved words are legal property names after a dot and in object literal keys. */
+  PropertyName =
+    ident
+    | "class"
+    | "interface"
+    | "function"
+    | "var"
+    | "const"
+    | "public"
+    | "private"
+    | "protected"
+    | "internal"
+    | "static"
+    | "dynamic"
+    | "override"
+    | "final"
+    | "namespace"
+    | "use"
+    | "import"
+    | "package"
+    | "extends"
+    | "implements"
+    | "if"
+    | "else"
+    | "for"
+    | "while"
+    | "do"
+    | "switch"
+    | "case"
+    | "default"
+    | "try"
+    | "catch"
+    | "finally"
+    | "throw"
+    | "return"
+    | "break"
+    | "continue"
+    | "with"
+    | "new"
+    | "delete"
+    | "typeof"
+    | "void"
+    | "instanceof"
+    | "in"
+    | "is"
+    | "as"
+    | "true"
+    | "false"
+    | "null"
+    | "undefined"
+    | "this"
+    | "super"
+  .
+
+  /* Regexp is scanned only when an operand is expected; division remains an operator. */
+  Regexp =
+                                                                        (.
+                                                                            if (!as3_scan_regexp())
+                                                                                SemError(1103);
+                                                                        .)
+    (
+        "/"
+        | "/="
+    )
+  .
+
+  /* XML literals switch lexical goals only after an expression's opening <. */
+  XmlLiteral =
+                                                                        (. long start = S_NextPos; .)
+    "<"                                                                 (. ReadXml(start); .)
+  .
+
+  /* Attributes, wildcards, namespace selectors and computed E4X properties. */
+  XmlProperty =
+    [
+        "@"
+    ]
+    XmlSelector
+  .
+
+  /* Qualified and computed selector without a second attribute prefix. */
+  XmlSelector =
+    (
+        PropertyName
+        | "*"
+        | "[" Expression "]"
+    )
+    [
+        "::"
+        (
+            PropertyName
+            | "*"
+            | "[" Expression "]"
+        )
+    ]
+  .
+
+  /* Automatic insertion is allowed at a line break, before } or at EOF.
+  An explicit semicolon always wins; for-header separators remain mandatory. */
+  Terminator =
+                                                                        (. int explicit_semi = 0; .)
+    [
+        IF(Sym == SemicolonSym) ";"                                     (. explicit_semi = 1; .)
+    ]
+                                                                        (.
+                                                                            if (!explicit_semi && Sym != RbraceSym && Sym != EOF_Sym && !LineBreak())
+                                                                                SemError(1101);
+                                                                        .)
   .
 
 END

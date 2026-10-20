@@ -37,5 +37,24 @@ int main(void)
         free(flat);
         if(!as3_check(valid,strlen(valid),&diagnostic)) return 32;
     }
+    {
+        const char *xml = "var x=<a>{<b/>}</a>; var r=/[a-z]+/gi; var v:Vector.<Vector.<int>>;";
+        const char *bad = "var x=<a>{1+}</a>;";
+        for (i=0;i<32;++i) {
+            if(as3_check(bad,strlen(bad),&diagnostic)) return 40;
+            if(!as3_check(xml,strlen(xml),&diagnostic)) return 41;
+            if(as3_check("var r=/abc/gg;",14,&diagnostic)) return 42;
+            if(!as3_check(valid,strlen(valid),&diagnostic)) return 43;
+        }
+    }
+    {
+        char xml[8192]; unsigned j; size_t used;
+        strcpy(xml,"var x=");used=strlen(xml);
+        for(j=0;j<600;++j){memcpy(xml+used,"<a>",3);used+=3;}
+        for(j=0;j<600;++j){memcpy(xml+used,"</a>",4);used+=4;}
+        xml[used++]=';';xml[used]=0;
+        if(as3_check(xml,used,&diagnostic) || diagnostic.code!=-3) return 44;
+        if(!as3_check(valid,strlen(valid),&diagnostic)) return 45;
+    }
     return 0;
 }

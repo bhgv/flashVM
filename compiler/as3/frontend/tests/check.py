@@ -23,9 +23,35 @@ good = [
     'function f(a:Number=1,b:Number=2,...rest:Array):void {}',
     '// EOF comment' , '/* stars **/ var x:Number = 1;',
 ]
+good += [
+    'var x:Vector.<int>;', 'var x:Vector.<Vector.<int>>;',
+    'var x:Vector.<Vector.<Vector.<int>>>;',
+    'var x:Vector.<int>=new Vector.<int>();',
+    'function f(v:Vector.<Vector.<int>>):Vector.<int>{return v[0]}',
+    '[Event(name="x",type="flash.events.Event")] public class C { [Bindable] public var x:int; }',
+    '[A][B("x")] class C {}', 'var a=[1,2]; a[0];',
+    'var r=/[a-z\\/]+/gim; r.test("abc");', 'var r=/=x/;',
+    'var r=/a\\/b/sx;', 'var x=a / b / c; x /= 2;',
+    'var o={class:1,default:2}; trace(o.class,o.default);',
+]
+good += [
+    'var x=<xml/>;', 'var x=<root a="x"><child>{1+2}</child></root>;',
+    'var x=<><a/><b/></>;',
+    'var x=<{tag} {name}={value}><item>{f(/x/g)}</item></{tag}>;',
+    'var x=<a><!-- comment --><![CDATA[<text>]]><?p test?></a>; trace(x..item, x.@id, x.ns::*, x.(a>1));',
+    'var x=<a>{<b/>}</a>;', 'default xml namespace = "urn:x"; var xml=<a/>;',
+    'switch(x){case 1: default xml namespace="x"; break; default:break;}',
+]
 good += [p.read_text() for p in sorted((Path(__file__).resolve().parents[2] / 'examples').glob('*.as'))]
 good += ['function many('+','.join('p%d:Number'%i for i in range(2000))+'):void {}']
-bad = ['function f(...rest,x:Number):void {}', 'function f(a:Number=1,b:Number):void {}',
+bad = ['var x=<a></b>;', 'var x=<a>;', 'var x=<a x=bare/>;',
+       'var x=<a>{1+}</a>;', 'var x=<a><!--oops</a>;',
+       'trace(@@id);', 'default invalid namespace="x";',
+'var x:Vector.<>;', 'var x:Vector.<int,Number>;',
+       'var x:Vector.<Vector.<int>;', '[Event(] class C {}',
+       '[Event] x();', 'var r=/[abc/;', 'var r=/abc/gg;',
+       'var r=/abc/q;', 'var r=/abc\n/;',
+'function f(...rest,x:Number):void {}', 'function f(a:Number=1,b:Number):void {}',
        'function f(a:Number,):void {}', 'function f(...args=1):void {}',
        'for each(var x=0;x<3;x++) f();', 'class * {}', 'class void {}',
        'var x:void;', 'function f(x:void):void {}', 'package * {}',
@@ -33,8 +59,8 @@ bad = ['function f(...rest,x:Number):void {}', 'function f(a:Number=1,b:Number):
        'namespace = "urn:x";', 'use namespace ;', 'ns::;',
 'package x { class C {', 'package { import ; }',
        'class C extends A, B {}', 'var x: = 1;', 'const = 2;',
-       'interface I { function f() {} }', 'var x = <xml/>;',
-       'var x:Vector.<int>;', '[Event(name="x")] class C {}',
+       'interface I { function f() {} }',
+
         '/* missing', 'var x = 1; @',
        'package x { class C {} } trailing nonsense', 'var x = ;', 'trace(1 add 2);', 'trace(1 eq 2);']
 with tempfile.TemporaryDirectory() as tmp:
