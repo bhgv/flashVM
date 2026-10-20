@@ -17,3 +17,19 @@ unchanged. A later accepted presentation replaces it.
 checks padded rows, caller-buffer reuse, rejected surfaces and replacement.
 This is Linux host protocol/renderer validation; it does not certify visible
 windows or Android/Windows/macOS device recovery.
+
+## Device and render-target reset (v0.648)
+
+SDL_RENDER_DEVICE_RESET recreates the streaming texture, sets its blend mode,
+uploads the retained frame and redraws it on the main thread. SDL_RENDER_TARGETS_RESET
+only redraws: the player uses a streaming texture, not a target texture. A reset
+before the first frame creates empty storage without presenting undefined pixels.
+No timeline advance, script/timer callback or additional VM rendering occurs.
+Exposure/resize also redraw the uploaded texture.
+
+`fvm_desktop_window_status` reports persistent presentation/input failures
+separately from the normal close result of `fvm_desktop_window_events`. The player
+checks it in active, background and final-frame waits; failed restoration is not
+reported as successful user cancellation. Repaint errors are latched as well.
+The SDL test injects both reset events and reads actual restored texture pixels
+through the software renderer before presentation. It does not reset a GPU.

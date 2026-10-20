@@ -309,6 +309,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             *quit = 1;
             break;
         }
+        if (!checked(fvm_desktop_window_status(window), "window events", path))
+            goto cleanup;
         if (!fvm_desktop_window_active(window))
         {
             if (audio.output &&
@@ -316,6 +318,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                 goto cleanup;
             if (!fvm_desktop_window_events(window, FVM_DESKTOP_AUDIO_WAIT))
                 *quit = 1;
+            if (!checked(fvm_desktop_window_status(window), "background window events", path))
+                goto cleanup;
             if (*quit)
                 break;
             next = fvm_desktop_now();
@@ -374,6 +378,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
                 *quit = 1;
                 break;
             }
+            if (!checked(fvm_desktop_window_status(window), "waiting window events", path))
+                goto cleanup;
             continue;
         }
         if (!checked(fvm_movieclip_advance(context, clip, 1), "timeline tick", path))
@@ -408,6 +414,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
             wait = 1;
         if (!fvm_desktop_window_events(window, wait))
             *quit = 1;
+        if (!checked(fvm_desktop_window_status(window), "final window events", path))
+            goto cleanup;
     }
     if (options->stats)
     {

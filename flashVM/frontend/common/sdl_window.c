@@ -102,6 +102,35 @@ static int draw_texture(FVM_DesktopWindow *view)
     return 1;
 }
 
+/* Recreate invalid device storage from our native snapshot, publishing only after
+ * creation, blend setup and upload all succeed. No movie/VM execution is entered. */
+static int restore_texture(FVM_DesktopWindow *view)
+{
+    SDL_Texture *replacement =
+        SDL_CreateTexture(view->renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING,
+                          (int)view->logical_width, (int)view->logical_height);
+    if (!replacement)
+        return 0;
+    if (SDL_SetTextureBlendMode(replacement, SDL_BLENDMODE_NONE) != 0 ||
+        (view->ready &&
+         SDL_UpdateTexture(replacement, 0, view->last_frame,
+                           (int)(view->logical_width * FVM_DESKTOP_RGBA_BYTES)) != 0))
+    {
+        SDL_DestroyTexture(replacement);
+        return 0;
+    }
+    SDL_DestroyTexture(view->texture);
+    view->texture = replacement;
+    return 1;
+}
+
+/* An event-triggered draw failure is a host error, never a request to quit. */
+static void repaint_texture(FVM_DesktopWindow *view)
+{
+    if (view->ready && !view->background && !draw_texture(view))
+        view->event_error = FVM_ERROR;
+}
+
 /* Consume a validated frame using the SDL-owned texture on the main thread. */
 static FVM_Result present_sdl(const FVM_RasterSurface *surface, void *userdata)
 {
@@ -231,6 +260,20 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         (event->type == SDL_KEYDOWN &&
          (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK)))
         return 0;
+    if (event->type == SDL_RENDER_DEVICE_RESET)
+    {
+        if (!restore_texture(view))
+            view->event_error = FVM_ERROR;
+        else
+            repaint_texture(view);
+        return 1;
+    }
+    if (event->type == SDL_RENDER_TARGETS_RESET)
+    {
+        /* Streaming textures survive a target reset; only redraw the window. */
+        repaint_texture(view);
+        return 1;
+    }
     if (event->type == SDL_APP_WILLENTERBACKGROUND)
         view->background = 1;
     if (event->type == SDL_APP_DIDENTERFOREGROUND)
@@ -321,7 +364,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     if (view->ready && event->type == SDL_WINDOWEVENT &&
         (event->window.event == SDL_WINDOWEVENT_EXPOSED ||
          event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED))
-        draw_texture(view);
+        repaint_texture(view);
     return 1;
 }
 
@@ -414,6 +457,12 @@ int fvm_desktop_window_events(FVM_DesktopWindow *view, int timeout_ms)
     if (timeout_ms > 0 && SDL_WaitEventTimeout(&event, timeout_ms))
         return handle_event(view, &event);
     return 1;
+}
+
+/* Read persistent input/presentation failure separately from normal window close. */
+FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *view)
+{
+    return view ? view->event_error : FVM_INVALID_ARGUMENT;
 }
 
 /* Copy host state before publishing it into the rooted script-visible HostInput object. */

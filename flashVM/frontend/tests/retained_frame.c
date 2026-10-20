@@ -1,5 +1,14 @@
 /* Real SDL dummy renderer: copied frame lifetime, pitch and rejected input. */
+#include <SDL.h>
+static int fail_create;
+static SDL_Texture *test_create(SDL_Renderer *r, Uint32 f, int a, int w, int h)
+{
+    if (fail_create) { SDL_SetError("injected texture allocation failure"); return NULL; }
+    return SDL_CreateTexture(r, f, a, w, h);
+}
+#define SDL_CreateTexture test_create
 #include "../common/sdl_window.c"
+#undef SDL_CreateTexture
 #include <assert.h>
 int main(void)
 {
@@ -17,6 +26,22 @@ int main(void)
     assert(fvm_desktop_window_present(view, &surface, sizeof(source)));
     assert(view->last_frame_size == sizeof(expected));
     assert(!memcmp(view->last_frame, expected, sizeof(expected)));
+    {
+        SDL_Event event;
+        unsigned char pixels[16];
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_RENDER_DEVICE_RESET;
+        assert(handle_event(view, &event));
+        assert(fvm_desktop_window_status(view) == FVM_OK);
+        assert(SDL_RenderClear(view->renderer) == 0);
+        assert(SDL_RenderCopy(view->renderer, view->texture, NULL, NULL) == 0);
+        assert(SDL_RenderReadPixels(view->renderer, NULL, SDL_PIXELFORMAT_RGBA32, pixels, 8) == 0);
+        assert(!memcmp(pixels, expected, sizeof(expected)));
+        event.type = SDL_RENDER_TARGETS_RESET;
+        assert(handle_event(view, &event));
+        assert(fvm_desktop_window_status(view) == FVM_OK);
+        assert(fvm_desktop_window_status(NULL) == FVM_INVALID_ARGUMENT);
+    }
     memset(source, 0, sizeof(source));
     assert(!memcmp(view->last_frame, expected, sizeof(expected)));
     surface.width = 1;
@@ -27,6 +52,18 @@ int main(void)
     assert(!memcmp(view->last_frame, expected, sizeof(expected)));
     assert(fvm_desktop_window_present(view, &surface, sizeof(source)));
     assert(view->last_frame[0] == 0 && view->last_frame[15] == 0);
+    {
+        SDL_Event event;
+        SDL_Texture *old = view->texture;
+        memset(&event, 0, sizeof(event)); event.type = SDL_RENDER_DEVICE_RESET;
+        fail_create = 1;
+        assert(handle_event(view, &event));
+        assert(view->texture == old);
+        assert(fvm_desktop_window_status(view) == FVM_ERROR);
+        fail_create = 0;
+        assert(handle_event(view, &event));
+        assert(fvm_desktop_window_status(view) == FVM_ERROR);
+    }
     fvm_desktop_window_close(view);
     return 0;
 }

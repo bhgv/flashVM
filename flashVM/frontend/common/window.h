@@ -51,6 +51,8 @@ FVM_DesktopWindow *fvm_desktop_window_open(const char *, unsigned int, unsigned 
 int fvm_desktop_window_present(FVM_DesktopWindow *, const FVM_RasterSurface *, size_t byte_count);
 /* Drain pending events, then wait at most timeout_ms; return zero on close/Escape. */
 int fvm_desktop_window_events(FVM_DesktopWindow *, int timeout_ms);
+/* Read a latched input/presentation failure; independent of the events close result. */
+FVM_Result fvm_desktop_window_status(FVM_DesktopWindow *);
 /* Copy current input state without retaining caller storage or entering the VM. */
 void fvm_desktop_window_input(FVM_DesktopWindow *, FVM_DesktopInput *);
 /* Deliver queued native snapshots in order on the VM owner thread, before its next tick.
