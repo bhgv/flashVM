@@ -14,6 +14,25 @@ flashvm_player_legacy_cursor_interpreter/jit исполняют настоящи
 проверяя hide/hide/show/show → 1/0/0/1. Заведомо неверные значения ошибочны;
 отдельный listener-вызов должен отказать в SWF5 и пройти в SWF6–8. Dummy video
 проверяет скриптовую семантику, не физический курсор и не полный Flash API.
+## Явное отключение корневого потока (v0.663)
+
+Root streaming sound проверяется до создания окна/устройства. Без --mute фильм
+с корневым потоком явно сообщает о неподдержанном воспроизведении. С --mute
+проигрыватель использует новый [fvm_movieclip_load_swf_ex](../include/flashvm/movieclip.h#L90) и
+[FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../include/flashvm/movieclip.h#L82): проверяет и пропускает только корневые потоковые
+управления. Прежний [fvm_movieclip_load_swf](../include/flashvm/movieclip.h#L43) остаётся строгим.
+
+Декодированный вход opt-in должен побайтно совпасть с текущим источником
+[fvm_load_memory](../include/flashvm/flashvm.h#L72). Поэтому порядок/версия заголовков, кадры, дубликаты и PCM alignment
+проверяются для точно импортируемого root. Неизвестные флаги ошибочны; при отказе
+выход null. Нет действий скрипта и устройств. Хост обязан укоренить клип/библиотеку;
+ограничения потока владельца/GC сохраняются. Сжатый звук остаётся непрозрачным:
+MP3-декодер и A/V sync не добавлены. Sprite streams ещё не поддержаны. Event sound
+сохраняет отдельный callback хоста; --mute ставит прежний muted callback.
+
+Тесты: FWS/CWS PCM, непрозрачный MP3, смесь event/stream, неверные заголовки,
+orphan/duplicate/odd PCM, строгий и opt-in импорт, другой источник, неизвестные
+флаги, отказ вложенному потоку и укоренённый клип через GC/advance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -24,5 +43,9 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_load_memory` | function | [include/flashvm/flashvm.h:72](../include/flashvm/flashvm.h#L72) |
+| `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../include/flashvm/movieclip.h#L43) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:90](../include/flashvm/movieclip.h#L90) |
 | `fvm_standard_mouse_install` | function | [include/flashvm/mouse.h:50](../include/flashvm/mouse.h#L50) |
+| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:82](../include/flashvm/movieclip.h#L82) |
 <!-- source-links:end -->

@@ -1,5 +1,7 @@
 /* FlashVM: bounded SWF root/sprite action timelines and linkage resources for MovieClip.
    Unimplemented scene/resource tags remain unsupported instead of being silently discarded. */
+#include "flashvm/swf_stream_sound.h"
+#include "sound_stream_constants.h"
 #include "format_constants.h"
 #include "clip_actions.hpp"
 #include "sound_event_constants.h"
@@ -168,7 +170,8 @@ FVM_Result inspect_timeline(FVM_Context *context, const fvm_detail::vector<unsig
                             fvm_detail::vector<Export> *exports,
                             fvm_detail::vector<FVM_SWFShape> *shapes,
                             fvm_detail::vector<FVM_SWFBitmap> *bitmaps, size_t bitmap_limit,
-                            fvm_detail::map<unsigned long, bool> &known)
+                            fvm_detail::map<unsigned long, bool> &known,
+                            bool mute_root_streams = false)
 {
     /* Empty DefineSprite class symbols have zero frames and an End-only stream.
      * Root playback still requires a frame; do not synthesize one in the dictionary. */
@@ -222,6 +225,17 @@ FVM_Result inspect_timeline(FVM_Context *context, const fvm_detail::vector<unsig
                         return FVM_INVALID_ARGUMENT;
             }
             return fvm_swf_document_finish(timeline.document);
+        }
+        if (mute_root_streams && sprites &&
+            (tag == FVM_SWF_SOUND_STREAM_HEAD || tag == FVM_SWF_SOUND_STREAM_HEAD2 ||
+             tag == FVM_SWF_SOUND_STREAM_BLOCK))
+        {
+            /* The exact root source was validated before this scene walk. Never
+             * apply this opt-in to nested sprite timelines or synthesize playback. */
+            if (frame > timeline.frames)
+                return FVM_INVALID_ARGUMENT;
+            at += count;
+            continue;
         }
         if (!sprites && (tag == FVM_SWF_TAG_DEFINE_SPRITE || tag == FVM_SWF_TAG_EXPORT_ASSETS || tag == FVM_SWF_TAG_DEFINE_SHAPE || tag == FVM_SWF_TAG_DEFINE_SHAPE2 || tag == FVM_SWF_TAG_DEFINE_SHAPE3 ||
                          tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS || tag == FVM_SWF_TAG_DEFINE_BITS_LOSSLESS2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG2 || tag == FVM_SWF_TAG_DEFINE_BITS_JPEG3 || tag == FVM_SWF_TAG_DEFINE_BITS || tag == FVM_SWF_TAG_JPEG_TABLES))
@@ -905,13 +919,14 @@ FVM_Result build_library(FVM_Context *c, const fvm_detail::vector<unsigned char>
 } // namespace
 
 /* Decode and validate root/sprite timelines and exports before publishing a MovieClip. */
-extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, size_t size,
-                                             const char *name, FVM_Object **out)
+extern "C" FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *c, const void *input, size_t size,
+                                                const char *name, unsigned long flags,
+                                                FVM_Object **out)
 {
     if (!out)
         return FVM_INVALID_ARGUMENT;
     *out = 0;
-    if (!c || !name || !input)
+    if (!c || !name || !input || (flags & ~FVM_SWF_IMPORT_MUTE_ROOT_STREAMS))
         return FVM_INVALID_ARGUMENT;
     try
     {
@@ -923,6 +938,17 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         FVM_Result r = fvm_swf_decode(input, size, limit, bytes, &info);
         if (r != FVM_OK)
             return r;
+        if (flags & FVM_SWF_IMPORT_MUTE_ROOT_STREAMS)
+        {
+            /* [GC:] Inspection borrows canonical bytes without publishing managed state. */
+            if (!c->swf_loaded || bytes.size() != c->swf_bytes.size() ||
+                std::memcmp(bytes.begin(), c->swf_bytes.begin(), bytes.size()))
+                return FVM_INVALID_ARGUMENT;
+            size_t stream_count = 0;
+            r = fvm_swf_stream_sound_count(c, &stream_count);
+            if (r != FVM_OK)
+                return r;
+        }
         Timeline main_timeline;
         main_timeline.frames = info.frame_count;
         fvm_detail::vector<Timeline> sprites;
@@ -932,7 +958,8 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
         size_t start = 8 + (5 + 4 * (bytes[8] >> 3) + 7) / 8 + 4;
         fvm_detail::map<unsigned long, bool> known;
         r = inspect_timeline(c, bytes, start, bytes.size(), info.version, main_timeline, &sprites,
-                             &exports, &shapes, &bitmaps, limit, known);
+                             &exports, &shapes, &bitmaps, limit, known,
+                             (flags & FVM_SWF_IMPORT_MUTE_ROOT_STREAMS) != 0);
         if (r != FVM_OK)
             return r;
 
@@ -976,6 +1003,13 @@ extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, 
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+/* Preserve the strict default import contract for every existing embedding client. */
+extern "C" FVM_Result fvm_movieclip_load_swf(FVM_Context *c, const void *input, size_t size,
+                                             const char *name, FVM_Object **out)
+{
+    return fvm_movieclip_load_swf_ex(c, input, size, name, 0, out);
 }
 
 /* Read neutral document records from private frame storage, without invoking script getters. */

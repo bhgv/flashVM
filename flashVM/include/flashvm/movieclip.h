@@ -78,6 +78,17 @@ extern "C"
        Viewport applies once to every world-space node, preserving root visibility/color. */
     FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
                                                 const FVM_Affine *viewport);
+    /* Explicit import policy; no other flag bits are accepted. */
+#define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS 1UL /* Validate and omit root streaming sound controls. */
+    /* Import with optional root-stream muting; zero flags retain load_swf behavior.
+     * Muting requires input to match the context's current fvm_load_memory source
+     * after FWS/CWS decoding, so root stream validation uses the exact same bytes.
+     * Validates header ordering, frame/count bounds and PCM block alignment before
+     * scene allocation; does not decode compressed sound or support sprite streams.
+     * Event sounds retain their existing explicit host callback policy. Runs no actions.
+     * On failure *out is null. Owner thread, outside GC/teardown. [GC:] Root returned clip. */
+    FVM_API FVM_Result fvm_movieclip_load_swf_ex(FVM_Context *, const void *, size_t,
+                                                 const char *, unsigned long flags, FVM_Object **out);
 #ifdef __cplusplus
 }
 #endif

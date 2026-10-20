@@ -11,6 +11,7 @@
 #include "flashvm/standard.h"
 #include "flashvm/timers.h"
 #include "flashvm/swf.h"
+#include "flashvm/swf_stream_sound.h"
 #include "options.h"
 #include "window.h"
 #include <SDL.h>
@@ -179,6 +180,7 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     FVM_ExecutionMode mode;
     unsigned char *bytes = 0;
     size_t length = 0;
+    size_t stream_count = 0; /* Detect unsupported root streaming playback before native setup. */
     double authored, rate, width, height, period, next;
     unsigned long ticks = 0, limit = options->frames;
     unsigned long presentations = 0, refreshes = 0; /* Count successful draws separately from timeline ticks. */
@@ -207,6 +209,14 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
         goto cleanup;
     if (!checked(fvm_swf_stage_bounds(context, &bounds), "stage rectangle", path))
         goto cleanup;
+    if (!checked(fvm_swf_stream_sound_count(context, &stream_count), "root stream validation", path))
+        goto cleanup;
+    if (stream_count && !options->mute)
+    {
+        fprintf(stderr, "%s: root streaming audio playback is unsupported; use --mute to play silently\n",
+                path);
+        goto cleanup;
+    }
     authored = (double)info.frame_rate_fixed8 / FVM_DESKTOP_FIXED8_UNIT;
     if (!fvm_desktop_rate(options, authored, &rate))
     {
@@ -246,8 +256,8 @@ static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
     if (info.version >= FVM_BROADCASTER_MIN_SWF_VERSION &&
         !checked(fvm_standard_broadcaster_install(context), "AsBroadcaster namespace", path))
         goto cleanup;
-    if (!checked(fvm_movieclip_load_swf(context, bytes, length, "_root", &clip), "scene import",
-                 path))
+    if (!checked(fvm_movieclip_load_swf_ex(context, bytes, length, "_root",
+                      options->mute ? FVM_SWF_IMPORT_MUTE_ROOT_STREAMS : 0, &clip), "scene import", path))
         goto cleanup;
     /* [GC:] Pin the published root before any script/frame operation can collect it. */
     if (!checked(fvm_gc_pin(context, clip), "root pin", path))
