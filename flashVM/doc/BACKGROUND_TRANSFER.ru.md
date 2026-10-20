@@ -31,6 +31,51 @@ DNS, чтение CA, crypto и пользовательский код прин
 Loopback-тесты отменяют запрос до connect, молчащий ответ, byte-drip HTTP/TLS.
 Отдельный libcurl probe проверяет его progress callback. Это не полный Flash API
 и не native foreign OS/device acceptance.
+## Фоновые задания C89 с v0.681
+
+[transfer.h](../frontend/common/transfer.h) предоставляет opaque
+FVM_DesktopTransfer и структуры FVM_DesktopTransferOptions/View.
+fvm_desktop_transfer_options_init задаёт max_bytes=64MiB без провайдера: 1 — успех,
+0 — null. Нужен worker-safe FVM_DesktopTransferFetch и необязательный immutable
+userdata; callback расширяет обычный fetch явным cancellation control. VM-объекты,
+managed strings и UI-объекты не передаются потоку. Импорт байтов выполняет owner.
+
+fvm_desktop_transfer_begin(reference,base,options,out) копирует ограниченные строки
+и options, резервирует один из 64 живых handles этого SDK и запускает SDL worker.
+Userdata и вложенные строки/CA заимствованы до release. max_bytes: 1..64MiB.
+Ошибки: INVALID_ARGUMENT, ERROR при квоте, OUT_OF_MEMORY при allocation/thread.
+*out при ошибке не меняется. Video/audio не инициализируются; provider/network
+не выполняются на вызывающем потоке.
+
+fvm_desktop_transfer_poll копирует view под mutex: OK либо INVALID_ARGUMENT для
+null. PENDING: result=NOT_FOUND, изменяемые байты/адрес не выдаются. DONE:
+immutable counted bytes (допустимо пустое тело) и непустой provenance, заимствованы
+до release. FAILED: точная первая ошибка sink/provider без payload. CANCELLED:
+ERROR без payload. received сохраняет накопленный progress после удаления
+ошибочного/отменённого буфера. Игнорирование ошибки sink провайдером не превращается
+в успех. Пустой/неограниченный NUL provenance — ошибка.
+
+fvm_desktop_transfer_cancel возвращает 1 для pending, 0 для terminal/null;
+не блокирует, не освобождает storage и не отзывает готовый view. Отмена до
+terminal publication побеждает поздний успех provider.
+fvm_desktop_transfer_release отменяет, join и освобождает на создавшем потоке:
+OK, null также OK, другой поток INVALID_ARGUMENT. Некоперативный provider/DNS
+может задержать join. Нет detach/forced kill. Нельзя одновременно release и
+poll/cancel или выгружать библиотеку с активным worker. Все borrowed данные
+сохраняются до возврата release.
+
+fvm_desktop_transfer_active считает живые handles, включая готовые до release.
+fvm_desktop_shutdown отказывает, пока хотя бы один жив, даже без video/audio.
+Задания освобождаются до завершения соответствующего SDK; глобального setter
+провайдера нет. fvm_desktop_socket_transfer_fetch принимает native options либо
+null. fvm_desktop_http_transfer_fetch требует null userdata и libcurl с флагом
+CURL_VERSION_THREADSAFE; старые global init/cleanup возвращают UNSUPPORTED.
+Синхронный API сохраняет прежние SDK и правила координации.
+
+Детерминированные тесты: копии строк, разные owner/worker, binary NUL, пустое тело,
+pending view, поздняя отмена, ошибки sink/provider, игнорируемый sink failure,
+неверный provenance, wrong-thread release, квота 64 и shutdown до/после join.
+Сетевые тесты отмены отдельны. Это не TSan/leak/foreign OS acceptance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.680
+# FlashVM stage status / Состояние стадий — v0.681
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -74,6 +74,11 @@ v0.680 adds cooperative native HTTP/TLS and libcurl cancellation through additiv
 C89 APIs, preserving options/loader layouts. Native waits check at 50ms intervals;
 DNS/CA/user code is not forcibly interrupted. Silent/drip HTTP/TLS and libcurl
 cancellation probes pass. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md).
+
+v0.681 adds joined background byte-transfer jobs, synchronized polling/cancellation,
+immutable result views, bounded buffers/handle quota and SDK shutdown protection.
+Owner/worker, errors, cancellation, quota and cleanup fixtures pass; VM objects
+never cross the worker boundary. [EN](BACKGROUND_TRANSFER.md) / [RU](BACKGROUND_TRANSFER.ru.md).
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

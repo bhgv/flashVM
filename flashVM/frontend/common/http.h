@@ -4,6 +4,7 @@
 #include "source.h"
 #include "../../ports/network/socket.h"
 #include "network.h"
+#include "transfer.h"
 #define FVM_DESKTOP_HTTP_CONNECT_MS 10000L /* Bound connection setup. */
 #define FVM_DESKTOP_HTTP_TOTAL_MS 30000L   /* Bound the synchronous transfer. */
 #define FVM_DESKTOP_HTTP_SUCCESS_MIN 200L  /* First accepted response status. */
@@ -28,6 +29,12 @@ extern "C"
     FVM_Result fvm_desktop_http_fetch_controlled(const char *reference, const char *base,
                                                  FVM_DesktopWrite write, void *write_userdata,
                                                  char *resolved, size_t capacity, void *userdata);
+    /* Worker-safe adapter for transfer_begin. Native userdata is optional socket options;
+     * libcurl userdata must be null and requires a thread-safe libcurl global API. */
+    FVM_Result fvm_desktop_http_transfer_fetch(const char *reference, const char *base,
+                                               FVM_DesktopWrite write, void *write_userdata,
+                                               char *resolved, size_t capacity,
+                                               const FVM_NetControl *control, void *userdata);
 #ifdef __cplusplus
 }
 #endif

@@ -96,7 +96,7 @@ FVM_Result fvm_desktop_build_info(FVM_DesktopBuildInfo *out)
 /* An opaque C host can finish the matching SDL instance without linking another SDK copy. */
 FVM_Result fvm_desktop_shutdown(void)
 {
-    if (SDL_WasInit(0))
+    if (fvm_desktop_transfer_active() || SDL_WasInit(0))
         return FVM_ERROR;
     SDL_Quit();
     return FVM_OK;

@@ -161,3 +161,29 @@ FVM_Result fvm_desktop_http_fetch_controlled(const char *reference, const char *
     return http_fetch(reference, base, write, write_userdata, resolved, capacity,
                       (const FVM_NetControl *)userdata);
 }
+
+/* Older libcurl global-init/cleanup APIs cannot safely execute on an arbitrary worker. */
+FVM_Result fvm_desktop_http_transfer_fetch(const char *reference, const char *base,
+                                           FVM_DesktopWrite write, void *write_userdata,
+                                           char *resolved, size_t capacity,
+                                           const FVM_NetControl *control, void *userdata)
+{
+#ifdef CURL_VERSION_THREADSAFE
+    const curl_version_info_data *info = curl_version_info(CURLVERSION_NOW);
+    if (!info || !(info->features & CURL_VERSION_THREADSAFE))
+        return FVM_UNSUPPORTED;
+    if (userdata)
+        return FVM_INVALID_ARGUMENT;
+    return http_fetch(reference, base, write, write_userdata, resolved, capacity, control);
+#else
+    (void)reference;
+    (void)base;
+    (void)write;
+    (void)write_userdata;
+    (void)resolved;
+    (void)capacity;
+    (void)control;
+    (void)userdata;
+    return FVM_UNSUPPORTED;
+#endif
+}

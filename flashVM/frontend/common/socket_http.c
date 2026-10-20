@@ -494,3 +494,13 @@ FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char
     return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
                         request ? &request->options : 0, request ? &request->control : 0);
 }
+
+/* Explicit worker adapter preserves immutable options and supplies the job's cancellation hook. */
+FVM_Result fvm_desktop_socket_transfer_fetch(const char *reference, const char *base,
+                                             FVM_DesktopWrite write, void *write_userdata,
+                                             char *resolved, size_t capacity,
+                                             const FVM_NetControl *control, void *userdata)
+{
+    return socket_fetch(reference, base, write, write_userdata, resolved, capacity,
+                        (const FVM_SocketHTTPOptions *)userdata, control);
+}

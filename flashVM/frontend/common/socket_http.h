@@ -3,6 +3,7 @@
 #define FVM_SOCKET_HTTP_H
 #include "source.h"
 #include "network.h"
+#include "transfer.h"
 #include "../../ports/network/socket.h"
 #define FVM_SOCKET_BUFFER 8192U          /* Native read and body-forwarding buffer bytes. */
 #define FVM_SOCKET_LINE 8192U            /* Maximum status/header/chunk line bytes. */
@@ -58,6 +59,12 @@ extern "C"
     FVM_Result fvm_desktop_socket_fetch_controlled(const char *reference, const char *base,
                                                    FVM_DesktopWrite write, void *write_userdata,
                                                    char *resolved, size_t capacity, void *userdata);
+    /* Worker-safe adapter for transfer_begin. Native userdata is optional socket options;
+     * libcurl userdata must be null and requires a thread-safe libcurl global API. */
+    FVM_Result fvm_desktop_socket_transfer_fetch(const char *reference, const char *base,
+                                                 FVM_DesktopWrite write, void *write_userdata,
+                                                 char *resolved, size_t capacity,
+                                                 const FVM_NetControl *control, void *userdata);
 #ifdef __cplusplus
 }
 #endif

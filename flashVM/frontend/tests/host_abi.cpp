@@ -12,6 +12,10 @@ int main()
         fvm_desktop_socket_capabilities() != fvm_desktop_network_capabilities())
         return 1;
 #endif
+    FVM_DesktopTransferOptions transfer;
+    if (!fvm_desktop_transfer_options_init(&transfer) || transfer.fetch ||
+        fvm_desktop_transfer_active() || fvm_desktop_transfer_release(0) != FVM_OK)
+        return 1;
     FVM_DesktopOptions options;
     FVM_DesktopLoader loader;
     FVM_DesktopBuildInfo info;

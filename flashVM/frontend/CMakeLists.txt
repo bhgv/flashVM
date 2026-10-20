@@ -64,7 +64,7 @@ if(FVM_PLAYER_HOST_SHARED)
   set(player_host_type SHARED)
 endif()
 # A native IDE can link the same synchronous implementation without a CLI entrypoint.
-add_library(flashvm_player_host ${player_host_type} common/player.c common/options.c common/sdl_window.c
+add_library(flashvm_player_host ${player_host_type} common/player.c common/transfer.c common/options.c common/sdl_window.c
   common/audio.c common/audio_trace.c)
 target_include_directories(flashvm_player_host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(flashvm_player_host PUBLIC flashvm SDL2::SDL2)
@@ -175,7 +175,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/timers.py $<TARGET_FILE:flashvm_player> --${mode})
       set_tests_properties(flashvm_player_timers_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
-    add_executable(flashvm_frontend_clip_player ${frontend_os}/main.c common/player.c
+    add_executable(flashvm_frontend_clip_player ${frontend_os}/main.c common/player.c common/transfer.c
       common/options.c common/audio.c common/audio_trace.c tests/clip_player.c)
     target_link_libraries(flashvm_frontend_clip_player PRIVATE flashvm SDL2::SDL2)
     if(WIN32)
@@ -194,7 +194,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
       set_tests_properties(flashvm_player_clip_keypress_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
     set_tests_properties(flashvm_player_clip_input_jit flashvm_player_clip_input_methods_jit flashvm_player_clip_keypress_jit PROPERTIES SKIP_RETURN_CODE 77)
-    add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c
+    add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c common/transfer.c
       common/options.c common/audio.c common/audio_trace.c tests/update_capture.c)
     target_link_libraries(flashvm_frontend_update_capture PRIVATE flashvm SDL2::SDL2)
     if(WIN32)
@@ -326,7 +326,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_tail_capture ${frontend_os}/main.c common/player.c
+  add_executable(flashvm_frontend_tail_capture ${frontend_os}/main.c common/player.c common/transfer.c
     common/options.c tests/tail_capture.c)
   target_link_libraries(flashvm_frontend_tail_capture PRIVATE flashvm SDL2::SDL2)
   if(WIN32)
@@ -423,7 +423,7 @@ endif()
 
 # C++ IDE consumers must link the C player boundary without initializing a device.
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_build_info tests/build_info.cpp common/player.c
+  add_executable(flashvm_frontend_build_info tests/build_info.cpp common/player.c common/transfer.c
     common/options.c common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_build_info PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_build_info PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
@@ -527,7 +527,7 @@ if(FVM_BUILD_EXAMPLES AND NOT ANDROID)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_memory_origin tests/memory_origin.c common/options.c
+  add_executable(flashvm_frontend_memory_origin tests/memory_origin.c common/transfer.c common/options.c
     common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_memory_origin PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_memory_origin PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
@@ -635,4 +635,16 @@ if(FVM_PLAYER_HTTP AND FVM_BUILD_TESTS AND NOT ANDROID)
       ${CMAKE_CURRENT_SOURCE_DIR}/tests/cancel_http.py $<TARGET_FILE:flashvm_cancel_curl_client>)
     set_tests_properties(flashvm_cancel_curl PROPERTIES TIMEOUT 15)
   endif()
+endif()
+
+if(FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_transfer_tests tests/transfer.c)
+  target_link_libraries(flashvm_transfer_tests PRIVATE flashvm_player_host)
+  if(MSVC)
+    target_compile_options(flashvm_transfer_tests PRIVATE /UNDEBUG)
+  else()
+    target_compile_options(flashvm_transfer_tests PRIVATE -UNDEBUG)
+  endif()
+  add_test(NAME flashvm_transfer_tests COMMAND flashvm_transfer_tests)
+  set_tests_properties(flashvm_transfer_tests PROPERTIES TIMEOUT 20)
 endif()
