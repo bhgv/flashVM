@@ -214,6 +214,7 @@ special/printable selectors without allocation or state mutation.
 [Committed content metadata / Сведения о содержимом](MOVIECLIP_CONTENT_INFO.md) / [RU](MOVIECLIP_CONTENT_INFO.ru.md).
 
 [Owner playback commands / Управление воспроизведением](PLAYBACK_CONTROL.md) / [RU](PLAYBACK_CONTROL.ru.md).
+[Thread-safe playback mailbox / Межпоточный ящик команд](PLAYBACK_MAILBOX.md) / [RU](PLAYBACK_MAILBOX.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

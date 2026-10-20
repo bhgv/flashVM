@@ -65,7 +65,7 @@ poll/cancel или выгружать библиотеку с активным w
 сохраняются до возврата release.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) считает живые handles, включая готовые до release.
-[fvm_desktop_shutdown](../frontend/common/player.h#L52) отказывает, пока хотя бы один жив, даже без video/audio.
+[fvm_desktop_shutdown](../frontend/common/player.h#L53) отказывает, пока хотя бы один жив, даже без video/audio.
 Задания освобождаются до завершения соответствующего SDK; глобального setter
 провайдера нет. [fvm_desktop_socket_transfer_fetch](../frontend/common/socket_http.h#L65) принимает native options либо
 null. [fvm_desktop_http_transfer_fetch](../frontend/common/http.h#L35) требует null userdata и libcurl с флагом
@@ -88,7 +88,7 @@ parser не имеет поля для него. IDE вызывает background
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L59):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) задаёт [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L13):
 transfer defaults без провайдера, одну загрузку, 1 — успех, 0 — null, без startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) принимает обычные options/source, обязательный
 background loader и необязательный static error out. Нужны worker-safe fetch,

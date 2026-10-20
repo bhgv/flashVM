@@ -61,7 +61,7 @@ until import; decoded bitmap pixels belong to the clip graph afterwards.
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker adapter with borrowed policy and cooperative stop; SOCKET_TRANSPORT.md. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Alternate curl worker adapter with global-safety check; BACKGROUND_TRANSFER.md. |
 | [fvm_desktop_run_source_async](../../../frontend/common/background.h#L40) | Borrow descriptors through synchronous owner playback; BACKGROUND_TRANSFER.md. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | End SDK after joined jobs/window cleanup; PLAYER_HOST_OWNERSHIP.md. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | End SDK after joined jobs/window cleanup; PLAYER_HOST_OWNERSHIP.md. |
 
 Limits: static full-canvas GIF89a only; GIF87a/animation and root image startup
 remain unsupported. Source SWF profiles and byte/dimension bounds apply. No synthetic

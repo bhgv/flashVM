@@ -91,7 +91,7 @@ cmake --build build-control-target --target flashvm_example_playback_control --p
 | [fvm_desktop_load_monitor_init](../../../frontend/common/load_monitor.h#L49) | Заполняет defaults асинхронной доставки/срока без создания заданий. [LOAD_MONITOR.ru.md](../../../doc/LOAD_MONITOR.ru.md). |
 | [fvm_desktop_run_source_controlled](../../../frontend/common/playback.h#L77) | Синхронный запуск с необязательным loader и обязательным control; заимствует память до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
 | [fvm_desktop_run_source_background_controlled](../../../frontend/common/playback.h#L86) | Синхронно владеет запуском; требует provider/monitor/control; дожидается workers до возврата, код 0/1/2. [PLAYBACK_CONTROL.ru.md](../../../doc/PLAYBACK_CONTROL.ru.md). |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | Освобождает SDK после завершения окон/заданий запуска; временем жизни процесса управляет вызывающий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Освобождает SDK после завершения окон/заданий запуска; временем жизни процесса управляет вызывающий. [PLAYER_HOST_OWNERSHIP.ru.md](../../../doc/PLAYER_HOST_OWNERSHIP.ru.md). |
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Выбранный нативный worker adapter: кооперативно получает неизменяемые байты, без VM/SDL. [SOCKET_TRANSPORT.ru.md](../../../doc/SOCKET_TRANSPORT.ru.md). |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Альтернативный curl worker adapter: проверяет потоковую безопасность SDK перед загрузкой. [BACKGROUND_TRANSFER.ru.md](../../../doc/BACKGROUND_TRANSFER.ru.md). |
 

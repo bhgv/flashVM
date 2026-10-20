@@ -65,7 +65,7 @@ with poll/cancel or unload a library while its worker is alive. All argument and
 callback storage remains live until release returns.
 
 [fvm_desktop_transfer_active](../frontend/common/transfer.h#L81) reports live handles, including terminal handles not
-yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L52) refuses cleanup while any remain, even when
+yet released. [fvm_desktop_shutdown](../frontend/common/player.h#L53) refuses cleanup while any remain, even when
 SDL video/audio were never initialized. The caller must release every job before
 ending the matching SDK instance. No hidden global provider registration is used.
 
@@ -93,7 +93,7 @@ for it. An IDE calls the explicit background runner or the lower-level job API.
 ./build-socket/frontend/flashvm_player --background-loads --loads 8 --frames 3 --mute http://127.0.0.1:8000/start.swf
 ```
 
-[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/load_monitor.h#L59):
+[fvm_desktop_background_loader_init](../frontend/common/background.h#L21) initializes [FVM_DesktopBackgroundLoader](../frontend/common/background.h#L13):
 transfer defaults/no provider, one resource load, 1 success or 0 null, no startup.
 [fvm_desktop_run_source_background](../frontend/common/background.h#L28) takes ordinary options/source, a required
 background loader and optional static error output. Provide a worker-safe fetch,

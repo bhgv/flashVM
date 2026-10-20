@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.712
+# FlashVM stage status / Состояние стадий — v0.713
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,11 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.713 adds a bounded C89 native playback mailbox with latest-intent coalescing,
+terminal STOP precedence, mutex-protected scalar/text copies and explicit lifetime.
+Four OS readers, quota/output validation and native allocation/mutex rollback pass;
+live mailbox handles prevent premature SDK shutdown. All stages remain open.
 
 v0.712 delivers a standalone annotated C89/AS/SWF playback tutorial with native/
 cross-build instructions and an argv-only adapter. Owner commands remain polled

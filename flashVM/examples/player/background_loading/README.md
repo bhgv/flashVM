@@ -55,7 +55,7 @@ No callback receives a VM object. All jobs join before the SDK shutdown call.
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Worker-safe native provider with borrowed options and cooperative cancellation; DNS can block. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker-safe libcurl adapter; rejects a linked SDK lacking thread-safe global APIs. |
 | [fvm_desktop_run_source_background](../../../frontend/common/background.h#L28) | Synchronous owner loop, pumping native events during network waits and importing only completed bytes. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | End the matching SDK only after joined workers and window cleanup; live jobs make it fail. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | End the matching SDK only after joined workers and window cleanup; live jobs make it fail. |
 
 The detailed [C API contract](../../../doc/BACKGROUND_TRANSFER.md) lists arguments,
 errors and lifetime rules for these functions and the lower-level begin/poll/

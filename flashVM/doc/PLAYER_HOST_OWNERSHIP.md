@@ -43,3 +43,7 @@ finger tracking still suppresses duplicate mouse transitions. The ownership
 fixture checks normal-priority hint values and their protection against later
 lower-priority writes; the pointer fixture checks duplicate input suppression.
 The player does not save/restore hints, which could overwrite a host update.
+
+Since v0.713, live native command mailboxes also protect fvm_desktop_shutdown:
+finish the runner/controller threads and release each mailbox first.
+[Contract](PLAYBACK_MAILBOX.md).

@@ -53,7 +53,7 @@ bytes; импорт/setters выполняет owner. VM-объекты не п�
 | [fvm_desktop_socket_transfer_fetch](../../../frontend/common/socket_http.h#L65) | Native worker provider с borrowed options/cancel; DNS может блокировать. |
 | [fvm_desktop_http_transfer_fetch](../../../frontend/common/http.h#L35) | Worker adapter libcurl; SDK без thread-safe global APIs отклоняется. |
 | [fvm_desktop_run_source_background](../../../frontend/common/background.h#L28) | Синхронный owner loop с native events во время ожидания; импорт только готовых байтов. |
-| [fvm_desktop_shutdown](../../../frontend/common/player.h#L52) | Завершение соответствующего SDK после join/очистки окна; живые jobs запрещают его. |
+| [fvm_desktop_shutdown](../../../frontend/common/player.h#L53) | Завершение соответствующего SDK после join/очистки окна; живые jobs запрещают его. |
 
 [Контракт C API](../../../doc/BACKGROUND_TRANSFER.ru.md) описывает аргументы/ошибки/
 время жизни и нижние begin/poll/cancel/release для IDE с собственным event loop.

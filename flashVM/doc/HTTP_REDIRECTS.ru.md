@@ -3,7 +3,7 @@
 [English](HTTP_REDIRECTS.md) · [Socket-транспорт](SOCKET_TRANSPORT.ru.md) ·
 [Наблюдение загрузок](LOAD_MONITOR.ru.md).
 
-[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) инициализирует [FVM_DesktopHTTPPolicy](../frontend/common/network_loader.h#L13): без redirects,
+[fvm_desktop_http_policy_init](../frontend/common/http_policy.h#L31) инициализирует [FVM_DesktopHTTPPolicy](../frontend/common/http_policy.h#L21): без redirects,
 connect 10с / total 30с, штатный trust. Явные native callbacks [fvm_desktop_socket_fetch_policy](../frontend/common/socket_http.h#L72)
 и [fvm_desktop_socket_transfer_policy](../frontend/common/socket_http.h#L76) требуют policy в userdata; worker-вариант также
 заимствует [FVM_NetControl](../ports/network/socket.h#L21). Старые socket options/controlled requests/callbacks сохранены.

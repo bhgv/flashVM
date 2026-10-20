@@ -10,6 +10,7 @@
 #include "load_monitor.h"
 #include "network_loader.h"
 #include "playback.h"
+#include "playback_mailbox.h"
 #define FVM_DESKTOP_EXIT_OK 0       /* Completed playback or a successful informational query. */
 #define FVM_DESKTOP_EXIT_PLAYBACK 1 /* File, VM, presentation or device failure. */
 #define FVM_DESKTOP_EXIT_ARGUMENT 2 /* Invalid CLI or structured configuration. */
@@ -45,7 +46,7 @@ extern "C"
     FVM_DESKTOP_API int fvm_desktop_run_memory(const FVM_DesktopOptions *options, const void *bytes,
                                                size_t length, const char *name, const char **error);
     /* End this library's SDL session on its native owner thread after playback returns.
-     * OK when no subsystem references or transfer handles remain; ERROR leaves active host/player
+     * OK when no subsystem references, transfer or playback-mailbox handles remain; ERROR leaves host/player
      * SDL untouched. Explicit only: may clear SDL hints/TLS, so call only when the application ends
      * that session. Also works when a shared host contains a private static SDL copy. Idempotent
      * when unused. */

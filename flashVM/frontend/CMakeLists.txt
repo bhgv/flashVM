@@ -68,7 +68,7 @@ if(FVM_PLAYER_HOST_SHARED)
   set(player_host_type SHARED)
 endif()
 # A native IDE can link the same synchronous implementation without a CLI entrypoint.
-add_library(flashvm_player_host ${player_host_type} common/player.c common/playback.c common/transfer.c common/options.c common/sdl_window.c
+add_library(flashvm_player_host ${player_host_type} common/player.c common/playback.c common/playback_mailbox.c common/transfer.c common/options.c common/sdl_window.c
   common/audio.c common/audio_trace.c)
 target_include_directories(flashvm_player_host PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 target_link_libraries(flashvm_player_host PUBLIC flashvm SDL2::SDL2)
@@ -190,7 +190,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/timers.py $<TARGET_FILE:flashvm_player> --${mode})
       set_tests_properties(flashvm_player_timers_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
-    add_executable(flashvm_frontend_clip_player ${frontend_os}/main.c common/player.c common/playback.c common/transfer.c
+    add_executable(flashvm_frontend_clip_player ${frontend_os}/main.c common/player.c common/playback.c common/playback_mailbox.c common/transfer.c
       common/options.c common/audio.c common/audio_trace.c tests/clip_player.c)
     target_link_libraries(flashvm_frontend_clip_player PRIVATE flashvm SDL2::SDL2)
     if(WIN32)
@@ -209,7 +209,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
       set_tests_properties(flashvm_player_clip_keypress_${mode} PROPERTIES TIMEOUT 90)
     endforeach()
     set_tests_properties(flashvm_player_clip_input_jit flashvm_player_clip_input_methods_jit flashvm_player_clip_keypress_jit PROPERTIES SKIP_RETURN_CODE 77)
-    add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c common/playback.c common/transfer.c
+    add_executable(flashvm_frontend_update_capture ${frontend_os}/main.c common/player.c common/playback.c common/playback_mailbox.c common/transfer.c
       common/options.c common/audio.c common/audio_trace.c tests/update_capture.c)
     target_link_libraries(flashvm_frontend_update_capture PRIVATE flashvm SDL2::SDL2)
     if(WIN32)
@@ -341,7 +341,7 @@ if(FVM_BUILD_TESTS AND NOT ANDROID)
 endif()
 
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_tail_capture ${frontend_os}/main.c common/player.c common/playback.c common/transfer.c
+  add_executable(flashvm_frontend_tail_capture ${frontend_os}/main.c common/player.c common/playback.c common/playback_mailbox.c common/transfer.c
     common/options.c tests/tail_capture.c)
   target_link_libraries(flashvm_frontend_tail_capture PRIVATE flashvm SDL2::SDL2)
   if(WIN32)
@@ -438,7 +438,7 @@ endif()
 
 # C++ IDE consumers must link the C player boundary without initializing a device.
 if(FVM_BUILD_TESTS AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
-  add_executable(flashvm_frontend_build_info tests/build_info.cpp common/player.c common/playback.c common/transfer.c
+  add_executable(flashvm_frontend_build_info tests/build_info.cpp common/player.c common/playback.c common/playback_mailbox.c common/transfer.c
     common/options.c common/sdl_window.c common/audio.c common/audio_trace.c)
   target_link_libraries(flashvm_frontend_build_info PRIVATE flashvm SDL2::SDL2)
   set_target_properties(flashvm_frontend_build_info PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
@@ -944,4 +944,24 @@ if(TARGET flashvm_example_playback_control AND FVM_BUILD_TESTS AND Python3_Inter
     set_property(TEST flashvm_example_playback_control APPEND PROPERTY ENVIRONMENT
       "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
   endif()
+endif()
+
+# Native mailbox tests intentionally start no VM/window/audio or resource-transfer job.
+if(FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_frontend_playback_mailbox tests/playback_mailbox.c)
+  target_link_libraries(flashvm_frontend_playback_mailbox PRIVATE flashvm_player_host)
+  set_target_properties(flashvm_frontend_playback_mailbox PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_frontend_playback_mailbox COMMAND flashvm_frontend_playback_mailbox)
+  set_tests_properties(flashvm_frontend_playback_mailbox PROPERTIES TIMEOUT 30)
+  if(UNIX AND NOT APPLE)
+    set_property(TEST flashvm_frontend_playback_mailbox APPEND PROPERTY ENVIRONMENT
+      "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:flashvm_player_host>:$ENV{LD_LIBRARY_PATH}")
+  endif()
+endif()
+if(FVM_BUILD_TESTS AND NOT ANDROID)
+  add_executable(flashvm_frontend_playback_mailbox_allocation tests/playback_mailbox_allocation.c)
+  target_include_directories(flashvm_frontend_playback_mailbox_allocation PRIVATE ${PROJECT_SOURCE_DIR}/include)
+  target_link_libraries(flashvm_frontend_playback_mailbox_allocation PRIVATE SDL2::SDL2)
+  set_target_properties(flashvm_frontend_playback_mailbox_allocation PROPERTIES C_STANDARD 90 C_STANDARD_REQUIRED YES C_EXTENSIONS OFF)
+  add_test(NAME flashvm_frontend_playback_mailbox_allocation COMMAND flashvm_frontend_playback_mailbox_allocation)
 endif()
