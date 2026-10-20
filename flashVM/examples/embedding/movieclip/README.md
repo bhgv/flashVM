@@ -25,6 +25,7 @@ depth order: low middle high
 render: no timeline callbacks
 frame call: frame 2 actions; playhead 1; callbacks 0
 initializers: next two ticks fit five units
+unload: instance and property retained
 ```
 
 [main.c](main.c) is executable; [tutorial_limits.h](tutorial_limits.h) names its
@@ -104,6 +105,21 @@ is shown above. [EN](../../../doc/INITIALIZER_PROGRESS.md) / [RU](../../../doc/I
 | --- | --- |
 | [`fvm_movieclip_load_swf`](../../../include/flashvm/movieclip.h#L43) | Synchronously validate/import caller-owned bytes, retain copied code and return a borrowed context-owned clip; no initializer runs until advance. Pin the graph before later host GC. / Копирует код без исполнения; закрепить возвращённый граф до GC. |
 Loaded-scene control snapshots are described in the [contract](../../../doc/SCENE_CONTROLS.md). This example does not edit private metadata; mutation fixtures live in tests/.
+## Native content clearing / Очистка содержимого
+
+The executable also prints `unload: instance and property retained` after an
+independent safe-point clear. / Пример также очищает экземпляр в безопасной
+точке и проверяет сохранение собственного свойства.
+
+| API | Purpose / Назначение |
+| --- | --- |
+| [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L132) | Atomically clear contents; caller retains the instance. / Атомарная очистка, экземпляр удерживает хост. |
+| [`fvm_movieclip_attached_to`](../../../include/flashvm/movieclip.h#L122) | Borrowed native ancestry snapshot; output changes only on success. / Проверка физических связей, выход меняется при успехе. |
+
+Contracts, ownership, errors and remaining lifecycle limits:
+[MOVIE_UNLOAD.md](../../../doc/MOVIE_UNLOAD.md) /
+[MOVIE_UNLOAD.ru.md](../../../doc/MOVIE_UNLOAD.ru.md).
+No network/audio cancellation or synthetic unload event is demonstrated.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -121,10 +137,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../../../include/flashvm/execution.h#L342) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:122](../../../include/flashvm/movieclip.h#L122) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
 | `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../../../include/flashvm/movieclip.h#L51) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:132](../../../include/flashvm/movieclip.h#L132) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |

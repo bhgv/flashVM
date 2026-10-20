@@ -206,6 +206,7 @@ KeyPress v0.628: [`fvm_input_clip_key_code`](../include/flashvm/keyboard.h#L66) 
 special/printable selectors without allocation or state mutation.
 [`fvm_movieclip_dispatch_key_press`](../include/flashvm/clip_actions.h#L97) separately broadcasts exact retained selectors.
 [EN contract](CLIP_KEYPRESS.md) / [RU](CLIP_KEYPRESS.ru.md).
+[Atomic native MovieClip unloading and attachment query](MOVIE_UNLOAD.md) / [RU](MOVIE_UNLOAD.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

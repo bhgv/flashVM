@@ -113,6 +113,23 @@ extern "C"
      * is INVALID_ARGUMENT. The native barrier protects temporary graphs. */
     FVM_API FVM_Result fvm_movieclip_replace_swf(FVM_Context *, FVM_Object *, const void *, size_t,
                                                  const char *source, size_t source_size);
+/* Bound physical ancestry queries independently of script paths. */
+#define FVM_MOVIECLIP_QUERY_MAX_DEPTH 1024U
+    /* Query attachment through native parent edges, including clip==ancestor, without script
+     * getters or lockroot interpretation. Detached nodes along the selected chain return false.
+     * Same-context instances required; errors/OOM/cyclic-overlong chains preserve *out.
+     * Owner thread outside GC/teardown. Caller retains the borrowed clips through this call. */
+    FVM_API FVM_Result fvm_movieclip_attached_to(FVM_Context *, FVM_Object *clip,
+                                                 FVM_Object *ancestor, int *out);
+    /* Atomically clear contents while retaining clip identity, placement, own properties,
+     * prototype, lockroot and retained clip handlers. Detach old children and remove their
+     * matching bindings; externally retained children preserve their prior source base.
+     * Publish one stopped empty frame with no drawing or old SWF dictionary/actions.
+     * No constructor/setter/frame/unload callback runs. Source provenance remains available.
+     * Owner safe point only: outside AVM1/native callbacks, GC/teardown and sound delivery.
+     * OOM/validation failures preserve contents. Host owns independent audio/transport lifetime.
+     * Does not cancel host requests or implement the full historical Flash unload lifecycle. */
+    FVM_API FVM_Result fvm_movieclip_unload(FVM_Context *, FVM_Object *);
     /* Decode bounded form bytes (percent escapes, plus=space, ampersand separators), then
      * assign counted string properties in order through public setters. Duplicate keys: last wins.
      * Empty keys ignored. Decode WTF-8/percent escapes before mutation; malformed input changes no

@@ -9,4 +9,7 @@ FVM_Result fvm_movieclip_copy_drawing(FVM_Context *, FVM_Object *source, FVM_Obj
  */
 FVM_Result fvm_movieclip_sprite_class(FVM_Context *, FVM_Object *library, const char *linkage,
                                       FVM_Object *&prototype, FVM_Object *&constructor);
+/* [GC:] Create a temporary one-frame empty clip with no prototype/global/script lookup.
+ * Only its private content state is published by unload; the target prototype stays intact. */
+FVM_Result fvm_movieclip_empty_content(FVM_Context *, FVM_Object **out);
 #endif

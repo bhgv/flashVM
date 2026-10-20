@@ -1,6 +1,9 @@
 /* Same-context clip content replacement, retained source bases and form-variable assignment. */
 #include "../core/runtime.hpp"
 #include "movieclip_storage.hpp"
+#include "movieclip_construction.hpp"
+#include "movieclip_state.hpp"
+#include "movieclip_provenance_constants.h"
 #include "movieclip_constants.h"
 #include "../core/native_call_guard.hpp"
 #include "../core/optional_method.hpp"
@@ -27,6 +30,79 @@ struct Detached
     FVM_Object *data; /* [GC:] Retained through the old target graph under a native barrier. */
     Properties next;  /* Fully allocated replacement metadata. */
 };
+/* [GC:] Stage all child detachments and name-map changes before atomic content publication.
+ * Caller holds a native barrier and supplies a newly built private content graph. */
+FVM_Result publish_content(FVM_Context *c, FVM_Object *target, FVM_Object *old, FVM_Object *next)
+{
+    FVM_Result r;
+    const char *preserve[] = {"parent",       "depth",    "detached",    "avm1_parent",
+                              "basis_x",      "basis_y",  "scene_token", "scene_symbol",
+                              "clip_actions", "lock_root"};
+    for (size_t i = 0; i < sizeof(preserve) / sizeof(preserve[0]); ++i)
+    {
+        Properties::iterator field = old->properties.find(preserve[i]);
+        if (field != old->properties.end())
+            next->properties[preserve[i]] = field->second;
+    }
+    FVM_Object *children = 0;
+    r = private_object(old, "children", children);
+    if (r != FVM_OK || !children || children->owner != c ||
+        children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
+        return FVM_INVALID_ARGUMENT;
+    Properties properties = target->properties;
+    fvm_detail::vector<Detached> detach;
+    for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+    {
+        FVM_Object *child = i->second.object, *data = 0;
+        if (i->second.type != FVM_VALUE_OBJECT || owned(c, child, data) != FVM_OK ||
+            parent(child) != target)
+            return FVM_INVALID_ARGUMENT;
+        long depth = 0;
+        unsigned long key = 0;
+        if (depth_field(data, depth) != FVM_OK || slot_key(old, depth, key) != FVM_OK ||
+            key != i->first)
+            return FVM_INVALID_ARGUMENT;
+        Detached staged;
+        staged.data = data;
+        staged.next = data->properties;
+        if (staged.next.find("source_base") == staged.next.end())
+        {
+            FVM_Value inherited;
+            FVM_Result origin = fvm_movieclip_get_source(c, child, &inherited);
+            if (origin == FVM_OK)
+                staged.next["source_base"] = inherited;
+            else if (origin != FVM_NOT_FOUND)
+                return origin;
+        }
+        staged.next["parent"] = object(0);
+        staged.next["avm1_parent"] = object(target);
+        staged.next["detached"] = number(FVM_MOVIECLIP_DETACHED_STATE);
+        detach.push_back(staged);
+        FVM_Value name;
+        if (field(child, "_name", name) != FVM_OK || name.type != FVM_VALUE_STRING ||
+            fvm_validate_value(c, &name) != FVM_OK)
+            return FVM_INVALID_ARGUMENT;
+        fvm_detail::string binding(name.string, fvm_string_size(name));
+        Properties::iterator found = properties.find(binding);
+        if (found != properties.end() && found->second.type == FVM_VALUE_OBJECT &&
+            found->second.object == child)
+            properties.erase(binding);
+    }
+    Properties::iterator library = next->properties.find("library");
+    if (library != next->properties.end())
+    {
+        if (library->second.type != FVM_VALUE_OBJECT || !library->second.object ||
+            library->second.object->owner != c)
+            return FVM_INVALID_ARGUMENT;
+        library->second.object->properties["root"] = object(target);
+    }
+    /* [GC:] No allocation/callback remains: old graph edges change together. */
+    for (size_t i = 0; i < detach.size(); ++i)
+        detach[i].data->properties.swap(detach[i].next);
+    target->properties.swap(properties);
+    target->resource_result = object(next);
+    return fvm_stage_request_update(c);
+}
 /* Parse one hexadecimal digit; negative denotes malformed percent encoding. */
 int hex(unsigned char value)
 {
@@ -139,69 +215,119 @@ extern "C" FVM_Result fvm_movieclip_replace_swf(FVM_Context *c, FVM_Object *targ
         if (r != FVM_OK)
             return r;
         FVM_Object *next = fresh->resource_result.object;
-        const char *preserve[] = {"parent",  "depth",   "detached",   "avm1_parent",
-                                  "basis_x", "basis_y", "scene_token"};
-        for (size_t i = 0; i < sizeof(preserve) / sizeof(preserve[0]); ++i)
-        {
-            Properties::iterator field = old->properties.find(preserve[i]);
-            if (field != old->properties.end())
-                next->properties[preserve[i]] = field->second;
-        }
         r = fvm_movieclip_set_source(c, fresh, source, source_size);
+        return r == FVM_OK ? publish_content(c, target, old, next) : r;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
+}
+
+/* Read native attachment independently from replaceable _parent/_root script descriptors. */
+extern "C" FVM_Result fvm_movieclip_attached_to(FVM_Context *c, FVM_Object *clip,
+                                                FVM_Object *ancestor, int *out)
+{
+    FVM_Object *data = 0;
+    if (!out || owned(c, clip, data) != FVM_OK || owned(c, ancestor, data) != FVM_OK)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        if (fvm_movieclip_is_class_prototype(clip) || fvm_movieclip_is_class_prototype(ancestor))
+            return FVM_INVALID_ARGUMENT;
+        for (unsigned int depth = 0; clip; ++depth)
+        {
+            if (depth >= FVM_MOVIECLIP_QUERY_MAX_DEPTH || owned(c, clip, data) != FVM_OK)
+                return FVM_INVALID_ARGUMENT;
+            Properties::iterator marker = data->properties.find("detached");
+            if (marker != data->properties.end())
+            {
+                const FVM_Value &value = marker->second;
+                if (value.type != FVM_VALUE_NUMBER ||
+                    (value.number != FVM_MOVIECLIP_ATTACHED_STATE &&
+                     value.number != FVM_MOVIECLIP_DETACHED_STATE))
+                    return FVM_INVALID_ARGUMENT;
+                if (value.number == FVM_MOVIECLIP_DETACHED_STATE)
+                {
+                    *out = 0;
+                    return FVM_OK;
+                }
+            }
+            if (clip == ancestor)
+            {
+                *out = 1;
+                return FVM_OK;
+            }
+            FVM_Value owner;
+            if (field(data, "parent", owner) != FVM_OK ||
+                (owner.type != FVM_VALUE_OBJECT && owner.type != FVM_VALUE_NULL))
+                return FVM_INVALID_ARGUMENT;
+            clip = owner.type == FVM_VALUE_OBJECT ? owner.object : 0;
+        }
+        *out = 0;
+        return FVM_OK;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+/* Clear imported/drawn contents without invoking replaceable constructors or script handlers. */
+extern "C" FVM_Result fvm_movieclip_unload(FVM_Context *c, FVM_Object *target)
+{
+    FVM_Object *old = 0;
+    if (owned(c, target, old) != FVM_OK || c->gc_native_depth || c->avm1_target_active ||
+        c->movieclip_sound_busy)
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        if (fvm_movieclip_is_class_prototype(target) ||
+            old->properties.find("static_art") != old->properties.end())
+            return FVM_INVALID_ARGUMENT; /* Internal static/prototype nodes are not instances. */
+        /* [GC:] Keep every temporary graph and old child edge reachable until publication. */
+        FVM_NativeCallGuard guard(c);
+        FVM_Object *fresh = 0;
+        FVM_Result r = fvm_movieclip_empty_content(c, &fresh);
         if (r != FVM_OK)
             return r;
-        FVM_Object *children = 0;
-        r = private_object(old, "children", children);
-        if (r != FVM_OK || !children || children->owner != c ||
-            children->indexed.size() > FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN)
-            return FVM_INVALID_ARGUMENT;
-        Properties properties = target->properties;
-        fvm_detail::vector<Detached> detach;
-        for (Slots::iterator i = children->indexed.begin(); i != children->indexed.end(); ++i)
+        FVM_Object *next = fresh->resource_result.object;
+        next->properties["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
+        Properties::iterator source = old->properties.find("source_base");
+        if (source != old->properties.end())
         {
-            FVM_Object *child = i->second.object, *data = 0;
-            if (i->second.type != FVM_VALUE_OBJECT || owned(c, child, data) != FVM_OK ||
-                parent(child) != target)
-                return FVM_INVALID_ARGUMENT;
-            long depth = 0;
-            unsigned long key = 0;
-            if (depth_field(data, depth) != FVM_OK || slot_key(old, depth, key) != FVM_OK ||
-                key != i->first)
-                return FVM_INVALID_ARGUMENT;
-            Detached staged;
-            staged.data = data;
-            staged.next = data->properties;
-            if (staged.next.find("source_base") == staged.next.end())
-            {
-                FVM_Value inherited;
-                FVM_Result origin = fvm_movieclip_get_source(c, child, &inherited);
-                if (origin == FVM_OK)
-                    staged.next["source_base"] = inherited;
-                else if (origin != FVM_NOT_FOUND)
-                    return origin;
-            }
-            staged.next["parent"] = object(0);
-            staged.next["avm1_parent"] = object(target);
-            staged.next["detached"] = number(FVM_MOVIECLIP_DETACHED_STATE);
-            detach.push_back(staged);
-            FVM_Value name;
-            if (field(child, "_name", name) != FVM_OK || name.type != FVM_VALUE_STRING ||
-                fvm_validate_value(c, &name) != FVM_OK)
-                return FVM_INVALID_ARGUMENT;
-            fvm_detail::string binding(name.string, fvm_string_size(name));
-            Properties::iterator found = properties.find(binding);
-            if (found != properties.end() && found->second.type == FVM_VALUE_OBJECT &&
-                found->second.object == child)
-                properties.erase(binding);
+            FVM_Value location;
+            r = fvm_movieclip_get_source(c, target, &location);
+            if (r != FVM_OK)
+                return r;
+            next->properties["source_base"] = location;
         }
-        FVM_Object *library = next->properties["library"].object;
-        library->properties["root"] = object(target);
-        /* [GC:] No allocation/callback remains: old graph edges change together. */
-        for (size_t i = 0; i < detach.size(); ++i)
-            detach[i].data->properties.swap(detach[i].next);
-        target->properties.swap(properties);
-        target->resource_result = fresh->resource_result;
-        return fvm_stage_request_update(c);
+        unsigned int version = 0;
+        r = fvm_movieclip_movie_version(c, target, &version);
+        if (r != FVM_OK)
+            return r;
+        if (version)
+        {
+            FVM_Object *library = 0, *sprites = 0, *exports = 0;
+            r = fvm_object_create(c, &library);
+            if (r == FVM_OK)
+                r = fvm_object_create(c, &sprites);
+            if (r == FVM_OK)
+                r = fvm_object_create(c, &exports);
+            if (r != FVM_OK)
+                return r;
+            /* [GC:] Retain only source version/prototype, not the old SWF dictionary or frames. */
+            library->properties[FVM_MOVIECLIP_LIBRARY_VERSION_NAME] = number(version);
+            library->properties["prototype"] = object(target->prototype);
+            library->properties["sprites"] = object(sprites);
+            library->properties["exports"] = object(exports);
+            next->properties["library"] = object(library);
+        }
+        return publish_content(c, target, old, next);
     }
     catch (const std::bad_alloc &)
     {

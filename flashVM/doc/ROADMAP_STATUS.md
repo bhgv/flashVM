@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.690
+# FlashVM stage status / Состояние стадий — v0.691
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,14 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.691 adds atomic C API content clearing and native ancestry queries, retaining
+instance identity, placement, handlers and source bases. Rendering, GC and
+allocation-failure regressions pass; the C89 MovieClip tutorial demonstrates
+safe-point use. 92 selected native checks and three shared-library checks pass.
+Player and C89 tutorial cross-link for Linux ARM64/RISC-V64 and Windows x86_64,
+without target execution. This does not install script unloadMovie or cancel host transfers.
+[EN](MOVIE_UNLOAD.md) / [RU](MOVIE_UNLOAD.ru.md). All nine stages remain open.
 
 v0.690 adds --http-ca-file without implicit redirects and verifies complete
 HTTP/HTTPS redirected playback with explicit trust on both native and libcurl

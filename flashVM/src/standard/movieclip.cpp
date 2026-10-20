@@ -3509,6 +3509,13 @@ FVM_Result fvm_movieclip_call_frame(FVM_Context *c, FVM_Object *clip, const FVM_
     }
 }
 
+/* [GC:] Internal empty content bypasses replaceable globals/prototypes and native script calls.
+ * The caller supplies the collection barrier and catches allocation failures. */
+FVM_Result fvm_movieclip_empty_content(FVM_Context *c, FVM_Object **out)
+{
+    return make(c, "", FVM_MOVIECLIP_DEFAULT_FRAMES, 0, out);
+}
+
 /* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,
                                            FVM_Object **out)

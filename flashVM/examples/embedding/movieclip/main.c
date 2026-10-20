@@ -201,6 +201,47 @@ static int initializer_demo(void) /* Raw SWF8 fixture requires no compiler, rend
         fvm_runtime_destroy(runtime); /* No asynchronous work remains. */
     return status == FVM_OK; /* Preserve demonstration failure for main. */
 } /* End the independent initializer-work example. */
+/* Clear a native instance at an owner safe point; no ActionScript callback is active. */
+static int unload_demo(void) /* See MOVIE_UNLOAD.md for the atomic publication contract. */
+{ /* Initialize every owner before the first fallible call. */
+    FVM_Config config; /* Runtime creation copies this host descriptor. */
+    FVM_Runtime *runtime = 0; /* Outlive the context and all managed objects. */
+    FVM_Context *context = 0; /* Own the clip graph and its pin. */
+    FVM_Object *clip = 0; /* Borrow the instance until context destruction. */
+    FVM_Value value; /* Carry a scalar own property across content replacement. */
+    int attached = 0; /* Receive the physical attachment query only on success. */
+    FVM_Result status = fvm_config_init(&config); /* Initialize the public configuration ABI. */
+    if (status == FVM_OK) /* Keep partial setup safe for ordinary cleanup. */
+        status = fvm_runtime_create(&config, &runtime); /* Create the independent runtime. */
+    if (status == FVM_OK) /* The context requires a live runtime. */
+        status = fvm_context_create(runtime, &context); /* Create owner-thread managed storage. */
+    if (status == FVM_OK) /* Install the native MovieClip class. */
+        status = fvm_standard_install(context); /* No renderer or network provider is needed. */
+    if (status == FVM_OK) /* Create a three-frame content graph. */
+        status = fvm_movieclip_create(context, "retained", 3, &clip); /* Borrow the resulting instance. */
+    if (status == FVM_OK) /* [GC:] Retain the instance through subsequent host calls. */
+        status = fvm_gc_pin(context, clip); /* Context destruction releases this host pin. */
+    fvm_value_number(&value, 42); /* Keep ordinary instance data independent of its contents. */
+    if (status == FVM_OK) /* Publish the property before unloading. */
+        status = fvm_object_set(context, clip, "kept", &value); /* Copy the scalar into the instance. */
+    if (status == FVM_OK) /* No VM/native event callback is active here. */
+        status = fvm_movieclip_unload(context, clip); /* Atomically publish stopped empty contents. */
+    if (status == FVM_OK) /* Query identity through native edges rather than script getters. */
+        status = fvm_movieclip_attached_to(context, clip, clip, &attached); /* A live root includes itself. */
+    if (status == FVM_OK) /* Read back the preserved own property. */
+        status = fvm_object_get(context, clip, "kept", &value); /* The scalar needs no managed lifetime. */
+    if (status == FVM_OK && (!attached || value.type != FVM_VALUE_NUMBER || value.number != 42)) /* Validate results. */
+        status = FVM_ERROR; /* Propagate unexpected state through ordinary cleanup. */
+    if (status == FVM_OK) /* Report the deterministic successful result. */
+        puts("unload: instance and property retained"); /* No synthetic onUnload event is generated. */
+    else /* Keep diagnostics independent of managed storage. */
+        fprintf(stderr, "unload tutorial failed: %d\n", (int)status); /* Preserve failure for the caller. */
+    if (context) /* [GC:] Destroy the graph and release its pin first. */
+        fvm_context_destroy(context); /* No borrowed managed pointer is used afterwards. */
+    if (runtime) /* Release the enclosing owner last. */
+        fvm_runtime_destroy(runtime); /* No independent audio or transport was started. */
+    return status == FVM_OK; /* Let the enclosing example propagate failure. */
+} /* End the standalone native content-clear demonstration. */
 /* Demonstrate partial completion and the fresh budget of a later outer host call. */
 int main(void) /* Build with the independent FlashVM component's examples option. */
 { /* Set partial owners before any fallible acquisition. */
@@ -255,5 +296,7 @@ int main(void) /* Build with the independent FlashVM component's examples option
         status = FVM_INVALID_ARGUMENT; /* Propagate frame-call demonstration failure. */
     if (status == FVM_OK && !initializer_demo()) /* Verify completed-library work after the other independent demos. */
         status = FVM_INVALID_ARGUMENT; /* Propagate initializer demonstration failure. */
+    if (status == FVM_OK && !unload_demo()) /* Run the independent safe-point content-clear example. */
+        status = FVM_ERROR; /* Preserve a failed contract check for the shell. */
     return status == FVM_OK ? 0 : 1; /* Let CTest or a shell observe the result. */
 } /* End the standalone host. */

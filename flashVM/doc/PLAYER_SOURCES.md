@@ -193,7 +193,7 @@ content. Owner thread, outside VM/native callbacks/GC/teardown; nested replaceme
 returns INVALID_ARGUMENT. The strict current importer rejects unsupported tags and
 child root streaming sound. Successful replacement requests a redraw.
 
-[fvm_object_load_variables](../include/flashvm/movieclip.h#L122) takes a same-context target and counted form bytes up to
+[fvm_object_load_variables](../include/flashvm/movieclip.h#L139) takes a same-context target and counted form bytes up to
 64 MiB. It decodes all percent escapes/plus/spaces and WTF-8 before writing, with
 at most 65536 fields, including ignored empty segments. NUL in decoded values/keys remains counted.
 Duplicate keys assign in input order, last value wins; missing equals means empty
@@ -244,6 +244,7 @@ cleanup is tested through the module interface.
 GET here means retrieving the supplied URL. Automatic serialization of current-clip variables into query parameters or a POST body is not implemented.
 [Controlled/background C APIs / Управляемая фоновая загрузка](BACKGROUND_TRANSFER.md), v0.680–0.683.
 [Owner load progress, deadlines and startup stop](LOAD_MONITOR.md).
+[Native content unloading / Очистка содержимого](MOVIE_UNLOAD.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -258,7 +259,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_get_source` | function | [include/flashvm/movieclip.h:107](../include/flashvm/movieclip.h#L107) |
 | `fvm_movieclip_replace_swf` | function | [include/flashvm/movieclip.h:114](../include/flashvm/movieclip.h#L114) |
 | `fvm_movieclip_set_source` | function | [include/flashvm/movieclip.h:103](../include/flashvm/movieclip.h#L103) |
-| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:122](../include/flashvm/movieclip.h#L122) |
+| `fvm_object_load_variables` | function | [include/flashvm/movieclip.h:139](../include/flashvm/movieclip.h#L139) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_SWF_DEFAULT_LIMIT` | macro / define | [include/flashvm/swf.h:15](../include/flashvm/swf.h#L15) |
 <!-- source-links:end -->
