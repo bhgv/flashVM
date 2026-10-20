@@ -10,18 +10,20 @@
 #define FVM_DESKTOP_TOUCH_MOUSE_HINT                                                               \
     "SDL_TOUCH_MOUSE_EVENTS" /* Disable generated mouse duplicates. */
 #define FVM_DESKTOP_MOUSE_TOUCH_HINT                                                               \
-    "SDL_MOUSE_TOUCH_EVENTS"            /* Disable generated finger duplicates. */
-#define FVM_DESKTOP_EVENT_KEY 1U        /* Shared FIFO keyboard variant. */
-#define FVM_DESKTOP_EVENT_MOUSE 2U      /* Shared FIFO primary-pointer variant. */
-#define FVM_DESKTOP_MAX_PIXELS 4096U    /* Match the current rasterizer coordinate extent. */
-#define FVM_DESKTOP_RED 0U              /* Red offset in a packed RGBA pixel. */
-#define FVM_DESKTOP_GREEN 1U            /* Green offset in a packed RGBA pixel. */
-#define FVM_DESKTOP_BLUE 2U             /* Blue offset in a packed RGBA pixel. */
-#define FVM_DESKTOP_ALPHA 3U            /* Alpha offset in a packed RGBA pixel. */
-#define FVM_DESKTOP_WHITE 255U          /* Default white stage color channel. */
-#define FVM_DESKTOP_OPAQUE 255U         /* Default fully opaque stage alpha. */
-#define FVM_DESKTOP_RGBA_BYTES 4U       /* Packed straight-alpha bytes per pixel. */
-#define FVM_DESKTOP_MILLISECONDS 1000.0 /* Convert seconds to scheduler milliseconds. */
+    "SDL_MOUSE_TOUCH_EVENTS"                 /* Disable generated finger duplicates. */
+#define FVM_DESKTOP_EVENT_KEY 1U             /* Shared FIFO keyboard variant. */
+#define FVM_DESKTOP_EVENT_WHEEL 3U           /* Vertical wheel entry in the shared native FIFO. */
+#define FVM_DESKTOP_WHEEL_LINES_PER_UNIT 3.0 /* Explicit host scroll-line policy per SDL unit. */
+#define FVM_DESKTOP_EVENT_MOUSE 2U           /* Shared FIFO primary-pointer variant. */
+#define FVM_DESKTOP_MAX_PIXELS 4096U         /* Match the current rasterizer coordinate extent. */
+#define FVM_DESKTOP_RED 0U                   /* Red offset in a packed RGBA pixel. */
+#define FVM_DESKTOP_GREEN 1U                 /* Green offset in a packed RGBA pixel. */
+#define FVM_DESKTOP_BLUE 2U                  /* Blue offset in a packed RGBA pixel. */
+#define FVM_DESKTOP_ALPHA 3U                 /* Alpha offset in a packed RGBA pixel. */
+#define FVM_DESKTOP_WHITE 255U               /* Default white stage color channel. */
+#define FVM_DESKTOP_OPAQUE 255U              /* Default fully opaque stage alpha. */
+#define FVM_DESKTOP_RGBA_BYTES 4U            /* Packed straight-alpha bytes per pixel. */
+#define FVM_DESKTOP_MILLISECONDS 1000.0      /* Convert seconds to scheduler milliseconds. */
 #define FVM_DESKTOP_LATE_FRAMES                                                                    \
     4.0                          /* Reset an excessively late deadline without skipping VM ticks. */
 #define FVM_DESKTOP_KEY_LEFT 37  /* Flash-style code for the left arrow. */

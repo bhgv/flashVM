@@ -15,6 +15,7 @@ typedef struct FVM_DesktopEvent
     FVM_MouseEventType mouse_type; /* Down/move/up when kind is the pointer variant. */
     double x, y;             /* Logical coordinates captured at this event, before stage origin. */
     FVM_KeyboardState state; /* Complete post-transition polling state. */
+    double wheel_delta;      /* Signed host-normalized lines, used only by wheel entries. */
     int pressed;             /* One for physical down/repeat, zero for release. */
 } FVM_DesktopEvent;
 /* Own presentation objects in reverse-destruction order; retain no VM pointers. */
@@ -195,7 +196,7 @@ int fvm_desktop_window_present(FVM_DesktopWindow *view, const FVM_RasterSurface 
 
 /* Queue one copied event in shared key/pointer order; overflow is latched until close. */
 static void queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEventType mouse_type,
-                        int pressed)
+                        int pressed, double wheel_delta)
 {
     size_t slot;
     FVM_DesktopEvent *queued;
@@ -212,6 +213,7 @@ static void queue_input(FVM_DesktopWindow *view, unsigned int kind, FVM_MouseEve
     queued->mouse_type = mouse_type;
     queued->state = view->input.keyboard;
     queued->pressed = pressed;
+    queued->wheel_delta = wheel_delta;
     queued->x = view->input.x;
     queued->y = view->input.y;
     ++view->event_count;
@@ -260,7 +262,7 @@ static void touch_input(FVM_DesktopWindow *view, const SDL_TouchFingerEvent *eve
         view->touch_active = 0;
         view->input.buttons &= ~FVM_DESKTOP_BUTTON_LEFT;
     }
-    queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0);
+    queue_input(view, FVM_DESKTOP_EVENT_MOUSE, type, 0, 0);
 }
 
 /* Native key/mouse/window events are scoped to our SDL window. ID zero remains
@@ -276,6 +278,9 @@ static int belongs_to_window(FVM_DesktopWindow *view, const SDL_Event *event)
     case SDL_KEYDOWN:
     case SDL_KEYUP:
         id = event->key.windowID;
+        break;
+    case SDL_MOUSEWHEEL:
+        id = event->wheel.windowID;
         break;
     case SDL_MOUSEMOTION:
         id = event->motion.windowID;
@@ -336,13 +341,30 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
     if (event->type == SDL_KEYDOWN &&
         (event->key.keysym.sym == SDLK_ESCAPE || event->key.keysym.sym == SDLK_AC_BACK))
         return 0;
+    if (event->type == SDL_MOUSEWHEEL)
+    {
+        double delta = event->wheel.y;
+        if (event->wheel.which == SDL_TOUCH_MOUSEID || view->touch_active)
+            return 1;
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+        delta = event->wheel.preciseY;
+#endif
+        if (event->wheel.direction == SDL_MOUSEWHEEL_FLIPPED)
+            delta = -delta;
+        delta *= FVM_DESKTOP_WHEEL_LINES_PER_UNIT;
+        if (!(delta >= -DBL_MAX && delta <= DBL_MAX))
+            view->event_error = FVM_ERROR;
+        else if (delta != 0)
+            queue_input(view, FVM_DESKTOP_EVENT_WHEEL, FVM_MOUSE_EVENT_MOVE, 0, delta);
+        return 1;
+    }
     if (event->type == SDL_MOUSEMOTION)
     {
         if (event->motion.which == SDL_TOUCH_MOUSEID || view->touch_active)
             return 1;
         view->input.x = event->motion.x;
         view->input.y = event->motion.y;
-        queue_input(view, FVM_DESKTOP_EVENT_MOUSE, FVM_MOUSE_EVENT_MOVE, 0);
+        queue_input(view, FVM_DESKTOP_EVENT_MOUSE, FVM_MOUSE_EVENT_MOVE, 0, 0);
     }
     if (event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP)
     {
@@ -363,9 +385,10 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         else
             view->input.buttons &= ~bit;
         if (bit == FVM_DESKTOP_BUTTON_LEFT)
-            queue_input(
-                view, FVM_DESKTOP_EVENT_MOUSE,
-                event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN : FVM_MOUSE_EVENT_UP, 0);
+            queue_input(view, FVM_DESKTOP_EVENT_MOUSE,
+                        event->type == SDL_MOUSEBUTTONDOWN ? FVM_MOUSE_EVENT_DOWN
+                                                           : FVM_MOUSE_EVENT_UP,
+                        0, 0);
     }
     if (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERMOTION ||
         event->type == SDL_FINGERUP)
@@ -403,7 +426,7 @@ static int handle_event(FVM_DesktopWindow *view, const SDL_Event *event)
         view->input.key_code = code;
         view->input.key_down = down;
         if (fvm_desktop_key_code(key))
-            queue_input(view, FVM_DESKTOP_EVENT_KEY, FVM_MOUSE_EVENT_MOVE, down);
+            queue_input(view, FVM_DESKTOP_EVENT_KEY, FVM_MOUSE_EVENT_MOVE, down, 0);
         if (down && !event->key.repeat)
             ++view->input.key_presses;
     }
@@ -451,9 +474,13 @@ FVM_Result fvm_desktop_window_pump_clip_input(FVM_DesktopWindow *view, FVM_Conte
                     root ? fvm_input_dispatch_key_listeners(context, &event.state, event.pressed)
                          : fvm_input_dispatch_keyboard(context, &event.state, event.pressed);
         }
+        else if (event.kind == FVM_DESKTOP_EVENT_WHEEL)
+            result = fvm_input_dispatch_mouse_wheel(context, event.wheel_delta, world_x, world_y);
         else
             result = fvm_input_dispatch_mouse(context, event.mouse_type, world_x, world_y);
-        if (result == FVM_OK && root && epoch == view->event_epoch)
+        /* Wheel has no ClipActions mouse-up/move analogue. */
+        if (result == FVM_OK && root && event.kind != FVM_DESKTOP_EVENT_WHEEL &&
+            epoch == view->event_epoch)
         {
             unsigned long clip_event =
                 event.kind == FVM_DESKTOP_EVENT_KEY

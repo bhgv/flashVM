@@ -121,3 +121,5 @@ New flashvm_frontend_clip_keypress and flashvm_player_clip_keypress_interpreter/
 checks use actual SDL adapter/host with synthetic input, not physical-device evidence.
 
 [Presentation recovery](../doc/PLAYER_RECOVERY.md).
+
+[Wheel and cursor bridge](../doc/PLAYER_WHEEL_CURSOR.md).

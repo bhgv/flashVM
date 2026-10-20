@@ -120,3 +120,5 @@ Escape/Android back остаются зарезервированы для за�
 проверяют настоящий SDL adapter/host с synthetic input, не физическое устройство.
 
 [Восстановление изображения](../doc/PLAYER_RECOVERY.ru.md).
+
+[Колесо и курсор](../doc/PLAYER_WHEEL_CURSOR.ru.md).
