@@ -34,6 +34,20 @@ Sprite streams remain unsupported. Event sounds retain their separate host callb
 Tests cover FWS/CWS PCM, opaque MP3, mixed event/stream sound, malformed headers,
 orphan/duplicate/odd PCM blocks, strict versus opt-in import, source mismatch,
 unknown flags, nested-stream rejection and a pinned clip across GC/advance.
+## Complete measured file input (v0.664)
+
+After reading the measured file length the host probes EOF. Growth is rejected
+rather than silently playing a prefix; a short read, EOF-probe error or close
+failure also aborts. Stale unrelated SDL error text is cleared before the probe.
+Every acquired stream closes once; failure keeps the caller's size output
+unchanged and frees the input buffer. The 64 MiB positive/seekable input bound
+is unchanged. This detects length changes, not concurrent same-length rewrites;
+callers must still supply stable files. UTF-8 platform file access stays in SDL.
+
+The input-reader fixture substitutes real SDL memory streams for file opening,
+then controls advertised size and error injection. It checks normal EOF, stale
+errors, growth, truncation, invalid sizes, open/probe/close failures and cleanup
+without initializing a window or device.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

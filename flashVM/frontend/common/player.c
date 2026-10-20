@@ -25,6 +25,7 @@ static unsigned char *read_movie(const char *path, size_t *size)
     SDL_RWops *file = SDL_RWFromFile(path, "rb");
     Sint64 length;
     unsigned char *bytes;
+    unsigned char extra; /* Probe measured EOF so a growing file is not loaded as a silent prefix. */
     if (!file)
     {
         fprintf(stderr, "%s: %s\n", path, SDL_GetError());
@@ -47,6 +48,14 @@ static unsigned char *read_movie(const char *path, size_t *size)
     if (SDL_RWread(file, bytes, 1, (size_t)length) != (size_t)length)
     {
         fprintf(stderr, "%s: input read: %s\n", path, SDL_GetError());
+        free(bytes);
+        SDL_RWclose(file);
+        return 0;
+    }
+    SDL_ClearError();
+    if (SDL_RWread(file, &extra, 1, 1) != 0 || SDL_GetError()[0])
+    {
+        fprintf(stderr, "%s: input changed length or failed at EOF: %s\n", path, SDL_GetError());
         free(bytes);
         SDL_RWclose(file);
         return 0;
