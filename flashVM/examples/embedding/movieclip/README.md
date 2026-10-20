@@ -113,8 +113,8 @@ independent safe-point clear. / Пример также очищает экзе�
 
 | API | Purpose / Назначение |
 | --- | --- |
-| [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L132) | Atomically clear contents; caller retains the instance. / Атомарная очистка, экземпляр удерживает хост. |
-| [`fvm_movieclip_attached_to`](../../../include/flashvm/movieclip.h#L122) | Borrowed native ancestry snapshot; output changes only on success. / Проверка физических связей, выход меняется при успехе. |
+| [`fvm_movieclip_unload`](../../../include/flashvm/movieclip.h#L148) | Atomically clear contents; caller retains the instance. / Атомарная очистка, экземпляр удерживает хост. |
+| [`fvm_movieclip_attached_to`](../../../include/flashvm/movieclip.h#L138) | Borrowed native ancestry snapshot; output changes only on success. / Проверка физических связей, выход меняется при успехе. |
 
 Contracts, ownership, errors and remaining lifecycle limits:
 [MOVIE_UNLOAD.md](../../../doc/MOVIE_UNLOAD.md) /
@@ -137,12 +137,12 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_exec_call_frame` | function | [include/flashvm/execution.h:342](../../../include/flashvm/execution.h#L342) |
 | `fvm_gc_pin` | function | [include/flashvm/gc.h:48](../../../include/flashvm/gc.h#L48) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:66](../../../include/flashvm/movieclip.h#L66) |
-| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:122](../../../include/flashvm/movieclip.h#L122) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:138](../../../include/flashvm/movieclip.h#L138) |
 | `fvm_movieclip_create` | function | [include/flashvm/movieclip.h:36](../../../include/flashvm/movieclip.h#L36) |
 | `fvm_movieclip_define_frame` | function | [include/flashvm/movieclip.h:51](../../../include/flashvm/movieclip.h#L51) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:43](../../../include/flashvm/movieclip.h#L43) |
 | `fvm_movieclip_render` | function | [include/flashvm/movieclip.h:76](../../../include/flashvm/movieclip.h#L76) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:132](../../../include/flashvm/movieclip.h#L132) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:148](../../../include/flashvm/movieclip.h#L148) |
 | `fvm_object_call` | function | [include/flashvm/value.h:126](../../../include/flashvm/value.h#L126) |
 | `fvm_object_define_method_rooted` | function | [include/flashvm/value.h:115](../../../include/flashvm/value.h#L115) |
 | `fvm_object_get` | function | [include/flashvm/value.h:72](../../../include/flashvm/value.h#L72) |

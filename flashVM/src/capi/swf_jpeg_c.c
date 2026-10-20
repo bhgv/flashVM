@@ -47,8 +47,9 @@ static void jpeg_cleanup(FVM_JpegDecode *state)
 #endif
 
 /* Bound decoded dimensions before starting decompression and publish only a complete RGB image. */
-FVM_Result fvm_swf_decode_jpeg(const unsigned char *bytes, size_t size, size_t limit,
-                               unsigned *width, unsigned *height, unsigned char **pixels)
+FVM_Result fvm_swf_decode_jpeg_versioned(const unsigned char *bytes, size_t size, size_t limit,
+                                         int allow_progressive, unsigned *width, unsigned *height,
+                                         unsigned char **pixels)
 {
     if (!width || !height || !pixels)
         return FVM_INVALID_ARGUMENT;
@@ -83,6 +84,11 @@ FVM_Result fvm_swf_decode_jpeg(const unsigned char *bytes, size_t size, size_t l
         {
             jpeg_cleanup(state);
             return FVM_INVALID_ARGUMENT;
+        }
+        if (state->decoder.progressive_mode && !allow_progressive)
+        {
+            jpeg_cleanup(state);
+            return FVM_UNSUPPORTED;
         }
         if (!state->decoder.image_width || !state->decoder.image_height)
         {
@@ -146,6 +152,14 @@ FVM_Result fvm_swf_decode_jpeg(const unsigned char *bytes, size_t size, size_t l
     }
 #else
     (void)limit;
+    (void)allow_progressive;
     return FVM_UNSUPPORTED;
 #endif
+}
+
+/* Embedded callers retain their existing progressive-capable decoding contract. */
+FVM_Result fvm_swf_decode_jpeg(const unsigned char *bytes, size_t size, size_t limit,
+                               unsigned *width, unsigned *height, unsigned char **pixels)
+{
+    return fvm_swf_decode_jpeg_versioned(bytes, size, limit, 1, width, height, pixels);
 }

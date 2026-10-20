@@ -3516,6 +3516,36 @@ FVM_Result fvm_movieclip_empty_content(FVM_Context *c, FVM_Object **out)
     return make(c, "", FVM_MOVIECLIP_DEFAULT_FRAMES, 0, out);
 }
 
+/* [GC:] Build native bitmap drawing without replaceable class constructors or method lookup.
+ * Caller owns the collection barrier and publishes only the completed private content graph. */
+FVM_Result fvm_movieclip_image_content(FVM_Context *c, const FVM_Value &bitmap,
+                                       unsigned width, unsigned height, FVM_Object **out)
+{
+    FVM_Result r = fvm_movieclip_empty_content(c, out);
+    if (r != FVM_OK)
+        return r;
+    FVM_Value fill[4], result;
+    fill[0] = bitmap;
+    fvm_value_undefined(fill + 1);
+    fvm_value_boolean(fill + 2, 0);
+    fvm_value_boolean(fill + 3, 0);
+    r = fvm_movieclip_bitmap_begin(c, *out, 4, fill, &result, 0);
+    if (r != FVM_OK)
+        return r;
+    const double vertices[] = {0, 0, (double)width, 0, (double)width, (double)height,
+                              0, (double)height, 0, 0};
+    for (unsigned i = 0; i < sizeof(vertices) / sizeof(vertices[0]); i += 2)
+    {
+        FVM_Value vertex[2];
+        fvm_value_number(vertex, vertices[i]);
+        fvm_value_number(vertex + 1, vertices[i + 1]);
+        r = drawing(c, *out, 2, vertex, &result, i ? FVM_PATH_LINE : FVM_PATH_MOVE);
+        if (r != FVM_OK)
+            return r;
+    }
+    return end_fill(c, *out, 0, 0, &result, 0);
+}
+
 /* Create movieclip. */
 extern "C" FVM_Result fvm_movieclip_create(FVM_Context *c, const char *name, unsigned int frames,
                                            FVM_Object **out)

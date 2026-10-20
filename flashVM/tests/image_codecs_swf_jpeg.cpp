@@ -3,13 +3,14 @@
 #include "../src/capi/swf_jpeg_internal.h"
 #include <cstdlib>
 #include "jpeglib.h"
-static inline Bytes jpeg_fixture(bool grayscale = false)
+static inline Bytes jpeg_fixture(bool grayscale = false, bool progressive = false)
 {
     jpeg_compress_struct encoder; jpeg_error_mgr error; std::memset(&encoder,0,sizeof(encoder)); encoder.err=jpeg_std_error(&error);
     unsigned char *encoded=0; unsigned long size=0; jpeg_create_compress(&encoder); jpeg_mem_dest(&encoder,&encoded,&size);
     encoder.image_width=encoder.image_height=8; encoder.input_components=grayscale?1:3; encoder.in_color_space=grayscale?JCS_GRAYSCALE:JCS_RGB;
     jpeg_set_defaults(&encoder); jpeg_set_quality(&encoder,100,TRUE);
     for (int i=0;i<encoder.num_components;++i) encoder.comp_info[i].h_samp_factor=encoder.comp_info[i].v_samp_factor=1;
+    if(progressive)jpeg_simple_progression(&encoder);
     jpeg_start_compress(&encoder,TRUE); unsigned char row[24];
     for (unsigned i=0;i<8;++i) { if(grayscale)row[i]=64; else {row[i*3]=64;row[i*3+1]=32;row[i*3+2]=16;} }
     JSAMPROW rows[1]={row}; while(encoder.next_scanline<encoder.image_height)assert(jpeg_write_scanlines(&encoder,rows,1)==1);

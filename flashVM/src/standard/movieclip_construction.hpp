@@ -12,4 +12,7 @@ FVM_Result fvm_movieclip_sprite_class(FVM_Context *, FVM_Object *library, const 
 /* [GC:] Create a temporary one-frame empty clip with no prototype/global/script lookup.
  * Only its private content state is published by unload; the target prototype stays intact. */
 FVM_Result fvm_movieclip_empty_content(FVM_Context *, FVM_Object **out);
+/* [GC:] Build a private image rectangle through native drawing helpers, with no script lookup. */
+FVM_Result fvm_movieclip_image_content(FVM_Context *, const FVM_Value &, unsigned width,
+                                       unsigned height, FVM_Object **out);
 #endif

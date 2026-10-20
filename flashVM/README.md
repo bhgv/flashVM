@@ -1,5 +1,5 @@
-Development version: **0.699** (see [VERSION.txt](VERSION.txt)). New commit subjects
-start with `v0.699 ` and an English description. Increase the subversion before each
+Development version: **0.700** (see [VERSION.txt](VERSION.txt)). New commit subjects
+start with `v0.700 ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.

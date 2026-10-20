@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.699
+# FlashVM stage status / Состояние стадий — v0.700
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -8,6 +8,12 @@ counts are historical unless explicitly rerun for this revision.
 Это сводка существующих отчётов и текущих событий и глобальных функций, а не
 полный повторный аудит всех API. Все девять стадий открыты. Старые результаты
 тестов не выдаются за новый прогон; проценты и сроки из них не выводятся.
+
+v0.700 adds atomic standalone PNG/static GIF89a/JPEG content replacement and
+signature-based SWF/image dispatch in the C API. Straight alpha, GC, detached
+provenance, SWF baseline/progressive profiles and C++ allocation rollback are
+verified. Codecs use the bundled static image profile. [EN](IMAGE_LOADING.md) /
+[RU](IMAGE_LOADING.ru.md). All nine stages remain open.
 
 v0.699 preserves direct object destinations in global movie/form calls and receiver
 methods, without target stringification or path round-trips. Per-run bindings

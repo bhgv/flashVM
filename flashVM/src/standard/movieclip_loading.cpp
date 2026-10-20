@@ -12,6 +12,11 @@
 #include "flashvm/stage.h"
 #include <new>
 #include <cstring>
+#include <cstdlib>
+#include "bitmap_state.hpp"
+#include "image_loading_constants.h"
+#include "../capi/swf_image_internal.h"
+#include "../capi/swf_jpeg_internal.h"
 
 namespace
 {
@@ -103,6 +108,41 @@ FVM_Result publish_content(FVM_Context *c, FVM_Object *target, FVM_Object *old, 
     target->resource_result = object(next);
     return fvm_stage_request_update(c);
 }
+/* [GC:] Preserve the source language version without retaining the old movie dictionary. */
+FVM_Result seed_library(FVM_Context *c, FVM_Object *target, FVM_Object *next)
+{
+    unsigned int version = 0;
+    FVM_Result r = fvm_movieclip_movie_version(c, target, &version);
+    if (r != FVM_OK || !version)
+        return r;
+    FVM_Object *library = 0, *sprites = 0, *exports = 0;
+    r = fvm_object_create(c, &library);
+    if (r == FVM_OK)
+        r = fvm_object_create(c, &sprites);
+    if (r == FVM_OK)
+        r = fvm_object_create(c, &exports);
+    if (r != FVM_OK)
+        return r;
+    library->properties[FVM_MOVIECLIP_LIBRARY_VERSION_NAME] = number(version);
+    library->properties["prototype"] = object(target->prototype);
+    library->properties["sprites"] = object(sprites);
+    library->properties["exports"] = object(exports);
+    next->properties["library"] = object(library);
+    return FVM_OK;
+}
+/* Decoder allocations are native malloc ownership, released even if a C++ graph allocation throws.
+ */
+struct ImagePixels
+{
+    unsigned char *bytes; /* Owned decoded straight RGBA, independent of VM roots. */
+    ImagePixels() : bytes(0)
+    {
+    } /* Start safe for every early return. */
+    ~ImagePixels()
+    {
+        std::free(bytes);
+    } /* Match the C decoder's allocator. */
+};
 /* Parse one hexadecimal digit; negative denotes malformed percent encoding. */
 int hex(unsigned char value)
 {
@@ -228,6 +268,92 @@ extern "C" FVM_Result fvm_movieclip_replace_swf(FVM_Context *c, FVM_Object *targ
     }
 }
 
+/* Decode and stage a complete standalone image; publish with the same child transaction as SWF. */
+extern "C" FVM_Result fvm_movieclip_replace_image(FVM_Context *c, FVM_Object *target,
+                                                  const void *input, size_t size,
+                                                  const char *source, size_t source_size)
+{
+    FVM_Object *old = 0;
+    if (owned(c, target, old) != FVM_OK || c->gc_native_depth || c->avm1_target_active ||
+        c->movieclip_sound_busy || !input || !size || size > FVM_SWF_DEFAULT_LIMIT || !source ||
+        !source_size || source_size > FVM_MOVIE_SOURCE_MAX_BYTES ||
+        std::memchr(source, 0, source_size))
+        return FVM_INVALID_ARGUMENT;
+    try
+    {
+        if (fvm_movieclip_is_class_prototype(target) ||
+            old->properties.find("static_art") != old->properties.end())
+            return FVM_INVALID_ARGUMENT;
+        const unsigned char *bytes = (const unsigned char *)input;
+        bool png = size >= FVM_IMAGE_PNG_SIGNATURE_BYTES &&
+                   !std::memcmp(bytes, "\211PNG\r\n\032\n", FVM_IMAGE_PNG_SIGNATURE_BYTES);
+        bool gif = size >= FVM_IMAGE_GIF_SIGNATURE_BYTES &&
+                   !std::memcmp(bytes, "GIF89a", FVM_IMAGE_GIF_SIGNATURE_BYTES);
+        bool jpeg = size >= FVM_IMAGE_JPEG_SIGNATURE_BYTES && bytes[0] == FVM_IMAGE_JPEG_MARKER &&
+                    bytes[1] == FVM_IMAGE_JPEG_SOI;
+        if (!png && !gif && !jpeg)
+            return FVM_UNSUPPORTED;
+        unsigned int version = 0;
+        FVM_Result r = fvm_movieclip_movie_version(c, target, &version);
+        if (r != FVM_OK)
+            return r;
+        if (version && version < (jpeg ? FVM_IMAGE_JPEG_MIN_SWF : FVM_IMAGE_LOSSLESS_MIN_SWF))
+            return FVM_UNSUPPORTED;
+        ImagePixels decoded;
+        unsigned width = 0, height = 0;
+        r = png   ? fvm_swf_decode_png(bytes, size, FVM_SWF_DEFAULT_LIMIT, &width, &height,
+                                       &decoded.bytes)
+            : gif ? fvm_swf_decode_gif(bytes, size, FVM_SWF_DEFAULT_LIMIT, &width, &height,
+                                       &decoded.bytes)
+                  : fvm_swf_decode_jpeg_versioned(bytes, size, FVM_SWF_DEFAULT_LIMIT,
+                                                  !version || version >= FVM_IMAGE_LOSSLESS_MIN_SWF,
+                                                  &width, &height, &decoded.bytes);
+        if (r != FVM_OK)
+            return r;
+        /* [GC:] No constructor/getter/frame script runs; temporary bitmap and clip graphs stay
+         * live. */
+        FVM_NativeCallGuard guard(c);
+        fvm_detail::vector<unsigned char> pixels;
+        size_t count = (size_t)width * height * FVM_IMAGE_RGBA_CHANNELS;
+        pixels.assign(decoded.bytes, decoded.bytes + count);
+        FVM_Value bitmap;
+        r = fvm_bitmap_create_pixels(c, width, height, true, pixels, &bitmap);
+        if (r != FVM_OK)
+            return r;
+        FVM_Object *fresh = 0;
+        r = fvm_movieclip_image_content(c, bitmap, width, height, &fresh);
+        if (r != FVM_OK)
+            return r;
+        FVM_Object *next = fresh->resource_result.object;
+        next->properties["playing"] = number(FVM_MOVIECLIP_PLAYBACK_STOPPED);
+        r = seed_library(c, target, next);
+        if (r == FVM_OK)
+            r = fvm_movieclip_set_source(c, fresh, source, source_size);
+        return r == FVM_OK ? publish_content(c, target, old, next) : r;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    catch (...)
+    {
+        return FVM_ERROR;
+    }
+}
+
+/* Select by binary signature, never extension or MIME, while preserving strict SWF import errors.
+ */
+extern "C" FVM_Result fvm_movieclip_replace_resource(FVM_Context *c, FVM_Object *target,
+                                                     const void *bytes, size_t size,
+                                                     const char *source, size_t source_size)
+{
+    if (bytes && size >= FVM_IMAGE_SWF_SIGNATURE_BYTES &&
+        (!std::memcmp(bytes, "FWS", FVM_IMAGE_SWF_SIGNATURE_BYTES) ||
+         !std::memcmp(bytes, "CWS", FVM_IMAGE_SWF_SIGNATURE_BYTES)))
+        return fvm_movieclip_replace_swf(c, target, bytes, size, source, source_size);
+    return fvm_movieclip_replace_image(c, target, bytes, size, source, source_size);
+}
+
 /* Read native attachment independently from replaceable _parent/_root script descriptors. */
 extern "C" FVM_Result fvm_movieclip_attached_to(FVM_Context *c, FVM_Object *clip,
                                                 FVM_Object *ancestor, int *out)
@@ -306,27 +432,9 @@ extern "C" FVM_Result fvm_movieclip_unload(FVM_Context *c, FVM_Object *target)
                 return r;
             next->properties["source_base"] = location;
         }
-        unsigned int version = 0;
-        r = fvm_movieclip_movie_version(c, target, &version);
+        r = seed_library(c, target, next);
         if (r != FVM_OK)
             return r;
-        if (version)
-        {
-            FVM_Object *library = 0, *sprites = 0, *exports = 0;
-            r = fvm_object_create(c, &library);
-            if (r == FVM_OK)
-                r = fvm_object_create(c, &sprites);
-            if (r == FVM_OK)
-                r = fvm_object_create(c, &exports);
-            if (r != FVM_OK)
-                return r;
-            /* [GC:] Retain only source version/prototype, not the old SWF dictionary or frames. */
-            library->properties[FVM_MOVIECLIP_LIBRARY_VERSION_NAME] = number(version);
-            library->properties["prototype"] = object(target->prototype);
-            library->properties["sprites"] = object(sprites);
-            library->properties["exports"] = object(exports);
-            next->properties["library"] = object(library);
-        }
         return publish_content(c, target, old, next);
     }
     catch (const std::bad_alloc &)

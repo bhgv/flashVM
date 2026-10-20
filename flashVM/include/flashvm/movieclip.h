@@ -113,6 +113,22 @@ extern "C"
      * is INVALID_ARGUMENT. The native barrier protects temporary graphs. */
     FVM_API FVM_Result fvm_movieclip_replace_swf(FVM_Context *, FVM_Object *, const void *, size_t,
                                                  const char *source, size_t source_size);
+    /* Atomically replace a same-context clip with decoded standalone PNG/GIF/JPEG pixels.
+     * Preserve identity/placement/properties and detach old children as replace_swf does.
+     * Owner safe point only; no constructors/getters/frame callbacks. Caller borrows bytes/source.
+     * Requires image codecs; unknown/unsupported formats return UNSUPPORTED, malformed input
+     * INVALID_ARGUMENT, allocation failure OUT_OF_MEMORY. Failures preserve old content.
+     * Dimensions are decoder-bounded to 2880; encoded/decoded bytes are bounded by
+     * SWF_DEFAULT_LIMIT. PNG/GIF require a loaded SWF8 profile, JPEG SWF6; native clips without a
+     * profile are allowed. Animated/partial-canvas GIF remains unsupported. Alpha uses straight
+     * RGBA storage. */
+    FVM_API FVM_Result fvm_movieclip_replace_image(FVM_Context *, FVM_Object *, const void *,
+                                                   size_t, const char *source, size_t source_size);
+    /* Dispatch complete SWF or image bytes by signature to the corresponding atomic operation.
+     * Same ownership/safe-point/error rules; an invalid SWF never falls back to image decoding. */
+    FVM_API FVM_Result fvm_movieclip_replace_resource(FVM_Context *, FVM_Object *, const void *,
+                                                      size_t, const char *source,
+                                                      size_t source_size);
 /* Bound physical ancestry queries independently of script paths. */
 #define FVM_MOVIECLIP_QUERY_MAX_DEPTH 1024U
     /* Query attachment through native parent edges, including clip==ancestor, without script

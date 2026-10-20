@@ -33,7 +33,7 @@ All pointers are required and both objects must be same-context instances. A liv
 instance includes itself. Any detached node on the selected chain yields zero;
 a chain ending before the ancestor also yields zero. Success writes zero or one.
 Invalid state, allocation failure and chains exceeding
-[`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L117) preserve the caller's output. The depth bound
+[`FVM_MOVIECLIP_QUERY_MAX_DEPTH`](../include/flashvm/movieclip.h#L133) preserve the caller's output. The depth bound
 also rejects cycles. Use on the owner thread outside GC/teardown, retaining both
 borrowed objects through the call. This is a snapshot, not a retained subscription.
 
@@ -178,9 +178,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:43](../include/flashvm/flashvm.h#L43) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:122](../include/flashvm/movieclip.h#L122) |
-| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:117](../include/flashvm/movieclip.h#L117) |
-| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:132](../include/flashvm/movieclip.h#L132) |
+| `fvm_movieclip_attached_to` | function | [include/flashvm/movieclip.h:138](../include/flashvm/movieclip.h#L138) |
+| `FVM_MOVIECLIP_QUERY_MAX_DEPTH` | macro / define | [include/flashvm/movieclip.h:133](../include/flashvm/movieclip.h#L133) |
+| `fvm_movieclip_unload` | function | [include/flashvm/movieclip.h:148](../include/flashvm/movieclip.h#L148) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:42](../include/flashvm/flashvm.h#L42) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 <!-- source-links:end -->
