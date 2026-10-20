@@ -8,7 +8,6 @@
 #define FVM_DESKTOP_SOURCE_FILE 2U /* Read a local path through the SDL UTF-8 adapter. */
 #define FVM_DESKTOP_SOURCE_URL 3U  /* Fetch with an explicitly supplied host transport. */
 #define FVM_DESKTOP_MAX_LOCATION 4096U  /* Maximum source/reference/canonical location bytes. */
-#define FVM_DESKTOP_MAX_LOADS 1024UL    /* Bound sequential movie replacement, including startup. */
 #define FVM_DESKTOP_FETCH_INITIAL 4096U /* First bounded accumulation allocation. */
 #define FVM_DESKTOP_URL_ARGUMENTS 3U    /* URL, target, flags supplied by the VM service. */
 #define FVM_DESKTOP_URL_URL 0U          /* Counted URL operand. */

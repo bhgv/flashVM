@@ -23,19 +23,21 @@
 #define FVM_DESKTOP_PERCENT_UNIT 100.0  /* Percentage denominator, also default speed. */
 #define FVM_DESKTOP_FIXED8_UNIT 256.0   /* Authored SWF FPS fractional denominator. */
 #define FVM_DESKTOP_DEFAULT_FPS 0.0     /* Zero means use the authored rate, not a paused clock. */
+#define FVM_DESKTOP_MAX_LOADS 1024UL    /* Bound sequential movies, including initial playback. */
 /* Borrow path strings; caller owns the file-pointer array until playback returns. */
 typedef struct FVM_DesktopOptions
 {
     FVM_ExecutionMode mode;   /* Explicit interpreter/JIT, or MANUAL for frontend auto-selection. */
     FVM_StageQuality quality; /* Host starting quality, later changeable by SWF actions. */
     double fps;               /* Explicit absolute rate, or zero for authored-rate scaling. */
-    double percent;       /* Percentage of the SWF rate; mutually exclusive with explicit fps. */
-    unsigned long frames; /* Per-file tick limit, or zero for the normal playback policy. */
+    double percent;          /* Percentage of the SWF rate; mutually exclusive with explicit fps. */
+    unsigned long max_loads; /* Root-load budget, including startup; default one. */
+    unsigned long frames;    /* Per-file tick limit, or zero for the normal playback policy. */
     int once; /* Stop after the authored frame count; multiple files imply this by default. */
     int mute; /* Explicitly skip device opening and event sound for headless/audio-free sessions. */
-    int stats;          /* Print actual VM counters after each movie. */
+    int stats;                /* Print actual VM counters after each movie. */
     const char *const *files; /* Caller-owned immutable array of borrowed movie paths. */
-    size_t file_count;  /* Number of initialized entries in files. */
+    size_t file_count;        /* Number of initialized entries in files. */
 } FVM_DesktopOptions;
 #ifdef __cplusplus
 extern "C"

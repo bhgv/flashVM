@@ -38,3 +38,29 @@ cmake --build build-player --target flashvm_example_embedded_movie
 
 [Интерфейс](../../../frontend/common/player.h) ·
 [Реализация](../../../frontend/common/player.c) · [Тестовый фильм](../muted_stream/README.ru.md)
+
+## Статический или динамический ресурсный модуль
+
+[modulе.h](module.h), [module.c](module.c) и [module_host.c](module_host.c) также
+пояснены построчно. Библиотека владеет слинкованным фильмом и экспортирует C89/C++98
+embedded_movie_play. Хосту не нужны путь к фильму и внутренние заголовки VM.
+Он вызывает функцию на UI-потоке и владеет финальным SDL_Quit: библиотека не
+должна завершать SDL другого приложения. Указатели хоста и управляемые объекты
+после возврата не сохраняются. Возвращается обычный статус плеера. Это пример
+интерфейса, а не стабильный универсальный ABI VM.
+
+```sh
+cmake --build build-player --target flashvm_example_module_host
+./build-player/frontend/flashvm_example_module_host
+```
+
+По умолчанию flashvm_example_embedded_module и flashvm_player_host — архивы.
+FVM_PLAYER_HOST_SHARED=ON делает обе цели динамическими библиотеками. Настройте
+отдельный каталог сборки с этой опцией, графическим профилем и целевым SDL SDK
+со статическими PIC-библиотеками для ELF/Mach-O. Полные команды есть в
+[руководстве источников](../../../doc/PLAYER_SOURCES.ru.md). Windows использует
+import/export macro в module.h; статический вариант получает
+EXAMPLE_EMBEDDED_STATIC транзитивно от CMake. Установка и поиск библиотек
+принадлежат приложению. Нельзя выгружать модуль во время воспроизведения.
+Хост по-прежнему закрывается после двух tick с кодом 0 без файла ресурса.
+Android Activity этим desktop-примером не предоставляется.

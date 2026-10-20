@@ -26,6 +26,11 @@ int main(void)
     assert(fvm_desktop_options_validate(&options, &error) && !error);
     assert(memcmp(&options, before, sizeof(options)) == 0);
     assert(fvm_desktop_options_validate(&options, 0));
+    options.max_loads = 0;
+    assert(!fvm_desktop_options_validate(&options, 0));
+    options.max_loads = FVM_DESKTOP_MAX_LOADS + 1;
+    assert(!fvm_desktop_options_validate(&options, 0));
+    defaults(&options, files);
     options.mode = (FVM_ExecutionMode)-1;
     assert(!fvm_desktop_options_validate(&options, &error) && error);
     defaults(&options, files);

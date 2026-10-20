@@ -1713,6 +1713,8 @@ CLI проверяет 120 кадров каждого в interpreter/JIT.
 Построчно пояснённый C89-хост играет слинкованный массив SWF без файла/аргументов.
 [README EN](player/embedded_movie/README.md) / [RU](player/embedded_movie/README.ru.md),
 [main.c](player/embedded_movie/main.c), [байты](player/embedded_movie/movie.h),
+[модуль](player/embedded_movie/module.c), [C ABI](player/embedded_movie/module.h),
+[обычный хост](player/embedded_movie/module_host.c),
 [контракт](../doc/PLAYER_SOURCES.ru.md), [API](../frontend/common/player.h).
 
 <a id="example-player-muted_stream"></a>

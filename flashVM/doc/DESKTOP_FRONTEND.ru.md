@@ -173,6 +173,7 @@ CTest в сеансе display. Для cross-build они не регистрир
 во [вводе плеера](PLAYER_POINTER.ru.md). Полная scene/button рассылка ещё открыта.
 [Текущие метаданные сборки](PLAYER_BUILD_INFO.ru.md) · [GC и аргументы C-хоста](PLAYER_EVENT_GC.ru.md).
 [Structured C89/C++98 host / Встраивание через структуру](PLAYER_CONFIGURATION.ru.md).
+[Memory, HTTP(S), SWF root loading and library modules / Источники и модули](PLAYER_SOURCES.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

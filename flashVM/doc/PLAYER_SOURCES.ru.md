@@ -81,6 +81,66 @@ GetURL2 LOAD_TARGET к _root или _level0 с GET/без метода копи�
 [source_movie.c](../frontend/tests/source_movie.c) проверяет части/base,
 частичный отказ, игнорирование overflow, неверный canonical output, _root/_level0,
 неподдержанные запросы и лимиты циклов в interpreter и JIT.
+## HTTP(S), CLI и библиотечные модули с v0.675
+
+FVM_PLAYER_HTTP=ON подключает отдельный SDK libcurl 7.62+ только к необязательному
+frontend. По умолчанию OFF: память, файлы и пользовательский транспорт остаются
+доступны без curl. fvm_desktop_http_fetch из [http.h](../frontend/common/http.h)
+соответствует FVM_DesktopFetch: присвойте loader.fetch, userdata оставьте null.
+URL API curl разрешает reference/base и возвращает canonical provenance.
+HTTP(S) GET проверяет TLS peer/hostname, полное завершение передачи и код 2xx.
+Редиректы отклоняются. POST, настройка авторизации, progressive loading и отмена
+не добавлены. Таймаут подключения/всей передачи — 10/30 секунд. Используются
+системное доверие сертификатам и настройки proxy curl. Вызов балансирует свою
+curl-global ссылку и освобождает собственные handles. Хост с собственным curl
+сохраняет свою global-ссылку и согласует инициализацию/очистку, особенно для
+старых SDK без потокобезопасной global initialization.
+
+CLI и структурированный плейлист распознают URI по ://. При HTTP-сборке
+используется этот провайдер; без транспорта URI явно завершается ошибкой.
+--loads N задаёт бюджет корневых загрузок для каждого стартового фильма,
+включая сам старт: 1..1024, по умолчанию 1. Поле FVM_DesktopOptions.max_loads
+задаёт ту же политику CLI/плейлиста; прямой run_source использует явный
+FVM_DesktopLoader. Закрытие заканчивает весь плейлист. Несколько файлов по
+умолчанию играются по одному авторскому проходу. Неподдержанные targets/POST
+дают ошибку, не превращаются молча в корневую навигацию.
+
+```sh
+cmake -S flashVM -B build-player -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_HTTP=ON -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DSDL2_DIR=/path/to/sdl/lib/cmake/SDL2
+cmake --build build-player --target flashvm_player
+./build-player/frontend/flashvm_player --mute --loads 16 https://example.org/start.swf
+```
+
+При встраивании C/C++ подключите player.h и http.h, инициализируйте options/loader,
+задайте source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0, location=URL;
+loader.fetch=fvm_desktop_http_fetch, затем fvm_desktop_run_source. Для стартового
+ресурса в программе выберите MEMORY и точный sizeof массива; тот же loader
+может обслуживать запросы из встроенного фильма. Относительная ссылка разрешается
+провайдером только при корректной HTTP(S)-базе источника.
+
+FVM_PLAYER_HOST_SHARED=ON превращает flashvm_player_host в динамический модуль
+и включает PIC для статических зависимостей. OFF оставляет архив. Windows
+экспортирует символы хоста через CMake; это по-прежнему внутренний C89/C++98
+frontend-интерфейс. Нужны целевые SDL/curl SDK с PIC для статических зависимостей
+ELF/Mach-O shared library. Нельзя использовать non-PIC SDL архивы. Библиотеки
+ядра остаются статическими; глобальный BUILD_SHARED_LIBS не переключается.
+
+```sh
+cmake -S flashVM -B build-module -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_HOST_SHARED=ON -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DSDL2_DIR=/path/to/pic-sdl/lib/cmake/SDL2
+cmake --build build-module --target flashvm_example_module_host
+./build-module/frontend/flashvm_example_module_host
+```
+
+[Пример ресурсного модуля](../examples/player/embedded_movie/README.ru.md) тоже
+строится архивом либо динамической библиотекой при включённой опции. Он содержит
+свой неизменный SWF и экспортирует embedded_movie_play для обычного C/C++-хоста;
+файл фильма при запуске не нужен. Android сохраняет SDLActivity; desktop module
+host там не собирается. Целевые SDK/toolchain описаны в руководстве frontend.
+
+Loopback HTTP-тест проверяет стартовый и запрошенный SWF относительный GET,
+chunked, 404, отказ редиректа, оборванный ответ и локальные относительные загрузки
+в interpreter/JIT. Публичная сеть, доверенный HTTPS endpoint, физические устройства
+и полная семантика загрузки Flash этой проверкой не сертифицируются.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -176,6 +176,7 @@ The current bounded Key/Mouse listener routing and primary touch adapter are
 described in [player input](PLAYER_POINTER.md). Full scene/button routing remains open.
 [Current build metadata](PLAYER_BUILD_INFO.md) · [GC and C host arguments](PLAYER_EVENT_GC.md).
 [Structured C89/C++98 host / Встраивание через структуру](PLAYER_CONFIGURATION.md).
+[Memory, HTTP(S), SWF root loading and library modules / Источники и модули](PLAYER_SOURCES.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

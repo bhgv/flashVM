@@ -126,6 +126,7 @@ int fvm_desktop_options_init(FVM_DesktopOptions *out)
     out->mode = FVM_DESKTOP_MODE_AUTO;
     out->quality = FVM_STAGE_QUALITY_HIGH;
     out->percent = FVM_DESKTOP_PERCENT_UNIT;
+    out->max_loads = 1;
     return 1;
 }
 
@@ -156,6 +157,8 @@ int fvm_desktop_options_validate(const FVM_DesktopOptions *options, const char *
         message = "player flags must be zero or one";
     else if (options->once && options->frames)
         message = "once conflicts with explicit frame limit";
+    else if (!options->max_loads || options->max_loads > FVM_DESKTOP_MAX_LOADS)
+        message = "invalid root movie load limit";
     else if (!options->files || !options->file_count ||
              options->file_count > (size_t)-1 / sizeof(*options->files))
         message = "invalid playlist storage or count";
@@ -269,6 +272,15 @@ int fvm_desktop_parse(int argc, char **argv, const char **files, FVM_DesktopOpti
                 goto failed;
             }
         }
+        else if (!paths_only && !strcmp(arg, "--loads"))
+        {
+            if (++i == argc || !frame_limit(argv[i], &value.max_loads) ||
+                value.max_loads > FVM_DESKTOP_MAX_LOADS)
+            {
+                message = "--loads requires 1..1024 total movies";
+                goto failed;
+            }
+        }
         else if (!paths_only && !strcmp(arg, "--once"))
             value.once = 1;
         else if (!paths_only && !strcmp(arg, "--mute"))
@@ -330,12 +342,16 @@ void fvm_desktop_help(const char *program)
     puts("  --fps N                 Absolute movie ticks/second, 0.1..1000");
     puts("  --speed N[%]            Percent of SWF FPS, 0.1..10000 (default: 100)");
     puts("                          --fps and --speed cannot be combined");
+    puts(
+        "  --loads N               Allow up to 1..1024 root movies, including startup (default 1)");
     puts("  --once                  Run one authored frame-count worth of ticks");
     puts("  --frames N              Limit ticks per file; cannot combine with --once");
     puts("  --mute                  Mute event sound and validated root streams; no device");
     puts(
         "  --stats                 Print interpreter/JIT and presentation counters after playback");
     puts("  --                      Treat remaining arguments as filenames");
+    puts("HTTP(S) input requires the optional libcurl provider; no redirects, POST or "
+         "loadVariables.");
     puts("Single-file playback loops until window close/Escape; playlists run each file once.");
     puts("HostInput exposes logical pointer/buttons, arrows/space, key transitions and counters.");
     puts("Controls: Escape/window close exits the entire playlist. Resize preserves aspect.");

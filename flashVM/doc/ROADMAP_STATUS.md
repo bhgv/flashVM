@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.674
+# FlashVM stage status / Состояние стадий — v0.675
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -37,6 +37,10 @@ v0.673 adds exact borrowed memory playback and a linked-resource C89 example.
 
 v0.674 adds bounded host-provider input and deferred GetURL2 root replacement.
 Child-clip/progressive loading and full loadMovie semantics remain open.
+
+v0.675 adds optional HTTP(S), CLI root-load budgets and static/shared resource modules.
+Full child-clip loading, asynchronous/progressive transport and actual foreign-platform
+acceptance remain open.
 
 | Stage / Этап | Existing work / Основа | Remaining acceptance / Что не закрыто |
 | --- | --- | --- |

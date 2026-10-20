@@ -16,6 +16,9 @@
 #include "flashvm/swf_stream_sound.h"
 #include "options.h"
 #include "window.h"
+#ifdef FVM_DESKTOP_HTTP
+#include "http.h"
+#endif
 #include <SDL.h>
 #include <limits.h>
 #include <stdio.h>
@@ -578,18 +581,6 @@ cleanup:
 }
 
 /* File adapter owns its temporary bytes; buffer playback never assumes ownership. */
-static int play(const FVM_DesktopOptions *options, const char *path, int *quit)
-{
-    size_t length = 0;
-    unsigned char *bytes = read_movie(path, &length);
-    int status;
-    if (!bytes)
-        return FVM_DESKTOP_EXIT_PLAYBACK;
-    status = play_bytes(options, path, bytes, length, quit, 0);
-    free(bytes);
-    return status;
-}
-
 /* Validate shared scalar settings without requiring a filesystem playlist. */
 static int memory_options(const FVM_DesktopOptions *options, const char *name,
                           FVM_DesktopOptions *value, const char **error)
@@ -710,8 +701,8 @@ static int local_location(const char *reference, const char *base, char *out)
 
 /* Keep transport and successive VM lifetimes disjoint; this is root replacement, not child import.
  */
-int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
-                           const FVM_DesktopLoader *loader, const char **error)
+static int run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                      const FVM_DesktopLoader *loader, const char **error, int *closed)
 {
     FVM_DesktopOptions value;
     FVM_DesktopLoader policy;
@@ -762,6 +753,8 @@ int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopS
             if (fetched != FVM_OK || download.status != FVM_OK || !download.size ||
                 !memchr(resolved, 0, sizeof(resolved)) || !location_size(resolved))
             {
+                fprintf(stderr, "%s: source fetch failed (transport=%d sink=%d)\n", reference,
+                        (int)fetched, (int)download.status);
                 free(download.bytes);
                 break;
             }
@@ -790,6 +783,7 @@ int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopS
             break;
         if (loads >= policy.max_loads)
         {
+            fprintf(stderr, "%s: root movie load limit reached\n", location);
             status = FVM_DESKTOP_EXIT_PLAYBACK;
             break;
         }
@@ -800,28 +794,49 @@ int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopS
                    : FVM_DESKTOP_SOURCE_FILE;
     }
     free(navigation.pending);
+    if (closed)
+        *closed = quit;
     if (error)
         *error = status ? "source fetch, import, navigation limit or playback failed" : 0;
     return status;
+}
+
+/* Public source runner leaves playlist orchestration to the caller. */
+int fvm_desktop_run_source(const FVM_DesktopOptions *options, const FVM_DesktopSource *source,
+                           const FVM_DesktopLoader *loader, const char **error)
+{
+    return run_source(options, source, loader, error, 0);
 }
 
 /* Shared synchronous runner; the CLI translates arguments into this same contract. */
 int fvm_desktop_run(const FVM_DesktopOptions *options, const char **error)
 {
     FVM_DesktopOptions value;
+    FVM_DesktopSource source;
+    FVM_DesktopLoader loader;
     size_t i;
-    int status = FVM_DESKTOP_EXIT_OK, quit = 0;
+    int status = FVM_DESKTOP_EXIT_OK, closed = 0;
     if (!fvm_desktop_options_validate(options, error))
         return FVM_DESKTOP_EXIT_ARGUMENT;
     value = *options;
-    for (i = 0; i < value.file_count && !quit; ++i)
+    fvm_desktop_loader_init(&loader);
+    loader.max_loads = value.max_loads;
+#ifdef FVM_DESKTOP_HTTP
+    loader.fetch = fvm_desktop_http_fetch;
+#endif
+    if (value.file_count > 1 && !value.frames)
+        value.once = 1;
+    source.bytes = 0;
+    source.size = 0;
+    for (i = 0; i < value.file_count; ++i)
     {
-        status = play(&value, value.files[i], &quit);
-        if (status)
+        source.location = value.files[i];
+        source.kind =
+            strstr(source.location, "://") ? FVM_DESKTOP_SOURCE_URL : FVM_DESKTOP_SOURCE_FILE;
+        status = run_source(&value, &source, &loader, error, &closed);
+        if (status || closed)
             break;
     }
-    if (status && error)
-        *error = "player playback failed";
     return status;
 }
 

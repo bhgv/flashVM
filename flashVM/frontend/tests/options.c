@@ -25,6 +25,12 @@ int main(void)
     char *quality[] = {"player", "--quality", "fake", "a.swf"};
     const char *numbers[] = {"0", "-1", "inf", "nan", "1x", "1e999", "1001", " 2", "\n2", "0x1p2"};
     size_t i;
+    char *loads[] = {"player", "--loads", "3", "movie.swf"};
+    assert(fvm_desktop_parse(4, loads, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
+    assert(options.max_loads == 3);
+    loads[2] = "1025";
+    assert(fvm_desktop_parse(4, loads, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(options.max_loads == 3);
     memset(&options, 0, sizeof(options));
     options.frames = 73;
     assert(!fvm_desktop_arguments_valid(-1, valid));
@@ -33,7 +39,8 @@ int main(void)
     assert(fvm_desktop_parse(2, null_program, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
     assert(fvm_desktop_parse(2, null_file, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
     assert(fvm_desktop_parse(4, null_operand, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
-    assert(fvm_desktop_parse(3, null_after_help, files, &options, &error) == FVM_DESKTOP_PARSE_ERROR);
+    assert(fvm_desktop_parse(3, null_after_help, files, &options, &error) ==
+           FVM_DESKTOP_PARSE_ERROR);
     assert(options.frames == 73 && error);
     assert(fvm_desktop_parse(8, valid, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
     assert(!error && options.mode == FVM_EXECUTION_INTERPRETER &&
@@ -47,7 +54,8 @@ int main(void)
     assert(!fvm_desktop_rate(&options, 0, &rate) && rate == 24);
     assert(fvm_desktop_parse(6, fps, files, &options, &error) == FVM_DESKTOP_PARSE_OK);
     assert(options.frames == 2 && fvm_desktop_rate(&options, 0, &rate) && rate == 30);
-    assert(fvm_desktop_parse(3, mute, files, &options, &error) == FVM_DESKTOP_PARSE_OK && options.mute);
+    assert(fvm_desktop_parse(3, mute, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
+           options.mute);
     assert(fvm_desktop_parse(2, version, files, &options, &error) == FVM_DESKTOP_PARSE_VERSION);
     assert(fvm_desktop_parse(3, version_file, files, &options, &error) == FVM_DESKTOP_PARSE_OK &&
            !strcmp(files[0], "--version"));

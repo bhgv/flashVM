@@ -81,6 +81,65 @@ Transport callbacks occur on the owner thread only after old VM cleanup.
 [source_movie.c](../frontend/tests/source_movie.c) tests chunking, canonical bases,
 partial failure, ignored overflow, malformed canonical output, root/level0 loads,
 unsupported requests and loop limits in both interpreter and JIT.
+## HTTP(S), CLI and shared modules since v0.675
+
+FVM_PLAYER_HTTP=ON adds the independent libcurl 7.62+ SDK dependency to the
+optional frontend only. Default is OFF; custom transport and memory/file playback
+remain available without it. fvm_desktop_http_fetch in [http.h](../frontend/common/http.h)
+is an FVM_DesktopFetch provider: set loader.fetch to it and keep userdata null.
+It resolves reference/base with libcurl's URL API, returns canonical provenance,
+performs HTTP(S) GET with TLS peer/hostname verification, checks the entire transfer
+and accepts only 2xx. Redirects are rejected, not followed; POST/authentication
+configuration, progressive loading and cancellation are not implemented. Connection
+and total timeouts are 10/30 seconds. OS trust-store and curl proxy configuration
+apply. Calls own and balance a curl-global reference and private handles. An
+embedding host using curl keeps its own global reference and coordinates global
+initialization/cleanup, especially with older non-thread-safe SDKs.
+
+The CLI and structured playlist detect a URI by ://. HTTP builds use this provider;
+without a provider URI playback fails explicitly. --loads N sets a per-starting-
+movie total root-load budget, including startup, from 1 to 1024 (default 1).
+FVM_DesktopOptions.max_loads carries the same CLI/playlist policy; direct run_source
+uses its explicit FVM_DesktopLoader policy. Closing a movie ends the entire playlist.
+File playlists still default to one authored pass. Unsupported targets/POST/etc
+propagate failure rather than being silently interpreted as root navigation.
+
+```sh
+cmake -S flashVM -B build-player -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_HTTP=ON -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DSDL2_DIR=/path/to/sdl/lib/cmake/SDL2
+cmake --build build-player --target flashvm_player
+./build-player/frontend/flashvm_player --mute --loads 16 https://example.org/start.swf
+```
+
+For C/C++ embedding, include player.h and http.h, initialize options/loader, set
+source.kind=FVM_DESKTOP_SOURCE_URL, bytes=null, size=0 and location to the URL;
+set loader.fetch=fvm_desktop_http_fetch and call fvm_desktop_run_source. For a
+linked startup resource choose MEMORY and the exact array size; the same loader
+can service absolute/relative requests made by the embedded movie. The provider
+resolves relative references only when the supplied base is a valid HTTP(S) URL.
+
+FVM_PLAYER_HOST_SHARED=ON changes flashvm_player_host into a shared module and
+enables PIC for bundled static dependencies. OFF retains an archive. Windows
+exports the host symbols through CMake; this remains an internal C89/C++98 frontend
+interface. Use a target SDL/curl SDK, with PIC static dependencies when building
+ELF/Mach-O shared libraries. Do not reuse non-PIC SDL archives. Bundled VM libraries
+remain static; the option does not set global BUILD_SHARED_LIBS.
+
+```sh
+cmake -S flashVM -B build-module -DFVM_BUILD_DESKTOP_FRONTEND=ON -DFVM_BUILD_EXAMPLES=ON -DFVM_PLAYER_HOST_SHARED=ON -DFVM_DEFS_FILE="$PWD/flashVM/cmake/profiles/player-jit.defs" -DSDL2_DIR=/path/to/pic-sdl/lib/cmake/SDL2
+cmake --build build-module --target flashvm_example_module_host
+./build-module/frontend/flashvm_example_module_host
+```
+
+The [resource module example](../examples/player/embedded_movie/README.md) also
+builds as an archive by default or shared module with that option. It contains
+its own immutable SWF and exports embedded_movie_play for an ordinary C/C++ host;
+no runtime movie file is required. Android retains SDLActivity; no desktop module
+host is built. Native/cross SDK setup remains in the frontend guide.
+
+The loopback HTTP regression tests startup and SWF-triggered relative GET, chunked
+bodies, 404, rejected redirects, truncated transfers and local relative root loads
+in interpreter/JIT. It does not certify public networking, trusted HTTPS endpoints,
+physical devices or complete Flash loading semantics.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
