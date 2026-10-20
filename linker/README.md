@@ -1,4 +1,4 @@
-# SWL linker 0.2.0
+# SWL linker 0.3.0
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -31,3 +31,5 @@ copies retain the root MIT LICENSE. CLI statuses: 0 success, 1 input/link/write
 failure, 2 invalid arguments. Inputs/output are bounded by 64 MiB, at most 1024
 objects. Validation failures preserve existing output; a write failure itself
 may leave a partial output file.
+
+[Resources, SVF1 and scene](ASSETS.md).

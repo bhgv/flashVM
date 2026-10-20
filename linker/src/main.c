@@ -24,10 +24,12 @@ int main(int argc, char **argv)
 {
     SwlOptions options={550,400,12,0}; SwlContext *c; SwlObject *objects=NULL;
     int i,archive,ok=1; size_t count=0; char error[256]="read/allocation failure";
-    if(argc==2 && !strcmp(argv[1],"--version")) { puts("swl 0.2.0 (SWO1/SWA1 to SWF8)"); return 0; }
+    if(argc==2 && !strcmp(argv[1],"--version")) { puts("swl 0.3.0 (SWO1/SWA1 to SWF8)"); return 0; }
     if(argc==2 && !strcmp(argv[1],"--help")) {
         puts("usage: swl link OUTPUT.swf [--extensions] INPUT.swo|INPUT.swa ...\n"
              "       swl archive OUTPUT.swa INPUT.swo ...\n"
+             "Resources: --svf NAME FILE --jpeg NAME FILE --wav NAME FILE\n"
+             "Events (after resources): --place NAME X Y DEPTH --play NAME\n"
              "Initializers run in input/member order. Duplicate modules fail.\n"
              "Libraries include all members. No implicit paths or lazy resolution.\n"
              "--extensions permits FlashVM channel requirements.\n"
@@ -42,6 +44,34 @@ int main(int argc, char **argv)
     for(i=3;ok && i<argc;++i) {
         unsigned char *data; size_t n;
         if(!strcmp(argv[i],"--extensions") && !archive) continue;
+        if(!archive && (!strcmp(argv[i],"--svf") || !strcmp(argv[i],"--jpeg") || !strcmp(argv[i],"--wav"))) {
+            const char *kind=argv[i],*name;
+            if(i+2>=argc) { ok=0; break; }
+            name=argv[++i]; data=read_file(argv[++i],&n);
+            if(!data) { ok=0; break; }
+            ok=!strcmp(kind,"--svf") ? swl_add_svf(c,name,data,n,error,sizeof(error)) :
+                !strcmp(kind,"--jpeg") ? swl_add_jpeg(c,name,data,n,error,sizeof(error)) : swl_add_wav(c,name,data,n,error,sizeof(error));
+            free(data); continue;
+        }
+        if(!archive && !strcmp(argv[i],"--place")) {
+            unsigned numbers[3]={0,0,0}; int j; const char *name;
+            if(i+4>=argc) { ok=0; break; }
+            name=argv[++i];
+            for(j=0;j<3;++j) {
+                const char *text=argv[++i];
+                if(!*text) ok=0;
+                for(;*text;++text) {
+                    if(*text<'0' || *text>'9' || numbers[j]>65535/10 || numbers[j]*10+(unsigned)(*text-'0')>65535) { ok=0; break; }
+                    numbers[j]=numbers[j]*10+(unsigned)(*text-'0');
+                }
+            }
+            if(ok) ok=swl_place(c,name,numbers[0],numbers[1],numbers[2],error,sizeof(error));
+            continue;
+        }
+        if(!archive && !strcmp(argv[i],"--play")) {
+            if(i+1>=argc) { ok=0; break; }
+            ok=swl_play(c,argv[++i],error,sizeof(error)); continue;
+        }
         data=read_file(argv[i],&n);
         if(!data) { ok=0; break; }
         if(archive) { objects[count].data=data; objects[count++].size=n; }

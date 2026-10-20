@@ -43,12 +43,12 @@ static int push(const unsigned char *p, size_t n)
 /* Branches must land on instruction starts, not inside immediate data. */
 static int actions(const unsigned char *p, size_t n)
 {
-    unsigned char *starts; size_t i=0, length, end; int ok=0;
+    unsigned char *starts; size_t i=0, length, end; int ok=0,ended=0;
     if(!n || n>2u*1024u*1024u || p[n-1]) return 0;
     starts=(unsigned char *)calloc(n,1); if(!starts) return 0;
     while(i<n) {
         unsigned op=p[i]; starts[i++]=1;
-        if(!op) { if(i!=n) goto done; break; }
+        if(!op) { if(i!=n) goto done; ended=1; break; }
         if(op>=128) {
             if(n-i<2) goto done;
             length=(size_t)p[i] | (size_t)p[i+1]<<8; i+=2;
@@ -65,6 +65,7 @@ static int actions(const unsigned char *p, size_t n)
             }
         }
     }
+    if(!ended) goto done;
     i=0;
     while(i<n) {
         unsigned op=p[i++];
@@ -96,7 +97,9 @@ SwlContext *swl_create(const SwlOptions *options)
     return c;
 }
 void swl_destroy(SwlContext *c)
-{ size_t i; if(!c)return; for(i=0;i<c->count;++i) free(c->objects[i].data); free(c); }
+{ size_t i; if(!c)return; for(i=0;i<c->count;++i) free(c->objects[i].data);
+  for(i=0;i<c->asset_count;++i) free(c->assets[i].item.data);
+  free(c); }
 int swl_add_object(SwlContext *c, const void *data, size_t n, char *e, size_t cap)
 {
     const unsigned char *p=(const unsigned char *)data; Item item;
@@ -123,7 +126,7 @@ int swl_add_object(SwlContext *c, const void *data, size_t n, char *e, size_t ca
     c->objects[c->count++]=item; c->bytes+=n; return 1;
 }
 /* Fixed 17-bit signed RECT fields cover the validated stage size in twips. */
-static void stage(Buffer *b, unsigned width, unsigned height)
+void swl_rect(Buffer *b, unsigned width, unsigned height)
 {
     unsigned char rect[10]={0}; unsigned fields[5]={17,0,width*20,0,height*20};
     unsigned lengths[5]={5,17,17,17,17}, bit=0,i,j;
@@ -134,11 +137,12 @@ static void stage(Buffer *b, unsigned width, unsigned height)
 int swl_emit(SwlContext *c, SwlWriter writer, void *user, char *e, size_t cap)
 {
     Buffer b={0}; size_t i; int ok;
-    if(!c || !writer || !c->count) return swl_fail(e,cap,"no objects or invalid output callback");
+    if(!c || !writer || (!c->count && !c->asset_count)) return swl_fail(e,cap,"no objects or invalid output callback");
     for(i=0;i<c->count;++i) if(c->objects[i].flags && !c->options.allow_flashvm_extensions)
         return swl_fail(e,cap,"object requires FlashVM channels; enable extensions explicitly");
-    swl_bytes(&b,"FWS\010",4); swl_dword(&b,0); stage(&b,c->options.width,c->options.height);
+    swl_bytes(&b,"FWS\010",4); swl_dword(&b,0); swl_rect(&b,c->options.width,c->options.height);
     swl_word(&b,c->options.frames_per_second<<8); swl_word(&b,1);
+    swl_resources(c,&b);
     for(i=0;i<c->count;++i) swl_tag(&b,12,c->objects[i].data,c->objects[i].size);
     swl_tag(&b,1,NULL,0); swl_tag(&b,0,NULL,0);
     if(b.failed) { free(b.data); return swl_fail(e,cap,"SWF size/allocation limit exceeded"); }
