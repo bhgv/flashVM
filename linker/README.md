@@ -1,4 +1,4 @@
-# SWL linker 0.3.3
+# SWL linker 0.3.4
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -39,3 +39,5 @@ may leave a partial output file.
 C99 sources use four-space indentation, expanded blocks and visible error
 handling. The component-owned [.clang-format](.clang-format) survives detached
 use. Generated Coco/R code and upstream libraries are excluded.
+
+[Build for the host or another OS/CPU](../BUILDING.md).

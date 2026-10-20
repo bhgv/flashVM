@@ -1,6 +1,6 @@
 # C99 compiler projects
 
-Version 0.3.3. [Русский](README.ru.md).
+Version 0.3.4. [Русский](README.ru.md).
 
 | Project | Current component |
 | --- | --- |
@@ -31,3 +31,7 @@ upstream notices. Root workspace orchestration and Git history are optional.
 C99 sources use four-space indentation, expanded blocks and visible error
 handling. The component-owned [.clang-format](.clang-format) survives detached
 use. Generated Coco/R code and upstream libraries are excluded.
+
+[Complete example catalog](examples.md).
+
+[Build for the host or another OS/CPU](../BUILDING.md).

@@ -1,6 +1,6 @@
 # Рабочее пространство FlashVM
 
-Версия разработки: **0.645**. [English](README.md).
+Версия разработки: **0.646**. [English](README.md).
 
 ## Просмотр документации
 
@@ -100,3 +100,6 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 [Формат, C99/Coco-R инструменты и примеры](fir/v1/README.ru.md).
 
 [Стиль ATG и проверка оформления](tools/README.ru.md).
+
+[Нативная и cross-сборка всех компонентов](BUILDING.ru.md),
+[каталог примеров компиляторов](compiler/examples.ru.md).

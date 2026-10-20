@@ -27,3 +27,26 @@ API примера: `trace(value)` выводит вычисленное чис�
 `python fir/v1/view_docs.py`.
 
 Пример `variables.as` показывает объявления с инициализацией и присваивания; каждое вычисление получает новое SSA-имя. Вывод: 36, затем 42.
+
+## Расширенный числовой пример и оптимизатор
+
+Исходник [syntax.as](syntax.as) подробно комментирует каждое вычисление; syntax.txt
+содержит ожидаемую трассу. variables.as/variables.b показывает mutable bindings,
+variables.fir — соответствующий SSA. expected.fir является читаемым входом FIR,
+а не бинарным объектом. Файлы FIR можно править и повторно проверять.
+
+```sh
+build/native-fir/fir1_source as1 --input fir/v1/examples/as1/syntax.as build/native-fir/demo.fir
+build/native-fir/fir1 check build/native-fir/demo.fir
+build/native-fir/fir1_opt build/native-fir/demo.fir build/native-fir/demo.opt.fir
+build/native-fir/fir1 object build/native-fir/demo.opt.fir build/native-fir/demo.swo
+build/native-linker/swl link build/native-fir/demo.swf build/native-fir/demo.swo
+```
+
+Потоки/буферы C API принадлежат вызывающему; полученный FIR не содержит указателей
+на структуры VM. Парсеры сериализуются, callbacks снимков заимствуют IR лишь до
+возврата. Оптимизация сохраняет эффекты trace/каналов и профили; f64 не получает
+fast-math преобразований. AS3 здесь не выдаёт ABC; Limbo — только i32 value(),
+без общего ABI модулей/каналов. Cross-компилятор запускайте на его целевой машине.
+[Сборка native/cross](../../../../BUILDING.ru.md),
+[C-пример всех стадий](../../../../linker/examples/ide/README.ru.md).

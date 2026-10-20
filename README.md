@@ -1,6 +1,6 @@
 # FlashVM workspace
 
-Development version: **0.645**. [Русская версия](README.ru.md).
+Development version: **0.646**. [Русская версия](README.ru.md).
 
 ## Browse documentation
 
@@ -99,3 +99,6 @@ cmake --build flashVM/build-desktop --target flashvm_player --parallel
 [Format, C99/Coco-R tools and tutorials](fir/v1/README.md).
 
 [ATG layout and style checks](tools/README.md).
+
+[Native and cross builds for every component](BUILDING.md),
+[compiler example catalog](compiler/examples.md).

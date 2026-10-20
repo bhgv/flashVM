@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     }
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_opt 0.4.3 (FIR 1.0)");
+        puts("fir1_opt 0.4.4 (FIR 1.0)");
         return 0;
     }
     if (argc != 3 || !strcmp(argv[1], argv[2]))

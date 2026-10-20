@@ -1,4 +1,4 @@
-Версия разработки: **0.645** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.646** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -469,6 +469,7 @@ Explicit mixed-rate/channel audio: [EN](doc/SWF_SOUND_CONVERSION.md) /
 with legacy strict API preserved and an annotated --convert-demo tutorial.
 v0.583: отдельный audio worker и [StopSounds](doc/AUDIO_STOP_BINDINGS.ru.md); исправление треска Android требует проверки на телефоне.
 [Проверяемые результаты платформенной приёмки](doc/RELEASE_EVIDENCE.ru.md).
+[Сборка для своей и другой ОС/CPU](../BUILDING.ru.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

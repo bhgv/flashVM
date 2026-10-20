@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.4.3 (FIR 1.0; SWO1)");
+        puts("fir1 0.4.4 (FIR 1.0; SWO1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

@@ -10,9 +10,13 @@
 | [limbo](limbo/README.ru.md) | Модуль с int-результатом и явная trace-обвязка |
 | [control_flow](control_flow/README.ru.md) | if/jump и доминирование SSA |
 | [channels](channels/README.ru.md) | Существующее расширение каналов FlashVM из FIR |
+| [profiles](profiles/README.ru.md) | Профиль исходного языка, hex/дробные константы и f64.div |
 
 В каждой папке — прокомментированный вход, ожидаемый trace и два README.
 Source-примеры содержат также ожидаемый читаемый FIR. Команды и значения
 параметров API описаны в каждом README. Тесты отдельно проверяют созданный
 адаптером и сохранённый FIR. `python fir/v1/examples/view_docs.py` открывает
 этот каталог; корневой просмотрщик показывает те же документы.
+
+
+[Сборка всех примеров для своей/другой ОС и CPU](../../../BUILDING.ru.md).

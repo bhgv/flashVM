@@ -1,4 +1,4 @@
-# FlashVM stage status / Состояние стадий — v0.645
+# FlashVM stage status / Состояние стадий — v0.646
 
 This is a bounded review of existing implementation reports and the current
 event and global-function work. It does not replace a complete per-API/SWF conformance matrix
@@ -23,6 +23,22 @@ counts are historical unless explicitly rerun for this revision.
 
 
 
+
+## v0.646 cross SDK fixes and readable tools / Cross SDK и читаемые исходники
+
+Strict Windows/Clang builds scope the upstream zlib ULLONG_MAX diagnostic to
+zlib alone; first-party C89/C++98 checks remain enabled. SAPI final-recognition
+masks use typed shifts with identical SDK bits, avoiding C++11 literal macros.
+Linux ARM64/RISC-V64 and Windows x64 minimal cores and real C89 embedding clients
+cross-build/link. Four syntax frontends, FIR/source/optimizer, SWL and the combined
+C IDE host also cross-build for all three targets. No foreign execution is claimed.
+[Build guide EN](../../BUILDING.md) / [RU](../../BUILDING.ru.md),
+[evidence EN](../../toolchains/VALIDATION.md) / [RU](../../toolchains/VALIDATION.ru.md).
+
+Six authoritative ATGs have aligned final C blocks and explicit EBNF nesting;
+45 first-party C99 source/header files are expanded and component formatting
+policies retained. Tutorials and catalogs document API ownership and numeric/
+syntax boundaries. Все девять стадий остаются открытыми.
 
 ## v0.645 bounded tests and UTF-8 evidence / Таймаут и UTF-8
 

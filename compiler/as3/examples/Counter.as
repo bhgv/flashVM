@@ -1,11 +1,13 @@
-// Syntax-only AS3 example: no ABC/SWF is emitted by as3_parse.
+// Syntax-only class tutorial: the parser does not create an AST, ABC or SWF.
 package examples {
     public class Counter {
-        private var total:Number = 0;
-        public function Counter() {}
+        private var total:Number = 0; // Instance storage with an explicit AS3 type.
+        public function Counter() {
+            // Empty constructor; context/type validation is outside this frontend.
+        }
         public function add(value:Number):Number {
-            total = total + value;
-            return total;
+            total = total + value; // Member access is implicit in this source spelling.
+            return total; // Explicit semicolon is required by this syntax profile.
         }
     }
 }

@@ -1,6 +1,6 @@
 # AS2
 
-Version 0.2.4. [Русский](README.ru.md).
+Version 0.2.5. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend: [grammar, build and limitations](frontend/README.md). Semantic
@@ -48,3 +48,5 @@ Resource-failure coordinates may be zero. Limits do not count parentheses:
 one expression level traverses several productions. This is an implementation
 bound, not a language-syntax change. Parsing stays authoritative in .atg; guards
 are C99.
+
+[Detailed examples](examples/README.md).

@@ -151,6 +151,13 @@ target_include_directories(fvm_zlib PUBLIC ${FVM_ZLIB_DIR})
 # LLP64 Windows has 32-bit long: select zlib's supported 32-bit CRC braid in strict C89.
 if(WIN32)
   target_compile_definitions(fvm_zlib PRIVATE Z_TESTW=4)
+  # Modern MinGW limits.h exposes ULLONG_MAX even in C90 mode. Its expansion
+  # inside unmodified upstream zutil.h triggers Clang's pedantic long-long
+  # diagnostic. Keep this compatibility exception on zlib alone: first-party
+  # C89/C++98 targets retain all strict language checks.
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(fvm_zlib PRIVATE -Wno-long-long)
+  endif()
 endif()
 target_link_libraries(flashvm PUBLIC fvm_zlib)
 if(FVM_ENABLE_AGG)
@@ -219,6 +226,9 @@ if(FVM_BUILD_TESTS)
 endif()
 function(fvm_add_program source)
   file(RELATIVE_PATH relative ${PROJECT_SOURCE_DIR} ${source})
+  if(relative STREQUAL "tests/windows_sapi_mask.cpp" AND NOT WIN32)
+    return() # This contract requires actual target Windows SDK declarations.
+  endif()
   if(relative MATCHES "^examples/frontends/(sdl|clutter3d|gtk3|qt5|linux_fb)/")
     return() # SDK-specific tutorial targets are registered by examples/frontends/CMakeLists.txt.
   endif()
